@@ -10,3 +10,5 @@
 
 ## Block E — Windows-only build
 
+## Block F — Managed core
+

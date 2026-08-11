@@ -4,6 +4,17 @@ prefix = "PP"
 # task's own id, "outline" keeps a hand-numbered anchor
 ref_scheme = "id"
 
+# Deliberately empty, and the reason is a decision nobody has taken yet.
+#
+# Block B and Block F are two answers to the same question. B keeps the C core and writes the
+# interop boundary a managed UI calls through; F replaces the core with managed code and makes
+# B's boundary temporary by construction. Both are filed because both are real, and the overlap
+# is stated rather than hidden: PP4 and PP5 are work that F would eventually retire.
+#
+# Running both at once is the one option that is certainly wrong - it pays for the shim twice.
+# Until the choice is made, block order plus deps is the whole ordering, which is what `pick`
+# answers with, and it starts at PP1 either way because the .NET host is needed by both.
+#
 # what jumps the queue, in order: an id or a "Block X", and nothing else
 priority = []
 

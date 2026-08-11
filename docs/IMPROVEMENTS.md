@@ -321,3 +321,194 @@ fetched, and the current tree does that through vcpkg.
 
 Filed early because a build that only exists on one machine is how a port acquires an
 undocumented step, and late enough that there is a host worth publishing.
+
+## Block F — Managed core
+
+### §PP23 The oracle this block cannot be written without
+
+chiaki exists because the PlayStation remote play protocol was reverse engineered. There
+is no document to implement against: the 16935 lines in lib/src ARE the specification,
+and a managed rewrite that reads them and reproduces them is a translation whose only
+correctness test is behavioural.
+
+So the instrument comes first. What it has to do is run both implementations against the
+same input and compare: the same registration exchange, the same key derivation from the
+same seed, the same takion frames in and the same feedback out. Where a console is
+needed, a captured session replayed against both is what makes the comparison repeatable
+at all.
+
+The alternative is what a rewrite of a protocol usually looks like: it works against one
+console on one firmware, and every report afterwards is a guess about which of 16935
+translated lines was wrong. This task is the difference between a rewrite that can be
+finished and one that can only be abandoned.
+
+### §PP24 What Visual Studio has to open
+
+Today the tree is CMakeLists.txt plus a vcpkg.json naming eleven ports. Visual Studio
+can open that as a CMake folder, and it is not the same thing as a solution: no project
+references, no NuGet, no F5 with a managed debugger attached to the code being written.
+
+The target is ordinary for .NET and unremarkable to describe - a .sln, one csproj per
+component, NuGet where vcpkg was, MSBuild all the way down. It is filed second rather
+than first because the oracle above has to exist even if this never happens, but it is
+filed early because everything after it is easier inside a solution than beside one.
+
+Whatever stays native - and the decoder task in this block argues that at least the
+decoder does - keeps its own build and is consumed as a binary or a vcxproj the solution
+references, which is a thing a solution does well.
+
+### §PP25 The part that is generated, not written
+
+lib/protobuf/takion.proto is the schema and nanopb is only the generator that turns it
+into C. Google.Protobuf runs the same file and produces C# with no translation and no
+judgement call.
+
+That makes it the natural first piece of the rewrite: it is a build step, it is
+verifiable by round-tripping bytes the C build produced, and every later task in this
+block sends or receives these messages. It also deletes a vendored dependency outright
+rather than replacing one, which is the only kind of dependency change that is free.
+
+### §PP26 Crypto is where a rewrite dies quietly
+
+rpcrypt.c is 2428 lines, gkcrypt.c 574 and ecdh.c 240, all of it over OpenSSL's EVP,
+HMAC, SHA, RAND, EC and BN. Underneath, it is P-256 ECDH, AES in the modes the protocol
+uses, HMAC-SHA256 and a key derivation with the console's own quirks baked in.
+
+.NET has all of the primitives. System.Security.Cryptography covers ECDiffieHellman,
+AesGcm, HMACSHA256 and RandomNumberGenerator, so nothing here needs a third party
+library and nothing here needs unsafe code. The difficulty is not the primitives, it is
+the sequence: which bytes, in which order, with which padding, are hashed into which
+key.
+
+Which is why this task depends on the oracle rather than merely benefiting from it.
+Every step of the derivation has a fixed input and a fixed output, so the whole of it
+can be tested against the C implementation offline, without a console in the room - and
+it should be, because the failure it prevents is one where nothing appears wrong except
+that the session never opens.
+
+### §PP27 The transport, and the only place GC is a real question
+
+takion.c is 1845 lines plus takionsendbuffer.c at 267 and reorderqueue.c at 200: the
+sequencing, the retransmission, the send window and the reordering that a video stream
+over UDP needs.
+
+This is the one task in the block where the runtime is a genuine risk rather than a
+prejudice. A pause at the wrong moment is a dropped frame, and the traffic is thousands
+of small packets a second, each of which is an allocation if written carelessly. .NET
+has the answer - Span, ArrayPool, Socket with SocketAsyncEventArgs - but the answer has
+to be chosen deliberately, which is what makes this different from the tasks above it.
+
+The measurement is not opinion either: the C implementation is right there, and the
+oracle can run both against the same captured traffic and compare timing, not just
+bytes.
+
+### §PP28 The state machines
+
+session.c is 1182 lines, ctrl.c 1469 and streamconnection.c 1296. Together they are the
+connection: what is sent in which order, what is waited for, what a timeout means at
+each point, and how a session comes apart when the console stops answering.
+
+There is no diagram and the code is the diagram. Translating it means reading control
+flow that was written to match observed behaviour, not designed - and the honest
+expectation is that some of it looks wrong and is not.
+
+Two consequences for how this is taken. It should be split when it is started rather
+than now, along the three files, because a single review of 3947 translated lines is not
+a review. And it is the task that most benefits from the oracle running a full captured
+session end to end, since almost nothing here has a fixed input and a fixed output the
+way the crypto does.
+
+### §PP29 The first thing that can be proved against a console
+
+regist.c is 910 lines, discovery.c 481 and discoveryservice.c 384: the broadcast that
+finds a console, the reply that describes it, the wake packet, and the PIN exchange that
+ends with key material stored.
+
+Unlike the transport, these are request and response over well-defined boundaries, and
+unlike the state machines they are short. That combination makes this the slice to run
+against real hardware first: it needs the crypto to be right, it needs nothing from the
+video path, and it either finds the console on the network or it does not.
+
+It is also what makes the rest of the block testable at all, since a session cannot be
+opened against a console the managed side has never registered with.
+
+### §PP30 Reed-Solomon, by hand
+
+third-party/jerasure and third-party/gf-complete implement erasure coding over GF(2^8),
+and frameprocessor.c at 315 lines is what calls them: when packets of a video frame are
+missing, the FEC blocks are what reconstruct them instead of asking for a retransmission
+that would arrive too late to matter.
+
+There is no NuGet package that is a drop-in for this, so it is the one dependency in the
+block that has to be written rather than referenced. The arithmetic is well understood
+and the code is small; what it is not is forgiving - a table built wrong produces frames
+that decode into garbage only when packets are actually lost, which is to say only on a
+network nobody is testing on.
+
+Two mitigations, both cheap. The tables and the recovery have fixed inputs, so the
+oracle covers them completely offline. And keeping the C for this one piece is a
+legitimate outcome, because it is self-contained, has no OS surface, and is called with
+buffers rather than with state.
+
+### §PP31 The line managed code should not cross
+
+ffmpegdecoder.c is 354 lines and bitstream.c 406, and behind them is FFmpeg doing
+hardware accelerated H.264 and HEVC decode. Nothing in .NET replaces that. A pure
+managed decoder is possible in the sense that it can be written and impossible in the
+sense that it would not hold the frame rate, and it would ignore the GPU that is already
+doing this work for free.
+
+So this task is a decision, not a translation, and the honest options are all native:
+
+Keep FFmpeg, called through P/Invoke. Least change, keeps every format and every
+hardware path the project already supports, and keeps a large native dependency in a
+solution that was trying to shed them.
+
+Use Media Foundation with D3D11VA. Native to Windows, ships with the OS, integrates with
+the D3D11 texture path the renderer decision may already need - and supports fewer edge
+cases than FFmpeg does.
+
+Either way the claim to correct is the framing: the goal that is reachable is a project
+that is 100% Windows and builds in Visual Studio, not one that is 100% managed. The
+decoder is the counter-example, and it is better stated here than found at the end.
+
+### §PP32 Audio, where one half has a managed answer
+
+audioreceiver.c is 363 lines over Opus, and speexdsp does the resampling that keeps
+playback aligned with a stream that does not share the sound card's clock.
+
+Opus has a managed implementation and a native one, and the decision between them is
+measurable rather than theoretical: decode cost per packet against the extra dependency.
+speexdsp has no managed counterpart worth the name, and the alternatives are a native
+call or writing the resampler - which is a smaller job than it sounds and a worse one to
+get subtly wrong, since drift is heard as a click every few minutes rather than as a
+failure.
+
+Output is the easy half: WASAPI through NAudio or the platform APIs is what the .NET
+host would use regardless of this block.
+
+### §PP33 Two dependencies that simply leave
+
+http.c is 262 lines around curl, and json-c parses what comes back. Both are vendored or
+fetched, both exist to do something the .NET base class library does without a
+reference, and neither is on the latency path.
+
+There is no design decision here and that is why it is worth filing separately: it is
+the cheapest visible progress in the block, it deletes two dependencies from the build,
+and it can be taken by whoever wants to see the shape of a translated file before
+starting one that matters.
+
+### §PP34 The layer that disappears
+
+thread.c is 270 lines and log.c 232. The first is a portability shim - threads, mutexes,
+condition variables, one API over pthreads and Win32 - and the second is the logging
+every other file calls.
+
+In managed code the first has no reason to exist: Task, lock, SemaphoreSlim and
+CancellationToken are the platform, and a translation that reproduces the shim
+faithfully would be the clearest sign that the port was mechanical rather than
+considered. The second becomes whatever the .NET host already logs through, which
+matters because the session log is a support artefact users are asked to attach.
+
+Filed early despite being small: every file translated after it inherits how these two
+are spelled, and changing that later means touching all of them.
