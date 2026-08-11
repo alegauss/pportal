@@ -327,20 +327,26 @@ undocumented step, and late enough that there is a host worth publishing.
 ### §PP23 The oracle this block cannot be written without
 
 chiaki exists because the PlayStation remote play protocol was reverse engineered. There
-is no document to implement against: the 16935 lines in lib/src ARE the specification,
+is no document to implement against: the 16935 lines in lib/src are the specification,
 and a managed rewrite that reads them and reproduces them is a translation whose only
 correctness test is behavioural.
 
-So the instrument comes first. What it has to do is run both implementations against the
-same input and compare: the same registration exchange, the same key derivation from the
-same seed, the same takion frames in and the same feedback out. Where a console is
-needed, a captured session replayed against both is what makes the comparison repeatable
-at all.
+That is true of the protocol as a whole and NOT true everywhere, which is a correction
+worth carrying here rather than leaving as a pleasant surprise. test/ holds 5512 lines -
+munit cases over gkcrypt, rpcrypt, takion, bitstream, the reorder queue and the decoder,
+plus 3081 lines of recorded FEC cases and a captured video packet. Where those exist,
+the expected output is already agreed with real hardware and the rewrite is checked
+against a fixture rather than against a running console.
+
+What this task adds is the rest: run both implementations against the same input and
+compare. The same registration exchange, the same key derivation from the same seed, the
+same takion frames in and the same feedback out - and where a console is needed, a
+captured session replayed against both, which is what makes the comparison repeatable at
+all.
 
 The alternative is what a rewrite of a protocol usually looks like: it works against one
 console on one firmware, and every report afterwards is a guess about which of 16935
-translated lines was wrong. This task is the difference between a rewrite that can be
-finished and one that can only be abandoned.
+translated lines was wrong.
 
 ### §PP24 What Visual Studio has to open
 
@@ -512,3 +518,320 @@ matters because the session log is a support artefact users are asked to attach.
 
 Filed early despite being small: every file translated after it inherits how these two
 are spelled, and changing that later means touching all of them.
+
+## Block G — Test discipline
+
+### §PP35 The suite that is already written
+
+test/ holds 2095 lines of munit tests and 3417 lines of captured vectors: gkcrypt at 440
+lines, rpcrypt at 311, takion at 232, bitstream at 207, ffmpegdecoder at 201,
+reorderqueue at 185, and fec_test_cases.inl alone at 3081 lines of recorded erasure
+cases with a real video packet parse beside it.
+
+This changes what the managed rewrite is. Reading it as a translation with no
+specification is only true of the parts nobody tested; for crypto, FEC, bitstream and
+the reorder queue there are fixed inputs and expected outputs already agreed with a real
+console, and they are the exact modules where a silent translation error is most
+expensive.
+
+So this is filed as the first test task and as a dependency of the rewrite rather than a
+chore after it. Ported to xUnit, these run in Test Explorer and in CI against the
+managed implementation, and every one of them that stays green is a claim the C build
+already backed.
+
+### §PP36 Where a red test has to stop something
+
+After the chiaki-ng workflows were removed, .github/workflows holds one file and it
+lints the roadmap. Nothing compiles, nothing runs a test, and nothing on a push can fail
+for a reason that is about the code.
+
+What this needs is small and specific: dotnet test in the same workflow that builds,
+failing the job on a red assertion, with the results readable without opening a machine.
+Visual Studio's Test Explorer answers the inner loop and answers nothing about a branch
+somebody else pushed.
+
+It is filed early in this block because the two tasks after it are both worthless
+without it - a suite and a ratchet that only run when someone remembers are a suite and
+a ratchet that report on the day they were written.
+
+### §PP37 Testable screens, or eight that are not
+
+The QML being replaced kept its logic in C++ behind a property surface, which is why
+qmlsettings and qmlbackend are testable objects and the markup is thin. A WPF port can
+reproduce that with view models, or it can put the same logic in code-behind and lose
+it.
+
+The difference is not style. A view model can assert the things that actually break: a
+PIN field that enables the button one character early, a console list that keeps a stale
+entry after a failed refresh, a settings property that writes on every keystroke rather
+than on commit, a dialog that stays open after the operation it was waiting on failed.
+None of those are reachable from a test that has to instantiate a window.
+
+Filed against the control vocabulary rather than against any one screen, because it is a
+decision taken once and inherited by all eight - and taken late, it is eight rewrites.
+
+### §PP38 The ratchet
+
+The non-goal says no line ships without an assertion that fails without it. Stated and
+unmeasured, that is a sentence in a file, and the first week under pressure is when it
+stops being true.
+
+What makes it hold is a count in CI: how many shipped lines have no test naming them,
+allowed to fall and never to rise. It does not demand that the debt be paid at once,
+which is what makes it survivable - it demands only that it stop growing.
+
+It needs the ledger and the suite to be joinable, which is the one piece of design in
+this task: a test has to be able to name the line it holds, whether by convention in the
+test name or by an attribute the count can read. Without that join, the number is a
+guess and a gate on a guess is worse than no gate.
+
+## Block H — Performance and telemetry
+
+### §PP39 The baseline that expires
+
+The application is not uninstrumented. streamsession.h carries measured_bitrate,
+frames_lost and pending_frames_lost; qmlmainwindow.h carries droppedFrames and takes
+decoder_delivery_us with every presented frame; congestioncontrol.c computes packet
+loss; senkusha runs an RTT probe at connect. StreamMenuWindow.qml draws the bitrate and
+the dropped frame count.
+
+All of it is live and none of it is kept. Close the window and the run is gone.
+
+That is what makes this task first and time-sensitive in a way nothing else here is.
+Every comparison the port will be judged by needs a before, the before can only be
+recorded by the Qt build, and the Qt build is scheduled for deletion. Recorded late, the
+baseline describes a tree that has already been half converted; not recorded at all,
+faster and slower become two opinions nobody can settle.
+
+The scope is deliberately small: take what already exists, timestamp it, write it per
+session in a form another run can be compared against. Not new metrics - those are the
+tasks after this one.
+
+### §PP40 The number nobody has
+
+Four counters exist and none of them is latency. decoder_delivery_us is the closest and
+it measures one stage: when a frame reached the decoder. Senkusha's RTT is a probe at
+connect time, not a running measurement.
+
+What is missing is end to end - input sent, frame displayed - and the honest note is
+that it cannot be measured entirely in software. The console's encoder and the display's
+own pipeline are outside the process. Two approaches, and both are worth having: an
+in-process estimate that sums what the client can see, which is cheap and comparable
+between builds, and an external measurement, which is slow, occasional and the only one
+that produces a number in milliseconds a user would recognise.
+
+For the external half there is a productised instrument, and on an NVIDIA-first client
+it is the obvious one: Reflex Latency Analyzer, on a monitor that supports it, measures
+click to photon without a camera rig. It does not apply to the client as a low latency
+mode - Reflex controls a render queue this application does not have - but as a
+measuring device it answers exactly the question this task asks.
+
+The in-process estimate is what a regression test can use. The external one is what says
+whether the estimate is honest, and it needs to be taken once on the Qt build for the
+same reason the baseline does.
+
+### §PP41 Timing per stage, or a regression with no address
+
+decoder_delivery_us is the only per-frame timestamp in the tree. A frame passes through
+takion, the reorder queue, the FEC reconstruction in frameprocessor, the decoder and the
+present, and four of those five stages report nothing.
+
+Without them a comparison produces one sentence - the port is 8ms slower - and no next
+step. With them the same run says the decode is unchanged, the present grew by 6ms and
+the reorder queue by 2, which is a defect with an address and an owner.
+
+The cost is a per-frame timestamp at five points and a way to read the distribution
+rather than the average, because the complaint a user makes is about the worst frame in
+a minute and not about the mean. p99 and the maximum are the numbers that correspond to
+what is felt; the mean is the number that hides it.
+
+### §PP42 Where the numbers go
+
+sessionlog.cpp already writes a log per session and users are asked to attach it to
+reports, so the pattern and the place both exist. What is missing is a machine-readable
+record beside it: one row per session with the build, the settings that affect the
+picture, and the distributions rather than the last value drawn on screen.
+
+Local, on disk, and off by default in the sense that matters - nothing here is sent
+anywhere. This is instrumentation for a port, not analytics about users, and the
+distinction has to be stated in the design rather than assumed from the fact that nobody
+wrote an uploader yet. A session record naming a console and a network is exactly the
+kind of file that must not acquire a transmitter later without the decision being taken
+again.
+
+With this in place, comparing two builds stops being a person watching a HUD and becomes
+a question asked of two files.
+
+### §PP43 Measure the two before writing either
+
+The renderer task offers three shapes and its rationale argues for them on structure: an
+airspace child window that nothing can be drawn over, a shared texture that composes
+properly and costs a copy, a native renderer that discards the shader work. What none of
+that says is what they cost in milliseconds on this machine with this stream.
+
+A spike answers it: a triangle, or better a decoded frame, presented through HwndHost
+and through D3DImage, timed at present with the instrumentation the tasks above provide.
+Days of work against a decision that the whole of Block C and half of Block D inherit.
+
+It is filed here rather than as a note inside the renderer task because it has an output
+of its own - two numbers and the conditions they were taken under - and because a spike
+that nobody scheduled is a spike nobody runs. The renderer task should not be started
+before this one reports.
+
+### §PP44 Allocations are the managed risk, and they are testable
+
+The transport rewrite is the one place in the managed core where the runtime is a real
+risk rather than a prejudice. It is also the place where the risk is cheapest to hold:
+allocation count is deterministic and can be asserted.
+
+So the budget is a test, not a review. Bytes allocated per packet processed, measured
+over a replayed capture, failing when it rises above the number that was agreed. Span,
+ArrayPool and the async socket APIs are how it is kept; the assertion is what stops it
+from quietly not being.
+
+The pairing with per-stage timing matters: an allocation regression shows up as a tail,
+not as a mean, so the same distributions that locate a slow stage are what make this
+visible at all. A build whose average is unchanged and whose p99 doubled is the exact
+shape of a GC problem.
+
+### §PP45 The comparison, as one command
+
+The correctness oracle in the managed core block compares bytes between implementations.
+This is its performance counterpart and the two should share whatever replay they need:
+the same captured session, driven into both builds, producing the two records the
+telemetry sink writes.
+
+What it prints is a delta per stage with distributions, not a verdict - p50, p99 and
+maximum for each of the five stages, plus dropped and lost frames, plus the conditions.
+A single number that says faster or slower is what people argue about; five
+distributions are what they fix.
+
+It is also the honest reporting mechanism for this whole port. The expectation set out
+when this block was proposed is parity at best, with two places it can get worse and two
+narrow places it can get better. That expectation deserves to be checked rather than
+defended, and this is the task that checks it.
+
+### §PP46 Two numbers that are easy and get assumed
+
+QtWebEngine is in the build for one login screen and WebView2 replaces it with a control
+the operating system already carries. The expected result is a smaller installer and a
+faster cold start, and both are trivially measurable and routinely asserted without
+being.
+
+Cold start to the console list, installer size, and process working set at idle.
+Recorded on the Qt build alongside the rest of the baseline, then again after, in the
+same record the sink already writes.
+
+Small task, and it is here because these are the two numbers most likely to be quoted in
+a release note. A quoted number that nobody measured is the kind of claim that survives
+long past the day it stopped being true.
+
+## Block I — NVIDIA path
+
+### §PP47 The right NVIDIA feature, which is not the famous one
+
+DLSS Super Resolution is a render-time technique. It works because a game hands it
+motion vectors, a depth buffer and a jittered camera, and it reconstructs a higher
+resolution frame from information the renderer already had. A remote play client has
+none of that: what arrives is H.264 or HEVC that a console encoded, decoded into a plain
+surface. There is nothing to hand DLSS and no way to produce it.
+
+What NVIDIA ships for exactly this case is RTX Video Super Resolution, driven through
+NGX. It takes a decoded video frame and upscales it, which is the thing being asked for,
+and it is already used by browsers for the same reason.
+
+So this task is the evaluation, on the measurement the present spike provides: what VSR
+costs in milliseconds at the resolutions this client actually streams, and whether the
+picture is better enough at 1080p to 4K to pay it. Remote play is not a movie - added
+latency is felt where a sharper image is only seen - so the answer is a number, not a
+preference, and it is allowed to be no.
+
+### §PP48 The NVIDIA path that already exists
+
+qmlmainwindow exposes nvidiaCard() and qmlbackend reads it: with an NVIDIA card and cuda
+among the available decoders, cuda is preferred, with fallbacks written around it. So
+the premise that a vendor path would be new is wrong - the decision is made today, in a
+file the port is about to rewrite, on hardware detection alone.
+
+What is missing is the evidence. Nobody has published decode time, frame delivery jitter
+or dropped frames for cuda against the vulkan and d3d11va paths on the same machine and
+stream. The per-stage timing makes that a measurement rather than an argument.
+
+It also carries a specific opportunity: NVDEC decoding into a surface the renderer can
+use without a copy back through system memory. Whether that copy exists today is exactly
+the kind of thing the per-stage numbers show, and it is worth more than any upscaler.
+
+### §PP49 HDR on a stream that does not carry it
+
+The window already deals with HDR when the stream is HDR. The case this covers is the
+other one: an SDR stream on a display capable of more, which is most sessions on most
+titles.
+
+RTX Video HDR is the driver-side answer and it runs on the same NGX surface as the
+upscaler, which is why it is filed beside it and after the window owns its own
+swapchain. The two together are the whole of what the vendor offers for the picture.
+
+It comes with a caution worth stating rather than discovering: an inferred HDR image is
+an opinion about colour the source did not express, and on some content it looks worse.
+Whatever ships has to be a setting the user can turn off, and the fidelity mode the
+conformance work already cares about has to bypass it entirely.
+
+### §PP50 The one that trades the wrong currency
+
+NVIDIA's optical flow accelerator can interpolate between two decoded frames, and the
+driver exposes a smoothing feature built on it. Applied to a 30fps stream it produces
+60, and it does so by holding a frame back until its successor arrives.
+
+That is the trade laid bare: smoothness is bought with latency, in a client whose entire
+quality argument is latency. It is not obviously wrong - a 30fps title that streams
+smoothly may feel better to some users than a stutter-free 30 - but it is obviously not
+a default, and the only way to decide is the glass-to-glass number this depends on.
+
+Filed so the idea has an address, and filed with the cost in its own symptom so nobody
+schedules it believing it is free.
+
+### §PP51 First, not only
+
+The direction is that NVIDIA is where the tuning goes: the decoder that gets measured,
+the upscaler that gets integrated, the path that is regression tested. That is a
+reasonable focus and it is not the same statement as requiring the hardware.
+
+What this task writes down is the second half. Which paths must keep working - d3d11va
+decode, the neutral renderer, an SDR present without NGX. What the client does when NGX
+is absent, which is to say nothing visible except that the option is not offered. And
+what the gate runs on, since a vendor path that is the only one with a test is a vendor
+requirement with extra steps.
+
+The cost of not stating it is specific: a Windows machine with Intel graphics is an
+ordinary laptop, and an application that fails on one has not shipped, it has narrowed.
+
+### §PP52 Where a vendor feature also pays a debt
+
+streamsession.h carries SpeexEchoState, an echo suppress level, and two conversion
+buffers for the mic path. The audio task in the managed core block names speexdsp as the
+piece with no managed counterpart worth the name - one of the few places that block has
+to write rather than reference.
+
+NVIDIA's audio effects SDK does noise removal and echo cancellation on the GPU, which is
+the same job with better results on a machine that has the card. That makes this the
+only item in this block that is not purely an addition: on an NVIDIA machine it replaces
+code the port would otherwise have to carry.
+
+It does not remove the fallback, and the fallback is where the dependency question stays
+open - which is the other half of what the first-not-only task has to state.
+
+### §PP53 The one that removes waiting instead of adding work
+
+Nothing in the window mentions VRR, G-SYNC or adaptive sync. Frames from a console
+arrive when the network delivers them - irregularly by nature - and a fixed refresh
+present rounds every one of them up to the next vblank. At 60Hz that is up to 16ms of
+pure waiting, added to a frame that already travelled a network.
+
+Variable refresh is the direct answer, and it is the only item in this block that makes
+the picture arrive earlier rather than look better or arrive smoother. It also composes
+with everything else here instead of competing with it.
+
+Two caveats to hold. Below the display's minimum refresh, low framerate compensation
+changes the behaviour and the result has to be checked rather than assumed. And
+exclusive fullscreen is usually the precondition, which is why this hangs off the task
+where the window takes ownership of how it meets the display.

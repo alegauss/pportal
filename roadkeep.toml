@@ -4,7 +4,29 @@ prefix = "PP"
 # task's own id, "outline" keeps a hand-numbered anchor
 ref_scheme = "id"
 
-# Deliberately empty, and the reason is a decision nobody has taken yet.
+# PP39 jumps everything, and it is the only line here whose window closes rather than moves.
+# The four counters this application already computes - measured_bitrate, frames_lost,
+# droppedFrames and the decoder delivery timestamp - are drawn on screen and never written down,
+# and the build that produces them is the one scheduled for deletion. Recorded late, the baseline
+# describes a tree that has already been half converted; not recorded at all, "faster" and
+# "slower" become two opinions nobody can settle, which is the outcome this block exists to
+# refuse.
+#
+# Block H follows it for the same reason one level along: PP43 measures the two present paths
+# before PP9 commits to one, and PP44 sets the allocation budget before PP27 writes the transport
+# that has to meet it. Both are now deps rather than advice.
+#
+# Block I is third, on instruction (2026-08-11): NVIDIA first, which is a focus and not a
+# requirement - PP51 is where the second half of that sentence is written down, and the app still
+# has to run on an ordinary Intel laptop. It sits behind Block H rather than beside it because
+# every line in it is an evaluation with a number as its output, and PP41 and PP43 are what
+# produce numbers at all. Two of the seven are not image quality: PP53 removes waiting for a
+# vblank, which is the only one that makes a frame arrive earlier, and PP52 pays a debt the port
+# already has by taking speexdsp off the CPU.
+#
+# The rest of the order is block order plus deps.
+#
+# On the two paths below, the decision is still nobody's:
 #
 # Block B and Block F are two answers to the same question. B keeps the C core and writes the
 # interop boundary a managed UI calls through; F replaces the core with managed code and makes
@@ -12,11 +34,15 @@ ref_scheme = "id"
 # is stated rather than hidden: PP4 and PP5 are work that F would eventually retire.
 #
 # Running both at once is the one option that is certainly wrong - it pays for the shim twice.
-# Until the choice is made, block order plus deps is the whole ordering, which is what `pick`
-# answers with, and it starts at PP1 either way because the .NET host is needed by both.
+# The choice does not have to be taken yet: PP39 comes before either, and PP1 - the .NET host -
+# is needed by both, so the first two things to do are the same under both answers.
 #
 # what jumps the queue, in order: an id or a "Block X", and nothing else
-priority = []
+priority = [
+  "PP39",
+  "Block H",
+  "Block I",
+]
 
 [files]
 roadmap = "docs/ROADMAP.md"

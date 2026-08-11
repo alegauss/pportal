@@ -12,3 +12,9 @@
 
 ## Block F — Managed core
 
+## Block G — Test discipline
+
+## Block H — Performance and telemetry
+
+## Block I — NVIDIA path
+
