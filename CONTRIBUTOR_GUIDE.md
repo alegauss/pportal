@@ -4,15 +4,15 @@ This file is a quick orientation for new contributors working on `chiaki-ng`.
 
 ## What This Repository Is
 
-`chiaki-ng` is a cross-platform PlayStation Remote Play client. The codebase is split into:
+`chiaki-ng` is a Windows PlayStation Remote Play client. The codebase is split into:
 
 - shared protocol and codec code in [`lib/`](./lib)
 - desktop GUI code in [`gui/`](./gui)
-- command-line tooling in [`cli/`](./cli)
-- platform-specific frontends in [`android/`](./android) and [`switch/`](./switch)
 - build, packaging, and release scripts in [`scripts/`](./scripts) and [`.github/workflows/`](./.github/workflows)
 
-Most feature work on Linux/Windows/macOS goes through `lib/` plus `gui/`.
+All feature work goes through `lib/` plus `gui/`. This fork is Windows-only: the Linux,
+macOS, BSD, Android, Nintendo Switch and Steam Deck ports and the argp-based CLI have
+been removed, and CMake refuses to configure on a non-Windows host.
 
 ## Mental Model
 
@@ -67,8 +67,9 @@ Key desktop files:
 
 ### Packaging and CI
 
-- [`scripts/flatpak/`](./scripts/flatpak): Flatpak manifests and patches
-- [`scripts/build-*.sh`](./scripts): dependency and packaging helper scripts
+- [`scripts/build-*-windows*.sh`](./scripts): dependency build helpers (libplacebo, ffmpeg, SDL2)
+- [`scripts/deploy-windows-msys2.sh`](./scripts/deploy-windows-msys2.sh): collects the portable MSYS2 tree
+- [`scripts/chiaki-ng.iss`](./scripts/chiaki-ng.iss): Inno Setup installer script
 - [`.github/workflows/`](./.github/workflows): CI and release automation
 
 If a dependency version changes, check all three places:
@@ -126,7 +127,7 @@ Start in:
 Start in:
 
 - [`gui/src/qmlmainwindow.cpp`](./gui/src/qmlmainwindow.cpp)
-- libplacebo version/pinning in `CMakeLists.txt`, `scripts/flatpak`, and workflow files
+- libplacebo version/pinning in `CMakeLists.txt`, `scripts/build-libplacebo-windows*.sh`, and workflow files
 
 ### Audio/Mic Bug
 

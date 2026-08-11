@@ -7,20 +7,7 @@
 #include <chiaki/log.h>
 #include <chiaki/stoppipe.h>
 #include <chiaki/time.h>
-#ifdef _WIN32
 #include <ws2tcpip.h>
-#else
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#endif
-
-#ifdef __FreeBSD__
-#include <ifaddrs.h>
-#include <string.h>
-#include <errno.h>
-#include <net/if.h>
-#endif
 
 #include <stdint.h>
 #include <limits.h>
@@ -58,41 +45,7 @@ static inline const char *sockaddr_str(struct sockaddr *addr, char *addr_buf, si
 
 static inline int sendto_broadcast(ChiakiLog *log, chiaki_socket_t s, const void *msg, size_t len, int flags, const struct sockaddr *to, socklen_t tolen)
 {
-#ifdef __FreeBSD__
-	// see https://wiki.freebsd.org/NetworkRFCCompliance
-	if(to->sa_family == AF_INET && ((const struct sockaddr_in *)to)->sin_addr.s_addr == htonl(INADDR_BROADCAST))
-	{
-		struct ifaddrs *ifap;
-		if(getifaddrs(&ifap) < 0)
-		{
-			CHIAKI_LOGE(log, "Failed to getifaddrs for Broadcast: %s", strerror(errno));
-			return -1;
-		}
-		int r = -1;
-		for(struct ifaddrs *a=ifap; a; a=a->ifa_next)
-		{
-			if(!a->ifa_broadaddr)
-				continue;
-			if(!(a->ifa_flags & IFF_BROADCAST))
-				continue;
-			if(a->ifa_broadaddr->sa_family != to->sa_family)
-				continue;
-			((struct sockaddr_in *)a->ifa_broadaddr)->sin_port = ((const struct sockaddr_in *)to)->sin_port;
-			char addr_buf[64];
-			const char *addr_str = sockaddr_str(a->ifa_broadaddr, addr_buf, sizeof(addr_buf));
-			CHIAKI_LOGV(log, "Broadcast to %s on %s", addr_str ? addr_str : "(null)", a->ifa_name);
-			int sr = sendto(s, msg, len, flags, a->ifa_broadaddr, sizeof(*a->ifa_broadaddr));
-			if(sr < 0)
-			{
-				CHIAKI_LOGE(log, "Broadcast on iface %s failed: %s", a->ifa_name, strerror(errno));
-				continue;
-			}
-			r = sr;
-		}
-		freeifaddrs(ifap);
-		return r;
-	}
-#endif
+	(void)log;
 	return sendto(s, (CHIAKI_SOCKET_BUF_TYPE) msg, len, flags, to, tolen);
 }
 
@@ -112,7 +65,6 @@ static inline ChiakiErrorCode chiaki_send_fully(ChiakiStopPipe *stop_pipe, chiak
 		}
 		if(sent == 0)
 			return CHIAKI_ERR_NETWORK;
-#ifdef _WIN32
 		int err = WSAGetLastError();
 		if(err == WSAEINTR)
 			continue;
@@ -133,27 +85,6 @@ static inline ChiakiErrorCode chiaki_send_fully(ChiakiStopPipe *stop_pipe, chiak
 				return wait_err;
 			continue;
 		}
-#else
-		if(errno == EINTR)
-			continue;
-		if(errno == EAGAIN || errno == EWOULDBLOCK)
-		{
-			if(!stop_pipe)
-				return CHIAKI_ERR_NETWORK;
-			uint64_t wait_timeout_ms = UINT64_MAX;
-			if(deadline_ms != UINT64_MAX)
-			{
-				uint64_t now_ms = chiaki_time_now_monotonic_ms();
-				if(now_ms >= deadline_ms)
-					return CHIAKI_ERR_TIMEOUT;
-				wait_timeout_ms = deadline_ms - now_ms;
-			}
-			ChiakiErrorCode wait_err = chiaki_stop_pipe_select_single(stop_pipe, sock, true, wait_timeout_ms);
-			if(wait_err != CHIAKI_ERR_SUCCESS)
-				return wait_err;
-			continue;
-		}
-#endif
 		return CHIAKI_ERR_NETWORK;
 	}
 	return CHIAKI_ERR_SUCCESS;

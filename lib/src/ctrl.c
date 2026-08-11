@@ -15,17 +15,8 @@
 #include <assert.h>
 #include <inttypes.h>
 
-#ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#else
-#include <unistd.h>
-#include <arpa/inet.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#endif
 
 #define SESSION_OSTYPE "Win10.0.0"
 
@@ -1364,19 +1355,11 @@ static ChiakiErrorCode ctrl_connect(ChiakiCtrl *ctrl)
 	{
 		if(err != CHIAKI_ERR_CANCELED)
 		{
-#ifdef _WIN32
 			int errsv = WSAGetLastError();
-#else
-			int errsv = errno;
-#endif
 			CHIAKI_LOGE(session->log, "Failed to receive ctrl request response: %s", chiaki_error_string(err));
 			if(err == CHIAKI_ERR_NETWORK)
 			{
-#ifdef _WIN32
 				CHIAKI_LOGE(session->log, "Ctrl request response network error: %d", errsv);
-#else
-				CHIAKI_LOGE(session->log, "Ctrl request response network error: %s", strerror(errsv));
-#endif
 			}
 		}
 		else

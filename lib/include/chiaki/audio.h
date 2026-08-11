@@ -4,9 +4,6 @@
 #define CHIAKI_AUDIO_H
 
 #include <stdint.h>
-#ifndef _WIN32
-#include <unistd.h>
-#endif
 
 #include "common.h"
 
@@ -38,4 +35,4 @@ static inline size_t chiaki_audio_header_frame_buf_size(ChiakiAudioHeader *audio
 }
 #endif
 
-#endif // CHIAKI_AUDIO_H
+#endif

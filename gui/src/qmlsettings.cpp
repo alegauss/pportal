@@ -266,29 +266,6 @@ void QmlSettings::setIDROnFECFailureEnabled(bool enabled)
     emit iDROnFECFailureEnabledChanged();
 }
 
-#ifdef CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE
-bool QmlSettings::steamDeckHaptics() const
-{
-    return settings->GetSteamDeckHapticsEnabled();
-}
-
-void QmlSettings::setSteamDeckHaptics(bool steamDeckHaptics)
-{
-    settings->SetSteamDeckHapticsEnabled(steamDeckHaptics);
-    emit steamDeckHapticsChanged();
-}
-
-bool QmlSettings::verticalDeck() const
-{
-    return settings->GetVerticalDeckEnabled();
-}
-
-void QmlSettings::setVerticalDeck(bool vertical)
-{
-    settings->SetVerticalDeckEnabled(vertical);
-    emit verticalDeckChanged();
-}
-#endif
 
 bool QmlSettings::fullscreenDoubleClick() const
 {
@@ -1673,15 +1650,8 @@ QStringList QmlSettings::availableDecoders() const
 {
     static QSet<QString> allowed = {
         "vulkan",
-#if defined(Q_OS_LINUX)
-        "vaapi",
-        "cuda",
-#elif defined(Q_OS_MACOS)
-        "videotoolbox",
-#elif defined(Q_OS_WIN)
         "d3d11va",
         "cuda",
-#endif
     };
     QStringList out = {"none"};
     enum AVHWDeviceType hw_dev = AV_HWDEVICE_TYPE_NONE;
@@ -1885,10 +1855,6 @@ void QmlSettings::refreshAllKeys()
     emit startMicUnmutedChanged();
     emit showStreamStatsChanged();
     emit streamerModeChanged();
-#ifdef CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE
-    emit verticalDeckChanged();
-    emit steamDeckHapticsChanged();
-#endif
 #ifdef CHIAKI_GUI_ENABLE_SPEEX
     emit speechProcessingChanged();
     emit noiseSuppressLevelChanged();

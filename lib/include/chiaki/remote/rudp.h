@@ -14,9 +14,6 @@
 #define CHIAKI_RUDP_H
 
 #include <stdint.h>
-#ifndef _WIN32
-#include <unistd.h>
-#endif
 
 #include <chiaki/log.h>
 #include <chiaki/common.h>
@@ -246,4 +243,4 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_rudp_fini(ChiakiRudp rudp);
 }
 #endif
 
-#endif // CHIAKI_RUDP_H
+#endif

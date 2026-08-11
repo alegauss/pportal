@@ -39,201 +39,11 @@
 #define HAPTIC_RUMBLE_MIN_STRENGTH 100
 
 #define MICROPHONE_SAMPLES 480
-#ifdef Q_OS_LINUX
-#define DUALSENSE_AUDIO_DEVICE_NEEDLE "DualSense"
-#else
 #define DUALSENSE_AUDIO_DEVICE_NEEDLE "Wireless Controller"
-#endif
 #if CHIAKI_GUI_ENABLE_SPEEX
 #define ECHO_QUEUE_MAX 40
 #endif
 
-#if CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE
-class SdeckHapticsWorker : public QObject
-{
-	public:
-		SdeckHapticsWorker(SDeck *sdeck, QMutex *sdeck_mutex, ChiakiLog *log)
-			: sdeck(sdeck), sdeck_mutex(sdeck_mutex), log(log)
-		{
-		}
-
-		~SdeckHapticsWorker() override
-		{
-			Stop();
-		}
-
-		bool Start()
-		{
-			if(running || !sdeck || !sdeck_mutex)
-				return false;
-
-			const int num_channels = 2; // Left and right haptics
-			const uint32_t samples_per_packet = 120 * sizeof(uint8_t) / (2.0 * sizeof(int16_t));
-			sdeck_queue_segment = samples_per_packet * STEAMDECK_HAPTIC_PACKETS_PER_ANALYSIS;
-			{
-				QMutexLocker locker(sdeck_mutex);
-				if(sdeck_haptic_init(sdeck, sdeck_queue_segment) < 0)
-				{
-					CHIAKI_LOGE(log, "Steam Deck Haptics Audio could not be connected :(");
-					sdeck_haptic_fini(sdeck);
-					return false;
-				}
-			}
-
-			sdeck_haptics_senderl = static_cast<int16_t *>(calloc(sdeck_queue_segment, sizeof(int16_t)));
-			if(!sdeck_haptics_senderl)
-			{
-				CHIAKI_LOGE(log, "Steam Deck Haptics senderl buf could not be allocated :(");
-				sdeck_haptic_fini(sdeck);
-				return false;
-			}
-			sdeck_haptics_senderr = static_cast<int16_t *>(calloc(sdeck_queue_segment, sizeof(int16_t)));
-			if(!sdeck_haptics_senderr)
-			{
-				CHIAKI_LOGE(log, "Steam Deck Haptics senderr buf could not be allocated :(");
-				sdeck_haptic_fini(sdeck);
-				free(sdeck_haptics_senderl);
-				sdeck_haptics_senderl = nullptr;
-				return false;
-			}
-
-			CHIAKI_LOGI(log,
-			            "Steam Deck Haptics Audio opened with %d channels @ %d Hz with %u samples per audio analysis.",
-			            num_channels,
-			            STEAMDECK_HAPTIC_SAMPLING_RATE,
-			            sdeck_queue_segment);
-			sdeck_hapticl.reserve(20);
-			sdeck_hapticr.reserve(20);
-			sdeck_last_haptic = chiaki_time_now_monotonic_ms();
-			running = true;
-
-			timer = new QTimer(this);
-			connect(timer, &QTimer::timeout, this, [this] {
-				ProcessQueuedHaptics();
-			});
-			timer->start(STEAMDECK_HAPTIC_PACKETS_PER_ANALYSIS * STEAMDECK_HAPTIC_INTERVAL_MS);
-			return true;
-		}
-
-		void Stop()
-		{
-			running = false;
-			if(timer)
-			{
-				timer->stop();
-				delete timer;
-				timer = nullptr;
-			}
-			sdeck_hapticl.clear();
-			sdeck_hapticr.clear();
-			if(sdeck_haptics_senderl)
-			{
-				free(sdeck_haptics_senderl);
-				sdeck_haptics_senderl = nullptr;
-			}
-			if(sdeck_haptics_senderr)
-			{
-				free(sdeck_haptics_senderr);
-				sdeck_haptics_senderr = nullptr;
-			}
-		}
-
-		void EnqueueHaptics(haptic_packet_t packetl, haptic_packet_t packetr)
-		{
-			if(!running)
-				return;
-			sdeck_hapticl.enqueue(packetl);
-			sdeck_hapticr.enqueue(packetr);
-		}
-
-	private:
-		void ProcessQueuedHaptics()
-		{
-			if(!running || !sdeck_haptics_senderl || !sdeck_haptics_senderr)
-				return;
-
-			haptic_packet_t haptic_packetl = {}, haptic_packetr = {};
-			bool changedl = false, changedr = false;
-			for(uint64_t i = 0; i < STEAMDECK_HAPTIC_PACKETS_PER_ANALYSIS; i++)
-			{
-				uint64_t current_tick = sdeck_last_haptic + i * STEAMDECK_HAPTIC_INTERVAL_MS;
-				if(!sdeck_hapticl.isEmpty())
-				{
-					uint64_t next_timestamp = sdeck_hapticl.head().timestamp;
-					if(next_timestamp > (current_tick + STEAMDECK_HAPTIC_INTERVAL_MS))
-						memset(sdeck_haptics_senderl + 30 * i, 0, 30 * sizeof(int16_t));
-					else
-					{
-						haptic_packetl = sdeck_hapticl.dequeue();
-						memcpy(sdeck_haptics_senderl + 30 * i, haptic_packetl.haptic_packet, 30 * sizeof(int16_t));
-						changedl = true;
-					}
-				}
-				else
-					memset(sdeck_haptics_senderl + 30 * i, 0, 30 * sizeof(int16_t));
-
-				if(!sdeck_hapticr.isEmpty())
-				{
-					uint64_t next_timestamp = sdeck_hapticr.head().timestamp;
-					if(next_timestamp > (current_tick + STEAMDECK_HAPTIC_INTERVAL_MS))
-						memset(sdeck_haptics_senderr + 30 * i, 0, 30 * sizeof(int16_t));
-					else
-					{
-						haptic_packetr = sdeck_hapticr.dequeue();
-						memcpy(sdeck_haptics_senderr + 30 * i, haptic_packetr.haptic_packet, 30 * sizeof(int16_t));
-						changedr = true;
-					}
-				}
-				else
-					memset(sdeck_haptics_senderr + 30 * i, 0, 30 * sizeof(int16_t));
-			}
-
-			if(!changedl || sdeck_skipl)
-				sdeck_skipl = false;
-			else
-			{
-				int intervals = 0;
-				{
-					QMutexLocker locker(sdeck_mutex);
-					intervals = play_pcm_haptic(sdeck, TRACKPAD_LEFT, sdeck_haptics_senderl, sdeck_queue_segment, STEAMDECK_HAPTIC_SAMPLING_RATE);
-				}
-				if(intervals < 0)
-					CHIAKI_LOGE(log, "Failed to submit haptics audio to SteamDeck");
-				else if(intervals == 2)
-					sdeck_skipl = true;
-			}
-			if(!changedr || sdeck_skipr)
-				sdeck_skipr = false;
-			else
-			{
-				int intervals = 0;
-				{
-					QMutexLocker locker(sdeck_mutex);
-					intervals = play_pcm_haptic(sdeck, TRACKPAD_RIGHT, sdeck_haptics_senderr, sdeck_queue_segment, STEAMDECK_HAPTIC_SAMPLING_RATE);
-				}
-				if(intervals < 0)
-					CHIAKI_LOGE(log, "Failed to submit haptics audio to SteamDeck");
-				else if(intervals == 2)
-					sdeck_skipr = true;
-			}
-			sdeck_last_haptic = chiaki_time_now_monotonic_ms();
-		}
-
-		SDeck *sdeck = nullptr;
-		QMutex *sdeck_mutex = nullptr;
-		ChiakiLog *log = nullptr;
-		QTimer *timer = nullptr;
-		QQueue<haptic_packet_t> sdeck_hapticl;
-		QQueue<haptic_packet_t> sdeck_hapticr;
-		int16_t *sdeck_haptics_senderl = nullptr;
-		int16_t *sdeck_haptics_senderr = nullptr;
-		int sdeck_queue_segment = 0;
-		uint64_t sdeck_last_haptic = 0;
-		bool sdeck_skipl = false;
-		bool sdeck_skipr = false;
-		bool running = false;
-};
-#endif
 
 static bool isLocalAddress(QString host)
 {
@@ -315,10 +125,6 @@ StreamSessionConnectInfo::StreamSessionConnectInfo(
 	this->packet_loss_max = settings->GetPacketLossReportedMax();
 	this->audio_video_disabled = settings->GetAudioVideoDisabled();
 	this->haptic_override = settings->GetHapticOverride();
-#if CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE
-	this->enable_steamdeck_haptics = settings->GetSteamDeckHapticsEnabled();
-	this->vertical_sdeck = settings->GetVerticalDeckEnabled();
-#endif
 #if CHIAKI_GUI_ENABLE_SPEEX
 	this->speech_processing_enabled = settings->GetSpeechProcessingEnabled();
 	this->noise_suppress_level = settings->GetNoiseSuppressLevel();
@@ -346,34 +152,19 @@ StreamSessionConnectInfo::StreamSessionConnectInfo(
 static void AudioSettingsCb(uint32_t channels, uint32_t rate, void *user);
 static void AudioFrameCb(int16_t *buf, size_t samples_count, void *user);
 static void HapticsFrameCb(uint8_t *buf, size_t buf_size, void *user);
-#ifdef Q_OS_MACOS
-static void MacMicRequestCb(Authorization authorization, void *user);
-#endif
 static void CantDisplayCb(void *user, bool cant_display);
 static void EventCb(ChiakiEvent *event, void *user);
-#if CHIAKI_GUI_ENABLE_SETSU
-static void SessionSetsuCb(SetsuEvent *event, void *user);
-#endif
-#if CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE
-static void SessionSDeckCb(SDeckEvent *event, void *user);
-#endif
 static void FfmpegFrameCb(ChiakiFfmpegDecoder *decoder, void *user);
 
 StreamSession::StreamSession(const StreamSessionConnectInfo &connect_info, QObject *parent)
 	: QObject(parent),
 		log(this, connect_info.log_level_mask, connect_info.log_file, connect_info.log_sanitize),
 	ffmpeg_decoder(nullptr),
-#if CHIAKI_LIB_ENABLE_PI_DECODER
-	pi_decoder(nullptr),
-#endif
 	audio_out(0),
 	audio_in(0),
 	haptics_output(0),
 	haptics_handheld(0),
 	session_started(false),
-#if CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE
-	sdeck(nullptr),
-#endif
 #if CHIAKI_GUI_ENABLE_SPEEX
 		echo_resampler_buf(nullptr),
 		mic_resampler_buf(nullptr),
@@ -393,9 +184,6 @@ StreamSession::StreamSession(const StreamSessionConnectInfo &connect_info, QObje
 	port_guessing_enabled = connect_info.port_guessing_enabled;
 	port_guess_count = connect_info.port_guess_count;
 	port_guess_socket_count = connect_info.port_guess_socket_count;
-#ifdef Q_OS_MACOS
-	mic_authorization = false;
-#endif
 	allow_unmute = false;
 	dpad_regular = true;
 	dpad_regular_touch_switched = false;
@@ -405,16 +193,6 @@ StreamSession::StreamSession(const StreamSessionConnectInfo &connect_info, QObje
 	memset(led_color, 0, sizeof(led_color));
 	packet_loss_max = connect_info.packet_loss_max;
 	ChiakiErrorCode err;
-#if CHIAKI_LIB_ENABLE_PI_DECODER
-	if(connect_info.decoder == Decoder::Pi)
-	{
-		pi_decoder = CHIAKI_NEW(ChiakiPiDecoder);
-		if(chiaki_pi_decoder_init(pi_decoder, log.GetChiakiLog()) != CHIAKI_ERR_SUCCESS)
-			throw ChiakiException("Failed to initialize Raspberry Pi Decoder");
-	}
-	else
-	{
-#endif
 		ffmpeg_decoder = new ChiakiFfmpegDecoder;
 		ChiakiLogSniffer sniffer;
 		chiaki_log_sniffer_init(&sniffer, CHIAKI_LOG_ALL, GetChiakiLog());
@@ -432,9 +210,6 @@ StreamSession::StreamSession(const StreamSessionConnectInfo &connect_info, QObje
 		}
 		chiaki_log_sniffer_fini(&sniffer);
 		ffmpeg_decoder->log = GetChiakiLog();
-#if CHIAKI_LIB_ENABLE_PI_DECODER
-	}
-#endif
 	audio_volume = connect_info.audio_volume;
 	start_mic_unmuted = connect_info.start_mic_unmuted;
 	audio_out_device_name = connect_info.audio_out_device;
@@ -483,13 +258,6 @@ StreamSession::StreamSession(const StreamSessionConnectInfo &connect_info, QObje
 	dpad_touch_shortcut3 = connect_info.dpad_touch_shortcut3;
 	dpad_touch_shortcut4 = connect_info.dpad_touch_shortcut4;
 	haptic_override = connect_info.haptic_override;
-#if CHIAKI_LIB_ENABLE_PI_DECODER
-	if(connect_info.decoder == Decoder::Pi && chiaki_connect_info.video_profile.codec != CHIAKI_CODEC_H264)
-	{
-		CHIAKI_LOGW(GetChiakiLog(), "A codec other than H264 was requested for Pi Decoder. Falling back to it.");
-		chiaki_connect_info.video_profile.codec = CHIAKI_CODEC_H264;
-	}
-#endif
 	if(connect_info.duid.isEmpty())
 	{
 		if(connect_info.regist_key.size() != sizeof(chiaki_connect_info.regist_key))
@@ -570,22 +338,7 @@ StreamSession::StreamSession(const StreamSessionConnectInfo &connect_info, QObje
 		haptics_sink.frame_cb = HapticsFrameCb;
 		chiaki_session_set_haptics_sink(&session, &haptics_sink);
 	}
-#if CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE
-	if (connect_info.enable_steamdeck_haptics)
-		enable_steamdeck_haptics = true;
-	else
-		enable_steamdeck_haptics = false;
-#endif
-#if CHIAKI_LIB_ENABLE_PI_DECODER
-	if(pi_decoder)
-		chiaki_session_set_video_sample_cb(&session, chiaki_pi_decoder_video_sample_cb, pi_decoder);
-	else
-	{
-#endif
 		chiaki_session_set_video_sample_cb(&session, chiaki_ffmpeg_decoder_video_sample_cb, ffmpeg_decoder);
-#if CHIAKI_LIB_ENABLE_PI_DECODER
-	}
-#endif
 
 	chiaki_session_set_event_cb(&session, EventCb, this);
 
@@ -595,73 +348,11 @@ StreamSession::StreamSession(const StreamSessionConnectInfo &connect_info, QObje
 	if(connect_info.buttons_by_pos)
 		ControllerManager::GetInstance()->SetButtonsByPos();
 #endif
-#if CHIAKI_GUI_ENABLE_SETSU
-	setsu_motion_device = nullptr;
-	chiaki_controller_state_set_idle(&setsu_state);
-	chiaki_accel_new_zero_set_inactive(&setsu_accel_zero, false);
-	chiaki_accel_new_zero_set_inactive(&setsu_real_accel, true);
-	setsu_ids=QMap<QPair<QString, SetsuTrackingId>, uint8_t>();
-	orient_dirty = true;
-	chiaki_orientation_tracker_init(&orient_tracker);
-	setsu = setsu_new();
-	auto timer = new QTimer(this);
-	connect(timer, &QTimer::timeout, this, [this]{
-		setsu_poll(setsu, SessionSetsuCb, this);
-		if(orient_dirty)
-		{
-			chiaki_orientation_tracker_apply_to_controller_state(&orient_tracker, &setsu_state);
-			SendFeedbackState();
-			orient_dirty = false;
-		}
-	});
-	timer->start(SETSU_UPDATE_INTERVAL_MS);
-#endif
 
-#if CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE
-	chiaki_controller_state_set_idle(&sdeck_state);
-	sdeck = sdeck_new();
-	// no concept of hotplug for Steam Deck so turn off if not detected immediately
-	if(!sdeck)
-		CHIAKI_LOGI(GetChiakiLog(), "Steam Deck not found ... Steam Deck native features disabled\n\n");
-	else
-	{
-		CHIAKI_LOGI(GetChiakiLog(), "Connected Steam Deck ... gyro online\n\n");
-		vertical_sdeck = connect_info.vertical_sdeck;
-		chiaki_accel_new_zero_set_inactive(&sdeck_accel_zero, false);
-		chiaki_accel_new_zero_set_inactive(&sdeck_real_accel, true);
-		chiaki_orientation_tracker_init(&sdeck_orient_tracker);
-		sdeck_orient_dirty = true;
-
-		auto sdeck_timer = new QTimer(this);
-		connect(sdeck_timer, &QTimer::timeout, this, [this]{
-			if (!sdeck_mutex.tryLock())
-				return;
-			{
-				sdeck_read(sdeck, SessionSDeckCb, this);
-			}
-			sdeck_mutex.unlock();
-			if(sdeck_orient_dirty)
-			{
-				chiaki_orientation_tracker_apply_to_controller_state(&sdeck_orient_tracker, &sdeck_state);
-				SendFeedbackState();
-				sdeck_orient_dirty = false;
-			}
-		});
-		sdeck_timer->start(STEAMDECK_UPDATE_INTERVAL_MS);
-	}
-#endif
 	key_map = connect_info.key_map;
 	if (connect_info.enable_dualsense)
 	{
 		InitHaptics();
-#if CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE
-		// Connect Steam Deck haptics with a delay to give other potential haptics time to set up
-		if(sdeck)
-		{
-			haptics_handheld++;
-			QTimer::singleShot(STEAMDECK_HAPTIC_CONNECT_DELAY_MS, this, &StreamSession::ConnectSdeckHaptics);
-		}
-#endif
 		rumble_haptics_intensity = connect_info.rumble_haptics_intensity;
 		ConnectRumbleHaptics();
 	}
@@ -713,9 +404,6 @@ StreamSession::~StreamSession()
 	if(audio_in)
 		SDL_CloseAudioDevice(audio_in);
 
-#if CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE
-	StopSdeckHaptics();
-#endif
 
 	// Prepare log for shutdown BEFORE joining session threads
 	// This prevents crashes from log callbacks during shutdown
@@ -743,19 +431,6 @@ StreamSession::~StreamSession()
 			controller->Unref();
 		}
 	});
-#endif
-#if CHIAKI_GUI_ENABLE_SETSU
-	setsu_free(setsu);
-#endif
-#if CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE
-	sdeck_free(sdeck);
-#endif
-#if CHIAKI_LIB_ENABLE_PI_DECODER
-	if(pi_decoder)
-	{
-		chiaki_pi_decoder_fini(pi_decoder);
-		free(pi_decoder);
-	}
 #endif
 	if(ffmpeg_decoder)
 	{
@@ -827,13 +502,6 @@ void StreamSession::ToggleMute()
 		return;
 	if(!mic_connected)
 	{
-#ifdef Q_OS_MACOS
-		if(!mic_authorization)
-		{
-			macMicPermission(MacMicRequestCb, this);
-			return;
-		}
-#endif
 #if CHIAKI_GUI_ENABLE_SPEEX
 		if(speech_processing_enabled)
 		{
@@ -1176,13 +844,7 @@ void StreamSession::UpdateGamepads()
 			controllers[controller_id] = controller;
 			if(controller->IsHandheld())
 			{
-#if CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE
-				// let sdeck handle haptics bc sdeck works even if Steam is running whereas checking via SDL only works if Steam is not running
-				if(!sdeck)
-					haptics_handheld++;
-#else
 				haptics_handheld++;
-#endif
 			}
 			if (!controller->IsHandheld() && !controller->IsSteamVirtualUnmasked())
 			{
@@ -1220,10 +882,6 @@ void StreamSession::DpadSendFeedbackState()
 	ChiakiControllerState state;
 	chiaki_controller_state_set_idle(&state);
 
-#if CHIAKI_GUI_ENABLE_SETSU
-	// setsu is the one that potentially has gyro/accel/orient so copy that directly first
-	state = setsu_state;
-#endif
 
 	for(auto controller : controllers)
 	{
@@ -1231,9 +889,6 @@ void StreamSession::DpadSendFeedbackState()
 		chiaki_controller_state_or(&state, &state, &controller_state);
 	}
 
-#if CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE
-	chiaki_controller_state_or(&state, &state, &sdeck_state);
-#endif
 	chiaki_controller_state_or(&state, &state, &keyboard_state);
 	chiaki_controller_state_or(&state, &state, &touch_state);
 
@@ -1276,10 +931,6 @@ void StreamSession::SendFeedbackState()
 	ChiakiControllerState state;
 	chiaki_controller_state_set_idle(&state);
 
-#if CHIAKI_GUI_ENABLE_SETSU
-	// setsu is the one that potentially has gyro/accel/orient so copy that directly first
-	state = setsu_state;
-#endif
 
 	for(auto controller : controllers)
 	{
@@ -1287,9 +938,6 @@ void StreamSession::SendFeedbackState()
 		chiaki_controller_state_or(&state, &state, &controller_state);
 	}
 
-#if CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE
-	chiaki_controller_state_or(&state, &state, &sdeck_state);
-#endif
 	chiaki_controller_state_or(&state, &state, &keyboard_state);
 	chiaki_controller_state_or(&state, &state, &touch_state);
 
@@ -1722,20 +1370,7 @@ void StreamSession::InitHaptics()
 	haptics_output = 0;
 	haptics_buffer_size = 480; //10ms * number of ms delay configured
 	haptics_resampler_buf = nullptr;
-#ifdef Q_OS_LINUX
-	// Haptics work most reliably with Pipewire, so try to use that if available
-	SDL_SetHint("SDL_AUDIODRIVER", "pipewire");
-#endif
 
-#ifdef Q_OS_LINUX
-	if (!strstr(SDL_GetCurrentAudioDriver(), "pipewire"))
-	{
-		CHIAKI_LOGW(
-			log.GetChiakiLog(),
-			"Haptics output is not using Pipewire, this may not work reliably. (was: '%s')",
-			SDL_GetCurrentAudioDriver());
-	}
-#endif
 
 	SDL_AudioCVT cvt;
 	if(SDL_BuildAudioCVT(&haptics_cvt, AUDIO_S16SYS, 4, 3000, AUDIO_S16SYS, 4, 48000) < 0)
@@ -1779,11 +1414,7 @@ void StreamSession::ConnectRumbleHaptics()
 		QMetaObject::invokeMethod(this, [this, strength]() {
 			for(auto controller : controllers)
 			{
-#if CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE
-				if(haptics_handheld < 1 && (controller->IsHandheld() || (sdeck && controller->IsSteamVirtualUnmasked())))
-#else
 				if(haptics_handheld < 1 && controller->IsHandheld())
-#endif
 					continue;
 
 				if(strength > 0 || rumble_haptics_on)
@@ -1815,9 +1446,6 @@ void StreamSession::ConnectHaptics()
 		CHIAKI_LOGW(this->log.GetChiakiLog(), "Haptics resampler buf wasn't allocated, can't use haptics.");
 		return;
 	}
-#ifdef Q_OS_MACOS
-	CHIAKI_LOGW(this->log.GetChiakiLog(), "If haptics aren't working, please configure your DualSense audio device as quadrophonic in Applications/Utitilities/Audio Midi Setup on your Mac");
-#endif
 	SDL_AudioSpec want, have;
 	SDL_zero(want);
 	want.freq = 48000;
@@ -1856,55 +1484,6 @@ void StreamSession::ConnectHaptics()
 	return;
 }
 
-#if CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE
-void StreamSession::ConnectSdeckHaptics()
-{
-	if(!enable_steamdeck_haptics || !sdeck || sdeck_haptics_thread)
-		return;
-
-	qRegisterMetaType<haptic_packet_t>();
-	sdeck_haptics_thread = new QThread(this);
-	sdeck_haptics_worker = new SdeckHapticsWorker(sdeck, &sdeck_mutex, log.GetChiakiLog());
-	sdeck_haptics_worker->moveToThread(sdeck_haptics_thread);
-	connect(sdeck_haptics_thread, &QThread::started, sdeck_haptics_worker, [this] {
-		if (!sdeck_haptics_worker->Start()) {
-			QMetaObject::invokeMethod(this, [this] {
-				StopSdeckHaptics();
-			}, Qt::QueuedConnection);
-		}
-	});
-	connect(this,
-	        &StreamSession::SdeckHapticPushed,
-	        sdeck_haptics_worker,
-	        [this](haptic_packet_t packetl, haptic_packet_t packetr) {
-		        if(sdeck_haptics_worker)
-			        sdeck_haptics_worker->EnqueueHaptics(packetl, packetr);
-	        },
-	        Qt::QueuedConnection);
-	sdeck_haptics_thread->start();
-}
-
-void StreamSession::StopSdeckHaptics()
-{
-	if(!sdeck_haptics_thread)
-		return;
-	QThread *thread = sdeck_haptics_thread;
-	SdeckHapticsWorker *worker = sdeck_haptics_worker;
-	if (worker) {
-		QMetaObject::invokeMethod(worker, [worker, thread] {
-			worker->Stop();
-			delete worker;
-			thread->quit();
-		}, Qt::QueuedConnection);
-	} else {
-		thread->quit();
-	}
-	thread->wait();
-	sdeck_haptics_thread = nullptr;
-	sdeck_haptics_worker = nullptr;
-	delete thread;
-}
-#endif
 
 void StreamSession::PushAudioFrame(int16_t *og_buf, size_t samples_count)
 {
@@ -2128,24 +1707,6 @@ void StreamSession::AudioOutDrainThreadMain()
 	audio_out_drain_mutex.unlock();
 }
 
-#ifdef Q_OS_MACOS
-void StreamSession::SetMicAuthorization(Authorization authorization)
-{
-	switch(authorization)
-	{
-		case AUTHORIZED:
-			mic_authorization = true;
-			ToggleMute();
-			break;
-		case DENIED:
-			CHIAKI_LOGE(GetChiakiLog(), "You have denied mic access. Please manually enable mic access in your System Preferences.");
-			break;
-		case RESTRICTED:
-			CHIAKI_LOGE(GetChiakiLog(), "Access to the microphone is restricted. Please change your parental controls to allow enabling mic access if desired.");
-			break;
-	}
-}
-#endif
 
 void StreamSession::PushHapticsFrame(uint8_t *buf, size_t buf_size)
 {
@@ -2161,42 +1722,6 @@ void StreamSession::PushHapticsFrame(uint8_t *buf, size_t buf_size)
 		return;
 	}
 
-#if CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE
-	if(sdeck && haptics_handheld > 0 && enable_steamdeck_haptics)
-	{
-		if(ps5_rumble_intensity < 0 || haptic_override < 0.01)
-			return;
-		float intensity = haptic_override * rumble_multiplier;
-		if(buf_size != 120)
-		{
-			CHIAKI_LOGE(log.GetChiakiLog(), "Haptic audio of incompatible size: %zu", buf_size);
-			return;
-		}
-		int16_t amplitudel = 0, amplituder = 0;
-		const size_t sample_size = 2 * sizeof(int16_t); // stereo samples
-		haptic_packet_t packetl = {0}, packetr = {0};
-		uint64_t timestamp = chiaki_time_now_monotonic_ms();
-		packetl.timestamp = timestamp;
-		packetr.timestamp = timestamp;
-		size_t buf_count = buf_size / sample_size;
-		for (size_t i = 0; i < buf_count; i++)
-		{
-			size_t cur = i * sample_size;
-			memcpy(&amplitudel, buf + cur, sizeof(int16_t));
-			int32_t adjustedl = (int32_t)amplitudel * intensity;
-			adjustedl = (adjustedl > INT16_MAX) ? INT16_MAX : adjustedl;
-			amplitudel = (adjustedl < INT16_MIN) ? INT16_MIN : adjustedl;
-			packetl.haptic_packet[i] = amplitudel;
-			memcpy(&amplituder, buf + cur + sizeof(int16_t), sizeof(int16_t));
-			int32_t adjustedr = (int32_t)amplituder * intensity;
-			adjustedr = (adjustedr > INT16_MAX) ? INT16_MAX : adjustedr;
-			amplituder = (adjustedr < INT16_MIN) ? INT16_MIN : adjustedr;
-			packetr.haptic_packet[i] = amplituder;
-		}
-		emit SdeckHapticPushed(packetl, packetr);
-		return;
-	}
-#endif
 	if((rumble_haptics_intensity != RumbleHapticsIntensity::Off) && haptics_output == 0)
 	{
 		int16_t amplitudel = 0, amplituder = 0;
@@ -2259,11 +1784,7 @@ void StreamSession::PushHapticsFrame(uint8_t *buf, size_t buf_size)
 		bool send_rumble_haptics = false;
 		for(auto controller : controllers)
 		{
-#if CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE
-			if(haptics_handheld < 1 && (controller->IsHandheld() || (sdeck && controller->IsSteamVirtualUnmasked())))
-#else
 			if(haptics_handheld < 1 && controller->IsHandheld())
-#endif
 				continue;
 			send_rumble_haptics = true;
 		}
@@ -2365,11 +1886,7 @@ void StreamSession::Event(ChiakiEvent *event)
 			QMetaObject::invokeMethod(this, [this, left, right, left_adj, right_adj]() {
 				for(auto controller : controllers)
 				{
-#if CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE
-					if(haptics_handheld < 1 && (controller->IsHandheld() || (sdeck && controller->IsSteamVirtualUnmasked())))
-#else
 					if(haptics_handheld < 1 && controller->IsHandheld())
-#endif
 						continue;
 					if(controller->IsDualSense() || controller->IsDualSenseEdge())
 						controller->SetRumble(left, right);
@@ -2415,25 +1932,6 @@ void StreamSession::Event(ChiakiEvent *event)
 				for(auto controller : controllers)
 					controller->resetMotionControls();
 			});
-#if CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE
-			if(sdeck)
-			{
-				chiaki_accel_new_zero_set_active(&sdeck_accel_zero, sdeck_real_accel.accel_x, sdeck_real_accel.accel_y, sdeck_real_accel.accel_z, false);
-				chiaki_orientation_tracker_init(&sdeck_orient_tracker);
-				chiaki_orientation_tracker_update(
-					&sdeck_orient_tracker, sdeck_state.gyro_x, sdeck_state.gyro_y, sdeck_state.gyro_z,
-					sdeck_real_accel.accel_x, sdeck_real_accel.accel_y, sdeck_real_accel.accel_z, &sdeck_accel_zero, false, chiaki_time_now_monotonic_us());
-				chiaki_orientation_tracker_apply_to_controller_state(&sdeck_orient_tracker, &sdeck_state);
-			}
-#endif
-#if CHIAKI_GUI_ENABLE_SETSU
-			chiaki_accel_new_zero_set_active(&setsu_accel_zero, setsu_real_accel.accel_x, setsu_real_accel.accel_y, setsu_real_accel.accel_z, false);
-			chiaki_orientation_tracker_init(&orient_tracker);
-			chiaki_orientation_tracker_update(
-				&orient_tracker, setsu_state.gyro_x, setsu_state.gyro_y, setsu_state.gyro_z,
-				setsu_real_accel.accel_x, setsu_real_accel.accel_y, setsu_real_accel.accel_z, &setsu_accel_zero, false, chiaki_time_now_monotonic_us());
-			chiaki_orientation_tracker_apply_to_controller_state(&orient_tracker, &setsu_state);
-#endif
 			break;
 		}
 		case CHIAKI_EVENT_HAPTIC_INTENSITY: {
@@ -2510,48 +2008,6 @@ void StreamSession::Event(ChiakiEvent *event)
 	}
 }
 
-#if CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE
-void StreamSession::HandleSDeckEvent(SDeckEvent *event)
-{
-	if(!sdeck)
-	{
-		CHIAKI_LOGI(GetChiakiLog(), "Steam Deck was disconnected! Skipping stale events...\n");
-		return;
-	}
-	// right now only one event, use switch here for more in the future
-	switch(event->type)
-	{
-		case SDECK_EVENT_MOTION:
-			if(!vertical_sdeck)
-			{
-				chiaki_accel_new_zero_set_active(&sdeck_real_accel, event->motion.accel_x,
-				event->motion.accel_y, event->motion.accel_z, true);
-				chiaki_orientation_tracker_update(&sdeck_orient_tracker,
-					event->motion.gyro_x, event->motion.gyro_y, event->motion.gyro_z,
-					event->motion.accel_x, event->motion.accel_y, event->motion.accel_z,
-					&sdeck_accel_zero, false, chiaki_time_now_monotonic_us());
-			}
-			else // swap y with z axis to use roll instead of yaw
-			{
-				// use calculated orient
-				chiaki_accel_new_zero_set_active(&sdeck_real_accel, event->motion.accel_x,
-				-event->motion.accel_z, event->motion.accel_y, true);
-				chiaki_orientation_tracker_update(&sdeck_orient_tracker,
-					event->motion.gyro_x, -event->motion.gyro_z, event->motion.gyro_y,
-					event->motion.accel_x, -event->motion.accel_z, event->motion.accel_y,
-					&sdeck_accel_zero, false, chiaki_time_now_monotonic_us());
-			}
-			sdeck_orient_dirty = true;
-			break;
-		case SDECK_EVENT_GYRO_ENABLE:
-			if(event->enabled)
-				CHIAKI_LOGI(GetChiakiLog(), "Gyro enabled for Steam Deck");
-			else
-				CHIAKI_LOGE(GetChiakiLog(), "Gyro could not be enabled for Steam Deck");
-			break;
-	}
-}
-#endif
 
 void StreamSession::CantDisplayMessage(bool cant_display)
 {
@@ -2559,114 +2015,6 @@ void StreamSession::CantDisplayMessage(bool cant_display)
 	emit CantDisplayChanged(cant_display);
 }
 
-#if CHIAKI_GUI_ENABLE_SETSU
-void StreamSession::HandleSetsuEvent(SetsuEvent *event)
-{
-	if(!setsu)
-		return;
-	switch(event->type)
-	{
-		case SETSU_EVENT_DEVICE_ADDED:
-			switch(event->dev_type)
-			{
-				case SETSU_DEVICE_TYPE_TOUCHPAD:
-					// connect all the touchpads!
-					if(setsu_connect(setsu, event->path, event->dev_type))
-						CHIAKI_LOGI(GetChiakiLog(), "Connected Setsu Touchpad Device %s", event->path);
-					else
-						CHIAKI_LOGE(GetChiakiLog(), "Failed to connect to Setsu Touchpad Device %s", event->path);
-					break;
-				case SETSU_DEVICE_TYPE_MOTION:
-					// connect only one motion since multiple make no sense
-					if(setsu_motion_device)
-					{
-						CHIAKI_LOGI(GetChiakiLog(), "Setsu Motion Device %s detected there is already one connected",
-								event->path);
-						break;
-					}
-					setsu_motion_device = setsu_connect(setsu, event->path, event->dev_type);
-					if(setsu_motion_device)
-						CHIAKI_LOGI(GetChiakiLog(), "Connected Setsu Motion Device %s", event->path);
-					else
-						CHIAKI_LOGE(GetChiakiLog(), "Failed to connect to Setsu Motion Device %s", event->path);
-					break;
-			}
-			break;
-		case SETSU_EVENT_DEVICE_REMOVED:
-			switch(event->dev_type)
-			{
-				case SETSU_DEVICE_TYPE_TOUCHPAD:
-					CHIAKI_LOGI(GetChiakiLog(), "Setsu Touchpad Device %s disconnected", event->path);
-					for(auto it=setsu_ids.begin(); it!=setsu_ids.end();)
-					{
-						if(it.key().first == event->path)
-						{
-							chiaki_controller_state_stop_touch(&setsu_state, it.value());
-							setsu_ids.erase(it++);
-						}
-						else
-							it++;
-					}
-					SendFeedbackState();
-					break;
-				case SETSU_DEVICE_TYPE_MOTION:
-					if(!setsu_motion_device || strcmp(setsu_device_get_path(setsu_motion_device), event->path))
-						break;
-					CHIAKI_LOGI(GetChiakiLog(), "Setsu Motion Device %s disconnected", event->path);
-					setsu_motion_device = nullptr;
-					chiaki_orientation_tracker_init(&orient_tracker);
-					orient_dirty = true;
-					break;
-			}
-			break;
-		case SETSU_EVENT_TOUCH_DOWN:
-			break;
-		case SETSU_EVENT_TOUCH_UP:
-			for(auto it=setsu_ids.begin(); it!=setsu_ids.end(); it++)
-			{
-				if(it.key().first == setsu_device_get_path(event->dev) && it.key().second == event->touch.tracking_id)
-				{
-					chiaki_controller_state_stop_touch(&setsu_state, it.value());
-					setsu_ids.erase(it);
-					break;
-				}
-			}
-			SendFeedbackState();
-			break;
-		case SETSU_EVENT_TOUCH_POSITION: {
-			QPair<QString, SetsuTrackingId> k =  { setsu_device_get_path(event->dev), event->touch.tracking_id };
-			auto it = setsu_ids.find(k);
-			if(it == setsu_ids.end())
-			{
-				int8_t cid = chiaki_controller_state_start_touch(&setsu_state, event->touch.x, event->touch.y);
-				if(cid >= 0)
-					setsu_ids[k] = (uint8_t)cid;
-				else
-					break;
-			}
-			else
-				chiaki_controller_state_set_touch_pos(&setsu_state, it.value(), event->touch.x, event->touch.y);
-			SendFeedbackState();
-			break;
-		}
-		case SETSU_EVENT_BUTTON_DOWN:
-			setsu_state.buttons |= CHIAKI_CONTROLLER_BUTTON_TOUCHPAD;
-			break;
-		case SETSU_EVENT_BUTTON_UP:
-			setsu_state.buttons &= ~CHIAKI_CONTROLLER_BUTTON_TOUCHPAD;
-			break;
-		case SETSU_EVENT_MOTION:
-			chiaki_accel_new_zero_set_active(&sdeck_real_accel, event->motion.accel_x,
-			event->motion.accel_y, event->motion.accel_z, true);
-			chiaki_orientation_tracker_update(&orient_tracker,
-					event->motion.gyro_x, event->motion.gyro_y, event->motion.gyro_z,
-					event->motion.accel_x, event->motion.accel_y, event->motion.accel_z,
-					&setsu_accel_zero, false, event->motion.timestamp);
-			orient_dirty = true;
-			break;
-	}
-}
-#endif
 
 ChiakiErrorCode StreamSession::InitiatePsnConnection(QString psn_token)
 {
@@ -2787,17 +2135,8 @@ class StreamSessionPrivate
 
 		static void PushAudioFrame(StreamSession *session, int16_t *buf, size_t samples_count)	{ session->PushAudioFrame(buf, samples_count); }
 		static void PushHapticsFrame(StreamSession *session, uint8_t *buf, size_t buf_size)	{ session->PushHapticsFrame(buf, buf_size); }
-#ifdef Q_OS_MACOS
-		static void SetMicAuthorization(StreamSession *session, Authorization authorization)                 { session->SetMicAuthorization(authorization); }
-#endif
 		static void CantDisplayMessage(StreamSession *session, bool cant_display)	{session->CantDisplayMessage(cant_display); }
 		static void Event(StreamSession *session, ChiakiEvent *event)							{ session->Event(event); }
-#if CHIAKI_GUI_ENABLE_SETSU
-		static void HandleSetsuEvent(StreamSession *session, SetsuEvent *event)					{ session->HandleSetsuEvent(event); }
-#endif
-#if CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE
-		static void HandleSDeckEvent(StreamSession *session, SDeckEvent *event)					{ session->HandleSDeckEvent(event); }
-#endif
 		static void TriggerFfmpegFrameAvailable(StreamSession *session)							{ session->TriggerFfmpegFrameAvailable(); }
 };
 
@@ -2813,13 +2152,6 @@ static void AudioFrameCb(int16_t *buf, size_t samples_count, void *user)
 	StreamSessionPrivate::PushAudioFrame(session, buf, samples_count);
 }
 
-#ifdef Q_OS_MACOS
-static void MacMicRequestCb(Authorization authorization, void *user)
-{
-	auto session = reinterpret_cast<StreamSession *>(user);
-	StreamSessionPrivate::SetMicAuthorization(session, authorization);
-}
-#endif
 
 static void HapticsFrameCb(uint8_t *buf, size_t buf_size, void *user)
 {
@@ -2839,21 +2171,7 @@ static void EventCb(ChiakiEvent *event, void *user)
 	StreamSessionPrivate::Event(session, event);
 }
 
-#if CHIAKI_GUI_ENABLE_SETSU
-static void SessionSetsuCb(SetsuEvent *event, void *user)
-{
-	auto session = reinterpret_cast<StreamSession *>(user);
-	StreamSessionPrivate::HandleSetsuEvent(session, event);
-}
-#endif
 
-#if CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE
-static void SessionSDeckCb(SDeckEvent *event, void *user)
-{
-	auto session = reinterpret_cast<StreamSession *>(user);
-	StreamSessionPrivate::HandleSDeckEvent(session, event);
-}
-#endif
 
 static void FfmpegFrameCb(ChiakiFfmpegDecoder *decoder, void *user)
 {

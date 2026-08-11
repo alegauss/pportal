@@ -11,13 +11,7 @@
 #include <fcntl.h>
 #include <errno.h>
 
-#ifdef _WIN32
 #include <winsock2.h>
-#else
-#include <unistd.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-#endif
 
 const char *chiaki_discovery_host_state_string(ChiakiDiscoveryHostState state)
 {
@@ -162,15 +156,9 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_discovery_init(ChiakiDiscovery *discovery, 
 		socklen_t len = 0;
 		if(family == AF_INET6)
 		{
-#ifndef __SWITCH__
 			struct in6_addr anyaddr = IN6ADDR_ANY_INIT;
-#endif
 			struct sockaddr_in6 *addr = (struct sockaddr_in6 *)&discovery->local_addr;
-#ifndef __SWITCH__
 			addr->sin6_addr = anyaddr;
-#else
-			addr->sin6_addr = in6addr_any;
-#endif
 			addr->sin6_port = htons(port);
 			len = sizeof(struct sockaddr_in6);
 		}
@@ -214,13 +202,6 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_discovery_init(ChiakiDiscovery *discovery, 
 	r = setsockopt(discovery->socket, SOL_SOCKET, SO_BROADCAST, (const void *)&broadcast, sizeof(broadcast));
 	if(r < 0)
 		CHIAKI_LOGE(discovery->log, "Discovery failed to setsockopt SO_BROADCAST");
-
-//#ifdef __FreeBSD__
-//	const int onesbcast = 1;
-//	r = setsockopt(discovery->socket, IPPROTO_IP, IP_ONESBCAST, &onesbcast, sizeof(onesbcast));
-//	if(r < 0)
-//		CHIAKI_LOGE(discovery->log, "Discovery failed to setsockopt IP_ONESBCAST");
-//#endif
 
 	return CHIAKI_ERR_SUCCESS;
 }

@@ -8,14 +8,9 @@
 #include "stoppipe.h"
 #include "log.h"
 
-#ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
 typedef unsigned short sa_family_t;
-#else
-#include <sys/types.h>
-#include <sys/socket.h>
-#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -115,4 +110,4 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_discovery_wakeup(ChiakiLog *log, ChiakiDisc
 }
 #endif
 
-#endif // CHIAKI_VIDEORECEIVER_H
+#endif

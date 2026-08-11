@@ -10,9 +10,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#if _WIN32
 #include <winsock2.h>
-#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -81,4 +79,4 @@ CHIAKI_EXPORT void ctrl_enable_features(ChiakiCtrl *ctrl);
 }
 #endif
 
-#endif // CHIAKI_CTRL_H
+#endif

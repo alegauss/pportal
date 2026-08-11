@@ -8,11 +8,7 @@
 #include <chiaki/log.h>
 #include <chiaki/time.h>
 
-#if _WIN32
 #include <winsock2.h>
-#else
-#include <sys/socket.h>
-#endif
 
 CHIAKI_EXPORT void chiaki_http_header_free(ChiakiHttpHeader *header)
 {
@@ -162,21 +158,12 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_recv_http_header(int sock, char *buf, size_
 		do
 		{
 			received = recv(sock, buf, (int)buf_size, 0);
-#if _WIN32
 		} while(false);
-#else
-		} while(received < 0 && errno == EINTR);
-#endif
 		if(received < 0)
 		{
-#ifdef _WIN32
 			int err = WSAGetLastError();
 			if(err == WSAEWOULDBLOCK)
 				continue;
-#else
-			if(errno == EAGAIN || errno == EWOULDBLOCK)
-				continue;
-#endif
 		}
 		if(received <= 0)
 			return received == 0 ? CHIAKI_ERR_DISCONNECTED : CHIAKI_ERR_NETWORK;

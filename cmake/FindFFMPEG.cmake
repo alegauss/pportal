@@ -56,19 +56,6 @@ function (_ffmpeg_find component headername)
     endif()
     if(FFMPEG_${component}_FOUND)
       if((TARGET PkgConfig::FFMPEG_${component}) AND (NOT CMAKE_VERSION VERSION_LESS "3.11.0"))
-        if(APPLE)
-          join(FFMPEG_LDFLAGS_STRING " " ${FFMPEG_${component}_LDFLAGS})
-          string(REGEX REPLACE "-Wl,-framework,([^ ]+)" "-framework \\1" FFMPEG_LDFLAGS_STRING_CLEAN ${FFMPEG_LDFLAGS_STRING})
-          string(REGEX MATCHALL "-framework [^ ]+" FFMPEG_FRAMEWORKS ${FFMPEG_LDFLAGS_STRING_CLEAN})
-          list(APPEND FFMPEG_${component}_LIBRARIES ${FFMPEG_FRAMEWORKS})
-          set_target_properties(PkgConfig::FFMPEG_${component} PROPERTIES
-                  INTERFACE_LINK_DIRECTORIES "${FFMPEG_${component}_LIBRARY_DIRS}"
-                  INTERFACE_LINK_LIBRARIES "${FFMPEG_${component}_LIBRARIES}"
-                  INTERFACE_LINK_OPTIONS "")
-          message("set libs to \"${FFMPEG_${component}_LIBRARIES}\"")
-          message("set lib dirs to \"${FFMPEG_${component}_LIBRARY_DIRS}\"")
-          message("set lib otps not to \"${FFMPEG_${component}_LDFLAGS}\"")
-        endif()
         set_target_properties(PkgConfig::FFMPEG_${component} PROPERTIES IMPORTED_GLOBAL TRUE)
         add_library(FFMPEG::${component} ALIAS PkgConfig::FFMPEG_${component})
       else()
@@ -90,42 +77,20 @@ function (_ffmpeg_find component headername)
       "lib${component}/${headername}"
     PATHS
       "${FFMPEG_ROOT}/include"
-      ~/Library/Frameworks
-      /Library/Frameworks
-      /usr/local/include
-      /usr/include
-      /sw/include # Fink
-      /opt/local/include # DarwinPorts
-      /opt/csw/include # Blastwave
-      /opt/include
-      /usr/freeware/include
     PATH_SUFFIXES
       ffmpeg
     DOC "FFMPEG's ${component} include directory")
   mark_as_advanced("FFMPEG_${component}_INCLUDE_DIR")
 
   # On Windows, static FFMPEG is sometimes built as `lib<name>.a`.
-  if (WIN32)
-    list(APPEND CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".lib")
-    list(APPEND CMAKE_FIND_LIBRARY_PREFIXES "" "lib")
-  endif ()
+  list(APPEND CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".lib")
+  list(APPEND CMAKE_FIND_LIBRARY_PREFIXES "" "lib")
 
   find_library("FFMPEG_${component}_LIBRARY"
     NAMES
       "${component}"
     PATHS
       "${FFMPEG_ROOT}/lib"
-      ~/Library/Frameworks
-      /Library/Frameworks
-      /usr/local/lib
-      /usr/local/lib64
-      /usr/lib
-      /usr/lib64
-      /sw/lib
-      /opt/local/lib
-      /opt/csw/lib
-      /opt/lib
-      /usr/freeware/lib64
       "${FFMPEG_ROOT}/bin"
     DOC "FFMPEG's ${component} library")
   mark_as_advanced("FFMPEG_${component}_LIBRARY")

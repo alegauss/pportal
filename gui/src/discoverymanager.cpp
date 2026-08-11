@@ -6,17 +6,8 @@
 
 #include <cstring>
 
-#ifdef _WIN32
 #include <winsock2.h>
 #include <iphlpapi.h>
-#else
-#include <netinet/in.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <net/if.h>
-#include <ifaddrs.h>
-#endif
 
 #define PING_MS		500
 #define HOSTS_MAX	16
@@ -81,7 +72,6 @@ void DiscoveryManager::SetActive(bool active)
 			options.broadcast_num = 0;
 			QList<int32_t> broadcast_addresses;
 			bool status = false;
-#ifdef _WIN32
 			uint8_t loc_address[4] = {0};
 			uint8_t loc_mask[4] = {0};
 			uint8_t loc_broadcast[4] = {0};
@@ -147,40 +137,6 @@ void DiscoveryManager::SetActive(bool active)
 				FREE(pAdapterInfo);
 #undef MALLOC
 #undef FREE
-#else
-			struct ifaddrs *local_addrs, *current_addr;
-			struct sockaddr_in *res4 = NULL;
-
-			struct addrinfo hints;
-			memset(&hints, 0, sizeof hints);
-			hints.ai_family = AF_INET;
-			hints.ai_socktype = SOCK_DGRAM;
-
-			if(getifaddrs(&local_addrs) != 0)
-			{
-				CHIAKI_LOGE(&log, "Couldn't get local address");
-				return;
-			}
-			for (current_addr = local_addrs; current_addr != NULL; current_addr = current_addr->ifa_next)
-			{
-				if (current_addr->ifa_addr == NULL)
-					continue;
-				if ((current_addr->ifa_flags & (IFF_UP|IFF_RUNNING|IFF_LOOPBACK|IFF_BROADCAST)) != (IFF_UP|IFF_RUNNING|IFF_BROADCAST))
-					continue;
-				switch (current_addr->ifa_addr->sa_family)
-				{
-					case AF_INET:
-						res4 = (struct sockaddr_in *)current_addr->ifa_broadaddr;
-						if(!broadcast_addresses.contains(res4->sin_addr.s_addr))
-							broadcast_addresses.append(res4->sin_addr.s_addr);
-						break;
-					default:
-						continue;
-				}
-				status = true;
-			}
-			freeifaddrs(local_addrs);
-#endif
 			if(status)
 			{
 				options.broadcast_addrs = (struct sockaddr_storage *)malloc(broadcast_addresses.size() * sizeof(struct sockaddr_storage));

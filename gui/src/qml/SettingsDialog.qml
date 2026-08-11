@@ -501,54 +501,6 @@ DialogView {
 
                         Label {
                             Layout.alignment: Qt.AlignRight
-                            text: qsTr("Steam Deck Haptics:")
-                            visible: (typeof Chiaki.settings.steamDeckHaptics !== "undefined")
-                        }
-
-                        C.CheckBox {
-                            text: qsTr("True haptics for SteamDeck, better quality but noisier")
-                            checked: {
-                                if(typeof Chiaki.settings.steamDeckHaptics !== "undefined")
-                                    Chiaki.settings.steamDeckHaptics
-                                else
-                                    false
-                            }
-                            onToggled: Chiaki.settings.steamDeckHaptics = checked
-                            visible: (typeof Chiaki.settings.steamDeckHaptics !== "undefined")
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("(Unchecked)")
-                            visible: (typeof Chiaki.settings.steamDeckHaptics !== "undefined")
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("Steam Deck Vertical:")
-                            visible: typeof Chiaki.settings.verticalDeck !== "undefined"
-                        }
-
-                        C.CheckBox {
-                            text: qsTr("Use Steam Deck in vertical orientation (motion controls)")
-                            checked: {
-                                if(typeof Chiaki.settings.verticalDeck !== "undefined")
-                                    Chiaki.settings.verticalDeck
-                                else
-                                    false
-                            }
-                            onToggled: Chiaki.settings.verticalDeck = checked
-                            visible: typeof Chiaki.settings.verticalDeck !== "undefined"
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
-                            text: qsTr("(Unchecked)")
-                            visible: typeof Chiaki.settings.verticalDeck !== "undefined"
-                        }
-
-                        Label {
-                            Layout.alignment: Qt.AlignRight
                             text: qsTr("Audio/Video:")
                         }
 

@@ -20,12 +20,7 @@
 #include <QWebEngineUrlRequestInterceptor>
 #endif
 
-class SystemdInhibit;
-#ifdef Q_OS_MACOS
-    class MacWakeSleep;
-#elif defined(Q_OS_WINDOWS)
-    class WindowsWakeSleep;
-#endif
+class WindowsWakeSleep;
 
 class QmlRegist : public QObject
 {
@@ -65,11 +60,7 @@ class SecUaRequestInterceptor : public QWebEngineUrlRequestInterceptor {
 public:
     SecUaRequestInterceptor(QString version, QObject *p = Q_NULLPTR) : QWebEngineUrlRequestInterceptor(p) { chrome_version = version; };
     void interceptRequest(QWebEngineUrlRequestInfo &info) override {
-#ifdef Q_OS_WINDOWS
         info.setHttpHeader("Sec-Ch-Ua", QString("\"Not(A:Brand\";v=\"99\", \"Microsoft Edge\";v=\"%1\", \"Chromium\";v=\"%1\"").arg(chrome_version).toUtf8());
-#else
-        info.setHttpHeader("Sec-Ch-Ua", QString("\"Not(A:Brand\";v=\"99\", \"Google Chrome\";v=\"%1\", \"Chromium\";v=\"%1\"").arg(chrome_version).toUtf8());
-#endif
     }
 private:
     QString chrome_version;
@@ -298,12 +289,7 @@ private:
     QHash<int, QmlController*> controllers;
     DisplayServer regist_dialog_server;
     StreamSessionConnectInfo session_info = {};
-    SystemdInhibit *sleep_inhibit = {};
-#ifdef Q_OS_MACOS
-    MacWakeSleep *mac_wake_sleep = {};
-#elif defined(Q_OS_WINDOWS)
     WindowsWakeSleep *windows_wake_sleep = {};
-#endif
     bool controller_mapping_default_mapping = false;
     bool controller_mapping_altered = false;
     bool updating_psn_hosts = false;

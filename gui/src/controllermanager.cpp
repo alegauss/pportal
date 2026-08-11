@@ -119,11 +119,7 @@ static QSet<QPair<uint16_t, uint16_t>> chiaki_handheld_controller_ids({
 
 static QSet<QPair<uint16_t, uint16_t>> chiaki_steam_virtual_controller_ids({
 	// in format (vendor id, product id)
-#ifdef Q_OS_MACOS
-    QPair<uint16_t, uint16_t>(0x045e, 0x028e), // Microsoft Xbox 360 Controller
-#else
 	QPair<uint16_t, uint16_t>(0x28de, 0x11ff), // Steam Virtual Controller
-#endif
 });
 
 static ControllerManager *instance = nullptr;
@@ -391,13 +387,8 @@ Controller::Controller(int device_id, ControllerManager *manager)
 			auto guid_controller_id = QPair<uint16_t, uint16_t>(0, 0);
 			uint16_t guid_version = 0;
 			SDL_GetJoystickGUIDInfo(guid, &guid_controller_id.first, &guid_controller_id.second, &guid_version, NULL);
-#ifdef Q_OS_MACOS
-			is_steam_virtual = (guid_version == 0 && chiaki_steam_virtual_controller_ids.contains(guid_controller_id));
-			is_steam_virtual_unmasked = (guid_version == 0 && chiaki_steam_virtual_controller_ids.contains(controller_id));
-#else
 			is_steam_virtual = chiaki_steam_virtual_controller_ids.contains(guid_controller_id);
 			is_steam_virtual_unmasked = chiaki_steam_virtual_controller_ids.contains(controller_id);
-#endif
 			break;
 		}
 	}

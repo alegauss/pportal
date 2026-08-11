@@ -15,13 +15,9 @@
 #include <stdio.h>
 #include <inttypes.h>
 
-#ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
 typedef uint32_t in_addr_t;
-#else
-#include <netdb.h>
-#endif
 
 #define REGIST_PORT 9295
 
@@ -360,11 +356,7 @@ static void *regist_thread_func(void *user)
 			}
 			else
 			{
-#ifdef _WIN32
 				CHIAKI_LOGE(regist->log, "Regist failed to send request header: %u", WSAGetLastError());
-#else
-				CHIAKI_LOGE(regist->log, "Regist failed to send request header: %s", strerror(errno));
-#endif
 			}
 			goto fail_socket;
 		}
@@ -390,11 +382,7 @@ static void *regist_thread_func(void *user)
 			}
 			else
 			{
-#ifdef _WIN32
 				CHIAKI_LOGE(regist->log, "Regist failed to send payload: %u", WSAGetLastError());
-#else
-				CHIAKI_LOGE(regist->log, "Regist failed to send payload: %s", strerror(errno));
-#endif
 			}
 			goto fail_socket;
 		}
@@ -561,11 +549,7 @@ static chiaki_socket_t regist_search_connect(ChiakiRegist *regist, struct addrin
 				r = setsockopt(sock, SOL_SOCKET, SO_BROADCAST, (const CHIAKI_SOCKET_BUF_TYPE)&broadcast, sizeof(broadcast));
 				if(r < 0)
 				{
-#ifdef _WIN32
 					CHIAKI_LOGE(regist->log, "Regist failed to setsockopt SO_BROADCAST, error %u", WSAGetLastError());
-#else
-					CHIAKI_LOGE(regist->log, "Regist failed to setsockopt SO_BROADCAST");
-#endif
 					goto connect_fail;
 				}
 				in_addr_t ip = ((struct sockaddr_in *)send_addr)->sin_addr.s_addr;
@@ -596,12 +580,7 @@ static chiaki_socket_t regist_search_connect(ChiakiRegist *regist, struct addrin
 			int r = connect(sock, send_addr, *send_addr_len);
 			if(r < 0)
 			{
-#ifdef _WIN32
 				CHIAKI_LOGE(regist->log, "Regist connect failed, error %u. Trying next address...", WSAGetLastError());
-#else
-				int errsv = errno;
-				CHIAKI_LOGE(regist->log, "Regist connect failed, error: %s. Trying next address...", strerror(errsv));
-#endif
 				continue;
 			}
 		}
@@ -652,11 +631,7 @@ static ChiakiErrorCode regist_request_connect(ChiakiRegist *regist, const struct
 		}
 		else
 		{
-#ifdef _WIN32
 			CHIAKI_LOGE(regist->log, "Regist connect failed: %u", WSAGetLastError());
-#else
-			CHIAKI_LOGE(regist->log, "Regist connect failed: %s", chiaki_error_string(err));
-#endif
 		}
 		if(!CHIAKI_SOCKET_IS_INVALID(sock))
 		{
@@ -783,14 +758,9 @@ static ChiakiErrorCode regist_recv_response(ChiakiRegist *regist, ChiakiRegister
 			CHIAKI_SSIZET_TYPE received = recv(sock,  (CHIAKI_SOCKET_BUF_TYPE)buf + buf_filled_size, (content_size + header_size) - buf_filled_size, 0);
 			if(received < 0)
 			{
-#ifdef _WIN32
 				int recv_err = WSAGetLastError();
 				if(recv_err == WSAEWOULDBLOCK)
 					continue;
-#else
-				if(errno == EAGAIN || errno == EWOULDBLOCK)
-					continue;
-#endif
 			}
 			if(received <= 0)
 			{

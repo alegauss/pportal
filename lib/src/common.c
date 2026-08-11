@@ -10,9 +10,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#ifdef _WIN32
 #include <winsock2.h>
-#endif
 
 CHIAKI_EXPORT const char *chiaki_error_string(ChiakiErrorCode code)
 {
@@ -61,26 +59,12 @@ CHIAKI_EXPORT const char *chiaki_error_string(ChiakiErrorCode code)
 
 CHIAKI_EXPORT void *chiaki_aligned_alloc(size_t alignment, size_t size)
 {
-#if defined(_WIN32)
 	return _aligned_malloc(size, alignment);
-#elif __APPLE__ || __ANDROID__
-	void *r;
-	if(posix_memalign(&r, alignment, size) == 0)
-		return r;
-	else
-		return NULL;
-#else
-	return aligned_alloc(alignment, size);
-#endif
 }
 
 CHIAKI_EXPORT void chiaki_aligned_free(void *ptr)
 {
-#ifdef _WIN32
 	_aligned_free(ptr);
-#else
-	free(ptr);
-#endif
 }
 
 CHIAKI_EXPORT ChiakiErrorCode chiaki_lib_init()
@@ -93,7 +77,6 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_lib_init()
 	if(galois_r != 0)
 		return galois_r == ENOMEM ? CHIAKI_ERR_MEMORY : CHIAKI_ERR_UNKNOWN;
 
-#if _WIN32
 	{
 		WORD wsa_version = MAKEWORD(2, 2);
 		WSADATA wsa_data;
@@ -101,7 +84,6 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_lib_init()
 		if(err != 0)
 			return CHIAKI_ERR_NETWORK;
 	}
-#endif
 
 	return CHIAKI_ERR_SUCCESS;
 }

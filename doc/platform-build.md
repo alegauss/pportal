@@ -1,30 +1,27 @@
 
-# Platform-specific build instructions
+# Build instructions
 
-## Fedora
+chiaki-ng is Windows-only. CMake refuses to configure on any other platform.
 
-On Fedora, build dependencies can be installed via:
+## Windows (MSYS2 / MinGW64)
+
+Official builds run in MSYS2 with the `mingw64` environment. The CI workflows are the
+authoritative reference and work as a template for building locally:
+
+* [.github/workflows/build-msys2.yml](../.github/workflows/build-msys2.yml) - x64
+* [.github/workflows/build-msys2-arm.yml](../.github/workflows/build-msys2-arm.yml) - arm64
+
+In short:
 
 ```
-sudo dnf install cmake make qt5-qtmultimedia-devel qt5-qtsvg-devel qt5-qtbase-gui ffmpeg-devel opus-devel openssl-devel python3-protobuf protobuf-c protobuf-devel qt5-rpm-macros SDL2-devel libevdev-devel systemd-devel speexdsp
+git submodule update --init --recursive
+scripts/build-libplacebo-windows.sh
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release --target chiaki
+./scripts/deploy-windows-msys2.sh chiaki-ng-Win build/gui/chiaki.exe     "$PWD/build/third-party/cpp-steam-tools" /mingw64 gui/src/qml
 ```
 
-Then, Chiaki builds just like any other CMake project:
-```
-git submodule update --init
-mkdir build && cd build
-cmake ..
-make
-```
+## Windows (MSVC / vcpkg)
 
-In order to utilize hardware decoding, necessary VA-API component needs to be installed separately depending on your GPU. For example on Fedora:
-
-* **Intel**: `libva-intel-driver`(majority laptop and desktop) OR `libva-intel-hybrid-driver`(most netbook with Atom processor)
-* **AMD**: Already part of default installation
-* **Nvidia**: `libva-vdpau-driver`
-
-## Windows
-
-Windows support is reduced to the absolute minimum for maintainability.
-Official Windows builds are done on AppVeyor within MSYS2 using this script, which can also work as a template for building locally: [scripts/appveyor.sh](../scripts/appveyor.sh).
-Other methods of building may work, but will not be officially supported.
+An MSVC build via vcpkg is described by [meson.ini](../meson.ini) and
+[vcpkg.json](../vcpkg.json), driven by [scripts/appveyor-win.sh](../scripts/appveyor-win.sh).

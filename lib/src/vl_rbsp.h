@@ -39,11 +39,7 @@
 #include <math.h>
 #include <assert.h>
 
-#ifdef _WIN32
 #include <winsock2.h>
-#else
-#include <arpa/inet.h>
-#endif
 
 struct vl_vlc
 {
@@ -428,4 +424,4 @@ static inline bool vl_rbsp_more_data(struct vl_rbsp *rbsp)
    return true;
 }
 
-#endif /* vl_rbsp_h */
+#endif

@@ -2,15 +2,8 @@
 
 #include <chiaki/audio.h>
 
-#ifdef _WIN32
 #include <winsock2.h>
-#else
-#include <netinet/in.h>
-#endif
 
-#ifdef __SWITCH__
-#include <arpa/inet.h>
-#endif
 
 void chiaki_audio_header_load(ChiakiAudioHeader *audio_header, const uint8_t *buf)
 {

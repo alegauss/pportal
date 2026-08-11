@@ -10,12 +10,6 @@
 [submodule "third-party/gf-complete"]
 	path = third-party/gf-complete
 	url = https://github.com/streetpea/gf-complete.git
-[submodule "android/app/src/main/cpp/oboe"]
-	path = android/app/src/main/cpp/oboe
-	url = https://github.com/google/oboe
-[submodule "switch/borealis"]
-	path = switch/borealis
-	url = https://github.com/streetpea/borealis.git
 [submodule "third-party/curl"]
 	path = third-party/curl
 	url = https://github.com/curl/curl

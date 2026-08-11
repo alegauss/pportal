@@ -12,12 +12,6 @@
 #include <string.h>
 #include <inttypes.h>
 #include <assert.h>
-#ifndef _WIN32
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#endif
 
 #include <takion.pb.h>
 #include <pb_encode.h>

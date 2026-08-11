@@ -6,9 +6,6 @@
 #include "common.h"
 
 #include <stdint.h>
-#ifndef _WIN32
-#include <unistd.h>
-#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -23,4 +20,4 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_fec_encode(uint8_t *frame_buf, size_t unit_
 }
 #endif
 
-#endif //CHIAKI_FEC_H
+#endif

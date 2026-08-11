@@ -285,13 +285,6 @@ class Settings : public QObject
 		bool GetStartMicUnmuted() const          { return settings.value("settings/start_mic_unmuted", false).toBool(); }
 		void SetStartMicUnmuted(bool unmuted) { return settings.setValue("settings/start_mic_unmuted", unmuted); }
 
-#ifdef CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE
-		bool GetVerticalDeckEnabled() const       { return settings.value("settings/gyro_inverted", false).toBool(); }
-		void SetVerticalDeckEnabled(bool enabled) { settings.setValue("settings/gyro_inverted", enabled); }
-
-		bool GetSteamDeckHapticsEnabled() const   { return settings.value("settings/steamdeck_haptics", false).toBool(); }
-		void SetSteamDeckHapticsEnabled(bool enabled) { settings.setValue("settings/steamdeck_haptics", enabled); }
-#endif
 
 		bool GetAutomaticConnect() const         { return settings.value("settings/automatic_connect", false).toBool(); }
 		void SetAutomaticConnect(bool autoconnect)    { settings.setValue("settings/automatic_connect", autoconnect); }
@@ -740,4 +733,4 @@ class Settings : public QObject
 		void PlaceboSettingsUpdated();
 };
 
-#endif // CHIAKI_SETTINGS_H
+#endif

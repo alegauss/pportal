@@ -14,26 +14,8 @@
 #include <string.h>
 #include <assert.h>
 
-#ifdef __APPLE__
-#include <TargetConditionals.h>
-#if TARGET_OS_OSX
-#include <CoreServices/CoreServices.h>
-#endif
-#endif
 
-#ifdef _WIN32
 #include <ws2tcpip.h>
-#elif defined(__SWITCH__)
-#include <unistd.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#else
-#include <unistd.h>
-#include <netinet/in.h>
-#include <netinet/ip.h>
-#include <sys/socket.h>
-#endif
 
 
 // VERY similar to SCTP, see RFC 4960
@@ -266,35 +248,10 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_takion_connect(ChiakiTakion *takion, Chiaki
 			goto error_sock;
 		}
 
-#if defined(__APPLE__) && TARGET_OS_OSX
-		SInt32 majorVersion;
-		Gestalt(gestaltSystemVersionMajor, &majorVersion);
-		if(majorVersion < 11)
-		{
-			mac_dontfrag = false;
-		}
-#endif
 		if(info->ip_dontfrag)
 		{
-#if defined(_WIN32)
 			const DWORD dontfragment_val = 1;
 			r = setsockopt(takion->sock, IPPROTO_IP, IP_DONTFRAGMENT, (const CHIAKI_SOCKET_BUF_TYPE)&dontfragment_val, sizeof(dontfragment_val));
-#elif defined(__FreeBSD__) || defined(__SWITCH__) || defined(__APPLE__)
-			if(mac_dontfrag)
-			{
-				const int dontfrag_val = 1;
-				r = setsockopt(takion->sock, IPPROTO_IP, IP_DONTFRAG, (const CHIAKI_SOCKET_BUF_TYPE)&dontfrag_val, sizeof(dontfrag_val));
-			}
-			else
-				CHIAKI_LOGW(takion->log, "Don't fragment is not supported on this platform, MTU values may be incorrect.");
-#elif defined(IP_PMTUDISC_DO)
-			const int mtu_discover_val = IP_PMTUDISC_DO;
-			r = setsockopt(takion->sock, IPPROTO_IP, IP_MTU_DISCOVER, (const CHIAKI_SOCKET_BUF_TYPE)&mtu_discover_val, sizeof(mtu_discover_val));
-#else
-			// macOS older than MacOS Big Sur (11) and OpenBSD
-			CHIAKI_LOGW(takion->log, "Don't fragment is not supported on this platform, MTU values may be incorrect.");
-#define NO_DONTFRAG
-#endif
 
 #ifndef NO_DONTFRAG
 			if(r < 0 && mac_dontfrag)
@@ -308,22 +265,8 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_takion_connect(ChiakiTakion *takion, Chiaki
 		}
 		else
 		{
-#if defined(_WIN32)
 			const DWORD dontfragment_val = 0;
 			r = setsockopt(takion->sock, IPPROTO_IP, IP_DONTFRAGMENT, (const CHIAKI_SOCKET_BUF_TYPE)&dontfragment_val, sizeof(dontfragment_val));
-#elif defined(__FreeBSD__) || defined(__SWITCH__) || defined(__APPLE__)
-			if(mac_dontfrag)
-			{
-				const int dontfrag_val = 0;
-				r = setsockopt(takion->sock, IPPROTO_IP, IP_DONTFRAG, (const CHIAKI_SOCKET_BUF_TYPE)&dontfrag_val, sizeof(dontfrag_val));
-			}
-#elif defined(IP_PMTUDISC_DO)
-			const int mtu_discover_val = IP_PMTUDISC_DONT;
-			r = setsockopt(takion->sock, IPPROTO_IP, IP_MTU_DISCOVER, (const CHIAKI_SOCKET_BUF_TYPE)&mtu_discover_val, sizeof(mtu_discover_val));
-#else
-			// macOS older than MacOS Big Sur (11) and OpenBSD
-#define NO_DONTFRAG
-#endif
 
 #ifndef NO_DONTFRAG
 			if(r < 0 && mac_dontfrag)
@@ -355,33 +298,8 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_takion_connect(ChiakiTakion *takion, Chiaki
 		}
 		if(info->ip_dontfrag)
 		{
-#if defined(__APPLE__) && TARGET_OS_OSX
-			SInt32 majorVersion;
-			Gestalt(gestaltSystemVersionMajor, &majorVersion);
-			if(majorVersion < 11)
-			{
-				mac_dontfrag = false;
-			}
-#endif
-#if defined(_WIN32)
 			const DWORD dontfragment_val = 1;
 			r = setsockopt(takion->sock, IPPROTO_IP, IP_DONTFRAGMENT, (const CHIAKI_SOCKET_BUF_TYPE)&dontfragment_val, sizeof(dontfragment_val));
-#elif defined(__FreeBSD__) || defined(__SWITCH__) || defined(__APPLE__)
-			const int dontfrag_val = 1;
-			r = setsockopt(takion->sock, IPPROTO_IP, IP_DONTFRAG, (const CHIAKI_SOCKET_BUF_TYPE)&dontfrag_val, sizeof(dontfrag_val));
-#elif defined(IP_PMTUDISC_DO)
-			if(mac_dontfrag)
-			{
-				const int mtu_discover_val = IP_PMTUDISC_DO;
-				r = setsockopt(takion->sock, IPPROTO_IP, IP_MTU_DISCOVER, (const CHIAKI_SOCKET_BUF_TYPE)&mtu_discover_val, sizeof(mtu_discover_val));
-			}
-			else
-				CHIAKI_LOGW(takion->log, "Don't fragment is not supported on this platform, MTU values may be incorrect.");
-#else
-			// macOS older than MacOS Big Sur (11) and OpenBSD
-			CHIAKI_LOGW(takion->log, "Don't fragment is not supported on this platform, MTU values may be incorrect.");
-#define NO_DONTFRAG
-#endif
 
 #ifndef NO_DONTFRAG
 			if(r < 0 && mac_dontfrag)
@@ -395,22 +313,8 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_takion_connect(ChiakiTakion *takion, Chiaki
 		}
 		else
 		{
-#if defined(_WIN32)
 			const DWORD dontfragment_val = 0;
 			r = setsockopt(takion->sock, IPPROTO_IP, IP_DONTFRAGMENT, (const CHIAKI_SOCKET_BUF_TYPE)&dontfragment_val, sizeof(dontfragment_val));
-#elif defined(__FreeBSD__) || defined(__SWITCH__) || defined(__APPLE__)
-			if(mac_dontfrag)
-			{
-				const int dontfrag_val = 0;
-				r = setsockopt(takion->sock, IPPROTO_IP, IP_DONTFRAG, (const CHIAKI_SOCKET_BUF_TYPE)&dontfrag_val, sizeof(dontfrag_val));
-			}
-#elif defined(IP_PMTUDISC_DO)
-			const int mtu_discover_val = IP_PMTUDISC_DONT;
-			r = setsockopt(takion->sock, IPPROTO_IP, IP_MTU_DISCOVER, (const CHIAKI_SOCKET_BUF_TYPE)&mtu_discover_val, sizeof(mtu_discover_val));
-#else
-			// macOS older than MacOS Big Sur (11) and OpenBSD
-#define NO_DONTFRAG
-#endif
 
 #ifndef NO_DONTFRAG
 			if(r < 0 && mac_dontfrag)

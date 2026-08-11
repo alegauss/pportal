@@ -32,11 +32,7 @@
 #include "../sock.h"
 
 #include <stdint.h>
-#ifdef _WIN32
 #include <ws2tcpip.h>
-#else
-#include <unistd.h>
-#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -304,4 +300,4 @@ CHIAKI_EXPORT void chiaki_holepunch_session_fini(ChiakiHolepunchSession session)
 }
 #endif
 
-#endif // CHIAKI_HOLEPUNCH_H
+#endif

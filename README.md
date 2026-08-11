@@ -11,5 +11,10 @@ An open source PlayStation remote play project serving as the next-generation of
 ## Disclaimer
 This project is not endorsed or certified by Sony Interactive Entertainment LLC.
 
-Chiaki is a Free and Open Source Software Client for PlayStation 4 and PlayStation 5 Remote Play
-for Linux, FreeBSD, OpenBSD, Android, macOS, Windows, Nintendo Switch and potentially even more platforms.
+Chiaki is a Free and Open Source Software Client for PlayStation 4 and PlayStation 5 Remote Play.
+This fork targets **Windows only**; the Linux, FreeBSD, OpenBSD, Android, macOS, Nintendo Switch and
+Steam Deck ports have been removed.
+
+## Building
+
+Windows builds are done in MSYS2/MinGW64; see [doc/platform-build.md](doc/platform-build.md).

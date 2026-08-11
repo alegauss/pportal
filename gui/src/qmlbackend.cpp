@@ -5,13 +5,8 @@
 #include "controllermanager.h"
 #include "psnaccountid.h"
 #include "psntoken.h"
-#include "systemdinhibit.h"
 #include "chiaki/remote/holepunch.h"
-#ifdef Q_OS_MACOS
-#include "macWakeSleep.h"
-#elif defined(Q_OS_WINDOWS)
 #include "windowsWakeSleep.h"
-#endif
 #if CHIAKI_GUI_ENABLE_STEAM_SHORTCUT
 #include "steamtools.h"
 #endif
@@ -203,10 +198,6 @@ static bool frame_can_use_direct_render(const AVFrame *frame, bool use_opengl_re
     switch (frame->format) {
     case AV_PIX_FMT_VULKAN:
         return true;
-#ifdef Q_OS_LINUX
-    case AV_PIX_FMT_VAAPI:
-        return !use_opengl_renderer;
-#endif
     default:
         return false;
     }
@@ -413,19 +404,9 @@ QmlBackend::QmlBackend(Settings *settings, QmlMainWindow *window)
         emit wakeupStartFailed();
     });
     psn_auto_connect_timer->start(PSN_INTERNET_WAIT_SECONDS * 1000);
-    sleep_inhibit = new SystemdInhibit(QGuiApplication::applicationName(), tr("Remote Play session"), "sleep", "delay", this);
-    connect(sleep_inhibit, &SystemdInhibit::sleep, this, &QmlBackend::goToSleep);
-    connect(sleep_inhibit, &SystemdInhibit::resume, this, &QmlBackend::resumeFromSleep);
-    connect(ControllerManager::GetInstance(), &ControllerManager::ControllerMoved, sleep_inhibit, &SystemdInhibit::simulateUserActivity);
-#ifdef Q_OS_MACOS
-    mac_wake_sleep = new MacWakeSleep(this);
-    connect(mac_wake_sleep, &MacWakeSleep::wokeUp, this, &QmlBackend::resumeFromSleep);
-    connect(ControllerManager::GetInstance(), &ControllerManager::ControllerMoved, mac_wake_sleep, &MacWakeSleep::simulateUserActivity);
-#elif defined(Q_OS_WINDOWS)
     windows_wake_sleep = new WindowsWakeSleep(this);
     connect(windows_wake_sleep, &WindowsWakeSleep::wokeUp, this, &QmlBackend::resumeFromSleep);
     connect(windows_wake_sleep, &WindowsWakeSleep::sleeping, this, &QmlBackend::goToSleep);
-#endif
     refreshPsnToken();
 }
 
@@ -539,14 +520,12 @@ void QmlBackend::goToSleep()
 }
 void QmlBackend::resumeFromSleep()
 {
-#ifdef Q_OS_WINDOWS
     if(windows_wake_sleep->getWakeState() == WindowsWakeState::AboutToSleep)
     {
         windows_wake_sleep->setWakeState(WindowsWakeState::Awake);
         return;
     }
     windows_wake_sleep->setWakeState(WindowsWakeState::Awake);
-#endif
     if (resume_session) {
         qCInfo(chiakiGui) << "Resuming session...";
         resume_session = false;
@@ -667,22 +646,10 @@ void QmlBackend::profileChanged()
         QString refresh_token = this->settings->GetPsnRefreshToken();
         psnToken->RefreshPsnToken(std::move(refresh_token));
     });
-    sleep_inhibit->deleteLater();
-    sleep_inhibit = new SystemdInhibit(QGuiApplication::applicationName(), tr("Remote Play session"), "sleep", "delay", this);
-    connect(sleep_inhibit, &SystemdInhibit::sleep, this, &QmlBackend::goToSleep);
-    connect(sleep_inhibit, &SystemdInhibit::resume, this, &QmlBackend::resumeFromSleep);
-    connect(ControllerManager::GetInstance(), &ControllerManager::ControllerMoved, sleep_inhibit, &SystemdInhibit::simulateUserActivity);
-#ifdef Q_OS_MACOS
-    mac_wake_sleep->deleteLater();
-    mac_wake_sleep = new MacWakeSleep(this);
-    connect(mac_wake_sleep, &MacWakeSleep::wokeUp, this, &QmlBackend::resumeFromSleep);
-    connect(ControllerManager::GetInstance(), &ControllerManager::ControllerMoved, mac_wake_sleep, &MacWakeSleep::simulateUserActivity);
-#elif defined(Q_OS_WINDOWS)
     windows_wake_sleep->deleteLater();
     windows_wake_sleep = new WindowsWakeSleep(this);
     connect(windows_wake_sleep, &WindowsWakeSleep::wokeUp, this, &QmlBackend::resumeFromSleep);
     connect(windows_wake_sleep, &WindowsWakeSleep::sleeping, this, &QmlBackend::goToSleep);
-#endif
     refreshPsnToken();
     emit hostsChanged();
     emit hiddenHostsChanged();
@@ -935,8 +902,6 @@ void QmlBackend::startSession(bool emit_session_changed)
 
     if (emit_session_changed)
         emit sessionChanged(session);
-
-    sleep_inhibit->inhibit();
 }
 
 void QmlBackend::createSession(const StreamSessionConnectInfo &connect_info)
@@ -977,21 +942,6 @@ void QmlBackend::createSession(const StreamSessionConnectInfo &connect_info)
             return;
 
         bool fallbackApplied = false;
-#if defined(Q_OS_LINUX)
-        if (prefer_cuda)
-        {
-            qCInfo(chiakiGui) << "Renderer backend is OpenGL, falling back from vulkan decoder to cuda";
-            session_info.hw_decoder = "cuda";
-            fallbackApplied = true;
-        }
-        else
-        if (availableDecoders.contains("vaapi"))
-        {
-            qCInfo(chiakiGui) << "Renderer backend is OpenGL, falling back from vulkan decoder to vaapi";
-            session_info.hw_decoder = "vaapi";
-            fallbackApplied = true;
-        }
-#elif defined(Q_OS_WIN)
         if (prefer_cuda)
         {
             qCInfo(chiakiGui) << "Renderer backend is OpenGL, falling back from vulkan decoder to cuda";
@@ -1005,14 +955,6 @@ void QmlBackend::createSession(const StreamSessionConnectInfo &connect_info)
             session_info.hw_decoder = "d3d11va";
             fallbackApplied = true;
         }
-#elif defined(Q_OS_MACOS)
-        if (availableDecoders.contains("videotoolbox"))
-        {
-            qCInfo(chiakiGui) << "Renderer backend is OpenGL, falling back from vulkan decoder to videotoolbox";
-            session_info.hw_decoder = "videotoolbox";
-            fallbackApplied = true;
-        }
-#endif
         if (!fallbackApplied)
         {
             qCInfo(chiakiGui) << "Renderer backend is OpenGL, falling back from vulkan decoder to software decoder";
@@ -1022,23 +964,6 @@ void QmlBackend::createSession(const StreamSessionConnectInfo &connect_info)
     if(session_info.hw_decoder == "auto")
     {
         session_info.hw_decoder = QString();
-#if defined(Q_OS_LINUX)
-        if(!use_opengl_renderer && availableDecoders.contains("vulkan"))
-        {
-            qCInfo(chiakiGui) << "Auto hw decoder selecting vulkan";
-            session_info.hw_decoder = "vulkan";
-        }
-        else if(prefer_cuda)
-        {
-            qCInfo(chiakiGui) << "Auto hw decoder selecting cuda";
-            session_info.hw_decoder = "cuda";
-        }
-        else if(availableDecoders.contains("vaapi"))
-        {
-            qCInfo(chiakiGui) << "Auto hw decoder selecting vaapi";
-            session_info.hw_decoder = "vaapi";
-        }
-#elif defined(Q_OS_WIN)
         if(!use_opengl_renderer && availableDecoders.contains("vulkan"))
         {
             qCInfo(chiakiGui) << "Auto hw decoder selecting vulkan";
@@ -1054,13 +979,6 @@ void QmlBackend::createSession(const StreamSessionConnectInfo &connect_info)
             qCInfo(chiakiGui) << "Auto hw decoder selecting d3d11va";
             session_info.hw_decoder = "d3d11va";
         }
-#elif defined(Q_OS_MACOS)
-        if(availableDecoders.contains("videotoolbox"))
-        {
-            qCInfo(chiakiGui) << "Auto hw decoder selecting videotoolbox";
-            session_info.hw_decoder = "videotoolbox";
-        }
-#endif
     }
     fallbackVulkanDecoderForOpenGL();
     if (session_info.hw_decoder == "vulkan") {
@@ -1069,18 +987,6 @@ void QmlBackend::createSession(const StreamSessionConnectInfo &connect_info)
         {
             session_info.hw_decoder.clear();
             qCInfo(chiakiGui) << "vulkan video decoding not supported by your gpu driver, retrying other hw video decoders";
-#if defined(Q_OS_LINUX)
-            if(prefer_cuda)
-            {
-                qCInfo(chiakiGui) << "Falling back to cuda";
-                session_info.hw_decoder = "cuda";
-            }
-            else if(availableDecoders.contains("vaapi"))
-            {
-                qCInfo(chiakiGui) << "Falling back to vaapi";
-                session_info.hw_decoder = "vaapi";
-            }
-#elif defined(Q_OS_WIN)
             if(prefer_cuda)
             {
                 qCInfo(chiakiGui) << "Falling back to cuda";
@@ -1091,7 +997,6 @@ void QmlBackend::createSession(const StreamSessionConnectInfo &connect_info)
                 qCInfo(chiakiGui) << "Falling back to d3d11va";
                 session_info.hw_decoder = "d3d11va";
             }
-#endif
         }
         if(session_info.hw_decoder.isEmpty())
             qCInfo(chiakiGui) << "Falling back to software decoder";
@@ -1169,15 +1074,12 @@ void QmlBackend::createSession(const StreamSessionConnectInfo &connect_info)
         session = nullptr;
         emit sessionChanged(session);
 
-        sleep_inhibit->release();
         setDiscoveryEnabled(true);
-#ifdef Q_OS_WINDOWS
         qCInfo(chiakiGui) << "Checking sleep state: ";
         if(windows_wake_sleep->getWakeState() == WindowsWakeState::Awake)
             QTimer::singleShot(2000, this, &QmlBackend::resumeFromSleep);
         else
             windows_wake_sleep->setWakeState(WindowsWakeState::Sleeping);
-#endif
     });
 
     connect(session, &StreamSession::LoginPINRequested, this, [this, connect_info](bool incorrect) {
@@ -1491,21 +1393,15 @@ void QmlBackend::setWebEngineHints(QQuickWebEngineProfile *profile)
     auto userAgent = profile->httpUserAgent();
     userAgent = userAgent.replace(QRegularExpression(" \\bQtWebEngine[^ ]*\\b"), "");
     userAgent = userAgent.replace(QRegularExpression("\\bChrome[^ ]*\\b"), QString("Chrome/%1.0.0.0").arg(chrome_version));
-#ifdef Q_OS_WINDOWS
     userAgent = userAgent.replace("Windows NT 6.2", "Windows NT 10.0");
     userAgent += QString(" Edg/%1.0.0.0").arg(chrome_version);
-#endif
     profile->setHttpUserAgent(userAgent);
 #if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
     auto hints = profile->clientHints();
     hints->setFullVersion(QString("%1.0.0.0").arg(chrome_version));
     QMap<QString, QVariant> fullVersionList;
     fullVersionList.insert("Not A(Brand", "99.0.0.0");
-#ifdef Q_OS_WINDOWS
     fullVersionList.insert("Microsoft Edge", QString("%1.0.0.0").arg(chrome_version));
-#else
-    fullVersionList.insert("Google Chrome", QString("%1.0.0.0").arg(chrome_version));
-#endif
     fullVersionList.insert("Chromium", QString("%1.0.0.0").arg(chrome_version));
     hints->setFullVersionList(fullVersionList);
 #endif
@@ -2401,17 +2297,6 @@ void QmlBackend::applyStartupWindowSizing()
 
 #if CHIAKI_GUI_ENABLE_STEAM_SHORTCUT
 QString QmlBackend::getExecutable() {
-#if defined(Q_OS_LINUX)
-    //Check for flatpak
-    const QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    QString flatpakId = env.value("FLATPAK_ID");
-    QString appImagePath = env.value("APPIMAGE");
-    if (!flatpakId.isEmpty()) {
-        return QString("flatpak");
-    }
-    if (!appImagePath.isEmpty())
-        return appImagePath;
-#endif
     return QCoreApplication::applicationFilePath();
 }
 

@@ -4,14 +4,7 @@
 #include <time.h>
 #include <inttypes.h>
 
-#ifdef _WIN32
 #include <ws2tcpip.h>
-#else
-#include <unistd.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-#endif
 
 #include <chiaki/log.h>
 #include <chiaki/seqnum.h>
@@ -511,13 +504,7 @@ static bool stun_get_external_address_from_server(ChiakiLog *log, StunServer *se
     }
     freeaddrinfo(resolved);
 
-#ifdef _WIN32
     int timeout = STUN_REPLY_TIMEOUT_SEC * 1000;
-#else
-    struct timeval timeout;
-    timeout.tv_sec = STUN_REPLY_TIMEOUT_SEC;
-    timeout.tv_usec = 0;
-#endif
     if (setsockopt(*sock, SOL_SOCKET, SO_RCVTIMEO, (const CHIAKI_SOCKET_BUF_TYPE)&timeout, sizeof(timeout)) < 0) {
         CHIAKI_LOGE(log, "remote/stun.h: Failed to set socket timeout, error was " CHIAKI_SOCKET_ERROR_FMT, CHIAKI_SOCKET_ERROR_VALUE);
         if (!CHIAKI_SOCKET_IS_INVALID(*sock))

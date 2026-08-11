@@ -25,15 +25,7 @@ extern "C" {
 }
 
 #include <vulkan/vulkan.h>
-#if defined(Q_OS_LINUX)
-#include <xcb/xcb.h>
-#include <vulkan/vulkan_xcb.h>
-#include <vulkan/vulkan_wayland.h>
-#elif defined(Q_OS_MACOS)
-#include <vulkan/vulkan_metal.h>
-#elif defined(Q_OS_WIN)
 #include <vulkan/vulkan_win32.h>
-#endif
 
 Q_DECLARE_LOGGING_CATEGORY(chiakiGui);
 
@@ -452,14 +444,7 @@ private:
 
     struct {
         PFN_vkGetDeviceProcAddr vkGetDeviceProcAddr;
-#if defined(Q_OS_LINUX)
-        PFN_vkCreateXcbSurfaceKHR vkCreateXcbSurfaceKHR;
-        PFN_vkCreateWaylandSurfaceKHR vkCreateWaylandSurfaceKHR;
-#elif defined(Q_OS_MACOS)
-        PFN_vkCreateMetalSurfaceEXT vkCreateMetalSurfaceEXT;
-#elif defined(Q_OS_WIN)
         PFN_vkCreateWin32SurfaceKHR vkCreateWin32SurfaceKHR;
-#endif
         PFN_vkDestroySurfaceKHR vkDestroySurfaceKHR;
         PFN_vkWaitSemaphores vkWaitSemaphores;
         PFN_vkGetPhysicalDeviceQueueFamilyProperties vkGetPhysicalDeviceQueueFamilyProperties;

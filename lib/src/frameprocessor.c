@@ -9,9 +9,6 @@
 #include <string.h>
 #include <assert.h>
 
-#ifndef _WIN32
-#include <arpa/inet.h>
-#endif
 
 CHIAKI_EXPORT void chiaki_stream_stats_reset(ChiakiStreamStats *stats)
 {

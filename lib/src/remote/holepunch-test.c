@@ -4,17 +4,10 @@
 #include <assert.h>
 #include <stdio.h>
 
-#ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <windows.h>
-#else
-#include <unistd.h>
-#include <sys/socket.h>
-#include <sys/ioctl.h>
-#include <netdb.h>
-#endif
 
 #include <chiaki/remote/holepunch.h>
 #include "../utils.h"

@@ -58,9 +58,6 @@ extern "C" {
 #include <mutex>
 #include <utility>
 #include <atomic>
-#if defined(Q_OS_MACOS)
-#include <objc/message.h>
-#endif
 
 Q_LOGGING_CATEGORY(chiakiGui, "chiaki.gui", QtInfoMsg);
 
@@ -2569,7 +2566,6 @@ QmlMainWindow::~QmlMainWindow()
     if (isOpenGlBackend && quick_window)
         quick_window->setRenderTarget(QQuickRenderTarget());
 
-#ifndef Q_OS_MACOS
     if (owns_render_thread) {
         QMetaObject::invokeMethod(quick_render, &QQuickRenderControl::invalidate);
         render_thread->quit();
@@ -2577,16 +2573,6 @@ QmlMainWindow::~QmlMainWindow()
     } else {
         quick_render->invalidate();
     }
-#else
-    // On macOS, we still need to invalidate to prevent leaks
-    if (owns_render_thread) {
-        QMetaObject::invokeMethod(quick_render, &QQuickRenderControl::invalidate);
-        render_thread->quit();
-        render_thread->wait();
-    } else {
-        quick_render->invalidate();
-    }
-#endif
 
     if (pl_gpu gpu = placeboGpu()) {
         if (quick_tex)
@@ -4722,13 +4708,6 @@ void QmlMainWindow::init(Settings *settings, bool exit_app_on_stream_exit)
         format.setStencilBufferSize(8);
         format.setSwapInterval(settings->GetVSyncEnabled() ? 1 : 0);
         present_vsync_enabled = settings->GetVSyncEnabled();
-#if defined(Q_OS_MACOS)
-        // macOS only exposes modern OpenGL as a core profile.
-        if (format.majorVersion() < 4) {
-            format.setVersion(4, 1);
-            format.setProfile(QSurfaceFormat::CoreProfile);
-        }
-#endif
 
         qt_gl_context = new QOpenGLContext();
         qt_gl_context->setFormat(format);
@@ -4824,18 +4803,7 @@ void QmlMainWindow::init(Settings *settings, bool exit_app_on_stream_exit)
             VK_KHR_SURFACE_EXTENSION_NAME,
         };
 
-#if defined(Q_OS_LINUX)
-        if (QGuiApplication::platformName().startsWith("wayland"))
-            vk_exts[0] = VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME;
-        else if (QGuiApplication::platformName().startsWith("xcb"))
-            vk_exts[0] = VK_KHR_XCB_SURFACE_EXTENSION_NAME;
-        else
-            Q_UNREACHABLE();
-#elif defined(Q_OS_MACOS)
-        vk_exts[0] = VK_EXT_METAL_SURFACE_EXTENSION_NAME;
-#elif defined(Q_OS_WIN)
         vk_exts[0] = VK_KHR_WIN32_SURFACE_EXTENSION_NAME;
-#endif
 
         const char *opt_extensions[] = {
             VK_EXT_HDR_METADATA_EXTENSION_NAME,
@@ -4860,16 +4828,7 @@ void QmlMainWindow::init(Settings *settings, bool exit_app_on_stream_exit)
         goto vulkan_setup_done; \
     } }
         GET_PROC(vkGetDeviceProcAddr)
-#if defined(Q_OS_LINUX)
-        if (QGuiApplication::platformName().startsWith("wayland"))
-            GET_PROC(vkCreateWaylandSurfaceKHR)
-        else if (QGuiApplication::platformName().startsWith("xcb"))
-            GET_PROC(vkCreateXcbSurfaceKHR)
-#elif defined(Q_OS_MACOS)
-        GET_PROC(vkCreateMetalSurfaceEXT)
-#elif defined(Q_OS_WIN)
         GET_PROC(vkCreateWin32SurfaceKHR)
-#endif
         GET_PROC(vkDestroySurfaceKHR)
         GET_PROC(vkGetPhysicalDeviceQueueFamilyProperties)
         GET_PROC(vkGetPhysicalDeviceProperties2)
@@ -5776,34 +5735,11 @@ void QmlMainWindow::createSwapchain()
     }
 
     VkResult err = VK_ERROR_UNKNOWN;
-#if defined(Q_OS_LINUX)
-    if (QGuiApplication::platformName().startsWith("wayland")) {
-        VkWaylandSurfaceCreateInfoKHR surfaceInfo = {};
-        surfaceInfo.sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR;
-        surfaceInfo.display = reinterpret_cast<struct wl_display*>(QGuiApplication::platformNativeInterface()->nativeResourceForWindow("display", this));
-        surfaceInfo.surface = reinterpret_cast<struct wl_surface*>(QGuiApplication::platformNativeInterface()->nativeResourceForWindow("surface", this));
-        err = vk_funcs.vkCreateWaylandSurfaceKHR(placebo_vk_inst->instance, &surfaceInfo, nullptr, &surface);
-    } else if (QGuiApplication::platformName().startsWith("xcb")) {
-        VkXcbSurfaceCreateInfoKHR surfaceInfo = {};
-        surfaceInfo.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
-        surfaceInfo.connection = reinterpret_cast<xcb_connection_t*>(QGuiApplication::platformNativeInterface()->nativeResourceForWindow("connection", this));
-        surfaceInfo.window = static_cast<xcb_window_t>(winId());
-        err = vk_funcs.vkCreateXcbSurfaceKHR(placebo_vk_inst->instance, &surfaceInfo, nullptr, &surface);
-    } else {
-        Q_UNREACHABLE();
-    }
-#elif defined(Q_OS_MACOS)
-    VkMetalSurfaceCreateInfoEXT surfaceInfo = {};
-    surfaceInfo.sType = VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT;
-    surfaceInfo.pLayer = static_cast<const CAMetalLayer*>(reinterpret_cast<void*(*)(id, SEL)>(objc_msgSend)(reinterpret_cast<id>(winId()), sel_registerName("layer")));
-    err = vk_funcs.vkCreateMetalSurfaceEXT(placebo_vk_inst->instance, &surfaceInfo, nullptr, &surface);
-#elif defined(Q_OS_WIN)
     VkWin32SurfaceCreateInfoKHR surfaceInfo = {};
     surfaceInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
     surfaceInfo.hinstance = GetModuleHandle(nullptr);
     surfaceInfo.hwnd = reinterpret_cast<HWND>(winId());
     err = vk_funcs.vkCreateWin32SurfaceKHR(placebo_vk_inst->instance, &surfaceInfo, nullptr, &surface);
-#endif
 
     if (err != VK_SUCCESS) {
         if (err == VK_ERROR_DEVICE_LOST) {
@@ -7410,9 +7346,7 @@ bool QmlMainWindow::handleShortcut(QKeyEvent *event)
         emit menuRequested();
         return true;
     case Qt::Key_Q:
-#ifndef Q_OS_MACOS
         close();
-#endif
         return true;
     default:
         return false;

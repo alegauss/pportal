@@ -14,14 +14,8 @@
 #include <errno.h>
 #include <assert.h>
 
-#ifdef _WIN32
 #include <winsock2.h>
 #define strcasecmp _stricmp
-#else
-#include <unistd.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#endif
 
 #include "utils.h"
 
@@ -817,11 +811,7 @@ static ChiakiErrorCode session_thread_request_session(ChiakiSession *session, Ch
 			session_sock = socket(ai->ai_family, SOCK_STREAM, 0);
 			if(CHIAKI_SOCKET_IS_INVALID(session_sock))
 			{
-#ifdef _WIN32
 				CHIAKI_LOGE(session->log, "Failed to create socket to request session");
-#else
-				CHIAKI_LOGE(session->log, "Failed to create socket to request session: %s", strerror(errno));
-#endif
 				free(sa);
 				continue;
 			}

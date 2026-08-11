@@ -11,13 +11,7 @@ add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/takion.pb"
 set(SOURCE_FILES "${CMAKE_CURRENT_BINARY_DIR}/takion.pb.c")
 set(HEADER_FILES "${CMAKE_CURRENT_BINARY_DIR}/takion.pb.h")
 
-if(UNIX AND IS_ABSOLUTE "${PROTOC}")
-	# make sure protoc is in PATH when invoking the generator below, which needs it.
-	get_filename_component(PROTOC_PATH "${PROTOC}" DIRECTORY)
-	set(GEN_PREFIX "${CMAKE_COMMAND}" -E env "PATH=${PROTOC_PATH}:$ENV{PATH}")
-else()
-	set(GEN_PREFIX "")
-endif()
+set(GEN_PREFIX "")
 
 add_custom_command(OUTPUT ${SOURCE_FILES} ${HEADER_FILES}
 		COMMAND ${GEN_PREFIX} "${PYTHON_EXECUTABLE}" "${NANOPB_GENERATOR_PY}" "${CMAKE_CURRENT_BINARY_DIR}/takion.pb"

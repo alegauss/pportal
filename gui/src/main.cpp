@@ -22,9 +22,6 @@ int main(int argc, char *argv[]) { return real_main(argc, argv); }
 #include <QApplication>
 #include <QtTypes>
 
-#ifdef CHIAKI_ENABLE_CLI
-#include <chiaki-cli.h>
-#endif
 
 #include <chiaki/session.h>
 #include <chiaki/regist.h>
@@ -44,22 +41,7 @@ int main(int argc, char *argv[]) { return real_main(argc, argv); }
 Q_DECLARE_METATYPE(ChiakiLogLevel)
 Q_DECLARE_METATYPE(ChiakiRegistEventType)
 
-#if defined(CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE) && defined(Q_OS_LINUX)
-#include <QtPlugin>
-Q_IMPORT_PLUGIN(SDInputContextPlugin)
-#endif
 
-#ifdef CHIAKI_ENABLE_CLI
-struct CLICommand
-{
-	int (*cmd)(ChiakiLog *log, int argc, char *argv[]);
-};
-
-static const QMap<QString, CLICommand> cli_commands = {
-	{ "discover", { chiaki_cli_cmd_discover } },
-	{ "wakeup", { chiaki_cli_cmd_wakeup } }
-};
-#endif
 
 int RunStream(QGuiApplication &app, const StreamSessionConnectInfo &connect_info);
 int RunMain(QGuiApplication &app, Settings *settings, bool exit_app_on_stream_exit);
@@ -77,32 +59,16 @@ int real_main(int argc, char *argv[])
 	QGuiApplication::setApplicationName("Chiaki");
 	QGuiApplication::setApplicationVersion(CHIAKI_VERSION);
 	QGuiApplication::setApplicationDisplayName("chiaki-ng");
-#if defined(Q_OS_MACOS)
-	qputenv("QT_MTL_NO_TRANSACTION", "1");
-#endif
-#if defined(Q_OS_LINUX)
-	if(qEnvironmentVariableIsSet("FLATPAK_ID"))
-		QGuiApplication::setDesktopFileName(qEnvironmentVariable("FLATPAK_ID"));
-	else
-#endif
-		QGuiApplication::setDesktopFileName("chiaki-ng");
+	QGuiApplication::setDesktopFileName("chiaki-ng");
 
 	qputenv("QTWEBENGINE_CHROMIUM_FLAGS", "--disable-gpu");
-#if defined(Q_OS_WIN)
 	const size_t cSize = strlen(argv[0])+1;
 	wchar_t wc[cSize];
 	mbstowcs (wc, argv[0], cSize);
 	QString import_path = QFileInfo(QString::fromWCharArray(wc)).dir().absolutePath() + "/qml";
 	qputenv("QML_IMPORT_PATH", import_path.toUtf8());
-#endif
-#if defined(Q_OS_WIN) || defined(Q_OS_LINUX)
 	qputenv("ANV_VIDEO_DECODE", "1");
 	qputenv("RADV_PERFTEST", "video_decode");
-#endif
-#ifdef CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE
-	if (qEnvironmentVariableIsSet("SteamDeck"))
-		qputenv("QT_IM_MODULE", "sdinput");
-#endif
 
 	ChiakiErrorCode err = chiaki_lib_init();
 	if(err != CHIAKI_ERR_SUCCESS)
@@ -125,11 +91,7 @@ int real_main(int argc, char *argv[])
 #endif
 	QApplication app(argc, argv);
 
-#ifdef Q_OS_MACOS
-	QGuiApplication::setWindowIcon(QIcon(":/icons/chiaking_macos.svg"));
-#else
 	QGuiApplication::setWindowIcon(QIcon(":/icons/chiaking.svg"));
-#endif
 
 	QCommandLineParser parser;
 	parser.setOptionsAfterPositionalArgumentsMode(QCommandLineParser::ParseAsPositionalArguments);
@@ -138,9 +100,6 @@ int real_main(int argc, char *argv[])
 	QStringList cmds;
 	cmds.append("stream");
 	cmds.append("list");
-#ifdef CHIAKI_ENABLE_CLI
-	cmds.append(cli_commands.keys());
-#endif
 
 	parser.addPositionalArgument("command", cmds.join(", "));
 	parser.addPositionalArgument("nickname", "Needed for stream command to get credentials for connecting. "
@@ -290,25 +249,6 @@ int real_main(int argc, char *argv[])
 
 		return RunStream(app, connect_info);
 	}
-#ifdef CHIAKI_ENABLE_CLI
-	else if(cli_commands.contains(args[0]))
-	{
-		ChiakiLog log;
-		// TODO: add verbose arg
-		chiaki_log_init(&log, CHIAKI_LOG_ALL & ~CHIAKI_LOG_VERBOSE, chiaki_log_cb_print, nullptr);
-
-		const auto &cmd = cli_commands[args[0]];
-		int sub_argc = args.count();
-		QVector<QByteArray> sub_argv_b(sub_argc);
-		QVector<char *> sub_argv(sub_argc);
-		for(size_t i=0; i<sub_argc; i++)
-		{
-			sub_argv_b[i] = args[i].toLocal8Bit();
-			sub_argv[i] = sub_argv_b[i].data();
-		}
-		return cmd.cmd(&log, sub_argc, sub_argv.data());
-	}
-#endif
 	else
 	{
 		parser.showHelp(1);

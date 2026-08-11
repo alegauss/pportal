@@ -15,9 +15,7 @@
 
 #include <stdbool.h>
 
-#ifdef _WIN32
 #include <winsock2.h>
-#endif
 
 
 #ifdef __cplusplus
@@ -277,4 +275,4 @@ CHIAKI_EXPORT void chiaki_takion_format_congestion(uint8_t *buf, ChiakiTakionCon
 }
 #endif
 
-#endif // CHIAKI_TAKION_H
+#endif

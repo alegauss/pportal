@@ -8,25 +8,6 @@
 #include <chiaki/opusencoder.h>
 #include <chiaki/ffmpegdecoder.h>
 
-#if CHIAKI_LIB_ENABLE_PI_DECODER
-#include <chiaki/pidecoder.h>
-#endif
-
-#if CHIAKI_GUI_ENABLE_SETSU
-#include <setsu.h>
-#include <chiaki/orientation.h>
-#endif
-
-#if CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE
-#include <sdeck.h>
-#include <chiaki/orientation.h>
-#endif
-
-// Using Q_OS_MACOS instead of __APPLE__ doesn't work for the necessary enums to be included
-#ifdef __APPLE__
-#include <macMicPermission.h>
-#endif
-
 #include "exception.h"
 #include "sessionlog.h"
 #include "controllermanager.h"
@@ -57,15 +38,6 @@ class ChiakiException: public Exception
 		explicit ChiakiException(const QString &msg) : Exception(msg) {};
 };
 
-#if CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE
-typedef struct haptic_packet_t
-{
-   	int16_t haptic_packet[30];
-    uint64_t timestamp;
-} haptic_packet_t;
-
-class SdeckHapticsWorker;
-#endif
 
 	struct StreamSessionConnectInfo
 	{
@@ -106,10 +78,6 @@ class SdeckHapticsWorker;
 		bool port_guessing_enabled;
 		int port_guess_count;
 		int port_guess_socket_count;
-#if CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE
-		bool vertical_sdeck;
-		bool enable_steamdeck_haptics;
-#endif
 #if CHIAKI_GUI_ENABLE_SPEEX
 		bool speech_processing_enabled;
 		int32_t noise_suppress_level;
@@ -171,9 +139,6 @@ class StreamSession : public QObject
 		bool port_guessing_enabled;
 		int port_guess_count;
 		int port_guess_socket_count;
-#ifdef Q_OS_MACOS
-		bool mic_authorization;
-#endif
 		bool allow_unmute;
 		int input_block;
 		QString host;
@@ -193,28 +158,7 @@ class StreamSession : public QObject
 		uint8_t led_color[3];
 		uint8_t player_index;
 		QHash<int, Controller *> controllers;
-#if CHIAKI_GUI_ENABLE_SETSU
-		Setsu *setsu;
-		QMap<QPair<QString, SetsuTrackingId>, uint8_t> setsu_ids;
-		ChiakiControllerState setsu_state;
-		SetsuDevice *setsu_motion_device;
-		ChiakiOrientationTracker orient_tracker;
-		ChiakiAccelNewZero setsu_accel_zero, setsu_real_accel;
-		bool orient_dirty;
-#endif
 
-#if CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE
-		SDeck *sdeck;
-		QMutex sdeck_mutex;
-		QThread *sdeck_haptics_thread = nullptr;
-		SdeckHapticsWorker *sdeck_haptics_worker = nullptr;
-		ChiakiControllerState sdeck_state;
-		bool enable_steamdeck_haptics;
-		ChiakiOrientationTracker sdeck_orient_tracker;
-		ChiakiAccelNewZero sdeck_accel_zero, sdeck_real_accel;
-		bool sdeck_orient_dirty;
-		bool vertical_sdeck;
-#endif
 		QQueue<uint16_t> rumble_haptics;
 		bool rumble_haptics_connected;
 		bool rumble_haptics_on;
@@ -245,9 +189,6 @@ class StreamSession : public QObject
 
 		ChiakiFfmpegDecoder *ffmpeg_decoder;
 		void TriggerFfmpegFrameAvailable();
-#if CHIAKI_LIB_ENABLE_PI_DECODER
-		ChiakiPiDecoder *pi_decoder;
-#endif
 
 		QString audio_out_device_name;
 		QString audio_in_device_name;
@@ -302,15 +243,6 @@ class StreamSession : public QObject
 		void PushHapticsFrame(uint8_t *buf, size_t buf_size);
 		void CantDisplayMessage(bool cant_display);
 		ChiakiErrorCode InitiatePsnConnection(QString psn_token);
-#ifdef Q_OS_MACOS
-		void SetMicAuthorization(Authorization authorization);
-#endif
-#if CHIAKI_GUI_ENABLE_SETSU
-		void HandleSetsuEvent(SetsuEvent *event);
-#endif
-#if CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE
-		void HandleSDeckEvent(SDeckEvent *event);
-#endif
 		void AdjustAdaptiveTriggerPacket(uint8_t *buf, uint8_t type);
 		void WaitHaptics();
 
@@ -321,10 +253,6 @@ class StreamSession : public QObject
 		void Event(ChiakiEvent *event);
 		void DisconnectHaptics();
 		void ConnectHaptics();
-#if CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE
-		void ConnectSdeckHaptics();
-		void StopSdeckHaptics();
-#endif
 		void QueueRumbleHaptics(uint16_t strength);
 		void ConnectRumbleHaptics();
 
@@ -358,9 +286,6 @@ class StreamSession : public QObject
 		ChiakiLog *GetChiakiLog()				{ return log.GetChiakiLog(); }
 		QList<Controller *> GetControllers()	{ return controllers.values(); }
 		ChiakiFfmpegDecoder *GetFfmpegDecoder()	{ return ffmpeg_decoder; }
-#if CHIAKI_LIB_ENABLE_PI_DECODER
-		ChiakiPiDecoder *GetPiDecoder()	{ return pi_decoder; }
-#endif
 		void HandleKeyboardEvent(QKeyEvent *event);
 		void HandleTouchEvent(QTouchEvent *event, qreal width, qreal height);
 		void HandleDpadTouchEvent(ChiakiControllerState *state, bool placeholder = false);
@@ -379,9 +304,6 @@ class StreamSession : public QObject
 	signals:
 		void FfmpegFrameAvailable();
 		void RumbleHapticPushed(uint16_t strength);
-#if CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE
-		void SdeckHapticPushed(haptic_packet_t packetl, haptic_packet_t packetr);
-#endif
 		void DualSenseIntensityChanged(uint8_t intensity);
 		void SessionQuit(ChiakiQuitReason reason, const QString &reason_str);
 		void LoginPINRequested(bool incorrect);
@@ -403,8 +325,5 @@ class StreamSession : public QObject
 };
 
 Q_DECLARE_METATYPE(ChiakiQuitReason)
-#if CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE
-Q_DECLARE_METATYPE(haptic_packet_t)
-#endif
 
-#endif // CHIAKI_STREAMSESSION_H
+#endif

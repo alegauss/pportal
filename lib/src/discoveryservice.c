@@ -6,13 +6,7 @@
 #include <assert.h>
 #include <stdlib.h>
 
-#ifdef _WIN32
 #include <ws2tcpip.h>
-#else
-#include <netinet/in.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#endif
 
 static void *discovery_service_thread_func(void *user);
 static void discovery_service_ping(ChiakiDiscoveryService *service);

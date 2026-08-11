@@ -5,11 +5,7 @@
 #include <chiaki/feedback.h>
 #include <chiaki/controller.h>
 
-#ifdef _WIN32
 #include <winsock2.h>
-#else
-#include <arpa/inet.h>
-#endif
 #include <string.h>
 #include <math.h>
 

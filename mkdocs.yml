@@ -2,25 +2,13 @@ site_name: chiaki-ng
 repo_url: https://github.com/streetpea/chiaki-ng
 site_url: https://streetpea.github.io/chiaki-ng/
 edit_uri: edit/chiaki-ng/docs
+# docs/ now holds the three files roadkeep owns and nothing else, so the nav is
+# those three. Every page the old site carried is in the history, not deleted by
+# accident: `git log --diff-filter=D -- docs/` finds the commit that removed them.
 nav:
-  - Home: index.md
-  - Setup:
-    - Setup Overview: setup/index.md
-    - Installation: setup/installation.md
-    - Configuration: setup/configuration.md
-    - Remote Connection: setup/remoteconnection.md
-    - Automation: setup/automation.md
-    - Game (Mode) Time: setup/steaming.md
-    - Controller Options: setup/controlling.md
-  - Updates:
-    - Updates Overview: updates/index.md
-    - Releases: updates/releases.md
-    - Done: updates/done.md
-    - Planned: updates/planned.md
-  - DIY:
-    - Building the Flatpak Yourself: diy/buildit.md
-    - Locally Building Documentation: diy/builddocs.md
-    - Developing chiaki-ng on Steam Deck: diy/steamdeckdev.md
+  - Roadmap: ROADMAP.md
+  - Changelog: CHANGELOG.md
+  - Improvements: IMPROVEMENTS.md
 
 theme:
   favicon: images/chiaking.svg

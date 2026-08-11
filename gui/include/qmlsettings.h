@@ -19,10 +19,6 @@ class QmlSettings : public QObject
     Q_PROPERTY(bool logSanitize READ logSanitize WRITE setLogSanitize NOTIFY logSanitizeChanged)
     Q_PROPERTY(bool vSyncEnabled READ vSyncEnabled WRITE setVSyncEnabled NOTIFY vSyncEnabledChanged)
     Q_PROPERTY(int rumbleHapticsIntensity READ rumbleHapticsIntensity WRITE setRumbleHapticsIntensity NOTIFY rumbleHapticsIntensityChanged)
-#ifdef CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE
-    Q_PROPERTY(bool steamDeckHaptics READ steamDeckHaptics WRITE setSteamDeckHaptics NOTIFY steamDeckHapticsChanged)
-    Q_PROPERTY(bool verticalDeck READ verticalDeck WRITE setVerticalDeck NOTIFY verticalDeckChanged)
-#endif
     Q_PROPERTY(bool buttonsByPosition READ buttonsByPosition WRITE setButtonsByPosition NOTIFY buttonsByPositionChanged)
     Q_PROPERTY(bool startMicUnmuted READ startMicUnmuted WRITE setStartMicUnmuted NOTIFY startMicUnmutedChanged)
 #ifdef CHIAKI_GUI_ENABLE_SPEEX
@@ -210,13 +206,6 @@ public:
     int rumbleHapticsIntensity() const;
     void setRumbleHapticsIntensity(int intensity);
 
-#ifdef CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE
-    bool steamDeckHaptics() const;
-    void setSteamDeckHaptics(bool steamDeckHaptics);
-
-    bool verticalDeck() const;
-    void setVerticalDeck(bool vertical);
-#endif
 
     bool buttonsByPosition() const;
     void setButtonsByPosition(bool buttonsByPosition);
@@ -622,10 +611,6 @@ signals:
     void buttonsByPositionChanged();
     void allowJoystickBackgroundEventsChanged();
     void startMicUnmutedChanged();
-#ifdef CHIAKI_GUI_ENABLE_STEAMDECK_NATIVE
-    void verticalDeckChanged();
-    void steamDeckHapticsChanged();
-#endif
 #ifdef CHIAKI_GUI_ENABLE_SPEEX
     void speechProcessingChanged();
     void noiseSuppressLevelChanged();
