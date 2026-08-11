@@ -1,0 +1,38 @@
+prefix = "PP"
+
+# how a rationale section is addressed: "id" derives the pointer from the
+# task's own id, "outline" keeps a hand-numbered anchor
+ref_scheme = "id"
+
+# what jumps the queue, in order: an id or a "Block X", and nothing else
+priority = []
+
+[files]
+roadmap = "docs/ROADMAP.md"
+changelog = "docs/CHANGELOG.md"
+improvements = "docs/IMPROVEMENTS.md"
+
+[limits]
+# characters
+symptom = 120
+why = 200
+line = 320
+
+# a section is prose, so its budget is words; prose is the width one is filled to
+section = 250
+prose = 88
+
+[markers]
+open = ["📋", "💭", "⏳", "🛠"]
+shipped = "✅"
+retired = "🗑"
+
+[claims]
+# minutes a claim on a line reads as held, before a later caller steps over it
+held = 60
+
+# Declared at all means governed. This port's constraints are the load-bearing part of it —
+# "Windows-only" and "no redesign while porting" are what keep a screen from being re-invented
+# instead of reproduced — so they are refused at input like every other line, rather than being
+# the one part of the roadmap no schema reaches. The limits are left at their defaults.
+[non_goals]

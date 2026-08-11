@@ -39,3 +39,17 @@ chiaki.conf
 .cache/
 *.vscode
 site/
+
+# roadkeep's own working directory: lint reports and run state, regenerated on
+# demand and never read by another clone.
+.roadkeep/
+
+# Claude Code's project directory is local state except for the files roadkeep
+# needs a clone to carry: settings.json declares the marketplace and enables the
+# plugin, hooks/ holds the launcher that gives Claude Code on the web (which has
+# no `/plugin`) the same guard a local machine gets from the plugin, and skills/
+# is the copy `roadkeep install` keeps in step.
+/.claude/*
+!/.claude/settings.json
+!/.claude/hooks/
+!/.claude/skills/
