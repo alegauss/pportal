@@ -2,6 +2,14 @@
 add_library(munit "${CMAKE_CURRENT_SOURCE_DIR}/munit/munit.c")
 target_include_directories(munit PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/munit")
 
+# munit is a submodule pinned at upstream, so its source cannot be corrected from this
+# repository. It initialises an atomic with ATOMIC_VAR_INIT, which C17 deprecated and
+# C23 removed - and C23 is the default from gcc 15 on, which makes the whole test target
+# fail to compile before a single assertion runs. Building this one file as the C11 it
+# was written for is the fix that stays inside a file this repository owns.
+set_property(TARGET munit PROPERTY C_STANDARD 11)
+set_property(TARGET munit PROPERTY C_STANDARD_REQUIRED ON)
+
 set(CHIAKI_UNIT_SOURCES
 				main.c
 				http.c
