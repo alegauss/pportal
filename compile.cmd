@@ -8,8 +8,21 @@ rem the MinGW runtime, Qt6 and FFmpeg DLLs next to it. The binary under
 rem .\build\gui\ links against C:\msys64\mingw64\bin and only starts inside an
 rem MSYS2 MinGW64 shell - double-clicking that one fails on missing DLLs.
 rem
+rem WHY THIS FILE MATTERS RIGHT NOW
+rem This is the gate for the stripping work. The tree is being reduced to a
+rem Windows-only, NVIDIA-first project that builds in Visual Studio, and every
+rem deletion on the way there is a guess until something compiles. This script is
+rem that something: it is the only build the repository still has, and it stays
+rem until the .NET solution can take over.
+rem
+rem So the loop for a removal is:  delete  ->  compile.cmd configure  ->  keep or
+rem revert. Configure is seconds and answers the only question a deletion asks -
+rem does every path the build graph names still resolve. Run a full build before
+rem committing, not before deciding.
+rem
 rem Usage:
 rem   compile.cmd                 configure + build + portable tree
+rem   compile.cmd configure       configure only - the fast check after a deletion
 rem   compile.cmd clean           wipe .\build (portable tree included) first
 rem   compile.cmd nodeploy        build only, skip the portable tree (fast)
 rem   compile.cmd clean nodeploy  both
@@ -37,10 +50,60 @@ if not exist "%BASH%" (
 )
 
 rem ---- flags (validated by the shell script; parsed here only for messages)
+rem Matched token by token rather than with `echo %ARGS% | find`, which is what
+rem this did before and which fails open: on a PATH that reaches MSYS2 or Git for
+rem Windows first, `find` is the Unix one, the pipeline errors, and the flag is
+rem silently ignored - a `nodeploy` that deploys anyway. A for loop over the
+rem arguments needs no external program and cannot be shadowed.
 set "ARGS=%*"
 set "DO_DEPLOY=1"
+set "CONFIGURE_ONLY="
+set "BAD_ARG="
 set "LOCKED="
-echo %ARGS% | find /I "nodeploy" >nul && set "DO_DEPLOY="
+for %%a in (%ARGS%) do (
+    rem clean and deploy are the shell script's to act on; they are listed here
+    rem only so that a typo is not mistaken for one of them.
+    if /I "%%~a"=="configure" set "CONFIGURE_ONLY=1"
+    if /I "%%~a"=="nodeploy"  set "DO_DEPLOY="
+    if /I "%%~a" neq "configure" if /I "%%~a" neq "nodeploy" if /I "%%~a" neq "clean" if /I "%%~a" neq "deploy" set "BAD_ARG=%%~a"
+)
+if defined CONFIGURE_ONLY set "DO_DEPLOY="
+if defined BAD_ARG (
+    echo [compile] unknown argument: %BAD_ARG%
+    echo [compile] usage: compile.cmd [clean] [configure^|nodeploy]
+    exit /b 2
+)
+
+rem ---- preflight: name the deletion, do not let cmake describe it ---------
+rem Everything below is a file this build reads. A removal that takes one out
+rem should be reported here, by name and in a second, rather than as a cmake
+rem error in the middle of a configure or - worse for the two scripts - as a
+rem deploy failure after a full compile has already been paid for.
+rem
+rem If a line here fails because the file was removed ON PURPOSE, this list is
+rem what has to be updated in the same commit. That is the point of it: the gate
+rem knows what it needs, so nobody has to remember.
+set "MISSING="
+call :need "scripts\build-windows.sh"      "the build steps; this file only launches them"
+if defined DO_DEPLOY call :need "scripts\deploy-windows-msys2.sh" "collects the portable tree - without it a full build fails at the last step"
+call :need "CMakeLists.txt"                "the build graph root"
+call :need "gui\CMakeLists.txt"            "the Qt client"
+call :need "lib\CMakeLists.txt"            "libchiaki"
+if defined MISSING (
+    echo.
+    echo [compile] Cannot build: the file^(s^) above are read by this build.
+    echo [compile] If a removal was deliberate, update the preflight list in
+    echo [compile] compile.cmd in the same commit as the deletion.
+    exit /b 1
+)
+
+rem Submodules CMake adds by default. Each has an opt-out, so a missing one is a
+rem warning and not a refusal: it only fails the configure when the matching
+rem option was not set with it.
+call :warn_sub "third-party\nanopb"      "CHIAKI_USE_SYSTEM_NANOPB"
+call :warn_sub "third-party\jerasure"    "CHIAKI_USE_SYSTEM_JERASURE"
+call :warn_sub "third-party\gf-complete" "CHIAKI_USE_SYSTEM_JERASURE"
+call :warn_sub "third-party\curl"        "CHIAKI_USE_SYSTEM_CURL"
 
 rem ---- a running instance locks the portable tree ------------------------
 rem Otherwise the deploy step dies on "cp: Device or resource busy". Uses goto
@@ -68,8 +131,9 @@ set "CHERE_INVOKING=1"
 
 echo [compile] MSYS2      : %MSYS2_ROOT%
 echo [compile] build dir  : %BUILD_DIR%  (%BUILD_TYPE%)
+if defined CONFIGURE_ONLY echo [compile] mode       : configure only (deletion check)
 if defined DO_DEPLOY echo [compile] portable   : %DEPLOY_DISP%
-if not defined DO_DEPLOY echo [compile] portable   : skipped
+if not defined DO_DEPLOY if not defined CONFIGURE_ONLY echo [compile] portable   : skipped
 echo.
 
 "%BASH%" -l "%REPO%/scripts/build-windows.sh" %ARGS%
@@ -80,11 +144,18 @@ if errorlevel 1 (
 )
 
 echo.
+if defined CONFIGURE_ONLY goto ok_configure
 if defined DO_DEPLOY goto ok_deploy
 echo [compile] OK -^> %~dp0%BUILD_DIR%\gui\chiaki.exe
 echo [compile] NOTE: this binary only starts inside an MSYS2 MinGW64 shell.
 if defined LOCKED echo [compile]       %DEPLOY_DISP%\chiaki.exe still holds the previous build.
 if not defined LOCKED echo [compile]       Run compile.cmd without 'nodeploy' for a clickable build.
+exit /b 0
+
+:ok_configure
+echo [compile] CONFIGURE OK - the build graph resolves after this deletion.
+echo [compile] Run compile.cmd without 'configure' before committing: a path
+echo [compile] that resolves is not yet a target that links.
 exit /b 0
 
 :ok_deploy
@@ -93,4 +164,19 @@ echo [compile]   %~dp0%DEPLOY_DISP%\chiaki.exe
 echo.
 echo [compile] ^(%~dp0%BUILD_DIR%\gui\chiaki.exe also exists, but it needs the
 echo [compile]  MSYS2 MinGW64 shell - double-clicking it fails on missing DLLs.^)
+exit /b 0
+
+rem ---------------------------------------------------------------------------
+rem  Preflight helpers. :need is a refusal, :warn_sub is a note - the difference
+rem  is whether the build can proceed without the path, not how important it is.
+:need
+if exist "%~dp0%~1" exit /b 0
+echo [compile] MISSING  %~1
+echo [compile]          %~2
+set "MISSING=1"
+exit /b 0
+
+:warn_sub
+if exist "%~dp0%~1" exit /b 0
+echo [compile] note: %~1 is gone - configure will fail unless %~2=ON
 exit /b 0
