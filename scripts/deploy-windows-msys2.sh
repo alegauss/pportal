@@ -41,7 +41,7 @@ extract_dependencies() {
     local ldd_status=0
     if [[ ${#ldd_timeout_cmd[@]} -gt 0 ]]; then
         set +e
-        ldd_output="$("${ldd_timeout_cmd[@]}" ldd "$binary" 2>&1)"
+        ldd_output="$(LC_ALL=C "${ldd_timeout_cmd[@]}" ldd "$binary" 2>&1)"
         ldd_status=$?
         set -e
         if [[ $ldd_status -eq 124 ]]; then
@@ -50,11 +50,11 @@ extract_dependencies() {
             echo "ldd exited with status $ldd_status for $binary" >&2
         fi
     else
-        ldd_output="$(ldd "$binary" 2>&1)" || true
+        ldd_output="$(LC_ALL=C ldd "$binary" 2>&1)" || true
     fi
 
     printf '%s\n' "$ldd_output" | awk '
-        /=>/ && $(NF-1) != "not" { print $(NF-1) }
+        /=>/ && $(NF-1) ~ /^\// { print $(NF-1) }
         /^\// { print $1 }
     ' | grep -iv "system32" | grep -iv "windows" || true
 }

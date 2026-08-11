@@ -14,7 +14,6 @@ cmake-build-*
 appdir
 /ffmpeg*
 /Chiaki
-/chiaki-ng-Win/
 /SDL2-*
 /opus*
 /ffmpeg*
