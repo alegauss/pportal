@@ -361,18 +361,18 @@ CHIAKI_HAVE_WEBENGINE, so the build succeeds and silently omits the screen. Noth
 fails; the PSN login view is simply absent from every binary this repository can
 produce.
 
-Two consequences, and the second is the one that costs. PP46 wanted the installer and
-cold-start numbers for a build that carries Chromium, and there is no such build to
-measure here - the before needs a different toolchain, not a package install. And PP7
-replaces a QtWebEngine login with WebView2 while the thing being replaced cannot be
-compiled, so the port has no reference behaviour for that screen and no way to compare
-against it.
+Nor from any published one. Upstream's Windows releases are MSYS2 builds of the same
+toolchain, so they carry no Chromium either: v1.10.0's x64 portable holds 1555 files and
+261.5 MB with no QtWebEngineCore, no icudtl.dat and no .pak, and its installer is 68.0
+MB. Downloading the release is therefore not an available answer - no Windows build of
+this project has ever shipped that screen.
 
-The output is a decision about the reference build: measure the published upstream
-release, which does ship Chromium; or stand up an MSVC configure alongside compile.cmd
-for this one purpose; or state that this screen is ported against the source rather than
-against a running original. Any of them beats discovering it while writing a release
-note.
+Two consequences. PP46 wanted a before that carries Chromium and there is none to
+obtain; the only Windows one is a build nobody has made yet. And PP7 replaces a
+QtWebEngine login while the thing being replaced cannot be compiled here.
+
+The output is a decision: an MSVC configure for this one purpose, or stating that the
+screen is ported against the source rather than a running original.
 
 ## Block F — Managed core
 
