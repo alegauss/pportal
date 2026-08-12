@@ -3,6 +3,8 @@
 #include "streamsession.h"
 #include "settings.h"
 
+#include <chiaki/sessionbaseline.h>
+
 #include <QMutex>
 #include <QAtomicInteger>
 #include <QWindow>
@@ -103,6 +105,12 @@ public:
     bool hasVideo() const;
     int droppedFrames() const;
     void increaseDroppedFrames();
+
+    // droppedFrames() is a per-second gauge that is reset by a timer, so nothing in the
+    // window survives the session it describes. These keep the same counters as a running
+    // total for the baseline record, and are the only reader of them that outlives the run.
+    void resetSessionBaseline();
+    void fillSessionBaseline(ChiakiSessionBaseline *baseline) const;
 
     bool directStream() const;
     int runtimeRendererBackend() const { return static_cast<int>(render_backend); }
@@ -295,6 +303,9 @@ private:
     bool is_window_adjustable = false;
     bool is_stream_window_adjustable = false;
     QAtomicInteger<int> dropped_frames_current = 0;
+    // Written from presentFrame and read once at session end, on different threads.
+    mutable QMutex session_baseline_mutex;
+    ChiakiSessionBaseline session_baseline;
     bool going_full = false;
     VideoMode video_mode = VideoMode::Normal;
     float zoom_factor = 0;

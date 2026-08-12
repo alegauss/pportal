@@ -11,6 +11,7 @@
 #include <chiaki/time.h>
 #include "../../lib/src/utils.h"
 
+#include <QDateTime>
 #include <QKeyEvent>
 #include <QMutexLocker>
 #include <QtMath>
@@ -192,6 +193,7 @@ StreamSession::StreamSession(const StreamSessionConnectInfo &connect_info, QObje
 	player_index = 0;
 	memset(led_color, 0, sizeof(led_color));
 	packet_loss_max = connect_info.packet_loss_max;
+	video_profile = connect_info.video_profile;
 	ChiakiErrorCode err;
 		ffmpeg_decoder = new ChiakiFfmpegDecoder;
 		ChiakiLogSniffer sniffer;
@@ -477,12 +479,33 @@ void StreamSession::Start()
 {
 	if(!connect_timer.isValid())
 		connect_timer.start();
+	// Taken here rather than in the constructor: the wall clock is what makes two runs
+	// comparable, and a session that is constructed and never started is not a run.
+	baseline_started_unix = QDateTime::currentSecsSinceEpoch();
+	baseline_elapsed.start();
 	ChiakiErrorCode err = chiaki_session_start(&session);
 	if(err != CHIAKI_ERR_SUCCESS)
 	{
 		throw ChiakiException("Chiaki Session Start failed");
 	}
 	session_started = true;
+}
+
+void StreamSession::FillBaseline(ChiakiSessionBaseline *baseline) const
+{
+	if(baseline_started_unix)
+		chiaki_session_baseline_set_started(baseline, (uint64_t)baseline_started_unix);
+	baseline->duration_ms = baseline_elapsed.isValid() ? (uint64_t)baseline_elapsed.elapsed() : 0;
+
+	chiaki_session_baseline_set_app_version(baseline, CHIAKI_VERSION);
+	chiaki_session_baseline_set_video_codec(baseline, chiaki_codec_name(video_profile.codec));
+	baseline->video_width = video_profile.width;
+	baseline->video_height = video_profile.height;
+	baseline->video_fps = video_profile.max_fps;
+
+	baseline->measured_bitrate_mbps = measured_bitrate;
+	baseline->average_packet_loss = average_packet_loss;
+	baseline->frames_lost = frames_lost < 0 ? 0 : (uint64_t)frames_lost;
 }
 
 void StreamSession::Stop()

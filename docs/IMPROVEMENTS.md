@@ -587,26 +587,6 @@ guess and a gate on a guess is worse than no gate.
 
 ## Block H — Performance and telemetry
 
-### §PP39 The baseline that expires
-
-The application is not uninstrumented. streamsession.h carries measured_bitrate,
-frames_lost and pending_frames_lost; qmlmainwindow.h carries droppedFrames and takes
-decoder_delivery_us with every presented frame; congestioncontrol.c computes packet
-loss; senkusha runs an RTT probe at connect. StreamMenuWindow.qml draws the bitrate and
-the dropped frame count.
-
-All of it is live and none of it is kept. Close the window and the run is gone.
-
-That is what makes this task first and time-sensitive in a way nothing else here is.
-Every comparison the port will be judged by needs a before, the before can only be
-recorded by the Qt build, and the Qt build is scheduled for deletion. Recorded late, the
-baseline describes a tree that has already been half converted; not recorded at all,
-faster and slower become two opinions nobody can settle.
-
-The scope is deliberately small: take what already exists, timestamp it, write it per
-session in a form another run can be compared against. Not new metrics - those are the
-tasks after this one.
-
 ### §PP40 The number nobody has
 
 Four counters exist and none of them is latency. decoder_delivery_us is the closest and

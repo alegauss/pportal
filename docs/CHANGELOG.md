@@ -18,5 +18,7 @@
 
 ## Block H — Performance and telemetry
 
+- ✅ **PP39** **the numbers the stream already computes are drawn on screen and never recorded, so the Qt build leaves no baseline** — The counters the stream already computes are now written as one JSON line per session to chiaki_baseline.jsonl in the log dir, timestamped and held by 8 munit assertions.
+
 ## Block I — NVIDIA path
 

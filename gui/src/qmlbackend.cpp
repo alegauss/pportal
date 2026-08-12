@@ -2,6 +2,7 @@
 #include "qmlsettings.h"
 #include "qmlmainwindow.h"
 #include "streamsession.h"
+#include "sessionlog.h"
 #include "controllermanager.h"
 #include "psnaccountid.h"
 #include "psntoken.h"
@@ -1009,6 +1010,9 @@ void QmlBackend::createSession(const StreamSessionConnectInfo &connect_info)
         return;
     }
 
+    if (window)
+        window->resetSessionBaseline();
+
     connect(session, &StreamSession::FfmpegFrameAvailable, frame_thread->parent(), [this, use_opengl_renderer]() {
         ChiakiFfmpegDecoder *decoder = session->GetFfmpegDecoder();
         if (!decoder) {
@@ -1052,6 +1056,8 @@ void QmlBackend::createSession(const StreamSessionConnectInfo &connect_info)
     connect(session, &StreamSession::SessionQuit, this, [this, session_for_connections](ChiakiQuitReason reason, const QString &reason_str) {
         if (session != session_for_connections)
             return;
+
+        recordSessionBaseline(session_for_connections);
 
         if (chiaki_quit_reason_is_error(reason)) {
             QString m = tr("Chiaki Session has quit") + ":\n" + chiaki_quit_reason_string(reason);
@@ -2298,6 +2304,34 @@ void QmlBackend::applyStartupWindowSizing()
 #if CHIAKI_GUI_ENABLE_STEAM_SHORTCUT
 QString QmlBackend::getExecutable() {
     return QCoreApplication::applicationFilePath();
+}
+
+void QmlBackend::recordSessionBaseline(StreamSession *quitting_session)
+{
+    if (!quitting_session)
+        return;
+
+    const QString dir = GetLogBaseDir();
+    if (dir.isEmpty()) {
+        qCWarning(chiakiGui) << "No log directory, session baseline not recorded";
+        return;
+    }
+    const QString path = QDir(dir).absoluteFilePath(QStringLiteral("chiaki_baseline.jsonl"));
+
+    ChiakiSessionBaseline baseline;
+    chiaki_session_baseline_init(&baseline);
+    quitting_session->FillBaseline(&baseline);
+    if (window)
+        window->fillSessionBaseline(&baseline);
+
+    const ChiakiErrorCode err = chiaki_session_baseline_append(&baseline, path.toLocal8Bit().constData());
+    if (err != CHIAKI_ERR_SUCCESS) {
+        // A baseline that silently fails to land reads afterwards as a session that never
+        // ran, which is the one way this record can mislead the comparison it exists for.
+        qCWarning(chiakiGui) << "Failed to record session baseline to" << path << ":" << chiaki_error_string(err);
+        return;
+    }
+    qCInfo(chiakiGui) << "Session baseline recorded to" << path;
 }
 
 void QmlBackend::createSteamShortcut(QString shortcutName, QString launchOptions, const QJSValue &callback, QString steamDir)

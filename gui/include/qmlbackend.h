@@ -272,6 +272,9 @@ private:
     uint32_t getStreamShortcut() const;
     void updateStreamShortcut();
     QString getExecutable();
+    // The session and the window each hold half of what a run measured, and this is the
+    // only place that holds both, so the record is assembled and written here.
+    void recordSessionBaseline(StreamSession *quitting_session);
 
     Settings *settings = {};
     QmlSettings *settings_qml = {};

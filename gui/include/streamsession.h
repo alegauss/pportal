@@ -7,6 +7,7 @@
 #include <chiaki/opusdecoder.h>
 #include <chiaki/opusencoder.h>
 #include <chiaki/ffmpegdecoder.h>
+#include <chiaki/sessionbaseline.h>
 
 #include "exception.h"
 #include "sessionlog.h"
@@ -149,6 +150,9 @@ class StreamSession : public QObject
 		int32_t pending_frames_lost = 0;
 		double packet_loss_max = 0;
 		QList<double> packet_loss_history;
+		ChiakiConnectVideoProfile video_profile = {};
+		qint64 baseline_started_unix = 0;
+		QElapsedTimer baseline_elapsed;
 		QAtomicInteger<quint64> decoder_flush_generation{0};
 		bool cant_display = false;
 		int haptics_handheld;
@@ -276,6 +280,8 @@ class StreamSession : public QObject
 		double GetAveragePacketLoss()	{ return average_packet_loss; }
 		quint64 DecoderFlushGeneration() const { return decoder_flush_generation.loadRelaxed(); }
 		int GetFramesLost()		{ return frames_lost; }
+		/** Fill the timing, the video profile and the stream-side counters of a baseline record. */
+		void FillBaseline(ChiakiSessionBaseline *baseline) const;
 		bool GetMuted()	{ return muted; }
 		void SetMuted(bool enable)	{ if (enable != muted) ToggleMute(); }
 		void SetAudioVolume(int volume) { audio_volume = volume; }

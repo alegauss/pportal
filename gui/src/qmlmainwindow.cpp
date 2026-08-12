@@ -2688,6 +2688,25 @@ int QmlMainWindow::droppedFrames() const
 void QmlMainWindow::increaseDroppedFrames()
 {
     dropped_frames_current.fetchAndAddRelaxed(1);
+    QMutexLocker baseline_locker(&session_baseline_mutex);
+    session_baseline.frames_dropped++;
+}
+
+void QmlMainWindow::resetSessionBaseline()
+{
+    QMutexLocker baseline_locker(&session_baseline_mutex);
+    chiaki_session_baseline_init(&session_baseline);
+}
+
+void QmlMainWindow::fillSessionBaseline(ChiakiSessionBaseline *baseline) const
+{
+    QMutexLocker baseline_locker(&session_baseline_mutex);
+    baseline->frames_presented = session_baseline.frames_presented;
+    baseline->frames_dropped = session_baseline.frames_dropped;
+    baseline->handoff_us_min = session_baseline.handoff_us_min;
+    baseline->handoff_us_max = session_baseline.handoff_us_max;
+    baseline->handoff_us_sum = session_baseline.handoff_us_sum;
+    baseline->handoff_samples = session_baseline.handoff_samples;
 }
 
 bool QmlMainWindow::keepVideo() const
@@ -2961,6 +2980,16 @@ void QmlMainWindow::presentFrame(ChiakiFfmpegFrame frame, int32_t frames_lost, q
                 << "[decode] gui_handoff_outlier_us=" << gui_handoff_us
                 << " pts=" << frame.pts;
         }
+        QMutexLocker baseline_locker(&session_baseline_mutex);
+        chiaki_session_baseline_push_handoff(&session_baseline, static_cast<uint64_t>(gui_handoff_us));
+    }
+
+    {
+        QMutexLocker baseline_locker(&session_baseline_mutex);
+        if (frames_lost > 0)
+            session_baseline.frames_dropped += static_cast<uint64_t>(frames_lost);
+        if (frame.frame)
+            session_baseline.frames_presented++;
     }
 
     dropped_frames_current.fetchAndAddRelaxed(frames_lost);
@@ -4693,6 +4722,7 @@ void QmlMainWindow::doneOpenGLContextCurrent()
 
 void QmlMainWindow::init(Settings *settings, bool exit_app_on_stream_exit)
 {
+    chiaki_session_baseline_init(&session_baseline);
     render_backend = settings->GetRenderBackend();
     setSurfaceType(render_backend == RenderBackend::Vulkan ? QWindow::VulkanSurface : QWindow::OpenGLSurface);
     qparams = {};
