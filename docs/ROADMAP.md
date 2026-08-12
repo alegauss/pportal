@@ -73,6 +73,7 @@
 - 📋 **PP58** (deps: —) **the airspace present path runs at half the shared surface's frame rate and nothing says why** — 31.4ms per frame against 16.7ms on the same machine, and whether PresentEx blocks or the WPF render loop stalls behind it was never separated. → §PP58
 - 📋 **PP59** (deps: PP44 ✅) **takion mallocs a queue entry and a packet buffer per video packet, so the receive step has no budget** — PP44's zero covers parse and reassembly only, and a managed transport held to zero for the whole path has to answer for the reorder-queue entry too. → §PP59
 - 📋 **PP60** (deps: PP45 ✅) **one baseline file accumulates records of four schemas and the comparison tool refuses all but the newest** — The sink only appends, the schema moved 1 to 4 since PP39, and compare-baselines reads the last line and refuses the rest, so the history it compares is unreadable. → §PP60
+- 📋 **PP61** (deps: PP46 ⏳) **the startup harness labels a warm run cold, because the OS file cache outlives the process** — 3771ms on the first run after a build against 1218ms on re-invocation, and nothing in the report says which cache state produced the number. → §PP61
 
 ## Block I — NVIDIA path
 
