@@ -67,11 +67,10 @@
 
 ## Block H — Performance and telemetry
 
-- 📋 **PP42** (deps: PP39 ✅) **telemetry has no sink: the counters live in the window and end with it** — A number that cannot outlive the session it describes cannot be compared with a run from another build, which is the entire purpose of collecting it. → §PP42
 - 📋 **PP43** (deps: PP39 ✅) **the present path is the largest risk in the port and would be chosen by argument rather than by measurement** — A child window and a shared texture differ by a copy per frame and a compositor, and a spike measures in days what committing 7538 lines would answer in months. → §PP43
 - 📋 **PP44** (deps: PP41 ✅) **a managed transport allocating per packet would show up as stutter, and nothing would fail when it does** — Thousands of small packets a second turn an ordinary allocation into a collection under load, and the symptom is the worst frame of a minute rather than the average. → §PP44
-- 📋 **PP45** (deps: PP41 ✅, PP42) **no harness runs the old build and the new one against the same input and prints the difference** — Before and after taken on different days, networks and consoles compare the days, and that is how a port acquires a reputation nobody can check. → §PP45
-- 📋 **PP46** (deps: PP42) **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — A Chromium leaving the build should be visible in cold start and in megabytes, and stating it without measuring is how a port collects folklore. → §PP46
+- 📋 **PP45** (deps: PP41 ✅, PP42 ✅) **no harness runs the old build and the new one against the same input and prints the difference** — Before and after taken on different days, networks and consoles compare the days, and that is how a port acquires a reputation nobody can check. → §PP45
+- 📋 **PP46** (deps: PP42 ✅) **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — A Chromium leaving the build should be visible in cold start and in megabytes, and stating it without measuring is how a port collects folklore. → §PP46
 - 📋 **PP55** (deps: PP40 ✅) **the in-process latency estimate has nothing to check it against, so an honest sum and a wrong one read alike** — A floor built from three client-side terms can be self-consistent and still miss the delay a user feels, and only an instrument outside the process says which it is. → §PP55
 
 ## Block I — NVIDIA path

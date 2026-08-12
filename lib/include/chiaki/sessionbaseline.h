@@ -5,6 +5,7 @@
 
 #include "common.h"
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -16,14 +17,29 @@ extern "C" {
  * The counters this application already computes are drawn on screen and thrown away
  * when the window closes, so a run cannot be compared with a run from another build.
  * This is the sink: one line of JSON per session, appended to a file, holding what the
- * stream already measured plus the timestamp that makes two of them comparable.
+ * stream already measured, the configuration that produced it, and the timestamp that
+ * makes two of them comparable.
  *
  * It carries no console name, address, session id or account: the identifying fields
  * are exactly the ones the session log has a sanitizer to remove, so they are not
  * collected here at all rather than collected and then scrubbed.
+ *
+ * Local, on disk, and nothing here is sent anywhere
+ * ------------------------------------------------
+ * This is instrumentation for a port, not analytics about users, and that is a property
+ * of the design rather than an accident of nobody having written an uploader yet. The
+ * only sink is chiaki_session_baseline_append, which takes a path and opens a file; this
+ * translation unit has no socket, no URL and no dependency that could acquire one.
+ *
+ * The field set below is therefore closed, and closed on purpose. A session record that
+ * named a console or a network would be exactly the file that must not grow a
+ * transmitter later without the decision being taken again - so the guard against that
+ * is that there is no such field to transmit. test_baseline_field_set_is_closed pins the
+ * record's keys for that reason: adding one is a decision, and it should have to break a
+ * test that says so out loud rather than pass quietly.
  */
 
-#define CHIAKI_SESSION_BASELINE_SCHEMA 2
+#define CHIAKI_SESSION_BASELINE_SCHEMA 3
 
 /** Longest line chiaki_session_baseline_format can produce, including the newline. */
 #define CHIAKI_SESSION_BASELINE_LINE_MAX 2048
@@ -126,6 +142,23 @@ typedef struct chiaki_session_baseline_t
 	uint32_t video_height;
 	uint32_t video_fps;
 
+	/**
+	 * The settings that decide the picture, so a row explains the numbers beside it rather
+	 * than only reporting them. Each one governs something this record already measures:
+	 * the decoder governs the decode stage, the requested bitrate is what
+	 * measured_bitrate_mbps is a shortfall against, and the two network knobs govern the
+	 * correct stage and frames_lost. Without them two rows can differ for a reason that is
+	 * nowhere in either row.
+	 */
+	/** The decoder actually in use - "cuda", "d3d11va", "vulkan", or "software". */
+	char hw_decoder[CHIAKI_SESSION_BASELINE_TEXT_SIZE];
+	/** Requested, not achieved. measured_bitrate_mbps is the achieved one. */
+	uint32_t bitrate_kbps;
+	/** Congestion control's loss ceiling, 0..1. */
+	double packet_loss_max;
+	/** Whether an IDR was requested on FEC failure, which changes what a loss costs. */
+	bool idr_on_fec_failure;
+
 	/** ChiakiStreamConnection::measured_bitrate, as drawn by the stream menu. */
 	double measured_bitrate_mbps;
 	/** The smoothed congestion-control packet loss, 0..1, as drawn by the stream menu. */
@@ -181,6 +214,8 @@ CHIAKI_EXPORT void chiaki_session_baseline_set_started(ChiakiSessionBaseline *ba
 /** Copy a string into one of the text fields, truncating rather than overflowing. */
 CHIAKI_EXPORT void chiaki_session_baseline_set_app_version(ChiakiSessionBaseline *baseline, const char *version);
 CHIAKI_EXPORT void chiaki_session_baseline_set_video_codec(ChiakiSessionBaseline *baseline, const char *codec);
+/** NULL or empty becomes "software", which is the decoder that ran when none was named. */
+CHIAKI_EXPORT void chiaki_session_baseline_set_hw_decoder(ChiakiSessionBaseline *baseline, const char *hw_decoder);
 
 /** Fold one decoder-to-present handoff sample into the min/max/mean. */
 CHIAKI_EXPORT void chiaki_session_baseline_push_handoff(ChiakiSessionBaseline *baseline, uint64_t handoff_us);

@@ -17,6 +17,10 @@ static void fill_reference(ChiakiSessionBaseline *baseline)
 	baseline->video_width = 1920;
 	baseline->video_height = 1080;
 	baseline->video_fps = 60;
+	chiaki_session_baseline_set_hw_decoder(baseline, "cuda");
+	baseline->bitrate_kbps = 30000;
+	baseline->packet_loss_max = 0.05;
+	baseline->idr_on_fec_failure = true;
 	baseline->measured_bitrate_mbps = 27.5;
 	baseline->average_packet_loss = 0.0125;
 	baseline->frames_presented = 45210;
@@ -56,11 +60,13 @@ static MunitResult test_baseline_format_line(const MunitParameter params[], void
 	munit_assert_int(chiaki_session_baseline_format(&baseline, line, sizeof(line), &written), ==, CHIAKI_ERR_SUCCESS);
 
 	static const char *expected =
-			"{\"schema\":2"
+			"{\"schema\":3"
 			",\"started_utc\":\"2025-08-11T20:31:07Z\""
 			",\"duration_ms\":754321"
 			",\"app_version\":\"1.10.0\""
 			",\"video\":{\"width\":1920,\"height\":1080,\"fps\":60,\"codec\":\"h264\"}"
+			",\"settings\":{\"hw_decoder\":\"cuda\",\"bitrate_kbps\":30000"
+			",\"packet_loss_max\":0.05000,\"idr_on_fec_failure\":true}"
 			",\"measured_bitrate_mbps\":27.500"
 			",\"average_packet_loss\":0.01250"
 			",\"frames\":{\"presented\":45210,\"lost\":12,\"dropped\":7}"
@@ -102,6 +108,91 @@ static MunitResult test_baseline_format_empty(const MunitParameter params[], voi
 	munit_assert_not_null(strstr(line, "\"decode\":{\"min\":0,\"max\":0,\"avg\":0,\"p99\":0,\"samples\":0}"));
 	munit_assert_null(strstr(line, "nan"));
 	munit_assert_null(strstr(line, "inf"));
+
+	return MUNIT_OK;
+}
+
+/**
+ * No hardware decoder named means the frames were decoded on the CPU, and the row has to say
+ * so. An empty string would read as a field nobody filled in, which is the one reading that
+ * is wrong: "software" is a measurement, not a missing value.
+ */
+static MunitResult test_baseline_hw_decoder_defaults_to_software(const MunitParameter params[], void *user)
+{
+	ChiakiSessionBaseline baseline;
+	chiaki_session_baseline_init(&baseline);
+
+	chiaki_session_baseline_set_hw_decoder(&baseline, NULL);
+	munit_assert_string_equal(baseline.hw_decoder, "software");
+
+	chiaki_session_baseline_set_hw_decoder(&baseline, "");
+	munit_assert_string_equal(baseline.hw_decoder, "software");
+
+	// A named decoder is recorded as given: the library refuses one it cannot open rather
+	// than falling back, so the name that got here is the name that ran.
+	chiaki_session_baseline_set_hw_decoder(&baseline, "d3d11va");
+	munit_assert_string_equal(baseline.hw_decoder, "d3d11va");
+
+	char line[CHIAKI_SESSION_BASELINE_LINE_MAX];
+	munit_assert_int(chiaki_session_baseline_format(&baseline, line, sizeof(line), NULL), ==, CHIAKI_ERR_SUCCESS);
+	munit_assert_not_null(strstr(line, "\"hw_decoder\":\"d3d11va\""));
+	// And never as an empty string, which is what a record with no decoder must not contain.
+	munit_assert_null(strstr(line, "\"hw_decoder\":\"\""));
+
+	return MUNIT_OK;
+}
+
+/**
+ * The record is local instrumentation for a port, and its field set is closed so that it
+ * stays that way: there is no console, address, account or session id in it to transmit.
+ *
+ * This pins the keys. It is not a test of behaviour - it is a test of a decision, and it
+ * fails when someone adds a field, which is the moment that decision has to be taken again.
+ * The two lists below are the whole contract: what the record carries, and what it must
+ * never carry. A new metric means adding a name to the first list on purpose; a name from
+ * the second list appearing at all means this file is no longer what its header says it is.
+ */
+static MunitResult test_baseline_field_set_is_closed(const MunitParameter params[], void *user)
+{
+	ChiakiSessionBaseline baseline;
+	fill_reference(&baseline);
+
+	char line[CHIAKI_SESSION_BASELINE_LINE_MAX];
+	munit_assert_int(chiaki_session_baseline_format(&baseline, line, sizeof(line), NULL), ==, CHIAKI_ERR_SUCCESS);
+
+	static const char *carried[] = {
+		"\"schema\":", "\"started_utc\":", "\"duration_ms\":", "\"app_version\":",
+		"\"video\":", "\"width\":", "\"height\":", "\"fps\":", "\"codec\":",
+		"\"settings\":", "\"hw_decoder\":", "\"bitrate_kbps\":", "\"packet_loss_max\":",
+		"\"idr_on_fec_failure\":",
+		"\"measured_bitrate_mbps\":", "\"average_packet_loss\":",
+		"\"frames\":", "\"presented\":", "\"lost\":", "\"dropped\":",
+		"\"handoff_us\":", "\"stages_us\":", "\"receive\":", "\"reorder\":",
+		"\"reassemble\":", "\"correct\":", "\"decode\":",
+		"\"latency\":", "\"estimate_us\":", "\"input_to_wire_us\":", "\"network_rtt_us\":",
+		"\"min\":", "\"max\":", "\"avg\":", "\"p99\":", "\"samples\":",
+	};
+	for(size_t i = 0; i < sizeof(carried) / sizeof(carried[0]); i++)
+		munit_assert_not_null(strstr(line, carried[i]));
+
+	// Count the keys, so a field added without being listed above is caught too: pinning only
+	// the names present would let a new one in silently.
+	unsigned keys = 0;
+	for(const char *c = line; *c; c++)
+	{
+		if(*c == ':' && c != line && *(c - 1) == '"')
+			keys++;
+	}
+	munit_assert_uint(keys, ==, 66);
+
+	// Nothing that identifies a console, a network or an account. These are exactly the
+	// labels the session log carries a sanitizer to remove; here they are absent instead.
+	static const char *never[] = {
+		"host", "address", "ipv4", "ipv6", "nickname", "duid", "account",
+		"psn", "session_id", "regist", "morning", "token", "url", "http",
+	};
+	for(size_t i = 0; i < sizeof(never) / sizeof(never[0]); i++)
+		munit_assert_null(strstr(line, never[i]));
 
 	return MUNIT_OK;
 }
@@ -410,6 +501,20 @@ MunitTest tests_session_baseline[] = {
 	{
 		"/stages_are_separate",
 		test_baseline_stages_are_separate,
+		NULL, NULL,
+		MUNIT_TEST_OPTION_NONE,
+		NULL
+	},
+	{
+		"/hw_decoder_defaults_to_software",
+		test_baseline_hw_decoder_defaults_to_software,
+		NULL, NULL,
+		MUNIT_TEST_OPTION_NONE,
+		NULL
+	},
+	{
+		"/field_set_is_closed",
+		test_baseline_field_set_is_closed,
 		NULL, NULL,
 		MUNIT_TEST_OPTION_NONE,
 		NULL

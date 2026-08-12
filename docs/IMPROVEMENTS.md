@@ -608,23 +608,6 @@ opt-out can keep the fast path for someone who only wants the client.
 
 ## Block H — Performance and telemetry
 
-### §PP42 Where the numbers go
-
-sessionlog.cpp already writes a log per session and users are asked to attach it to
-reports, so the pattern and the place both exist. What is missing is a machine-readable
-record beside it: one row per session with the build, the settings that affect the
-picture, and the distributions rather than the last value drawn on screen.
-
-Local, on disk, and off by default in the sense that matters - nothing here is sent
-anywhere. This is instrumentation for a port, not analytics about users, and the
-distinction has to be stated in the design rather than assumed from the fact that nobody
-wrote an uploader yet. A session record naming a console and a network is exactly the
-kind of file that must not acquire a transmitter later without the decision being taken
-again.
-
-With this in place, comparing two builds stops being a person watching a HUD and becomes
-a question asked of two files.
-
 ### §PP43 Measure the two before writing either
 
 The renderer task offers three shapes and its rationale argues for them on structure: an

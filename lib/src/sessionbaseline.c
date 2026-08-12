@@ -85,6 +85,17 @@ CHIAKI_EXPORT void chiaki_session_baseline_set_video_codec(ChiakiSessionBaseline
 	baseline_set_text(baseline->video_codec, sizeof(baseline->video_codec), codec);
 }
 
+CHIAKI_EXPORT void chiaki_session_baseline_set_hw_decoder(ChiakiSessionBaseline *baseline, const char *hw_decoder)
+{
+	// Named here rather than at the call site, because "" and "no hardware decoder" are the
+	// same fact and a row reading "" would look like a field nobody filled in. The library
+	// refuses a named decoder it cannot open rather than falling back silently, so a session
+	// that ran with no name ran on the CPU.
+	if(!hw_decoder || !hw_decoder[0])
+		hw_decoder = "software";
+	baseline_set_text(baseline->hw_decoder, sizeof(baseline->hw_decoder), hw_decoder);
+}
+
 #define BASELINE_HIST_LINEAR CHIAKI_SESSION_BASELINE_HIST_LINEAR
 #define BASELINE_HIST_SUB CHIAKI_SESSION_BASELINE_HIST_SUB
 #define BASELINE_HIST_SUB_BITS CHIAKI_SESSION_BASELINE_HIST_SUB_BITS
@@ -262,6 +273,8 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_session_baseline_format(const ChiakiSession
 			",\"duration_ms\":%llu"
 			",\"app_version\":\"%s\""
 			",\"video\":{\"width\":%u,\"height\":%u,\"fps\":%u,\"codec\":\"%s\"}"
+			",\"settings\":{\"hw_decoder\":\"%s\",\"bitrate_kbps\":%u"
+			",\"packet_loss_max\":%.5f,\"idr_on_fec_failure\":%s}"
 			",\"measured_bitrate_mbps\":%.3f"
 			",\"average_packet_loss\":%.5f"
 			",\"frames\":{\"presented\":%llu,\"lost\":%llu,\"dropped\":%llu}"
@@ -272,6 +285,10 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_session_baseline_format(const ChiakiSession
 			baseline->app_version,
 			baseline->video_width, baseline->video_height, baseline->video_fps,
 			baseline->video_codec,
+			baseline->hw_decoder,
+			baseline->bitrate_kbps,
+			baseline_finite(baseline->packet_loss_max),
+			baseline->idr_on_fec_failure ? "true" : "false",
 			baseline_finite(baseline->measured_bitrate_mbps),
 			baseline_finite(baseline->average_packet_loss),
 			(unsigned long long)baseline->frames_presented,

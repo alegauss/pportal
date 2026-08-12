@@ -153,6 +153,12 @@ class StreamSession : public QObject
 		ChiakiConnectVideoProfile video_profile = {};
 		qint64 baseline_started_unix = 0;
 		QElapsedTimer baseline_elapsed;
+		/**
+		 * Kept for the session baseline: both are read from connect_info at construction and
+		 * connect_info does not outlive it, while the record is written at teardown.
+		 */
+		QString baseline_hw_decoder;
+		bool baseline_idr_on_fec_failure = false;
 		QAtomicInteger<quint64> decoder_flush_generation{0};
 		bool cant_display = false;
 		int haptics_handheld;
