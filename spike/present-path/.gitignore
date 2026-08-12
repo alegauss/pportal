@@ -1,0 +1,8 @@
+# Build output: this spike is re-runnable from source, not from committed binaries.
+bin/
+obj/
+
+# Screen captures are excluded on purpose. BitBlt copies whatever is on the desktop at the
+# window's rect, which in a shared or remote session is somebody else's screen content.
+# The composition captures (*-wpf.png) come from RenderTargetBitmap and contain only the app.
+*-screen.png

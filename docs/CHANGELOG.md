@@ -22,6 +22,7 @@
 - ✅ **PP40** **glass to glass latency is not among the numbers measured, and it is the one users judge on** — The record now carries a latency floor: input queueing plus the console's reported round trip, read as milliseconds against ICMP, plus the decode-to-present handoff, held by 4 munit assertions.
 - ✅ **PP41** **only one stage of the frame path is timed, so a slower build says which build and never which stage** — Receive, reorder dwell, reassemble, FEC correct and the decoder's send-to-pull are each timed now, as min/max/mean plus a p99 from a fixed log histogram, held by 6 munit assertions.
 - ✅ **PP42** **telemetry has no sink: the counters live in the window and end with it** — The row now names the configuration that produced it - decoder, requested bitrate, both loss knobs - and its field set is closed against an address ever entering it, held by 11 munit assertions.
+- ✅ **PP43** **the present path is the largest risk in the port and would be chosen by argument rather than by measurement** — Measured on an RTX 4060: the shared surface holds 60fps at a 47us median present with a 5ms p99, while the airspace child window settles at 32fps - numbers and caveats in spike/present-path.
 
 ## Block I — NVIDIA path
 

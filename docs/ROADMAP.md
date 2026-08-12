@@ -21,7 +21,7 @@
 
 ## Block C — Video and input path
 
-- 📋 **PP9** (deps: PP5, PP43) **the video is presented by libplacebo into a Vulkan-backed QQuickWindow, which WPF cannot host** — WPF composes through D3D9 and cannot present a Vulkan swapchain, so the choice between a child window and a shared texture is what every stream screen is then built on. → §PP9
+- 📋 **PP9** (deps: PP5, PP43 ✅) **the video is presented by libplacebo into a Vulkan-backed QQuickWindow, which WPF cannot host** — WPF composes through D3D9 and cannot present a Vulkan swapchain, so the choice between a child window and a shared texture is what every stream screen is then built on. → §PP9
 - 📋 **PP10** (deps: PP9) **the stream HUD and the in-stream menu are QML drawn over the video and disappear with the renderer** — 1740 lines of overlay assume the compositor they are drawn in, so what replaces the renderer decides whether they are XAML above a surface or drawn into the frame. → §PP10
 - 📋 **PP11** (deps: PP9) **fullscreen, HDR handoff and refresh-rate switching are handled by the Qt window** — These are the three settings a remote play session is actually judged by, and each is a Win32 or DXGI call the new window has to make for itself. → §PP11
 - 📋 **PP57** (deps: —) **videoreceiver reads slice.slice_type uninitialised when the bitstream parser declined the frame, which is UB** — chiaki_bitstream_slice returns false on a missing startcode or an odd NAL type, yet the success path reads slice.slice_type anyway, describing the frame from stack garbage. → §PP57
@@ -68,7 +68,6 @@
 
 ## Block H — Performance and telemetry
 
-- 📋 **PP43** (deps: PP39 ✅) **the present path is the largest risk in the port and would be chosen by argument rather than by measurement** — A child window and a shared texture differ by a copy per frame and a compositor, and a spike measures in days what committing 7538 lines would answer in months. → §PP43
 - 📋 **PP44** (deps: PP41 ✅) **a managed transport allocating per packet would show up as stutter, and nothing would fail when it does** — Thousands of small packets a second turn an ordinary allocation into a collection under load, and the symptom is the worst frame of a minute rather than the average. → §PP44
 - 📋 **PP45** (deps: PP41 ✅, PP42 ✅) **no harness runs the old build and the new one against the same input and prints the difference** — Before and after taken on different days, networks and consoles compare the days, and that is how a port acquires a reputation nobody can check. → §PP45
 - 📋 **PP46** (deps: PP42 ✅) **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — A Chromium leaving the build should be visible in cold start and in megabytes, and stating it without measuring is how a port collects folklore. → §PP46
@@ -76,7 +75,7 @@
 
 ## Block I — NVIDIA path
 
-- 📋 **PP47** (deps: PP43) **DLSS needs motion vectors and a depth buffer, and a decoded video stream carries neither** — The feature that applies to video is RTX Video Super Resolution, not DLSS, and the two are confused often enough that the wrong one gets scheduled. → §PP47
+- 📋 **PP47** (deps: PP43 ✅) **DLSS needs motion vectors and a depth buffer, and a decoded video stream carries neither** — The feature that applies to video is RTX Video Super Resolution, not DLSS, and the two are confused often enough that the wrong one gets scheduled. → §PP47
 - 📋 **PP48** (deps: PP41 ✅) **the client already prefers the cuda decoder on an NVIDIA card, and nothing measures whether that helps** — qmlbackend picks it from a card detection with no number behind the choice, so the vendor path is already here and already unevidenced. → §PP48
 - 📋 **PP49** (deps: PP11, PP47) **the console sends SDR on most titles and an HDR display shows it flat, with nothing in the client trying** — RTX Video HDR does this conversion on the presented frame, and it is the one vendor feature whose benefit is visible on a still image rather than argued from a graph. → §PP49
 - 📋 **PP50** (deps: PP40 ✅, PP47) **frame generation would smooth a 30fps stream and cost a frame of latency to do it** — Interpolation needs the frame after the one being shown, so it buys smoothness with exactly the quantity remote play is judged on and the trade has to be measured. → §PP50

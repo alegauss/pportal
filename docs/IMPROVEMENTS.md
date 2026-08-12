@@ -633,22 +633,6 @@ opt-out can keep the fast path for someone who only wants the client.
 
 ## Block H — Performance and telemetry
 
-### §PP43 Measure the two before writing either
-
-The renderer task offers three shapes and its rationale argues for them on structure: an
-airspace child window that nothing can be drawn over, a shared texture that composes
-properly and costs a copy, a native renderer that discards the shader work. What none of
-that says is what they cost in milliseconds on this machine with this stream.
-
-A spike answers it: a triangle, or better a decoded frame, presented through HwndHost
-and through D3DImage, timed at present with the instrumentation the tasks above provide.
-Days of work against a decision that the whole of Block C and half of Block D inherit.
-
-It is filed here rather than as a note inside the renderer task because it has an output
-of its own - two numbers and the conditions they were taken under - and because a spike
-that nobody scheduled is a spike nobody runs. The renderer task should not be started
-before this one reports.
-
 ### §PP44 Allocations are the managed risk, and they are testable
 
 The transport rewrite is the one place in the managed core where the runtime is a real
