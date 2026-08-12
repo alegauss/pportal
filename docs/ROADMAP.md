@@ -1,5 +1,10 @@
 # Roadmap (active backlog)
 
+## Priority
+
+- Block H
+- Block I
+
 ## Block A — Core
 
 - 📋 **PP1** (deps: —) **no .NET host exists, so a XAML window has nowhere to live** — The port needs a target before it needs a screen, and claude-tray already answers what that target is: net10.0-windows with UseWPF, the Fluent theme and one self-contained win-x64 exe. → §PP1
@@ -23,12 +28,12 @@
 ## Block D — Screens
 
 - 📋 **PP12** (deps: PP1, PP8) **the seven custom QML controls carry the theme, and gamepad focus navigation is built into them** — Fluent gives the look but no gamepad focus engine, so the thing every screen inherits has to exist before the screens that inherit it. → §PP12
-- 📋 **PP13** (deps: PP12, PP6) **the console list, the front door of the application, is QML bound to the discovery model** — It is the first screen a user sees and the first that proves the ported discovery, so it is the smallest slice that can be judged end to end. → §PP13
-- 📋 **PP14** (deps: PP12, PP6) **registration, manual host, console PIN and profile dialogs are QML with their own validation** — Registering a console is the step between an installed application and a working one, and its four dialogs are one flow rather than four screens. → §PP14
-- 📋 **PP15** (deps: PP12, PP7) **the PSN login and token dialogs are 882 lines of QML wrapped around the embedded browser** — The account link is what remote play outside the local network depends on, and these are the only screens whose content is a third party page. → §PP15
-- 📋 **PP16** (deps: PP12, PP2) **the settings screen is 3271 lines of QML against 151 properties exposed from C++** — It is the largest single screen by a factor of three, and the property surface behind it is the real measure of the work rather than the markup. → §PP16
-- 📋 **PP17** (deps: PP12, PP9) **the renderer tuning and colour mapping screens are 2132 lines of QML over libplacebo options** — Every control on them writes an option that only exists while libplacebo does, so they can only be drawn once the renderer decision has been taken. → §PP17
-- 📋 **PP18** (deps: PP12, PP8) **the controller mapping screen is QML bound to the live SDL mapping strings** — A mapping screen is unusable without input arriving from the device being mapped, so it lands with the input path rather than with the other dialogs. → §PP18
+- 📋 **PP13** (deps: PP6, PP12) **the console list, the front door of the application, is QML bound to the discovery model** — It is the first screen a user sees and the first that proves the ported discovery, so it is the smallest slice that can be judged end to end. → §PP13
+- 📋 **PP14** (deps: PP6, PP12) **registration, manual host, console PIN and profile dialogs are QML with their own validation** — Registering a console is the step between an installed application and a working one, and its four dialogs are one flow rather than four screens. → §PP14
+- 📋 **PP15** (deps: PP7, PP12) **the PSN login and token dialogs are 882 lines of QML wrapped around the embedded browser** — The account link is what remote play outside the local network depends on, and these are the only screens whose content is a third party page. → §PP15
+- 📋 **PP16** (deps: PP2, PP12) **the settings screen is 3271 lines of QML against 151 properties exposed from C++** — It is the largest single screen by a factor of three, and the property surface behind it is the real measure of the work rather than the markup. → §PP16
+- 📋 **PP17** (deps: PP9, PP12) **the renderer tuning and colour mapping screens are 2132 lines of QML over libplacebo options** — Every control on them writes an option that only exists while libplacebo does, so they can only be drawn once the renderer decision has been taken. → §PP17
+- 📋 **PP18** (deps: PP8, PP12) **the controller mapping screen is QML bound to the live SDL mapping strings** — A mapping screen is unusable without input arriving from the device being mapped, so it lands with the input path rather than with the other dialogs. → §PP18
 - 📋 **PP19** (deps: PP12) **the confirm, remind, display, steam shortcut and dialog host screens are still QML** — They are small and repetitive, and taking them last means each is drawn in a control vocabulary the earlier screens already settled. → §PP19
 
 ## Block E — Windows-only build
@@ -55,7 +60,7 @@
 ## Block G — Test discipline
 
 - 📋 **PP35** (deps: PP24) **5512 lines of munit tests cover the modules this port rewrites, and nothing in a managed tree runs them** — They carry captured FEC cases and a real video packet, which makes them the closest thing this protocol has to a specification and the cheapest baseline to inherit. → §PP35
-- 📋 **PP36** (deps: PP24, PP22) **the only CI job is the roadkeep lint gate, so no test result can turn a branch red** — A suite nobody runs on a push goes red quietly, and Test Explorer is a local convenience rather than a gate that holds a policy in place. → §PP36
+- 📋 **PP36** (deps: PP22, PP24) **the only CI job is the roadkeep lint gate, so no test result can turn a branch red** — A suite nobody runs on a push goes red quietly, and Test Explorer is a local convenience rather than a gate that holds a policy in place. → §PP36
 - 📋 **PP37** (deps: PP12) **a screen ported into code-behind can only be exercised by opening a window** — What is worth asserting about a screen is its view model, so a port that keeps logic behind the window makes eight screens untestable by construction. → §PP37
 - 📋 **PP38** (deps: PP36) **nothing counts the shipped lines that carry no assertion, so the rule is a sentence rather than a gate** — A count that may only go down is what survives a busy week, and without it the discipline lasts exactly as long as the person remembering it. → §PP38
 

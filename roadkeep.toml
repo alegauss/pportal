@@ -37,12 +37,10 @@ ref_scheme = "id"
 # The choice does not have to be taken yet: PP39 comes before either, and PP1 - the .NET host -
 # is needed by both, so the first two things to do are the same under both answers.
 #
-# what jumps the queue, in order: an id or a "Block X", and nothing else
-priority = [
-  "PP39",
-  "Block H",
-  "Block I",
-]
+# what jumps the queue, in order: an id or a "Block X", and nothing else.
+# The queue itself now lives in the "## Priority" section of docs/ROADMAP.md, where the
+# queue verbs reach it and `ship` takes a shipped id out of it on its own. The reasoning
+# above is kept here because it is why the order is what it is, not the order itself.
 
 [files]
 roadmap = "docs/ROADMAP.md"
