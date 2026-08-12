@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    PP46's harness. Not in a solution (PP24). A console app so the same command produces the before
+    on a machine that has QtWebEngine and the after on the WPF build, which is the only way the two
+    numbers are comparable.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>measure-startup</AssemblyName>
+    <RootNamespace>MeasureStartup</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+</Project>
