@@ -714,6 +714,31 @@ than assuming. Recording it means stamping something honest into the report - a
 cache_state the caller sets - so a reader can refuse to compare numbers taken under
 different conditions, the way compare-baselines already refuses mismatched settings.
 
+### §PP64 The number that already lied once
+
+PP60 taught the comparison tool to read a record by the fields it carries rather than by
+the number it claims, and it had to: `49661e9d` and `34b10cbf` both write `"schema":1`,
+and the second one added the whole `latency` object - estimate, input_to_wire and
+network_rtt - without touching CHIAKI_SESSION_BASELINE_SCHEMA. So one integer names two
+shapes that cannot be told apart except by looking.
+
+That is the reader defending itself against the writer. Nothing defends the writer. The
+next field added under a schema that does not move produces a sixth shape, and the cost
+lands on every consumer of the file rather than on the commit that caused it.
+
+The evidence is a commit rather than an argument, which is why this is filed at all: it
+has already happened once, in the only four-commit stretch this record has ever had.
+
+What is missing is a gate on the emitting side. test_baseline_format_line already
+asserts a formatted line, so the field set for the current schema is one assertion away
+from being checked: pin the emitted key set per schema, and a field added without a bump
+turns the suite red in the commit that added it, naming the schema it should have moved
+to.
+
+The alternative worth weighing is a rule rather than a test - bump on every field
+change, enforced by review - and it is the one that already failed. A discipline nobody
+can fail is what a gate is for.
+
 ## Block I — NVIDIA path
 
 ### §PP47 The right NVIDIA feature, which is not the famous one
