@@ -7,6 +7,7 @@
 #include "takion.h"
 #include "thread.h"
 #include "common.h"
+#include "sessionbaseline.h"
 
 #define CHIAKI_FEEDBACK_HISTORY_PACKET_BUF_SIZE 0x300
 #define CHIAKI_FEEDBACK_HISTORY_PACKET_QUEUE_SIZE 0x40
@@ -38,6 +39,15 @@ typedef struct chiaki_feedback_sender_t
 	bool history_dirty;
 	ChiakiMutex state_mutex;
 	ChiakiCond state_cond;
+
+	/**
+	 * When the pending controller state was handed over, and how long the handovers
+	 * before it waited to reach the socket. This is the input half of the delay, and
+	 * it is the only part of it this process can see: everything from the wire to the
+	 * picture moving happens on the console or on the display.
+	 */
+	uint64_t state_handed_over_us;
+	ChiakiSessionBaselineStat input_to_wire;
 } ChiakiFeedbackSender;
 
 CHIAKI_EXPORT ChiakiErrorCode chiaki_feedback_sender_init(ChiakiFeedbackSender *feedback_sender, ChiakiTakion *takion);

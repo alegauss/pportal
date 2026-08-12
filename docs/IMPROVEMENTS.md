@@ -587,29 +587,6 @@ guess and a gate on a guess is worse than no gate.
 
 ## Block H — Performance and telemetry
 
-### §PP40 The number nobody has
-
-Four counters exist and none of them is latency. decoder_delivery_us is the closest and
-it measures one stage: when a frame reached the decoder. Senkusha's RTT is a probe at
-connect time, not a running measurement.
-
-What is missing is end to end - input sent, frame displayed - and the honest note is
-that it cannot be measured entirely in software. The console's encoder and the display's
-own pipeline are outside the process. Two approaches, and both are worth having: an
-in-process estimate that sums what the client can see, which is cheap and comparable
-between builds, and an external measurement, which is slow, occasional and the only one
-that produces a number in milliseconds a user would recognise.
-
-For the external half there is a productised instrument, and on an NVIDIA-first client
-it is the obvious one: Reflex Latency Analyzer, on a monitor that supports it, measures
-click to photon without a camera rig. It does not apply to the client as a low latency
-mode - Reflex controls a render queue this application does not have - but as a
-measuring device it answers exactly the question this task asks.
-
-The in-process estimate is what a regression test can use. The external one is what says
-whether the estimate is honest, and it needs to be taken once on the Qt build for the
-same reason the baseline does.
-
 ### §PP41 Timing per stage, or a regression with no address
 
 decoder_delivery_us is the only per-frame timestamp in the tree. A frame passes through
@@ -705,6 +682,24 @@ same record the sink already writes.
 Small task, and it is here because these are the two numbers most likely to be quoted in
 a release note. A quoted number that nobody measured is the kind of claim that survives
 long past the day it stopped being true.
+
+### §PP55 The instrument outside the process
+
+PP40 shipped the half that a regression test can use: input queueing, the console's
+reported round trip and the decode-to-present handoff, summed into a floor. What it
+cannot do is say whether that floor tracks the real click-to-photon delay, because every
+term it is missing - the console's input handling, the game's render, the encoder, the
+display's own pipeline - lives outside this process.
+
+Reflex Latency Analyzer measures click to photon on a monitor that supports it, without
+a camera rig. It does not apply to this client as a low latency mode: Reflex controls a
+render queue this application does not have. As a measuring device it answers exactly
+the question, and it is the reason this line is filed rather than folded into PP40.
+
+The hardware is what blocks it: the development machine has an NVIDIA card but no
+Reflex-capable monitor, so no number can be taken today. Taken later against a converted
+tree, it measures the port instead of the client - the same window that closes on PP39
+closes on this.
 
 ## Block I — NVIDIA path
 

@@ -31,6 +31,25 @@ extern "C" {
 /** Room for "YYYY-MM-DDTHH:MM:SSZ" and its terminator. */
 #define CHIAKI_SESSION_BASELINE_TIME_SIZE 24
 
+/**
+ * One timed stage, folded as it runs. A stage is kept as min/max/mean rather than as a
+ * last value because the number a stream is judged on is its worst frame of a minute,
+ * and an average alone hides exactly that.
+ */
+typedef struct chiaki_session_baseline_stat_t
+{
+	uint64_t min_us;
+	uint64_t max_us;
+	uint64_t sum_us;
+	uint64_t samples;
+} ChiakiSessionBaselineStat;
+
+/** Fold one sample in. The first sample becomes the minimum, which a zeroed min would not. */
+CHIAKI_EXPORT void chiaki_session_baseline_stat_push(ChiakiSessionBaselineStat *stat, uint64_t sample_us);
+
+/** Mean of the folded samples, or 0 when nothing was sampled. */
+CHIAKI_EXPORT uint64_t chiaki_session_baseline_stat_avg(const ChiakiSessionBaselineStat *stat);
+
 /** Free-text fields are truncated to this, so one long string cannot push out a number. */
 #define CHIAKI_SESSION_BASELINE_TEXT_SIZE 32
 
@@ -58,11 +77,33 @@ typedef struct chiaki_session_baseline_t
 	uint64_t frames_presented;
 
 	/** Decoder-to-present handoff, from the delivery timestamp the window already takes. */
-	uint64_t handoff_us_min;
-	uint64_t handoff_us_max;
-	uint64_t handoff_us_sum;
-	uint64_t handoff_samples;
+	ChiakiSessionBaselineStat handoff;
+
+	/**
+	 * A changed controller state handed to the feedback sender, until that state is on
+	 * the wire. It is the only part of the input half of the delay the client can see.
+	 */
+	ChiakiSessionBaselineStat input_to_wire;
+
+	/**
+	 * Round trip time as the console reports it, in microseconds. Not measured here:
+	 * recorded as the console's own number, because it is the only network term that
+	 * runs for the length of a session.
+	 */
+	uint64_t network_rtt_us;
 } ChiakiSessionBaseline;
+
+/**
+ * The terms above, summed: input queueing, the network round trip and the client's
+ * decode-to-present handoff.
+ *
+ * It is a floor on glass to glass and not a measurement of it. The console's own input
+ * handling, the game's render, the encoder and the display's pipeline are all outside
+ * this process and none of them is in this number. What it is good for is comparing two
+ * builds of this client on the same network, which is the question the port has to
+ * answer; what it cannot do is tell a user how late their picture is.
+ */
+CHIAKI_EXPORT uint64_t chiaki_session_baseline_latency_estimate_us(const ChiakiSessionBaseline *baseline);
 
 /** Zero every counter and clear every string. */
 CHIAKI_EXPORT void chiaki_session_baseline_init(ChiakiSessionBaseline *baseline);
@@ -82,6 +123,9 @@ CHIAKI_EXPORT void chiaki_session_baseline_push_handoff(ChiakiSessionBaseline *b
 
 /** Mean handoff, or 0 when nothing was sampled. */
 CHIAKI_EXPORT uint64_t chiaki_session_baseline_handoff_us_avg(const ChiakiSessionBaseline *baseline);
+
+/** Fold one input-handed-over-to-on-the-wire sample into the min/max/mean. */
+CHIAKI_EXPORT void chiaki_session_baseline_push_input_to_wire(ChiakiSessionBaseline *baseline, uint64_t input_us);
 
 /**
  * Write the record as one line of JSON, newline included, into buf.

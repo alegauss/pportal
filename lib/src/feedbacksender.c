@@ -34,6 +34,8 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_feedback_sender_init(ChiakiFeedbackSender *
 	feedback_sender->should_stop = false;
 	feedback_sender->controller_state_changed = false;
 	feedback_sender->history_dirty = false;
+	feedback_sender->state_handed_over_us = 0;
+	memset(&feedback_sender->input_to_wire, 0, sizeof(feedback_sender->input_to_wire));
 	ChiakiErrorCode err = chiaki_feedback_history_buffer_init(&feedback_sender->history_buf, FEEDBACK_HISTORY_BUFFER_SIZE);
 	if(err != CHIAKI_ERR_SUCCESS)
 		return err;
@@ -90,6 +92,11 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_feedback_sender_set_controller_state(Chiaki
 	feedback_sender_record_history(feedback_sender, &feedback_sender->controller_state_history_prev, &feedback_sender->controller_state);
 	feedback_sender_flush_history_locked(feedback_sender);
 	feedback_sender->controller_state_history_prev = feedback_sender->controller_state;
+	// Timed from the first unsent change, not from the last: a second press arriving
+	// while the first still waits has been waiting since the first, and restamping here
+	// would report the queue as empty every time it was busiest.
+	if(!feedback_sender->controller_state_changed)
+		feedback_sender->state_handed_over_us = chiaki_time_now_monotonic_us();
 	feedback_sender->controller_state_changed = true;
 
 	chiaki_mutex_unlock(&feedback_sender->state_mutex);
@@ -305,6 +312,7 @@ static void *feedback_sender_thread_func(void *user)
 		uint64_t now_ms = chiaki_time_now_monotonic_ms();
 		bool send_feedback_state = now_ms - last_feedback_state_ms >= FEEDBACK_STATE_TIMEOUT_MAX_MS;
 		ChiakiControllerState state_now = feedback_sender->controller_state;
+		uint64_t handed_over_us = 0;
 		bool send_feedback_history = false;
 		uint8_t history_buf[CHIAKI_FEEDBACK_HISTORY_PACKET_BUF_SIZE];
 		size_t history_buf_size = 0;
@@ -313,6 +321,8 @@ static void *feedback_sender_thread_func(void *user)
 		{
 			// TODO: FEEDBACK_STATE_TIMEOUT_MIN_MS
 			feedback_sender->controller_state_changed = false;
+			handed_over_us = feedback_sender->state_handed_over_us;
+			feedback_sender->state_handed_over_us = 0;
 			send_feedback_state = true;
 
 			// don't need to send feedback state if nothing relevant changed
@@ -333,7 +343,18 @@ static void *feedback_sender_thread_func(void *user)
 		chiaki_mutex_unlock(&feedback_sender->state_mutex);
 
 		if(send_feedback_state)
+		{
 			feedback_sender_send_state(feedback_sender, &state_now);
+			// Only a handover that reached the socket is a sample. A send driven by the
+			// keepalive timeout carries no waiting input, and a change the console does
+			// not care about is dropped above without ever being sent.
+			if(handed_over_us)
+			{
+				const uint64_t now_us = chiaki_time_now_monotonic_us();
+				if(now_us >= handed_over_us)
+					chiaki_session_baseline_stat_push(&feedback_sender->input_to_wire, now_us - handed_over_us);
+			}
+		}
 
 		if(send_feedback_history)
 			feedback_sender_send_history_packet(feedback_sender, history_buf, history_buf_size);

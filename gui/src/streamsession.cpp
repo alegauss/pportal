@@ -506,6 +506,9 @@ void StreamSession::FillBaseline(ChiakiSessionBaseline *baseline) const
 	baseline->measured_bitrate_mbps = measured_bitrate;
 	baseline->average_packet_loss = average_packet_loss;
 	baseline->frames_lost = frames_lost < 0 ? 0 : (uint64_t)frames_lost;
+
+	baseline->network_rtt_us = session.stream_connection.reported_rtt_us;
+	baseline->input_to_wire = session.stream_connection.input_to_wire;
 }
 
 void StreamSession::Stop()

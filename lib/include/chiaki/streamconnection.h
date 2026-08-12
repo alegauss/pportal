@@ -78,6 +78,19 @@ typedef struct chiaki_stream_connection_t
 	char *remote_disconnect_reason;
 
 	double measured_bitrate;
+	/**
+	 * Round trip time as the console reports it in CONNECTIONQUALITY, in microseconds.
+	 * It is the only network term that runs for the length of a session - senkusha's
+	 * probe is taken once, at connect - and until this field existed it was written to
+	 * the log at verbose level and dropped. Zero until the first report arrives.
+	 */
+	uint64_t reported_rtt_us;
+	/**
+	 * The feedback sender's input-to-wire stat, copied here when that sender is torn
+	 * down. feedback_sender may only be read while feedback_sender_active, which is
+	 * false by the time a session is asked what it measured.
+	 */
+	ChiakiSessionBaselineStat input_to_wire;
 } ChiakiStreamConnection;
 
 CHIAKI_EXPORT ChiakiErrorCode chiaki_stream_connection_init(ChiakiStreamConnection *stream_connection, ChiakiSession *session, double packet_loss_max);

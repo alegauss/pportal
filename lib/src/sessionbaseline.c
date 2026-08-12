@@ -84,21 +84,43 @@ CHIAKI_EXPORT void chiaki_session_baseline_set_video_codec(ChiakiSessionBaseline
 	baseline_set_text(baseline->video_codec, sizeof(baseline->video_codec), codec);
 }
 
+CHIAKI_EXPORT void chiaki_session_baseline_stat_push(ChiakiSessionBaselineStat *stat, uint64_t sample_us)
+{
+	if(stat->samples == 0 || sample_us < stat->min_us)
+		stat->min_us = sample_us;
+	if(sample_us > stat->max_us)
+		stat->max_us = sample_us;
+	stat->sum_us += sample_us;
+	stat->samples++;
+}
+
+CHIAKI_EXPORT uint64_t chiaki_session_baseline_stat_avg(const ChiakiSessionBaselineStat *stat)
+{
+	if(stat->samples == 0)
+		return 0;
+	return stat->sum_us / stat->samples;
+}
+
 CHIAKI_EXPORT void chiaki_session_baseline_push_handoff(ChiakiSessionBaseline *baseline, uint64_t handoff_us)
 {
-	if(baseline->handoff_samples == 0 || handoff_us < baseline->handoff_us_min)
-		baseline->handoff_us_min = handoff_us;
-	if(handoff_us > baseline->handoff_us_max)
-		baseline->handoff_us_max = handoff_us;
-	baseline->handoff_us_sum += handoff_us;
-	baseline->handoff_samples++;
+	chiaki_session_baseline_stat_push(&baseline->handoff, handoff_us);
 }
 
 CHIAKI_EXPORT uint64_t chiaki_session_baseline_handoff_us_avg(const ChiakiSessionBaseline *baseline)
 {
-	if(baseline->handoff_samples == 0)
-		return 0;
-	return baseline->handoff_us_sum / baseline->handoff_samples;
+	return chiaki_session_baseline_stat_avg(&baseline->handoff);
+}
+
+CHIAKI_EXPORT void chiaki_session_baseline_push_input_to_wire(ChiakiSessionBaseline *baseline, uint64_t input_us)
+{
+	chiaki_session_baseline_stat_push(&baseline->input_to_wire, input_us);
+}
+
+CHIAKI_EXPORT uint64_t chiaki_session_baseline_latency_estimate_us(const ChiakiSessionBaseline *baseline)
+{
+	return chiaki_session_baseline_stat_avg(&baseline->input_to_wire)
+		+ baseline->network_rtt_us
+		+ chiaki_session_baseline_stat_avg(&baseline->handoff);
 }
 
 CHIAKI_EXPORT ChiakiErrorCode chiaki_session_baseline_format(const ChiakiSessionBaseline *baseline, char *buf, size_t buf_size, size_t *written)
@@ -121,6 +143,9 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_session_baseline_format(const ChiakiSession
 			",\"average_packet_loss\":%.5f"
 			",\"frames\":{\"presented\":%llu,\"lost\":%llu,\"dropped\":%llu}"
 			",\"handoff_us\":{\"min\":%llu,\"max\":%llu,\"avg\":%llu,\"samples\":%llu}"
+			",\"latency\":{\"estimate_us\":%llu"
+			",\"input_to_wire_us\":{\"min\":%llu,\"max\":%llu,\"avg\":%llu,\"samples\":%llu}"
+			",\"network_rtt_us\":%llu}"
 			"}\n",
 			CHIAKI_SESSION_BASELINE_SCHEMA,
 			started,
@@ -133,10 +158,16 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_session_baseline_format(const ChiakiSession
 			(unsigned long long)baseline->frames_presented,
 			(unsigned long long)baseline->frames_lost,
 			(unsigned long long)baseline->frames_dropped,
-			(unsigned long long)(baseline->handoff_samples ? baseline->handoff_us_min : 0),
-			(unsigned long long)baseline->handoff_us_max,
-			(unsigned long long)chiaki_session_baseline_handoff_us_avg(baseline),
-			(unsigned long long)baseline->handoff_samples);
+			(unsigned long long)(baseline->handoff.samples ? baseline->handoff.min_us : 0),
+			(unsigned long long)baseline->handoff.max_us,
+			(unsigned long long)chiaki_session_baseline_stat_avg(&baseline->handoff),
+			(unsigned long long)baseline->handoff.samples,
+			(unsigned long long)chiaki_session_baseline_latency_estimate_us(baseline),
+			(unsigned long long)(baseline->input_to_wire.samples ? baseline->input_to_wire.min_us : 0),
+			(unsigned long long)baseline->input_to_wire.max_us,
+			(unsigned long long)chiaki_session_baseline_stat_avg(&baseline->input_to_wire),
+			(unsigned long long)baseline->input_to_wire.samples,
+			(unsigned long long)baseline->network_rtt_us);
 
 	if(n < 0)
 		return CHIAKI_ERR_UNKNOWN;

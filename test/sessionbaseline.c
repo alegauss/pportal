@@ -25,6 +25,9 @@ static void fill_reference(ChiakiSessionBaseline *baseline)
 	chiaki_session_baseline_push_handoff(baseline, 900);
 	chiaki_session_baseline_push_handoff(baseline, 1500);
 	chiaki_session_baseline_push_handoff(baseline, 1200);
+	chiaki_session_baseline_push_input_to_wire(baseline, 400);
+	chiaki_session_baseline_push_input_to_wire(baseline, 800);
+	baseline->network_rtt_us = 36000;
 }
 
 /**
@@ -52,6 +55,9 @@ static MunitResult test_baseline_format_line(const MunitParameter params[], void
 			",\"average_packet_loss\":0.01250"
 			",\"frames\":{\"presented\":45210,\"lost\":12,\"dropped\":7}"
 			",\"handoff_us\":{\"min\":900,\"max\":1500,\"avg\":1200,\"samples\":3}"
+			",\"latency\":{\"estimate_us\":37800"
+			",\"input_to_wire_us\":{\"min\":400,\"max\":800,\"avg\":600,\"samples\":2}"
+			",\"network_rtt_us\":36000}"
 			"}\n";
 
 	munit_assert_string_equal(line, expected);
@@ -71,8 +77,58 @@ static MunitResult test_baseline_format_empty(const MunitParameter params[], voi
 
 	munit_assert_not_null(strstr(line, "\"started_utc\":null"));
 	munit_assert_not_null(strstr(line, "\"handoff_us\":{\"min\":0,\"max\":0,\"avg\":0,\"samples\":0}"));
+	munit_assert_not_null(strstr(line, "\"estimate_us\":0"));
 	munit_assert_null(strstr(line, "nan"));
 	munit_assert_null(strstr(line, "inf"));
+
+	return MUNIT_OK;
+}
+
+/**
+ * The estimate is a sum of three terms and has to stay one: a build that got slower in
+ * the input queue and faster in the handoff must not read as unchanged, so each term is
+ * moved on its own and the total is checked to follow only that term.
+ */
+static MunitResult test_baseline_latency_estimate(const MunitParameter params[], void *user)
+{
+	ChiakiSessionBaseline baseline;
+	chiaki_session_baseline_init(&baseline);
+	munit_assert_uint64(chiaki_session_baseline_latency_estimate_us(&baseline), ==, 0);
+
+	chiaki_session_baseline_push_input_to_wire(&baseline, 400);
+	chiaki_session_baseline_push_input_to_wire(&baseline, 800);
+	munit_assert_uint64(chiaki_session_baseline_latency_estimate_us(&baseline), ==, 600);
+
+	baseline.network_rtt_us = 36000;
+	munit_assert_uint64(chiaki_session_baseline_latency_estimate_us(&baseline), ==, 36600);
+
+	chiaki_session_baseline_push_handoff(&baseline, 900);
+	chiaki_session_baseline_push_handoff(&baseline, 1500);
+	chiaki_session_baseline_push_handoff(&baseline, 1200);
+	munit_assert_uint64(chiaki_session_baseline_latency_estimate_us(&baseline), ==, 37800);
+
+	// The network term is not a stat and must not be averaged away by the two that are.
+	baseline.network_rtt_us = 56000;
+	munit_assert_uint64(chiaki_session_baseline_latency_estimate_us(&baseline), ==, 57800);
+
+	return MUNIT_OK;
+}
+
+/** The two stages are separate accumulators: a sample of one must not reach the other. */
+static MunitResult test_baseline_stages_are_separate(const MunitParameter params[], void *user)
+{
+	ChiakiSessionBaseline baseline;
+	chiaki_session_baseline_init(&baseline);
+
+	chiaki_session_baseline_push_handoff(&baseline, 5000);
+	munit_assert_uint64(baseline.handoff.samples, ==, 1);
+	munit_assert_uint64(baseline.input_to_wire.samples, ==, 0);
+
+	chiaki_session_baseline_push_input_to_wire(&baseline, 70);
+	munit_assert_uint64(baseline.handoff.samples, ==, 1);
+	munit_assert_uint64(baseline.handoff.min_us, ==, 5000);
+	munit_assert_uint64(baseline.input_to_wire.samples, ==, 1);
+	munit_assert_uint64(baseline.input_to_wire.min_us, ==, 70);
 
 	return MUNIT_OK;
 }
@@ -87,15 +143,15 @@ static MunitResult test_baseline_handoff(const MunitParameter params[], void *us
 	// The first sample has to become the minimum: a min left at zero would report a
 	// handoff no frame ever had, and zero is the value that looks best.
 	chiaki_session_baseline_push_handoff(&baseline, 4000);
-	munit_assert_uint64(baseline.handoff_us_min, ==, 4000);
-	munit_assert_uint64(baseline.handoff_us_max, ==, 4000);
+	munit_assert_uint64(baseline.handoff.min_us, ==, 4000);
+	munit_assert_uint64(baseline.handoff.max_us, ==, 4000);
 	munit_assert_uint64(chiaki_session_baseline_handoff_us_avg(&baseline), ==, 4000);
 
 	chiaki_session_baseline_push_handoff(&baseline, 2000);
 	chiaki_session_baseline_push_handoff(&baseline, 6000);
-	munit_assert_uint64(baseline.handoff_us_min, ==, 2000);
-	munit_assert_uint64(baseline.handoff_us_max, ==, 6000);
-	munit_assert_uint64(baseline.handoff_samples, ==, 3);
+	munit_assert_uint64(baseline.handoff.min_us, ==, 2000);
+	munit_assert_uint64(baseline.handoff.max_us, ==, 6000);
+	munit_assert_uint64(baseline.handoff.samples, ==, 3);
 	munit_assert_uint64(chiaki_session_baseline_handoff_us_avg(&baseline), ==, 4000);
 
 	return MUNIT_OK;
@@ -216,6 +272,20 @@ MunitTest tests_session_baseline[] = {
 	{
 		"/handoff",
 		test_baseline_handoff,
+		NULL, NULL,
+		MUNIT_TEST_OPTION_NONE,
+		NULL
+	},
+	{
+		"/latency_estimate",
+		test_baseline_latency_estimate,
+		NULL, NULL,
+		MUNIT_TEST_OPTION_NONE,
+		NULL
+	},
+	{
+		"/stages_are_separate",
+		test_baseline_stages_are_separate,
 		NULL, NULL,
 		MUNIT_TEST_OPTION_NONE,
 		NULL

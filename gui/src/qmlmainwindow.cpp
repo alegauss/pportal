@@ -2703,10 +2703,7 @@ void QmlMainWindow::fillSessionBaseline(ChiakiSessionBaseline *baseline) const
     QMutexLocker baseline_locker(&session_baseline_mutex);
     baseline->frames_presented = session_baseline.frames_presented;
     baseline->frames_dropped = session_baseline.frames_dropped;
-    baseline->handoff_us_min = session_baseline.handoff_us_min;
-    baseline->handoff_us_max = session_baseline.handoff_us_max;
-    baseline->handoff_us_sum = session_baseline.handoff_us_sum;
-    baseline->handoff_samples = session_baseline.handoff_samples;
+    baseline->handoff = session_baseline.handoff;
 }
 
 bool QmlMainWindow::keepVideo() const

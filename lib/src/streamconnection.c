@@ -12,6 +12,7 @@
 #include <string.h>
 #include <inttypes.h>
 #include <assert.h>
+#include <math.h>
 
 #include <takion.pb.h>
 #include <pb_encode.h>
@@ -321,6 +322,9 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_stream_connection_run(ChiakiStreamConnectio
 	err = chiaki_mutex_lock(&stream_connection->feedback_sender_mutex);
 	assert(err == CHIAKI_ERR_SUCCESS);
 	stream_connection->feedback_sender_active = false;
+	// Taken before fini, because after it the sender may not be read at all and the
+	// input half of the delay would end with the thread that measured it.
+	stream_connection->input_to_wire = stream_connection->feedback_sender.input_to_wire;
 	chiaki_feedback_sender_fini(&stream_connection->feedback_sender);
 	chiaki_mutex_unlock(&stream_connection->feedback_sender_mutex);
 
@@ -695,6 +699,15 @@ static void stream_connection_takion_data_idle(ChiakiStreamConnection *stream_co
 			 q.target_bitrate, q.upstream_bitrate,
 			 q.upstream_loss,
 			 q.disable_upstream_audio, q.rtt, q.loss);
+		// The payload's rtt is in milliseconds. Measured against this network rather than
+		// assumed: over a session the console reported 36-295 while ICMP to the same
+		// console measured 3-31 ms, so the two are the same order and the reported number
+		// sits just above the floor, which is what an application-level round trip does.
+		// Read as microseconds it would be forty times faster than ICMP on the same link.
+		// A zero is the console saying it has nothing yet, not a round trip of no time,
+		// so it is left out rather than allowed to erase the last real one.
+		if(isfinite(q.rtt) && q.rtt > 0.0)
+			stream_connection->reported_rtt_us = (uint64_t)(q.rtt * 1000.0);
 		stream_connection->measured_bitrate = chiaki_stream_stats_bitrate(&stream_connection->video_receiver->frame_processor.stream_stats, stream_connection->session->connect_info.video_profile.max_fps) / 1000000.0;
 		CHIAKI_LOGV(stream_connection->log, "StreamConnection measured bitrate: %.4f MBit/s", stream_connection->measured_bitrate);
 		chiaki_stream_stats_reset(&stream_connection->video_receiver->frame_processor.stream_stats);
