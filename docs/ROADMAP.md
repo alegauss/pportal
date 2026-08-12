@@ -42,7 +42,7 @@
 - 📋 **PP20** (deps: —) **171 platform conditionals remain in gui, 33 of them macOS and 17 Linux, after those trees were deleted** — Dead branches for platforms that no longer have a build are what makes a port look larger than it is, and every one of them is read at least once. → §PP20
 - 📋 **PP21** (deps: Block D) **Qt6 is still required to build: Core, Gui, Quick, Qml, Svg, Widgets, Concurrent and WebEngineQuick** — The port is only finished when the toolchain says so, and dropping Qt is the check that no screen or service quietly still depends on it. → §PP21
 - 📋 **PP22** (deps: PP1) **every CI workflow was deleted, so nothing builds, signs or packages the application** — A Windows-only application with no Windows build is a source tree, and claude-tray already has the shape: publish one self-contained exe, then wrap it in an installer. → §PP22
-- 📋 **PP62** (deps: —) **the tree's only build cannot include QtWebEngine, so the login screen the port replaces is compiled out** — MSYS2 ships no qt6-webengine for mingw64, so CHIAKI_HAVE_WEBENGINE is never defined and neither PP46's before nor PP7's reference behaviour can be built here. → §PP62
+- 📋 **PP63** (deps: PP62 ✅) **nothing in the tree can configure a Qt build carrying WebEngine, so PP46's before cannot be produced at all** — MSYS2 has no qt6-webengine and no published Windows release carries Chromium, so an MSVC configure built once is the only reference the port can measure against. → §PP63
 
 ## Block F — Managed core
 
@@ -69,7 +69,7 @@
 
 ## Block H — Performance and telemetry
 
-- ⏳ **PP46** (deps: PP42 ✅) **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — A Chromium leaving the build should be visible in cold start and in megabytes, and stating it without measuring is how a port collects folklore. → §PP46
+- ⏳ **PP46** (deps: PP42 ✅, PP63) **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — A Chromium leaving the build should be visible in cold start and in megabytes, and stating it without measuring is how a port collects folklore. → §PP46
 - 📋 **PP55** (deps: PP40 ✅) **the in-process latency estimate has nothing to check it against, so an honest sum and a wrong one read alike** — A floor built from three client-side terms can be self-consistent and still miss the delay a user feels, and only an instrument outside the process says which it is. → §PP55
 - 📋 **PP59** (deps: PP44 ✅) **takion mallocs a queue entry and a packet buffer per video packet, so the receive step has no budget** — PP44's zero covers parse and reassembly only, and a managed transport held to zero for the whole path has to answer for the reorder-queue entry too. → §PP59
 - 📋 **PP60** (deps: PP45 ✅) **one baseline file accumulates records of four schemas and the comparison tool refuses all but the newest** — The sink only appends, the schema moved 1 to 4 since PP39, and compare-baselines reads the last line and refuses the rest, so the history it compares is unreadable. → §PP60

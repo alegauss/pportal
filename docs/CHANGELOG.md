@@ -10,6 +10,8 @@
 
 ## Block E — Windows-only build
 
+- ✅ **PP62** **the tree's only build cannot include QtWebEngine, so the login screen the port replaces is compiled out** — The reference build is an MSVC configure built once for the purpose, filed as PP63: MSYS2 has no qt6-webengine and the published Windows releases carry no Chromium, measured.
+
 ## Block F — Managed core
 
 ## Block G — Test discipline

@@ -347,32 +347,29 @@ fetched, and the current tree does that through vcpkg.
 Filed early because a build that only exists on one machine is how a port acquires an
 undocumented step, and late enough that there is a host worth publishing.
 
-### §PP62 No Chromium on this toolchain
+### §PP63 One configure that exists only to be measured
 
-compile.cmd builds through MSYS2 MinGW64, and MSYS2 ships no qt6-webengine for that
-toolchain. Measured on this machine: 3093 packages in the mingw64 repo, 80 of them qt6,
-and `pacman -Ssq webengine` returns nothing in any repo. What exists is qt6-webchannel,
-qt6-websockets and qt6-webview - none of which is the Chromium-backed WebEngineQuick the
-login view needs. The reason is upstream and not local: Chromium's Windows build
-requires MSVC or clang-cl, so MinGW never gets a package.
+PP62 measured why. MSYS2 MinGW64 ships no qt6-webengine, and the published Windows
+releases are MSYS2 builds carrying no Chromium either - v1.10.0's x64 portable is 1555
+files and 261.5 MB with no QtWebEngineCore, no icudtl.dat and no .pak, and its installer
+is 68.0 MB. So the before is not something to download. It has to be built, and MinGW
+cannot build it: Chromium on Windows needs MSVC or clang-cl.
 
-CMakeLists.txt makes the component optional and main.cpp guards its initialise on
-CHIAKI_HAVE_WEBENGINE, so the build succeeds and silently omits the screen. Nothing
-fails; the PSN login view is simply absent from every binary this repository can
-produce.
+What this is: a second configure, MSVC or clang-cl, that builds the Qt client with
+CHIAKI_HAVE_WEBENGINE defined, once, so measure-startup has a binary to point at. What
+it is not: a second build system. compile.cmd stays the tree's only build and the only
+gate for a deletion. This configure has one output, a number, and the moment PP46
+records it the configure has done its job.
 
-Nor from any published one. Upstream's Windows releases are MSYS2 builds of the same
-toolchain, so they carry no Chromium either: v1.10.0's x64 portable holds 1555 files and
-261.5 MB with no QtWebEngineCore, no icudtl.dat and no .pak, and its installer is 68.0
-MB. Downloading the release is therefore not an available answer - no Windows build of
-this project has ever shipped that screen.
+The risk that comes free with a second toolchain is that somebody starts using it for
+ordinary work, the build splits in two, and the port keeps both green forever. So the
+constraint is part of the task: it stays outside compile.cmd's preflight, gates no
+commit, and is documented as single-purpose. If it ever gates a commit, that is the
+failure.
 
-Two consequences. PP46 wanted a before that carries Chromium and there is none to
-obtain; the only Windows one is a build nobody has made yet. And PP7 replaces a
-QtWebEngine login while the thing being replaced cannot be compiled here.
-
-The output is a decision: an MSVC configure for this one purpose, or stating that the
-screen is ported against the source rather than a running original.
+The assertion is measure-startup's own exit code - 0 rather than 2, which it returns
+only where it found Chromium in the tree it measured. A configure that builds but omits
+WebEngine again would pass a compile and fail that.
 
 ## Block F — Managed core
 
