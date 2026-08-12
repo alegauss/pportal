@@ -15,8 +15,14 @@ namespace CompareBaselines;
 /// reads exactly like one that measures the build. That is how a port acquires a reputation nobody
 /// can check, so a mismatch is printed as a warning above the table and sets the exit code.
 ///
-/// Exit 0: compared, conditions matched. 2: compared, conditions differ - read with care.
-/// 1: could not compare.
+/// PP60: the two records need not be the same schema. The sink appends forever, so a real file
+/// holds every shape the application has ever written, and refusing all but the newest made the
+/// history unreadable. What is compared is now the intersection of what the two records carry, and
+/// what fell out of it is printed - a dropped comparison the reader cannot see is worse than one
+/// that never ran.
+///
+/// Exit 0: compared, conditions matched and were verifiable. 2: compared, but the conditions differ
+/// or one record did not record them - read with care. 1: could not compare.
 /// </summary>
 internal static class Program
 {
@@ -31,6 +37,7 @@ internal static class Program
             Console.Error.WriteLine("       compare-baselines --self-test");
             Console.Error.WriteLine();
             Console.Error.WriteLine("Each file is a chiaki_baseline.jsonl; the last record in each is used.");
+            Console.Error.WriteLine("Records of different schemas compare on the fields they share.");
             return 1;
         }
 
@@ -47,7 +54,7 @@ internal static class Program
         }
 
         Console.Write(Compare.Report(before, after, argv[0], argv[1]));
-        return Compare.ConditionsDiffer(before, after) ? 2 : 0;
+        return Compare.ConditionsDiffer(before, after) || Compare.Unverifiable(before, after).Count > 0 ? 2 : 0;
     }
 }
 
@@ -59,6 +66,11 @@ internal static class Compare
     /// <summary>
     /// Everything that has to match for the delta to be about the build. app_version is excluded
     /// on purpose: it is the one condition that is *supposed* to differ between two builds.
+    ///
+    /// A condition one of the records did not carry is not compared here. It is not equal and it is
+    /// not different - it is unknown, and <see cref="Unverifiable"/> is where it is said out loud.
+    /// Folding an unknown into this list would report a difference nobody measured; folding it into
+    /// silence would report a match nobody measured, which is worse.
     /// </summary>
     public static List<string> Mismatches(Record b, Record a)
     {
@@ -70,13 +82,52 @@ internal static class Compare
             m.Add($"fps {x.Fps} -> {y.Fps}");
         if (x.Codec != y.Codec)
             m.Add($"codec {x.Codec} -> {y.Codec}");
-        if (x.HwDecoder != y.HwDecoder)
-            m.Add($"decoder {x.HwDecoder} -> {y.HwDecoder}");
-        if (x.BitrateKbps != y.BitrateKbps)
-            m.Add($"requested bitrate {x.BitrateKbps} -> {y.BitrateKbps} kbps");
-        if (Math.Abs(x.PacketLossMax - y.PacketLossMax) > 1e-9)
-            m.Add($"packet_loss_max {x.PacketLossMax} -> {y.PacketLossMax}");
+        if (x.HwDecoder is { } bd && y.HwDecoder is { } ad && bd != ad)
+            m.Add($"decoder {bd} -> {ad}");
+        if (x.BitrateKbps is { } bb && y.BitrateKbps is { } ab && bb != ab)
+            m.Add($"requested bitrate {bb} -> {ab} kbps");
+        if (x.PacketLossMax is { } bl && y.PacketLossMax is { } al && Math.Abs(bl - al) > 1e-9)
+            m.Add($"packet_loss_max {bl} -> {al}");
         return m;
+    }
+
+    /// <summary>The conditions that could not be checked, because one of the records predates them.</summary>
+    public static List<string> Unverifiable(Record b, Record a)
+    {
+        var u = new List<string>();
+        Conditions x = b.Conditions, y = a.Conditions;
+        if (x.HwDecoder is null || y.HwDecoder is null)
+            u.Add("decoder");
+        if (x.BitrateKbps is null || y.BitrateKbps is null)
+            u.Add("requested bitrate");
+        if (x.PacketLossMax is null || y.PacketLossMax is null)
+            u.Add("packet_loss_max");
+        return u;
+    }
+
+    /// <summary>What the two records did not share, so the reader knows the table is partial.</summary>
+    public static List<string> NotCompared(Record b, Record a)
+    {
+        var n = new List<string>();
+
+        var bn = b.Stages.Select(s => s.Name).ToHashSet();
+        var an = a.Stages.Select(s => s.Name).ToHashSet();
+        var only = bn.Except(an).Concat(an.Except(bn)).ToList();
+        if (only.Count > 0)
+            n.Add($"stages carried by one record only: {string.Join(", ", only)}");
+
+        if (Shared(b, a).Any(t => t.Before.P50 is null || t.After.P50 is null))
+            n.Add("p50 - the median arrived in schema 4, so an older record has none");
+        if (Shared(b, a).Any(t => t.Before.P99 is null || t.After.P99 is null))
+            n.Add("p99 - the per-stage percentiles arrived in schema 2");
+        if (b.LatencyEstimateUs is null || a.LatencyEstimateUs is null)
+            n.Add("latency floor - not recorded by one of these records");
+
+        List<string> unverifiable = Unverifiable(b, a);
+        if (unverifiable.Count > 0)
+            n.Add($"conditions one record did not carry, so a match cannot be claimed: {string.Join(", ", unverifiable)}");
+
+        return n;
     }
 
     public static string Report(Record before, Record after, string beforePath, string afterPath)
@@ -86,9 +137,11 @@ internal static class Compare
 
         sb.AppendLine("session baseline comparison");
         sb.AppendLine($"  before : {beforePath}");
-        sb.AppendLine($"           {before.StartedUtc}  {before.DurationMs / 1000}s  {before.Conditions.Describe()}");
+        sb.AppendLine($"           {before.StartedUtc}  {before.DurationMs / 1000}s  {before.DescribeShape()}");
+        sb.AppendLine($"           {before.Conditions.Describe()}");
         sb.AppendLine($"  after  : {afterPath}");
-        sb.AppendLine($"           {after.StartedUtc}  {after.DurationMs / 1000}s  {after.Conditions.Describe()}");
+        sb.AppendLine($"           {after.StartedUtc}  {after.DurationMs / 1000}s  {after.DescribeShape()}");
+        sb.AppendLine($"           {after.Conditions.Describe()}");
         sb.AppendLine();
 
         List<string> mismatches = Mismatches(before, after);
@@ -101,9 +154,20 @@ internal static class Compare
             sb.AppendLine();
         }
 
+        List<string> notCompared = NotCompared(before, after);
+        if (notCompared.Count > 0)
+        {
+            sb.AppendLine("!! PARTIAL COMPARISON - these records are not the same shape:");
+            foreach (string n in notCompared)
+                sb.AppendLine($"     {n}");
+            sb.AppendLine("   Everything below is the intersection. What is absent is absent from the record,");
+            sb.AppendLine("   not from the build.");
+            sb.AppendLine();
+        }
+
         sb.AppendLine("per-stage, microseconds (a negative delta is faster)");
         sb.AppendLine("  stage         p50 before -> after   delta        p99 before -> after   delta          max before -> after   delta");
-        foreach (var (name, b, a) in Zip(before, after))
+        foreach (var (name, b, a) in Shared(before, after))
         {
             sb.Append("  ");
             sb.Append(name.PadRight(12));
@@ -131,25 +195,41 @@ internal static class Compare
         return sb.ToString();
     }
 
-    private static IEnumerable<(string Name, Stat Before, Stat After)> Zip(Record b, Record a)
+    /// <summary>
+    /// The stages both records carry, in the before record's order. Matched by name rather than by
+    /// index: a record with only the present stage and one with all six line up at index 0 on two
+    /// different stages, and the table would compare receive against present without a word.
+    /// </summary>
+    public static IEnumerable<(string Name, Stat Before, Stat After)> Shared(Record b, Record a)
     {
-        for (int i = 0; i < b.Stages.Count && i < a.Stages.Count; i++)
-            yield return (b.Stages[i].Name, b.Stages[i].Stat, a.Stages[i].Stat);
+        Dictionary<string, Stat> other = a.Stages.ToDictionary(s => s.Name, s => s.Stat);
+        foreach ((string name, Stat stat) in b.Stages)
+        {
+            if (other.TryGetValue(name, out Stat match))
+                yield return (name, stat, match);
+        }
     }
 
-    private static string Cell(long before, long after)
+    private static string Cell(long? before, long? after)
     {
-        long d = after - before;
-        string arrow = $"{before,8} ->{after,8}";
+        if (before is not { } b || after is not { } a)
+            return $"{Show(before),8} ->{Show(after),8} {"n/a",7}";
+
+        long d = a - b;
+        string arrow = $"{b,8} ->{a,8}";
         // "+#;-#;0" forces the sign. A bare width like {d,7} right-aligns and drops the plus, which
         // makes a regression and an improvement look alike at a glance - the self-test caught that.
         string delta = d == 0 ? "." : d.ToString("+#;-#;0", CultureInfo.InvariantCulture);
         return $"{arrow} {delta,7}";
     }
 
-    private static string Delta(long before, long after)
+    private static string Show(long? v) => v is { } x ? x.ToString(CultureInfo.InvariantCulture) : "-";
+
+    private static string Delta(long? before, long? after)
     {
-        long d = after - before;
-        return $"{before,10} -> {after,10}   {(d == 0 ? "." : d.ToString("+#;-#;0", CultureInfo.InvariantCulture))}";
+        if (before is not { } b || after is not { } a)
+            return $"{Show(before),10} -> {Show(after),10}   n/a";
+        long d = a - b;
+        return $"{b,10} -> {a,10}   {(d == 0 ? "." : d.ToString("+#;-#;0", CultureInfo.InvariantCulture))}";
     }
 }

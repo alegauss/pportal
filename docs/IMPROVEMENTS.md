@@ -690,29 +690,6 @@ Reflex-capable monitor, so no number can be taken today. Taken later against a c
 tree, it measures the port instead of the client - the same window that closes on PP39
 closes on this.
 
-### §PP60 Four schemas in one append-only file
-
-chiaki_session_baseline_append opens one file and appends one line, forever. The schema
-has moved four times since PP39 shipped that sink - 1 for the counters, 2 for the
-per-stage timings, 3 for the settings, 4 for the median - and three of those bumps
-happened in four commits. So a real chiaki_baseline.jsonl can hold lines of four
-different shapes, in the order the user happened to upgrade.
-
-compare-baselines reads the last line and refuses anything that is not schema 4, by
-design: a delta across schemas would compare fields that may not mean the same thing.
-Both decisions are right and jointly useless. The harness built to compare a build
-against its predecessor cannot read what its predecessor wrote, and it fails quietly - a
-refusal to compare reads as a tooling problem rather than as lost history.
-
-The pointed case is the one that will actually happen: a user upgrades, the new build
-appends a schema 4 line, and every session before the upgrade is now unreadable to the
-tool - which is exactly the comparison PP45 exists for.
-
-What the fix needs is a decision, not just code: read older schemas and compare only the
-fields they share, or migrate the file on first write, or start a new file per schema
-and teach the tool to walk them. Any of the three beats the current answer, which is
-that the history is there and nothing can read it.
-
 ### §PP61 A cold start that is only cold once
 
 measure-startup reports its first run apart from the rest and calls it cold, which is

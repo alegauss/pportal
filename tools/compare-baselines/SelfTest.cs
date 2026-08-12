@@ -28,6 +28,32 @@ internal static class SelfTest
         "\"decode\":{\"min\":4200,\"max\":9000,\"avg\":6600,\"p50\":4607,\"p99\":9000,\"samples\":36000}}," +
         "\"latency\":{\"estimate_us\":37800,\"input_to_wire_us\":{\"min\":400,\"max\":800,\"avg\":600,\"p50\":415,\"p99\":800,\"samples\":9000},\"network_rtt_us\":36000}}";
 
+    /// <summary>
+    /// The oldest shape the sink ever wrote (49661e9d): the PP39 counters and the present stage,
+    /// with no stages_us, no settings, no latency and no percentiles. Written out literally rather
+    /// than derived from <see cref="Before"/>, because what is being asserted is that a record of
+    /// this shape can be read at all - and a fixture built by deleting fields from the newest one
+    /// would only prove the deletions were spelled right.
+    /// </summary>
+    private const string OldestSchemaOne =
+        "{\"schema\":1,\"started_utc\":\"2026-08-01T09:00:00Z\",\"duration_ms\":300000," +
+        "\"app_version\":\"1.9.0\"," +
+        "\"video\":{\"width\":1920,\"height\":1080,\"fps\":60,\"codec\":\"h264\"}," +
+        "\"measured_bitrate_mbps\":26.000,\"average_packet_loss\":0.02000," +
+        "\"frames\":{\"presented\":18000,\"lost\":30,\"dropped\":9}," +
+        "\"handoff_us\":{\"min\":800,\"max\":1400,\"avg\":1100,\"samples\":18000}}";
+
+    /// <summary>
+    /// The other schema 1 (34b10cbf), which added the whole latency object without bumping the
+    /// number. Two shapes behind one integer is why the reader keys on fields.
+    /// </summary>
+    private static string SchemaOneWithLatency => OldestSchemaOne
+        .Replace("\"handoff_us\":{\"min\":800,\"max\":1400,\"avg\":1100,\"samples\":18000}}",
+                 "\"handoff_us\":{\"min\":800,\"max\":1400,\"avg\":1100,\"samples\":18000}," +
+                 "\"latency\":{\"estimate_us\":41000," +
+                 "\"input_to_wire_us\":{\"min\":400,\"max\":900,\"avg\":650,\"samples\":4500}," +
+                 "\"network_rtt_us\":39000}}");
+
     /// <summary>Same conditions, and only the present stage got slower. Nothing else moved.</summary>
     private static string AfterPresentSlower => Before
         .Replace("\"handoff_us\":{\"min\":900,\"max\":1500,\"avg\":1200,\"p50\":1279,\"p99\":1500,\"samples\":36000}",
@@ -65,13 +91,54 @@ internal static class SelfTest
         failures += Expect(Compare.Report(b, c, "before", "after").Contains("CONDITIONS DIFFER"),
             "a settings change must raise the warning above the table");
 
-        // 3. A record from another schema is refused rather than half-read.
+        // 3. PP60: the oldest shape is read rather than refused, and what it cannot answer is named.
+        Record old = Record.Parse(OldestSchemaOne);
+        failures += Expect(old.Stages.Count == 1 && old.Stages[0].Name == "present",
+            "a pre-stages record carries the present stage and no others");
+        failures += Expect(old.Stages[0].Stat.P50 is null && old.Stages[0].Stat.P99 is null,
+            "a percentile that was never written must be null, not zero");
+        failures += Expect(old.LatencyEstimateUs is null,
+            "the oldest schema 1 has no latency floor");
+        failures += Expect(old.Conditions.HwDecoder is null,
+            "settings arrived in schema 3 and must not be invented for an older record");
+
+        string across = Compare.Report(old, b, "old", "new");
+        failures += Expect(across.Contains("PARTIAL COMPARISON"),
+            "a comparison across shapes must say it is partial");
+        failures += Expect(across.Contains("p50") && across.Contains("p99"),
+            "the missing percentiles must be named as not compared");
+        failures += Expect(Compare.Unverifiable(old, b).Count == 3,
+            "the three settings conditions must read as unverifiable, not as equal");
+        failures += Expect(Compare.Mismatches(old, b).Count == 0,
+            "an unrecorded condition must not be reported as a difference");
+        failures += Expect(across.Contains("stages carried by one record only"),
+            "the stages left out must be named");
+        // The trap: zipping by index lines the old record's only stage up against `receive` while
+        // still printing the *before* record's name for the row, so the table reads "present" and
+        // compares present to receive. Asserted on the pairing rather than on the rendering,
+        // because an index zip leaves the rendering word for word identical - checking the text
+        // for "receive" passes while the bug is live, which is what the injected run showed.
+        List<(string Name, Stat Before, Stat After)> paired = Compare.Shared(old, b).ToList();
+        failures += Expect(paired.Count == 1 && paired[0].Name == "present",
+            "only the stage both records carry may be paired");
+        failures += Expect(paired.Count == 1 && paired[0].After.Max == 1500,
+            "the present row must pair against the new record's present stage, not against its first one");
+
+        // 4. Two shapes behind one schema number: the reader must tell them apart by field.
+        Record one = Record.Parse(OldestSchemaOne);
+        Record oneLater = Record.Parse(SchemaOneWithLatency);
+        failures += Expect(one.Schema == oneLater.Schema,
+            "the fixtures must both claim schema 1, or this checks nothing");
+        failures += Expect(one.LatencyEstimateUs is null && oneLater.LatencyEstimateUs == 41000,
+            "the two schema 1 shapes must be told apart by their fields, not by the number");
+
+        // 5. A record missing a field every shape has ever carried is broken, not old.
         try
         {
-            Record.Parse(Before.Replace("\"schema\":4", "\"schema\":3"));
-            failures += Expect(false, "a schema 3 record must be refused");
+            Record.Parse(OldestSchemaOne.Replace("\"handoff_us\"", "\"handoff_typo\""));
+            failures += Expect(false, "a record with no handoff_us must still be refused");
         }
-        catch (NotSupportedException)
+        catch (KeyNotFoundException)
         {
             // expected
         }
