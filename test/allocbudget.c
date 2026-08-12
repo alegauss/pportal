@@ -5,6 +5,8 @@
 #include <chiaki/frameprocessor.h>
 #include <chiaki/takion.h>
 
+#include "../lib/src/takionreceive.h"
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -28,10 +30,9 @@
  * little", it is "allocate nothing", because that is what the code being replaced does.
  *
  * Scope, stated because the number is easy to over-read: this replays parse, alloc_frame, put_unit
- * and flush. It does *not* include takion's receive step, which mallocs a TakionAVPacketEntry and
- * owns the packet buffer for every video packet - so the C transport allocates twice per packet
- * before the payload arrives here. That function is static and socket-driven, so covering it needs
- * the transport this task is filed ahead of. The budget below is for parse and reassembly.
+ * and flush. It does *not* include takion's receive step, which is measured separately and is not
+ * zero - see test_alloc_budget_receive_step below, added by PP59. The budget here is for parse and
+ * reassembly.
  *
  * Counting works by wrapping the allocator at link time (see test/CMakeLists.txt). Only malloc,
  * calloc and realloc are wrapped; free is left alone, because every pointer handed out here comes
@@ -207,6 +208,90 @@ static MunitResult test_alloc_counter_sees_allocations(const MunitParameter para
 	return MUNIT_OK;
 }
 
+/**
+ * PP59: the receive step, which the budget above does not cover.
+ *
+ * The number above is scoped to parse and reassembly and is zero. The step before it is not,
+ * and this is where it is charged: takion_handle_packet_av is what a datagram passes through
+ * between the socket and the reorder queue, and it mallocs a queue entry for every video
+ * packet.
+ *
+ * What is measured and what is replayed, stated because the number is easy to over-read.
+ * The entry allocation is measured - it happens inside the function under test. The buffer
+ * pair is replayed: takion_av_thread_func mallocs 1500 bytes for every datagram and reallocs
+ * it down to the received size (takion.c, the recv loop) before handing ownership over, and
+ * driving that loop needs a connected session and a live socket. So the two calls are made
+ * here in the same order and at the same sizes, and they are charged. This is the whole
+ * receive step's cost with one of its three calls modelled rather than executed.
+ */
+#define CHIAKI_RECV_BUFFER_INITIAL_SIZE 1500
+
+/**
+ * The measured budget for the receive step, in allocator calls per video packet. Not zero,
+ * and not agreed: three is what the C transport does, and PP27 inherits it as the number to
+ * beat rather than as a bar it has already cleared.
+ */
+#define CHIAKI_RECV_BUDGET_CALLS_PER_PACKET 3
+
+/** Push one datagram through the receive step, the way the socket thread hands one over. */
+static void replay_one_datagram(ChiakiTakion *takion, uint16_t packet_index)
+{
+	uint8_t *buf = malloc(CHIAKI_RECV_BUFFER_INITIAL_SIZE);
+	munit_assert_not_null(buf);
+	memcpy(buf, real_video_packet, sizeof(real_video_packet));
+
+	// The packet index rides in bytes 1-2, big endian. Varied per datagram so the queue sees a
+	// stream rather than the same packet 200 times, which is a different code path.
+	buf[1] = (uint8_t)(packet_index >> 8);
+	buf[2] = (uint8_t)(packet_index & 0xff);
+
+	uint8_t *resized = realloc(buf, sizeof(real_video_packet));
+	munit_assert_not_null(resized);
+
+	takion_handle_packet_av(takion, TAKION_PACKET_TYPE_VIDEO, resized, sizeof(real_video_packet));
+}
+
+static MunitResult test_alloc_budget_receive_step(const MunitParameter params[], void *user)
+{
+	ChiakiTakion takion;
+	memset(&takion, 0, sizeof(takion));
+	takion.log = get_test_log();
+	takion.av_packet_parse = chiaki_takion_v9_av_packet_parse;
+	chiaki_key_state_init(&takion.key_state);
+
+	// Warmup: the reorder queue's own array is calloc'd on the first packet, once per session,
+	// and it is not a per-packet cost.
+	replay_one_datagram(&takion, 45);
+
+	const unsigned int packets = 200;
+	alloc_bytes = 0;
+	alloc_calls = 0;
+	alloc_counting_enabled = 1;
+	for(unsigned int i = 0; i < packets; i++)
+		replay_one_datagram(&takion, (uint16_t)(46 + i));
+	alloc_counting_enabled = 0;
+
+	const size_t entry_size = takion_av_packet_entry_size();
+	munit_logf(MUNIT_LOG_INFO,
+			"receive step: %u packets cost %zu bytes in %zu allocations "
+			"(%zu bytes and %zu calls per packet; queue entry is %zu bytes)",
+			packets, alloc_bytes, alloc_calls,
+			alloc_bytes / packets, alloc_calls / packets, entry_size);
+
+	munit_assert_size(alloc_calls, ==, (size_t)packets * CHIAKI_RECV_BUDGET_CALLS_PER_PACKET);
+
+	// Stated as an identity rather than a constant, so a struct that grows moves the number
+	// instead of turning the gate red for a reason the message cannot name.
+	const size_t expected_bytes = (size_t)packets
+			* (CHIAKI_RECV_BUFFER_INITIAL_SIZE + sizeof(real_video_packet) + entry_size);
+	munit_assert_size(alloc_bytes, ==, expected_bytes);
+
+	// And the point of the whole line: this step is not the zero the frame processor is.
+	munit_assert_size(alloc_calls, >, 0);
+
+	return MUNIT_OK;
+}
+
 MunitTest tests_alloc_budget[] = {
 	{
 		"/counter_sees_allocations",
@@ -218,6 +303,13 @@ MunitTest tests_alloc_budget[] = {
 	{
 		"/per_packet",
 		test_alloc_budget_per_packet,
+		NULL, NULL,
+		MUNIT_TEST_OPTION_NONE,
+		NULL
+	},
+	{
+		"/receive_step",
+		test_alloc_budget_receive_step,
 		NULL, NULL,
 		MUNIT_TEST_OPTION_NONE,
 		NULL

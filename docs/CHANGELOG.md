@@ -29,6 +29,7 @@
 - ✅ **PP45** **no harness runs the old build and the new one against the same input and prints the difference** — compare-baselines reads two records and prints p50, p99 and max per stage with the delta, refusing a verdict and flagging mismatched conditions; the median arrived with it as schema 4.
 - ✅ **PP46 (the harness)** **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — measure-startup takes cold start, tree size and idle working set in one command and stamps webengine_present, so a row taken without Chromium cannot be read as the before.
 - ✅ **PP58** **the airspace present path runs at half the shared surface's frame rate and nothing says why** — PresentEx waits a vblank even at PresentInterval.Immediate, and stacking that on WPF's vblank-synced render tick costs one frame in two; off that tick the same child window holds 60fps.
+- ✅ **PP59** **takion mallocs a queue entry and a packet buffer per video packet, so the receive step has no budget** — The receive step costs 3 allocator calls and 1754 bytes per video packet, measured through a seam the counter can reach, and the gate fails when either rises.
 
 ## Block I — NVIDIA path
 

@@ -7,6 +7,8 @@
 #include <chiaki/gkcrypt.h>
 #include <chiaki/time.h>
 
+#include "takionreceive.h"
+
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -38,19 +40,6 @@
 #define TAKION_EXPECT_TIMEOUT_MS 5000
 
 #define MAX_CONNECT_RESEND_TRIES 3
-/**
- * Base type of Takion packets. Lower nibble of the first byte in datagrams.
- */
-typedef enum takion_packet_type_t {
-	TAKION_PACKET_TYPE_CONTROL = 0,
-	TAKION_PACKET_TYPE_FEEDBACK_HISTORY = 1,
-	TAKION_PACKET_TYPE_VIDEO = 2,
-	TAKION_PACKET_TYPE_AUDIO = 3,
-	TAKION_PACKET_TYPE_HANDSHAKE = 4,
-	TAKION_PACKET_TYPE_CONGESTION = 5,
-	TAKION_PACKET_TYPE_FEEDBACK_STATE = 6,
-	TAKION_PACKET_TYPE_CLIENT_INFO = 8,
-} TakionPacketType;
 
 /**
  * @return The offset of the mac of size CHIAKI_GKCRYPT_GMAC_SIZE inside a packet of type or -1 if unknown.
@@ -156,6 +145,14 @@ typedef struct
 	uint64_t queued_us;
 } TakionAVPacketEntry;
 
+// PP59: the entry is malloc'd per video packet and its size is the per-packet overhead the
+// budget has to name. The struct stays private, so the number is published rather than the
+// layout - a test that took sizeof() from its own copy would measure its own copy.
+size_t takion_av_packet_entry_size(void)
+{
+	return sizeof(TakionAVPacketEntry);
+}
+
 typedef struct chiaki_takion_postponed_packet_t
 {
 	uint8_t *buf;
@@ -175,7 +172,6 @@ static ChiakiErrorCode takion_send_message_cookie(ChiakiTakion *takion, uint8_t 
 static ChiakiErrorCode takion_recv(ChiakiTakion *takion, uint8_t *buf, size_t *buf_size, uint64_t timeout_ms);
 static ChiakiErrorCode takion_recv_message_init_ack(ChiakiTakion *takion, TakionMessagePayloadInitAck *payload);
 static ChiakiErrorCode takion_recv_message_cookie_ack(ChiakiTakion *takion);
-static void takion_handle_packet_av(ChiakiTakion *takion, uint8_t base_type, uint8_t *buf, size_t buf_size);
 static ChiakiErrorCode takion_read_extra_sock_messages(ChiakiTakion *takion);
 
 CHIAKI_EXPORT ChiakiErrorCode chiaki_takion_connect(ChiakiTakion *takion, ChiakiTakionConnectInfo *info, chiaki_socket_t *sock)
@@ -1550,7 +1546,9 @@ static ChiakiErrorCode takion_recv_message_cookie_ack(ChiakiTakion *takion)
 	return CHIAKI_ERR_SUCCESS;
 }
 
-static void takion_handle_packet_av(ChiakiTakion *takion, uint8_t base_type, uint8_t *buf, size_t buf_size)
+// Not static since PP59: declared in takionreceive.h so the allocation counter can charge the
+// receive step. Still internal - the header is not installed and only the test includes it.
+void takion_handle_packet_av(ChiakiTakion *takion, uint8_t base_type, uint8_t *buf, size_t buf_size)
 {
 	// HHIxIIx
 	// buf ownership is taken by this function (freed on error or transferred to queue entry).

@@ -28,19 +28,34 @@ reused. Only FEC reconstruction allocates, and only on frames that lost a unit. 
 That makes the budget strict and defensible at the same time. The bar is not "allocate little", it
 is "allocate nothing", because that is what exists today.
 
-### What the 0 does not cover
+### What the 0 does not cover — the receive step, measured by PP59
 
-**The receive step is not in this measurement, and it is not free.** `takion_handle_packet_av`
-mallocs a `TakionAVPacketEntry` and owns the packet buffer for every video packet
-([`lib/src/takion.c`](../../lib/src/takion.c), around the `chiaki_reorder_queue_push` call), so the
-C transport does allocate twice per packet before the payload reaches the frame processor. That
-function is static and driven by a socket, so replaying a capture through it needs the transport
-this task is filed ahead of.
+**The receive step is not in this measurement, and it is not free: 3 allocator calls and 1754
+bytes per video packet.** Read the budget as scoped — **0 bytes per packet for parse and
+reassembly**, which is the part both halves measure, and a separate non-zero number for the step
+before it.
 
-So read the budget as scoped: **0 bytes per packet for parse and reassembly**, which is the part
-both halves measure. The receive step's own budget is open work, filed separately — a managed
-transport held to 0 for the whole path has to answer for the reorder-queue entry too, and pooling
-it is exactly what `ArrayPool` is for.
+| where | call | bytes |
+|---|---|---|
+| the recv loop, `takion_av_thread_func` | `malloc` of a fixed receive buffer | 1500 |
+| the same loop, once the datagram arrived | `realloc` down to the received size | 174 for this capture |
+| `takion_handle_packet_av` | `malloc` of the `TakionAVPacketEntry` | 80 |
+
+Two things this corrects. It is **three** calls, not the two the earlier note claimed — the
+`realloc` that shrinks the 1500-byte buffer was uncounted. And 1754 bytes is dominated by the
+receive buffer rather than by the queue entry, so pooling only the entry would move 80 of it.
+
+The budget is stated rather than pooled away, deliberately: PP27 replaces this transport, and it
+inherits 3 calls per packet as **the number to beat**, not as a bar it has already cleared. A
+managed transport held to 0 for the whole path has to answer for the receive buffer and the
+reorder-queue entry, and `ArrayPool` is exactly what that answer looks like.
+
+`takion_handle_packet_av` used to be static and reachable only from the socket thread, which is
+why this went unmeasured for as long as it did. PP59 gave it a declaration in
+[`lib/src/takionreceive.h`](../../lib/src/takionreceive.h) so the counter can charge it. The entry
+allocation is measured inside the function; the buffer pair is replayed at the same sizes and in
+the same order, because driving the real loop needs a connected session and a live socket. The
+test says so where the number is produced.
 
 ## Running it
 
