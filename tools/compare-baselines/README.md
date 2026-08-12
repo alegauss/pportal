@@ -101,6 +101,10 @@ claiming a match nobody measured is the failure §PP45 exists to stop.
 `present` (`handoff_us`) is the one stage every shape has ever carried, which is what makes an
 oldest-against-newest comparison possible at all.
 
+The table above is history, not a forecast: since PP64 the writer is gated on the same contract.
+`test_baseline_field_set_belongs_to_its_schema` pins the emitted key set per schema number, so a
+sixth shape cannot arrive under an existing number — which is what produced the two schema 1 rows.
+
 ## Assertions
 
 `--self-test` is the assertion this tool ships with. It runs against literal fixtures — two

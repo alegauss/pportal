@@ -31,6 +31,7 @@
 - ✅ **PP58** **the airspace present path runs at half the shared surface's frame rate and nothing says why** — PresentEx waits a vblank even at PresentInterval.Immediate, and stacking that on WPF's vblank-synced render tick costs one frame in two; off that tick the same child window holds 60fps.
 - ✅ **PP59** **takion mallocs a queue entry and a packet buffer per video packet, so the receive step has no budget** — The receive step costs 3 allocator calls and 1754 bytes per video packet, measured through a seam the counter can reach, and the gate fails when either rises.
 - ✅ **PP60** **one baseline file accumulates records of four schemas and the comparison tool refuses all but the newest** — compare-baselines now reads every shape by the fields present rather than the schema number, compares the intersection and prints what it had to drop.
+- ✅ **PP64** **a field can be added to the baseline record without bumping the schema, and 34b10cbf already did it** — The emitted key set is pinned per schema number, so a field added without a bump and a bump with no recorded row both turn the suite red.
 
 ## Block I — NVIDIA path
 

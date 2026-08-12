@@ -4,6 +4,7 @@
 
 #include <chiaki/sessionbaseline.h>
 
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -175,16 +176,6 @@ static MunitResult test_baseline_field_set_is_closed(const MunitParameter params
 	for(size_t i = 0; i < sizeof(carried) / sizeof(carried[0]); i++)
 		munit_assert_not_null(strstr(line, carried[i]));
 
-	// Count the keys, so a field added without being listed above is caught too: pinning only
-	// the names present would let a new one in silently.
-	unsigned keys = 0;
-	for(const char *c = line; *c; c++)
-	{
-		if(*c == ':' && c != line && *(c - 1) == '"')
-			keys++;
-	}
-	munit_assert_uint(keys, ==, 73);
-
 	// Nothing that identifies a console, a network or an account. These are exactly the
 	// labels the session log carries a sanitizer to remove; here they are absent instead.
 	static const char *never[] = {
@@ -193,6 +184,122 @@ static MunitResult test_baseline_field_set_is_closed(const MunitParameter params
 	};
 	for(size_t i = 0; i < sizeof(never) / sizeof(never[0]); i++)
 		munit_assert_null(strstr(line, never[i]));
+
+	return MUNIT_OK;
+}
+
+/**
+ * PP64: the field set belongs to a schema number, and this is what makes that true.
+ *
+ * The list above already fails when a field is added - but the repair it invites is to add the
+ * name and move on, and that is exactly the commit this project has already made: 34b10cbf added
+ * the whole latency object while CHIAKI_SESSION_BASELINE_SCHEMA stayed at 1, so one integer now
+ * names two shapes that can only be told apart by looking. PP60 had to teach compare-baselines to
+ * read fields instead of trusting the number. That is the reader defending itself against the
+ * writer; this is the writer being held to the contract instead.
+ *
+ * The table below is a record of what each schema emitted, and old rows are not editable in any
+ * useful sense: a changed field set under a schema already in the table is a rewritten history,
+ * not an update. Both ways of getting it wrong land here.
+ *
+ *   field added, schema not bumped -> the digest for this schema no longer matches
+ *   schema bumped, table not extended -> no row for it, and the lookup fails
+ *
+ * Only the current schema can be asserted, because the writer only emits that one. Rows for
+ * retired schemas are kept as the ledger of what those numbers meant - the digest is what a run
+ * against that build would have produced, which is why they are not deleted when the number moves.
+ */
+typedef struct
+{
+	int schema;
+	unsigned keys;
+	uint64_t digest;
+} BaselineFieldSet;
+
+static const BaselineFieldSet baseline_field_sets[] = {
+	// Schemas 1 to 3 predate this pin and were never digested, so they are recorded by their
+	// distinguishing fields in tools/compare-baselines rather than here. 4 is the first the
+	// writer is held to.
+	{ 4, 73, UINT64_C(0xf8297381c4869ab8) },
+};
+
+/** FNV-1a over the record's key names, in emission order, so a reorder is a change too. */
+static uint64_t baseline_key_digest(const char *line, unsigned *count)
+{
+	uint64_t h = UINT64_C(1469598103934665603);
+	unsigned keys = 0;
+
+	for(const char *c = line; *c; c++)
+	{
+		// A key is the quoted name a colon closes. A string *value* is never followed by a
+		// colon in JSON - what follows one is a comma or a brace - so this cannot mistake
+		// "cuda" or "h264" for a field name.
+		if(*c != ':' || c == line || *(c - 1) != '"')
+			continue;
+
+		// Back to the quote that opens the name. A key never contains a quote of its own.
+		const char *start = c - 2;
+		while(start > line && *start != '"')
+			start--;
+
+		keys++;
+		for(const char *k = start; k < c; k++)
+		{
+			h ^= (unsigned char)*k;
+			h *= UINT64_C(1099511628211);
+		}
+	}
+
+	*count = keys;
+	return h;
+}
+
+static MunitResult test_baseline_field_set_belongs_to_its_schema(const MunitParameter params[], void *user)
+{
+	ChiakiSessionBaseline baseline;
+	fill_reference(&baseline);
+
+	char line[CHIAKI_SESSION_BASELINE_LINE_MAX];
+	munit_assert_int(chiaki_session_baseline_format(&baseline, line, sizeof(line), NULL), ==, CHIAKI_ERR_SUCCESS);
+
+	// The number the writer puts in the record is the number it was compiled with. Asserted
+	// because everything below trusts it to select the row.
+	char claimed[32];
+	snprintf(claimed, sizeof(claimed), "\"schema\":%d", CHIAKI_SESSION_BASELINE_SCHEMA);
+	munit_assert_not_null(strstr(line, claimed));
+
+	const BaselineFieldSet *pinned = NULL;
+	for(size_t i = 0; i < sizeof(baseline_field_sets) / sizeof(baseline_field_sets[0]); i++)
+	{
+		if(baseline_field_sets[i].schema == CHIAKI_SESSION_BASELINE_SCHEMA)
+			pinned = &baseline_field_sets[i];
+	}
+
+	unsigned keys = 0;
+	uint64_t digest = baseline_key_digest(line, &keys);
+
+	// A schema with no row is a bump nobody recorded. The message carries the numbers, because
+	// what the author has to do is add a row and these are its contents.
+	if(!pinned)
+	{
+		munit_logf(MUNIT_LOG_ERROR,
+				"schema %d has no recorded field set: add { %d, %u, UINT64_C(0x%016llx) } to "
+				"baseline_field_sets",
+				CHIAKI_SESSION_BASELINE_SCHEMA, CHIAKI_SESSION_BASELINE_SCHEMA, keys,
+				(unsigned long long)digest);
+		return MUNIT_FAIL;
+	}
+
+	if(keys != pinned->keys || digest != pinned->digest)
+	{
+		munit_logf(MUNIT_LOG_ERROR,
+				"schema %d emitted %u keys with digest 0x%016llx, but that schema is recorded as "
+				"%u keys with digest 0x%016llx. A changed field set is a new schema: bump "
+				"CHIAKI_SESSION_BASELINE_SCHEMA and add a row, rather than editing this one",
+				CHIAKI_SESSION_BASELINE_SCHEMA, keys, (unsigned long long)digest,
+				pinned->keys, (unsigned long long)pinned->digest);
+		return MUNIT_FAIL;
+	}
 
 	return MUNIT_OK;
 }
@@ -473,6 +580,13 @@ MunitTest tests_session_baseline[] = {
 	{
 		"/format_line",
 		test_baseline_format_line,
+		NULL, NULL,
+		MUNIT_TEST_OPTION_NONE,
+		NULL
+	},
+	{
+		"/field_set_belongs_to_its_schema",
+		test_baseline_field_set_belongs_to_its_schema,
 		NULL, NULL,
 		MUNIT_TEST_OPTION_NONE,
 		NULL

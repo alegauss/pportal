@@ -71,7 +71,6 @@
 
 - ⏳ **PP46** (deps: PP42 ✅, PP63) **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — A Chromium leaving the build should be visible in cold start and in megabytes, and stating it without measuring is how a port collects folklore. → §PP46
 - 📋 **PP61** (deps: PP46 ⏳) **the startup harness labels a warm run cold, because the OS file cache outlives the process** — 3771ms on the first run after a build against 1218ms on re-invocation, and nothing in the report says which cache state produced the number. → §PP61
-- 📋 **PP64** (deps: —) **a field can be added to the baseline record without bumping the schema, and 34b10cbf already did it** — The reader detects shapes by field because the number lied once; nothing stops it lying again, and every new shape costs the tool another case. → §PP64
 
 ## Block I — NVIDIA path
 
