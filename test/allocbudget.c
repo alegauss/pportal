@@ -21,11 +21,17 @@
  *
  * This half measures what the C transport that exists actually does, so the budget the managed
  * rewrite inherits has a provenance. The result is the interesting part: after the first frame the
- * receive-and-reassemble path allocates *nothing* per packet. The buffers are sized once from the
+ * parse-and-reassemble path allocates *nothing* per packet. The buffers are sized once from the
  * frame's own header and then reused, so the steady-state cost is zero bytes and zero calls.
  *
  * That makes the budget unusually strict and unusually defensible: the bar is not "allocate
  * little", it is "allocate nothing", because that is what the code being replaced does.
+ *
+ * Scope, stated because the number is easy to over-read: this replays parse, alloc_frame, put_unit
+ * and flush. It does *not* include takion's receive step, which mallocs a TakionAVPacketEntry and
+ * owns the packet buffer for every video packet - so the C transport allocates twice per packet
+ * before the payload arrives here. That function is static and socket-driven, so covering it needs
+ * the transport this task is filed ahead of. The budget below is for parse and reassembly.
  *
  * Counting works by wrapping the allocator at link time (see test/CMakeLists.txt). Only malloc,
  * calloc and realloc are wrapped; free is left alone, because every pointer handed out here comes

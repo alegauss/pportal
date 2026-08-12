@@ -20,13 +20,27 @@ copy is the source of truth and `Capture.cs` is generated from it.
 
 ### Why the number is 0
 
-After the first frame the C receive-and-reassemble path allocates nothing per packet: `unit_slots`
-and `frame_buf` are sized once from a field inside the frame's own payload and then reused. Only
-FEC reconstruction allocates, and only on frames that lost a unit. Measured over 200 frames ×
-7 source units = 1400 packets: **0 bytes, 0 allocator calls.**
+After the first frame the C **parse-and-reassemble** path allocates nothing per packet:
+`unit_slots` and `frame_buf` are sized once from a field inside the frame's own payload and then
+reused. Only FEC reconstruction allocates, and only on frames that lost a unit. Measured over
+200 frames × 7 source units = 1400 packets: **0 bytes, 0 allocator calls.**
 
 That makes the budget strict and defensible at the same time. The bar is not "allocate little", it
 is "allocate nothing", because that is what exists today.
+
+### What the 0 does not cover
+
+**The receive step is not in this measurement, and it is not free.** `takion_handle_packet_av`
+mallocs a `TakionAVPacketEntry` and owns the packet buffer for every video packet
+([`lib/src/takion.c`](../../lib/src/takion.c), around the `chiaki_reorder_queue_push` call), so the
+C transport does allocate twice per packet before the payload reaches the frame processor. That
+function is static and driven by a socket, so replaying a capture through it needs the transport
+this task is filed ahead of.
+
+So read the budget as scoped: **0 bytes per packet for parse and reassembly**, which is the part
+both halves measure. The receive step's own budget is open work, filed separately — a managed
+transport held to 0 for the whole path has to answer for the reorder-queue entry too, and pooling
+it is exactly what `ArrayPool` is for.
 
 ## Running it
 
