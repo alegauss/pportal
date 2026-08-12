@@ -42,6 +42,7 @@
 - 📋 **PP20** (deps: —) **171 platform conditionals remain in gui, 33 of them macOS and 17 Linux, after those trees were deleted** — Dead branches for platforms that no longer have a build are what makes a port look larger than it is, and every one of them is read at least once. → §PP20
 - 📋 **PP21** (deps: Block D) **Qt6 is still required to build: Core, Gui, Quick, Qml, Svg, Widgets, Concurrent and WebEngineQuick** — The port is only finished when the toolchain says so, and dropping Qt is the check that no screen or service quietly still depends on it. → §PP21
 - 📋 **PP22** (deps: PP1) **every CI workflow was deleted, so nothing builds, signs or packages the application** — A Windows-only application with no Windows build is a source tree, and claude-tray already has the shape: publish one self-contained exe, then wrap it in an installer. → §PP22
+- 📋 **PP62** (deps: —) **the tree's only build cannot include QtWebEngine, so the login screen the port replaces is compiled out** — MSYS2 ships no qt6-webengine for mingw64, so CHIAKI_HAVE_WEBENGINE is never defined and neither PP46's before nor PP7's reference behaviour can be built here. → §PP62
 
 ## Block F — Managed core
 

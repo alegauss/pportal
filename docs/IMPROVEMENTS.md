@@ -347,6 +347,33 @@ fetched, and the current tree does that through vcpkg.
 Filed early because a build that only exists on one machine is how a port acquires an
 undocumented step, and late enough that there is a host worth publishing.
 
+### §PP62 No Chromium on this toolchain
+
+compile.cmd builds through MSYS2 MinGW64, and MSYS2 ships no qt6-webengine for that
+toolchain. Measured on this machine: 3093 packages in the mingw64 repo, 80 of them qt6,
+and `pacman -Ssq webengine` returns nothing in any repo. What exists is qt6-webchannel,
+qt6-websockets and qt6-webview - none of which is the Chromium-backed WebEngineQuick the
+login view needs. The reason is upstream and not local: Chromium's Windows build
+requires MSVC or clang-cl, so MinGW never gets a package.
+
+CMakeLists.txt makes the component optional and main.cpp guards its initialise on
+CHIAKI_HAVE_WEBENGINE, so the build succeeds and silently omits the screen. Nothing
+fails; the PSN login view is simply absent from every binary this repository can
+produce.
+
+Two consequences, and the second is the one that costs. PP46 wanted the installer and
+cold-start numbers for a build that carries Chromium, and there is no such build to
+measure here - the before needs a different toolchain, not a package install. And PP7
+replaces a QtWebEngine login with WebView2 while the thing being replaced cannot be
+compiled, so the port has no reference behaviour for that screen and no way to compare
+against it.
+
+The output is a decision about the reference build: measure the published upstream
+release, which does ship Chromium; or stand up an MSVC configure alongside compile.cmd
+for this one purpose; or state that this screen is ported against the source rather than
+against a running original. Any of them beats discovering it while writing a release
+note.
+
 ## Block F — Managed core
 
 ### §PP23 The oracle this block cannot be written without
