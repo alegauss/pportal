@@ -171,6 +171,31 @@ reaches the issue tracker first. It is a separate line from PP9 because it is Wi
 DXGI work that does not depend on which of the three renderer shapes wins, only on there
 being a window.
 
+### §PP57 A slice the parser never filled in
+
+lib/src/videoreceiver.c:246 declares `ChiakiBitstreamSlice slice;` with no initialiser.
+It is written only inside the `if(chiaki_bitstream_slice(...))` at :247, and read at
+:309 on a path that does not require that branch to have been taken - `succ` is derived
+from the flush result alone, so a frame the parser declined still reaches the callback
+and still gets logged.
+
+The declined case is not hypothetical. slice_h264 returns false at bitstream.c:163 when
+no startcode is found and at :173 on an unexpected NAL unit type, and both carry a
+CHIAKI_LOGW, which is how the code says it expects them. A frame whose first NAL is SEI
+or AUD, or one reassembled by FEC into something the parser will not accept, takes that
+path.
+
+What it costs today is one character in a verbose log line: 'I' or 'P' chosen from an
+indeterminate value. That is why this is a line and not an incident. What earns it the
+line is that reading an indeterminate automatic is undefined rather than merely wrong:
+the compiler may assume it cannot happen, and a UBSan build will flag it. A port that
+has just started recording numbers it means to trust should not carry a construct the
+optimiser is entitled to disbelieve.
+
+The fix is an initialiser and a guard: zero the slice at declaration, and gate the log
+on the parse having succeeded rather than on the frame having been sent. The assertion
+that fails without it is a parse-declined frame that still reaches the callback.
+
 ## Block D — Screens
 
 ### §PP12 The control vocabulary, and the focus nobody ships

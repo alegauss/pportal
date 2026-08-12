@@ -24,6 +24,7 @@
 - 📋 **PP9** (deps: PP5, PP43) **the video is presented by libplacebo into a Vulkan-backed QQuickWindow, which WPF cannot host** — WPF composes through D3D9 and cannot present a Vulkan swapchain, so the choice between a child window and a shared texture is what every stream screen is then built on. → §PP9
 - 📋 **PP10** (deps: PP9) **the stream HUD and the in-stream menu are QML drawn over the video and disappear with the renderer** — 1740 lines of overlay assume the compositor they are drawn in, so what replaces the renderer decides whether they are XAML above a surface or drawn into the frame. → §PP10
 - 📋 **PP11** (deps: PP9) **fullscreen, HDR handoff and refresh-rate switching are handled by the Qt window** — These are the three settings a remote play session is actually judged by, and each is a Win32 or DXGI call the new window has to make for itself. → §PP11
+- 📋 **PP57** (deps: —) **videoreceiver reads slice.slice_type uninitialised when the bitstream parser declined the frame, which is UB** — chiaki_bitstream_slice returns false on a missing startcode or an odd NAL type, yet the success path reads slice.slice_type anyway, describing the frame from stack garbage. → §PP57
 
 ## Block D — Screens
 
