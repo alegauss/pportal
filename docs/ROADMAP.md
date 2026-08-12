@@ -72,6 +72,7 @@
 - 📋 **PP46** (deps: PP42 ✅) **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — A Chromium leaving the build should be visible in cold start and in megabytes, and stating it without measuring is how a port collects folklore. → §PP46
 - 📋 **PP55** (deps: PP40 ✅) **the in-process latency estimate has nothing to check it against, so an honest sum and a wrong one read alike** — A floor built from three client-side terms can be self-consistent and still miss the delay a user feels, and only an instrument outside the process says which it is. → §PP55
 - 📋 **PP58** (deps: —) **the airspace present path runs at half the shared surface's frame rate and nothing says why** — 31.4ms per frame against 16.7ms on the same machine, and whether PresentEx blocks or the WPF render loop stalls behind it was never separated. → §PP58
+- 📋 **PP59** (deps: PP44 ✅) **takion mallocs a queue entry and a packet buffer per video packet, so the receive step has no budget** — PP44's zero covers parse and reassembly only, and a managed transport held to zero for the whole path has to answer for the reorder-queue entry too. → §PP59
 
 ## Block I — NVIDIA path
 

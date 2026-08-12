@@ -707,6 +707,29 @@ The output is one sentence naming the cause, backed by a run that isolates it: p
 on a thread WPF does not drive, or drive the loop from a timer rather than from
 CompositionTarget, and see which number moves.
 
+### §PP59 The receive step is outside the zero
+
+PP44 measured 0 bytes per packet and that number is real, but it is scoped: it covers
+parse, alloc_frame, put_unit and flush. The step before them is not free.
+takion_handle_packet_av mallocs a TakionAVPacketEntry per video packet and hands it the
+packet buffer, both freed when the reorder queue releases it - two allocations per
+packet, on the hottest path the client has.
+
+So the honest reading of PP44 today is "zero for parse and reassembly, unmeasured for
+receive". That gap matters because PP27 inherits the budget: a managed transport told
+the bar is zero, then discovering the C code it replaces allocates twice per packet at
+receive, will either relax the budget to match or carry an allocation nobody agreed to.
+Both outcomes are the budget failing at the job it was filed to do.
+
+The reason it is unmeasured rather than merely unmentioned is mechanical:
+takion_handle_packet_av is static and driven by a socket read, so replaying a capture
+through it needs either a seam for injecting received bytes or the managed transport
+itself.
+
+The output is a number for the receive step and a decision about it: pool the entry and
+the buffer so the whole path is zero, or state a non-zero receive budget with the
+reason. Either is fine; what is not fine is PP27 discovering the question.
+
 ## Block I — NVIDIA path
 
 ### §PP47 The right NVIDIA feature, which is not the famous one
