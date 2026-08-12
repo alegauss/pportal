@@ -164,14 +164,18 @@ CHIAKI_EXPORT uint64_t chiaki_session_baseline_stat_avg(const ChiakiSessionBasel
 	return stat->sum_us / stat->samples;
 }
 
-CHIAKI_EXPORT uint64_t chiaki_session_baseline_stat_p99_us(const ChiakiSessionBaselineStat *stat)
+CHIAKI_EXPORT uint64_t chiaki_session_baseline_stat_percentile_us(const ChiakiSessionBaselineStat *stat, unsigned int percent)
 {
 	if(stat->samples == 0)
 		return 0;
+	if(percent < 1)
+		percent = 1;
+	if(percent > 100)
+		percent = 100;
 
-	// The rank of the 99th percentile, rounded up: with 100 samples that is the 99th, so
+	// The rank of the percentile, rounded up: at 99 with 100 samples that is the 99th, so
 	// exactly one sample is allowed to sit above what this returns.
-	const uint64_t target = (stat->samples * 99 + 99) / 100;
+	const uint64_t target = (stat->samples * percent + 99) / 100;
 	uint64_t cumulative = 0;
 	for(size_t i = 0; i < CHIAKI_SESSION_BASELINE_HIST_BUCKETS; i++)
 	{
@@ -186,6 +190,16 @@ CHIAKI_EXPORT uint64_t chiaki_session_baseline_stat_p99_us(const ChiakiSessionBa
 	// Unreachable while every push lands in a bucket, but a stat whose histogram saturated
 	// must still answer with a bound rather than with zero.
 	return stat->max_us;
+}
+
+CHIAKI_EXPORT uint64_t chiaki_session_baseline_stat_p50_us(const ChiakiSessionBaselineStat *stat)
+{
+	return chiaki_session_baseline_stat_percentile_us(stat, 50);
+}
+
+CHIAKI_EXPORT uint64_t chiaki_session_baseline_stat_p99_us(const ChiakiSessionBaselineStat *stat)
+{
+	return chiaki_session_baseline_stat_percentile_us(stat, 99);
 }
 
 CHIAKI_EXPORT void chiaki_session_baseline_push_handoff(ChiakiSessionBaseline *baseline, uint64_t handoff_us)
@@ -246,11 +260,12 @@ static void baseline_write(BaselineWriter *w, const char *fmt, ...)
  */
 static void baseline_write_stat(BaselineWriter *w, const char *name, const ChiakiSessionBaselineStat *stat)
 {
-	baseline_write(w, "\"%s\":{\"min\":%llu,\"max\":%llu,\"avg\":%llu,\"p99\":%llu,\"samples\":%llu}",
+	baseline_write(w, "\"%s\":{\"min\":%llu,\"max\":%llu,\"avg\":%llu,\"p50\":%llu,\"p99\":%llu,\"samples\":%llu}",
 			name,
 			(unsigned long long)(stat->samples ? stat->min_us : 0),
 			(unsigned long long)stat->max_us,
 			(unsigned long long)chiaki_session_baseline_stat_avg(stat),
+			(unsigned long long)chiaki_session_baseline_stat_p50_us(stat),
 			(unsigned long long)chiaki_session_baseline_stat_p99_us(stat),
 			(unsigned long long)stat->samples);
 }

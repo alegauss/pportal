@@ -633,23 +633,6 @@ opt-out can keep the fast path for someone who only wants the client.
 
 ## Block H — Performance and telemetry
 
-### §PP45 The comparison, as one command
-
-The correctness oracle in the managed core block compares bytes between implementations.
-This is its performance counterpart and the two should share whatever replay they need:
-the same captured session, driven into both builds, producing the two records the
-telemetry sink writes.
-
-What it prints is a delta per stage with distributions, not a verdict - p50, p99 and
-maximum for each of the five stages, plus dropped and lost frames, plus the conditions.
-A single number that says faster or slower is what people argue about; five
-distributions are what they fix.
-
-It is also the honest reporting mechanism for this whole port. The expectation set out
-when this block was proposed is parity at best, with two places it can get worse and two
-narrow places it can get better. That expectation deserves to be checked rather than
-defended, and this is the task that checks it.
-
 ### §PP46 Two numbers that are easy and get assumed
 
 QtWebEngine is in the build for one login screen and WebView2 replaces it with a control

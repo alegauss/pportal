@@ -60,7 +60,7 @@ static MunitResult test_baseline_format_line(const MunitParameter params[], void
 	munit_assert_int(chiaki_session_baseline_format(&baseline, line, sizeof(line), &written), ==, CHIAKI_ERR_SUCCESS);
 
 	static const char *expected =
-			"{\"schema\":3"
+			"{\"schema\":4"
 			",\"started_utc\":\"2025-08-11T20:31:07Z\""
 			",\"duration_ms\":754321"
 			",\"app_version\":\"1.10.0\""
@@ -70,16 +70,16 @@ static MunitResult test_baseline_format_line(const MunitParameter params[], void
 			",\"measured_bitrate_mbps\":27.500"
 			",\"average_packet_loss\":0.01250"
 			",\"frames\":{\"presented\":45210,\"lost\":12,\"dropped\":7}"
-			",\"handoff_us\":{\"min\":900,\"max\":1500,\"avg\":1200,\"p99\":1500,\"samples\":3}"
+			",\"handoff_us\":{\"min\":900,\"max\":1500,\"avg\":1200,\"p50\":1279,\"p99\":1500,\"samples\":3}"
 			",\"stages_us\":{"
-			"\"receive\":{\"min\":40,\"max\":60,\"avg\":50,\"p99\":60,\"samples\":2}"
-			",\"reorder\":{\"min\":1100,\"max\":1100,\"avg\":1100,\"p99\":1100,\"samples\":1}"
-			",\"reassemble\":{\"min\":3000,\"max\":3000,\"avg\":3000,\"p99\":3000,\"samples\":1}"
-			",\"correct\":{\"min\":250,\"max\":250,\"avg\":250,\"p99\":250,\"samples\":1}"
-			",\"decode\":{\"min\":4200,\"max\":9000,\"avg\":6600,\"p99\":9000,\"samples\":2}"
+			"\"receive\":{\"min\":40,\"max\":60,\"avg\":50,\"p50\":43,\"p99\":60,\"samples\":2}"
+			",\"reorder\":{\"min\":1100,\"max\":1100,\"avg\":1100,\"p50\":1100,\"p99\":1100,\"samples\":1}"
+			",\"reassemble\":{\"min\":3000,\"max\":3000,\"avg\":3000,\"p50\":3000,\"p99\":3000,\"samples\":1}"
+			",\"correct\":{\"min\":250,\"max\":250,\"avg\":250,\"p50\":250,\"p99\":250,\"samples\":1}"
+			",\"decode\":{\"min\":4200,\"max\":9000,\"avg\":6600,\"p50\":4607,\"p99\":9000,\"samples\":2}"
 			"}"
 			",\"latency\":{\"estimate_us\":37800"
-			",\"input_to_wire_us\":{\"min\":400,\"max\":800,\"avg\":600,\"p99\":800,\"samples\":2}"
+			",\"input_to_wire_us\":{\"min\":400,\"max\":800,\"avg\":600,\"p50\":415,\"p99\":800,\"samples\":2}"
 			",\"network_rtt_us\":36000}"
 			"}\n";
 
@@ -99,13 +99,13 @@ static MunitResult test_baseline_format_empty(const MunitParameter params[], voi
 	munit_assert_int(chiaki_session_baseline_format(&baseline, line, sizeof(line), NULL), ==, CHIAKI_ERR_SUCCESS);
 
 	munit_assert_not_null(strstr(line, "\"started_utc\":null"));
-	munit_assert_not_null(strstr(line, "\"handoff_us\":{\"min\":0,\"max\":0,\"avg\":0,\"p99\":0,\"samples\":0}"));
+	munit_assert_not_null(strstr(line, "\"handoff_us\":{\"min\":0,\"max\":0,\"avg\":0,\"p50\":0,\"p99\":0,\"samples\":0}"));
 	munit_assert_not_null(strstr(line, "\"estimate_us\":0"));
 	// An unsampled stage reports zero samples rather than being absent: a reader comparing
 	// two runs has to be able to tell a stage that measured nothing from a stage that is not
 	// in this schema at all.
-	munit_assert_not_null(strstr(line, "\"receive\":{\"min\":0,\"max\":0,\"avg\":0,\"p99\":0,\"samples\":0}"));
-	munit_assert_not_null(strstr(line, "\"decode\":{\"min\":0,\"max\":0,\"avg\":0,\"p99\":0,\"samples\":0}"));
+	munit_assert_not_null(strstr(line, "\"receive\":{\"min\":0,\"max\":0,\"avg\":0,\"p50\":0,\"p99\":0,\"samples\":0}"));
+	munit_assert_not_null(strstr(line, "\"decode\":{\"min\":0,\"max\":0,\"avg\":0,\"p50\":0,\"p99\":0,\"samples\":0}"));
 	munit_assert_null(strstr(line, "nan"));
 	munit_assert_null(strstr(line, "inf"));
 
@@ -170,7 +170,7 @@ static MunitResult test_baseline_field_set_is_closed(const MunitParameter params
 		"\"handoff_us\":", "\"stages_us\":", "\"receive\":", "\"reorder\":",
 		"\"reassemble\":", "\"correct\":", "\"decode\":",
 		"\"latency\":", "\"estimate_us\":", "\"input_to_wire_us\":", "\"network_rtt_us\":",
-		"\"min\":", "\"max\":", "\"avg\":", "\"p99\":", "\"samples\":",
+		"\"min\":", "\"max\":", "\"avg\":", "\"p50\":", "\"p99\":", "\"samples\":",
 	};
 	for(size_t i = 0; i < sizeof(carried) / sizeof(carried[0]); i++)
 		munit_assert_not_null(strstr(line, carried[i]));
@@ -183,7 +183,7 @@ static MunitResult test_baseline_field_set_is_closed(const MunitParameter params
 		if(*c == ':' && c != line && *(c - 1) == '"')
 			keys++;
 	}
-	munit_assert_uint(keys, ==, 66);
+	munit_assert_uint(keys, ==, 73);
 
 	// Nothing that identifies a console, a network or an account. These are exactly the
 	// labels the session log carries a sanitizer to remove; here they are absent instead.

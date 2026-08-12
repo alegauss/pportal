@@ -39,7 +39,7 @@ extern "C" {
  * test that says so out loud rather than pass quietly.
  */
 
-#define CHIAKI_SESSION_BASELINE_SCHEMA 3
+#define CHIAKI_SESSION_BASELINE_SCHEMA 4
 
 /** Longest line chiaki_session_baseline_format can produce, including the newline. */
 #define CHIAKI_SESSION_BASELINE_LINE_MAX 2048
@@ -93,11 +93,22 @@ CHIAKI_EXPORT void chiaki_session_baseline_stat_push(ChiakiSessionBaselineStat *
 CHIAKI_EXPORT uint64_t chiaki_session_baseline_stat_avg(const ChiakiSessionBaselineStat *stat);
 
 /**
- * An upper bound on the 99th percentile, or 0 when nothing was sampled. Read out of the
- * histogram, so it is the upper edge of the bucket the percentile falls in, clamped to the
- * observed maximum. It never under-reports: a p99 of 9000 means no more than 1% of samples
- * were above 9000us, and the true value may be as low as 8000.
+ * An upper bound on the given percentile (1..100), or 0 when nothing was sampled. Read out of
+ * the histogram, so it is the upper edge of the bucket the percentile falls in, clamped to the
+ * observed maximum. It never under-reports: a p99 of 9000 means no more than 1% of samples were
+ * above 9000us, and the true value may be as low as 8000. The same holds for the median.
  */
+CHIAKI_EXPORT uint64_t chiaki_session_baseline_stat_percentile_us(const ChiakiSessionBaselineStat *stat, unsigned int percent);
+
+/**
+ * The median and the 99th, both bounds as above.
+ *
+ * The median is recorded alongside the mean rather than instead of it because they answer
+ * different questions and disagree exactly when it matters: a stage with a heavy tail can have a
+ * mean far above its median, so a comparison that reads only the mean reports a typical frame
+ * that no frame resembled.
+ */
+CHIAKI_EXPORT uint64_t chiaki_session_baseline_stat_p50_us(const ChiakiSessionBaselineStat *stat);
 CHIAKI_EXPORT uint64_t chiaki_session_baseline_stat_p99_us(const ChiakiSessionBaselineStat *stat);
 
 /** Free-text fields are truncated to this, so one long string cannot push out a number. */

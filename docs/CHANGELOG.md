@@ -24,6 +24,7 @@
 - ✅ **PP42** **telemetry has no sink: the counters live in the window and end with it** — The row now names the configuration that produced it - decoder, requested bitrate, both loss knobs - and its field set is closed against an address ever entering it, held by 11 munit assertions.
 - ✅ **PP43** **the present path is the largest risk in the port and would be chosen by argument rather than by measurement** — Measured on an RTX 4060: the shared surface holds 60fps at a 47us median present with a 5ms p99, while the airspace child window settles at 32fps - numbers and caveats in spike/present-path.
 - ✅ **PP44** **a managed transport allocating per packet would show up as stutter, and nothing would fail when it does** — The budget is 0 bytes per packet, measured rather than agreed: the C reassemble path allocates nothing per packet in steady state, and a munit counter plus a managed gate both fail when it rises.
+- ✅ **PP45** **no harness runs the old build and the new one against the same input and prints the difference** — compare-baselines reads two records and prints p50, p99 and max per stage with the delta, refusing a verdict and flagging mismatched conditions; the median arrived with it as schema 4.
 
 ## Block I — NVIDIA path
 
