@@ -72,6 +72,7 @@
 - 📋 **PP55** (deps: PP40 ✅) **the in-process latency estimate has nothing to check it against, so an honest sum and a wrong one read alike** — A floor built from three client-side terms can be self-consistent and still miss the delay a user feels, and only an instrument outside the process says which it is. → §PP55
 - 📋 **PP58** (deps: —) **the airspace present path runs at half the shared surface's frame rate and nothing says why** — 31.4ms per frame against 16.7ms on the same machine, and whether PresentEx blocks or the WPF render loop stalls behind it was never separated. → §PP58
 - 📋 **PP59** (deps: PP44 ✅) **takion mallocs a queue entry and a packet buffer per video packet, so the receive step has no budget** — PP44's zero covers parse and reassembly only, and a managed transport held to zero for the whole path has to answer for the reorder-queue entry too. → §PP59
+- 📋 **PP60** (deps: PP45 ✅) **one baseline file accumulates records of four schemas and the comparison tool refuses all but the newest** — The sink only appends, the schema moved 1 to 4 since PP39, and compare-baselines reads the last line and refuses the rest, so the history it compares is unreadable. → §PP60
 
 ## Block I — NVIDIA path
 
