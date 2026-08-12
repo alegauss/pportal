@@ -47,6 +47,13 @@ roadmap = "docs/ROADMAP.md"
 changelog = "docs/CHANGELOG.md"
 improvements = "docs/IMPROVEMENTS.md"
 
+# The store for "not now", declared because this port has a line that is neither shipped
+# nor abandoned: PP55 names an instrument - a G-SYNC panel carrying the Reflex Latency
+# Analyzer - that this machine does not have, and retiring it would delete a rationale
+# that a capable monitor makes true again. Without this path `defer` refuses and the only
+# doors are the two terminal ones.
+deferred = "docs/DEFERRED.md"
+
 [limits]
 # characters
 symptom = 120

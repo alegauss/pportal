@@ -70,7 +70,6 @@
 ## Block H — Performance and telemetry
 
 - ⏳ **PP46** (deps: PP42 ✅, PP63) **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — A Chromium leaving the build should be visible in cold start and in megabytes, and stating it without measuring is how a port collects folklore. → §PP46
-- 📋 **PP55** (deps: PP40 ✅) **the in-process latency estimate has nothing to check it against, so an honest sum and a wrong one read alike** — A floor built from three client-side terms can be self-consistent and still miss the delay a user feels, and only an instrument outside the process says which it is. → §PP55
 - 📋 **PP59** (deps: PP44 ✅) **takion mallocs a queue entry and a packet buffer per video packet, so the receive step has no budget** — PP44's zero covers parse and reassembly only, and a managed transport held to zero for the whole path has to answer for the reorder-queue entry too. → §PP59
 - 📋 **PP60** (deps: PP45 ✅) **one baseline file accumulates records of four schemas and the comparison tool refuses all but the newest** — The sink only appends, the schema moved 1 to 4 since PP39, and compare-baselines reads the last line and refuses the rest, so the history it compares is unreadable. → §PP60
 - 📋 **PP61** (deps: PP46 ⏳) **the startup harness labels a warm run cold, because the OS file cache outlives the process** — 3771ms on the first run after a build against 1218ms on re-invocation, and nothing in the report says which cache state produced the number. → §PP61
