@@ -192,3 +192,12 @@ if(CHIAKI_ENABLE_TESTS)
 	add_executable(holepunch-test include/chiaki/remote/holepunch.h src/remote/holepunch-test.c)
 	target_link_libraries(holepunch-test chiaki-lib)
 endif()
+
+# PP44's allocation gate counts libchiaki's allocations by wrapping malloc at link time in the
+# test binary. Without this the compiler may emit builtin allocation calls the linker never sees
+# as undefined references, so --wrap redirects nothing and the gate passes while blind. Keeping it
+# on the library rather than only on the test is what makes the instrument measure this code.
+target_compile_options(chiaki-lib PRIVATE
+	-fno-builtin-malloc
+	-fno-builtin-calloc
+	-fno-builtin-realloc)

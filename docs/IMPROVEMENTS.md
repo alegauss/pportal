@@ -633,22 +633,6 @@ opt-out can keep the fast path for someone who only wants the client.
 
 ## Block H — Performance and telemetry
 
-### §PP44 Allocations are the managed risk, and they are testable
-
-The transport rewrite is the one place in the managed core where the runtime is a real
-risk rather than a prejudice. It is also the place where the risk is cheapest to hold:
-allocation count is deterministic and can be asserted.
-
-So the budget is a test, not a review. Bytes allocated per packet processed, measured
-over a replayed capture, failing when it rises above the number that was agreed. Span,
-ArrayPool and the async socket APIs are how it is kept; the assertion is what stops it
-from quietly not being.
-
-The pairing with per-stage timing matters: an allocation regression shows up as a tail,
-not as a mean, so the same distributions that locate a slow stage are what make this
-visible at all. A build whose average is unchanged and whose p99 doubled is the exact
-shape of a GC problem.
-
 ### §PP45 The comparison, as one command
 
 The correctness oracle in the managed core block compares bytes between implementations.
