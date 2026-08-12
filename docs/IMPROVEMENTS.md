@@ -666,30 +666,6 @@ Reflex-capable monitor, so no number can be taken today. Taken later against a c
 tree, it measures the port instead of the client - the same window that closes on PP39
 closes on this.
 
-### §PP58 Half the frame rate, cause unknown
-
-PP43 measured it and deliberately did not explain it. On an RTX 4060, two Release runs
-of 600 frames each, the shared-surface path held a frame interval of 16 685-16 727us and
-the airspace child window settled at 31 357-31 468us - half the rate, on the same
-machine, in the same minute, with the same drawing. The raw runs are in
-spike/present-path/release-*.json.
-
-Half is too clean a ratio to leave alone. It is what a path locked to every second
-vblank looks like, which points at PresentEx blocking despite PresentInterval.Immediate,
-or at the WPF render loop stalling behind the present and missing its next tick. Those
-have different fixes and the spike separated neither: it timed the present call, not
-what the call was waiting on.
-
-It matters because PP9 inherits the choice. The numbers are enough to pick the shared
-surface, so this is not what blocks that decision - it is what stops the decision from
-being reopened. An unexplained 2x against the option everyone's intuition says should be
-faster is exactly the result that gets re-argued in six months by someone who assumes
-the spike was misconfigured.
-
-The output is one sentence naming the cause, backed by a run that isolates it: present
-on a thread WPF does not drive, or drive the loop from a timer rather than from
-CompositionTarget, and see which number moves.
-
 ### §PP59 The receive step is outside the zero
 
 PP44 measured 0 bytes per packet and that number is real, but it is scoped: it covers

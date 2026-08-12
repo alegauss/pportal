@@ -36,6 +36,7 @@ internal static class Report
         string json = "{"
             + $"\"spike\":\"PP43\""
             + $",\"path\":\"{args.Path}\""
+            + $",\"driver\":\"{args.Driver}\""
             + $",\"description\":\"{presenter.Describe()}\""
             + $",\"frame\":{{\"width\":{args.Width},\"height\":{args.Height}}}"
             + $",\"frames_measured\":{present.Count},\"frames_warmup\":{args.Warmup}"

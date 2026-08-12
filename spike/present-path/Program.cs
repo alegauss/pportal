@@ -1,6 +1,7 @@
 using System;
 using System.Globalization;
 using System.IO;
+using System.Threading;
 using System.Windows;
 using System.Windows.Media;
 
@@ -82,12 +83,55 @@ internal static class Program
             }
         }
 
+        // PP58: the same loop, driven two ways. `composition` is WPF's render tick, which is what a
+        // real WPF app would use. `thread` runs it on a background thread WPF does not drive, which
+        // is the isolation PP58 asks for: if the cadence changes, the limit was the render loop; if
+        // it does not, the present call itself is blocking.
+        void RunOnThread()
+        {
+            var t = new Thread(() =>
+            {
+                try
+                {
+                    while (frame < args.Warmup + args.Frames)
+                    {
+                        double us = presenter.PresentOneFrame(frame);
+                        long now = clock.ElapsedTicks;
+                        if (frame >= args.Warmup)
+                        {
+                            present.Push(us);
+                            if (lastTick != 0)
+                                cadence.Push((now - lastTick) * 1_000_000.0 / System.Diagnostics.Stopwatch.Frequency);
+                        }
+                        lastTick = now;
+                        frame++;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    failure = ex.ToString();
+                }
+                // Back to the UI thread to capture and close: both touch WPF objects.
+                window.Dispatcher.Invoke(() =>
+                {
+                    if (failure is null)
+                        Capture.Save(window, presenter, args);
+                    window.Close();
+                    app.Shutdown();
+                });
+            }) { IsBackground = true, Name = "present-loop" };
+            t.Start();
+        }
+
         window.Loaded += (_, _) =>
         {
             try
             {
                 presenter.Initialise(args.Width, args.Height);
-                CompositionTarget.Rendering += OnRendering;
+                if (args.Driver == "thread")
+                    RunOnThread();
+                else
+                    CompositionTarget.Rendering += OnRendering;
             }
             catch (Exception ex)
             {
@@ -110,6 +154,7 @@ internal static class Program
         }
 
         Console.WriteLine($"path      : {args.Path} - {presenter.Describe()}");
+        Console.WriteLine($"driver    : {args.Driver} ({(args.Driver == "thread" ? "background thread, WPF does not drive it" : "CompositionTarget.Rendering, WPF's render tick")})");
         Console.WriteLine($"frames    : {present.Count} measured, {args.Warmup} warmup discarded, {args.Width}x{args.Height}");
         Console.WriteLine(present.ToString());
         Console.WriteLine(cadence.ToString());
@@ -119,17 +164,18 @@ internal static class Program
     }
 }
 
-internal sealed record Args(string Path, int Frames, int Warmup, int Width, int Height, string Out)
+internal sealed record Args(string Path, int Frames, int Warmup, int Width, int Height, string Out, string Driver)
 {
     public static Args? Parse(string[] a)
     {
-        string path = "", outFile = "";
+        string path = "", outFile = "", driver = "composition";
         int frames = 600, warmup = 60, width = 1920, height = 1080;
         for (int i = 0; i < a.Length - 1; i++)
         {
             switch (a[i])
             {
                 case "--path": path = a[++i]; break;
+                case "--driver": driver = a[++i]; break;
                 case "--frames": frames = int.Parse(a[++i], CultureInfo.InvariantCulture); break;
                 case "--warmup": warmup = int.Parse(a[++i], CultureInfo.InvariantCulture); break;
                 case "--width": width = int.Parse(a[++i], CultureInfo.InvariantCulture); break;
@@ -139,8 +185,10 @@ internal sealed record Args(string Path, int Frames, int Warmup, int Width, int 
         }
         if (path != "hwnd" && path != "d3dimage")
             return null;
+        if (driver != "composition" && driver != "thread")
+            return null;
         if (outFile.Length == 0)
-            outFile = $"present-path-{path}.json";
-        return new Args(path, frames, warmup, width, height, outFile);
+            outFile = $"present-path-{path}-{driver}.json";
+        return new Args(path, frames, warmup, width, height, outFile, driver);
     }
 }

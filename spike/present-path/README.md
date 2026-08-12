@@ -24,6 +24,13 @@ argument.** The shared-surface path holds a steady 60 fps. The child-window path
 settles at half that, ~32 fps, with a p99 frame interval of 44–46 ms. The path usually assumed
 faster because it bypasses the compositor is the one that failed to keep up here.
 
+> **PP58 attributed that half-rate, and it is not a property of the path.** `PresentEx` blocks
+> for one full vblank despite `PresentInterval.Immediate`. Called from `CompositionTarget.Rendering`
+> — which is itself vblank-synchronised — the two waits serialise and a frame lands every *second*
+> vblank, which is the 31.4 ms above. Driven from a background thread instead, the same child window
+> holds a clean **60 fps (16 665 µs)**. See "Attribution" below: the airspace path is not limited to
+> 32 fps, it is limited to 32 fps *when presented on WPF's render tick*.
+
 The present *call* is ~6x cheaper at the median on the shared surface, but its tail is ~5x worse:
 p99 of 5 ms against 1 ms. So the two paths fail differently — A is consistently mediocre, B is
 usually very fast and occasionally very slow. For a 60 fps stream judged on its worst frame of a
@@ -66,6 +73,35 @@ path naturally would, but they do not scale in the same place.
 
 `AddDirtyRect` is a real cost, not a formality: removing it dropped path B's median present from
 47 µs to 10 µs.
+
+## Attribution (PP58)
+
+`--driver` runs the identical loop two ways: `composition` is `CompositionTarget.Rendering`, WPF's
+render tick; `thread` is a background thread WPF does not drive. Child window, 600 frames each:
+
+| driver | present p50 | cadence p50 |
+|---|---|---|
+| `composition` | 271 µs | 31 460 µs (≈31.8 fps) |
+| `thread` | **16 660 µs** | **16 665 µs (≈60.0 fps)** |
+
+**One sentence: `PresentEx` waits for a vblank even with `PresentInterval.Immediate`, and stacking
+that wait on top of WPF's own vblank-synchronised render tick costs one frame in two.**
+
+Both hypotheses in §PP58 were half right and separately wrong. The present *is* blocking — 16.66 ms
+of it, exactly one refresh at 60 Hz — but it is not blocking when called from the render tick, where
+it returns in 271 µs. What halves the rate is the serialisation of two waits, not the cost of either.
+
+Proven rather than inferred: removing the `PresentEx` call collapses `present_us` from 16 660 µs to
+**0.1 µs**, so the whole interval belongs to that call and not to loop overhead.
+
+Controls: `d3dimage --driver thread` fails with a cross-thread WPF exception, because `D3DImage` is a
+`DispatcherObject` and cannot be touched off the UI thread — so the shared-surface path *cannot* be
+driven this way at all, while the airspace path *must* be to reach 60 fps. That asymmetry is a real
+input to PP9 and is the opposite of a tie-breaker in the shared surface's favour.
+
+What is still not established: whether presenting off the UI thread is safe for a real application
+(resize, device loss and window destruction all become cross-thread concerns), and whether the frames
+reach the glass — the capture limitation below applies to these runs too.
 
 ## Re-running
 
