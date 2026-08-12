@@ -4,6 +4,7 @@
 #include <libavcodec/avcodec.h>
 #include <libavutil/pixdesc.h>
 #include <math.h>
+#include <string.h>
 
 static enum AVCodecID chiaki_codec_av_codec_id(ChiakiCodec codec)
 {
@@ -46,6 +47,8 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_ffmpeg_decoder_init(ChiakiFfmpegDecoder *de
 	decoder->synthetic_candidate_duration_us = decoder->synthetic_frame_duration_us;
 	decoder->synthetic_last_sample_time_us = 0;
 	decoder->synthetic_candidate_count = 0;
+	decoder->decode_sent_us = 0;
+	memset(&decoder->stage_decode, 0, sizeof(decoder->stage_decode));
 
 	decoder->hw_device_ctx = hw_device_ctx ? av_buffer_ref(hw_device_ctx) : NULL;
 	decoder->hw_pix_fmt = AV_PIX_FMT_NONE;
@@ -197,6 +200,9 @@ CHIAKI_EXPORT bool chiaki_ffmpeg_decoder_video_sample_cb(uint8_t *buf, size_t bu
 	packet->time_base = decoder->synthetic_time_base;
 #endif
 	decoder->synthetic_packet_pts += synthetic_duration_pts;
+	// Stamped before the send and read at the pull: the stage is what the frame waited, not
+	// what the call took.
+	decoder->decode_sent_us = chiaki_time_now_monotonic_us();
 	int r;
 send_packet:
 	r = avcodec_send_packet(decoder->codec_context, packet);
@@ -281,6 +287,15 @@ CHIAKI_EXPORT ChiakiFfmpegFrame chiaki_ffmpeg_decoder_pull_frame(ChiakiFfmpegDec
 		frame->decode_error_flags |= 1;
 	}
 	decoder->frames_lost = 0;
+	// Only a pull that produced a frame closes the stage. An EAGAIN pull measured nothing,
+	// and charging it would fold a stream of near-zero samples into the tail.
+	if(frame && decoder->decode_sent_us)
+	{
+		const uint64_t pulled_us = chiaki_time_now_monotonic_us();
+		if(pulled_us >= decoder->decode_sent_us)
+			chiaki_session_baseline_stat_push(&decoder->stage_decode, pulled_us - decoder->decode_sent_us);
+		decoder->decode_sent_us = 0;
+	}
 	AVRational pkt_timebase = decoder->codec_context->pkt_timebase;
 	AVRational ctx_timebase = decoder->codec_context->time_base;
 	AVRational framerate = decoder->codec_context->framerate;
@@ -303,6 +318,13 @@ CHIAKI_EXPORT ChiakiFfmpegFrame chiaki_ffmpeg_decoder_pull_frame(ChiakiFfmpegDec
 	}
 
 	return frame_plus_stats;
+}
+
+CHIAKI_EXPORT void chiaki_ffmpeg_decoder_get_decode_stat(ChiakiFfmpegDecoder *decoder, ChiakiSessionBaselineStat *stat)
+{
+	chiaki_mutex_lock(&decoder->mutex);
+	*stat = decoder->stage_decode;
+	chiaki_mutex_unlock(&decoder->mutex);
 }
 
 CHIAKI_EXPORT void chiaki_ffmpeg_frame_get_timing(

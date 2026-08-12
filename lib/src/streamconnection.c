@@ -89,6 +89,13 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_stream_connection_init(ChiakiStreamConnecti
 	stream_connection->audio_receiver = NULL;
 	stream_connection->haptics_receiver = NULL;
 
+	// Zeroed here as well as on the takion thread, because a run that fails before
+	// chiaki_takion_connect still reaches the code that copies these out, and an unmeasured
+	// stage has to read as unmeasured rather than as whatever the allocation held.
+	memset(&stream_connection->stages, 0, sizeof(stream_connection->stages));
+	memset(&stream_connection->takion.stage_receive, 0, sizeof(stream_connection->takion.stage_receive));
+	memset(&stream_connection->takion.stage_reorder, 0, sizeof(stream_connection->takion.stage_reorder));
+
 	err = chiaki_mutex_init(&stream_connection->feedback_sender_mutex, false);
 	if(err != CHIAKI_ERR_SUCCESS)
 		goto error_packet_stats;
@@ -361,6 +368,16 @@ close_takion:
 
 err_video_receiver:
 	chiaki_mutex_lock(&stream_connection->state_mutex);
+	// After chiaki_takion_close above, so the thread that wrote all four of these has been
+	// joined and there is nothing left to race with. Taken before the free, because after it
+	// the frame path's own measurements would end with the objects that made them.
+	stream_connection->stages.receive = stream_connection->takion.stage_receive;
+	stream_connection->stages.reorder = stream_connection->takion.stage_reorder;
+	if(stream_connection->video_receiver)
+	{
+		stream_connection->stages.reassemble = stream_connection->video_receiver->frame_processor.stage_reassemble;
+		stream_connection->stages.correct = stream_connection->video_receiver->frame_processor.stage_correct;
+	}
 	chiaki_video_receiver_free(stream_connection->video_receiver);
 	stream_connection->video_receiver = NULL;
 	chiaki_mutex_unlock(&stream_connection->state_mutex);

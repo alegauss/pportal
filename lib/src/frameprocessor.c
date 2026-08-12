@@ -2,6 +2,7 @@
 
 #include <chiaki/frameprocessor.h>
 #include <chiaki/fec.h>
+#include <chiaki/time.h>
 #include <chiaki/video.h>
 
 #include <jerasure.h>
@@ -53,6 +54,9 @@ CHIAKI_EXPORT void chiaki_frame_processor_init(ChiakiFrameProcessor *frame_proce
 	frame_processor->unit_slots_size = 0;
 	frame_processor->flushed = true;
 	chiaki_stream_stats_reset(&frame_processor->stream_stats);
+	frame_processor->frame_begun_us = 0;
+	memset(&frame_processor->stage_reassemble, 0, sizeof(frame_processor->stage_reassemble));
+	memset(&frame_processor->stage_correct, 0, sizeof(frame_processor->stage_correct));
 }
 
 CHIAKI_EXPORT void chiaki_frame_processor_fini(ChiakiFrameProcessor *frame_processor)
@@ -70,6 +74,9 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_frame_processor_alloc_frame(ChiakiFrameProc
 	}
 
 	frame_processor->flushed = false;
+	// The first unit of this frame is here; the reassemble stage runs from now until the
+	// flush that completes it.
+	frame_processor->frame_begun_us = chiaki_time_now_monotonic_us();
 	frame_processor->units_source_expected = packet->units_in_frame_total - packet->units_in_frame_fec;
 	frame_processor->units_fec_expected = packet->units_in_frame_fec;
 	if(frame_processor->units_fec_expected < 1)
@@ -276,10 +283,26 @@ CHIAKI_EXPORT ChiakiFrameProcessorFlushResult chiaki_frame_processor_flush(Chiak
 	//		frame_processor->units_source_expected,
 	//		frame_processor->units_fec_expected);
 
+	if(frame_processor->frame_begun_us)
+	{
+		const uint64_t flush_us = chiaki_time_now_monotonic_us();
+		if(flush_us >= frame_processor->frame_begun_us)
+			chiaki_session_baseline_stat_push(&frame_processor->stage_reassemble, flush_us - frame_processor->frame_begun_us);
+		// Charged once. A frame flushed twice - which the receiver does when the head of the
+		// next frame arrives first - is one reassembly, not two.
+		frame_processor->frame_begun_us = 0;
+	}
+
 	ChiakiFrameProcessorFlushResult result = CHIAKI_FRAME_PROCESSOR_FLUSH_RESULT_SUCCESS;
 	if(frame_processor->units_source_received < frame_processor->units_source_expected)
 	{
+		const uint64_t fec_begin_us = chiaki_time_now_monotonic_us();
 		ChiakiErrorCode err = chiaki_frame_processor_fec(frame_processor);
+		const uint64_t fec_end_us = chiaki_time_now_monotonic_us();
+		// A failed reconstruction is timed too: it is CPU the frame path spent, and a build
+		// that fails FEC slowly is not faster than one that fails it quickly.
+		if(fec_end_us >= fec_begin_us)
+			chiaki_session_baseline_stat_push(&frame_processor->stage_correct, fec_end_us - fec_begin_us);
 		if(err == CHIAKI_ERR_SUCCESS)
 			result = CHIAKI_FRAME_PROCESSOR_FLUSH_RESULT_FEC_SUCCESS;
 		else

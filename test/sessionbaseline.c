@@ -28,6 +28,16 @@ static void fill_reference(ChiakiSessionBaseline *baseline)
 	chiaki_session_baseline_push_input_to_wire(baseline, 400);
 	chiaki_session_baseline_push_input_to_wire(baseline, 800);
 	baseline->network_rtt_us = 36000;
+
+	// One distinguishable value per stage: a stage filed under another stage's name is the
+	// defect this fixture exists to catch, and identical numbers would hide it.
+	chiaki_session_baseline_stat_push(&baseline->stages.receive, 40);
+	chiaki_session_baseline_stat_push(&baseline->stages.receive, 60);
+	chiaki_session_baseline_stat_push(&baseline->stages.reorder, 1100);
+	chiaki_session_baseline_stat_push(&baseline->stages.reassemble, 3000);
+	chiaki_session_baseline_stat_push(&baseline->stages.correct, 250);
+	chiaki_session_baseline_stat_push(&baseline->stages.decode, 4200);
+	chiaki_session_baseline_stat_push(&baseline->stages.decode, 9000);
 }
 
 /**
@@ -46,7 +56,7 @@ static MunitResult test_baseline_format_line(const MunitParameter params[], void
 	munit_assert_int(chiaki_session_baseline_format(&baseline, line, sizeof(line), &written), ==, CHIAKI_ERR_SUCCESS);
 
 	static const char *expected =
-			"{\"schema\":1"
+			"{\"schema\":2"
 			",\"started_utc\":\"2025-08-11T20:31:07Z\""
 			",\"duration_ms\":754321"
 			",\"app_version\":\"1.10.0\""
@@ -54,9 +64,16 @@ static MunitResult test_baseline_format_line(const MunitParameter params[], void
 			",\"measured_bitrate_mbps\":27.500"
 			",\"average_packet_loss\":0.01250"
 			",\"frames\":{\"presented\":45210,\"lost\":12,\"dropped\":7}"
-			",\"handoff_us\":{\"min\":900,\"max\":1500,\"avg\":1200,\"samples\":3}"
+			",\"handoff_us\":{\"min\":900,\"max\":1500,\"avg\":1200,\"p99\":1500,\"samples\":3}"
+			",\"stages_us\":{"
+			"\"receive\":{\"min\":40,\"max\":60,\"avg\":50,\"p99\":60,\"samples\":2}"
+			",\"reorder\":{\"min\":1100,\"max\":1100,\"avg\":1100,\"p99\":1100,\"samples\":1}"
+			",\"reassemble\":{\"min\":3000,\"max\":3000,\"avg\":3000,\"p99\":3000,\"samples\":1}"
+			",\"correct\":{\"min\":250,\"max\":250,\"avg\":250,\"p99\":250,\"samples\":1}"
+			",\"decode\":{\"min\":4200,\"max\":9000,\"avg\":6600,\"p99\":9000,\"samples\":2}"
+			"}"
 			",\"latency\":{\"estimate_us\":37800"
-			",\"input_to_wire_us\":{\"min\":400,\"max\":800,\"avg\":600,\"samples\":2}"
+			",\"input_to_wire_us\":{\"min\":400,\"max\":800,\"avg\":600,\"p99\":800,\"samples\":2}"
 			",\"network_rtt_us\":36000}"
 			"}\n";
 
@@ -76,10 +93,117 @@ static MunitResult test_baseline_format_empty(const MunitParameter params[], voi
 	munit_assert_int(chiaki_session_baseline_format(&baseline, line, sizeof(line), NULL), ==, CHIAKI_ERR_SUCCESS);
 
 	munit_assert_not_null(strstr(line, "\"started_utc\":null"));
-	munit_assert_not_null(strstr(line, "\"handoff_us\":{\"min\":0,\"max\":0,\"avg\":0,\"samples\":0}"));
+	munit_assert_not_null(strstr(line, "\"handoff_us\":{\"min\":0,\"max\":0,\"avg\":0,\"p99\":0,\"samples\":0}"));
 	munit_assert_not_null(strstr(line, "\"estimate_us\":0"));
+	// An unsampled stage reports zero samples rather than being absent: a reader comparing
+	// two runs has to be able to tell a stage that measured nothing from a stage that is not
+	// in this schema at all.
+	munit_assert_not_null(strstr(line, "\"receive\":{\"min\":0,\"max\":0,\"avg\":0,\"p99\":0,\"samples\":0}"));
+	munit_assert_not_null(strstr(line, "\"decode\":{\"min\":0,\"max\":0,\"avg\":0,\"p99\":0,\"samples\":0}"));
 	munit_assert_null(strstr(line, "nan"));
 	munit_assert_null(strstr(line, "inf"));
+
+	return MUNIT_OK;
+}
+
+/**
+ * The tail is the point of the histogram, so what is checked is the one thing a mean cannot
+ * do: a distribution whose mean and maximum are both far from its 99th percentile has to
+ * report a p99 near neither.
+ */
+static MunitResult test_baseline_stat_p99(const MunitParameter params[], void *user)
+{
+	ChiakiSessionBaselineStat stat;
+	memset(&stat, 0, sizeof(stat));
+
+	// Nothing sampled is 0 rather than the fastest number in the record.
+	munit_assert_uint64(chiaki_session_baseline_stat_p99_us(&stat), ==, 0);
+
+	// Exact below the linear cutoff: a bucket per microsecond, so no bound is involved.
+	chiaki_session_baseline_stat_push(&stat, 5);
+	munit_assert_uint64(chiaki_session_baseline_stat_p99_us(&stat), ==, 5);
+
+	// 990 frames at 1ms and 10 at 100ms: mean 1990us, maximum 100000us, true p99 1000us.
+	memset(&stat, 0, sizeof(stat));
+	for(unsigned i = 0; i < 990; i++)
+		chiaki_session_baseline_stat_push(&stat, 1000);
+	for(unsigned i = 0; i < 10; i++)
+		chiaki_session_baseline_stat_push(&stat, 100000);
+
+	munit_assert_uint64(stat.samples, ==, 1000);
+	munit_assert_uint64(stat.min_us, ==, 1000);
+	munit_assert_uint64(stat.max_us, ==, 100000);
+	munit_assert_uint64(chiaki_session_baseline_stat_avg(&stat), ==, 1990);
+
+	// The bound is the upper edge of the bucket 1000us falls in - never below the true p99,
+	// and inside the 12.5% the eight-to-the-octave spacing promises.
+	const uint64_t p99 = chiaki_session_baseline_stat_p99_us(&stat);
+	munit_assert_uint64(p99, >=, 1000);
+	munit_assert_uint64(p99, <, 1125);
+	munit_assert_uint64(p99, <, stat.max_us);
+	// And the mean is above it, not below: ten stalls in a thousand frames drag the average
+	// to 1990us while 99% of frames were at 1000. That gap is the whole reason this stat
+	// carries a distribution - reading the mean here overstates the typical frame by 2x and
+	// understates the worst one by 50x, in the same number.
+	munit_assert_uint64(p99, <, chiaki_session_baseline_stat_avg(&stat));
+
+	// One more sample above the line moves the percentile into the tail: 11 of 1000 is over
+	// 1%, so the answer must now come from the slow bucket and not from the fast one.
+	memset(&stat, 0, sizeof(stat));
+	for(unsigned i = 0; i < 989; i++)
+		chiaki_session_baseline_stat_push(&stat, 1000);
+	for(unsigned i = 0; i < 11; i++)
+		chiaki_session_baseline_stat_push(&stat, 100000);
+	munit_assert_uint64(chiaki_session_baseline_stat_p99_us(&stat), ==, 100000);
+
+	return MUNIT_OK;
+}
+
+/**
+ * A stage slower than the histogram's last bucket still has to report a bound. The overflow
+ * bucket has no upper edge, so the measured maximum is what answers - which is exact.
+ */
+static MunitResult test_baseline_stat_p99_overflow(const MunitParameter params[], void *user)
+{
+	ChiakiSessionBaselineStat stat;
+	memset(&stat, 0, sizeof(stat));
+
+	chiaki_session_baseline_stat_push(&stat, 5000000); // 5s, past the 2^21us last bucket
+	munit_assert_uint64(chiaki_session_baseline_stat_p99_us(&stat), ==, 5000000);
+
+	// And it stays a bound over a mixed distribution: 99 fast frames and one 5s stall.
+	memset(&stat, 0, sizeof(stat));
+	for(unsigned i = 0; i < 99; i++)
+		chiaki_session_baseline_stat_push(&stat, 800);
+	chiaki_session_baseline_stat_push(&stat, 5000000);
+	munit_assert_uint64(chiaki_session_baseline_stat_p99_us(&stat), <, 1000);
+
+	return MUNIT_OK;
+}
+
+/**
+ * Every stage is its own accumulator. A sample pushed into one must not appear in another,
+ * which is the whole reason the record has five of them instead of one.
+ */
+static MunitResult test_baseline_frame_stages_are_separate(const MunitParameter params[], void *user)
+{
+	ChiakiSessionBaseline baseline;
+	chiaki_session_baseline_init(&baseline);
+
+	chiaki_session_baseline_stat_push(&baseline.stages.reorder, 2000);
+
+	munit_assert_uint64(baseline.stages.reorder.samples, ==, 1);
+	munit_assert_uint64(baseline.stages.reorder.max_us, ==, 2000);
+	munit_assert_uint64(baseline.stages.receive.samples, ==, 0);
+	munit_assert_uint64(baseline.stages.reassemble.samples, ==, 0);
+	munit_assert_uint64(baseline.stages.correct.samples, ==, 0);
+	munit_assert_uint64(baseline.stages.decode.samples, ==, 0);
+	// The present stage is the handoff, and is not a sixth accumulator.
+	munit_assert_uint64(baseline.handoff.samples, ==, 0);
+
+	// A stage is not in the latency estimate: that sum is input, network and handoff, and a
+	// reorder queue counted twice would inflate it.
+	munit_assert_uint64(chiaki_session_baseline_latency_estimate_us(&baseline), ==, 0);
 
 	return MUNIT_OK;
 }
@@ -286,6 +410,27 @@ MunitTest tests_session_baseline[] = {
 	{
 		"/stages_are_separate",
 		test_baseline_stages_are_separate,
+		NULL, NULL,
+		MUNIT_TEST_OPTION_NONE,
+		NULL
+	},
+	{
+		"/stat_p99",
+		test_baseline_stat_p99,
+		NULL, NULL,
+		MUNIT_TEST_OPTION_NONE,
+		NULL
+	},
+	{
+		"/stat_p99_overflow",
+		test_baseline_stat_p99_overflow,
+		NULL, NULL,
+		MUNIT_TEST_OPTION_NONE,
+		NULL
+	},
+	{
+		"/frame_stages_are_separate",
+		test_baseline_frame_stages_are_separate,
 		NULL, NULL,
 		MUNIT_TEST_OPTION_NONE,
 		NULL

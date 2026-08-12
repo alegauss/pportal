@@ -6,6 +6,7 @@
 #include "common.h"
 #include "takion.h"
 #include "packetstats.h"
+#include "sessionbaseline.h"
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -42,6 +43,24 @@ typedef struct chiaki_frame_processor_t
 	size_t unit_slots_size;
 	bool flushed; // whether we have already flushed the current frame, i.e. are only interested in stats, not data.
 	ChiakiStreamStats stream_stats;
+
+	/**
+	 * When the current frame was allocated, i.e. when its first unit arrived. Zero once the
+	 * frame has been charged for, so a second flush of the same frame is not counted twice.
+	 */
+	uint64_t frame_begun_us;
+	/**
+	 * The reassemble and correct stages of the frame path, for the session baseline. Written
+	 * only from the takion thread that feeds this processor, so they carry no lock.
+	 *
+	 * They are separate accumulators because they answer different questions: reassemble is
+	 * how long a frame waited for its last unit, which is the network, and correct is what
+	 * the FEC reconstruction itself cost, which is this CPU. Only the frames that actually
+	 * ran FEC appear in correct - averaging the reconstruction over every frame would report
+	 * a cost far below what a lossy minute really pays.
+	 */
+	ChiakiSessionBaselineStat stage_reassemble;
+	ChiakiSessionBaselineStat stage_correct;
 } ChiakiFrameProcessor;
 
 typedef enum chiaki_frame_flush_result_t {

@@ -12,6 +12,7 @@
 #include "reorderqueue.h"
 #include "feedback.h"
 #include "takionsendbuffer.h"
+#include "sessionbaseline.h"
 
 #include <stdbool.h>
 
@@ -155,6 +156,19 @@ typedef struct chiaki_takion_t
 	bool video_queue_initialized;
 	int64_t video_queue_head_wait_start_us;
 	uint64_t video_queue_head_wait_seq_num;
+
+	/**
+	 * The first two stages of the frame path, for the session baseline. Written only by the
+	 * takion thread, so they carry no lock: a reader waits for chiaki_takion_close, which
+	 * joins that thread.
+	 *
+	 * stage_receive is one video packet off the socket until it is decrypted, parsed and
+	 * queued; stage_reorder is how long that packet then waited for its turn. They are
+	 * separate because a build can lose a millisecond in either and the fix is not the same
+	 * one - the first is CPU, the second is the network arriving out of order.
+	 */
+	ChiakiSessionBaselineStat stage_receive;
+	ChiakiSessionBaselineStat stage_reorder;
 	ChiakiTakionSendBuffer send_buffer;
 
 	ChiakiTakionCallback cb;

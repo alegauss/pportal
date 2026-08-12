@@ -91,6 +91,16 @@ typedef struct chiaki_stream_connection_t
 	 * false by the time a session is asked what it measured.
 	 */
 	ChiakiSessionBaselineStat input_to_wire;
+	/**
+	 * The stages of the frame path this library owns - receive, reorder, reassemble and
+	 * correct - copied here once the takion thread has been joined and before the video
+	 * receiver is freed. Same reason as input_to_wire: the accumulators live on objects that
+	 * are gone by the time a session is asked what it measured.
+	 *
+	 * The decode stage is not filled here. It is the decoder's, which this library does not
+	 * own, and it is read from there by whoever records the baseline.
+	 */
+	ChiakiSessionBaselineStages stages;
 } ChiakiStreamConnection;
 
 CHIAKI_EXPORT ChiakiErrorCode chiaki_stream_connection_init(ChiakiStreamConnection *stream_connection, ChiakiSession *session, double packet_loss_max);

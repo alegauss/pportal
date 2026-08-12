@@ -148,6 +148,12 @@ typedef struct
 	uint8_t *buf;
 	size_t buf_size;
 	ChiakiTakionAVPacket packet;
+	/**
+	 * When this entry entered the reorder queue. Zero for the fallback paths that dispatch
+	 * without queueing at all, so an unqueued packet contributes no dwell rather than a
+	 * dwell measured from the epoch.
+	 */
+	uint64_t queued_us;
 } TakionAVPacketEntry;
 
 typedef struct chiaki_takion_postponed_packet_t
@@ -858,6 +864,14 @@ static void takion_av_queue_flush_with_timeout(ChiakiTakion *takion, ChiakiReord
 		while(chiaki_reorder_queue_pull(queue, &seq_num, (void **)&entry))
 		{
 			made_progress = true;
+			if(entry->queued_us)
+			{
+				// Read the clock again rather than reusing `now`: `now` is from the top of the
+				// call and a burst pulled after a timeout would all report the same dwell.
+				const uint64_t pulled_us = chiaki_time_now_monotonic_us();
+				if(pulled_us >= entry->queued_us)
+					chiaki_session_baseline_stat_push(&takion->stage_reorder, pulled_us - entry->queued_us);
+			}
 			if(takion->cb)
 			{
 				ChiakiTakionEvent event = { 0 };
@@ -970,6 +984,10 @@ static void *takion_thread_func(void *user)
 	takion->video_queue_initialized = false;
 	takion->video_queue_head_wait_start_us = 0;
 	takion->video_queue_head_wait_seq_num = 0;
+	// Zeroed on the thread that will fill them, so a takion reused for a second session
+	// does not open with the first one's tail.
+	memset(&takion->stage_receive, 0, sizeof(takion->stage_receive));
+	memset(&takion->stage_reorder, 0, sizeof(takion->stage_reorder));
 
 	uint32_t seq_num_remote_initial;
 	if(takion_handshake(takion, &seq_num_remote_initial) != CHIAKI_ERR_SUCCESS)
@@ -1537,6 +1555,8 @@ static void takion_handle_packet_av(ChiakiTakion *takion, uint8_t base_type, uin
 	// HHIxIIx
 	// buf ownership is taken by this function (freed on error or transferred to queue entry).
 	assert(base_type == TAKION_PACKET_TYPE_VIDEO || base_type == TAKION_PACKET_TYPE_AUDIO);
+	// Before the parse, because the parse is the work this stage is meant to be charged for.
+	const uint64_t arrival_us = chiaki_time_now_monotonic_us();
 	if((takion->disable_audio_video & CHIAKI_VIDEO_DISABLED) && (base_type == TAKION_PACKET_TYPE_VIDEO))
 	{
 		free(buf);
@@ -1611,6 +1631,11 @@ static void takion_handle_packet_av(ChiakiTakion *takion, uint8_t base_type, uin
 	entry->buf = buf;
 	entry->buf_size = buf_size;
 	entry->packet = packet;
+
+	const uint64_t queued_us = chiaki_time_now_monotonic_us();
+	if(queued_us >= arrival_us)
+		chiaki_session_baseline_stat_push(&takion->stage_receive, queued_us - arrival_us);
+	entry->queued_us = queued_us;
 
 	chiaki_reorder_queue_push(queue, packet.packet_index, entry);
 	takion_av_queue_flush_with_timeout(takion, queue, head_wait, head_wait_seq_num);

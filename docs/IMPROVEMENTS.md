@@ -587,21 +587,6 @@ guess and a gate on a guess is worse than no gate.
 
 ## Block H — Performance and telemetry
 
-### §PP41 Timing per stage, or a regression with no address
-
-decoder_delivery_us is the only per-frame timestamp in the tree. A frame passes through
-takion, the reorder queue, the FEC reconstruction in frameprocessor, the decoder and the
-present, and four of those five stages report nothing.
-
-Without them a comparison produces one sentence - the port is 8ms slower - and no next
-step. With them the same run says the decode is unchanged, the present grew by 6ms and
-the reorder queue by 2, which is a defect with an address and an owner.
-
-The cost is a per-frame timestamp at five points and a way to read the distribution
-rather than the average, because the complaint a user makes is about the worst frame in
-a minute and not about the mean. p99 and the maximum are the numbers that correspond to
-what is felt; the mean is the number that hides it.
-
 ### §PP42 Where the numbers go
 
 sessionlog.cpp already writes a log per session and users are asked to attach it to

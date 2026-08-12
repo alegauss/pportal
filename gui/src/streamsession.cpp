@@ -509,6 +509,12 @@ void StreamSession::FillBaseline(ChiakiSessionBaseline *baseline) const
 
 	baseline->network_rtt_us = session.stream_connection.reported_rtt_us;
 	baseline->input_to_wire = session.stream_connection.input_to_wire;
+
+	// Four of the five stages are the library's and were copied out when its threads were
+	// joined; the decode is the decoder's own and is still readable here, under its lock.
+	baseline->stages = session.stream_connection.stages;
+	if(ffmpeg_decoder)
+		chiaki_ffmpeg_decoder_get_decode_stat(ffmpeg_decoder, &baseline->stages.decode);
 }
 
 void StreamSession::Stop()

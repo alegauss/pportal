@@ -24,7 +24,8 @@ set(CHIAKI_UNIT_SOURCES
 				test_log.h
 				bitstream.c
 				regist.c
-				sessionbaseline.c)
+				sessionbaseline.c
+				frameprocessor.c)
 
 if(CHIAKI_ENABLE_FFMPEG_DECODER)
 	list(APPEND CHIAKI_UNIT_SOURCES ffmpegdecoder.c)

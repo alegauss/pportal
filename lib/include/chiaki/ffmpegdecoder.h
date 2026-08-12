@@ -3,6 +3,7 @@
 
 #include <chiaki/config.h>
 #include <chiaki/log.h>
+#include <chiaki/sessionbaseline.h>
 #include <chiaki/thread.h>
 
 #include <stdint.h>
@@ -50,6 +51,18 @@ struct chiaki_ffmpeg_decoder_t
 	double synthetic_candidate_duration_us;
 	uint64_t synthetic_last_sample_time_us;
 	uint8_t synthetic_candidate_count;
+
+	/**
+	 * When the most recent packet was handed to the codec, and the decode stage folded from
+	 * it. Both are only touched under `mutex`, which both the send and the pull already hold.
+	 *
+	 * The stage is send-to-pull rather than the codec call alone, because that is what a
+	 * frame actually waits: a hardware decoder returns from avcodec_send_packet long before
+	 * the picture exists, and timing only the call would report a decode of a few
+	 * microseconds no matter how late the frame arrived.
+	 */
+	uint64_t decode_sent_us;
+	ChiakiSessionBaselineStat stage_decode;
 };
 
 CHIAKI_EXPORT ChiakiErrorCode chiaki_ffmpeg_decoder_init(ChiakiFfmpegDecoder *decoder, ChiakiLog *log,
@@ -59,6 +72,12 @@ CHIAKI_EXPORT void chiaki_ffmpeg_decoder_fini(ChiakiFfmpegDecoder *decoder);
 CHIAKI_EXPORT bool chiaki_ffmpeg_decoder_video_sample_cb(uint8_t *buf, size_t buf_size, int32_t frames_lost, bool frame_recovered, void *user);
 CHIAKI_EXPORT ChiakiFfmpegFrame chiaki_ffmpeg_decoder_pull_frame(ChiakiFfmpegDecoder *decoder, int32_t *frames_lost);
 CHIAKI_EXPORT enum AVPixelFormat chiaki_ffmpeg_decoder_get_pixel_format(ChiakiFfmpegDecoder *decoder);
+
+/**
+ * Copy out the decode stage as it stands. Takes the decoder's lock, so it may be called
+ * from the thread recording a session baseline while frames are still being decoded.
+ */
+CHIAKI_EXPORT void chiaki_ffmpeg_decoder_get_decode_stat(ChiakiFfmpegDecoder *decoder, ChiakiSessionBaselineStat *stat);
 
 /**
  * Compute the wall-clock pts (seconds) and frame duration (seconds) from raw

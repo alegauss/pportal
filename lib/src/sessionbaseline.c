@@ -3,6 +3,7 @@
 #include <chiaki/sessionbaseline.h>
 
 #include <math.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -84,6 +85,52 @@ CHIAKI_EXPORT void chiaki_session_baseline_set_video_codec(ChiakiSessionBaseline
 	baseline_set_text(baseline->video_codec, sizeof(baseline->video_codec), codec);
 }
 
+#define BASELINE_HIST_LINEAR CHIAKI_SESSION_BASELINE_HIST_LINEAR
+#define BASELINE_HIST_SUB CHIAKI_SESSION_BASELINE_HIST_SUB
+#define BASELINE_HIST_SUB_BITS CHIAKI_SESSION_BASELINE_HIST_SUB_BITS
+/** The highest exponent the log-spaced part covers; 4 is the lowest, LINEAR being 2^4. */
+#define BASELINE_HIST_EXP_MAX (3 + CHIAKI_SESSION_BASELINE_HIST_OCTAVES)
+#define BASELINE_HIST_OVERFLOW (CHIAKI_SESSION_BASELINE_HIST_BUCKETS - 1)
+
+/** Index of the highest set bit. Only called with value >= BASELINE_HIST_LINEAR, so >= 4. */
+static unsigned baseline_hist_exp(uint64_t value)
+{
+	unsigned e = 0;
+	while(value >>= 1)
+		e++;
+	return e;
+}
+
+/**
+ * Which bucket a sample belongs to. Monotone in the sample by construction: below LINEAR
+ * the index is the value, and above it the exponent picks the octave and the next three
+ * bits pick the eighth of it.
+ */
+static size_t baseline_hist_index(uint64_t sample_us)
+{
+	if(sample_us < BASELINE_HIST_LINEAR)
+		return (size_t)sample_us;
+	const unsigned e = baseline_hist_exp(sample_us);
+	if(e > BASELINE_HIST_EXP_MAX)
+		return BASELINE_HIST_OVERFLOW;
+	const size_t sub = (size_t)((sample_us >> (e - BASELINE_HIST_SUB_BITS)) & (BASELINE_HIST_SUB - 1));
+	return BASELINE_HIST_LINEAR + (size_t)(e - 4) * BASELINE_HIST_SUB + sub;
+}
+
+/** Largest sample this bucket can hold. The overflow bucket has none and reports UINT64_MAX. */
+static uint64_t baseline_hist_upper_us(size_t index)
+{
+	if(index < BASELINE_HIST_LINEAR)
+		return (uint64_t)index;
+	if(index >= BASELINE_HIST_OVERFLOW)
+		return UINT64_MAX;
+	const size_t k = index - BASELINE_HIST_LINEAR;
+	const unsigned e = 4 + (unsigned)(k / BASELINE_HIST_SUB);
+	const uint64_t sub = (uint64_t)(k % BASELINE_HIST_SUB);
+	const uint64_t width = (uint64_t)1 << (e - BASELINE_HIST_SUB_BITS);
+	return ((BASELINE_HIST_SUB + sub) << (e - BASELINE_HIST_SUB_BITS)) + width - 1;
+}
+
 CHIAKI_EXPORT void chiaki_session_baseline_stat_push(ChiakiSessionBaselineStat *stat, uint64_t sample_us)
 {
 	if(stat->samples == 0 || sample_us < stat->min_us)
@@ -92,6 +139,11 @@ CHIAKI_EXPORT void chiaki_session_baseline_stat_push(ChiakiSessionBaselineStat *
 		stat->max_us = sample_us;
 	stat->sum_us += sample_us;
 	stat->samples++;
+	// Saturate rather than wrap: a wrapped bucket would move the tail towards zero, which
+	// is the direction that reads as an improvement.
+	uint32_t *bucket = stat->buckets + baseline_hist_index(sample_us);
+	if(*bucket != UINT32_MAX)
+		(*bucket)++;
 }
 
 CHIAKI_EXPORT uint64_t chiaki_session_baseline_stat_avg(const ChiakiSessionBaselineStat *stat)
@@ -99,6 +151,30 @@ CHIAKI_EXPORT uint64_t chiaki_session_baseline_stat_avg(const ChiakiSessionBasel
 	if(stat->samples == 0)
 		return 0;
 	return stat->sum_us / stat->samples;
+}
+
+CHIAKI_EXPORT uint64_t chiaki_session_baseline_stat_p99_us(const ChiakiSessionBaselineStat *stat)
+{
+	if(stat->samples == 0)
+		return 0;
+
+	// The rank of the 99th percentile, rounded up: with 100 samples that is the 99th, so
+	// exactly one sample is allowed to sit above what this returns.
+	const uint64_t target = (stat->samples * 99 + 99) / 100;
+	uint64_t cumulative = 0;
+	for(size_t i = 0; i < CHIAKI_SESSION_BASELINE_HIST_BUCKETS; i++)
+	{
+		cumulative += stat->buckets[i];
+		if(cumulative < target)
+			continue;
+		const uint64_t upper = baseline_hist_upper_us(i);
+		// The maximum is measured rather than bucketed, so it is the tighter bound whenever
+		// the bucket is wider than the samples that landed in it.
+		return upper < stat->max_us ? upper : stat->max_us;
+	}
+	// Unreachable while every push lands in a bucket, but a stat whose histogram saturated
+	// must still answer with a bound rather than with zero.
+	return stat->max_us;
 }
 
 CHIAKI_EXPORT void chiaki_session_baseline_push_handoff(ChiakiSessionBaseline *baseline, uint64_t handoff_us)
@@ -123,6 +199,51 @@ CHIAKI_EXPORT uint64_t chiaki_session_baseline_latency_estimate_us(const ChiakiS
 		+ chiaki_session_baseline_stat_avg(&baseline->handoff);
 }
 
+/**
+ * The line is assembled through a cursor rather than one snprintf because a record with
+ * six stages in it is thirty arguments long, and a positional mistake in that list is a
+ * number filed under another stage's name - a defect that reads as data.
+ */
+typedef struct baseline_writer_t
+{
+	char *buf;
+	size_t size;
+	size_t len;
+	bool overflowed;
+} BaselineWriter;
+
+static void baseline_write(BaselineWriter *w, const char *fmt, ...)
+{
+	if(w->overflowed)
+		return;
+	va_list ap;
+	va_start(ap, fmt);
+	const int n = vsnprintf(w->buf + w->len, w->size - w->len, fmt, ap);
+	va_end(ap);
+	if(n < 0 || (size_t)n >= w->size - w->len)
+	{
+		w->overflowed = true;
+		return;
+	}
+	w->len += (size_t)n;
+}
+
+/**
+ * One stage as an object. The minimum is reported as 0 when nothing was sampled: the field
+ * holds whatever the last push left, and an unsampled stage has to read as unsampled
+ * rather than as the fastest one in the record.
+ */
+static void baseline_write_stat(BaselineWriter *w, const char *name, const ChiakiSessionBaselineStat *stat)
+{
+	baseline_write(w, "\"%s\":{\"min\":%llu,\"max\":%llu,\"avg\":%llu,\"p99\":%llu,\"samples\":%llu}",
+			name,
+			(unsigned long long)(stat->samples ? stat->min_us : 0),
+			(unsigned long long)stat->max_us,
+			(unsigned long long)chiaki_session_baseline_stat_avg(stat),
+			(unsigned long long)chiaki_session_baseline_stat_p99_us(stat),
+			(unsigned long long)stat->samples);
+}
+
 CHIAKI_EXPORT ChiakiErrorCode chiaki_session_baseline_format(const ChiakiSessionBaseline *baseline, char *buf, size_t buf_size, size_t *written)
 {
 	char line[CHIAKI_SESSION_BASELINE_LINE_MAX];
@@ -133,7 +254,9 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_session_baseline_format(const ChiakiSession
 	else
 		snprintf(started, sizeof(started), "null");
 
-	const int n = snprintf(line, sizeof(line),
+	BaselineWriter w = { line, sizeof(line), 0, false };
+
+	baseline_write(&w,
 			"{\"schema\":%d"
 			",\"started_utc\":%s"
 			",\"duration_ms\":%llu"
@@ -142,11 +265,7 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_session_baseline_format(const ChiakiSession
 			",\"measured_bitrate_mbps\":%.3f"
 			",\"average_packet_loss\":%.5f"
 			",\"frames\":{\"presented\":%llu,\"lost\":%llu,\"dropped\":%llu}"
-			",\"handoff_us\":{\"min\":%llu,\"max\":%llu,\"avg\":%llu,\"samples\":%llu}"
-			",\"latency\":{\"estimate_us\":%llu"
-			",\"input_to_wire_us\":{\"min\":%llu,\"max\":%llu,\"avg\":%llu,\"samples\":%llu}"
-			",\"network_rtt_us\":%llu}"
-			"}\n",
+			",",
 			CHIAKI_SESSION_BASELINE_SCHEMA,
 			started,
 			(unsigned long long)baseline->duration_ms,
@@ -157,28 +276,39 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_session_baseline_format(const ChiakiSession
 			baseline_finite(baseline->average_packet_loss),
 			(unsigned long long)baseline->frames_presented,
 			(unsigned long long)baseline->frames_lost,
-			(unsigned long long)baseline->frames_dropped,
-			(unsigned long long)(baseline->handoff.samples ? baseline->handoff.min_us : 0),
-			(unsigned long long)baseline->handoff.max_us,
-			(unsigned long long)chiaki_session_baseline_stat_avg(&baseline->handoff),
-			(unsigned long long)baseline->handoff.samples,
-			(unsigned long long)chiaki_session_baseline_latency_estimate_us(baseline),
-			(unsigned long long)(baseline->input_to_wire.samples ? baseline->input_to_wire.min_us : 0),
-			(unsigned long long)baseline->input_to_wire.max_us,
-			(unsigned long long)chiaki_session_baseline_stat_avg(&baseline->input_to_wire),
-			(unsigned long long)baseline->input_to_wire.samples,
+			(unsigned long long)baseline->frames_dropped);
+
+	// The present stage, under the name it shipped with rather than moved into stages_us.
+	baseline_write_stat(&w, "handoff_us", &baseline->handoff);
+
+	baseline_write(&w, ",\"stages_us\":{");
+	baseline_write_stat(&w, "receive", &baseline->stages.receive);
+	baseline_write(&w, ",");
+	baseline_write_stat(&w, "reorder", &baseline->stages.reorder);
+	baseline_write(&w, ",");
+	baseline_write_stat(&w, "reassemble", &baseline->stages.reassemble);
+	baseline_write(&w, ",");
+	baseline_write_stat(&w, "correct", &baseline->stages.correct);
+	baseline_write(&w, ",");
+	baseline_write_stat(&w, "decode", &baseline->stages.decode);
+	baseline_write(&w, "}");
+
+	baseline_write(&w, ",\"latency\":{\"estimate_us\":%llu,",
+			(unsigned long long)chiaki_session_baseline_latency_estimate_us(baseline));
+	baseline_write_stat(&w, "input_to_wire_us", &baseline->input_to_wire);
+	baseline_write(&w, ",\"network_rtt_us\":%llu}",
 			(unsigned long long)baseline->network_rtt_us);
 
-	if(n < 0)
-		return CHIAKI_ERR_UNKNOWN;
-	if((size_t)n >= sizeof(line))
+	baseline_write(&w, "}\n");
+
+	if(w.overflowed)
 		return CHIAKI_ERR_OVERFLOW;
-	if((size_t)n + 1 > buf_size)
+	if(w.len + 1 > buf_size)
 		return CHIAKI_ERR_BUF_TOO_SMALL;
 
-	memcpy(buf, line, (size_t)n + 1);
+	memcpy(buf, line, w.len + 1);
 	if(written)
-		*written = (size_t)n;
+		*written = w.len;
 	return CHIAKI_ERR_SUCCESS;
 }
 

@@ -14,6 +14,7 @@ extern MunitTest tests_fec[];
 extern MunitTest tests_regist[];
 extern MunitTest tests_bitstream[];
 extern MunitTest tests_session_baseline[];
+extern MunitTest tests_frame_processor[];
 #if CHIAKI_LIB_ENABLE_FFMPEG_DECODER
 extern MunitTest tests_ffmpegdecoder[];
 #endif
@@ -92,6 +93,13 @@ static MunitSuite suites[] = {
 	{
 		"/session_baseline",
 		tests_session_baseline,
+		NULL,
+		1,
+		MUNIT_SUITE_OPTION_NONE
+	},
+	{
+		"/frame_processor",
+		tests_frame_processor,
 		NULL,
 		1,
 		MUNIT_SUITE_OPTION_NONE
