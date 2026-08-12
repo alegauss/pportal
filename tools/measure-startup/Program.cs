@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text;
 
 namespace MeasureStartup;
 
@@ -63,75 +62,44 @@ internal static class Program
                 : $"run {i + 1} ({kind}): FAILED - {r.Failure}");
         }
 
-        var ok = results.Where(r => r.Failure is null).ToList();
+        // Only the first run is genuinely cold: after it the loader, the Qt plugins and the QML cache
+        // are in the file cache, so runs 2..N measure a warm start. They are reported apart because
+        // "cold start" is what §PP46 asks for and a median over all runs is not that number - it is
+        // mostly warm starts with one cold one dragged into the middle.
+        Summary s = Report.Summarise(results);
+
         Console.WriteLine();
-        if (ok.Count == 0)
+        if (s.RunsMeasured == 0)
         {
             Console.Error.WriteLine("no run produced a measurement; nothing written");
             return 1;
         }
 
-        // Only the first run is genuinely cold: after it the loader, the Qt plugins and the QML cache
-        // are in the file cache, so runs 2..N measure a warm start. They are reported apart because
-        // "cold start" is what §PP46 asks for and a median over all runs is not that number - it is
-        // mostly warm starts with one cold one dragged into the middle.
-        StartupResult cold = results[0];
-        var warm = ok.Skip(1).ToList();
-        double warmMedian = warm.Count > 0 ? Median(warm.Select(r => r.ToResponsiveMs)) : 0;
-        double medianWs = Median(ok.Select(r => (double)r.WorkingSetBytes));
-
-        Console.WriteLine(cold.Failure is null
-            ? $"cold    : responsive {cold.ToResponsiveMs:F0} ms   (first run, nothing in the file cache)"
-            : $"cold    : FAILED - {cold.Failure}");
-        Console.WriteLine(warm.Count > 0
-            ? $"warm    : responsive {warmMedian:F0} ms   median of {warm.Count} later run(s)"
-            : "warm    : not measured (single run)");
-        Console.WriteLine($"idle    : working set {medianWs / 1024.0 / 1024.0:F1} MB   median of {ok.Count} run(s)");
+        Console.WriteLine(s.ColdMeasured
+            ? $"cold    : responsive {s.ColdToResponsiveMs:F0} ms   (first run, nothing in the file cache)"
+            : $"cold    : NOT MEASURED - {s.ColdFailure}");
+        Console.WriteLine(s.WarmRuns > 0
+            ? $"warm    : responsive {s.WarmMedianMs:F0} ms   median of {s.WarmRuns} later run(s)"
+            : $"warm    : not measured ({(a.Runs > 1 ? "every later run failed" : "single run")})");
+        Console.WriteLine($"idle    : working set {s.WorkingSetMedianBytes / 1024.0 / 1024.0:F1} MB   median of {s.RunsMeasured} run(s)");
 
         if (a.Out is not null)
         {
-            File.WriteAllText(a.Out, Json(a, tree, size, ok, cold, warmMedian, medianWs));
+            File.WriteAllText(a.Out, Report.Json(Path.GetFullPath(a.Exe), tree, size, s,
+                Environment.OSVersion.VersionString));
             Console.WriteLine($"report  : {Path.GetFullPath(a.Out)}");
         }
 
-        // Exit 2 when the tree has no WebEngine: the numbers are real but they are not the before,
-        // and a caller scripting this should be able to tell without reading the prose.
-        return size.WebEnginePresent ? 0 : 2;
-    }
+        // A failed run 1 leaves the headline number missing, and the row says so rather than carrying
+        // a zero. Said again on stderr because the tree size and the warm figure are still there and
+        // a report that looks complete is how the zero would have been quoted.
+        if (!s.ColdMeasured)
+            Console.Error.WriteLine("no cold-start number: run 1 failed, and the report says null rather than 0");
 
-    private static double Median(IEnumerable<double> values)
-    {
-        double[] v = values.ToArray();
-        Array.Sort(v);
-        return v.Length == 0 ? 0 : v[(v.Length - 1) / 2];
+        // Otherwise exit 2 when the tree has no WebEngine: the numbers are real but they are not the
+        // before, and a caller scripting this should be able to tell without reading the prose.
+        return Report.ExitCode(s, size.WebEnginePresent);
     }
-
-    private static string Json(Args a, string tree, TreeSize size, List<StartupResult> ok,
-        StartupResult cold, double warmMedian, double ws)
-    {
-        var c = CultureInfo.InvariantCulture;
-        var sb = new StringBuilder();
-        sb.Append('{');
-        sb.Append("\"task\":\"PP46\"");
-        sb.Append($",\"exe\":\"{Esc(Path.GetFullPath(a.Exe))}\"");
-        sb.Append($",\"tree\":\"{Esc(tree)}\"");
-        sb.Append($",\"tree_files\":{size.Files},\"tree_bytes\":{size.Bytes}");
-        sb.Append($",\"webengine_present\":{(size.WebEnginePresent ? "true" : "false")}");
-        sb.Append($",\"webengine_bytes\":{size.WebEngineBytes}");
-        sb.Append($",\"is_before_baseline\":{(size.WebEnginePresent ? "true" : "false")}");
-        sb.Append($",\"runs\":{ok.Count}");
-        sb.Append($",\"cold_to_window_ms\":{cold.ToWindowMs.ToString("F1", c)}");
-        sb.Append($",\"cold_to_responsive_ms\":{cold.ToResponsiveMs.ToString("F1", c)}");
-        sb.Append($",\"warm_to_responsive_ms_median\":{warmMedian.ToString("F1", c)}");
-        sb.Append($",\"working_set_bytes_median\":{(long)ws}");
-        sb.Append($",\"window_title\":\"{Esc(cold.WindowTitle)}\"");
-        sb.Append($",\"os\":\"{Esc(Environment.OSVersion.VersionString)}\"");
-        sb.Append('}');
-        sb.Append('\n');
-        return sb.ToString();
-    }
-
-    private static string Esc(string s) => s.Replace("\\", "\\\\").Replace("\"", "\\\"");
 }
 
 internal sealed record Args(string Exe, string? Tree, int Runs, int TimeoutMs, int SettleMs, string? Out)

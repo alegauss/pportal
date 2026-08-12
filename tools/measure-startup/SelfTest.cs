@@ -50,6 +50,13 @@ internal static class SelfTest
             // The resource pak matters as much as the DLL: matching only the DLL would undercount.
             failures += Expect(Tree.IsWebEngine("qtwebengine_resources.pak"), "the resource pak must count as WebEngine");
             failures += Expect(!Tree.IsWebEngine("Qt6Quick.dll"), "an ordinary Qt DLL must not count as WebEngine");
+
+            // 4. The summary, driven with synthetic runs. Probe refusing to invent a zero is only half
+            // the guarantee: the report is assembled from the runs afterwards, and that is where a
+            // failed run 1 used to become "cold_to_responsive_ms":0.0. Observed against the real
+            // build with --timeout-ms 1235, which is above the warm time and below the cold one, so
+            // run 1 timed out and runs 2 and 3 did not.
+            failures += SummaryChecks(with);
         }
         finally
         {
@@ -58,6 +65,66 @@ internal static class SelfTest
 
         Console.WriteLine(failures == 0 ? "OK self-test passed" : $"{failures} self-test check(s) failed");
         return failures == 0 ? 0 : 1;
+    }
+
+    /// <summary>
+    /// The report path, with the runs handed in rather than launched. Everything here is about one
+    /// failure: a run that produced no time must contribute no time, and must not have its slot filled
+    /// by a zero or by the next run along.
+    /// </summary>
+    private static int SummaryChecks(TreeSize tree)
+    {
+        int failures = 0;
+        const string why = "no visible top-level window within 1235ms";
+
+        StartupResult Ok(double ms, long ws) => new(true, ms - 20, ms, ws, ws, null, "chiaki-ng");
+
+        // Run 1 timed out; runs 2 and 3 did not. This is the shape observed on the real build.
+        var coldFailed = new List<StartupResult>
+        {
+            StartupResult.Failed(why), Ok(1169.4, 454_819_840), Ok(1117.4, 455_000_000),
+        };
+        Summary s = Report.Summarise(coldFailed);
+        string json = Report.Json("x.exe", "tree", tree, s, "test-os");
+
+        failures += Expect(!s.ColdMeasured, "a failed run 1 must leave the cold start unmeasured");
+        failures += Expect(json.Contains("\"cold_to_responsive_ms\":null"),
+            $"a failed run 1 must serialise a null cold start, got: {json}");
+        failures += Expect(!json.Contains("\"cold_to_responsive_ms\":0"),
+            "a failed run 1 must never serialise a cold start of 0 ms");
+        failures += Expect(!json.Contains("\"cold_to_window_ms\":0"),
+            "a failed run 1 must never serialise a window time of 0 ms");
+        failures += Expect(json.Contains($"\"cold_failure\":\"{why}\""),
+            "the report must carry the reason the cold start is missing");
+        failures += Expect(Report.ExitCode(s, webEnginePresent: true) == 1,
+            "a missing cold start must exit 1 even on a build that has WebEngine");
+
+        // Both later runs are warm and both succeeded, so both count. Skipping over the *successful*
+        // runs instead of over run 1 silently dropped one of them from the median.
+        failures += Expect(s.WarmRuns == 2, $"both later successful runs must be warm, got {s.WarmRuns}");
+        failures += Expect(s.RunsMeasured == 2, $"two runs were measured, got {s.RunsMeasured}");
+        failures += Expect(s.RunsRequested == 3, $"three runs were requested, got {s.RunsRequested}");
+
+        // Run 2 is a warm start whatever happened to run 1, so it must not be promoted into the gap.
+        failures += Expect(s.ColdToResponsiveMs != 1169.4, "run 2 must not stand in as the cold run");
+
+        // The ordinary case still has to work, or the checks above pass by breaking everything.
+        Summary all = Report.Summarise([Ok(1218.1, 455_544_832), Ok(1105.3, 454_000_000), Ok(1160.0, 456_000_000)]);
+        failures += Expect(all.ColdMeasured && all.ColdToResponsiveMs == 1218.1,
+            $"run 1 is the cold figure when it succeeded, got {all.ColdToResponsiveMs}");
+        failures += Expect(all.WarmRuns == 2, $"the two later runs are warm, got {all.WarmRuns}");
+        failures += Expect(Report.ExitCode(all, webEnginePresent: true) == 0, "a complete before must exit 0");
+        failures += Expect(Report.ExitCode(all, webEnginePresent: false) == 2, "a complete non-before must exit 2");
+        failures += Expect(Report.Json("x.exe", "tree", tree, all, "test-os").Contains("\"cold_measured\":true"),
+            "a measured cold start must be stamped as measured");
+
+        // Nothing measured at all: still no zeros, and still exit 1.
+        Summary none = Report.Summarise([StartupResult.Failed(why)]);
+        failures += Expect(Report.ExitCode(none, webEnginePresent: true) == 1, "no measurement must exit 1");
+        failures += Expect(Report.Json("x.exe", "tree", tree, none, "test-os").Contains("\"working_set_bytes_median\":null"),
+            "an unmeasured working set must be null, not 0 bytes");
+
+        return failures;
     }
 
     private static int Expect(bool condition, string what)

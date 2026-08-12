@@ -6,7 +6,9 @@ measure-startup --self-test
 ```
 
 Exit `0` measured with QtWebEngine present · `2` measured but **WebEngine absent, so this is not the
-"before"** · `1` could not measure.
+"before"** · `1` **no cold-start number** — either nothing was measured, or run 1 failed and the
+headline figure is missing. `1` outranks `2`: a row without a cold start is not a measurement of a
+startup, whichever build it came from.
 
 These are the numbers most likely to be quoted in a release note, which is why they are the ones
 most likely to be quoted without being measured. One command produces all three, so the before and
@@ -26,13 +28,15 @@ to let a row be misread: it scans the tree for Chromium and stamps `webengine_pr
 
 ### What was measured here (Qt build, WebEngine ABSENT — not the before)
 
+Row in [`qt-build-webengine-absent.json`](qt-build-webengine-absent.json).
+
 | | |
 |---|---|
 | tree | **259.8 MB** in 1490 files |
 | chromium in tree | **none** |
-| cold, to responsive window | **1218 ms** |
-| warm, to responsive window | 1105 ms (median of 2) |
-| idle working set | **434.4 MB** (median of 3) |
+| cold, to responsive window | **1214 ms** |
+| warm, to responsive window | 1102 ms (median of 2) |
+| idle working set | **433.0 MB** (median of 3) |
 | window title seen | `chiaki-ng` |
 
 Useful as a floor and as proof the harness works, and nothing more. When the before is taken, the
@@ -58,6 +62,35 @@ anybody asked for.
    installer since the CI workflows were deleted (PP22). The deploy tree is the honest proxy, and it
    is labelled as the tree.
 
+## A zero that got past the probe
+
+The probe never invented a time, and the report did it anyway. The runs are summarised **after** the
+probing, and that step took run 1 as the cold figure by position without checking that run 1 had
+produced one — so a failed run 1 was serialised as `"cold_to_responsive_ms":0.0`, in a row that
+otherwise looked complete and exited `2` like any other.
+
+It is not a corner. Run 1 is the *slowest* run by construction, so any timeout tight enough to catch
+a hang lands between the cold time and the warm ones and fails exactly run 1. Observed on this
+build at `--timeout-ms 1235`:
+
+```
+run 1 (cold): FAILED - no visible top-level window within 1235ms
+run 2 (warm): window 1153 ms   responsive 1169 ms
+run 3 (warm): window 1084 ms   responsive 1117 ms
+...
+"runs":2,"cold_to_window_ms":0.0,"cold_to_responsive_ms":0.0,"warm_to_responsive_ms_median":1117.4
+```
+
+Two wrong numbers in one row. The cold start is `0.0` rather than absent, and the warm median counts
+**one** later run out of two — the summary skipped the first *successful* run rather than run 1, so
+run 2 fell out of both figures.
+
+The same command now reports `"cold_measured":false`, `null` in both cold fields, a `cold_failure`
+saying why, `warm_runs:2`, and exits `1`. A run that produced no time contributes no time; run 2 is
+never promoted into the gap, because run 2 is a warm start whatever happened before it.
+
+[`Report.cs`](Report.cs) exists so that step can be asserted without launching anything.
+
 ## Assertions
 
 `--self-test` checks the failure modes that would otherwise produce a quotable wrong number:
@@ -67,9 +100,15 @@ anybody asked for.
 - Chromium detection is exercised against a tree built with it and one built without, including that
   `qtwebengine_resources.pak` counts (matching only the DLL would undercount by an order of
   magnitude) and that an ordinary `Qt6Quick.dll` does not
+- the summary, driven with synthetic runs: a failed run 1 serialises `null` and never `0`, carries its
+  reason, exits `1` even on a WebEngine build, does not let run 2 stand in as the cold figure, and
+  still counts both later runs as warm — plus the all-succeeded case, so those cannot pass by
+  breaking the ordinary path
 
-Injected fault: the no-window branch made to return `(WindowAppeared: true, 0 ms)`. It first went
-**undetected**, because the self-test used `cmd.exe`, which exits the moment its stdin reads EOF and
-so exercised the "exited early" path instead. Switching that check to `ping -n 6` made the fault
-produce 2 red checks. The check that the no-window case is not reached via early exit exists because
-of that miss.
+Injected faults, and what each produced:
+
+| fault | red checks |
+|---|---|
+| the no-window branch returns `(WindowAppeared: true, 0 ms)` | **0 at first** — the check used `cmd.exe`, which exits the moment its stdin reads EOF, so it exercised the "exited early" path instead. Switched to `ping -n 6`: **2**. The check that the no-window case is not reached via early exit exists because of that miss. |
+| `cold` taken from `results[0]` without checking it succeeded | **6**, and the JSON in the failure output is byte-for-byte the `"cold_to_responsive_ms":0.0` row above |
+| warm runs taken as `measured.Skip(1)` instead of `results.Skip(1).Where(ok)` | **1** — `both later successful runs must be warm, got 1` |
