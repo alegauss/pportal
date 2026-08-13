@@ -41,9 +41,10 @@ internal static class Program
     private const int Warmup = 30;
 
     /// <summary>
-    /// NVIDIA's driver-defined extension GUID, taken from mpv's vf_d3d11vpp.c. It is not asserted
-    /// here: a wrong GUID either throws or leaves the output untouched, and the engagement check
-    /// below is what tells the two apart. That is why the check exists.
+    /// NVIDIA's driver-defined extension GUID, from mpv's vf_d3d11vpp.c, which cites Chromium for
+    /// it. Corroborated across three independent retrievals of that source after a first draft of
+    /// this spike carried a different tail from memory - the last three bytes are exactly where a
+    /// remembered GUID goes wrong, and a wrong one here fails silently rather than loudly.
     /// </summary>
     private static readonly Guid NvidiaPpeInterface = new(
         0xd43ce1b3, 0x1f4b, 0x48ac, 0xba, 0xee, 0xc3, 0xc2, 0x53, 0x75, 0xe6, 0xf7);
@@ -143,8 +144,16 @@ internal static class Program
             {
                 Console.WriteLine();
                 Console.WriteLine("!! THE EXTENSION DID NOT ENGAGE. The two runs produced the same picture, so the");
-                Console.WriteLine("   difference in time below is scheduling noise and not the cost of anything.");
-                Console.WriteLine($"   set-extension call: {on.ExtensionResult}");
+                Console.WriteLine("   difference in time above is scheduling noise and not the cost of anything.");
+                Console.WriteLine($"   extension call: {on.ExtensionResult}");
+                Console.WriteLine();
+                Console.WriteLine("   Setting the extension is not the same as turning the feature on. mpv, whose");
+                Console.WriteLine("   GUID this is, says so of its own scaling-mode option: it \"only enables the");
+                Console.WriteLine("   appropriate processing extensions; whether it actually works or not depends");
+                Console.WriteLine("   on your hardware and the settings in your GPU driver's control panel\".");
+                Console.WriteLine();
+                Console.WriteLine("   NVIDIA Control Panel -> Video -> Adjust video image settings ->");
+                Console.WriteLine("   RTX Video Enhancement / Super Resolution. Turn it on and run this again.");
             }
 
             SaveCrop(off.Pixels, "crop-off.png");
@@ -192,11 +201,12 @@ internal static class Program
                 Marshal.WriteInt32(data, 8, 0);
                 videoContext.VideoProcessorGetStreamExtension(processor, 0, NvidiaPpeInterface, (uint)size, data);
                 var echoed = Marshal.PtrToStructure<NvidiaStreamExtension>(data);
-                bool known = echoed.Version == ExtensionVersionV1 && echoed.Method == ExtensionMethodSuperResolution;
-                extensionResult = known
-                    ? $"accepted, driver echoed version={echoed.Version} method={echoed.Method} enable={echoed.Enable}"
-                    : $"accepted, but the driver echoed version={echoed.Version} method={echoed.Method} "
-                      + $"enable={echoed.Enable} - it does not recognise this GUID";
+                // Reported as what it is - what the driver wrote back - and not as a verdict on
+                // the GUID. Get is driver-defined like Set is, so a driver that recognises the
+                // interface is still entitled to leave the buffer alone. Reading zeros here means
+                // the driver wrote nothing, and nothing more than that.
+                extensionResult = $"set accepted; get echoed version={echoed.Version} "
+                    + $"method={echoed.Method} enable={echoed.Enable}";
             }
             finally
             {

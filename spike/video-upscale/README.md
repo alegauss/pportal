@@ -37,28 +37,43 @@ frame to 4K with its ordinary scaler, on the card this port targets. At 60 fps t
 frame interval. Whatever VSR costs, it costs that *plus* something.
 
 **VSR itself produced no number, because it never ran.** The extension was set and the output was
-byte-identical to the run without it — 0 of 8,294,400 pixels differ. Reading the extension back
-says why:
-
-```
-set_extension: "accepted, but the driver echoed version=0 method=0 enable=0
-                - it does not recognise this GUID"
-```
-
-`VideoProcessorSetStreamExtension` returns `void`, so it cannot refuse; `VideoProcessorGetStreamExtension`
-is what tells a recognised interface from an ignored one, and this driver echoes zeros.
+byte-identical to the run without it — 0 of 8,294,400 pixels differ.
 
 VSR *is* installed on this machine — `nvsvsr.dll` (2.0 MB) and `nvvitvsr.dll` (4.3 MB) sit in the
-driver store beside `nvngx.dll`. So the feature is present and this spike is not reaching it. The
-GUID came from mpv's `vf_d3d11vpp.c` and has one source; it was not corroborated. Three candidates
-remain, in the order worth trying:
+driver store beside `nvngx.dll`. So the feature is present and this spike is not reaching it.
 
-1. The GUID is wrong or has moved. Corroborate against a second implementation.
-2. RTX Video Enhancement is a user-facing NVIDIA Control Panel toggle, and the driver may not
-   expose the interface until it is on. If that is the answer it is a finding rather than a defect,
-   and it belongs to PP51 as much as here: a vendor path that needs a control-panel visit has a
-   different contract from one that does not.
-3. The driver may only engage VSR for a presented swapchain rather than an offscreen blit.
+### Why, and what a reader should do about it
+
+**Setting the extension is not the same as turning the feature on.** mpv, whose GUID this is,
+documents exactly that of its own `scaling-mode` option:
+
+> Note that this only enables the appropriate processing extensions; whether it actually works or
+> not depends on your hardware and the settings in your GPU driver's control panel.
+
+So: **NVIDIA Control Panel → Video → Adjust video image settings → RTX Video Enhancement /
+Super Resolution.** With it off, every call here succeeds and nothing happens, which is precisely
+what this run shows. Turn it on and run again.
+
+That is a finding rather than a defect, and it belongs to PP51 as much as to this line: a vendor
+path that needs a visit to a control panel has a different contract from one that does not. A user
+who never opens that panel gets the unaccelerated path and files no report.
+
+Two candidates were considered and dropped:
+
+- **A wrong GUID.** A first draft of this spike carried a different tail from memory. The value
+  here is mpv's, corroborated across three independent retrievals — the last three bytes are
+  exactly where a remembered GUID goes wrong, and a wrong one fails silently rather than loudly.
+- **Offscreen output.** Chromium applies VSR while presenting a swapchain, which suggested the
+  driver might require one. mpv's `vf_d3d11vpp` is a filter whose output is an ordinary texture and
+  it works, so an offscreen blit is not disqualifying on its own.
+
+A note on what the read-back does and does not prove. `VideoProcessorSetStreamExtension` returns
+`void` and cannot refuse, so this spike also calls `VideoProcessorGetStreamExtension` and prints
+what came back — `version=0 method=0 enable=0` on this run. An earlier version of this README read
+that as "the driver does not recognise this GUID". **That inference was wrong and has been
+removed:** Get is driver-defined exactly as Set is, so a driver that recognises the interface is
+still entitled to leave the buffer alone. Zeros mean the driver wrote nothing, and nothing more.
+The 0-pixel difference is the evidence; the read-back is a hint.
 
 ## Two instruments, and both were wrong first
 

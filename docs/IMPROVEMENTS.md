@@ -716,31 +716,32 @@ different conditions, the way compare-baselines already refuses mismatched setti
 
 ## Block I — NVIDIA path
 
-### §PP47 The right NVIDIA feature, and why it will not start
+### §PP47 The right NVIDIA feature, waiting on a switch
 
-The half that is shipped: DLSS cannot apply here, RTX Video Super Resolution is the
-candidate, and the floor is measured. The plain video-processor upscale from 1080p NV12
-to 4K costs 262.9us mean and 274.1us p99 on the RTX 4060 - 1.6% of a frame at 60fps.
-Whatever VSR costs, it costs that plus something.
+The shipped half: DLSS cannot apply here, RTX Video Super Resolution is the candidate,
+and the floor is measured. The plain upscale from 1080p NV12 to 4K costs 262.9us mean
+and 274.1us p99 on the RTX 4060 - 1.6% of a frame at 60fps. Whatever VSR costs, it costs
+that plus something.
 
-What is left is VSR's own number, and the obstacle is that it does not engage. The spike
-in spike/video-upscale sets the stream extension and the driver echoes zeros back from
-VideoProcessorGetStreamExtension, so it does not recognise that GUID. Yet nvsvsr.dll and
-nvvitvsr.dll sit in the driver store: the feature is installed and the spike is not
-reaching it.
+What is left is VSR's own number. The spike in spike/video-upscale sets the stream
+extension and nothing changes: 0 of 8.3 million pixels differ, while nvsvsr.dll and
+nvvitvsr.dll sit in the driver store, so the feature is installed and unreached.
 
-Three candidates, in the order worth trying. The GUID came from mpv and has one source
-that was never corroborated. RTX Video Enhancement is a control panel toggle, and the
-driver may not expose the interface until it is on. The driver may engage VSR only for a
-presented swapchain rather than an offscreen blit.
+Three candidates were filed and two are now dropped. The GUID is mpv's, corroborated
+across three independent retrievals. Offscreen output is not disqualifying: mpv's own
+filter writes to an ordinary texture and works.
 
-The second would be a finding rather than a defect, and it belongs to PP51 as much as
-here: a vendor path needing a control panel visit has a different contract from one that
-does not.
+What survives is the driver's own switch, and mpv documents it: the option "only enables
+the appropriate processing extensions; whether it actually works depends on your
+hardware and the settings in your GPU driver's control panel". The remaining step is a
+human one: NVIDIA Control Panel, Video, RTX Video Enhancement, then re-run.
 
-The quality half stays unanswerable here whatever the cause. Judging whether the picture
-is better enough needs a real decoded frame, which needs a console - so the synthetic
-pattern the spike feeds settles the cost and must not be read as settling the benefit.
+That is a finding rather than a defect, and it belongs to PP51 as much as here: a vendor
+path needing a control panel visit has a different contract from one that does not, and
+a user who never opens that panel gets the unaccelerated path silently.
+
+The quality half stays unanswerable here regardless. It needs a real decoded frame,
+which needs a console, so the synthetic pattern settles cost and never benefit.
 
 ### §PP48 The NVIDIA path that already exists
 
