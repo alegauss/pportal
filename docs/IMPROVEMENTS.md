@@ -716,23 +716,31 @@ different conditions, the way compare-baselines already refuses mismatched setti
 
 ## Block I — NVIDIA path
 
-### §PP47 The right NVIDIA feature, which is not the famous one
+### §PP47 The right NVIDIA feature, and why it will not start
 
-DLSS Super Resolution is a render-time technique. It works because a game hands it
-motion vectors, a depth buffer and a jittered camera, and it reconstructs a higher
-resolution frame from information the renderer already had. A remote play client has
-none of that: what arrives is H.264 or HEVC that a console encoded, decoded into a plain
-surface. There is nothing to hand DLSS and no way to produce it.
+The half that is shipped: DLSS cannot apply here, RTX Video Super Resolution is the
+candidate, and the floor is measured. The plain video-processor upscale from 1080p NV12
+to 4K costs 262.9us mean and 274.1us p99 on the RTX 4060 - 1.6% of a frame at 60fps.
+Whatever VSR costs, it costs that plus something.
 
-What NVIDIA ships for exactly this case is RTX Video Super Resolution, driven through
-NGX. It takes a decoded video frame and upscales it, which is the thing being asked for,
-and it is already used by browsers for the same reason.
+What is left is VSR's own number, and the obstacle is that it does not engage. The spike
+in spike/video-upscale sets the stream extension and the driver echoes zeros back from
+VideoProcessorGetStreamExtension, so it does not recognise that GUID. Yet nvsvsr.dll and
+nvvitvsr.dll sit in the driver store: the feature is installed and the spike is not
+reaching it.
 
-So this task is the evaluation, on the measurement the present spike provides: what VSR
-costs in milliseconds at the resolutions this client actually streams, and whether the
-picture is better enough at 1080p to 4K to pay it. Remote play is not a movie - added
-latency is felt where a sharper image is only seen - so the answer is a number, not a
-preference, and it is allowed to be no.
+Three candidates, in the order worth trying. The GUID came from mpv and has one source
+that was never corroborated. RTX Video Enhancement is a control panel toggle, and the
+driver may not expose the interface until it is on. The driver may engage VSR only for a
+presented swapchain rather than an offscreen blit.
+
+The second would be a finding rather than a defect, and it belongs to PP51 as much as
+here: a vendor path needing a control panel visit has a different contract from one that
+does not.
+
+The quality half stays unanswerable here whatever the cause. Judging whether the picture
+is better enough needs a real decoded frame, which needs a console - so the synthetic
+pattern the spike feeds settles the cost and must not be read as settling the benefit.
 
 ### §PP48 The NVIDIA path that already exists
 

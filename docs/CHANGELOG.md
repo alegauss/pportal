@@ -35,3 +35,4 @@
 
 ## Block I — NVIDIA path
 
+- ✅ **PP47 (the feature choice and the floor)** **DLSS needs motion vectors and a depth buffer, and a decoded video stream carries neither** — DLSS cannot apply and VSR is the candidate; the plain video-processor upscale 1080p to 4K costs 262.9us on an RTX 4060, and VSR itself did not engage.
