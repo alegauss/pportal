@@ -656,27 +656,6 @@ this task: a test has to be able to name the line it holds, whether by conventio
 test name or by an attribute the count can read. Without that join, the number is a
 guess and a gate on a guess is worse than no gate.
 
-### §PP56 Green from a binary that predates the change
-
-scripts/build-windows.sh:50 is `cmake --build "$BUILD_DIR" --target chiaki`, and that is
-the only build step compile.cmd runs. chiaki-unit is never named, so ninja never relinks
-it.
-
-This is measured, not suspected. Working PP41, a full `compile.cmd` reported OK, `ctest`
-in build/ reported "100% tests passed out of 1", and `chiaki-unit.exe --list` did not
-contain a single one of the tests just added - the binary ctest ran was linked before
-the change. The suite was green because it was answering an older question.
-
-That is the worst failure mode a test target has. A red run is information and a stale
-green run is worse than no run at all: it is a check that reports on code that is not
-there, and it reports it in the one place a developer looks to stop worrying. The
-project's own constraint - no line ships without an assertion that fails without it -
-cannot be honoured by a command that never rebuilds the assertions.
-
-The fix is one target name, and the cost of not fixing it is paid by whoever next trusts
-a green ctest. Building the tests by default is the honest default; a nodeploy-style
-opt-out can keep the fast path for someone who only wants the client.
-
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed

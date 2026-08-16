@@ -21,11 +21,16 @@ rem does every path the build graph names still resolve. Run a full build before
 rem committing, not before deciding.
 rem
 rem Usage:
-rem   compile.cmd                 configure + build + portable tree
+rem   compile.cmd                 configure + build (client + tests) + portable tree
 rem   compile.cmd configure       configure only - the fast check after a deletion
 rem   compile.cmd clean           wipe .\build (portable tree included) first
 rem   compile.cmd nodeploy        build only, skip the portable tree (fast)
+rem   compile.cmd notests         skip chiaki-unit - leaves ctest on a stale binary
 rem   compile.cmd clean nodeploy  both
+rem
+rem A default build now links chiaki-unit as well as chiaki (PP56). It used to build
+rem the client alone, which meant ctest in .\build ran whatever test binary had last
+rem been linked by hand - a green that reported on code no longer in the tree.
 rem
 rem Environment overrides:
 rem   MSYS2_ROOT   MSYS2 install dir              (default C:\msys64)
@@ -58,6 +63,7 @@ rem arguments needs no external program and cannot be shadowed.
 set "ARGS=%*"
 set "DO_DEPLOY=1"
 set "CONFIGURE_ONLY="
+set "NO_TESTS="
 set "BAD_ARG="
 set "LOCKED="
 for %%a in (%ARGS%) do (
@@ -65,12 +71,13 @@ for %%a in (%ARGS%) do (
     rem only so that a typo is not mistaken for one of them.
     if /I "%%~a"=="configure" set "CONFIGURE_ONLY=1"
     if /I "%%~a"=="nodeploy"  set "DO_DEPLOY="
-    if /I "%%~a" neq "configure" if /I "%%~a" neq "nodeploy" if /I "%%~a" neq "clean" if /I "%%~a" neq "deploy" set "BAD_ARG=%%~a"
+    if /I "%%~a"=="notests"   set "NO_TESTS=1"
+    if /I "%%~a" neq "configure" if /I "%%~a" neq "nodeploy" if /I "%%~a" neq "notests" if /I "%%~a" neq "clean" if /I "%%~a" neq "deploy" set "BAD_ARG=%%~a"
 )
 if defined CONFIGURE_ONLY set "DO_DEPLOY="
 if defined BAD_ARG (
     echo [compile] unknown argument: %BAD_ARG%
-    echo [compile] usage: compile.cmd [clean] [configure^|nodeploy]
+    echo [compile] usage: compile.cmd [clean] [notests] [configure^|nodeploy]
     exit /b 2
 )
 
@@ -89,6 +96,7 @@ if defined DO_DEPLOY call :need "scripts\deploy-windows-msys2.sh" "collects the 
 call :need "CMakeLists.txt"                "the build graph root"
 call :need "gui\CMakeLists.txt"            "the Qt client"
 call :need "lib\CMakeLists.txt"            "libchiaki"
+if not defined NO_TESTS call :need "test\CMakeLists.txt" "chiaki-unit, which a default build links so ctest is not left on a stale binary"
 if defined MISSING (
     echo.
     echo [compile] Cannot build: the file^(s^) above are read by this build.
@@ -132,6 +140,8 @@ set "CHERE_INVOKING=1"
 echo [compile] MSYS2      : %MSYS2_ROOT%
 echo [compile] build dir  : %BUILD_DIR%  (%BUILD_TYPE%)
 if defined CONFIGURE_ONLY echo [compile] mode       : configure only (deletion check)
+if not defined CONFIGURE_ONLY if defined NO_TESTS echo [compile] tests      : SKIPPED - ctest in %BUILD_DIR% will report on an older binary
+if not defined CONFIGURE_ONLY if not defined NO_TESTS echo [compile] tests      : chiaki-unit built with the client
 if defined DO_DEPLOY echo [compile] portable   : %DEPLOY_DISP%
 if not defined DO_DEPLOY if not defined CONFIGURE_ONLY echo [compile] portable   : skipped
 echo.

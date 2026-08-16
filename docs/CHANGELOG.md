@@ -17,6 +17,7 @@
 ## Block G — Test discipline
 
 - ✅ **PP54** **the vendored munit does not compile on gcc 16, so the only test target in the tree cannot be built at all** — munit is a pinned submodule, so this repo's CMake now builds that one file as the C11 it was written for, and chiaki-unit compiles on gcc 16 with 113 of 113 passing.
+- ✅ **PP56** **compile.cmd never builds chiaki-unit, so ctest reports green against whatever binary was last linked by hand** — A default build now links chiaki-unit with the client, so ctest answers about the tree that is there; notests keeps the fast path and warns that it did not.
 
 ## Block H — Performance and telemetry
 

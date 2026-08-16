@@ -5,6 +5,7 @@
 #   build-windows.sh                 configure + build + portable tree
 #   build-windows.sh clean           wipe the build dir first
 #   build-windows.sh nodeploy        build only, skip the portable tree
+#   build-windows.sh notests         skip chiaki-unit, leaving ctest on a stale binary
 #   build-windows.sh configure       configure only - the fast check that a
 #                                    deletion did not break the build graph
 #
@@ -23,16 +24,18 @@ BUILD_TYPE="${BUILD_TYPE:-Release}"
 do_clean=0
 do_deploy=1
 do_build=1
+do_tests=1
 for arg in "$@"; do
     case "$arg" in
         clean)     do_clean=1 ;;
         deploy)    do_deploy=1 ;;
         nodeploy)  do_deploy=0 ;;
+        notests)   do_tests=0 ;;
         # Configure answers the only question a deletion asks - is every file the
         # build graph names still there - and answers it in seconds instead of in
         # a full compile. It implies nodeploy: there is no exe to deploy.
         configure) do_build=0; do_deploy=0 ;;
-        *) echo "usage: $(basename "$0") [clean] [nodeploy|configure]" >&2; exit 2 ;;
+        *) echo "usage: $(basename "$0") [clean] [notests] [nodeploy|configure]" >&2; exit 2 ;;
     esac
 done
 
@@ -47,7 +50,37 @@ if [[ $do_build -eq 0 ]]; then
     exit 0
 fi
 
-cmake --build "$BUILD_DIR" --target chiaki
+# chiaki-unit is built with the client, not instead of it and not on request.
+#
+# PP56: naming `chiaki` alone here was the whole of the defect. ninja builds what it is
+# asked for, so the test target was never relinked, and `ctest` in build/ then ran
+# whatever binary had last been linked by hand. That is not a suite that fails to catch a
+# regression - it is a suite answering a question about code that is no longer there, and
+# reporting it in the one place a developer looks in order to stop worrying. Measured
+# while working PP41: a full build said OK, ctest said 100% passed, and the binary it ran
+# did not contain a single one of the tests just added.
+#
+# So the honest default is to build them. `notests` keeps the fast path for someone who
+# only wants the client, and is spelled out rather than implied so that the trade is made
+# on purpose - the person who passes it knows ctest is now reporting on the past.
+targets=(chiaki)
+if [[ $do_tests -eq 1 ]]; then
+    # Absent when the tree was configured with -DCHIAKI_ENABLE_TESTS=OFF, and asking ninja
+    # for a target that does not exist is a hard error. Read from the cache the configure
+    # above just wrote, so the answer is this build dir's and not a guess.
+    if grep -qx 'CHIAKI_ENABLE_TESTS:BOOL=ON' "$BUILD_DIR/CMakeCache.txt" 2>/dev/null; then
+        targets+=(chiaki-unit)
+    else
+        echo "note: CHIAKI_ENABLE_TESTS is off in $BUILD_DIR, so there is no chiaki-unit to build" >&2
+        echo "note: ctest in that directory has nothing current to run" >&2
+    fi
+fi
+
+cmake --build "$BUILD_DIR" --target "${targets[@]}"
+
+if [[ $do_tests -eq 0 ]]; then
+    echo "note: chiaki-unit was not built (notests), so ctest in $BUILD_DIR reports on an older binary" >&2
+fi
 
 if [[ $do_deploy -eq 1 ]]; then
     # The tool dir goes on PATH inside the deploy script so that ldd can resolve
