@@ -62,6 +62,7 @@
 - 📋 **PP36** (deps: PP22, PP24) **the only CI job is the roadkeep lint gate, so no test result can turn a branch red** — A suite nobody runs on a push goes red quietly, and Test Explorer is a local convenience rather than a gate that holds a policy in place. → §PP36
 - 📋 **PP37** (deps: PP12) **a screen ported into code-behind can only be exercised by opening a window** — What is worth asserting about a screen is its view model, so a port that keeps logic behind the window makes eight screens untestable by construction. → §PP37
 - 📋 **PP38** (deps: PP36) **nothing counts the shipped lines that carry no assertion, so the rule is a sentence rather than a gate** — A count that may only go down is what survives a busy week, and without it the discipline lasts exactly as long as the person remembering it. → §PP38
+- 📋 **PP74** (deps: PP1 ✅) **compile.cmd builds the Qt client and knows nothing about app/, so the tree's only gate now covers half of it** — PP56 fixed this exact silence for chiaki-unit, and the .NET host arrived after it and inherited it: a green says nothing about the half that changed. → §PP74
 
 ## Block H — Performance and telemetry
 
