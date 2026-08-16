@@ -51,6 +51,15 @@
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
   </PropertyGroup>
 
+  <!-- UseWPF drops System.IO from the SDK's implicit global usings, so File, Path and the stream
+       types stop resolving without a per-file using. claude-tray attributes this to enabling
+       UseWPF *alongside* UseWindowsForms; this project has WinForms off and loses it anyway, so
+       WPF alone is enough to do it. Re-added here rather than per file, which is where the SDK
+       would have put it. -->
+  <ItemGroup>
+    <Using Include="System.IO" />
+  </ItemGroup>
+
   <!-- The assertion for "the version as a single source of truth" (PP1). app.manifest carries
        its own assemblyIdentity version, and nothing in the SDK relates the two: they are set
        in different files, in different syntaxes, and a release with two different numbers in
