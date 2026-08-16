@@ -16,6 +16,7 @@ extern MunitTest tests_bitstream[];
 extern MunitTest tests_session_baseline[];
 extern MunitTest tests_frame_processor[];
 extern MunitTest tests_alloc_budget[];
+extern MunitTest tests_video_receiver[];
 #if CHIAKI_LIB_ENABLE_FFMPEG_DECODER
 extern MunitTest tests_ffmpegdecoder[];
 #endif
@@ -108,6 +109,13 @@ static MunitSuite suites[] = {
 	{
 		"/alloc_budget",
 		tests_alloc_budget,
+		NULL,
+		1,
+		MUNIT_SUITE_OPTION_NONE
+	},
+	{
+		"/video_receiver",
+		tests_video_receiver,
 		NULL,
 		1,
 		MUNIT_SUITE_OPTION_NONE

@@ -243,8 +243,18 @@ static ChiakiErrorCode chiaki_video_receiver_flush_frame(ChiakiVideoReceiver *vi
 	bool succ = flush_result != CHIAKI_FRAME_PROCESSOR_FLUSH_RESULT_FEC_FAILED;
 	bool recovered = false;
 
-	ChiakiBitstreamSlice slice;
-	if(chiaki_bitstream_slice(&video_receiver->bitstream, frame, frame_size, &slice))
+	// PP57: the parser declines a frame it will not describe - no startcode (bitstream.c:162),
+	// an unexpected NAL unit type (:172) - and both say so with a CHIAKI_LOGW, which is how the
+	// code states it expects them. `succ` above is derived from the flush result alone, so a
+	// declined frame still reaches the callback below and still reaches the log at the bottom of
+	// this function. Reading an indeterminate automatic there is undefined rather than merely
+	// wrong: the compiler is entitled to assume it cannot happen. So the slice is zeroed, which
+	// makes the value defined, and `parsed` carries the separate question of whether it means
+	// anything - a zeroed slice_type is a valid enumerator and would otherwise read as a real
+	// answer.
+	ChiakiBitstreamSlice slice = {0};
+	bool parsed = chiaki_bitstream_slice(&video_receiver->bitstream, frame, frame_size, &slice);
+	if(parsed)
 	{
 		if(chiaki_video_receiver_get_waiting_for_idr(video_receiver))
 		{
@@ -306,7 +316,13 @@ static ChiakiErrorCode chiaki_video_receiver_flush_frame(ChiakiVideoReceiver *vi
 		else
 		{
 			add_ref_frame(video_receiver, video_receiver->frame_index_cur);
-			CHIAKI_LOGV(video_receiver->log, "Added reference %c frame %d", slice.slice_type == CHIAKI_BITSTREAM_SLICE_I ? 'I' : 'P', (int)video_receiver->frame_index_cur);
+			// Gated on the parse rather than on the send: the frame was sent either way, but
+			// only a parsed slice has a type to name. Saying so beats naming one of the two
+			// letters at random, which is what this line did before PP57.
+			if(parsed)
+				CHIAKI_LOGV(video_receiver->log, "Added reference %c frame %d", slice.slice_type == CHIAKI_BITSTREAM_SLICE_I ? 'I' : 'P', (int)video_receiver->frame_index_cur);
+			else
+				CHIAKI_LOGV(video_receiver->log, "Added reference frame %d of unparsed slice type", (int)video_receiver->frame_index_cur);
 		}
 	}
 

@@ -6,6 +6,8 @@
 
 ## Block C — Video and input path
 
+- ✅ **PP57** **videoreceiver reads slice.slice_type uninitialised when the bitstream parser declined the frame, which is UB** — The slice is zeroed at declaration and the log names a type only when the parse produced one, held by 2 munit assertions over a declined frame that still reaches the callback.
+
 ## Block D — Screens
 
 ## Block E — Windows-only build

@@ -26,7 +26,8 @@ set(CHIAKI_UNIT_SOURCES
 				regist.c
 				sessionbaseline.c
 				frameprocessor.c
-				allocbudget.c)
+				allocbudget.c
+				videoreceiver.c)
 
 if(CHIAKI_ENABLE_FFMPEG_DECODER)
 	list(APPEND CHIAKI_UNIT_SOURCES ffmpegdecoder.c)
