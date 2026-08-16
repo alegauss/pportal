@@ -7,7 +7,6 @@
 
 ## Block A — Core
 
-- 📋 **PP1** (deps: —) **no .NET host exists, so a XAML window has nowhere to live** — The port needs a target before it needs a screen, and claude-tray already answers what that target is: net10.0-windows with UseWPF, the Fluent theme and one self-contained win-x64 exe. → §PP1
 - 📋 **PP2** (deps: —) **settings, registered consoles and the PSN token live in QSettings, which the .NET host cannot read** — An upgrade that forgets every console a user registered is a reinstall, so the existing store is read by the new host before any screen is drawn. → §PP2
 - 📋 **PP3** (deps: PP2) **app data, session logs and key files are placed by QStandardPaths, which the .NET host does not share** — Two processes disagreeing about where a log or a key file lives is the defect that outlives the port, so the locations are decided once against the Qt paths. → §PP3
 
@@ -27,7 +26,7 @@
 
 ## Block D — Screens
 
-- 📋 **PP12** (deps: PP1, PP8) **the six custom QML controls carry the theme, and gamepad focus navigation is built into them** — Fluent gives the look but no gamepad focus engine, so the thing every screen inherits has to exist before the screens that inherit it. → §PP12
+- 📋 **PP12** (deps: PP1 ✅, PP8) **the six custom QML controls carry the theme, and gamepad focus navigation is built into them** — Fluent gives the look but no gamepad focus engine, so the thing every screen inherits has to exist before the screens that inherit it. → §PP12
 - 📋 **PP13** (deps: PP6, PP12) **the console list, the front door of the application, is QML bound to the discovery model** — It is the first screen a user sees and the first that proves the ported discovery, so it is the smallest slice that can be judged end to end. → §PP13
 - 📋 **PP14** (deps: PP6, PP12) **registration, manual host, console PIN and profile dialogs are QML with their own validation** — Registering a console is the step between an installed application and a working one, and its four dialogs are one flow rather than four screens. → §PP14
 - 📋 **PP15** (deps: PP7, PP12) **the PSN login and token dialogs are 882 lines of QML wrapped around the embedded browser** — The account link is what remote play outside the local network depends on, and these are the only screens whose content is a third party page. → §PP15
@@ -39,7 +38,7 @@
 ## Block E — Windows-only build
 
 - 📋 **PP21** (deps: Block D) **Qt6 is still required to build: Core, Gui, Quick, Qml, Svg, Widgets, Concurrent and WebEngineQuick** — The port is only finished when the toolchain says so, and dropping Qt is the check that no screen or service quietly still depends on it. → §PP21
-- 📋 **PP22** (deps: PP1) **every CI workflow was deleted, so nothing builds, signs or packages the application** — A Windows-only application with no Windows build is a source tree, and claude-tray already has the shape: publish one self-contained exe, then wrap it in an installer. → §PP22
+- 📋 **PP22** (deps: PP1 ✅) **every CI workflow was deleted, so nothing builds, signs or packages the application** — A Windows-only application with no Windows build is a source tree, and claude-tray already has the shape: publish one self-contained exe, then wrap it in an installer. → §PP22
 - 📋 **PP63** (deps: PP62 ✅) **nothing in the tree can configure a Qt build carrying WebEngine, so PP46's before cannot be produced at all** — MSYS2 has no qt6-webengine and no published Windows release carries Chromium, so an MSVC configure built once is the only reference the port can measure against. → §PP63
 
 ## Block F — Managed core

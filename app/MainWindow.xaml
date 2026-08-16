@@ -1,0 +1,16 @@
+<Window x:Class="ChiakiNg.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="chiaki-ng"
+        Width="1280" Height="720"
+        WindowStartupLocation="CenterScreen">
+  <!-- Deliberately empty. PP1 is the host, not a screen: the console list is PP13, and it is
+       filed against this window already existing. What is here is the size a 720p stream wants
+       and the title an installer and a taskbar will show, both of which a screen would
+       otherwise have to invent while also being reviewed as a screen. -->
+  <Grid>
+    <TextBlock Text="chiaki-ng"
+               HorizontalAlignment="Center" VerticalAlignment="Center"
+               FontSize="24" Opacity="0.5" />
+  </Grid>
+</Window>

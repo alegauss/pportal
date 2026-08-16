@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1">
+  <!-- The version here is held equal to the csproj's <Version> by VerifyManifestVersion, which
+       fails the build when they drift. A manifest takes four parts where the project takes
+       three, so this is that version with a trailing .0 and nothing else. -->
+  <assemblyIdentity version="1.10.0.0" name="ChiakiNg.app" />
+
+  <application xmlns="urn:schemas-microsoft-com:asm.v3">
+    <windowsSettings>
+      <!-- PerMonitorV2, because this is a client whose whole job is presenting a video stream
+           at a real resolution. A window the OS stretches for us is a blurred stream and a
+           wrong measurement, and PP11 has to hand fullscreen and refresh-rate switching to
+           Win32 and DXGI from a window whose pixels mean what they say. -->
+      <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2</dpiAwareness>
+      <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true/pm</dpiAware>
+    </windowsSettings>
+  </application>
+
+  <compatibility xmlns="urn:schemas-microsoft-com:compat.v1">
+    <application>
+      <!-- Windows 10 and 11 only. The non-goals rule out every other platform, and declaring
+           the versions this is tested on is what stops the OS applying a compatibility shim. -->
+      <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}" />
+    </application>
+  </compatibility>
+
+</assembly>

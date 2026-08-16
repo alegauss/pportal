@@ -2,6 +2,8 @@
 
 ## Block A — Core
 
+- ✅ **PP1** **no .NET host exists, so a XAML window has nowhere to live** — app/ builds one self-contained 62MB ChiakiNg.exe on net10.0-windows with Fluent, opens an empty 1280x720 window, and fails its own build when app.manifest and Version drift.
+
 ## Block B — Native interop
 
 ## Block C — Video and input path

@@ -2,23 +2,6 @@
 
 ## Block A — Core
 
-### §PP1 The host the screens land in
-
-The reference is not a taste: claude-tray is a Windows tray application this author
-already ships, and its csproj settles every question this port would otherwise re-open.
-WinExe on net10.0-windows, UseWPF for the windowed UI with the SDK's built-in Fluent
-ThemeMode, WinForms kept only for the tray icon, and PublishSingleFile with
-SelfContained on win-x64 so the whole application is one file an installer can carry.
-
-What this task is NOT is a screen. It is the project, the manifest, the icon, the
-version as a single source of truth, and a window that opens empty. Every screen below
-is filed against a host that already builds, because the alternative is a first screen
-that carries the build system on its back and cannot be reviewed as a screen at all.
-
-The existing Qt executable stays until Block D empties. Two executables in one tree is
-the ordinary shape of a port, and the one that is not shipped yet is the one being
-written.
-
 ### §PP2 The store the port inherits
 
 settings.cpp is 2518 lines and qmlsettings.cpp another 2086, and between them they own

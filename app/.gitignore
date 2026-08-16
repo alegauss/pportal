@@ -1,0 +1,8 @@
+# Build output. The self-contained Release publish is ~150 MB of runtime; none of it is source.
+bin/
+obj/
+
+# The temp project the WPF SDK writes beside the csproj while compiling XAML. Normally deleted;
+# an interrupted build leaves it, and then dotnet build refuses with MSB1011. Swept by
+# SweepStaleWpfTmpProjects, ignored here so a stray one is never committed.
+*_wpftmp.csproj

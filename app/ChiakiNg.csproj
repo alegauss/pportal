@@ -1,0 +1,97 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- PP1: the host the screens land in.
+       The reference is claude-tray, a Windows tray application this author already ships, and
+       the settings below are its answers rather than fresh ones. What is deliberately NOT
+       carried over is UseWindowsForms: claude-tray needs it for a NotifyIcon and this has no
+       tray, so it stays off and the SDK's implicit global usings stay intact with it. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <!-- WPF0001: ThemeMode, the built-in Fluent theme switch, is marked [Experimental] in the
+         SDK and is still the supported way to opt into Fluent. Suppressed here rather than at
+         the call site so App.xaml.cs reads as ordinary code. -->
+    <NoWarn>$(NoWarn);WPF0001</NoWarn>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- The Qt client's icon, referenced where it already lives. A second copy is a second
+         thing to update, and the two executables are the same application. -->
+    <ApplicationIcon>..\gui\chiaking.ico</ApplicationIcon>
+    <AssemblyName>ChiakiNg</AssemblyName>
+    <RootNamespace>ChiakiNg</RootNamespace>
+    <!-- Single source of truth for the version, and it tracks the Qt client's: CMakeLists.txt
+         sets CHIAKI_VERSION 1.10.0, the two executables ship from one tree, and a port whose
+         halves disagree about what version they are is a support question nobody can answer.
+         VerifyManifestVersion below holds this against app.manifest. -->
+    <Version>1.10.0</Version>
+    <!-- Keep the informational version exactly x.y.z, with no +commit suffix, so an installer
+         can reuse it verbatim. -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <!-- Unconditional, so the output path is the same in Debug and Release and every script
+         and note that spells bin\<config>\net10.0-windows\win-x64\ChiakiNg.exe stays true. -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+  </PropertyGroup>
+
+  <!-- One self-contained .exe, Release only. Not a style choice: claude-tray measured what the
+       unconditional form costs, because these four in the PropertyGroup above apply to
+       `dotnet build` too and lay the whole runtime down on every Debug build - 252 files and
+       155.6 MB there, turning a no-op build from 1.2s into 81s and then 395s on the same
+       source. The loop this port runs is build, look, change, so that is charged several times
+       per task.
+
+       Conditioned on Configuration and not on _IsPublishing: the latter would speed Release up
+       as well, but it is an SDK-internal property, and if it ever stops being set the publish
+       quietly stops being self-contained and only a release finds out. -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+  </PropertyGroup>
+
+  <!-- The assertion for "the version as a single source of truth" (PP1). app.manifest carries
+       its own assemblyIdentity version, and nothing in the SDK relates the two: they are set
+       in different files, in different syntaxes, and a release with two different numbers in
+       it builds green. This fails the build instead.
+
+       Read with a regex rather than as XML because MSBuild has no XPath task that is available
+       without an assembly reference, and the manifest's shape here is fixed and one line. -->
+  <Target Name="VerifyManifestVersion" BeforeTargets="PrepareForBuild"
+          Condition="Exists('$(MSBuildProjectDirectory)\app.manifest')">
+    <PropertyGroup>
+      <_ManifestText>$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)\app.manifest'))</_ManifestText>
+      <_ManifestVersion>$([System.Text.RegularExpressions.Regex]::Match($(_ManifestText), 'assemblyIdentity[^&gt;]*version="([0-9.]+)"').Groups[1].Value)</_ManifestVersion>
+    </PropertyGroup>
+    <Error Condition="'$(_ManifestVersion)' == ''"
+           Text="app.manifest carries no assemblyIdentity version; PP1 holds it equal to Version ($(Version))." />
+    <Error Condition="'$(_ManifestVersion)' != '$(Version).0'"
+           Text="app.manifest says $(_ManifestVersion) and the project says $(Version). One version, one place (PP1) - the manifest takes a four-part version, so it should read $(Version).0." />
+  </Target>
+
+  <!-- Sweep the temp projects the WPF SDK leaves behind. Compiling XAML writes
+       ChiakiNg_<random>_wpftmp.csproj beside this file and normally deletes it; an interrupted
+       build does not, and then `dotnet build` refuses with MSB1011, "this folder contains more
+       than one project file". The file is gitignored, so nothing mentions it - claude-tray had
+       one sit in its root for four hours before anybody noticed.
+
+       Two guards, both load-bearing. MSBuildProjectName, because the SDK builds the temp
+       project itself and that build must not delete the file it is building. And ModifiedTime,
+       because a temp project younger than the cutoff may belong to a build running right now. -->
+  <Target Name="SweepStaleWpfTmpProjects" BeforeTargets="PrepareForBuild"
+          Condition="'$(MSBuildProjectName)' == 'ChiakiNg'">
+    <!-- The age filter sits on the ItemGroup and not on the Delete: a task condition is
+         evaluated even when the item list is empty, which is the ordinary case, and
+         DateTime.Parse('') then throws MSB4184 and fails the build. -->
+    <ItemGroup>
+      <_WpfTmpFound Include="$(MSBuildProjectDirectory)\*_wpftmp.csproj" />
+    </ItemGroup>
+    <ItemGroup Condition="'@(_WpfTmpFound)' != ''">
+      <_WpfTmpStale Include="@(_WpfTmpFound)"
+                    Condition="$([MSBuild]::Subtract($([System.DateTime]::Now.Ticks), $([System.DateTime]::Parse('%(ModifiedTime)').Ticks))) &gt; 6000000000" />
+    </ItemGroup>
+    <Delete Files="@(_WpfTmpStale)" ContinueOnError="true" TreatErrorsAsWarnings="true" />
+  </Target>
+
+</Project>

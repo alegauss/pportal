@@ -1,0 +1,9 @@
+<Application x:Class="ChiakiNg.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             StartupUri="MainWindow.xaml"
+             ThemeMode="System">
+  <!-- ThemeMode is the SDK's built-in Fluent switch and the whole reason UseWPF is enough here:
+       a Windows 11 look with no extra package, so the single self-contained .exe stays single.
+       "System" follows the user's light or dark setting rather than picking one for them. -->
+</Application>
