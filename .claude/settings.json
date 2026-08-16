@@ -1,5 +1,13 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(python .roadkeep/scripts/roadkeep.py:*)",
+      "Bash(python \"${CLAUDE_PROJECT_DIR}/.roadkeep/scripts/roadkeep.py\":*)"
+    ],
+    "deny": [],
+    "ask": []
+  },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "roadkeep"
@@ -11,7 +19,7 @@
           {
             "type": "command",
             "command": "python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/roadkeep-launch.py\" guard",
-            "timeout": 70
+            "timeout": 10
           }
         ]
       }
@@ -23,7 +31,7 @@
           {
             "type": "command",
             "command": "python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/roadkeep-launch.py\" guard",
-            "timeout": 15
+            "timeout": 10
           }
         ]
       }
@@ -50,5 +58,8 @@
         "repo": "alegauss/roadkeep"
       }
     }
+  },
+  "env": {
+    "ROADKEEP_HOME": "${CLAUDE_PROJECT_DIR}/.roadkeep"
   }
 }
