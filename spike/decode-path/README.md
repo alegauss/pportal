@@ -87,6 +87,12 @@ cuda; cuda ahead of d3d11va is right by 36%; and the OpenGL fallback that drops 
 cuda rather than to d3d11va ([qmlbackend.cpp:946](../../gui/src/qmlbackend.cpp#L946)) is right for
 the same reason, since an OpenGL renderer cannot hold the vulkan frame and pays a copy either way.
 
+> **Superseded in part by PP71, below.** Every number in this section was taken feeding the
+> decoder as fast as it would accept, which is about twelve times the rate a console sends. At 60
+> fps the decode costs change enough to reverse the cuda-over-d3d11va half of that paragraph. The
+> readback measurements are unaffected — a copy costs what it costs — and vulkan first is still
+> right. Read this section for the copy and the section below for the ordering.
+
 ## One number here is not fine — and PP65 found out why
 
 **d3d11va's send is bimodal: a 103 µs median against a 26 990 µs p99.** A submission that usually
@@ -116,23 +122,52 @@ The pool was ruled out first, because §PP65 named it as the likely cause. `extr
 combination lands between 12 790 µs and 25 124 µs at p99, with total decode wall clock within 3%
 of itself. A decoder starved of surfaces would show both moving together, and neither does.
 
-### What the same sweep turned up, which is not settled
+## PP71 — and the ranking above is wrong for cuda
 
-**Paced cuda is unstable in a way paced d3d11va is not.** Same runs, same stream:
+The same sweep showed paced **cuda** behaving worse than the two paths it is preferred over, which
+is the reverse of what the table at the top of this file says. That was filed as PP71 and has now
+been narrowed.
 
-| paced at 60 fps | mean | p50 | p99 | max |
-|---|---|---|---|---|
-| d3d11va | 300.6 µs | 285 µs | 548 µs | 2 101 µs |
-| cuda | 2 597.4 µs | 1 881 µs | 13 480 µs | 21 983 µs |
+Each configuration run **alone in a fresh process**, several times, paced at 60 fps:
 
-Across four paced runs cuda's p99 was 11 548, 84 900, 13 527 and 13 480 µs — the second of those
-carrying a 115 843 µs single send. d3d11va's stayed under 1 400 µs in all four.
+| paced, alone | runs | p50 range | p99 range |
+|---|---|---|---|
+| d3d11va | 3 | 225 – 491 µs | **424 – 4 120 µs** |
+| vulkan | 3 | 340 – 461 µs | **2 615 – 10 867 µs** |
+| cuda | 7 | 1 807 – 2 900 µs | **11 558 – 25 892 µs** |
 
-**No cause is established and none is guessed at here.** The obvious candidates — the GPU dropping
-clocks between frames it is idle for, or contamination from the seven configurations that run
-before it in the same process — are untested. It is filed rather than explained, and it matters
-because it is the reverse of the ranking the table at the top of this file gives: cuda's readback
-advantage over d3d11va is 1 460 µs a frame, and a p99 gap of 12 900 µs would swallow it whole.
+cuda's median is four to eight times the other two and its p99 is consistently the worst. The
+tails are noisy for every path — a single paced run is not worth quoting, which is why these are
+ranges over repeats rather than one committed number.
+
+**Contamination is ruled out.** The first measurement had the paced runs last, after seven other
+configurations had built and torn down decoders in the same process. Run alone in a fresh process
+the numbers are the same or worse, so the order is not what produces them.
+
+**Idleness is implicated, and not proven.** Pacing leaves the decode engine idle for about 90% of
+each interval, and `nvidia-smi` sampled during a paced run shows the clocks falling with it —
+video 1 995 → 1 350 MHz, SM 2 460 → 330 MHz, at 1–9% utilisation. That is the condition a remote
+play client runs in and a benchmark never does. What stops this being a proof: the median moves
+only 13% while the p99 moves six-fold, which looks more like the cost of waking back up than like
+steady slow clocks. Pinning the clocks and re-measuring would settle it and needs privileges this
+run did not have.
+
+### What this changes
+
+**"cuda ahead of d3d11va is right by 36%" — written above from the unpaced numbers — does not
+survive.** Adding each path's decode to the readback the client pays for it, at the feed rate the
+client actually uses:
+
+| paced total per frame | decode | readback | total |
+|---|---|---|---|
+| vulkan | ~400 µs | none | **~400 µs** |
+| d3d11va | ~300 µs | 2 253 µs | **~2 550 µs** |
+| cuda | ~2 100 µs | 793 µs | **~2 900 µs** |
+
+Vulkan first is still right, and by more than the unpaced numbers suggested. Preferring cuda over
+d3d11va is not: the readback saving that justified it is smaller than the decode cost it takes on.
+The client only reaches that choice with an OpenGL renderer ([qmlbackend.cpp:946](../../gui/src/qmlbackend.cpp#L946)),
+so what is at stake is that one fallback rather than the common path.
 
 ## What this does not cover
 

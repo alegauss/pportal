@@ -81,7 +81,6 @@
 - 📋 **PP51** (deps: PP48 ⏳) **NVIDIA first has no stated contract for what happens on an AMD or Intel machine** — A vendor path with no declared fallback becomes a vendor requirement by accident, one unmeasured decision at a time, and the users who lose the app never file a report. → §PP51
 - 📋 **PP52** (deps: PP32) **the microphone path runs speex echo cancellation on the CPU, and speexdsp has no managed replacement** — NVIDIA ships GPU noise and echo removal for exactly this, so one task can both improve the voice sent to the console and delete a dependency the port has no answer for. → §PP52
 - 📋 **PP53** (deps: PP11, PP41 ✅) **frames arrive with network jitter and are presented against a fixed refresh, so each waits for a vblank it missed** — A variable refresh display can show a frame when it arrives rather than when the panel next allows it, which is latency removed and not an image improved. → §PP53
-- 📋 **PP71** (deps: —) **paced at 60fps the cuda decoder's send p99 reaches 13480us against d3d11va's 548us, and varies wildly run to run** — PP48 preferred cuda for a 1460us readback saving, and a p99 gap this size at the rate a console actually sends would swallow it whole. → §PP71
 
 ## Non-goals
 

@@ -448,11 +448,17 @@ int main(int argc, char **argv)
 	const char *file = "stream.h264";
 	const char *out = "result.json";
 	bool pool_sweep = false;
+	// PP71: the paced cuda number has to be reproducible in a process that has not just built and
+	// torn down seven other decoders, because contamination is one of the two candidate causes.
+	// --only picks configurations by a substring of their label, so "cuda    paced" runs alone.
+	const char *only = NULL;
 	int positional = 0;
 
 	for (int i = 1; i < argc; i++) {
 		if (strcmp(argv[i], "--pool-sweep") == 0)
 			pool_sweep = true;
+		else if (strcmp(argv[i], "--only") == 0 && i + 1 < argc)
+			only = argv[++i];
 		else if (positional++ == 0)
 			file = argv[i];
 		else
@@ -489,6 +495,7 @@ int main(int argc, char **argv)
 		// between this harness and a session.
 		{ .name = "d3d11va", .label = "d3d11va paced 60fps",    .hold = 1, .paced = true },
 		{ .name = "cuda",    .label = "cuda    paced 60fps",    .hold = 1, .paced = true },
+		{ .name = "vulkan",  .label = "vulkan  paced 60fps",    .hold = 1, .paced = true },
 	};
 
 	Path *paths = pool_sweep ? sweep_paths : default_paths;
@@ -504,7 +511,10 @@ int main(int argc, char **argv)
 	int ran = 0;
 	for (int i = 0; i < npaths; i++) {
 		Path *p = &paths[i];
-		printf("=== %s\n", p->label ? p->label : p->name);
+		const char *label = p->label ? p->label : p->name;
+		if (only && !strstr(label, only))
+			continue;
+		printf("=== %s\n", label);
 		fflush(stdout);
 		if (!run_path(p, file)) {
 			printf("  not available: %s\n\n", p->skipped_why);
@@ -548,10 +558,15 @@ int main(int argc, char **argv)
 	fprintf(f, ",\"libavcodec\":\"%d.%d.%d\"", LIBAVCODEC_VERSION_MAJOR,
 	        LIBAVCODEC_VERSION_MINOR, LIBAVCODEC_VERSION_MICRO);
 	fprintf(f, ",\"paths\":[");
+	bool first = true;
 	for (int i = 0; i < npaths; i++) {
 		Path *p = &paths[i];
-		if (i)
+		const char *label = p->label ? p->label : p->name;
+		if (only && !strstr(label, only))
+			continue;
+		if (!first)
 			fprintf(f, ",");
+		first = false;
 		fprintf(f, "{\"name\":\"%s\",\"ran\":%s", p->label ? p->label : p->name,
 		        p->ran ? "true" : "false");
 		fprintf(f, ",\"device\":\"%s\",\"extra_hw_frames\":%d,\"hold\":%d",

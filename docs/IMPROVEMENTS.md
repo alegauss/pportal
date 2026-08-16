@@ -842,27 +842,3 @@ Two caveats to hold. Below the display's minimum refresh, low framerate compensa
 changes the behaviour and the result has to be checked rather than assumed. And
 exclusive fullscreen is usually the precondition, which is why this hangs off the task
 where the window takes ownership of how it meets the display.
-
-### §PP71 The card's best path may be its worst at 60fps
-
-Found by the sweep that answered PP65, and left unexplained on purpose. Four paced runs
-of spike/decode-path gave cuda send p99s of 11548, 84900, 13527 and 13480us, one of them
-carrying a single 115843us send. d3d11va over the same four runs stayed under 1400us.
-Unpaced, the ranking is the other way round and both are steady.
-
-Why it matters is PP48. That line preferred cuda over d3d11va and the preference was
-real, but it was bought with a readback: 793us a frame against 2253us, a saving of
-1460us. A p99 gap of nearly 13000us at the rate a console actually sends would swallow
-that many times over. If this number survives, the answer PP48 reached is right for the
-wrong path.
-
-Two candidates, neither tested. The GPU may drop clocks between frames it is idle for -
-pacing leaves the decode engine idle 90% of each interval, which unpaced feeding never
-does, and that is the condition a remote play client runs in. Or it is contamination:
-the paced runs come last, after seven configurations have built and torn down decoders
-in the same process.
-
-Separating those is the first step: run paced cuda alone in a fresh process, then again
-with the GPU held busy. If the number follows the process it is the harness; if it
-follows the idleness it is the card, and it belongs to PP51 - a path fastest on a
-benchmark and slowest at 60fps is what a card detection cannot know.
