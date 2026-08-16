@@ -66,6 +66,7 @@
 - 📋 **PP36** (deps: PP22, PP24) **the only CI job is the roadkeep lint gate, so no test result can turn a branch red** — A suite nobody runs on a push goes red quietly, and Test Explorer is a local convenience rather than a gate that holds a policy in place. → §PP36
 - 📋 **PP37** (deps: PP12) **a screen ported into code-behind can only be exercised by opening a window** — What is worth asserting about a screen is its view model, so a port that keeps logic behind the window makes eight screens untestable by construction. → §PP37
 - 📋 **PP38** (deps: PP36) **nothing counts the shipped lines that carry no assertion, so the rule is a sentence rather than a gate** — A count that may only go down is what survives a busy week, and without it the discipline lasts exactly as long as the person remembering it. → §PP38
+- 📋 **PP67** (deps: —) **nothing launches the suite, so running ctest means knowing it is a MinGW64 shell away and not on PATH** — compile.cmd exists because quoting that shell through cmd is fragile, and the same is true of the command that reads the verdict it just rebuilt. → §PP67
 
 ## Block H — Performance and telemetry
 

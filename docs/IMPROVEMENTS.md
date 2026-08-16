@@ -656,6 +656,30 @@ this task: a test has to be able to name the line it holds, whether by conventio
 test name or by an attribute the count can read. Without that join, the number is a
 guess and a gate on a guess is worse than no gate.
 
+### §PP67 A build launcher with no matching way to read the verdict
+
+PP56 made a default build relink chiaki-unit, so ctest finally reports on the tree that
+is there. It did not make ctest reachable. It is not on the PATH a plain shell has; it
+lives in /mingw64/bin, and the working invocation is a MINGW64 login shell cd'd into the
+build directory. Getting the verdict is a line nobody remembers.
+
+That is measured rather than assumed. It was got wrong once while shipping PP56 itself -
+`ctest: command not found` - and a project note written days earlier had already had to
+spell out the same incantation, alongside the separate fact that chiaki-unit answers a
+test-name argument with "No tests run" and so has to be run whole and grepped.
+
+The repository has made this argument once and acted on it. compile.cmd says the logic
+lives in the shell script because quoting a multi-step bash command through cmd is
+fragile, and that is as true of the command reading the verdict as of the one producing
+it. A build launcher with no test launcher leaves the last step of change, build, check
+the only one reconstructed from memory.
+
+What it should be is small: a thin launcher over the MSYS2 shell running ctest in the
+build directory, passing the exit code back, and saying plainly when there is no build
+to test rather than failing inside cmake. Whether it also carries the grep-the-whole-run
+workaround for a single test is open, and turns on whether the name filter is worth
+fixing upstream.
+
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed
