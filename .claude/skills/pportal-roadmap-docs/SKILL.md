@@ -44,7 +44,14 @@ Validated means the build was run, not that the edit looked right —
 |---|---|
 | `compile.cmd configure` | fast check after a deletion — does every path the build graph names still resolve |
 | `compile.cmd` | full build + portable tree — **before committing** |
-| `ctest` in `build/` (target `chiaki-unit`, test `unit`) | anything touching `lib/` or `test/` |
+| `test.cmd` | the unit suite, after anything touching `lib/` or `test/` |
+| `test.cmd <name>` | one test's output, cut out of a full run |
+
+`test.cmd` (PP67) is the launcher for the suite, the way `compile.cmd` is for the build:
+`ctest` is not on a plain Windows PATH and the binary needs the MinGW runtime beside it.
+It also bounds every run — nothing configures a per-test timeout, so a hanging test
+otherwise stalls with no output at all — and warns when `lib/` or `test/` is newer than
+the binary, which is the stale green PP56 fixed showing up a second way.
 
 A configure that passes is not a target that links. Run the full build before the
 commit, not before the decision.
