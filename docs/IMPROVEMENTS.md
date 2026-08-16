@@ -607,29 +607,6 @@ this task: a test has to be able to name the line it holds, whether by conventio
 test name or by an attribute the count can read. Without that join, the number is a
 guess and a gate on a guess is worse than no gate.
 
-### §PP74 A gate that stopped covering the tree
-
-PP1 put a second executable in this tree and nothing local builds it. compile.cmd runs
-cmake over the Qt client; app/ is a dotnet project it never sees. A change under app/
-can be committed behind a full green compile.cmd - the failure PP56 named for
-chiaki-unit and fixed with one target name.
-
-It is filed apart from the two lines that look like they cover it. PP24 is the solution
-- a .sln, a csproj per component, MSBuild down - and PP22 is CI, which builds and signs
-and packages. Both are further out and both would fix this on the way past. What is
-missing now is the local gate: the command run before committing, which today answers
-about the half nobody touched.
-
-The cheap shape is the one this tree already uses twice. compile.cmd grew a notests flag
-rather than a second script, and test.cmd is a thin launcher over an MSYS2 shell. A
-dotnet build of app/ needs no MSYS2 at all, so it is a step in compile.cmd guarded by
-dotnet being on PATH, plus a noapp flag for whoever only wants the Qt half.
-
-What decides it is the preflight. compile.cmd names the files the build reads so a
-deletion is reported by name in a second, and app/ChiakiNg.csproj would join that list -
-which is also the point at which a missing .NET SDK has to degrade to a note rather than
-to a refusal, because the Qt client still builds without one.
-
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed

@@ -31,11 +31,18 @@ for arg in "$@"; do
         deploy)    do_deploy=1 ;;
         nodeploy)  do_deploy=0 ;;
         notests)   do_tests=0 ;;
+        # compile.cmd's, not this script's: the .NET host is built by dotnet from cmd and
+        # never reaches cmake. Accepted and ignored rather than rejected, because
+        # compile.cmd forwards every argument it was given, and one vocabulary that both
+        # halves accept beats two that have to be kept in step. Rejecting it here is how
+        # `compile.cmd noapp` failed with a usage error from a script that was not being
+        # asked to do anything differently.
+        noapp)     ;;
         # Configure answers the only question a deletion asks - is every file the
         # build graph names still there - and answers it in seconds instead of in
         # a full compile. It implies nodeploy: there is no exe to deploy.
         configure) do_build=0; do_deploy=0 ;;
-        *) echo "usage: $(basename "$0") [clean] [notests] [nodeploy|configure]" >&2; exit 2 ;;
+        *) echo "usage: $(basename "$0") [clean] [notests] [noapp] [nodeploy|configure]" >&2; exit 2 ;;
     esac
 done
 
