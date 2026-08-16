@@ -170,7 +170,67 @@ static MunitResult test_bitstream_set_ref_h265(const MunitParameter params[], vo
 	return MUNIT_OK;
 }
 
+/**
+ * PP68: a header that ends in the middle of the parse is refused rather than chased off the end.
+ *
+ * Before the fix this test could not be written at all: vl_rbsp_ue looped until it read a 1 bit,
+ * the exhausted bit buffer yielded zeroes for ever, and the call never returned. It did not fail
+ * the suite, it hung it - which is why the case had to be measured with an external probe and a
+ * 20-second timeout before it could be held here.
+ *
+ * The inputs are truncations rather than corruptions on purpose. profile_idc 0x42 (66, Baseline)
+ * skips the chroma block, so the parse walks straight to the ue(v) fields with nothing left to
+ * read them from - the shortest path to the loop that used to hang.
+ */
+static MunitResult test_bitstream_truncated_header_h264(const MunitParameter params[], void *fixture)
+{
+	(void)params; (void)fixture;
+	ChiakiBitstream bs;
+	chiaki_bitstream_init(&bs, NULL, CHIAKI_CODEC_H264);
+
+	// Startcode, NAL type 7, and three bytes where a whole SPS should be.
+	uint8_t truncated[] = { 0x00, 0x00, 0x00, 0x01, 0x67, 0x42, 0x00, 0x1e };
+	munit_assert_false(chiaki_bitstream_header(&bs, truncated, ARRAY_SIZE(truncated)));
+
+	// The startcode and the NAL header alone, with no payload behind them at all.
+	uint8_t header_only[] = { 0x00, 0x00, 0x00, 0x01, 0x67 };
+	munit_assert_false(chiaki_bitstream_header(&bs, header_only, ARRAY_SIZE(header_only)));
+
+	return MUNIT_OK;
+}
+
+/** The same for a slice: NAL type 5 with nothing behind it is refused, not chased. */
+static MunitResult test_bitstream_truncated_slice_h264(const MunitParameter params[], void *fixture)
+{
+	(void)params; (void)fixture;
+	ChiakiBitstream bs;
+	ChiakiBitstreamSlice slice;
+	chiaki_bitstream_init(&bs, NULL, CHIAKI_CODEC_H264);
+
+	uint8_t truncated[] = { 0x00, 0x00, 0x00, 0x01, 0x65 };
+	memset(&slice, 0, sizeof(slice));
+	munit_assert_false(chiaki_bitstream_slice(&bs, truncated, ARRAY_SIZE(truncated), &slice));
+
+	return MUNIT_OK;
+}
+
 MunitTest tests_bitstream[] = {
+	{
+		"/bitstream_truncated_header_h264",
+		test_bitstream_truncated_header_h264,
+		NULL,
+		NULL,
+		MUNIT_TEST_OPTION_NONE,
+		NULL
+	},
+	{
+		"/bitstream_truncated_slice_h264",
+		test_bitstream_truncated_slice_h264,
+		NULL,
+		NULL,
+		MUNIT_TEST_OPTION_NONE,
+		NULL
+	},
 	{
 		"/bitstream_parse_h264",
 		test_bitstream_parse_h264,

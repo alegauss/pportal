@@ -78,6 +78,15 @@ static bool header_h264(ChiakiBitstream *bitstream, uint8_t *data, unsigned size
 		return false;
 	}
 
+	// PP68: asked last, because it is one flag for the whole parse - any read past the end
+	// of the NAL sets it. A header that ends early now fails here instead of hanging in
+	// vl_rbsp_ue, and the values read above are zeroes rather than anything to keep.
+	if(vl_rbsp_overrun(&rbsp))
+	{
+		CHIAKI_LOGW(bitstream->log, "parse_sps_h264: Ran off the end of the header");
+		return false;
+	}
+
 	return true;
 }
 
@@ -150,6 +159,12 @@ sps_start:
 		return false;
 	}
 
+	if(vl_rbsp_overrun(&rbsp)) // PP68, as in parse_sps_h264
+	{
+		CHIAKI_LOGW(bitstream->log, "parse_sps_h265: Ran off the end of the header");
+		return false;
+	}
+
 	return true;
 }
 
@@ -219,6 +234,12 @@ static bool slice_h264(ChiakiBitstream *bitstream, uint8_t *data, unsigned size,
 			CHIAKI_LOGW(bitstream->log, "parse_slice_h264: Failed to parse ref_pic_list_modification");
 			return false;
 		}
+	}
+
+	if(vl_rbsp_overrun(&rbsp)) // PP68, as in parse_sps_h264
+	{
+		CHIAKI_LOGW(bitstream->log, "parse_slice_h264: Ran off the end of the slice");
+		return false;
 	}
 
 	return true;
@@ -294,6 +315,12 @@ static bool slice_h265(ChiakiBitstream *bitstream, uint8_t *data, unsigned size,
 		}
 		if(slice->reference_frame == 0xff)
 			CHIAKI_LOGV(bitstream->log, "parse_slice_h265: No ref frame found");
+	}
+
+	if(vl_rbsp_overrun(&rbsp)) // PP68, as in parse_sps_h264
+	{
+		CHIAKI_LOGW(bitstream->log, "parse_slice_h265: Ran off the end of the slice");
+		return false;
 	}
 
 	return true;

@@ -193,32 +193,6 @@ to vary the pool size and see whether the p99 moves with it: if it does, the fin
 belongs to how the client holds frames; if not, it belongs to the driver and PP51's
 contract has to say so.
 
-### §PP68 A header parse with no way out
-
-Measured, not inferred. A program linking libchiaki and calling chiaki_bitstream_header
-on the eight bytes 00 00 00 01 67 42 00 1e - a startcode, NAL type 7, and three bytes of
-SPS - printed its "calling" line and never printed the line after it. Killed at 20
-seconds. The function has no path that returns for this input.
-
-It was found while writing PP57's test, where those bytes were a hand-written stand-in
-for a header. That cost one hung run, fixed there by borrowing a real SPS from
-test/bitstream.c. The bug it walked into is not the test's.
-
-What makes it a defect is where the bytes come from. videoreceiver.c:142 calls this on
-profile->header, and the profiles are whatever chiaki_video_receiver_stream_info was
-handed - console-supplied stream info, off the network. The caller expects a refusal: it
-logs "Failed to parse video header" and carries on. It never gets the chance. A
-malformed SPS stops the video thread outright, and nothing above it is watching.
-
-The parse is the vl_rbsp reader vendored under lib/src, and what it lacks is an end
-check: the ue(v) loops consume bits past the buffer and the golomb decoder never
-terminates. The fix belongs at the reader rather than at each caller, since
-parse_sps_h264, parse_sps_h265 and slice_h264 all share it and only one was reached
-here.
-
-The assertion is a header this short asserted to return false - a test that cannot be
-written today, because it would hang the suite instead of failing it.
-
 ## Block D — Screens
 
 ### §PP12 The control vocabulary, and the focus nobody ships

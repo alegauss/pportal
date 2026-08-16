@@ -291,7 +291,34 @@ struct vl_rbsp {
    struct vl_vlc nal;
    unsigned escaped;
    unsigned removed;
+   /* PP68: set when a read was attempted with no bits left, or when a ue(v) prefix ran
+      longer than any legal one. Upstream has no such flag because every reader here
+      assumed a well-formed NAL; chiaki hands these functions a header that arrived over
+      the network, where that assumption is the caller's to make and not the parser's. */
+   bool overrun;
 };
+
+/**
+ * Whether n more bits can still be read.
+ *
+ * Asked on the signed invalid_bits rather than through vl_vlc_valid_bits, which returns
+ * unsigned: once a read has gone past the end invalid_bits climbs above 32 and that
+ * subtraction wraps to a huge number, so the obvious test would answer "plenty left"
+ * exactly when there is nothing left.
+ */
+static inline bool vl_rbsp_has_bits(const struct vl_rbsp *rbsp, unsigned n)
+{
+   return rbsp->nal.invalid_bits <= (signed)(32 - n);
+}
+
+/**
+ * Whether this RBSP was asked for more than it had. A parse that ends with this set has
+ * been reading zeroes off the end and its output means nothing.
+ */
+static inline bool vl_rbsp_overrun(const struct vl_rbsp *rbsp)
+{
+   return rbsp->overrun;
+}
 
 /**
  * Initialize the RBSP object
@@ -306,6 +333,7 @@ static inline void vl_rbsp_init(struct vl_rbsp *rbsp, struct vl_vlc *nal, unsign
 
    rbsp->escaped = 0;
    rbsp->removed = 0;
+   rbsp->overrun = false;
 
    /* search for the end of the NAL unit */
    while (vl_vlc_search_byte(nal, num_bits, 0x00)) {
@@ -377,6 +405,10 @@ static inline unsigned vl_rbsp_u(struct vl_rbsp *rbsp, unsigned n)
    vl_rbsp_fillbits(rbsp);
    if (n > 16)
       vl_rbsp_fillbits(rbsp);
+   if (!vl_rbsp_has_bits(rbsp, n)) {
+      rbsp->overrun = true;
+      return 0;
+   }
    return vl_vlc_get_uimsbf(&rbsp->nal, n);
 }
 
@@ -387,11 +419,30 @@ static inline unsigned vl_rbsp_ue(struct vl_rbsp *rbsp)
 {
    unsigned bits = 0;
 
-   vl_rbsp_fillbits(rbsp);
-   while (!vl_vlc_get_uimsbf(&rbsp->nal, 1))
-      ++bits;
+   /* PP68: this loop used to have no exit but reading a 1 bit. Past the end of the NAL
+      the bit buffer yields zeroes for ever, so a truncated header did not fail to parse
+      - it never returned at all, and the video thread stopped there. Measured on eight
+      bytes of SPS: killed at 20 seconds, having never left this function.
 
-   return (1 << bits) - 1 + vl_rbsp_u(rbsp, bits);
+      Two ways out now. The prefix cannot be longer than what is left, and it cannot be
+      32 zeroes either: no legal ue(v) is, and (1 << bits) below is undefined past 31,
+      so the cap is a correctness bound and not only a safety valve. */
+   vl_rbsp_fillbits(rbsp);
+   while (1) {
+      if (!vl_rbsp_has_bits(rbsp, 1)) {
+         rbsp->overrun = true;
+         return 0;
+      }
+      if (vl_vlc_get_uimsbf(&rbsp->nal, 1))
+         break;
+      if (++bits >= 32) {
+         rbsp->overrun = true;
+         return 0;
+      }
+      vl_rbsp_fillbits(rbsp);
+   }
+
+   return (1u << bits) - 1 + vl_rbsp_u(rbsp, bits);
 }
 
 /**

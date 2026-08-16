@@ -7,6 +7,7 @@
 ## Block C — Video and input path
 
 - ✅ **PP57** **videoreceiver reads slice.slice_type uninitialised when the bitstream parser declined the frame, which is UB** — The slice is zeroed at declaration and the log names a type only when the parse produced one, held by 2 munit assertions over a declined frame that still reaches the callback.
+- ✅ **PP68** **chiaki_bitstream_header never returns on a truncated SPS, and the header it is handed comes off the network** — vl_rbsp_ue now stops at the end of the NAL and at 32 leading zeroes, and every parse that overran is refused, held by 2 munit assertions that used to hang the suite.
 
 ## Block D — Screens
 
