@@ -325,26 +325,29 @@ undocumented step, and late enough that there is a host worth publishing.
 ### §PP63 One configure that exists only to be measured
 
 PP62 measured why. MSYS2 MinGW64 ships no qt6-webengine, and the published Windows
-releases are MSYS2 builds carrying no Chromium either - v1.10.0's x64 portable is 1555
-files and 261.5 MB with no QtWebEngineCore, no icudtl.dat and no .pak, and its installer
-is 68.0 MB. So the before is not something to download. It has to be built, and MinGW
-cannot build it: Chromium on Windows needs MSVC or clang-cl.
+releases are MSYS2 builds carrying no Chromium either - v1.10.0's x64 portable is 261.5
+MB with no QtWebEngineCore, no icudtl.dat and no .pak. So the before is not something to
+download. It has to be built, and MinGW cannot: Chromium on Windows needs MSVC or
+clang-cl.
 
-What this is: a second configure, MSVC or clang-cl, that builds the Qt client with
+What this is: a second configure, MSVC or clang-cl, building the Qt client with
 CHIAKI_HAVE_WEBENGINE defined, once, so measure-startup has a binary to point at. What
 it is not: a second build system. compile.cmd stays the tree's only build and the only
-gate for a deletion. This configure has one output, a number, and the moment PP46
-records it the configure has done its job.
+gate for a deletion.
 
-The risk that comes free with a second toolchain is that somebody starts using it for
-ordinary work, the build splits in two, and the port keeps both green forever. So the
-constraint is part of the task: it stays outside compile.cmd's preflight, gates no
-commit, and is documented as single-purpose. If it ever gates a commit, that is the
-failure.
+Neither half of that toolchain is here, measured 2026-08-16: no cl.exe, no clang-cl, no
+LLVM, no Qt under any usual root, and a Visual Studio Installer with no product behind
+it. So this line starts with two multi-gigabyte installs - Build Tools with the C++
+workload, and Qt for msvc2022_64 carrying QtWebEngine from an installer wanting an
+account. That is a decision about the machine rather than a step of the port, and is why
+this is open.
 
-The assertion is measure-startup's own exit code - 0 rather than 2, which it returns
-only where it found Chromium in the tree it measured. A configure that builds but omits
-WebEngine again would pass a compile and fail that.
+The risk a second toolchain brings is that somebody uses it for ordinary work, the build
+splits in two, and the port keeps both green for ever. So the constraint is part of the
+task: it stays outside compile.cmd's preflight and gates no commit.
+
+The assertion is measure-startup's exit code - 0 rather than 2, which it returns only
+where it found Chromium in the tree it measured.
 
 ## Block F — Managed core
 
