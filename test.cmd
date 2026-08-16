@@ -12,7 +12,8 @@ rem compile.cmd builds chiaki-unit by default since PP56, so a green here is
 rem about the tree that is checked out - which is the whole point of running it.
 rem
 rem Usage:
-rem   test.cmd                 the whole suite through ctest
+rem   test.cmd                 the whole suite through ctest, then the .NET host's selftest
+rem   test.cmd noapp           the C suite alone
 rem   test.cmd <pattern>       run the suite, print the results matching <pattern>
 rem   test.cmd --list          every test name the binary carries
 rem
@@ -46,5 +47,49 @@ if "%REPO:~-1%"=="/" set "REPO=%REPO:~0,-1%"
 set "MSYSTEM=MINGW64"
 set "CHERE_INVOKING=1"
 
+set "NO_APP="
+set "FILTERED="
+for %%a in (%*) do (
+    if /I "%%~a"=="noapp" (set "NO_APP=1") else (set "FILTERED=1")
+)
+
 "%BASH%" -l "%REPO%/scripts/test-windows.sh" %*
-exit /b %errorlevel%
+set "CRC=%errorlevel%"
+
+rem ---- the .NET host's selftest (PP75) -----------------------------------
+rem PP2 put eleven assertions in app\SelfTest.cs and nothing ran them - the same shape PP56 and
+rem PP74 each closed for something else. Run here and not in test-windows.sh: that is an MSYS2
+rem login shell whose PATH is MSYS2's, and the first version of this reported "no .NET SDK" on a
+rem machine that has one. Running the .exe needs no SDK at all.
+rem
+rem Skipped for a name filter or --list, which are about one C test and have nothing to say here.
+if defined FILTERED goto after_app
+if defined NO_APP (
+    echo [test] .NET host: SKIPPED ^(noapp^) - nothing here says whether its assertions hold
+    goto after_app
+)
+if not exist "%~dp0app\ChiakiNg.csproj" goto after_app
+
+set "APP_EXE=%~dp0app\bin\Debug\net10.0-windows\win-x64\ChiakiNg.exe"
+if not exist "%APP_EXE%" (
+    rem Two absences, and only one is the caller's fault. No SDK means this machine cannot
+    rem produce the binary and its C suite still counts, so that is a note. An SDK with nothing
+    rem built is a workflow slip, and a green over assertions nobody ran is the exact lie PP56,
+    rem PP74 and PP75 are all about.
+    where dotnet >nul 2>&1
+    if errorlevel 1 (
+        echo [test] .NET host: no .NET SDK here, selftest not run ^(the C suite above still counts^)
+        goto after_app
+    )
+    echo [test] .NET host: app\bin\Debug\...\ChiakiNg.exe does not exist - run compile.cmd first.
+    echo [test]            Refusing rather than reporting green over assertions nobody ran.
+    exit /b 1
+)
+
+echo.
+echo [test] .NET host selftest
+"%APP_EXE%" --selftest
+if errorlevel 1 set "CRC=1"
+
+:after_app
+exit /b %CRC%

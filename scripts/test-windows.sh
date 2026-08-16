@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Run the unit suite in an MSYS2 MinGW64 environment and report what it said.
 #
-#   test-windows.sh              ctest over the whole suite
+#   test-windows.sh              ctest over the whole suite, then the .NET host's selftest
+#   test-windows.sh noapp        the C suite alone
 #   test-windows.sh <pattern>    run the suite and print the results matching <pattern>
 #   test-windows.sh --list       every test name the binary carries
 #
-# Env: BUILD_DIR (build), TEST_TIMEOUT (120)
+# Env: BUILD_DIR (build), TEST_TIMEOUT (120), APP_DIR (app)
 #
 # test.cmd in the repo root is a thin launcher around this script, for the reason
 # compile.cmd is one: ctest is not on a plain Windows PATH - it lives in /mingw64/bin -
@@ -19,6 +20,17 @@ BUILD_DIR="${BUILD_DIR:-build}"
 TEST_TIMEOUT="${TEST_TIMEOUT:-120}"
 CTEST="${CTEST:-/mingw64/bin/ctest}"
 UNIT="$BUILD_DIR/test/chiaki-unit.exe"
+# PP75 runs the .NET host's selftest, and it does so from test.cmd rather than from here. The
+# reason is the same one PP74 gave for building app\ outside build-windows.sh: this is a login
+# shell, its PATH is MSYS2's, and `dotnet` is not on it even on a machine that has the SDK - the
+# first version of PP75 lived here and reported "no .NET SDK on PATH" on exactly such a machine.
+# Nothing about the managed half needs MSYS2, so nothing about it belongs in this file.
+#
+# `noapp` is accepted and ignored for the reason build-windows.sh accepts it: test.cmd forwards
+# every argument, and one vocabulary both halves accept beats two kept in step.
+if [[ "${1:-}" == "noapp" ]]; then
+	shift
+fi
 
 # Named here rather than discovered inside cmake, so "you have not built it" is one line
 # instead of a CMake error about a missing test file.

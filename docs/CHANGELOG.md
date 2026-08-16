@@ -31,6 +31,7 @@
 - ✅ **PP67** **nothing launches the suite, so running ctest means knowing it is a MinGW64 shell away and not on PATH** — test.cmd runs the suite through the MinGW shell, bounds it with a timeout so a hang is not silence, cuts one test out of a full run, and warns when the binary predates lib.
 - ✅ **PP73** **nothing rechecks a task's counted premise against the tree, and three of four spot-checked lines did not match it** — Only where a regex is the premise: PP16, PP30 and PP33 now declare a roadkeep-remaining query answering 149, 14 and 420 from the tree; the rest count lines, which no query expresses.
 - ✅ **PP74** **compile.cmd builds the Qt client and knows nothing about app/, so the tree's only gate now covers half of it** — A default compile.cmd builds app\ after the Qt client and goes red when it breaks; noapp skips it and says so, and a machine with no .NET SDK gets a note rather than a refusal.
+- ✅ **PP75** **test.cmd runs ctest and nothing runs the .NET host's selftest, so 11 assertions sit in the tree ungated** — test.cmd runs the C suite and then the .NET host's selftest; a broken decoder that the gate could not see now exits 1, and noapp skips it out loud.
 
 ## Block H — Performance and telemetry
 
