@@ -25,6 +25,7 @@
 - 📋 **PP10** (deps: PP9) **the stream HUD and the in-stream menu are QML drawn over the video and disappear with the renderer** — 1740 lines of overlay assume the compositor they are drawn in, so what replaces the renderer decides whether they are XAML above a surface or drawn into the frame. → §PP10
 - 📋 **PP11** (deps: PP9) **fullscreen, HDR handoff and refresh-rate switching are handled by the Qt window** — These are the three settings a remote play session is actually judged by, and each is a Win32 or DXGI call the new window has to make for itself. → §PP11
 - 📋 **PP57** (deps: —) **videoreceiver reads slice.slice_type uninitialised when the bitstream parser declined the frame, which is UB** — chiaki_bitstream_slice returns false on a missing startcode or an odd NAL type, yet the success path reads slice.slice_type anyway, describing the frame from stack garbage. → §PP57
+- 📋 **PP65** (deps: —) **d3d11va's decode submission stalls: a 103us median send against a 26990us p99, which is 1.6 frame intervals** — A call that usually costs a tenth of a millisecond and sometimes costs 27 is a stall and not a distribution, and its mean describes neither of the two behaviours it averages. → §PP65
 
 ## Block D — Screens
 
@@ -71,6 +72,7 @@
 
 - ⏳ **PP46** (deps: PP42 ✅, PP63) **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — A Chromium leaving the build should be visible in cold start and in megabytes, and stating it without measuring is how a port collects folklore. → §PP46
 - 📋 **PP61** (deps: PP46 ⏳) **the startup harness labels a warm run cold, because the OS file cache outlives the process** — 3771ms on the first run after a build against 1218ms on re-invocation, and nothing in the report says which cache state produced the number. → §PP61
+- 📋 **PP66** (deps: PP48 ⏳) **spike/decode-path writes a result.json naming no adapter, so two runs cannot be told apart by the file** — A measurement whose machine is carried only by its filename is one rename away from meaningless, and spike/video-upscale already records the card and driver it ran on. → §PP66
 
 ## Block I — NVIDIA path
 

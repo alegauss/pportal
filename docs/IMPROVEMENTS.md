@@ -196,6 +196,28 @@ The fix is an initialiser and a guard: zero the slice at declaration, and gate t
 on the parse having succeeded rather than on the frame having been sent. The assertion
 that fails without it is a parse-declined frame that still reaches the callback.
 
+### §PP65 The stall only the fallback path has
+
+Measured while answering PP48, on a decode pass with no readback in the clock, so the
+stall is in the submission and not in a copy behind it. Over 570 frames of 1080p60 H.264
+on an RTX 4060, avcodec_send_packet on the d3d11va path returned in 103us at the median
+and 26990us at p99, with a 29576us maximum. The other two hardware paths do not do this:
+cuda's p99 is 1649us and vulkan's is 2697us, both within a factor of two of their
+medians.
+
+Why it earns a line. d3d11va is what qmlbackend picks with no NVIDIA card and no Vulkan
+renderer, which makes it the path every AMD and Intel user is on - the population PP51
+exists to write a contract for. A stall of 1.6 frame intervals is visible, and invisible
+in every number this project keeps, because the p99 the session record holds is over the
+whole decode stage rather than the submission alone.
+
+The cause is not known. The obvious candidate is the decoder waiting on a surface from a
+pool the harness holds frames out of, which would make the number the harness's and not
+the driver's - and that is why this is a symptom rather than a defect. The first step is
+to vary the pool size and see whether the p99 moves with it: if it does, the finding
+belongs to how the client holds frames; if not, it belongs to the driver and PP51's
+contract has to say so.
+
 ## Block D — Screens
 
 ### §PP12 The control vocabulary, and the focus nobody ships
@@ -713,6 +735,31 @@ standby list before the first run, which needs elevation and is worth deciding r
 than assuming. Recording it means stamping something honest into the report - a
 cache_state the caller sets - so a reader can refuse to compare numbers taken under
 different conditions, the way compare-baselines already refuses mismatched settings.
+
+### §PP66 A result that cannot say which card it came from
+
+The decode-path harness records the ffmpeg it linked and the stream it read, and then
+names the card nowhere. release-4060.json says RTX 4060 in its filename and in the
+README beside it, which is exactly as durable as a filename: a second machine's run
+copied into the same directory under any other name is unattributable, and the numbers
+most worth comparing are the ones taken on different cards.
+
+spike/video-upscale does not have this gap. It creates a D3D11 device to do its work
+anyway, so DescribeAdapter reads the DXGI description and the vendor and device ids
+straight out of it, and its committed JSON carries them. decode-path creates no such
+device - it asks libavcodec for a hardware context and never touches DXGI - which is why
+the field was never there rather than why it should not be.
+
+The cheap route is the context it already builds. av_hwdevice_ctx_create for d3d11va
+yields an AVD3D11VADeviceContext holding an ID3D11Device, and one QueryInterface to
+IDXGIDevice reaches the same description video-upscale prints. That reports the adapter
+ffmpeg actually chose, which is worth more than one enumerated independently: a machine
+with an RTX 4060 and an Intel UHD 770 has two, and the run belongs to whichever the
+driver handed over.
+
+The rule this restores is the one the other spike already follows: a committed result
+should be readable years later by someone who has only the file, and a number whose
+machine is a guess is a number nobody can reuse.
 
 ## Block I — NVIDIA path
 
