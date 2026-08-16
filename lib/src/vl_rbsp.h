@@ -131,7 +131,20 @@ vl_vlc_init(struct vl_vlc *vlc, const void *input, unsigned size)
 static inline unsigned
 vl_vlc_valid_bits(struct vl_vlc *vlc)
 {
-   return 32 - vlc->invalid_bits;
+   /* PP70: clamped at zero rather than allowed to wrap.
+    *
+    * invalid_bits is signed and climbs by 8 on every eatbits, with nothing stopping it at
+    * the end of the buffer - vl_vlc_eatbits consumes from a bit buffer that is simply
+    * empty. Once it passes 32 this subtraction, being unsigned, produced about four
+    * billion: "plenty of bits left", returned at exactly the moment there are none.
+    *
+    * Every loop in this file conditioned on valid_bits > 0 then never ends. vl_rbsp_init
+    * is the one that was measured: its search for the end of the NAL asks
+    * vl_vlc_search_byte for a 0x00, the depleted bit buffer reads as zeroes, so the byte
+    * is "found" for ever and the loop around it spins. A five-byte slice at a four-byte
+    * aligned address reached it and never returned.
+    */
+   return vlc->invalid_bits >= 32 ? 0 : (unsigned)(32 - vlc->invalid_bits);
 }
 
 /**

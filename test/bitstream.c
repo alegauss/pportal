@@ -5,6 +5,8 @@
 #include <chiaki/bitstream.h>
 #include <stdio.h>
 
+#include "test_log.h"
+
 #define ARRAY_SIZE(a) sizeof(a) / sizeof(a[0])
 
 static MunitResult test_bitstream_parse_h264(const MunitParameter params[], void *fixture)
@@ -214,7 +216,59 @@ static MunitResult test_bitstream_truncated_slice_h264(const MunitParameter para
 	return MUNIT_OK;
 }
 
+/**
+ * PP70: an exhausted reader reports no bits left, so the loops that depend on that terminate.
+ *
+ * Five bytes at a four-byte aligned address: a startcode and one NAL header byte, and nothing
+ * behind it. The parse gets past the NAL type check and into vl_rbsp_init, whose search for the
+ * end of the NAL used to "find" a zero byte in the empty bit buffer for ever.
+ *
+ * Like PP68's tests, this one could not be written before the fix - it would have hung the suite
+ * rather than failed it. The alignment is forced rather than hoped for, because vl_vlc_align_data_ptr
+ * makes how far a prefix parses depend on the address it is given, and the hang was only reachable
+ * at one of the four.
+ */
+static MunitResult test_bitstream_exhausted_reader_terminates(const MunitParameter params[], void *fixture)
+{
+	(void)params; (void)fixture;
+
+	static const uint8_t truncated[] = { 0x00, 0x00, 0x00, 0x01, 0x02 };
+
+	for(unsigned off = 0; off < 4; off++)
+	{
+		uint8_t arena[4 + ARRAY_SIZE(truncated)];
+		uint8_t *slice;
+		ChiakiBitstream bs;
+
+		memset(arena, 0, sizeof(arena));
+		// Walk to the next 4-byte boundary from the arena's own address, then step off it by
+		// `off`, so all four alignments are covered whatever the arena landed on.
+		slice = arena + ((4 - ((uintptr_t)arena & 3)) & 3);
+		slice += off;
+		if(slice + ARRAY_SIZE(truncated) > arena + sizeof(arena))
+			continue;
+		memcpy(slice, truncated, ARRAY_SIZE(truncated));
+
+		chiaki_bitstream_init(&bs, get_test_log(), CHIAKI_CODEC_H265);
+		memset(&bs.h265, 0, sizeof(bs.h265));
+
+		// The assertion is that this returns at all. The value is incidental: no prefix this
+		// short is a slice anyone can set a reference frame on.
+		munit_assert_false(chiaki_bitstream_slice_set_reference_frame(&bs, slice, ARRAY_SIZE(truncated), 0));
+	}
+
+	return MUNIT_OK;
+}
+
 MunitTest tests_bitstream[] = {
+	{
+		"/bitstream_exhausted_reader_terminates",
+		test_bitstream_exhausted_reader_terminates,
+		NULL,
+		NULL,
+		MUNIT_TEST_OPTION_NONE,
+		NULL
+	},
 	{
 		"/bitstream_truncated_header_h264",
 		test_bitstream_truncated_header_h264,

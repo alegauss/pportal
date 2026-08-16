@@ -8,6 +8,7 @@
 
 - ✅ **PP57** **videoreceiver reads slice.slice_type uninitialised when the bitstream parser declined the frame, which is UB** — The slice is zeroed at declaration and the log names a type only when the parse produced one, held by 2 munit assertions over a declined frame that still reaches the callback.
 - ✅ **PP68** **chiaki_bitstream_header never returns on a truncated SPS, and the header it is handed comes off the network** — vl_rbsp_ue now stops at the end of the NAL and at 32 leading zeroes, and every parse that overran is refused, held by 2 munit assertions that used to hang the suite.
+- ✅ **PP70** **vl_vlc_valid_bits returns 32 minus a count that can exceed 32, unsigned, so an exhausted reader reports billions of bits** — vl_vlc_valid_bits clamps at zero, so the loops that trusted it terminate, held by a munit assertion at the alignment that hung and 132 tests still green.
 
 ## Block D — Screens
 
