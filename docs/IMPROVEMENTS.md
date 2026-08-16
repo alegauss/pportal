@@ -193,6 +193,32 @@ to vary the pool size and see whether the p99 moves with it: if it does, the fin
 belongs to how the client holds frames; if not, it belongs to the driver and PP51's
 contract has to say so.
 
+### §PP69 A write that trusts wherever the reader stopped
+
+Found while fixing PP68 and deliberately not folded into it: that line was a parse that
+never returned, this is a write. Same cause, different blast radius.
+
+bitstream.c:377 takes d = (uint32_t *)rbsp.nal.data and then reads and writes d[-2] and
+d[-1] - the two words behind wherever the reader stopped. Nothing checks where that is.
+This function rewrites a reference frame index in place, so unlike every other caller of
+the reader it edits the caller's buffer rather than describing it.
+
+Two ways the pointer is not where the code assumes. PP68 made an exhausted vl_rbsp_ue
+return without consuming anything, so the loop over num_negative_pics can run to
+completion with the pointer standing still, rewriting one place instead of walking. And
+near the front of a short slice nal.data is a few bytes in, which puts d[-2] eight bytes
+behind it and possibly before the buffer.
+
+What is claimed is that the check is absent, read off the source. What is not claimed is
+a reachable out-of-bounds write: the slice would have to be short enough and the parse
+would have to reach that loop, and neither was measured. The point is that nothing in
+the function tells the two cases apart.
+
+The fix is the flag PP68 added: refuse before the first write when vl_rbsp_overrun is
+set, and bound the offset against the buffer the caller passed rather than trusting the
+reader's position. The assertion is a truncated P slice put through
+chiaki_bitstream_slice_set_reference_frame with the buffer unchanged afterwards.
+
 ## Block D — Screens
 
 ### §PP12 The control vocabulary, and the focus nobody ships
