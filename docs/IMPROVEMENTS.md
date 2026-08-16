@@ -598,6 +598,33 @@ this task: a test has to be able to name the line it holds, whether by conventio
 test name or by an attribute the count can read. Without that join, the number is a
 guess and a gate on a guess is worse than no gate.
 
+### §PP73 Numbers nobody reads twice
+
+Almost every line in this roadmap sizes its work with a number - 171 conditionals, 3271
+lines, 151 properties, 2862 lines of session, 502 lines of threading. Those numbers are
+what a reader budgets by, and nothing checks any of them again after the line is
+written.
+
+Four were checked by hand on 2026-08-16 and three were wrong. PP20 counted 171 platform
+conditionals in gui when 5f09bef3 had already deleted them all, and that commit landed
+before the line was filed - it was never true. PP12 said seven custom controls while its
+own section listed six, as did the directory. PP16 says SettingsDialog.qml is 3271
+lines; it is 2984. Only PP21's component list matched, and even there WebEngineQuick has
+stopped being REQUIRED.
+
+Two different failures are mixed in that. PP20 and PP12 were wrong at the moment of
+writing, which review catches and nothing else will. PP16 drifted afterwards, which
+review cannot catch because the line was right when read. They need different answers
+and only the second is automatable.
+
+roadkeep already has the mechanism for the second: `remaining` reports how many sites a
+task's declared query still matches, and no line here declares one. A countable symptom
+carrying the query behind its number is rechecked in one command, and the ones no query
+can express are exactly the ones a human has to re-read.
+
+What this line decides is whether that is worth doing for the fifty open lines, or only
+for the ones whose number is load-bearing.
+
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed
