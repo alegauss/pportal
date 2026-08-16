@@ -87,14 +87,52 @@ cuda; cuda ahead of d3d11va is right by 36%; and the OpenGL fallback that drops 
 cuda rather than to d3d11va ([qmlbackend.cpp:946](../../gui/src/qmlbackend.cpp#L946)) is right for
 the same reason, since an OpenGL renderer cannot hold the vulkan frame and pays a copy either way.
 
-## One number here is not fine
+## One number here is not fine — and PP65 found out why
 
 **d3d11va's send is bimodal: a 103 µs median against a 26 990 µs p99.** A submission that usually
 takes a tenth of a millisecond and sometimes takes 27 — 1.6 whole frame intervals — is a stall,
 not a distribution, and its mean of 1258.8 µs is an average of two behaviours rather than a
-description of either. Nothing here diagnoses it; the other two paths do not do it (cuda p99 1649
-µs, vulkan p99 2697 µs), and it is the kind of thing a user reports as stutter and a mean hides.
-Filed rather than explained.
+description of either. That was filed as PP65 and has now been answered.
+
+```
+run.cmd sweep            the pool, hold and pacing sweep behind the table below
+```
+
+**It is an artifact of this harness, not of the driver.** Everything above feeds the decoder the
+next packet the instant the last one returned — about twelve times faster than a console sends
+them. Fed at 60 fps instead, the stall disappears:
+
+| d3d11va | mean | p50 | p99 |
+|---|---|---|---|
+| as fast as it will take it | 1310.7 µs | 164 µs | **25 124 µs** |
+| paced at 60 fps | 300.6 µs | 285 µs | **548 µs** |
+
+Three paced runs gave p99s of 548, 838 and 1310 µs. The stall is gone, and what is left is a
+median and a p99 within a factor of four of each other — a distribution rather than two
+behaviours. At 60 fps that p99 is 3% of a frame interval.
+
+The pool was ruled out first, because §PP65 named it as the likely cause. `extra_hw_frames` of 0,
+4 and 16, crossed with holding 1 and 8 decoded frames out of the pool, moves nothing: every
+combination lands between 12 790 µs and 25 124 µs at p99, with total decode wall clock within 3%
+of itself. A decoder starved of surfaces would show both moving together, and neither does.
+
+### What the same sweep turned up, which is not settled
+
+**Paced cuda is unstable in a way paced d3d11va is not.** Same runs, same stream:
+
+| paced at 60 fps | mean | p50 | p99 | max |
+|---|---|---|---|---|
+| d3d11va | 300.6 µs | 285 µs | 548 µs | 2 101 µs |
+| cuda | 2 597.4 µs | 1 881 µs | 13 480 µs | 21 983 µs |
+
+Across four paced runs cuda's p99 was 11 548, 84 900, 13 527 and 13 480 µs — the second of those
+carrying a 115 843 µs single send. d3d11va's stayed under 1 400 µs in all four.
+
+**No cause is established and none is guessed at here.** The obvious candidates — the GPU dropping
+clocks between frames it is idle for, or contamination from the seven configurations that run
+before it in the same process — are untested. It is filed rather than explained, and it matters
+because it is the reverse of the ranking the table at the top of this file gives: cuda's readback
+advantage over d3d11va is 1 460 µs a frame, and a p99 gap of 12 900 µs would swallow it whole.
 
 ## What this does not cover
 

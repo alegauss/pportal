@@ -132,6 +132,10 @@ static double stats_max(const Stats *s)
 
 typedef struct {
 	const char *name;   // as the settings spell it: "software", "cuda", "d3d11va", "vulkan"
+	const char *label;  // what to print, which in the pool sweep is not the device name
+	int extra_hw_frames;// PP65: added to the decoder's surface pool, 0 for the default
+	int hold;           // PP65: frames kept referenced at once, 1 for "release immediately"
+	bool paced;         // PP65: feed at 60 fps instead of as fast as the decoder will take it
 	bool ran;
 	const char *skipped_why;
 	char pix_fmt[32];   // what came out of the decoder
@@ -146,8 +150,8 @@ typedef struct {
 
 // Mirrors chiaki_ffmpeg_decoder_init. Returns NULL and fills *why on any refusal, because a path
 // this machine cannot run has to be reported as absent rather than as slow.
-static AVCodecContext *open_decoder(const char *hw_name, AVBufferRef **hw_device_ctx,
-                                    const char **why)
+static AVCodecContext *open_decoder(const char *hw_name, int extra_hw_frames,
+                                    AVBufferRef **hw_device_ctx, const char **why)
 {
 	const AVCodec *codec = avcodec_find_decoder(AV_CODEC_ID_H264);
 	if (!codec) {
@@ -191,6 +195,11 @@ static AVCodecContext *open_decoder(const char *hw_name, AVBufferRef **hw_device
 		ctx->hw_device_ctx = av_buffer_ref(*hw_device_ctx);
 	}
 
+	// PP65: the one knob this task varies. extra_hw_frames is added to the surface pool the
+	// decoder allocates, so if the stall is the decoder waiting for a surface to come back,
+	// raising it should move the p99 and nothing else here should change.
+	ctx->extra_hw_frames = extra_hw_frames;
+
 	// The client leaves get_format alone too: with hw_device_ctx set, ffmpeg's default picks the
 	// hw format. Setting one here would be a second decoder configuration to explain.
 	if (avcodec_open2(ctx, codec, NULL) < 0) {
@@ -223,11 +232,18 @@ static bool run_pass(Path *p, const char *file, bool do_readback)
 	const char *hw = strcmp(p->name, "software") == 0 ? NULL : p->name;
 	AVBufferRef *hw_device_ctx = NULL;
 	const char *why = "unknown";
-	AVCodecContext *ctx = open_decoder(hw, &hw_device_ctx, &why);
+	AVCodecContext *ctx = open_decoder(hw, p->extra_hw_frames, &hw_device_ctx, &why);
 	if (!ctx) {
 		p->skipped_why = why;
 		return false;
 	}
+
+	// PP65's other hypothesis: that the stall is the decoder waiting for a surface the caller is
+	// sitting on. `hold` is how many decoded frames are kept referenced at once, so hold=1 is
+	// "release it immediately" and a larger number starves the pool on purpose.
+	int hold = p->hold > 0 ? p->hold : 1;
+	AVFrame **held = calloc((size_t)hold, sizeof(*held));
+	int held_next = 0;
 
 	AVFormatContext *fmt = NULL;
 	if (avformat_open_input(&fmt, file, NULL, NULL) < 0) {
@@ -256,7 +272,18 @@ static bool run_pass(Path *p, const char *file, bool do_readback)
 	int seen = 0;           // every frame, warmup included
 	int counted = 0;        // frames the numbers are computed from
 	bool flushed = false;
+	// PP65: a real session hands the decoder one frame every 16.7 ms. This harness hands it the
+	// next one the instant the last returned, which is about twelve times faster than that and
+	// lets work pile up behind an asynchronous submission. Pacing is how that difference is
+	// ruled in or out rather than argued about.
+	int64_t paced_next = av_gettime_relative();
 	for (;;) {
+		if (p->paced) {
+			int64_t now = av_gettime_relative();
+			if (paced_next > now)
+				av_usleep((unsigned)(paced_next - now));
+			paced_next += 16667;
+		}
 		int ret;
 		if (!flushed) {
 			ret = av_read_frame(fmt, pkt);
@@ -317,7 +344,19 @@ static bool run_pass(Path *p, const char *file, bool do_readback)
 				}
 				av_frame_unref(sw);
 			}
-			av_frame_unref(frame);
+
+			// Released straight away when hold is 1, which is what every other measurement in
+			// this spike does. Above that the frame goes into a ring and the one it displaces
+			// is released, so exactly `hold` surfaces are out of the pool at any moment.
+			if (hold == 1 || !held) {
+				av_frame_unref(frame);
+			} else {
+				if (held[held_next])
+					av_frame_free(&held[held_next]);
+				held[held_next] = av_frame_clone(frame);
+				held_next = (held_next + 1) % hold;
+				av_frame_unref(frame);
+			}
 		}
 		if (flushed)
 			break;
@@ -334,6 +373,12 @@ decode_done:
 	}
 
 done_alloc:
+	if (held) {
+		for (int i = 0; i < hold; i++)
+			if (held[i])
+				av_frame_free(&held[i]);
+		free(held);
+	}
 	av_frame_free(&sw);
 	av_frame_free(&frame);
 	av_packet_free(&pkt);
@@ -400,18 +445,56 @@ static void json_stats(FILE *f, const char *key, const Stats *s)
 
 int main(int argc, char **argv)
 {
-	const char *file = argc > 1 ? argv[1] : "stream.h264";
-	const char *out = argc > 2 ? argv[2] : "result.json";
+	const char *file = "stream.h264";
+	const char *out = "result.json";
+	bool pool_sweep = false;
+	int positional = 0;
+
+	for (int i = 1; i < argc; i++) {
+		if (strcmp(argv[i], "--pool-sweep") == 0)
+			pool_sweep = true;
+		else if (positional++ == 0)
+			file = argv[i];
+		else
+			out = argv[i];
+	}
 
 	// The order the client would try them in on an NVIDIA card, with software first as the
 	// baseline every other row is read against.
-	Path paths[] = {
-		{ .name = "software" },
-		{ .name = "cuda" },
-		{ .name = "d3d11va" },
-		{ .name = "vulkan" },
+	// static, not automatic: a Path carries three Stats and each of those keeps MAX_SAMPLES
+	// doubles, so one is about 192 KB and eleven of them overflow a 1 MB stack before main does
+	// anything. That is exactly how this failed first - exit 0xC00000FD, no output at all,
+	// because the crash took the unflushed stdout buffer with it.
+	static Path default_paths[] = {
+		{ .name = "software", .label = "software" },
+		{ .name = "cuda", .label = "cuda" },
+		{ .name = "d3d11va", .label = "d3d11va" },
+		{ .name = "vulkan", .label = "vulkan" },
 	};
-	const int npaths = (int)(sizeof(paths) / sizeof(paths[0]));
+
+	// PP65: d3d11va's send is bimodal - a 103us median against a 26990us p99, which is 1.6 frame
+	// intervals. The first thing to rule out is the decoder waiting on a surface, so this varies
+	// the two quantities that would decide that and nothing else: the size of the pool, and how
+	// many of its surfaces the caller is sitting on. cuda is carried through the same sweep as a
+	// control, because a p99 that moves for both is not about the pool.
+	static Path sweep_paths[] = {
+		{ .name = "d3d11va", .label = "d3d11va pool+0  hold 1", .extra_hw_frames = 0,  .hold = 1 },
+		{ .name = "d3d11va", .label = "d3d11va pool+4  hold 1", .extra_hw_frames = 4,  .hold = 1 },
+		{ .name = "d3d11va", .label = "d3d11va pool+16 hold 1", .extra_hw_frames = 16, .hold = 1 },
+		{ .name = "d3d11va", .label = "d3d11va pool+0  hold 8", .extra_hw_frames = 0,  .hold = 8 },
+		{ .name = "d3d11va", .label = "d3d11va pool+16 hold 8", .extra_hw_frames = 16, .hold = 8 },
+		{ .name = "cuda",    .label = "cuda    pool+0  hold 1", .extra_hw_frames = 0,  .hold = 1 },
+		{ .name = "cuda",    .label = "cuda    pool+16 hold 1", .extra_hw_frames = 16, .hold = 1 },
+		// The same two paths fed at the rate a console sends them, which is the one difference
+		// between this harness and a session.
+		{ .name = "d3d11va", .label = "d3d11va paced 60fps",    .hold = 1, .paced = true },
+		{ .name = "cuda",    .label = "cuda    paced 60fps",    .hold = 1, .paced = true },
+	};
+
+	Path *paths = pool_sweep ? sweep_paths : default_paths;
+	const int npaths = pool_sweep
+		? (int)(sizeof(sweep_paths) / sizeof(sweep_paths[0]))
+		: (int)(sizeof(default_paths) / sizeof(default_paths[0]));
 
 	printf("stream     : %s\n", file);
 	printf("ffmpeg     : libavcodec %d.%d.%d\n", LIBAVCODEC_VERSION_MAJOR,
@@ -421,7 +504,7 @@ int main(int argc, char **argv)
 	int ran = 0;
 	for (int i = 0; i < npaths; i++) {
 		Path *p = &paths[i];
-		printf("=== %s\n", p->name);
+		printf("=== %s\n", p->label ? p->label : p->name);
 		fflush(stdout);
 		if (!run_path(p, file)) {
 			printf("  not available: %s\n\n", p->skipped_why);
@@ -469,7 +552,10 @@ int main(int argc, char **argv)
 		Path *p = &paths[i];
 		if (i)
 			fprintf(f, ",");
-		fprintf(f, "{\"name\":\"%s\",\"ran\":%s", p->name, p->ran ? "true" : "false");
+		fprintf(f, "{\"name\":\"%s\",\"ran\":%s", p->label ? p->label : p->name,
+		        p->ran ? "true" : "false");
+		fprintf(f, ",\"device\":\"%s\",\"extra_hw_frames\":%d,\"hold\":%d",
+		        p->name, p->extra_hw_frames, p->hold ? p->hold : 1);
 		if (!p->ran) {
 			fprintf(f, ",\"why\":\"%s\"}", p->skipped_why ? p->skipped_why : "unknown");
 			continue;

@@ -11,6 +11,8 @@ rem Usage:
 rem   run.cmd                 build if needed, generate the stream if absent, measure
 rem   run.cmd rebuild         rebuild the harness first
 rem   run.cmd restream        regenerate stream.h264 first
+rem   run.cmd sweep           PP65: vary the surface pool, the held frames and the feed
+rem                           rate, instead of comparing the four decoders
 rem
 rem Environment overrides:
 rem   MSYS2_ROOT   MSYS2 install dir   (default C:\msys64)
@@ -31,9 +33,11 @@ if "%HERE:~-1%"=="/" set "HERE=%HERE:~0,-1%"
 
 set "REBUILD="
 set "RESTREAM="
+set "SWEEP="
 for %%a in (%*) do (
     if /I "%%~a"=="rebuild"  set "REBUILD=1"
     if /I "%%~a"=="restream" set "RESTREAM=1"
+    if /I "%%~a"=="sweep"    set "SWEEP=--pool-sweep"
 )
 
 if defined RESTREAM del /q "%~dp0stream.h264" 2>nul
@@ -53,5 +57,5 @@ rem Run it through the same shell that built it. decode-path.exe links MinGW64's
 rem and cannot find them from a plain cmd PATH - it exits before main with no message, which
 rem reads exactly like a harness that ran and measured nothing. compile.cmd carries the same
 rem note about build\gui\chiaki.exe, for the same reason.
-"%BASH%" -l -c "cd '%HERE%' && ./decode-path.exe stream.h264 result.json"
+"%BASH%" -l -c "cd '%HERE%' && ./decode-path.exe stream.h264 result.json %SWEEP%"
 exit /b %errorlevel%

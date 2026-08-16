@@ -24,7 +24,6 @@
 - 📋 **PP9** (deps: PP5, PP43 ✅) **the video is presented by libplacebo into a Vulkan-backed QQuickWindow, which WPF cannot host** — WPF composes through D3D9 and cannot present a Vulkan swapchain, so the choice between a child window and a shared texture is what every stream screen is then built on. → §PP9
 - 📋 **PP10** (deps: PP9) **the stream HUD and the in-stream menu are QML drawn over the video and disappear with the renderer** — 1740 lines of overlay assume the compositor they are drawn in, so what replaces the renderer decides whether they are XAML above a surface or drawn into the frame. → §PP10
 - 📋 **PP11** (deps: PP9) **fullscreen, HDR handoff and refresh-rate switching are handled by the Qt window** — These are the three settings a remote play session is actually judged by, and each is a Win32 or DXGI call the new window has to make for itself. → §PP11
-- 📋 **PP65** (deps: —) **d3d11va's decode submission stalls: a 103us median send against a 26990us p99, which is 1.6 frame intervals** — A call that usually costs a tenth of a millisecond and sometimes costs 27 is a stall and not a distribution, and its mean describes neither of the two behaviours it averages. → §PP65
 
 ## Block D — Screens
 

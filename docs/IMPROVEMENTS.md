@@ -171,28 +171,6 @@ reaches the issue tracker first. It is a separate line from PP9 because it is Wi
 DXGI work that does not depend on which of the three renderer shapes wins, only on there
 being a window.
 
-### §PP65 The stall only the fallback path has
-
-Measured while answering PP48, on a decode pass with no readback in the clock, so the
-stall is in the submission and not in a copy behind it. Over 570 frames of 1080p60 H.264
-on an RTX 4060, avcodec_send_packet on the d3d11va path returned in 103us at the median
-and 26990us at p99, with a 29576us maximum. The other two hardware paths do not do this:
-cuda's p99 is 1649us and vulkan's is 2697us, both within a factor of two of their
-medians.
-
-Why it earns a line. d3d11va is what qmlbackend picks with no NVIDIA card and no Vulkan
-renderer, which makes it the path every AMD and Intel user is on - the population PP51
-exists to write a contract for. A stall of 1.6 frame intervals is visible, and invisible
-in every number this project keeps, because the p99 the session record holds is over the
-whole decode stage rather than the submission alone.
-
-The cause is not known. The obvious candidate is the decoder waiting on a surface from a
-pool the harness holds frames out of, which would make the number the harness's and not
-the driver's - and that is why this is a symptom rather than a defect. The first step is
-to vary the pool size and see whether the p99 moves with it: if it does, the finding
-belongs to how the client holds frames; if not, it belongs to the driver and PP51's
-contract has to say so.
-
 ## Block D — Screens
 
 ### §PP12 The control vocabulary, and the focus nobody ships
