@@ -1,0 +1,9 @@
+# The harness and its input are built, not carried. stream.h264 is 30 Mbps of synthetic 1080p60
+# and make-stream.sh reproduces it byte for byte, so committing it would be 35 MB to save a
+# command.
+decode-path.exe
+stream.h264
+
+# A committed result is one taken deliberately and named for the machine that produced it, the
+# way spike/video-upscale does it - not whatever the last invocation left behind.
+result.json

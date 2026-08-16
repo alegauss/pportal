@@ -745,18 +745,25 @@ which needs a console, so the synthetic pattern settles cost and never benefit.
 
 ### §PP48 The NVIDIA path that already exists
 
-qmlmainwindow exposes nvidiaCard() and qmlbackend reads it: with an NVIDIA card and cuda
-among the available decoders, cuda is preferred, with fallbacks written around it. So
-the premise that a vendor path would be new is wrong - the decision is made today, in a
-file the port is about to rewrite, on hardware detection alone.
+The shipped half settled the cost. All three hardware paths decode within 13% of each
+other on an RTX 4060, cuda and vulkan inside 0.1% because Vulkan Video and NVDEC are the
+same silicon, so decode speed does not separate them. What does is a copy:
+make_fallback_snapshot_frame runs on every queued frame and calls
+av_hwframe_transfer_data for any hardware frame that is not AV_PIX_FMT_VULKAN - 793us on
+cuda, 2253us on d3d11va, nothing on vulkan. The preference buys a cheaper copy rather
+than a faster decode, and the auto ordering is right for that reason rather than the one
+it was written for.
 
-What is missing is the evidence. Nobody has published decode time, frame delivery jitter
-or dropped frames for cuda against the vulkan and d3d11va paths on the same machine and
-stream. The per-stage timing makes that a measurement rather than an argument.
+What is left is the frame-drop half, and what cannot be synthesised is what shapes it.
+Decode cost follows resolution and bitrate, so a generated stream carries it. Frames
+dropped under network jitter follow the network, and no encoder here produces that. It
+needs a live session, which needs a console. No new instrument is needed: the PP42
+telemetry row already names the decoder that produced it, so one session per decoder
+answers this and a spike never will.
 
-It also carries a specific opportunity: NVDEC decoding into a surface the renderer can
-use without a copy back through system memory. Whether that copy exists today is exactly
-the kind of thing the per-stage numbers show, and it is worth more than any upscaler.
+Filed rather than explained: d3d11va's send is bimodal, a 103us median against a 26990us
+p99. A submission that sometimes takes 1.6 frame intervals is a stall, and its mean is
+an average of two behaviours rather than a description of either.
 
 ### §PP49 HDR on a stream that does not carry it
 

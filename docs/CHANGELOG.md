@@ -36,3 +36,4 @@
 ## Block I — NVIDIA path
 
 - ✅ **PP47 (the feature choice and the floor)** **DLSS needs motion vectors and a depth buffer, and a decoded video stream carries neither** — DLSS cannot apply and VSR is the candidate; the plain video-processor upscale 1080p to 4K costs 262.9us on an RTX 4060, and VSR itself did not engage.
+- ✅ **PP48 (the cost half)** **the client already prefers the cuda decoder on an NVIDIA card, and nothing measures whether that helps** — All three hardware paths decode within 13% of each other; what separates them is the per-frame copy the client skips only for vulkan - 793us cuda, 2253us d3d11va.
