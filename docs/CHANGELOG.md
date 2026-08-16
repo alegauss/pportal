@@ -26,6 +26,7 @@
 - ✅ **PP54** **the vendored munit does not compile on gcc 16, so the only test target in the tree cannot be built at all** — munit is a pinned submodule, so this repo's CMake now builds that one file as the C11 it was written for, and chiaki-unit compiles on gcc 16 with 113 of 113 passing.
 - ✅ **PP56** **compile.cmd never builds chiaki-unit, so ctest reports green against whatever binary was last linked by hand** — A default build now links chiaki-unit with the client, so ctest answers about the tree that is there; notests keeps the fast path and warns that it did not.
 - ✅ **PP67** **nothing launches the suite, so running ctest means knowing it is a MinGW64 shell away and not on PATH** — test.cmd runs the suite through the MinGW shell, bounds it with a timeout so a hang is not silence, cuts one test out of a full run, and warns when the binary predates lib.
+- ✅ **PP73** **nothing rechecks a task's counted premise against the tree, and three of four spot-checked lines did not match it** — Only where a regex is the premise: PP16, PP30 and PP33 now declare a roadkeep-remaining query answering 149, 14 and 420 from the tree; the rest count lines, which no query expresses.
 
 ## Block H — Performance and telemetry
 

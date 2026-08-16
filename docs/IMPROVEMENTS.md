@@ -225,14 +225,22 @@ exists for exactly that reason and has to survive the port intact.
 
 ### §PP16 The screen the port is sized by
 
-SettingsDialog.qml is 3271 lines - larger than the next two screens together - and it is
-the visible half of qmlsettings.h, which exposes 151 properties, and qmlsettings.cpp,
+SettingsDialog.qml is 2984 lines - larger than the next two screens together - and it is
+the visible half of qmlsettings.h, which exposes 149 properties, and qmlsettings.cpp,
 which is 2086 lines of getters, setters and change notifications over settings.cpp.
 
-The markup is the cheap half. What has to be rebuilt is the binding surface: 151
-properties that notify, validate, and in several cases only apply to a session that is
-not running. WPF has an equivalent in INotifyPropertyChanged and the settings store from
-PP2 underneath it, so the shape is known - the cost is the count.
+The markup is the cheap half. What has to be rebuilt is the binding surface: properties
+that notify, validate, and in several cases only apply to a session that is not running.
+WPF has an equivalent in INotifyPropertyChanged and the settings store from PP2
+underneath it, so the shape is known - the cost is the count.
+
+The count is therefore declared rather than written down, so `remaining PP16` answers it
+from the tree instead of from whenever this paragraph was last edited. It was 151 when
+this line was filed and 149 on 2026-08-16, which is the drift PP73 exists about.
+
+```roadkeep-remaining
+gui/include/qmlsettings.h :: Q_PROPERTY
+```
 
 It is filed after the front door and registration deliberately. A user can register and
 stream with defaults; nobody can stream at all if the console list does not work.
@@ -454,9 +462,17 @@ opened against a console the managed side has never registered with.
 ### §PP30 Reed-Solomon, by hand
 
 third-party/jerasure and third-party/gf-complete implement erasure coding over GF(2^8),
-and frameprocessor.c at 315 lines is what calls them: when packets of a video frame are
-missing, the FEC blocks are what reconstruct them instead of asking for a retransmission
-that would arrive too late to matter.
+and frameprocessor.c is what calls them: when packets of a video frame are missing, the
+FEC blocks are what reconstruct them instead of asking for a retransmission that would
+arrive too late to matter.
+
+The surface to port is the call sites rather than the vendored source, so that is what
+is declared here and `remaining PP30` counts it - 14 on 2026-08-16, across common.c,
+fec.c and frameprocessor.c.
+
+```roadkeep-remaining
+lib/src/**/*.c :: jerasure|galois_
+```
 
 There is no NuGet package that is a drop-in for this, so it is the one dependency in the
 block that has to be written rather than referenced. The arithmetic is well understood
@@ -508,14 +524,24 @@ host would use regardless of this block.
 
 ### §PP33 Two dependencies that simply leave
 
-http.c is 262 lines around curl, and json-c parses what comes back. Both are vendored or
+http.c is 232 lines around curl, and json-c parses what comes back. Both are vendored or
 fetched, both exist to do something the .NET base class library does without a
 reference, and neither is on the latency path.
+
+The line count is the wrong measure of it, though, and this is the line that shows why.
+What has to be replaced is the API surface: `remaining PP33` counts 420 call sites
+across lib/src on 2026-08-16, most of them in the hole-punching code rather than in
+http.c. HttpClient and System.Text.Json replace the libraries, but they do not replace
+those calls one for one.
+
+```roadkeep-remaining
+lib/src/**/*.c :: curl_easy_|json_object|json_tokener
+```
 
 There is no design decision here and that is why it is worth filing separately: it is
 the cheapest visible progress in the block, it deletes two dependencies from the build,
 and it can be taken by whoever wants to see the shape of a translated file before
-starting one that matters.
+starting one that matters. The 420 is what stops "cheapest" being read as "small".
 
 ### §PP34 The layer that disappears
 
@@ -597,33 +623,6 @@ It needs the ledger and the suite to be joinable, which is the one piece of desi
 this task: a test has to be able to name the line it holds, whether by convention in the
 test name or by an attribute the count can read. Without that join, the number is a
 guess and a gate on a guess is worse than no gate.
-
-### §PP73 Numbers nobody reads twice
-
-Almost every line in this roadmap sizes its work with a number - 171 conditionals, 3271
-lines, 151 properties, 2862 lines of session, 502 lines of threading. Those numbers are
-what a reader budgets by, and nothing checks any of them again after the line is
-written.
-
-Four were checked by hand on 2026-08-16 and three were wrong. PP20 counted 171 platform
-conditionals in gui when 5f09bef3 had already deleted them all, and that commit landed
-before the line was filed - it was never true. PP12 said seven custom controls while its
-own section listed six, as did the directory. PP16 says SettingsDialog.qml is 3271
-lines; it is 2984. Only PP21's component list matched, and even there WebEngineQuick has
-stopped being REQUIRED.
-
-Two different failures are mixed in that. PP20 and PP12 were wrong at the moment of
-writing, which review catches and nothing else will. PP16 drifted afterwards, which
-review cannot catch because the line was right when read. They need different answers
-and only the second is automatable.
-
-roadkeep already has the mechanism for the second: `remaining` reports how many sites a
-task's declared query still matches, and no line here declares one. A countable symptom
-carrying the query behind its number is rechecked in one command, and the ones no query
-can express are exactly the ones a human has to re-read.
-
-What this line decides is whether that is worth doing for the fifty open lines, or only
-for the ones whose number is load-bearing.
 
 ## Block H — Performance and telemetry
 
