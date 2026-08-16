@@ -260,10 +260,94 @@ static MunitResult test_bitstream_exhausted_reader_terminates(const MunitParamet
 	return MUNIT_OK;
 }
 
+/**
+ * PP69: the one function that writes to the caller's buffer refuses when the parse that chose
+ * where to write ran out of input.
+ *
+ * Two assertions with different jobs, and the difference between them was measured rather than
+ * assumed. Every truncation of a real P slice was run at every alignment, with and without the
+ * guard, and the two runs differ at exactly one length.
+ *
+ * The loop is a guard-rail: no byte outside the slice is ever touched. That already held without
+ * the guard, so it fails nothing today - it is here to keep holding, since vl_vlc_align_data_ptr
+ * makes how far a prefix parses depend on the address the caller's buffer happens to have, and a
+ * length that is comfortable at one alignment need not be at another.
+ *
+ * The eight-byte case is the assertion. There the parse overruns, and without the guard the
+ * function returns true and edits a byte picked out of a parse that had run out of input - a
+ * wrong reference frame index written into a real frame, reported as success.
+ */
+static MunitResult test_bitstream_set_ref_h265_truncated(const MunitParameter params[], void *fixture)
+{
+	(void)params; (void)fixture;
+
+	// The P slice test_bitstream_set_ref_h265 rewrites nine times, in every prefix of itself.
+	static const uint8_t full[] = {
+		0x00, 0x00, 0x00, 0x01, 0x02, 0x01, 0xd2, 0x85, 0x7a, 0xaa, 0xa6, 0x08, 0x60, 0x13, 0x55, 0x17,
+		0x6b, 0x71, 0x72, 0xf9, 0x6e, 0xd4, 0xf2, 0x66, 0x78, 0x0c, 0x12, 0xe7, 0x79, 0xf0, 0xbc, 0xc9,
+	};
+	const unsigned pad = 16;
+
+	for(unsigned n = 1; n <= ARRAY_SIZE(full); n++)
+	{
+		for(unsigned off = 0; off < 4; off++)
+		{
+			uint8_t arena[16 + 4 + ARRAY_SIZE(full) + 16];
+			memset(arena, 0xa5, sizeof(arena));
+			uint8_t *slice = arena + pad + off;
+			memcpy(slice, full, n);
+
+			ChiakiBitstream bs;
+			// The quiet log, not NULL: every prefix here is meant to be refused, and 128
+			// refusals each printing a warning would bury the result of the run.
+			chiaki_bitstream_init(&bs, get_test_log(), CHIAKI_CODEC_H265);
+			memset(&bs.h265, 0, sizeof(bs.h265));
+
+			// The return value is not asserted: whether a given prefix is a legal P slice is
+			// not this test's business. Where the writes land is.
+			chiaki_bitstream_slice_set_reference_frame(&bs, slice, n, 0);
+
+			for(unsigned i = 0; i < pad + off; i++)
+				munit_assert_uint8(arena[i], ==, 0xa5);
+			for(unsigned i = pad + off + n; i < sizeof(arena); i++)
+				munit_assert_uint8(arena[i], ==, 0xa5);
+		}
+	}
+
+	// Eight bytes: the one length where the guard changes anything, at every alignment.
+	for(unsigned off = 0; off < 4; off++)
+	{
+		uint8_t arena[16 + 4 + ARRAY_SIZE(full) + 16];
+		ChiakiBitstream bs;
+
+		memset(arena, 0xa5, sizeof(arena));
+		uint8_t *slice = arena + pad + off;
+		memcpy(slice, full, 8);
+
+		chiaki_bitstream_init(&bs, get_test_log(), CHIAKI_CODEC_H265);
+		memset(&bs.h265, 0, sizeof(bs.h265));
+
+		munit_assert_false(chiaki_bitstream_slice_set_reference_frame(&bs, slice, 8, 0));
+		// And it did not write on the way to refusing, which is the half a return value alone
+		// would not catch.
+		munit_assert_memory_equal(8, full, slice);
+	}
+
+	return MUNIT_OK;
+}
+
 MunitTest tests_bitstream[] = {
 	{
 		"/bitstream_exhausted_reader_terminates",
 		test_bitstream_exhausted_reader_terminates,
+		NULL,
+		NULL,
+		MUNIT_TEST_OPTION_NONE,
+		NULL
+	},
+	{
+		"/bitstream_set_ref_h265_truncated",
+		test_bitstream_set_ref_h265_truncated,
 		NULL,
 		NULL,
 		MUNIT_TEST_OPTION_NONE,

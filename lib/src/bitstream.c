@@ -374,6 +374,23 @@ static bool slice_set_reference_frame_h265(ChiakiBitstream *bitstream, uint8_t *
 		for(unsigned i=0; i<num_negative_pics; i++)
 		{
 			vl_rbsp_ue(&rbsp); // delta_poc_s0_minus1[i]
+
+			// PP69: this is the one place the bitstream is edited rather than described, and
+			// it edits the two words behind wherever the reader happens to have stopped.
+			// Two things put that pointer somewhere the write does not belong. An overrun
+			// parse, which since PP68 returns without consuming anything, so the pointer
+			// stands still and every remaining iteration rewrites the same two words. And a
+			// slice short enough that fewer than eight bytes have been consumed, which puts
+			// d[-2] before the buffer the caller owns. Asked every iteration because the
+			// pointer moves between them, and a refusal rather than a clamp: a reference
+			// frame index written to the wrong place is a corrupted frame either way.
+			const uint8_t *pos = rbsp.nal.data;
+			if(vl_rbsp_overrun(&rbsp) || pos < data + 8 || pos > data + size)
+			{
+				CHIAKI_LOGW(bitstream->log, "slice_set_reference_frame_h265: Refusing to write outside the slice");
+				return false;
+			}
+
 			uint32_t *d = (uint32_t*)rbsp.nal.data;
 			uint64_t hi = ntohl(d[-2]);
 			uint64_t lo = ntohl(d[-1]);
