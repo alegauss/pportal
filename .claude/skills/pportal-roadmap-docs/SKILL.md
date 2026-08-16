@@ -43,9 +43,13 @@ Validated means the build was run, not that the edit looked right —
 | Command | When |
 |---|---|
 | `compile.cmd configure` | fast check after a deletion — does every path the build graph names still resolve |
-| `compile.cmd` | full build + portable tree — **before committing** |
+| `compile.cmd` | full build + portable tree — **before committing**. Builds the Qt client, `chiaki-unit` and the .NET host in `app\` |
 | `test.cmd` | the unit suite, after anything touching `lib/` or `test/` |
 | `test.cmd <name>` | one test's output, cut out of a full run |
+
+`configure` is cmake only and says nothing about `app\`. `noapp` skips the .NET host and prints
+that it did; a machine with no .NET SDK gets a note rather than a refusal, because the Qt client
+does not need one (PP74).
 
 `test.cmd` (PP67) is the launcher for the suite, the way `compile.cmd` is for the build:
 `ctest` is not on a plain Windows PATH and the binary needs the MinGW runtime beside it.
