@@ -842,3 +842,27 @@ Two caveats to hold. Below the display's minimum refresh, low framerate compensa
 changes the behaviour and the result has to be checked rather than assumed. And
 exclusive fullscreen is usually the precondition, which is why this hangs off the task
 where the window takes ownership of how it meets the display.
+
+### §PP72 A preference its own numbers no longer support
+
+qmlbackend sets prefer_cuda from a card detection, and two places act on it: the auto
+path takes cuda when the renderer is not Vulkan, and the OpenGL fallback drops to cuda
+rather than d3d11va. PP71 measured all three at the rate a console sends and cuda came
+last, on median and p99. With each path's readback added, the per-frame totals are about
+400us for vulkan, 2550 for d3d11va, 2900 for cuda.
+
+So the ordering is right where it matters and wrong where it does not. Vulkan first is
+right by more than the unpaced numbers suggested. The cuda-over-d3d11va preference is
+the part that does not survive, and it governs one case: an OpenGL renderer, which
+cannot hold a vulkan frame and pays a copy whichever of the two it takes.
+
+What this line is not is a swap. One card, one stream, one machine, and PP71 left cuda's
+tail narrowed but unproven - clocks falling with the idleness pacing creates, not
+confirmed by pinning them. Changing a decoder preference on that would repeat the
+mistake PP48 was filed against: choosing a vendor path from something other than
+evidence.
+
+The step that fits is to make the choice answerable rather than reverse it. The session
+record already names the decoder behind each row, so a client that ran either path on
+the OpenGL fallback would settle this from real sessions rather than a synthetic stream.
+Whether that is worth a knob, a default change or nothing is what this line decides.
