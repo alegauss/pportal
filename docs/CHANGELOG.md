@@ -17,6 +17,7 @@
 ## Block E — Windows-only build
 
 - ✅ **PP62** **the tree's only build cannot include QtWebEngine, so the login screen the port replaces is compiled out** — The reference build is an MSVC configure built once for the purpose, filed as PP63: MSYS2 has no qt6-webengine and the published Windows releases carry no Chromium, measured.
+- 🗑 **PP20** **171 platform conditionals remain in gui, 33 of them macOS and 17 Linux, after those trees were deleted** — abandoned: 5f09bef3 deleted them before this line was filed: gui carries no Q_OS_MAC, Q_OS_LINUX or __APPLE__ today, and no CMakeLists carries a platform branch either.
 
 ## Block F — Managed core
 

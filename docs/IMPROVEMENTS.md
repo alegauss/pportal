@@ -280,20 +280,6 @@ whoever takes it.
 
 ## Block E — Windows-only build
 
-### §PP20 The code for platforms that are gone
-
-The non-Windows trees are already deleted - android, switch, setsu, steamdeck_native,
-the macOS bundle files, the Linux desktop entry, the sd input code and the systemd
-inhibitor. What is left is inside the files that stayed: 33 Q_OS_MAC branches, 17
-Q_OS_LINUX, two raw __APPLE__ guards and the rest spread across the CMake and the
-sources.
-
-They compile to nothing on Windows, so this is not a defect a user meets. It is a cost
-every reader of these files pays, and it is paid worst by whoever is porting them, who
-has to decide for each branch whether it is dead or whether Windows quietly falls
-through to it. Doing this before the port rather than after means the files being read
-are the files that matter.
-
 ### §PP21 The dependency that says it is over
 
 Eight Qt modules are named in gui/CMakeLists.txt, WebEngineQuick among them - a whole
