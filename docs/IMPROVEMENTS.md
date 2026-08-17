@@ -729,28 +729,6 @@ a user who never opens that panel gets the unaccelerated path silently.
 The quality half stays unanswerable here regardless. It needs a real decoded frame,
 which needs a console, so the synthetic pattern settles cost and never benefit.
 
-### §PP48 The NVIDIA path that already exists
-
-The shipped half settled the cost. All three hardware paths decode within 13% of each
-other on an RTX 4060, cuda and vulkan inside 0.1% because Vulkan Video and NVDEC are the
-same silicon, so decode speed does not separate them. What does is a copy:
-make_fallback_snapshot_frame runs on every queued frame and calls
-av_hwframe_transfer_data for any hardware frame that is not AV_PIX_FMT_VULKAN - 793us on
-cuda, 2253us on d3d11va, nothing on vulkan. The preference buys a cheaper copy rather
-than a faster decode, and the auto ordering is right for that reason rather than the one
-it was written for.
-
-What is left is the frame-drop half, and what cannot be synthesised is what shapes it.
-Decode cost follows resolution and bitrate, so a generated stream carries it. Frames
-dropped under network jitter follow the network, and no encoder here produces that. It
-needs a live session, which needs a console. No new instrument is needed: the PP42
-telemetry row already names the decoder that produced it, so one session per decoder
-answers this and a spike never will.
-
-Filed rather than explained: d3d11va's send is bimodal, a 103us median against a 26990us
-p99. A submission that sometimes takes 1.6 frame intervals is a stall, and its mean is
-an average of two behaviours rather than a description of either.
-
 ### §PP49 HDR on a stream that does not carry it
 
 The window already deals with HDR when the stream is HDR. The case this covers is the
@@ -849,3 +827,22 @@ The step that fits is to make the choice answerable rather than reverse it. The 
 record already names the decoder behind each row, so a client that ran either path on
 the OpenGL fallback would settle this from real sessions rather than a synthetic stream.
 Whether that is worth a knob, a default change or nothing is what this line decides.
+
+### §PP76 The decoder half a spike cannot reach
+
+PP48 settled what a generated stream can settle. All three hardware paths decode within
+13% of each other on an RTX 4060, and what separates them is the per-frame copy
+make_fallback_snapshot_frame runs for any hardware frame that is not AV_PIX_FMT_VULKAN -
+793us on cuda, 2253us on d3d11va, nothing on vulkan. PP71 then paced the same three at
+60fps and reversed the send ranking cuda was preferred for.
+
+None of that is the number a user feels. Frames arrive late and out of order because the
+network is what it is, and which decoder loses the fewest of them under that jitter is a
+property of the live path rather than of the silicon. A generator can carry resolution
+and bitrate; it cannot carry a congested link, and every attempt to synthesise one
+measures the synthesiser.
+
+No new instrument is needed. The PP42 telemetry row already names the decoder that
+produced it, so one session per decoder against a real console answers this, and the
+work is a run rather than a build. That is why this is filed as its own line instead of
+held open inside PP48: the cost question had an answer here and this one does not.

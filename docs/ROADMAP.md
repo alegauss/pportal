@@ -67,17 +67,17 @@
 
 - ⏳ **PP46** (deps: PP42 ✅, PP63) **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — A Chromium leaving the build should be visible in cold start and in megabytes, and stating it without measuring is how a port collects folklore. → §PP46
 - 📋 **PP61** (deps: PP46 ⏳) **the startup harness labels a warm run cold, because the OS file cache outlives the process** — 3771ms on the first run after a build against 1218ms on re-invocation, and nothing in the report says which cache state produced the number. → §PP61
-- 📋 **PP66** (deps: PP48 ⏳) **spike/decode-path writes a result.json naming no adapter, so two runs cannot be told apart by the file** — A measurement whose machine is carried only by its filename is one rename away from meaningless, and spike/video-upscale already records the card and driver it ran on. → §PP66
+- 📋 **PP66** (deps: PP48 ✅) **spike/decode-path writes a result.json naming no adapter, so two runs cannot be told apart by the file** — A measurement whose machine is carried only by its filename is one rename away from meaningless, and spike/video-upscale already records the card and driver it ran on. → §PP66
 
 ## Block I — NVIDIA path
 
-- ⏳ **PP48** (deps: PP41 ✅) **the client already prefers the cuda decoder on an NVIDIA card, and nothing measures whether that helps** — qmlbackend picks it from a card detection with no number behind the choice, so the vendor path is already here and already unevidenced. → §PP48
 - 📋 **PP49** (deps: PP11, PP47 ✅) **the console sends SDR on most titles and an HDR display shows it flat, with nothing in the client trying** — RTX Video HDR does this conversion on the presented frame, and it is the one vendor feature whose benefit is visible in a still image, not argued from a graph. → §PP49
 - 📋 **PP50** (deps: PP40 ✅, PP47 ✅) **frame generation would smooth a 30fps stream and cost a frame of latency to do it** — Interpolation needs the frame after the one being shown, so it buys smoothness with exactly the quantity remote play is judged on and the trade has to be measured. → §PP50
-- 📋 **PP51** (deps: PP48 ⏳) **NVIDIA first has no stated contract for what happens on an AMD or Intel machine** — A vendor path with no declared fallback becomes a vendor requirement by accident, one unmeasured decision at a time, and the users who lose the app never file a report. → §PP51
+- 📋 **PP51** (deps: PP48 ✅) **NVIDIA first has no stated contract for what happens on an AMD or Intel machine** — A vendor path with no declared fallback becomes a vendor requirement by accident, one unmeasured decision at a time, and the users who lose the app never file a report. → §PP51
 - 📋 **PP52** (deps: PP32) **the microphone path runs speex echo cancellation on the CPU, and speexdsp has no managed replacement** — NVIDIA ships GPU noise and echo removal for exactly this, so one task can both improve the voice sent to the console and delete a dependency the port has no answer for. → §PP52
 - 📋 **PP53** (deps: PP11, PP41 ✅) **frames arrive with network jitter and are presented against a fixed refresh, so each waits for a vblank it missed** — A variable refresh display can show a frame when it arrives rather than when the panel next allows it, which is latency removed and not an image improved. → §PP53
 - 📋 **PP72** (deps: —) **the auto decoder order prefers cuda over d3d11va on an OpenGL renderer, and the paced numbers now say the opposite** — PP71 measured cuda slowest of the three at the rate a console sends, so the one fallback that choice governs is picked against its own evidence. → §PP72
+- 📋 **PP76** (deps: —) **the decoder preference is measured on synthetic frames, and drops under network jitter are what a stream is judged by** — Decode cost follows resolution and bitrate, which a generator carries, but drops follow the network, which no encoder here produces. → §PP76
 
 ## Non-goals
 
