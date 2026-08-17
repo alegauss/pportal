@@ -46,6 +46,10 @@ class ChiakiException: public Exception
 		QMap<Qt::Key, int> key_map;
 		Decoder decoder;
 		QString hw_decoder;
+		// PP72: which renderer the window resolved to, "vulkan" or "opengl". Carried here rather
+		// than read back from the window later, because it is what decided hw_decoder above and
+		// the session record needs the pair.
+		QString renderer;
 		AVBufferRef *hw_device_ctx;
 		QString audio_out_device;
 		QString audio_in_device;
@@ -154,10 +158,11 @@ class StreamSession : public QObject
 		qint64 baseline_started_unix = 0;
 		QElapsedTimer baseline_elapsed;
 		/**
-		 * Kept for the session baseline: both are read from connect_info at construction and
-		 * connect_info does not outlive it, while the record is written at teardown.
+		 * Kept for the session baseline: all three are read from connect_info at construction
+		 * and connect_info does not outlive it, while the record is written at teardown.
 		 */
 		QString baseline_hw_decoder;
+		QString baseline_renderer;
 		bool baseline_idr_on_fec_failure = false;
 		QAtomicInteger<quint64> decoder_flush_generation{0};
 		bool cant_display = false;

@@ -195,6 +195,7 @@ StreamSession::StreamSession(const StreamSessionConnectInfo &connect_info, QObje
 	packet_loss_max = connect_info.packet_loss_max;
 	video_profile = connect_info.video_profile;
 	baseline_hw_decoder = connect_info.hw_decoder;
+	baseline_renderer = connect_info.renderer;
 	baseline_idr_on_fec_failure = connect_info.enable_idr_on_fec_failure;
 	ChiakiErrorCode err;
 		ffmpeg_decoder = new ChiakiFfmpegDecoder;
@@ -509,7 +510,10 @@ void StreamSession::FillBaseline(ChiakiSessionBaseline *baseline) const
 	// chiaki_ffmpeg_decoder_init refuses a decoder it cannot open rather than falling back,
 	// and StreamSession throws on that, so a session that got this far used what was asked
 	// for. The bitrate is the requested one - measured_bitrate_mbps is what it achieved.
+	// PP72: the renderer is recorded beside it because it is what narrowed the decoder choice
+	// to begin with, and a row that names one without the other cannot be compared to another.
 	chiaki_session_baseline_set_hw_decoder(baseline, baseline_hw_decoder.toUtf8().constData());
+	chiaki_session_baseline_set_renderer(baseline, baseline_renderer.toUtf8().constData());
 	baseline->bitrate_kbps = video_profile.bitrate;
 	baseline->packet_loss_max = packet_loss_max;
 	baseline->idr_on_fec_failure = baseline_idr_on_fec_failure;

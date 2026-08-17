@@ -937,6 +937,12 @@ void QmlBackend::createSession(const StreamSessionConnectInfo &connect_info)
         session_info.hw_decoder = "auto";
     }
     bool use_opengl_renderer = window && window->runtimeRendererBackend() == static_cast<int>(RenderBackend::OpenGL);
+    // PP72: recorded here, where the renderer is resolved and before any of the three branches
+    // below reads it. There is no window only in a context that never streams, and "unknown" is
+    // what the record says then rather than a renderer nobody observed.
+    session_info.renderer = window ? (use_opengl_renderer ? QStringLiteral("opengl")
+                                                          : QStringLiteral("vulkan"))
+                                   : QString();
     bool prefer_cuda = window && window->nvidiaCard() && availableDecoders.contains("cuda");
     auto fallbackVulkanDecoderForOpenGL = [&]() {
         if (!use_opengl_renderer || session_info.hw_decoder != "vulkan")

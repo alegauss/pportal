@@ -96,6 +96,16 @@ CHIAKI_EXPORT void chiaki_session_baseline_set_hw_decoder(ChiakiSessionBaseline 
 	baseline_set_text(baseline->hw_decoder, sizeof(baseline->hw_decoder), hw_decoder);
 }
 
+CHIAKI_EXPORT void chiaki_session_baseline_set_renderer(ChiakiSessionBaseline *baseline, const char *renderer)
+{
+	// Unlike the decoder, an empty renderer is not a state with a name: a session that produced
+	// the numbers below drew on something. So it reads "unknown" rather than being folded into
+	// one of the two real answers, which would file a row under a renderer nobody observed.
+	if(!renderer || !renderer[0])
+		renderer = "unknown";
+	baseline_set_text(baseline->renderer, sizeof(baseline->renderer), renderer);
+}
+
 #define BASELINE_HIST_LINEAR CHIAKI_SESSION_BASELINE_HIST_LINEAR
 #define BASELINE_HIST_SUB CHIAKI_SESSION_BASELINE_HIST_SUB
 #define BASELINE_HIST_SUB_BITS CHIAKI_SESSION_BASELINE_HIST_SUB_BITS
@@ -288,7 +298,7 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_session_baseline_format(const ChiakiSession
 			",\"duration_ms\":%llu"
 			",\"app_version\":\"%s\""
 			",\"video\":{\"width\":%u,\"height\":%u,\"fps\":%u,\"codec\":\"%s\"}"
-			",\"settings\":{\"hw_decoder\":\"%s\",\"bitrate_kbps\":%u"
+			",\"settings\":{\"hw_decoder\":\"%s\",\"renderer\":\"%s\",\"bitrate_kbps\":%u"
 			",\"packet_loss_max\":%.5f,\"idr_on_fec_failure\":%s}"
 			",\"measured_bitrate_mbps\":%.3f"
 			",\"average_packet_loss\":%.5f"
@@ -301,6 +311,7 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_session_baseline_format(const ChiakiSession
 			baseline->video_width, baseline->video_height, baseline->video_fps,
 			baseline->video_codec,
 			baseline->hw_decoder,
+			baseline->renderer,
 			baseline->bitrate_kbps,
 			baseline_finite(baseline->packet_loss_max),
 			baseline->idr_on_fec_failure ? "true" : "false",

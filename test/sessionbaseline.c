@@ -19,6 +19,10 @@ static void fill_reference(ChiakiSessionBaseline *baseline)
 	baseline->video_height = 1080;
 	baseline->video_fps = 60;
 	chiaki_session_baseline_set_hw_decoder(baseline, "cuda");
+	// PP72: opengl with cuda on purpose. That is the pair the automatic choice produces on an
+	// NVIDIA card whose window fell back to OpenGL, and it is the one this field exists to make
+	// visible - a fixture naming vulkan for both would never exercise the case.
+	chiaki_session_baseline_set_renderer(baseline, "opengl");
 	baseline->bitrate_kbps = 30000;
 	baseline->packet_loss_max = 0.05;
 	baseline->idr_on_fec_failure = true;
@@ -61,12 +65,12 @@ static MunitResult test_baseline_format_line(const MunitParameter params[], void
 	munit_assert_int(chiaki_session_baseline_format(&baseline, line, sizeof(line), &written), ==, CHIAKI_ERR_SUCCESS);
 
 	static const char *expected =
-			"{\"schema\":4"
+			"{\"schema\":5"
 			",\"started_utc\":\"2025-08-11T20:31:07Z\""
 			",\"duration_ms\":754321"
 			",\"app_version\":\"1.10.0\""
 			",\"video\":{\"width\":1920,\"height\":1080,\"fps\":60,\"codec\":\"h264\"}"
-			",\"settings\":{\"hw_decoder\":\"cuda\",\"bitrate_kbps\":30000"
+			",\"settings\":{\"hw_decoder\":\"cuda\",\"renderer\":\"opengl\",\"bitrate_kbps\":30000"
 			",\"packet_loss_max\":0.05000,\"idr_on_fec_failure\":true}"
 			",\"measured_bitrate_mbps\":27.500"
 			",\"average_packet_loss\":0.01250"
@@ -144,6 +148,41 @@ static MunitResult test_baseline_hw_decoder_defaults_to_software(const MunitPara
 }
 
 /**
+ * PP72: the renderer decides which decoder the automatic choice can reach, so a row naming a
+ * decoder without it cannot be compared to another row naming a different one. Unlike the
+ * decoder, there is no renderer a session could honestly be said to have run on when none was
+ * named - so the absent case reads "unknown" rather than being folded into one of the two real
+ * answers, which would file a row under a renderer nobody observed.
+ */
+static MunitResult test_baseline_renderer_defaults_to_unknown(const MunitParameter params[], void *user)
+{
+	ChiakiSessionBaseline baseline;
+	chiaki_session_baseline_init(&baseline);
+
+	chiaki_session_baseline_set_renderer(&baseline, NULL);
+	munit_assert_string_equal(baseline.renderer, "unknown");
+
+	chiaki_session_baseline_set_renderer(&baseline, "");
+	munit_assert_string_equal(baseline.renderer, "unknown");
+
+	chiaki_session_baseline_set_renderer(&baseline, "opengl");
+	munit_assert_string_equal(baseline.renderer, "opengl");
+
+	char line[CHIAKI_SESSION_BASELINE_LINE_MAX];
+	munit_assert_int(chiaki_session_baseline_format(&baseline, line, sizeof(line), NULL), ==, CHIAKI_ERR_SUCCESS);
+	munit_assert_not_null(strstr(line, "\"renderer\":\"opengl\""));
+	munit_assert_null(strstr(line, "\"renderer\":\"\""));
+
+	// The pair is what the comparison is made on, and this is the pair that only an OpenGL
+	// window produces. A row carrying one without the other is the defect this field fixes.
+	chiaki_session_baseline_set_hw_decoder(&baseline, "cuda");
+	munit_assert_int(chiaki_session_baseline_format(&baseline, line, sizeof(line), NULL), ==, CHIAKI_ERR_SUCCESS);
+	munit_assert_not_null(strstr(line, "\"hw_decoder\":\"cuda\",\"renderer\":\"opengl\""));
+
+	return MUNIT_OK;
+}
+
+/**
  * The record is local instrumentation for a port, and its field set is closed so that it
  * stays that way: there is no console, address, account or session id in it to transmit.
  *
@@ -164,7 +203,8 @@ static MunitResult test_baseline_field_set_is_closed(const MunitParameter params
 	static const char *carried[] = {
 		"\"schema\":", "\"started_utc\":", "\"duration_ms\":", "\"app_version\":",
 		"\"video\":", "\"width\":", "\"height\":", "\"fps\":", "\"codec\":",
-		"\"settings\":", "\"hw_decoder\":", "\"bitrate_kbps\":", "\"packet_loss_max\":",
+		"\"settings\":", "\"hw_decoder\":", "\"renderer\":", "\"bitrate_kbps\":",
+		"\"packet_loss_max\":",
 		"\"idr_on_fec_failure\":",
 		"\"measured_bitrate_mbps\":", "\"average_packet_loss\":",
 		"\"frames\":", "\"presented\":", "\"lost\":", "\"dropped\":",
@@ -221,6 +261,8 @@ static const BaselineFieldSet baseline_field_sets[] = {
 	// distinguishing fields in tools/compare-baselines rather than here. 4 is the first the
 	// writer is held to.
 	{ 4, 73, UINT64_C(0xf8297381c4869ab8) },
+	// PP72 added settings.renderer, which is one key and therefore a new schema.
+	{ 5, 74, UINT64_C(0xc64c5e7c2a1bf543) },
 };
 
 /** FNV-1a over the record's key names, in emission order, so a reorder is a change too. */
@@ -594,6 +636,13 @@ MunitTest tests_session_baseline[] = {
 	{
 		"/format_empty",
 		test_baseline_format_empty,
+		NULL, NULL,
+		MUNIT_TEST_OPTION_NONE,
+		NULL
+	},
+	{
+		"/renderer_defaults_to_unknown",
+		test_baseline_renderer_defaults_to_unknown,
 		NULL, NULL,
 		MUNIT_TEST_OPTION_NONE,
 		NULL

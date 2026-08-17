@@ -39,7 +39,7 @@ extern "C" {
  * test that says so out loud rather than pass quietly.
  */
 
-#define CHIAKI_SESSION_BASELINE_SCHEMA 4
+#define CHIAKI_SESSION_BASELINE_SCHEMA 5
 
 /** Longest line chiaki_session_baseline_format can produce, including the newline. */
 #define CHIAKI_SESSION_BASELINE_LINE_MAX 2048
@@ -163,6 +163,14 @@ typedef struct chiaki_session_baseline_t
 	 */
 	/** The decoder actually in use - "cuda", "d3d11va", "vulkan", or "software". */
 	char hw_decoder[CHIAKI_SESSION_BASELINE_TEXT_SIZE];
+	/**
+	 * PP72: the renderer the window ran on - "vulkan", "opengl", or "unknown". It belongs
+	 * beside the decoder because it is what decides which decoder the automatic choice can
+	 * reach: an OpenGL window cannot hold a vulkan frame, so on that renderer the auto path
+	 * picks between cuda and d3d11va and on the other one it does not. Two rows naming
+	 * different decoders are only comparable once both name the renderer that allowed them.
+	 */
+	char renderer[CHIAKI_SESSION_BASELINE_TEXT_SIZE];
 	/** Requested, not achieved. measured_bitrate_mbps is the achieved one. */
 	uint32_t bitrate_kbps;
 	/** Congestion control's loss ceiling, 0..1. */
@@ -227,6 +235,8 @@ CHIAKI_EXPORT void chiaki_session_baseline_set_app_version(ChiakiSessionBaseline
 CHIAKI_EXPORT void chiaki_session_baseline_set_video_codec(ChiakiSessionBaseline *baseline, const char *codec);
 /** NULL or empty becomes "software", which is the decoder that ran when none was named. */
 CHIAKI_EXPORT void chiaki_session_baseline_set_hw_decoder(ChiakiSessionBaseline *baseline, const char *hw_decoder);
+/** NULL or empty becomes "unknown": no renderer is not a state a session that drew a frame was in. */
+CHIAKI_EXPORT void chiaki_session_baseline_set_renderer(ChiakiSessionBaseline *baseline, const char *renderer);
 
 /** Fold one decoder-to-present handoff sample into the min/max/mean. */
 CHIAKI_EXPORT void chiaki_session_baseline_push_handoff(ChiakiSessionBaseline *baseline, uint64_t handoff_us);
