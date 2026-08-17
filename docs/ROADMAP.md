@@ -67,7 +67,6 @@
 
 - ⏳ **PP46** (deps: PP42 ✅, PP63) **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — A Chromium leaving the build should be visible in cold start and in megabytes, and stating it without measuring is how a port collects folklore. → §PP46
 - 📋 **PP61** (deps: PP46 ⏳) **the startup harness labels a warm run cold, because the OS file cache outlives the process** — 3771ms on the first run after a build against 1218ms on re-invocation, and nothing in the report says which cache state produced the number. → §PP61
-- 📋 **PP66** (deps: PP48 ✅) **spike/decode-path writes a result.json naming no adapter, so two runs cannot be told apart by the file** — A measurement whose machine is carried only by its filename is one rename away from meaningless, and spike/video-upscale already records the card and driver it ran on. → §PP66
 
 ## Block I — NVIDIA path
 

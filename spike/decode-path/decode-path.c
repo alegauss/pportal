@@ -40,9 +40,18 @@
 #include <stdlib.h>
 #include <string.h>
 
+// PP66: before every other include, and that ordering is load-bearing. hwcontext_d3d11va.h pulls
+// in d3d11.h itself, and d3d11.h only emits the ID3D11Device_* call macros a C caller needs if
+// COBJMACROS was defined by the time it was first read. Defined afterwards it compiles to five
+// implicit declarations and links to nothing.
+#define COBJMACROS
+#include <d3d11.h>
+#include <dxgi.h>
+
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libavutil/hwcontext.h>
+#include <libavutil/hwcontext_d3d11va.h>
 #include <libavutil/pixdesc.h>
 #include <libavutil/time.h>
 
@@ -213,6 +222,60 @@ fail:
 		av_buffer_unref(hw_device_ctx);
 	avcodec_free_context(&ctx);
 	return NULL;
+}
+
+// PP66: which card produced the numbers, read out of the device rather than off the filename.
+// spike/video-upscale already does this - it creates a D3D11 device to do its work and prints
+// DescribeAdapter beside every result - and the reason decode-path never did is that it asks
+// libavcodec for a hardware context and never touches DXGI itself.
+//
+// d3d11va is the one of the four device types whose AVHWDeviceContext carries an ID3D11Device, and
+// an ID3D11Device is what DXGI will answer about. So this is the adapter the driver handed ffmpeg,
+// not one enumerated independently: on a machine with a discrete card and an iGPU there are two
+// descriptions and only one of them is the run's. It is created and released before the first pass
+// so no extra device is alive while anything is being timed.
+//
+// Every failure lands in the string rather than in a return code. A result that says why it could
+// not name the card is still readable years later; one with the field missing is the defect.
+static void describe_adapter(char *out, size_t n)
+{
+	AVBufferRef *ref = NULL;
+	if (av_hwdevice_ctx_create(&ref, AV_HWDEVICE_TYPE_D3D11VA, NULL, NULL, 0) < 0) {
+		snprintf(out, n, "unknown - av_hwdevice_ctx_create(d3d11va) refused");
+		return;
+	}
+
+	AVHWDeviceContext *dev = (AVHWDeviceContext *)ref->data;
+	AVD3D11VADeviceContext *d3d = dev->hwctx;
+	IDXGIDevice *dxgi = NULL;
+	IDXGIAdapter *adapter = NULL;
+	DXGI_ADAPTER_DESC desc;
+
+	if (SUCCEEDED(ID3D11Device_QueryInterface(d3d->device, &IID_IDXGIDevice, (void **)&dxgi))
+	    && SUCCEEDED(IDXGIDevice_GetAdapter(dxgi, &adapter))
+	    && SUCCEEDED(IDXGIAdapter_GetDesc(adapter, &desc))) {
+		char name[128] = "?";
+		if (WideCharToMultiByte(CP_UTF8, 0, desc.Description, -1, name, (int)sizeof(name),
+		                        NULL, NULL) <= 0)
+			snprintf(name, sizeof(name), "?");
+		// The description is a fixed WCHAR[128] the driver pads, and a JSON string cannot carry
+		// a quote it did not open. Both are the file's problem rather than the reader's.
+		for (char *c = name; *c; c++)
+			if (*c == '"' || *c == '\\')
+				*c = '\'';
+		for (size_t i = strlen(name); i > 0 && name[i - 1] == ' '; i--)
+			name[i - 1] = '\0';
+		snprintf(out, n, "%s (vendor 0x%04x, device 0x%04x)", name, (unsigned)desc.VendorId,
+		         (unsigned)desc.DeviceId);
+	} else {
+		snprintf(out, n, "unknown - DXGI would not describe the d3d11va device");
+	}
+
+	if (adapter)
+		IDXGIAdapter_Release(adapter);
+	if (dxgi)
+		IDXGIDevice_Release(dxgi);
+	av_buffer_unref(&ref);
 }
 
 static void name_fmt(char *out, size_t n, int fmt)
@@ -503,9 +566,13 @@ int main(int argc, char **argv)
 		? (int)(sizeof(sweep_paths) / sizeof(sweep_paths[0]))
 		: (int)(sizeof(default_paths) / sizeof(default_paths[0]));
 
+	char adapter[192];
+	describe_adapter(adapter, sizeof(adapter));
+
 	printf("stream     : %s\n", file);
 	printf("ffmpeg     : libavcodec %d.%d.%d\n", LIBAVCODEC_VERSION_MAJOR,
 	       LIBAVCODEC_VERSION_MINOR, LIBAVCODEC_VERSION_MICRO);
+	printf("adapter    : %s\n", adapter);
 	printf("\n");
 
 	int ran = 0;
@@ -555,6 +622,7 @@ int main(int argc, char **argv)
 		return 2;
 	}
 	fprintf(f, "{\"spike\":\"decode-path\",\"task\":\"PP48\",\"stream\":\"%s\"", file);
+	fprintf(f, ",\"adapter\":\"%s\"", adapter);
 	fprintf(f, ",\"libavcodec\":\"%d.%d.%d\"", LIBAVCODEC_VERSION_MAJOR,
 	        LIBAVCODEC_VERSION_MINOR, LIBAVCODEC_VERSION_MICRO);
 	fprintf(f, ",\"paths\":[");

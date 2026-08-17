@@ -675,31 +675,6 @@ than assuming. Recording it means stamping something honest into the report - a
 cache_state the caller sets - so a reader can refuse to compare numbers taken under
 different conditions, the way compare-baselines already refuses mismatched settings.
 
-### §PP66 A result that cannot say which card it came from
-
-The decode-path harness records the ffmpeg it linked and the stream it read, and then
-names the card nowhere. release-4060.json says RTX 4060 in its filename and in the
-README beside it, which is exactly as durable as a filename: a second machine's run
-copied into the same directory under any other name is unattributable, and the numbers
-most worth comparing are the ones taken on different cards.
-
-spike/video-upscale does not have this gap. It creates a D3D11 device to do its work
-anyway, so DescribeAdapter reads the DXGI description and the vendor and device ids
-straight out of it, and its committed JSON carries them. decode-path creates no such
-device - it asks libavcodec for a hardware context and never touches DXGI - which is why
-the field was never there rather than why it should not be.
-
-The cheap route is the context it already builds. av_hwdevice_ctx_create for d3d11va
-yields an AVD3D11VADeviceContext holding an ID3D11Device, and one QueryInterface to
-IDXGIDevice reaches the same description video-upscale prints. That reports the adapter
-ffmpeg actually chose, which is worth more than one enumerated independently: a machine
-with an RTX 4060 and an Intel UHD 770 has two, and the run belongs to whichever the
-driver handed over.
-
-The rule this restores is the one the other spike already follows: a committed result
-should be readable years later by someone who has only the file, and a number whose
-machine is a guess is a number nobody can reuse.
-
 ## Block I — NVIDIA path
 
 ### §PP47 The right NVIDIA feature, waiting on a switch

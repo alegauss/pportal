@@ -175,14 +175,32 @@ so what is at stake is that one fallback rather than the common path.
   encodes 1080p60 at the bitrate the session baseline records rather than capturing a PS5's
   output. Decode cost follows resolution, profile and bitrate rather than content, so the cost
   transfers. **A dropped-frame count under real network jitter does not, and none is claimed** —
-  §PP48 asks for one and this spike does not answer it.
-- **`result.json` does not record the adapter**, only the ffmpeg version, so a run from another
-  machine is identified by its filename and this README rather than by the file. That is a gap in
-  the instrument, not in the numbers.
+  §PP76 asks for one and this spike does not answer it, because a generator cannot carry a
+  congested link.
 - **HEVC is not measured.** The console sends H.264 or HEVC and only H.264 is here.
+
+## Which card a result came from
+
+PP66. Every run prints `adapter` beside the ffmpeg version and writes the same string into its
+JSON, so a result is attributable without its filename:
+
+```
+adapter    : NVIDIA GeForce RTX 4060 (vendor 0x10de, device 0x2882)
+```
+
+It is read out of the device rather than enumerated: `av_hwdevice_ctx_create` for d3d11va yields an
+`AVD3D11VADeviceContext` holding an `ID3D11Device`, and one `QueryInterface` to `IDXGIDevice`
+reaches the description `spike/video-upscale` already prints — the same string, by the same route.
+So it names the adapter the driver handed *this process*, which on a machine with a discrete card
+and an iGPU is the only one of the two the run belongs to. The device is created and released
+before the first pass, so nothing extra is alive while anything is timed. A machine with no
+d3d11va gets the reason in the field rather than no field.
 
 ## Committed run
 
-[`release-4060.json`](release-4060.json) — the run every number above is read from. `result.json`,
-`stream.h264` and `decode-path.exe` are gitignored: a committed result is one taken deliberately,
-not whatever the last invocation left behind.
+[`release-4060.json`](release-4060.json) — the run every number above is read from — and
+[`release-4060-pool.json`](release-4060-pool.json) for the PP65 sweep. Both predate the probe, so
+their `adapter` was filled in from this README and carries `"adapter_annotated": true` to say so;
+a run taken from here on has the field measured and no such flag. `result.json`, `stream.h264` and
+`decode-path.exe` are gitignored: a committed result is one taken deliberately, not whatever the
+last invocation left behind.
