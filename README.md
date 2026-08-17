@@ -15,6 +15,12 @@ Chiaki is a Free and Open Source Software Client for PlayStation 4 and PlayStati
 This fork targets **Windows only**; the Linux, FreeBSD, OpenBSD, Android, macOS, Nintendo Switch and
 Steam Deck ports have been removed.
 
+## Hardware
+
+The tuning goes to NVIDIA first, and first is not only: the decode, renderer and present paths that
+must keep working with no NVIDIA card are stated in
+[docs/HARDWARE-CONTRACT.md](docs/HARDWARE-CONTRACT.md).
+
 ## Building
 
 Windows builds are done in MSYS2/MinGW64; see [doc/platform-build.md](doc/platform-build.md).

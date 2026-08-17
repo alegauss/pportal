@@ -71,9 +71,9 @@
 ## Block I — NVIDIA path
 
 - 📋 **PP49** (deps: PP11, PP47 ✅) **the console sends SDR on most titles and an HDR display shows it flat, with nothing in the client trying** — RTX Video HDR does this conversion on the presented frame, and it is the one vendor feature whose benefit is visible in a still image, not argued from a graph. → §PP49
-- 📋 **PP51** (deps: PP48 ✅) **NVIDIA first has no stated contract for what happens on an AMD or Intel machine** — A vendor path with no declared fallback becomes a vendor requirement by accident, one unmeasured decision at a time, and the users who lose the app never file a report. → §PP51
 - 📋 **PP52** (deps: PP32) **the microphone path runs speex echo cancellation on the CPU, and speexdsp has no managed replacement** — NVIDIA ships GPU noise and echo removal for exactly this, so one task can both improve the voice sent to the console and delete a dependency the port has no answer for. → §PP52
 - 📋 **PP53** (deps: PP11, PP41 ✅) **frames arrive with network jitter and are presented against a fixed refresh, so each waits for a vblank it missed** — A variable refresh display can show a frame when it arrives rather than when the panel next allows it, which is latency removed and not an image improved. → §PP53
+- 📋 **PP77** (deps: —) **the decoder choice that holds the non-NVIDIA floor is 70 lines inside a Qt method, so nothing can assert it** — A contract held by code review is one a refactor breaks quietly, and this is the branch a machine with no NVIDIA card depends on. → §PP77
 
 ## Non-goals
 
@@ -92,3 +92,7 @@
 - **No GPU vendor feature for the network path** Nothing NVIDIA ships touches a UDP
   socket, so the connection is improved by transport work and congestion control or not
   at all, whatever the card is.
+- **No vendor path whose absence is visible to the user** First is not only: a machine
+  with no NVIDIA card keeps d3d11va decode, a neutral renderer and an SDR present, and a
+  feature that is not there is not in the menu rather than explained in a dialog. The
+  floor and what actually covers it are in docs/HARDWARE-CONTRACT.md.
