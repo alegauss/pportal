@@ -21,3 +21,5 @@
 ## Block I — NVIDIA path
 
 - ⏸ **PP47** (deps: PP43 ✅) **DLSS needs motion vectors and a depth buffer, and a decoded video stream carries neither** — set aside (needs a driver-panel toggle): The feature that applies to video is RTX Video Super Resolution, not DLSS, and the two are confused often enough that the wrong one gets scheduled. → §PP47
+- ⏸ **PP50** (deps: PP40 ✅, PP47 ✅) **frame generation would smooth a 30fps stream and cost a frame of latency to do it** — set aside (needs a live session to measure the trade): Interpolation needs the frame after the one being shown, so it buys smoothness with exactly the quantity remote play is judged on. → §PP50
+- ⏸ **PP76** (deps: —) **the decoder preference is measured on synthetic frames, and drops under network jitter are what a stream is judged by** — set aside (needs a console): Decode cost follows resolution and bitrate, which a generator carries, but drops follow the network, which no encoder here produces. → §PP76
