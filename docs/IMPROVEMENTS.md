@@ -2,6 +2,27 @@
 
 ## Block A — Core
 
+### §PP81 Three arrays nobody reads yet
+
+Settings::Settings calls four loaders in a row and PP2 ported the first. The three left
+are hidden_hosts, manual_hosts and controller_mappings, all in the profile store, all
+QSettings arrays with the same size-plus-numbered-subkeys shape registered_hosts already
+has - so the reading is solved and only the fields are not.
+
+What each one costs if it is dropped. A manual host is a console the user added by
+address because discovery never found it, which is exactly the console they cannot
+re-add by discovery. A hidden host is one they told the client to stop showing, and
+losing that list makes the console list grow back. A controller mapping is an SDL
+mapping string per vid:pid, and a user who remapped a third-party pad has to do it again
+with a pad the client currently mishandles.
+
+None of them is the reinstall PP2 was about, and together they are the difference
+between a port that opens on the user's setup and one that opens on a default. The
+fields are worth reading off a real store the way the console fields were, rather than
+off settings.cpp: the controller_mappings entry stores its key as vidpid, and the
+migration at line 235 renames it, so a store written before that migration spells it
+differently.
+
 ## Block B — Native interop
 
 ### §PP4 Where managed code stops
@@ -596,6 +617,27 @@ It needs the ledger and the suite to be joinable, which is the one piece of desi
 this task: a test has to be able to name the line it holds, whether by convention in the
 test name or by an attribute the count can read. Without that join, the number is a
 guess and a gate on a guess is worse than no gate.
+
+### §PP82 A table that only agrees with itself
+
+The preference table asserts its own row count, its own scopes and its own kinds. Every
+one of those passes if the table is internally consistent and completely wrong, because
+the thing it is a transcription OF is a C++ file no assertion here reads.
+
+This is the shape PP56, PP74 and PP75 each closed somewhere else: a green that measures
+the absence of a check rather than the presence of a property. The counts make it worse
+rather than better - 148 is asserted, so a reviewer reads the number as verified, and it
+is only verified against the same file that states it.
+
+What would close it is the extraction run as a check rather than once by hand: walk
+gui/src/settings.cpp and gui/include/settings.h for the value("key", default).toX()
+calls, resolve the enum tables the defaults index into, and compare the result against
+the declared rows - failing on a key in one and not the other, and on a default that
+disagrees. The extraction already exists as the script that produced the table; what it
+lacks is a home in the tree and a place in test.cmd.
+
+The alternative is to accept drift and say so, which for a port whose whole point is
+reading the old client's store is not a position worth defending.
 
 ## Block H — Performance and telemetry
 
