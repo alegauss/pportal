@@ -99,6 +99,36 @@ public static class SelfTest
         Check("a non-numeric value is not an int", QSettingsValue.AsInt("PS5") is null);
 
         Console.WriteLine();
+        Console.WriteLine("QSettingsStore - which of the three stores a value lives in");
+
+        // A user with no profile reads the default store, which is what shipped and what these
+        // keep true. The two below are the case that did not: Settings scopes its QSettings per
+        // profile, so a user on "work" has their consoles under Chiaki-work, and a reader pinned
+        // to Chiaki finds an empty array and reports it as no consoles registered at all.
+        Check("no profile reads the default store",
+            QSettingsStore.ProfileKeyPath(QSettingsStore.DefaultKeyPath, "")
+                == @"SOFTWARE\Chiaki\Chiaki");
+        Check("an absent profile reads the default store",
+            QSettingsStore.ProfileKeyPath(QSettingsStore.DefaultKeyPath, null)
+                == @"SOFTWARE\Chiaki\Chiaki");
+        Check("a profile reads its own store",
+            QSettingsStore.ProfileKeyPath(QSettingsStore.DefaultKeyPath, "work")
+                == @"SOFTWARE\Chiaki\Chiaki-work",
+            QSettingsStore.ProfileKeyPath(QSettingsStore.DefaultKeyPath, "work"));
+
+        // The suffix joins the application half of the name, so a profile store is a SIBLING of
+        // the default one and not a child. Asserted apart from the equality above because both
+        // mistakes produce a path that looks entirely plausible in a debugger.
+        Check("a profile store is a sibling and not a child",
+            !QSettingsStore.ProfileKeyPath(QSettingsStore.DefaultKeyPath, "work")
+                .StartsWith(QSettingsStore.DefaultKeyPath + @"\", StringComparison.Ordinal));
+
+        // The colour pipeline is a third store, not a group inside either of the other two.
+        Check("placebo is a store of its own",
+            QSettingsStore.PlaceboKeyPath == @"SOFTWARE\Chiaki\pl_render_params"
+            && QSettingsStore.PlaceboKeyPath != QSettingsStore.DefaultKeyPath);
+
+        Console.WriteLine();
         Console.WriteLine($"{ran - failed} of {ran} passed.");
 
         // What the store on THIS machine says, printed and never asserted: a developer with a
@@ -106,14 +136,16 @@ public static class SelfTest
         // it would make the suite pass or fail on whether somebody happens to have run Chiaki.
         var store = new QSettingsStore();
         Console.WriteLine();
+        Console.WriteLine($"Profile: {(store.CurrentProfile.Length == 0 ? "(none)" : store.CurrentProfile)}"
+            + $"  known: [{string.Join(", ", store.Profiles())}]");
         if (!store.Exists())
         {
-            Console.WriteLine($"No Qt store at HKCU\\{QSettingsStore.DefaultKeyPath} on this machine.");
+            Console.WriteLine($"No Qt store at HKCU\\{store.KeyPath} on this machine.");
         }
         else
         {
             var hosts = store.RegisteredHosts();
-            Console.WriteLine($"Qt store: {hosts.Count} registered console(s).");
+            Console.WriteLine($"HKCU\\{store.KeyPath}: {hosts.Count} registered console(s).");
             foreach (RegisteredHost h in hosts)
             {
                 Console.WriteLine($"  {h.ServerNickname}  mac={h.MacText}  target={h.Target}  "
