@@ -265,11 +265,82 @@ public static class SelfTest
         Check("a read at the wrong width is refused", threwOnKind);
 
         Console.WriteLine();
+        Console.WriteLine("QtPaths - where the Qt client already put the file");
+
+        // Trap 1, and the reason this file exists. Qt's AppDataLocation is Roaming and its
+        // ConfigLocation is Local; .NET spells them ApplicationData and LocalApplicationData,
+        // which read as near-synonyms. A host that uses one for both writes the session logs
+        // where the other build never looks, and nothing reports it.
+        Check("app data is roaming and config is local",
+            QtPaths.AppDataLocation != QtPaths.ConfigLocation,
+            QtPaths.AppDataLocation + " vs " + QtPaths.ConfigLocation);
+        Check("app data is under Roaming",
+            QtPaths.AppDataLocation.StartsWith(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                StringComparison.OrdinalIgnoreCase));
+        Check("config is under Local, and is the local data location",
+            QtPaths.ConfigLocation == QtPaths.AppLocalDataLocation
+            && QtPaths.ConfigLocation.StartsWith(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                StringComparison.OrdinalIgnoreCase));
+
+        // QStandardPaths puts the organisation and the application in as two segments. Both are
+        // "Chiaki" here, so a composer that dropped one would still produce a plausible path -
+        // asserted against a root that makes the doubling visible.
+        Check("a location is root, organisation, application",
+            QtPaths.Compose(@"X:\root", "Org", "App") == @"X:\root\Org\App",
+            QtPaths.Compose(@"X:\root", "Org", "App"));
+        Check("the two Chiaki segments are both there",
+            QtPaths.AppDataLocation.EndsWith(Path.Combine("Chiaki", "Chiaki"), StringComparison.Ordinal),
+            QtPaths.AppDataLocation);
+
+        // The three files this port has to find where the Qt build left them.
+        Check("the session logs are in log/ under app data",
+            QtPaths.LogDirectory == Path.Combine(QtPaths.AppDataLocation, "log"));
+        Check("the shader cache is beside them",
+            QtPaths.ShaderCacheFile == Path.Combine(QtPaths.AppDataLocation, "pl_shader.cache"));
+        // The baseline ledger goes IN the log directory, not beside it. It is the file the two
+        // builds are compared with, so a host that appended to a second one would make the
+        // comparison meaningless rather than broken.
+        Check("the baseline ledger is inside the log directory",
+            QtPaths.SessionBaselineFile == Path.Combine(QtPaths.LogDirectory, "chiaki_baseline.jsonl"));
+        // Three "Chiaki" in a row is what qmlmainwindow.cpp actually produces: ConfigLocation
+        // already ends in two and the literal adds a third. Reproduced, not tidied - tidying it
+        // is a relocation, and this line is explicitly not one.
+        Check("the placebo conf keeps its third Chiaki",
+            QtPaths.PlaceboConfigFile == Path.Combine(QtPaths.ConfigLocation, "Chiaki", "pl_render_params.conf")
+            && QtPaths.PlaceboConfigFile.EndsWith(
+                Path.Combine("Chiaki", "Chiaki", "Chiaki", "pl_render_params.conf"), StringComparison.Ordinal),
+            QtPaths.PlaceboConfigFile);
+
+        // Trap 2: no SpecialFolder exists for Downloads, so this is a known-folder id or it is a
+        // guess. What can be checked anywhere is that the call works and that the id is the
+        // right one; what cannot is the difference that motivates it, because on a machine where
+        // the user never moved Downloads the shell's answer and the guess are the same string.
+        // So this fails on a broken P/Invoke or a mistyped FOLDERID, and is silent on the case
+        // it exists for - which is worth saying out loud rather than dressing up.
+        Check("downloads resolves to a real directory",
+            Path.IsPathRooted(QtPaths.DownloadsDirectory) && Directory.Exists(QtPaths.DownloadsDirectory),
+            QtPaths.DownloadsDirectory);
+        Check("downloads is not the desktop",
+            !QtPaths.DownloadsDirectory.Equals(QtPaths.DesktopDirectory, StringComparison.OrdinalIgnoreCase));
+
+        Console.WriteLine();
         Console.WriteLine($"{ran - failed} of {ran} passed.");
 
         // What the store on THIS machine says, printed and never asserted: a developer with a
         // Qt install sees their own consoles, and one without sees a line saying so. Asserting
         // it would make the suite pass or fail on whether somebody happens to have run Chiaki.
+        // The paths this machine resolves, printed so they can be held against what a Qt build
+        // prints beside them. Not asserted: they are absolute paths on one developer's disk.
+        Console.WriteLine();
+        Console.WriteLine("Paths on this machine:");
+        Console.WriteLine($"  logs      {QtPaths.LogDirectory}");
+        Console.WriteLine($"  shaders   {QtPaths.ShaderCacheFile}");
+        Console.WriteLine($"  placebo   {QtPaths.PlaceboConfigFile}");
+        Console.WriteLine($"  desktop   {QtPaths.DesktopDirectory}");
+        Console.WriteLine($"  downloads {QtPaths.DownloadsDirectory}");
+
         var store = new QSettingsStore();
         Console.WriteLine();
         Console.WriteLine($"Profile: {(store.CurrentProfile.Length == 0 ? "(none)" : store.CurrentProfile)}"

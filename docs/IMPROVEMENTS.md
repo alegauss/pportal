@@ -2,18 +2,6 @@
 
 ## Block A — Core
 
-### §PP3 One answer for where things live
-
-sessionlog.cpp writes a log per session, the registration path writes key material, and
-both resolve their directory through QStandardPaths. .NET's Environment.SpecialFolder
-does not produce the same answer, so a ported build silently starts a second tree beside
-the first.
-
-The user-visible cost is small and permanent: a support request quotes a log the other
-build cannot find. The fix is to state the paths once, in the new host, as the Qt paths
-- not to improve them. Relocating the data is a separate decision, and taking it during
-a port means never knowing which of the two changes broke a file that went missing.
-
 ## Block B — Native interop
 
 ### §PP4 Where managed code stops

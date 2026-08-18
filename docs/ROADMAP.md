@@ -7,8 +7,6 @@
 
 ## Block A — Core
 
-- 📋 **PP3** (deps: PP2 ✅) **app data, session logs and key files are placed by QStandardPaths, which the .NET host does not share** — Two processes disagreeing about where a log or a key file lives is the defect that outlives the port, so the locations are decided once against the Qt paths. → §PP3
-
 ## Block B — Native interop
 
 - 📋 **PP4** (deps: —) **libchiaki is C with function-pointer callbacks and no managed binding, so no .NET code can start a session** — Everything above this line is a screen and everything below it is the protocol, so the boundary is the one piece the port cannot avoid writing. → §PP4

@@ -6,6 +6,7 @@
 - ✅ **PP2** **settings, registered consoles and the PSN token live in QSettings, which the .NET host cannot read** — the remaining 148 preferences are declared with the store, kind and default Settings reads them with, extracted from source and read back through the grammar PP80 measured.
 - ✅ **PP79** **the .NET store reads the default hive, so a user with an active profile sees none of their consoles** — the reader resolves the active profile first and derives every path from it, with five assertions on the join and the third store named.
 - ✅ **PP80** **the store reader knows the byte-array encoding and none of the other five, so an @ nickname reads back wrong** — bool, double, uint, rect and the @ escape are read the way a probe store proved Qt writes them, under 21 more assertions.
+- ✅ **PP3** **app data, session logs and key files are placed by QStandardPaths, which the .NET host does not share** — the log, shader, placebo and baseline paths are stated as the Qt paths a probe measured, with the roaming/local split and the missing Downloads folder both asserted.
 
 ## Block B — Native interop
 
