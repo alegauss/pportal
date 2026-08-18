@@ -7,8 +7,7 @@
 
 ## Block A — Core
 
-- ⏳ **PP2** (deps: —) **settings, registered consoles and the PSN token live in QSettings, which the .NET host cannot read** — An upgrade that forgets every console a user registered is a reinstall, so the existing store is read by the new host before any screen is drawn. → §PP2
-- 📋 **PP3** (deps: PP2 ⏳) **app data, session logs and key files are placed by QStandardPaths, which the .NET host does not share** — Two processes disagreeing about where a log or a key file lives is the defect that outlives the port, so the locations are decided once against the Qt paths. → §PP3
+- 📋 **PP3** (deps: PP2 ✅) **app data, session logs and key files are placed by QStandardPaths, which the .NET host does not share** — Two processes disagreeing about where a log or a key file lives is the defect that outlives the port, so the locations are decided once against the Qt paths. → §PP3
 
 ## Block B — Native interop
 
@@ -31,7 +30,7 @@
 - 📋 **PP13** (deps: PP6, PP12) **the console list, the front door of the application, is QML bound to the discovery model** — It is the first screen a user sees and the first that proves the ported discovery, so it is the smallest slice that can be judged end to end. → §PP13
 - 📋 **PP14** (deps: PP6, PP12) **registration, manual host, console PIN and profile dialogs are QML with their own validation** — Registering a console is the step between an installed application and a working one, and its four dialogs are one flow rather than four screens. → §PP14
 - 📋 **PP15** (deps: PP7, PP12) **the PSN login and token dialogs are 882 lines of QML wrapped around the embedded browser** — The account link is what remote play outside the local network depends on, and these are the only screens whose content is a third party page. → §PP15
-- 📋 **PP16** (deps: PP2 ⏳, PP12) **the settings screen is 2984 lines of QML against 149 properties exposed from C++** — It is the largest single screen by a factor of three, and the property surface behind it is the real measure of the work rather than the markup. → §PP16
+- 📋 **PP16** (deps: PP2 ✅, PP12) **the settings screen is 2984 lines of QML against 149 properties exposed from C++** — It is the largest single screen by a factor of three, and the property surface behind it is the real measure of the work rather than the markup. → §PP16
 - 📋 **PP17** (deps: PP9, PP12) **the renderer tuning and colour mapping screens are 2132 lines of QML over libplacebo options** — Every control on them writes an option that only exists while libplacebo does, so they can only be drawn once the renderer decision has been taken. → §PP17
 - 📋 **PP18** (deps: PP8, PP12) **the controller mapping screen is QML bound to the live SDL mapping strings** — A mapping screen is unusable without input arriving from the device being mapped, so it lands with the input path rather than with the other dialogs. → §PP18
 - 📋 **PP19** (deps: PP12) **the confirm, remind, display, steam shortcut and dialog host screens are still QML** — They are small and repetitive, and taking them last means each is drawn in a control vocabulary the earlier screens already settled. → §PP19

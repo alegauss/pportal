@@ -3,7 +3,7 @@
 ## Block A — Core
 
 - ✅ **PP1** **no .NET host exists, so a XAML window has nowhere to live** — app/ builds one self-contained 62MB ChiakiNg.exe on net10.0-windows with Fluent, opens an empty 1280x720 window, and fails its own build when app.manifest and Version drift.
-- ✅ **PP2 (the console and account half)** **settings, registered consoles and the PSN token live in QSettings, which the .NET host cannot read** — The .NET host reads HKCU\Chiaki and never writes it: 1 real console, MAC and both 16-byte keys, held by 11 selftest cases pinned to bytes Qt actually wrote.
+- ✅ **PP2** **settings, registered consoles and the PSN token live in QSettings, which the .NET host cannot read** — the remaining 148 preferences are declared with the store, kind and default Settings reads them with, extracted from source and read back through the grammar PP80 measured.
 - ✅ **PP79** **the .NET store reads the default hive, so a user with an active profile sees none of their consoles** — the reader resolves the active profile first and derives every path from it, with five assertions on the join and the third store named.
 - ✅ **PP80** **the store reader knows the byte-array encoding and none of the other five, so an @ nickname reads back wrong** — bool, double, uint, rect and the @ escape are read the way a probe store proved Qt writes them, under 21 more assertions.
 

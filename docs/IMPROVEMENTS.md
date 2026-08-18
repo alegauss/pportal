@@ -2,32 +2,6 @@
 
 ## Block A — Core
 
-### §PP2 The store the port inherits
-
-The shipped half is the one every screen needs first: the consoles and the account.
-app/Settings reads HKCU\SOFTWARE\Chiaki\Chiaki and never writes it, so the old keys stay
-untouched and a rollback to the Qt build still finds them.
-
-What cost the work was not the registry but three encodings, each of which loses a
-registration silently. A QByteArray is `@ByteArray(` + payload + `)` where every byte is
-one Latin-1 char, so decoding as UTF-8 turns a 16-byte rp_key into 24. The payload can
-contain `)` - a real server_mac here ends in one - so the terminator is the last `)` and
-not the first, or the MAC comes back five bytes long and matches nothing. And a payload
-with NULs cannot be a REG_SZ, so QSettings writes REG_BINARY holding the UTF-16LE of
-that same text, which reads as a 40-byte key unless the outer layer is peeled first. All
-three were read off a real store rather than off Qt's source, and the selftest pins the
-bytes.
-
-What is left is the preferences. settings.cpp is 2518 lines and most of them are video,
-audio, controller and per-profile values that no screen before the settings screen
-reads. They are the same registry and the same decoder, so what remains is transcription
-and a decision per key about what the .NET side calls it - which is PP16's business as
-much as this line's.
-
-```roadkeep-remaining
-gui/src/settings.cpp :: settings->value\(
-```
-
 ### §PP3 One answer for where things live
 
 sessionlog.cpp writes a log per session, the registration path writes key material, and

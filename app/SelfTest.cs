@@ -105,12 +105,12 @@ public static class SelfTest
         // whole scheme, so a nickname of `@home` is stored `@@home`. A reader that skips this
         // hands that user a name they never typed, on every screen, with no error anywhere.
         Check("a string starting with '@' loses its escape",
-            QSettingsValue.AsString("@@home") == "@home", QSettingsValue.AsString("@@home"));
+            QSettingsValue.AsString("@@home") == "@home", QSettingsValue.AsString("@@home") ?? "<null>");
         Check("an ordinary string keeps its text",
             QSettingsValue.AsString("PS5-385") == "PS5-385");
         // …and the escape is one level, not a strip-all: `@@home` typed by a user is `@@@home`.
         Check("the escape is one '@' and not all of them",
-            QSettingsValue.AsString("@@@home") == "@@home", QSettingsValue.AsString("@@@home"));
+            QSettingsValue.AsString("@@@home") == "@@home", QSettingsValue.AsString("@@@home") ?? "<null>");
 
         // Order matters: the typed forms are read off the raw text, before the escape is undone.
         // Otherwise a string a user typed as `@ByteArray(x)` - stored `@@ByteArray(x)` - would
@@ -190,6 +190,81 @@ public static class SelfTest
             && QSettingsStore.PlaceboKeyPath != QSettingsStore.DefaultKeyPath);
 
         Console.WriteLine();
+        Console.WriteLine("Preferences - the transcription, and what it must not lose");
+
+        // The counts. A row that goes missing in a merge takes a default with it, and the
+        // preference it named then reads as zero on every store where the user never set it -
+        // no error, no screen that shows it, and nothing else in this tree that would notice.
+        Check("every declared key is unique",
+            Preferences.All.Count == 148, Preferences.All.Count.ToString());
+        Check("the three scopes are all populated",
+            Preferences.All.Values.Count(p => p.Scope == QSettingsScope.Default) == 2
+            && Preferences.All.Values.Count(p => p.Scope == QSettingsScope.Profile) == 81
+            && Preferences.All.Values.Count(p => p.Scope == QSettingsScope.Placebo) == 65);
+
+        // A default has to be the type its kind says, or the cast in the reader throws on the
+        // one machine that has never set that key - which is every fresh install.
+        PreferenceKey[] mistyped = Preferences.All.Values.Where(p => p.Default is not null && p.Kind switch
+        {
+            QSettingsKind.Bool => p.Default is not bool,
+            QSettingsKind.Int => p.Default is not int,
+            QSettingsKind.UInt => p.Default is not uint,
+            QSettingsKind.Double => p.Default is not double,
+            QSettingsKind.String => p.Default is not string,
+            _ => false,
+        }).ToArray();
+        Check("every default matches the kind it is declared with",
+            mistyped.Length == 0, string.Join(", ", mistyped.Select(p => p.Key)));
+
+        // The scope of these two is the whole of PP79 restated as data: current_profile is what
+        // decides which store the other 146 come out of, so it cannot itself live in one.
+        Check("current_profile is not profile-scoped",
+            Preferences.Find("settings/current_profile")?.Scope == QSettingsScope.Default);
+        Check("the placebo keys are in the placebo store",
+            Preferences.All.Values.Where(p => p.Key.StartsWith("placebo_settings/", StringComparison.Ordinal))
+                .All(p => p.Scope == QSettingsScope.Placebo));
+
+        // Spot checks against Settings, one per kind, chosen where a wrong default is visible:
+        // a decoder that is not "auto" pins a machine to one path, and a 60 that became 30 is a
+        // stream at half rate that looks like a network problem.
+        Check("hw_decoder defaults to auto",
+            Preferences.Find("settings/hw_decoder") is { Kind: QSettingsKind.String, Default: "auto" });
+        Check("fps defaults to 60",
+            Preferences.Find("settings/fps_local_ps5") is { Kind: QSettingsKind.Int, Default: 60 });
+        Check("the packet-loss ceiling carries the fallback chain's 0.05",
+            Preferences.Find("settings/packet_loss_max") is { Kind: QSettingsKind.Double, Default: 0.05 });
+        Check("geometry is a rect with no default",
+            Preferences.Find("settings/geometry") is { Kind: QSettingsKind.Rect, Default: null });
+        Check("auto_connect_mac is bytes",
+            Preferences.Find("settings/auto_connect_mac") is { Kind: QSettingsKind.ByteArray });
+
+        var prefs = new QSettingsPreferences(new QSettingsStore(@"SOFTWARE\ClaudeAbsent\ClaudeAbsent"));
+
+        // A store that is not there is every fresh install, and it must read as Qt's defaults
+        // rather than as zeroes. Pointed at a key path nothing has ever written, on purpose.
+        Check("an absent store reads the declared defaults",
+            prefs.GetString("settings/hw_decoder") == "auto"
+            && prefs.GetInt("settings/fps_local_ps5") == 60
+            && prefs.GetBool("settings/keyboard_enabled")
+            && prefs.GetUInt("settings/custom_resolution_width") == 1920u
+            && prefs.GetDouble("settings/zoom_factor") == -1.0
+            && prefs.GetRect("settings/geometry") is null);
+
+        // An undeclared key is a typo or an untranscribed preference. Both are bugs here, and a
+        // default would hide the second one for as long as the port lasts.
+        bool threwOnUnknown = false;
+        try { prefs.GetString("settings/not_a_real_key"); }
+        catch (KeyNotFoundException) { threwOnUnknown = true; }
+        Check("an undeclared key throws rather than defaulting", threwOnUnknown);
+
+        // Qt writes a bool as the text "true", so reading one as an int gives 0 for both of its
+        // values. Refused at the declaration rather than discovered in a screen.
+        bool threwOnKind = false;
+        try { prefs.GetInt("settings/keyboard_enabled"); }
+        catch (InvalidOperationException) { threwOnKind = true; }
+        Check("a read at the wrong width is refused", threwOnKind);
+
+        Console.WriteLine();
         Console.WriteLine($"{ran - failed} of {ran} passed.");
 
         // What the store on THIS machine says, printed and never asserted: a developer with a
@@ -216,6 +291,17 @@ public static class SelfTest
             (string? account, string? token) = store.PsnAccount();
             Console.WriteLine($"  psn account id: {(account is null ? "not linked" : "present")}, "
                 + $"refresh token: {(token is null ? "not linked" : "present")}");
+
+            // A handful of preferences read through the table, off this machine's own store.
+            // Printed and not asserted for the same reason the consoles above are: what they
+            // hold depends on what the developer happens to have set.
+            var mine = new QSettingsPreferences(store);
+            Console.WriteLine($"  decoder={mine.GetString("settings/hw_decoder")}"
+                + $"  renderer={mine.GetString("settings/render_backend")}"
+                + $"  volume={mine.GetInt("settings/audio_volume")}"
+                + $"  fps={mine.GetInt("settings/fps_local_ps5")}"
+                + $"  loss_max={mine.GetDouble("settings/packet_loss_max")}"
+                + $"  geometry={mine.GetRect("settings/geometry")?.ToString() ?? "unset"}");
         }
 
         return failed == 0 ? 0 : 1;
