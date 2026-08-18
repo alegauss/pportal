@@ -806,26 +806,3 @@ No new instrument is needed. The PP42 telemetry row already names the decoder th
 produced it, so one session per decoder against a real console answers this, and the
 work is a run rather than a build. That is why this is filed as its own line instead of
 held open inside PP48: the cost question had an answer here and this one does not.
-
-### §PP77 The floor with nothing under it
-
-PP51 wrote the floor down: d3d11va decode, a vendor-neutral renderer, an SDR present
-with no NGX. What it could not do is make any of it fail a build. The three statements
-are prose in docs/HARDWARE-CONTRACT.md and a non-goal, and both are read by people.
-
-The decode third is the one a test can decide. It is a pure function of four inputs -
-which decoders ffmpeg lists, whether the window reports an NVIDIA card, which renderer
-resolved, and what the user asked for - producing one name. Today it is three
-interleaved branches and a lambda inside QmlBackend::createSession, reachable only by
-constructing a window, so the case that matters most is the one nobody can run: no
-NVIDIA card, OpenGL renderer, d3d11va listed, and the answer had better be d3d11va
-rather than software.
-
-The obstacle is not the extraction. chiaki-unit is a C suite over lib/ and no target
-links a line of gui/, so a pure C++ function has nowhere to be called from. Whatever
-answers that also answers PP37, which wants view models asserted and hits the same wall
-- so the two should agree on one harness rather than grow two.
-
-This is not a change to the choice itself. PP72 is where the ordering is argued, and it
-is paused waiting on real sessions. This asserts the branch as it stands, so that
-argument happens against a fixed baseline.

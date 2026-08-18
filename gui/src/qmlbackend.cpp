@@ -31,6 +31,7 @@
 
 extern "C" {
 #include <chiaki/time.h>
+#include <chiaki/decoderchoice.h>
 #include <libavcodec/avcodec.h>
 #include <libavutil/pixdesc.h>
 #include <libavutil/pixfmt.h>
@@ -927,87 +928,54 @@ void QmlBackend::createSession(const StreamSessionConnectInfo &connect_info)
         logged_hw_transfer_formats.clear();
         logged_hw_transfer_failures.clear();
     }
-    QStringList availableDecoders = settings_qml->availableDecoders();
-    if (!session_info.hw_decoder.isEmpty()
-        && session_info.hw_decoder != "auto"
-        && session_info.hw_decoder != "none"
-        && !availableDecoders.contains(session_info.hw_decoder)) {
-        qCInfo(chiakiGui) << "Configured hw decoder" << session_info.hw_decoder
-                          << "is not currently available, falling back to auto";
-        session_info.hw_decoder = "auto";
-    }
-    bool use_opengl_renderer = window && window->runtimeRendererBackend() == static_cast<int>(RenderBackend::OpenGL);
-    // PP72: recorded here, where the renderer is resolved and before any of the three branches
-    // below reads it. There is no window only in a context that never streams, and "unknown" is
-    // what the record says then rather than a renderer nobody observed.
+    const QStringList availableDecoders = settings_qml->availableDecoders();
+    const bool use_opengl_renderer = window && window->runtimeRendererBackend() == static_cast<int>(RenderBackend::OpenGL);
+    // PP72: recorded here, where the renderer is resolved and before the choice below reads it.
+    // There is no window only in a context that never streams, and "unknown" is what the record
+    // says then rather than a renderer nobody observed.
     session_info.renderer = window ? (use_opengl_renderer ? QStringLiteral("opengl")
                                                           : QStringLiteral("vulkan"))
                                    : QString();
-    bool prefer_cuda = window && window->nvidiaCard() && availableDecoders.contains("cuda");
-    auto fallbackVulkanDecoderForOpenGL = [&]() {
-        if (!use_opengl_renderer || session_info.hw_decoder != "vulkan")
-            return;
 
-        bool fallbackApplied = false;
-        if (prefer_cuda)
-        {
-            qCInfo(chiakiGui) << "Renderer backend is OpenGL, falling back from vulkan decoder to cuda";
-            session_info.hw_decoder = "cuda";
-            fallbackApplied = true;
-        }
-        else
-        if (availableDecoders.contains("d3d11va"))
-        {
-            qCInfo(chiakiGui) << "Renderer backend is OpenGL, falling back from vulkan decoder to d3d11va";
-            session_info.hw_decoder = "d3d11va";
-            fallbackApplied = true;
-        }
-        if (!fallbackApplied)
-        {
-            qCInfo(chiakiGui) << "Renderer backend is OpenGL, falling back from vulkan decoder to software decoder";
-            session_info.hw_decoder.clear();
-        }
-    };
-    if(session_info.hw_decoder == "auto")
+    // PP77: the choice itself is chiaki_decoder_choice, a pure function in lib/ with the
+    // assertions that hold PP51's non-NVIDIA floor. What stays here is only what needs a live
+    // window - the renderer, the adapter vendor, and the vulkan device context below.
+    const QByteArray requested_decoder = session_info.hw_decoder.toUtf8();
+    ChiakiDecoderChoiceInputs choice_inputs = {};
+    choice_inputs.vulkan_listed = availableDecoders.contains("vulkan");
+    choice_inputs.cuda_listed = availableDecoders.contains("cuda");
+    choice_inputs.d3d11va_listed = availableDecoders.contains("d3d11va");
+    choice_inputs.nvidia_card = window && window->nvidiaCard();
+    choice_inputs.renderer = use_opengl_renderer ? CHIAKI_DECODER_RENDERER_OPENGL
+                                                 : CHIAKI_DECODER_RENDERER_VULKAN;
+    choice_inputs.requested = requested_decoder.constData();
+
+    const char *decoder_choice = chiaki_decoder_choice(&choice_inputs);
+    if (chiaki_decoder_choice_needs_vulkan_context(decoder_choice))
     {
-        session_info.hw_decoder = QString();
-        if(!use_opengl_renderer && availableDecoders.contains("vulkan"))
-        {
-            qCInfo(chiakiGui) << "Auto hw decoder selecting vulkan";
-            session_info.hw_decoder = "vulkan";
-        }
-        else if(prefer_cuda)
-        {
-            qCInfo(chiakiGui) << "Auto hw decoder selecting cuda";
-            session_info.hw_decoder = "cuda";
-        }
-        else if(availableDecoders.contains("d3d11va"))
-        {
-            qCInfo(chiakiGui) << "Auto hw decoder selecting d3d11va";
-            session_info.hw_decoder = "d3d11va";
-        }
-    }
-    fallbackVulkanDecoderForOpenGL();
-    if (session_info.hw_decoder == "vulkan") {
+        // The one input the pure function cannot take: a call into a live window, which a driver
+        // that advertised the decoder can still refuse. Clearing vulkan and re-asking runs the
+        // same fallback chain as every other path rather than a hand-written copy of it.
         session_info.hw_device_ctx = window->vulkanHwDeviceCtx();
         if (!session_info.hw_device_ctx)
         {
-            session_info.hw_decoder.clear();
             qCInfo(chiakiGui) << "vulkan video decoding not supported by your gpu driver, retrying other hw video decoders";
-            if(prefer_cuda)
-            {
-                qCInfo(chiakiGui) << "Falling back to cuda";
-                session_info.hw_decoder = "cuda";
-            }
-            else if(availableDecoders.contains("d3d11va"))
-            {
-                qCInfo(chiakiGui) << "Falling back to d3d11va";
-                session_info.hw_decoder = "d3d11va";
-            }
+            choice_inputs.vulkan_listed = false;
+            decoder_choice = chiaki_decoder_choice(&choice_inputs);
         }
-        if(session_info.hw_decoder.isEmpty())
-            qCInfo(chiakiGui) << "Falling back to software decoder";
     }
+
+    qCInfo(chiakiGui) << "Decoder choice:" << decoder_choice
+                      << "- requested" << (session_info.hw_decoder.isEmpty() ? QStringLiteral("(none)") : session_info.hw_decoder)
+                      << "renderer" << (use_opengl_renderer ? "opengl" : "vulkan")
+                      << "nvidia" << choice_inputs.nvidia_card
+                      << "available" << availableDecoders;
+
+    // "software" is this side's empty string: StreamSession passes a null decoder name when the
+    // field is empty, which is the software path.
+    session_info.hw_decoder = qstrcmp(decoder_choice, CHIAKI_DECODER_NAME_SOFTWARE)
+            ? QString::fromUtf8(decoder_choice)
+            : QString();
 
     try {
         session = new StreamSession(session_info, this);

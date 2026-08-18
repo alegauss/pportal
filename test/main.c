@@ -17,6 +17,7 @@ extern MunitTest tests_session_baseline[];
 extern MunitTest tests_frame_processor[];
 extern MunitTest tests_alloc_budget[];
 extern MunitTest tests_video_receiver[];
+extern MunitTest tests_decoderchoice[];
 #if CHIAKI_LIB_ENABLE_FFMPEG_DECODER
 extern MunitTest tests_ffmpegdecoder[];
 #endif
@@ -116,6 +117,13 @@ static MunitSuite suites[] = {
 	{
 		"/video_receiver",
 		tests_video_receiver,
+		NULL,
+		1,
+		MUNIT_SUITE_OPTION_NONE
+	},
+	{
+		"/decoderchoice",
+		tests_decoderchoice,
 		NULL,
 		1,
 		MUNIT_SUITE_OPTION_NONE

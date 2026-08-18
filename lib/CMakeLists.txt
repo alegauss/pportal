@@ -24,6 +24,7 @@ set(HEADER_FILES
 		include/chiaki/frameprocessor.h
 		include/chiaki/packetstats.h
 		include/chiaki/sessionbaseline.h
+		include/chiaki/decoderchoice.h
 		include/chiaki/seqnum.h
 		include/chiaki/discovery.h
 		include/chiaki/congestioncontrol.h
@@ -71,6 +72,7 @@ set(SOURCE_FILES
 		src/frameprocessor.c
 		src/packetstats.c
 		src/sessionbaseline.c
+		src/decoderchoice.c
 		src/discovery.c
 		src/congestioncontrol.c
 		src/stoppipe.c
@@ -91,6 +93,9 @@ set(SOURCE_FILES
 		src/remote/rudp.c
 		src/remote/rudpsendbuffer.c)
 
+# decoderchoice.c is deliberately outside this gate. It names decoders but includes nothing
+# from ffmpeg and links nothing: it is a decision over four booleans, and gating it would
+# make the assertion that holds PP51's non-NVIDIA floor conditional on a build option.
 if(CHIAKI_ENABLE_FFMPEG_DECODER)
 	list(APPEND HEADER_FILES include/chiaki/ffmpegdecoder.h)
 	list(APPEND SOURCE_FILES src/ffmpegdecoder.c)

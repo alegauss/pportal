@@ -13,7 +13,7 @@ a change that breaks one of them is a regression whether or not anything else im
 
 | Must keep working | Where it is decided today |
 |---|---|
-| **Hardware decode via d3d11va** | [`qmlsettings.cpp`](../gui/src/qmlsettings.cpp) lists `vulkan`, `d3d11va` and `cuda`, each filtered by `hwDecoderRuntimeAvailable`. [`qmlbackend.cpp`](../gui/src/qmlbackend.cpp) takes cuda only when the window reports an NVIDIA card *and* ffmpeg lists it; otherwise the automatic choice is vulkan, then d3d11va. |
+| **Hardware decode via d3d11va** | [`qmlsettings.cpp`](../gui/src/qmlsettings.cpp) lists `vulkan`, `d3d11va` and `cuda`, each filtered by `hwDecoderRuntimeAvailable`. The choice itself is [`chiaki_decoder_choice`](../lib/src/decoderchoice.c): cuda only when the window reports an NVIDIA card *and* ffmpeg lists it; otherwise vulkan, then d3d11va. **This row is the one with a test.** [`test/decoderchoice.c`](../test/decoderchoice.c) asserts it on the machine it is written for - no NVIDIA card, an OpenGL window, d3d11va listed - and dropping the d3d11va arm turns the suite red (§PP77). |
 | **A vendor-neutral renderer** | Vulkan is the default and OpenGL is the fallback when Vulkan initialisation fails ([`qmlmainwindow.cpp`](../gui/src/qmlmainwindow.cpp)). Neither is an NVIDIA path, and the fallback is taken on the driver's answer rather than on the vendor. |
 | **An SDR present with no NGX** | Nothing in the tree loads NGX. Everything that would — RTX Video Super Resolution (§PP47), RTX Video HDR (§PP49) — is unshipped, and the present path does not ask for it. |
 
