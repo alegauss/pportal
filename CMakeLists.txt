@@ -160,6 +160,10 @@ endif()
 
 add_subdirectory(lib)
 
+# PP4: the seam the .NET host calls through. Built unconditionally and not behind
+# CHIAKI_ENABLE_GUI - it is the half of the port that has no Qt in it at all.
+add_subdirectory(shim)
+
 if(CHIAKI_ENABLE_GUI)
 	find_package(SDL2 MODULE REQUIRED)
 	add_subdirectory(gui)

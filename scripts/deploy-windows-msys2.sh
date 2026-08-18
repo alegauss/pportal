@@ -16,6 +16,21 @@ qml_dir="$5"
 mkdir -p "$output_dir"
 cp "$exe_path" "$output_dir/"
 
+# PP4: the managed seam, put where its dependencies already are.
+#
+# chiaki-shim.dll statically links chiaki-lib, and chiaki-lib is not free-standing: common.c
+# reaches OpenSSL through random.h and winsock through winsock2.h, so the DLL imports
+# libcrypto-3-x64.dll like the client does. This tree is the one place that already holds it,
+# which is why the .NET host loads the shim from here rather than from beside its own
+# assembly. Copied and not ldd-walked: it is built by this repository, so its path is known
+# rather than discovered.
+shim_dll="$(dirname "$exe_path")/../shim/chiaki-shim.dll"
+if [[ -f "$shim_dll" ]]; then
+    cp "$shim_dll" "$output_dir/"
+else
+    echo "warning: chiaki-shim.dll not found at $shim_dll - the .NET host has nothing to call" >&2
+fi
+
 export PATH="${tool_dir}:${msys_prefix}/share/qt6/bin:${PATH}"
 export QT_PLUGIN_PATH="${msys_prefix}/share/qt6/plugins"
 export QML2_IMPORT_PATH="${msys_prefix}/share/qt6/qml"

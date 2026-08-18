@@ -1,5 +1,6 @@
 using System.Text;
 using ChiakiNg.Settings;
+using ChiakiNg.Native;
 
 namespace ChiakiNg;
 
@@ -326,11 +327,70 @@ public static class SelfTest
             !QtPaths.DownloadsDirectory.Equals(QtPaths.DesktopDirectory, StringComparison.OrdinalIgnoreCase));
 
         Console.WriteLine();
+        Console.WriteLine("ChiakiNative - the seam, called for real");
+
+        // The ABI first, because it is what makes every assertion under it mean anything. A DLL
+        // from an older build exports every name this assembly imports and answers all of them.
+        bool loaded = false;
+        try
+        {
+            ChiakiNative.CheckAbi();
+            loaded = true;
+        }
+        catch (Exception e) when (e is DllNotFoundException or InvalidOperationException)
+        {
+            Console.WriteLine($"  FAIL  the shim loads and matches its ABI  {e.Message}");
+            failed++;
+            ran++;
+        }
+
+        if (loaded)
+        {
+            Check("the shim loads and matches its ABI",
+                ChiakiNative.AbiVersion() == ChiakiNative.ExpectedAbi, ChiakiNative.LoadedFrom ?? "");
+
+            // A static string crossing into managed memory, and the smallest real property of
+            // the seam. CHIAKI_ERR_SUCCESS is 0 and libchiaki spells it "Success".
+            Check("a native string comes back readable",
+                ChiakiNative.ErrorString(0) == "Success", ChiakiNative.ErrorString(0) ?? "<null>");
+            // An unknown code still answers rather than returning null, which is libchiaki's
+            // behaviour and not something this seam decided.
+            Check("an unknown error code still answers",
+                !string.IsNullOrEmpty(ChiakiNative.ErrorString(9999)));
+
+            // And the reason this function was the first one across: PP51's floor, asserted once
+            // in C and now reached from managed code through the same implementation rather than
+            // re-derived beside it. If these two ever disagree, the port grew a second answer.
+            Check("the non-NVIDIA OpenGL floor holds across the seam",
+                ChiakiNative.DecoderChoice(false, false, true, false, ChiakiRenderer.OpenGL, "auto") == "d3d11va",
+                ChiakiNative.DecoderChoice(false, false, true, false, ChiakiRenderer.OpenGL, "auto") ?? "<null>");
+            Check("vulkan is taken off OpenGL and not on it",
+                ChiakiNative.DecoderChoice(true, false, true, false, ChiakiRenderer.Vulkan, "auto") == "vulkan"
+                && ChiakiNative.DecoderChoice(true, false, true, false, ChiakiRenderer.OpenGL, "vulkan") == "d3d11va");
+            Check("cuda needs the card as well as the decoder",
+                ChiakiNative.DecoderChoice(false, true, true, true, ChiakiRenderer.OpenGL, "auto") == "cuda"
+                && ChiakiNative.DecoderChoice(false, true, true, false, ChiakiRenderer.OpenGL, "auto") == "d3d11va");
+            // A null string across the boundary is a real case - it is what an unset preference
+            // hands over - and it must not become "auto" by accident.
+            Check("a null request crosses as an absence",
+                ChiakiNative.DecoderChoice(false, false, true, false, ChiakiRenderer.OpenGL, null) == "software");
+            Check("needs_vulkan_context agrees with the choice",
+                ChiakiNative.DecoderChoiceNeedsVulkanContext("vulkan")
+                && !ChiakiNative.DecoderChoiceNeedsVulkanContext("d3d11va"));
+        }
+
+        Console.WriteLine();
         Console.WriteLine($"{ran - failed} of {ran} passed.");
 
         // What the store on THIS machine says, printed and never asserted: a developer with a
         // Qt install sees their own consoles, and one without sees a line saying so. Asserting
         // it would make the suite pass or fail on whether somebody happens to have run Chiaki.
+        // Which of the candidate directories the shim actually came from. Printed rather than
+        // asserted because it is a property of how this machine was built, and a developer
+        // debugging a stale DLL wants to see it before anything else.
+        Console.WriteLine();
+        Console.WriteLine($"Shim: {ChiakiNative.LoadedFrom ?? "not loaded"}");
+
         // The paths this machine resolves, printed so they can be held against what a Qt build
         // prints beside them. Not asserted: they are absolute paths on one developer's disk.
         Console.WriteLine();

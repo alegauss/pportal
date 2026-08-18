@@ -11,11 +11,11 @@
 
 ## Block B — Native interop
 
-- 📋 **PP4** (deps: —) **libchiaki is C with function-pointer callbacks and no managed binding, so no .NET code can start a session** — Everything above this line is a screen and everything below it is the protocol, so the boundary is the one piece the port cannot avoid writing. → §PP4
-- 📋 **PP5** (deps: PP4) **streamsession.cpp drives the session through Qt signals and QThread, so a session cannot run without Qt** — 2862 lines mix protocol callbacks with Qt types, and a Qt-free session is what lets the interface be replaced once instead of rewritten twice. → §PP5
-- 📋 **PP6** (deps: PP4) **console discovery and wake use QUdpSocket, so the console list has no source in a Qt-free host** — Discovery is small, self-contained and the first thing the front door needs, so it is the cheapest proof that the interop boundary holds. → §PP6
-- 📋 **PP7** (deps: PP4) **PSN OAuth login runs in a QtWebEngine view, a bundled browser the WPF host has no equivalent for** — WebView2 ships with Windows and catches the same redirect, so the account link costs a control instead of a second rendering engine in the installer. → §PP7
-- 📋 **PP8** (deps: PP4) **controller input is SDL wired into Qt events, and 950 lines of it decide what a button does** — A remote play client is driven by a gamepad before a mouse, so the input path is a first-class port and not a detail of whichever screen is drawn first. → §PP8
+- ⏳ **PP4** (deps: —) **libchiaki is C with function-pointer callbacks and no managed binding, so no .NET code can start a session** — the session lifecycle, the 22 callbacks and the video buffers. → §PP4
+- 📋 **PP5** (deps: PP4 ⏳) **streamsession.cpp drives the session through Qt signals and QThread, so a session cannot run without Qt** — 2862 lines mix protocol callbacks with Qt types, and a Qt-free session is what lets the interface be replaced once instead of rewritten twice. → §PP5
+- 📋 **PP6** (deps: PP4 ⏳) **console discovery and wake use QUdpSocket, so the console list has no source in a Qt-free host** — Discovery is small, self-contained and the first thing the front door needs, so it is the cheapest proof that the interop boundary holds. → §PP6
+- 📋 **PP7** (deps: PP4 ⏳) **PSN OAuth login runs in a QtWebEngine view, a bundled browser the WPF host has no equivalent for** — WebView2 ships with Windows and catches the same redirect, so the account link costs a control instead of a second rendering engine in the installer. → §PP7
+- 📋 **PP8** (deps: PP4 ⏳) **controller input is SDL wired into Qt events, and 950 lines of it decide what a button does** — A remote play client is driven by a gamepad before a mouse, so the input path is a first-class port and not a detail of whichever screen is drawn first. → §PP8
 
 ## Block C — Video and input path
 

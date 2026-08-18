@@ -10,6 +10,8 @@
 
 ## Block B — Native interop
 
+- ✅ **PP4 (the shape and the first crossing)** **libchiaki is C with function-pointer callbacks and no managed binding, so no .NET code can start a session** — the seam is a shim DLL, and .NET calls chiaki_decoder_choice through it under eight assertions.
+
 ## Block C — Video and input path
 
 - ✅ **PP57** **videoreceiver reads slice.slice_type uninitialised when the bitstream parser declined the frame, which is UB** — The slice is zeroed at declaration and the log names a type only when the parse produced one, held by 2 munit assertions over a declined frame that still reaches the callback.

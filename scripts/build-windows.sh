@@ -70,7 +70,11 @@ fi
 # So the honest default is to build them. `notests` keeps the fast path for someone who
 # only wants the client, and is spelled out rather than implied so that the trade is made
 # on purpose - the person who passes it knows ctest is now reporting on the past.
-targets=(chiaki)
+# chiaki-shim is in this list for the reason spelled out above, one step further along: the
+# .NET host P/Invokes it, and dotnet build neither builds it nor notices that it is stale.
+# Left out, a run would load whatever DLL the last build happened to leave behind and
+# report on it - the same shape as PP56, with a managed assembly on the far side.
+targets=(chiaki chiaki-shim)
 if [[ $do_tests -eq 1 ]]; then
     # Absent when the tree was configured with -DCHIAKI_ENABLE_TESTS=OFF, and asking ninja
     # for a target that does not exist is a hard error. Read from the cache the configure
