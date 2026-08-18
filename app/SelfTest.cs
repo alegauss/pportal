@@ -99,6 +99,67 @@ public static class SelfTest
         Check("a non-numeric value is not an int", QSettingsValue.AsInt("PS5") is null);
 
         Console.WriteLine();
+        Console.WriteLine("QSettingsValue - the rest of the grammar, off a probe store Qt wrote");
+
+        // Rule 4, and the only rule here a user meets rather than a hardware key: `@` escapes the
+        // whole scheme, so a nickname of `@home` is stored `@@home`. A reader that skips this
+        // hands that user a name they never typed, on every screen, with no error anywhere.
+        Check("a string starting with '@' loses its escape",
+            QSettingsValue.AsString("@@home") == "@home", QSettingsValue.AsString("@@home"));
+        Check("an ordinary string keeps its text",
+            QSettingsValue.AsString("PS5-385") == "PS5-385");
+        // …and the escape is one level, not a strip-all: `@@home` typed by a user is `@@@home`.
+        Check("the escape is one '@' and not all of them",
+            QSettingsValue.AsString("@@@home") == "@@home", QSettingsValue.AsString("@@@home"));
+
+        // Order matters: the typed forms are read off the raw text, before the escape is undone.
+        // Otherwise a string a user typed as `@ByteArray(x)` - stored `@@ByteArray(x)` - would
+        // unescape into something that then decodes as bytes.
+        Check("an escaped @ByteArray( is a string and not bytes",
+            QSettingsValue.AsByteArray("@@ByteArray(x)") is null
+            && QSettingsValue.AsString("@@ByteArray(x)") == "@ByteArray(x)");
+
+        // Rule 5. Qt writes lower-case text and not a REG_DWORD; 1/0 is what an older or
+        // hand-edited store can hold.
+        Check("bool reads Qt's text form",
+            QSettingsValue.AsBool("true") == true && QSettingsValue.AsBool("false") == false);
+        Check("bool also reads 1 and 0",
+            QSettingsValue.AsBool("1") == true && QSettingsValue.AsBool("0") == false
+            && QSettingsValue.AsBool(1) == true && QSettingsValue.AsBool(0) == false);
+        Check("a non-boolean value is not a bool", QSettingsValue.AsBool("auto") is null);
+
+        // Rule 6. The C locale, and 1.0 comes back as the text "1" - a double that lost its
+        // point is still a double, and a parse that rejects it reports the default instead.
+        Check("double is parsed in the C locale",
+            QSettingsValue.AsDouble("0.05") == 0.05);
+        Check("a double that lost its point is still a double",
+            QSettingsValue.AsDouble("1") == 1.0);
+        // The negative half of rule 6: if this ever reads as 5, the parse picked up the
+        // machine's locale and every threshold in the settings is off by a hundred.
+        Check("a comma is not a decimal point",
+            QSettingsValue.AsDouble("0,05") is null or (not 0.05 and not 5.0),
+            QSettingsValue.AsDouble("0,05")?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "<null>");
+
+        // Rule 7. A REG_DWORD arrives signed, and Qt wrote a uint through the same 32 bits.
+        Check("a uint above int.MaxValue survives the DWORD",
+            QSettingsValue.AsUInt(unchecked((int)0x80000001u)) == 0x80000001u,
+            QSettingsValue.AsUInt(unchecked((int)0x80000001u))?.ToString() ?? "<null>");
+        Check("an ordinary uint is itself", QSettingsValue.AsUInt(127) == 127u);
+
+        // Rule 8, with the exact string the probe store held for settings/geometry.
+        QRectValue? rect = QSettingsValue.AsRect("@Rect(0 23 1920 1010)");
+        Check("geometry decodes to four numbers",
+            rect == new QRectValue(0, 23, 1920, 1010), rect?.ToString() ?? "<null>");
+        Check("a rect missing an edge is not a rect",
+            QSettingsValue.AsRect("@Rect(0 23 1920)") is null);
+        Check("a non-rect is not a rect",
+            QSettingsValue.AsRect("@Size(640 480)") is null && QSettingsValue.AsRect("PS5") is null);
+
+        // Rule 9. A REG_MULTI_SZ is not a scalar, and saying so beats "System.String[]".
+        Check("a multi-string is refused rather than rendered",
+            QSettingsValue.AsRawText(new[] { "a", "b" }) is null);
+
+        Console.WriteLine();
         Console.WriteLine("QSettingsStore - which of the three stores a value lives in");
 
         // A user with no profile reads the default store, which is what shipped and what these
