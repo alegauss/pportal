@@ -163,6 +163,25 @@ reaches the issue tracker first. It is a separate line from PP9 because it is Wi
 DXGI work that does not depend on which of the three renderer shapes wins, only on there
 being a window.
 
+### §PP78 The decoder option that cannot decode
+
+The settings combo lists "none" alongside vulkan, d3d11va and cuda, and it is the one
+entry that does not name an ffmpeg device type. Every branch of the choice passes it
+through unchanged - PP77 pinned that pass-through in a test on purpose - and
+StreamSession hands it to chiaki_ffmpeg_decoder_init as a decoder name, where
+av_hwdevice_find_type_by_name returns AV_HWDEVICE_TYPE_NONE and the init fails.
+
+So the user who suspects their hardware decoder and turns it off gets a stream that will
+not start, which reads as the machine being worse than it is. The software path itself
+works: it is what an empty decoder name already selects, and what the automatic choice
+falls back to when nothing is listed.
+
+The fix is one line and the question is where it goes. Mapping "none" to software inside
+chiaki_decoder_choice makes the combo honest and costs the caller nothing; mapping it in
+the caller leaves the pure function reproducing a defect nobody wants. The former, and
+PP77's pass-through assertion is then the line that has to change, which is where the
+decision should be visible.
+
 ## Block D — Screens
 
 ### §PP12 The control vocabulary, and the focus nobody ships
