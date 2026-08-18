@@ -29,7 +29,15 @@ type it, because **the gate now asks**: a vendored launcher, hook or skill behin
 roadkeep answering here is `install.stale`, filed at that file, and `install` is what closes
 it. A project holding its version on purpose says `[install] pinned = true` and the finding
 stops; the check and `engines` still answer, a pin being a decision and not a claim that the
-files agree. `install --committed`
+files agree. **`install --vendor` pins the engine itself**, which nothing else here does:
+it copies the highest-versioned roadkeep this machine can reach into `.roadkeep/` and the
+launcher resolves that ahead of any sibling checkout. By version and never by search order,
+so every machine pins the same one; a *working* checkout is skipped unless `ROADKEEP_SRC`
+names it, a tree mid-refactor being the thing a pin exists to stop running; `.git` is
+excluded so the copy is an artefact and not a second repository; and what landed is asked
+its version, a disagreement being a refusal that leaves the tree there to look at. Add
+`.roadkeep/` to `.gitignore` — the command says so and does not write it. `install
+--committed`
 wires a launcher committed to the repository instead of a path into a checkout, which is
 what reaches a session that can install no plugin and clone nothing — Claude Code on the
 web; its **guard** stands down where the harness has the plugin wired for that project, so
@@ -45,7 +53,20 @@ reads all three** and answers `agreed`, `behind` or `unpinnable` — the last be
 version and a modified checkout, which is no commit the plugin could match and so is not
 agreement; it exits 1 on either of the two that are not. Reach for it when a hook denies a
 write the command you just ran would have made, because then the refusal is that copy's
-rule and not this one's.
+rule and not this one's. **And `engines --invoke` prints, on one line and alone, the
+command that reaches the copy wired to this project** — reach for it before composing any
+shell call, because the tools here always find the right copy and a shell does not: a
+stale one in another plugins root does not fail, it agrees with a rule that has moved. On a
+project that declared `[install] enforced`, it no longer only agrees: a write from a copy
+`behind` the registered plugin is **refused before the lock**, and the refusal names that
+read. Only `behind` and only where that key was declared — a modified checkout is where a
+developer lives — and `init`, `install`, `uninstall` and `capture filed` still write, being
+how the wiring gets fixed and how a defect in this tool gets filed. The **gate** says so too,
+on the same two conditions: `lint` carries a `gate.behind` note beside its verdict, clean
+verdicts included, because a copy old enough to have its writes refused is old enough that
+its *pass* is that copy's pass. `enforced` is **not** `pinned`: that one is about the
+surfaces vendored into a project against the engine answering, and this one about that
+engine against the registered plugin — two pairs, so two keys.
 
 `roadkeep <add|status|amend|restate|ship|retire|record|non-goal|section> --help` has the
 flags. What they guarantee, so it costs you no thought: the id, the `→ §<id>` pointer, the
@@ -125,7 +146,13 @@ and the entry describe different work, which is two tasks sharing an id and `ren
 to fix. **Half of it landing is a third answer, not a full ship with a hedge in the
 sentence**: `ship <id> --part "<which half>"` records the entry as `✅ **<id> (which
 half)**` and *leaves the line open* at ⏳ with its section intact, and the later `ship
-<id>` completes it — replacing that entry in place and dropping the qualifier, which is
+<id>` completes it. **Pass `--remainder "<what is left>"` beside it**, because the entry
+records the half that landed and nothing else records the other one: without it the next
+reader recovers the rest by subtracting the ledger from the line, several sessions later,
+from prose written for another purpose. It becomes the open line's `why`, so `brief`
+prints both halves as fields — the entry says what happened and the line says what is
+owed. The symptom is untouched: a task half-delivered is still that symptom's task. The
+later `ship <id>` completes it — replacing that entry in place and dropping the qualifier, which is
 the only thing that keeps "local half" from outliving the local half. That replacement
 states a *different* sentence, so on a ledger written before the tool, where the partial's
 bullet **wraps**, it takes `--lines <n>` for the same reason `record amend` does, carries
@@ -399,7 +426,11 @@ Every query takes `--json`. **`budget` is the pre-`add` read that saves a retry*
 line leaves its prose fields, derived from the id, the marker, the deps and the pointer —
 all of which are known before the first word exists. It answers in **both units**: the
 characters are what refuses, and the word aim beside them is the one a sentence can be
-composed towards, so write to the words and let the gate stay unreached. A character here
+composed towards, so write to the words and let the gate stay unreached. **And it names the
+rules that are not widths**, per field — how many sentences the field accepts and whether it
+must end in a stop — because a `why` that fits every number and arrives as two sentences is
+refused all the same, and a read that published only the figures cost the composition it
+exists to save. A character here
 is a **UTF-16 code unit**, which every payload declares and every refusal names when it
 differs from what an editor shows — the stricter of the two counts, so a line this accepts
 is one a gate written in Java, C# or JavaScript accepts too, and a status marker costs two
@@ -426,9 +457,13 @@ amended by its own anchor. **If a body is refused anyway, do not count by hand**
 `body.too-long` names what each paragraph costs and which is the longest, so the second
 draft is composed once — and a `0` there is a table or a fence, which is prose no cut can
 reach. **And do not count by hand before one is refused either**: every prose argument here
-is a draft this read *measures* — `budget --block <x> --why "<draft>"` and `budget --anchor
-<a> --body "<draft>"` (or `--body-file`, or `-` for stdin) answer with the overrun and exit
-1 where it is over, which is the refusal without the write. Nothing is composed, so a draft
+is a draft this read *measures* — and **one call prices the whole `add --section`
+transaction**, which `add` validates as one unit and refuses as one: `budget --block <x>
+--why "<draft>" --body "<draft>"` answers for the line *and* the body it would write, while
+`budget --anchor <a> --body "<draft>"` asks about a section on its own (or `--body-file`, or
+`-` for stdin). Both answer with the overrun and exit 1 where it is over, which is the
+refusal without the write — and a `why` three characters over re-sending the whole rationale
+beside it is what pricing the two halves separately cost. Nothing is composed, so a draft
 twice its limit is a number rather than an error, and the schema published for these fields
 carries **no `maxLength`** on purpose: a ceiling there would refuse the very draft you are
 asking about. Reach for it after the first refusal and instead of the second — the retry
@@ -440,7 +475,12 @@ declares costs in lines and bytes and what is left — bare, every declared budg
 *before* editing one, never `wc` and a subtraction; `lint` is still what refuses.
 **`budget --tools` is the fifth**, and the only one about this surface rather than about
 prose: what the tool list costs a session that connects the server, in characters and by
-tool, largest first. Nothing refuses it — the number is stated so that adding a tool or a
+tool, largest first; **named — `budget --tools ship` — what each of that one tool's fields
+spent**, and the module its `help=` strings are written in, which is the question you have
+the moment `lint` says a tool is over and the ranking cannot answer. Where the description
+is the largest row, it is split by where each clause is written: a tool that always passes a
+flag carries that flag's own `help`, edited somewhere else. Nothing refuses it —
+the number is stated so that adding a tool or a
 sentence to a description stops looking free, which is the argument `[budgets]` makes about
 a file that loads every turn. Every
 verb that prints a section's size states **two** figures where they differ — `48 words,
