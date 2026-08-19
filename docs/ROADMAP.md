@@ -20,7 +20,7 @@
 
 ## Block D — Screens
 
-- 📋 **PP13** (deps: PP6 ✅, PP12 ✅) **the console list, the front door of the application, is QML bound to the discovery model** — It is the first screen a user sees and the first that proves the ported discovery, so it is the smallest slice that can be judged end to end. → §PP13
+- 📋 **PP13** (deps: PP6 ✅, PP12 ✅) **the console list, the front door of the application, is QML bound to the discovery model** — the screen itself in XAML, its actions and the auto-connect path; the list model landed in PP138. → §PP13
 - 📋 **PP14** (deps: PP6 ✅, PP12 ✅) **registration, manual host, console PIN and profile dialogs are QML with their own validation** — Registering a console is the step between an installed application and a working one, and its four dialogs are one flow rather than four screens. → §PP14
 - 📋 **PP15** (deps: PP7 ⏳, PP12 ✅) **the PSN login and token dialogs are 882 lines of QML wrapped around the embedded browser** — The account link is what remote play outside the local network depends on, and these are the only screens whose content is a third party page. → §PP15
 - 📋 **PP16** (deps: PP2 ✅, PP12 ✅) **the settings screen is 2984 lines of QML against 149 properties exposed from C++** — It is the largest single screen by a factor of three, and the property surface behind it is the real measure of the work rather than the markup. → §PP16
