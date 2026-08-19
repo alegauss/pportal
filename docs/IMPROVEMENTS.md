@@ -510,32 +510,6 @@ Repair any upstream and the port's copy becomes the divergence, on the next run.
 
 ## Block G — Test discipline
 
-### §PP35 The suite that is already written
-
-test/ holds 2095 lines of munit tests and 3417 of captured vectors, fec_test_cases.inl
-alone being 3081 lines of recorded erasure cases. For crypto, FEC, bitstream and the
-reorder queue there are fixed inputs and expected outputs already agreed with a real
-console - the modules where a silent translation error is most expensive.
-
-Most of that coverage arrived with PP23, which reads the vectors out of the C at run
-time and asserts against them. What was missing was granularity and a runner: the
-sixty-four erasure cases are ONE assertion in the host selftest, reporting "63 of 64"
-and not which, and a single failing pattern among sixty-four reads as flakiness rather
-than a bug.
-
-So tests/ChiakiNg.Tests is xUnit over the same readers - one case per recorded case, and
-no expected values of its own. Copying the vectors in would make a second oracle that
-agrees with the first long after either agrees with hardware, which is what PP82 was
-filed for.
-
-Both runners stay. The selftest runs inside the shipped binary, which is what PP22's CI
-runs against the published single file; xUnit runs against the assemblies and names what
-broke. test.cmd runs both.
-
-The first thing it showed: rounding the FEC stride to 8 instead of 16 leaves all
-sixty-four recorded cases green, because every unit size they record is already a
-multiple of 16. Five inline sizes carry that claim, and none of them is recorded.
-
 ### §PP36 Where a red test has to stop something
 
 After the chiaki-ng workflows were removed, .github/workflows holds one file and it
