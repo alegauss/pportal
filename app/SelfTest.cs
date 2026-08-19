@@ -1338,6 +1338,86 @@ public static class SelfTest
                         == ((ushort)1919, (ushort)1079),
                     $"{ps4Dpad.MaxX}x{ps4Dpad.MaxY}");
             }
+
+            Console.WriteLine();
+            Console.WriteLine("AudioOutRing - drop the oldest, never the newest");
+
+            // The three multipliers are the latency policy, and they are the numbers a port picks
+            // differently by accident: eight buffers of ring, fill the sink to two, clear it past
+            // three.
+            Check("the ring, the drain target and the clear threshold are 8, 2 and 3 buffers",
+                AudioOutRing.CapacityFor(1024) == 8192
+                && AudioOutRing.DrainTargetFor(1024) == 2048
+                && AudioOutRing.ClearThresholdFor(1024) == 3072);
+
+            var ring = new AudioOutRing(8);
+            Check("a fresh ring is empty", ring is { Fill: 0, Capacity: 8, OverflowReported: false });
+
+            Check("what goes in comes out in order",
+                !ring.Write([1, 2, 3]) && ring.Fill == 3
+                && ring.Read(3).SequenceEqual(new byte[] { 1, 2, 3 }) && ring.Fill == 0);
+
+            // The seam. A read never crosses the end of the storage, so a drain that wants more
+            // than the tail holds takes two turns - which is what the Qt client does, and a port
+            // that stitched the two halves would take a different number of iterations.
+            var seam = new AudioOutRing(8);
+            seam.Write([1, 2, 3, 4, 5, 6]);
+            seam.Read(6);
+            seam.Write([7, 8, 9, 10]);
+            byte[] acrossSeam = seam.Read(4);
+            Check("a read stops at the end of the storage",
+                acrossSeam.SequenceEqual(new byte[] { 7, 8 }) && seam.Fill == 2,
+                string.Join(",", acrossSeam));
+            Check("and the rest arrives on the next turn",
+                seam.Read(4).SequenceEqual(new byte[] { 9, 10 }) && seam.Fill == 0);
+
+            // A frame that does not fit drops the OLDEST bytes. This is the whole policy: audio
+            // is only worth playing if it is current, so what the listener has not heard yet is
+            // what goes.
+            var tight = new AudioOutRing(4);
+            tight.Write([1, 2, 3]);
+            Check("a write that overflows drops the oldest and keeps the newest",
+                tight.Write([4, 5, 6]) && tight.Fill == 4
+                && tight.Read(4).SequenceEqual(new byte[] { 3, 4 }),
+                string.Join(",", tight.Read(4)));
+
+            // A frame larger than the whole ring keeps its own TAIL. Keeping the head would play
+            // the oldest slice of a frame that is already too late.
+            var small = new AudioOutRing(3);
+            small.Write([9, 9]);
+            small.Write([1, 2, 3, 4, 5]);
+            Check("a frame bigger than the ring keeps its tail, not its head",
+                small.Fill == 3 && small.Read(3).SequenceEqual(new byte[] { 3, 4, 5 }),
+                string.Join(",", small.Read(3)));
+
+            // The log fires once per slow patch, not once per frame, and running dry re-arms it.
+            var noisy = new AudioOutRing(4);
+            noisy.Write([1, 2, 3, 4]);
+            noisy.Write([5, 6]);
+            Check("an overflow is reported", noisy.OverflowReported);
+            noisy.Write([7, 8]);
+            Check("and stays reported while it keeps overflowing", noisy.OverflowReported);
+            while (noisy.Fill > 0)
+                noisy.Read(4);
+            // Emptying the ring is not what re-arms it: the flag is cleared by a DRAIN that finds
+            // nothing, which is the turn of the loop after the last byte left. Asserted in two
+            // steps because the difference is one log line at the start of the next slow patch.
+            Check("the last byte leaving does not re-arm it", noisy.OverflowReported);
+            noisy.Read(4);
+            Check("a drain that finds nothing re-arms it", !noisy.OverflowReported);
+
+            // Degenerate inputs are no-ops rather than exceptions: an empty frame is what a muted
+            // stream sends, and a zero-capacity ring is what exists before InitAudio has run.
+            Check("an empty frame and a zero ring do nothing",
+                !new AudioOutRing(0).Write([1, 2, 3]) && !ring.Write([])
+                && new AudioOutRing(0).Read(4).Length == 0);
+
+            // Clearing is what happens when the sink is more than three buffers behind.
+            var full = new AudioOutRing(4);
+            full.Write([1, 2, 3, 4]);
+            full.Reset();
+            Check("a reset empties the ring and re-arms the log",
+                full is { Fill: 0, OverflowReported: false } && full.Read(4).Length == 0);
         }
 
         Console.WriteLine();
