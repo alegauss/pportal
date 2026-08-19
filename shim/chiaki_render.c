@@ -295,3 +295,73 @@ CHIAKI_RENDER_API void chiaki_render_share_destroy(void *share)
 {
 	chiaki_render_share_release((chiaki_render_share *)share);
 }
+
+CHIAKI_RENDER_API bool chiaki_render_share_clear_and_read(
+		void *d3d11, void *share, const float *rgba, uint8_t *out_pixel, int32_t *out_caps)
+{
+#ifdef PL_HAVE_D3D11
+	chiaki_render_d3d11 *placebo = (chiaki_render_d3d11 *)d3d11;
+	chiaki_render_share *self = (chiaki_render_share *)share;
+	struct pl_d3d11_wrap_params wrap;
+	struct pl_tex_transfer_params xfer;
+	pl_tex tex;
+	bool ok;
+
+	if(out_caps)
+		*out_caps = 0;
+	if(!placebo || !placebo->d3d11 || !placebo->d3d11->gpu || !self || !self->texture || !rgba
+			|| !out_pixel)
+		return false;
+
+	memset(&wrap, 0, sizeof(wrap));
+	wrap.tex = (ID3D11Resource *)self->texture;
+
+	// The wrap refuses an incompatible format or flag rather than failing later, which is why the
+	// texture above is created with BIND_RENDER_TARGET: pl_tex_clear is a blit, and libplacebo
+	// will not offer blit_dst on a texture D3D11 would not accept as a render target.
+	tex = pl_d3d11_wrap(placebo->d3d11->gpu, &wrap);
+	if(!tex)
+		return false;
+
+	// Whether libplacebo will let this texture be drawn into and read back at all. Both are
+	// properties of the D3D11 flags it was created with, resolved by the wrap - so asking here
+	// separates "libplacebo cannot use this texture" from "the draw did not land", which one
+	// boolean cannot.
+	if(out_caps)
+		*out_caps = (int32_t)(4 | (tex->params.blit_dst ? 1 : 0) | (tex->params.host_readable ? 2 : 0)
+				| (tex->params.renderable ? 8 : 0) | (tex->params.sampleable ? 16 : 0));
+
+	if(!tex->params.blit_dst)
+	{
+		pl_tex_destroy(placebo->d3d11->gpu, &tex);
+		return false;
+	}
+
+	pl_tex_clear(placebo->d3d11->gpu, tex, rgba);
+
+	if(!tex->params.host_readable)
+	{
+		// The draw happened; only the read-back is unavailable. Reported as a failure with the
+		// caps saying which, rather than as a success nobody checked.
+		pl_tex_destroy(placebo->d3d11->gpu, &tex);
+		return false;
+	}
+
+	memset(&xfer, 0, sizeof(xfer));
+	xfer.tex = tex;
+	xfer.ptr = out_pixel;
+	// One pixel, at the origin. The claim is that the clear reached THIS texture's memory, and a
+	// full download would spend a frame's bandwidth to say the same thing.
+	xfer.rc.x0 = 0;
+	xfer.rc.y0 = 0;
+	xfer.rc.x1 = 1;
+	xfer.rc.y1 = 1;
+
+	ok = pl_tex_download(placebo->d3d11->gpu, &xfer);
+	pl_tex_destroy(placebo->d3d11->gpu, &tex);
+	return ok;
+#else
+	(void)d3d11; (void)share; (void)rgba; (void)out_pixel;
+	return false;
+#endif
+}

@@ -21,7 +21,7 @@ public static class ChiakiRender
     internal const string Library = "chiaki-render";
 
     /// <summary>Must equal CHIAKI_RENDER_ABI in shim/chiaki_render.h. Independent of the shim's.</summary>
-    public const uint ExpectedAbi = 2;
+    public const uint ExpectedAbi = 3;
 
     [DllImport(Library, EntryPoint = "chiaki_render_abi_version", CallingConvention = CallingConvention.Cdecl)]
     public static extern uint AbiVersion();
@@ -55,6 +55,25 @@ public static class ChiakiRender
 
     [DllImport(Library, EntryPoint = "chiaki_render_d3d11_create", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr D3d11Create([MarshalAs(UnmanagedType.I1)] bool forceSoftware);
+}
+
+/// <summary>
+/// What libplacebo will do with the shared texture, resolved by pl_d3d11_wrap from the D3D11
+/// flags it was created with. Separating these is what distinguishes "libplacebo cannot use this
+/// texture" from "the draw did not land", which one boolean cannot.
+/// </summary>
+[Flags]
+public enum ShareCaps
+{
+    None = 0,
+    /// <summary>It can be drawn into - pl_tex_clear is a blit, so this is what the renderer needs.</summary>
+    BlitDst = 1,
+    /// <summary>It can be read back, which a renderer never needs and a check does.</summary>
+    HostReadable = 2,
+    /// <summary>pl_d3d11_wrap accepted it at all - without this the rest mean nothing.</summary>
+    Wrapped = 4,
+    Renderable = 8,
+    Sampleable = 16,
 }
 
 /// <summary>Which step of the D3D11-to-D3D9Ex share failed, or Ok.</summary>
@@ -127,6 +146,36 @@ public sealed class SharedSurface : IDisposable
         CallingConvention = CallingConvention.Cdecl)]
     [return: MarshalAs(UnmanagedType.I1)]
     private static extern bool ShareHasHandle(IntPtr share);
+
+    /// <summary>
+    /// PP132: clears the shared texture through libplacebo and reads the result back.
+    ///
+    /// The last link. The device exists and the texture reaches D3D9Ex; what neither says is that
+    /// libplacebo can render into THAT texture - pl_d3d11_wrap refuses an incompatible format or
+    /// flag - and that the result lands in the bytes the shared handle points at rather than in a
+    /// copy of them. Reading back is the whole point: a wrap that drew somewhere else would pass
+    /// every check that stopped at a return value.
+    /// </summary>
+    /// <returns>
+    /// The pixel at the origin as B,G,R,A - the texture's order and not the argument's, which is
+    /// the difference a renderer gets wrong once and then cannot see.
+    /// </returns>
+    public byte[]? ClearAndRead(RenderDevice device, float r, float g, float b, float a, out ShareCaps caps)
+    {
+        ArgumentNullException.ThrowIfNull(device);
+
+        float[] rgba = [r, g, b, a];
+        var pixel = new byte[4];
+        bool ok = ShareClearAndRead(device.Raw, _handle, rgba, pixel, out int raw);
+        caps = (ShareCaps)raw;
+        return ok ? pixel : null;
+    }
+
+    [DllImport(ChiakiRender.Library, EntryPoint = "chiaki_render_share_clear_and_read",
+        CallingConvention = CallingConvention.Cdecl)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    private static extern bool ShareClearAndRead(
+        IntPtr d3d11, IntPtr share, float[] rgba, byte[] pixel, out int caps);
 
     [DllImport(ChiakiRender.Library, EntryPoint = "chiaki_render_share_destroy",
         CallingConvention = CallingConvention.Cdecl)]

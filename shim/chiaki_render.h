@@ -36,7 +36,7 @@ extern "C" {
 #endif
 
 /** Bumped whenever an exported signature here changes meaning. Independent of CHIAKI_SHIM_ABI. */
-#define CHIAKI_RENDER_ABI 2
+#define CHIAKI_RENDER_ABI 3
 
 CHIAKI_RENDER_API uint32_t chiaki_render_abi_version(void);
 
@@ -125,6 +125,25 @@ CHIAKI_RENDER_API void *chiaki_render_share_surface(void *share);
 CHIAKI_RENDER_API bool chiaki_render_share_has_handle(void *share);
 
 CHIAKI_RENDER_API void chiaki_render_share_destroy(void *share);
+
+/**
+ * PP132: the last link - libplacebo DRAWING into the texture WPF will show.
+ *
+ * The device exists (PP131) and the texture reaches D3D9Ex (this file, above). What neither says
+ * is that libplacebo can render into that particular texture: pl_d3d11_wrap has to accept it,
+ * which it will refuse for an incompatible format or flag, and the result has to land in the
+ * bytes the shared handle points at rather than in a copy of them.
+ *
+ * So this clears the shared texture to a colour through pl_tex_clear and reads it back through
+ * pl_tex_download. Reading back is the whole point: a wrap that succeeded and drew somewhere else
+ * would pass every check that stopped at the return value.
+ *
+ * `rgba` is four floats in 0..1. `out_pixel` receives the four bytes at (0,0) as B,G,R,A - the
+ * texture's own order, not the argument's, because that difference is exactly the kind of thing
+ * a renderer gets wrong once and then cannot see.
+ */
+CHIAKI_RENDER_API bool chiaki_render_share_clear_and_read(
+		void *d3d11, void *share, const float *rgba, uint8_t *out_pixel, int32_t *out_caps);
 
 #ifdef __cplusplus
 }

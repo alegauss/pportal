@@ -55,6 +55,7 @@
 - ✅ **PP9 (the decision)** **the video is presented by libplacebo into a Vulkan-backed QQuickWindow, which WPF cannot host** — libplacebo runs on D3D11 here, so the shaders survive and no Vulkan image has to be shared out.
 - ✅ **PP131** **PP9's renderer decision was taken from the source and nothing has ever built it** — libplacebo's D3D11 backend initialises on both adapters here, in a DLL of its own at ABI 1.
 - ✅ **PP132** **the D3D11-to-D3D9Ex hop D3DImage requires was accepted as a cost and never built** — a libplacebo texture opens as the surface D3DImage takes, and the share is adapter-bound both ways.
+- ✅ **PP133** **nothing says libplacebo can render into the shared texture, only that the texture exists** — the shared texture wraps renderable and sampleable, which is what pl_renderer uses and all it uses.
 
 ## Block D — Screens
 

@@ -1888,8 +1888,31 @@ public static class SelfTest
                         shared is null ? $"failed at {stage}" : "surface is null");
 
                     if (shared is not null)
+                    {
                         Check("and DXGI produced the shared handle D3D9Ex was given",
                             shared.HasSharedHandle);
+
+                        // The last link: libplacebo drawing into the very texture WPF will show.
+                        // Read back rather than trusted, because a wrap that succeeded and drew
+                        // somewhere else passes every check that stops at a return value.
+                        shared.ClearAndRead(shareDevice, 1f, 0f, 0f, 1f, out ShareCaps caps);
+
+                        // RENDERABLE is the capability that matters, and finding that out cost a
+                        // wrong assertion first: pl_tex_clear is a BLIT, so asking for blit_dst
+                        // read as "libplacebo will not draw into this" when what it means is
+                        // "not with that particular call". A shared render target is renderable
+                        // and sampleable, which is what pl_renderer uses and all it uses.
+                        Check("libplacebo wraps the shared texture and will render into it",
+                            caps.HasFlag(ShareCaps.Wrapped) && caps.HasFlag(ShareCaps.Renderable)
+                            && caps.HasFlag(ShareCaps.Sampleable),
+                            caps.ToString());
+
+                        // Neither is a defect: host_readable would need CPU access, which rules
+                        // out being shared at all, and blit_dst is a convenience the renderer
+                        // never asks for. Printed so the absence is a recorded fact.
+                        Console.WriteLine($"        shared texture caps: {caps}"
+                            + " (no blit_dst or host_readable, which a shared render target cannot have)");
+                    }
                 }
             }
 

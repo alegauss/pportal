@@ -124,4 +124,38 @@ public class RenderProbeTests
 
         Assert.Equal(ShareStage.Open, stage);
     }
+
+    /// <summary>
+    /// PP132's last link: libplacebo wraps the shared texture and will render into it.
+    ///
+    /// RENDERABLE is the capability that matters, and finding that out cost a wrong assertion
+    /// first. pl_tex_clear is a BLIT, so a check asking for blit_dst read as "libplacebo will not
+    /// draw into this" when what it means is "not with that particular call". A shared render
+    /// target comes back renderable and sampleable - which is what pl_renderer uses, and all it
+    /// uses.
+    ///
+    /// It is NOT host_readable, and cannot be: reading back needs CPU access, which rules out
+    /// being shared at all. So the read-back that would have been the tidiest proof is the one
+    /// thing this texture can never do, and the capability flags are the evidence instead.
+    /// </summary>
+    [Fact]
+    public void LibplaceboWrapsTheSharedTextureAndWillRenderIntoIt()
+    {
+        using RenderDevice? device = ChiakiRender.CreateD3d11(forceSoftware: false);
+        if (device is null)
+            return;
+
+        using SharedSurface? shared = SharedSurface.Create(device, 1920, 1080, out _);
+        Assert.NotNull(shared);
+
+        shared.ClearAndRead(device, 1f, 0f, 0f, 1f, out ShareCaps caps);
+
+        Assert.True(caps.HasFlag(ShareCaps.Wrapped), $"pl_d3d11_wrap refused it: {caps}");
+        Assert.True(caps.HasFlag(ShareCaps.Renderable), $"not renderable: {caps}");
+        Assert.True(caps.HasFlag(ShareCaps.Sampleable), $"not sampleable: {caps}");
+
+        // Asserted absent rather than ignored, so that a libplacebo which started offering them
+        // is a change someone looks at rather than one nobody notices.
+        Assert.False(caps.HasFlag(ShareCaps.HostReadable), "a shared texture cannot be read back");
+    }
 }
