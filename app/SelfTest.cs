@@ -1656,6 +1656,66 @@ public static class SelfTest
             }
 
             Console.WriteLine();
+            Console.WriteLine("PlaceboBackends - what PP9's renderer decision rests on");
+
+            // PP9 offered three shapes and all three assume libplacebo means Vulkan. These are the
+            // checkable claims behind the fourth: run libplacebo ON D3D11. Nothing here has been
+            // built or run - what is asserted is the ground the decision stands on, so that it
+            // fails loudly rather than turning out to have been wrong halfway through a screen.
+            string? plConfig = PlaceboBackends.LocateHeader("config.h");
+            string? plD3d11 = PlaceboBackends.LocateHeader("d3d11.h");
+            string? qmlWindow = PlaceboBackends.LocateWindow();
+
+            if (plConfig is null || plD3d11 is null || qmlWindow is null)
+            {
+                Console.WriteLine("  --    libplacebo's backends  (no MSYS2 toolchain or no checkout here)");
+            }
+            else
+            {
+                string config = File.ReadAllText(plConfig);
+                string d3d11 = File.ReadAllText(plD3d11);
+                string window = File.ReadAllText(qmlWindow);
+
+                // The premise. D3D11 is optional in libplacebo at BUILD time, so this is a fact
+                // about the installation this tree links, not about the project - and without it
+                // the fourth shape does not exist and PP9 falls back to its original three.
+                Check("the libplacebo this tree links has both backends compiled in",
+                    PlaceboBackends.Compiled(config, "D3D11") && PlaceboBackends.Compiled(config, "VULKAN"),
+                    PlaceboBackends.Compiled(config, "D3D11") ? "vulkan missing" : "d3d11 missing");
+
+                // What a d3d11va frame is worth. PP77 prefers vulkan because it is "the one decoder
+                // whose frame the renderer can take without a copy"; wrapping NV12 and P010 is that
+                // sentence being about d3d11va instead - and d3d11va is PP51's non-NVIDIA floor.
+                Check("the D3D11 backend adopts a decoder's own texture, video formats included",
+                    PlaceboBackends.WrapsAVideoTexture(d3d11));
+
+                // The argument itself. Of the backend-named calls the Qt window makes, the ones
+                // with no D3D11 counterpart must be exactly the QtQuick ones - hold, release and
+                // the timeline semaphore exist to hand the image to Qt's OWN Vulkan renderer so
+                // QML can draw over the video. The port has no QtQuick and no such handover; WPF
+                // composites instead. If a call outside that set ever loses its counterpart, the
+                // substitution stops being a substitution and this is where that shows up.
+                IReadOnlySet<string> used = PlaceboBackends.BackendCalls(window, "vulkan");
+                IReadOnlySet<string> offered = PlaceboBackends.BackendCalls(d3d11, "d3d11");
+                string[] orphans = used.Where(c => !offered.Contains(c)).Order(StringComparer.Ordinal).ToArray();
+                string[] qtQuickOnly =
+                [
+                    "hold_ex", "hold_params", "release_ex", "release_params",
+                    "sem_create", "sem_destroy", "sem_params", "unwrap",
+                ];
+
+                Check("every backend call the window makes has a D3D11 counterpart, bar QtQuick's",
+                    orphans.SequenceEqual(qtQuickOnly.Order(StringComparer.Ordinal)),
+                    string.Join(", ", orphans));
+
+                // And the reason none of this is option C: the shaders live above pl_gpu. They do
+                // not know which backend is under them, and they are what the picture looks like.
+                Check("the renderer work above pl_gpu is backend-agnostic and is most of it",
+                    PlaceboBackends.RendererCalls(window) > PlaceboBackends.BackendCalls(window, "vulkan").Count,
+                    $"{PlaceboBackends.RendererCalls(window)} agnostic vs {used.Count} backend-named");
+            }
+
+            Console.WriteLine();
             Console.WriteLine("Gamepads - SDL, before a pad is plugged in");
 
             Check("the hint table names the four the input path depends on",

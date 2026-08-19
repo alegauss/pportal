@@ -47,6 +47,7 @@
 - ✅ **PP69** **slice_set_reference_frame_h265 edits the frame from a parse that ran out of input, and reports that as success** — The write is refused when the parse overran or would reach behind the caller's buffer, held by a munit assertion at the one length of 128 measured where that changes the answer.
 - ✅ **PP65** **d3d11va's decode submission stalls: a 103us median send against a 26990us p99, which is 1.6 frame intervals** — It is the harness, not the driver: fed at 60fps instead of as fast as it will take them, the p99 is 548us against 25124us, while the surface pool and the held frames move nothing.
 - ✅ **PP78** **picking "none" in the decoder setting fails the session instead of decoding in software** — chiaki_decoder_choice answers software for none and never returns the literal, so the caller's existing software mapping carries it to a stream that starts.
+- ✅ **PP9 (the decision)** **the video is presented by libplacebo into a Vulkan-backed QQuickWindow, which WPF cannot host** — libplacebo runs on D3D11 here, so the shaders survive and no Vulkan image has to be shared out.
 
 ## Block D — Screens
 

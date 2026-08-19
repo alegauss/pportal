@@ -61,22 +61,24 @@ one job: take a decoded frame, run it through libplacebo on Vulkan, and present 
 the same window QML is drawing into. WPF cannot be that window. Its composition target
 is D3D9Ex, and there is no path that hands it a Vulkan swapchain.
 
-Three shapes, and the task is to pick one rather than to discover it mid-screen:
+Three shapes were filed - a Vulkan child HWND, which nothing can be drawn over; a Vulkan
+image shared into D3D11; or dropping libplacebo and its shaders. All three assume
+libplacebo means Vulkan, and it does not: this tree's build reports PL_HAVE_D3D11.
 
-A child HWND hosted by HwndHost, rendering Vulkan directly. Fastest, and the option that
-keeps libplacebo untouched - but an airspace child window sits above all WPF content, so
-nothing can be drawn over the video, which the overlay task in this block then has to
-answer.
+Decided: the fourth shape, libplacebo ON D3D11, presented through D3DImage. Measured
+rather than argued. The window names 13 backend-specific calls; 5 have exact D3D11
+counterparts, and all 8 that do not - hold, release, the timeline semaphore, unwrap -
+exist to hand the image to QtQuick's own Vulkan renderer so QML can draw over the video.
+There is no QtQuick in the port and no such handover; WPF composites instead. The 15
+renderer calls above pl_gpu do not move at all, which is the shader work option C
+discarded.
 
-A shared D3D11 texture presented through D3DImage. Composes properly with XAML above it,
-at the cost of an interop copy per frame and the Vulkan-to-D3D11 sharing that makes it
-possible.
+It also moves the free decoder. PP77 prefers vulkan as "the one decoder whose frame the
+renderer can take without a copy"; pl_d3d11_wrap adopts NV12 and P010 directly, so that
+is d3d11va - PP51's non-NVIDIA floor.
 
-Dropping libplacebo for a D3D11 renderer. Native to the target, and it discards the
-shader work that is the reason the picture looks the way it does.
-
-The right answer is not obvious and it is not cheap to change later, which is why it is
-one task, taken before the two that follow it.
+Unbuilt and unrun. The costs are the D3D11-to-D3D9Ex hop D3DImage requires, its format
+restriction, and a backend less exercised upstream than Vulkan.
 
 ### §PP10 The overlay is the renderer decision, spelled out
 
