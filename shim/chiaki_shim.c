@@ -2099,6 +2099,25 @@ CHIAKI_SHIM_API int32_t chiaki_shim_discovery_service_host_request_port(void *ho
 	return host ? (int32_t)host->host_request_port : 0;
 }
 
+CHIAKI_SHIM_API int32_t chiaki_shim_duid_str_size(void)
+{
+	return (int32_t)CHIAKI_DUID_STR_SIZE;
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_generate_client_device_uid(char *buf, int32_t *size)
+{
+	size_t out;
+	ChiakiErrorCode err;
+
+	if(!buf || !size || *size < (int32_t)CHIAKI_DUID_STR_SIZE)
+		return (int32_t)CHIAKI_ERR_BUF_TOO_SMALL;
+
+	out = (size_t)*size;
+	err = chiaki_holepunch_generate_client_device_uid(buf, &out);
+	*size = (int32_t)out;
+	return (int32_t)err;
+}
+
 CHIAKI_SHIM_API void chiaki_shim_session_free(void *session)
 {
 	chiaki_shim_session *self = (chiaki_shim_session *)session;

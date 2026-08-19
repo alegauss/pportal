@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 25
+#define CHIAKI_SHIM_ABI 26
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -601,6 +601,22 @@ CHIAKI_SHIM_API const char *chiaki_shim_discovery_service_host_field(
 /** That host's state and request port, which are not strings. */
 CHIAKI_SHIM_API int32_t chiaki_shim_discovery_service_host_state(void *hosts, int32_t index);
 CHIAKI_SHIM_API int32_t chiaki_shim_discovery_service_host_request_port(void *hosts, int32_t index);
+
+/**
+ * PP7: the client device id the PSN login carries.
+ *
+ * It identifies this installation to Sony's relay, and it is generated rather than chosen - which
+ * is why it comes from libchiaki rather than from a Guid on this side. A port that made its own
+ * would produce something of the right shape that the relay does not recognise.
+ *
+ * `size` is in/out: room offered, then characters written including the terminator. It needs at
+ * least CHIAKI_SHIM_DUID_STR_SIZE.
+ */
+#define CHIAKI_SHIM_DUID_STR_SIZE 49
+
+CHIAKI_SHIM_API int32_t chiaki_shim_duid_str_size(void);
+
+CHIAKI_SHIM_API int32_t chiaki_shim_generate_client_device_uid(char *buf, int32_t *size);
 
 /**
  * PP23: the registration crypto, reachable so that both implementations can be run on one input.

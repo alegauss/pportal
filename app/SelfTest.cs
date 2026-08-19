@@ -1516,6 +1516,77 @@ public static class SelfTest
             }
 
             Console.WriteLine();
+            Console.WriteLine("PsnAuth - the login, minus the browser");
+
+            // The device id comes from libchiaki rather than from a Guid here: it identifies this
+            // installation to the relay, so one of the right shape is not one it recognises.
+            string duid = PsnAuth.GenerateDeviceUid();
+            Check("a device id is generated and is the declared length",
+                PsnAuth.DuidSize == 49 && duid.Length == 48 && duid.All(Uri.IsHexDigit),
+                $"{duid.Length}: {duid}");
+            Check("and a second one is different",
+                PsnAuth.GenerateDeviceUid() != duid);
+
+            string loginUrl = PsnAuth.LoginUrl(duid);
+            Check("the login url carries the client id, the redirect and the device",
+                loginUrl.Contains("client_id=" + PsnAuth.ClientId, StringComparison.Ordinal)
+                && loginUrl.Contains("redirect_uri=" + PsnAuth.RedirectPage, StringComparison.Ordinal)
+                && loginUrl.EndsWith("duid=" + duid + "&", StringComparison.Ordinal),
+                loginUrl.Length.ToString());
+
+            // The redirect is matched by PREFIX, because it arrives with the query attached -
+            // which is the whole point of it. An equality test would never fire.
+            Check("the redirect is recognised with its query attached",
+                PsnAuth.IsRedirect(PsnAuth.RedirectPage + "?code=ABC123")
+                && PsnAuth.IsRedirect(PsnAuth.RedirectPage)
+                && !PsnAuth.IsRedirect("https://example.invalid/?code=ABC123")
+                && !PsnAuth.IsRedirect(null));
+
+            Check("the code comes out of the redirect",
+                PsnAuth.CodeFrom(PsnAuth.RedirectPage + "?code=ABC123") == "ABC123"
+                && PsnAuth.CodeFrom(PsnAuth.RedirectPage + "?state=x&code=ABC123&y=2") == "ABC123",
+                PsnAuth.CodeFrom(PsnAuth.RedirectPage + "?code=ABC123") ?? "<null>");
+            // A redirect with no code is a cancelled login, which is not the same as a page that
+            // is not the redirect - both give null here and the caller tells them apart with
+            // IsRedirect, exactly as the Qt client does.
+            Check("a redirect without a code is null, and so is a page that is not the redirect",
+                PsnAuth.CodeFrom(PsnAuth.RedirectPage + "?error=access_denied") is null
+                && PsnAuth.CodeFrom(PsnAuth.RedirectPage) is null
+                && PsnAuth.CodeFrom("https://example.invalid/?code=ABC") is null);
+
+            Check("the token bodies carry the scope and differ only in the grant",
+                PsnAuth.TokenRequestBody("C").StartsWith("grant_type=authorization_code&code=C&scope=", StringComparison.Ordinal)
+                && PsnAuth.RefreshRequestBody("R").StartsWith("grant_type=refresh_token&refresh_token=R&scope=", StringComparison.Ordinal)
+                && PsnAuth.TokenRequestBody("C").Contains(PsnAuth.Scope, StringComparison.Ordinal));
+
+            // Base64 of "id:secret", which is what the endpoint expects and is trivially wrong if
+            // the colon or the order goes.
+            Check("the basic header is the id and secret, in that order",
+                Encoding.UTF8.GetString(Convert.FromBase64String(PsnAuth.BasicAuthHeader()["Basic ".Length..]))
+                    == PsnAuth.ClientId + ":" + PsnAuth.ClientSecret,
+                PsnAuth.BasicAuthHeader());
+
+            // And the half this code cannot exercise: the Qt client's own copy of these strings.
+            // Two clients that log in differently is not a thing anyone would report as a port
+            // defect, so the constants are held against the header they came from.
+            string? psnHeader = SanitizerSource.LocateRelative(@"gui\include\psnaccountid.h");
+            if (psnHeader is null)
+            {
+                Console.WriteLine(@"  --    the Qt client's PSN constants  (no gui\include\psnaccountid.h here)");
+            }
+            else
+            {
+                string cpp = File.ReadAllText(psnHeader);
+                Check("the Qt client uses the same client id, redirect, token url and scope",
+                    cpp.Contains(PsnAuth.ClientId, StringComparison.Ordinal)
+                    && cpp.Contains(PsnAuth.ClientSecret, StringComparison.Ordinal)
+                    && cpp.Contains(PsnAuth.RedirectPage, StringComparison.Ordinal)
+                    && cpp.Contains(PsnAuth.TokenUrl, StringComparison.Ordinal)
+                    && cpp.Contains(PsnAuth.Scope, StringComparison.Ordinal),
+                    "one of the five is not in the header");
+            }
+
+            Console.WriteLine();
             Console.WriteLine("TakionMessages - one .proto, two generators, the same bytes");
 
             // The bang: the message that carries the ECDH key and the two flags a session is

@@ -33,6 +33,7 @@
 - ✅ **PP6** **console discovery and wake use QUdpSocket, so the console list has no source in a Qt-free host** — the service, its socket, its search timer and its reply callback all run against a loopback that answers, so no console is needed to prove the path.
 - ✅ **PP102** **a discovery reply parses in place, so every field of a parsed console points into the datagram it came from** — a reply crosses as a console whose strings outlive the datagram, and the shim's undeclared import is held against libchiaki's definition.
 - ✅ **PP87** **the video and audio sample callbacks are the last uncrossed part of the seam, and nothing offline can drive one** — a frame reaches a managed handler as a span over libchiaki's own buffer, driven with no console, no renderer and no decoder.
+- ✅ **PP7 (the flow around the browser)** **PSN OAuth login runs in a QtWebEngine view, a bundled browser the WPF host has no equivalent for** — the authorize url, the redirect match, the code extraction and both token bodies are managed, held against the Qt client's own constants.
 
 ## Block C — Video and input path
 
