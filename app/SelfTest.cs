@@ -2634,6 +2634,48 @@ public static class SelfTest
                     $"{offsets.Drops.Count} dropped, peek {offsets.Peek(2)?.ToString() ?? "null"}");
             }
 
+            // PP107, decided: accepted, and asserted so the acceptance can expire.
+            //
+            // The port reproduces both defects because every drift check here asserts that the
+            // managed side matches lib/, and patching lib/ would leave them asserting agreement
+            // with a libchiaki nobody else runs. What that costs is a reason held in prose, and
+            // prose does not go red. These do. The day upstream repairs one of these, the port's
+            // faithful copy stops being faithful and becomes the divergence - and this is what
+            // says so, on the next run, rather than at the next bug report that will not compare.
+            string? rqFile = ReorderQueueSource.Locate();
+            string? takionSrcFile = ReorderQueueSource.LocateTakion();
+            if (rqFile is null || takionSrcFile is null)
+            {
+                Console.WriteLine(@"  --    the accepted reorder-queue defects  (no lib\src here)");
+            }
+            else
+            {
+                string? dropBody = ReorderQueueSource.BodyOf(rqFile, "chiaki_reorder_queue_drop");
+                string? peekBody = ReorderQueueSource.BodyOf(rqFile, "chiaki_reorder_queue_peek");
+                string takionText = File.ReadAllText(takionSrcFile);
+
+                Check("both accepted functions are still readable in lib/",
+                    dropBody is not null && peekBody is not null,
+                    dropBody is null ? "drop not found" : peekBody is null ? "peek not found" : "both");
+
+                if (dropBody is not null && peekBody is not null)
+                {
+                    Check("drop still clears no entry's set flag, which is why it does not drop",
+                        ReorderQueueSource.DropLeavesTheEntrySet(dropBody));
+                    Check("drop's count-reduction loop is still guarded by the return above it",
+                        ReorderQueueSource.DropCountLoopIsUnreachable(dropBody));
+                    Check("peek still writes both out-pointers with no null test, unlike pull",
+                        ReorderQueueSource.PeekWritesUnguarded(peekBody));
+                }
+
+                // Without these two the defects are present but unreachable, and an accepted
+                // defect nobody can reach is a different decision than the one recorded.
+                Check("takion still peeks with a NULL sequence number on the re-check-MACs path",
+                    ReorderQueueSource.TakionPeeksWithNull(takionText));
+                Check("takion still drops the packet whose MAC it rejected",
+                    ReorderQueueSource.TakionDropsOnBadMac(takionText));
+            }
+
             Console.WriteLine();
             Console.WriteLine("Handshake - one recorded key agreement, repeated");
 

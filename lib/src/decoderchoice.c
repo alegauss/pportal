@@ -1,4 +1,4 @@
-﻿// SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
+// SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
 
 #include <chiaki/decoderchoice.h>
 
