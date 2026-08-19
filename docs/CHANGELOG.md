@@ -75,6 +75,7 @@
 - ✅ **PP18 (the mapping document)** **the controller mapping screen is QML bound to the live SDL mapping strings** — The SDL mapping string parsed, edited and rebuilt with the Qt client's own rules, including a reset-to-default branch that cannot be reached.
 - ✅ **PP14** **registration, manual host, console PIN and profile dialogs are QML with their own validation** — Registration is one dialog on a path and three reached from elsewhere; the identifier is text for one console and eight decoded bytes for the rest.
 - ✅ **PP13** **the console list, the front door of the application, is QML bound to the discovery model** — The row actions and the auto-connect screen; removing branches three ways and one of them is silence, and the exit outlasting the grace is load-bearing.
+- ✅ **PP16 (the General tab)** **the settings screen is 2984 lines of QML against 149 properties exposed from C++** — the tab's ten controls, and the two combos whose index is not what the store holds.
 
 ## Block E — Windows-only build
 

@@ -1,0 +1,72 @@
+<UserControl x:Class="ChiakiNg.Views.GeneralSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    PP16: the settings screen's General tab, the first of the nine.
+
+    Three combos that look alike and are stored three ways - two as strings out of a C++ enum map,
+    one as the index it appears to be - so not one of them states its mapping here. SelectedIndex
+    binds to the view model and the view model owns which of those the store receives; a converter
+    in the markup would be a second place for "ask" to become 2.
+
+    The shortcut row's visibility is the stream-menu checkbox, which is the QML's own rule
+    (`visible: Chiaki.settings.streamMenuEnabled`) and not a layout nicety - unchecking it has to
+    repaint four combos.
+  -->
+  <UserControl.Resources>
+    <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+
+    <Style TargetType="TextBlock" x:Key="RowLabel">
+      <Setter Property="Margin" Value="0,8,0,2" />
+      <Setter Property="Opacity" Value="0.7" />
+    </Style>
+
+    <Style TargetType="ComboBox" x:Key="RowCombo">
+      <Setter Property="Width" Value="400" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+    </Style>
+  </UserControl.Resources>
+
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="16">
+      <TextBlock Text="Action On Disconnect" Style="{StaticResource RowLabel}" />
+      <ComboBox x:Name="DisconnectCombo" Style="{StaticResource RowCombo}"
+                SelectedIndex="{Binding DisconnectIndex}" />
+
+      <TextBlock Text="Action On Suspend" Style="{StaticResource RowLabel}" />
+      <ComboBox x:Name="SuspendCombo" Style="{StaticResource RowCombo}"
+                SelectedIndex="{Binding SuspendIndex}" />
+
+      <TextBlock Text="Audio/Video" Style="{StaticResource RowLabel}" />
+      <ComboBox x:Name="AudioVideoCombo" Style="{StaticResource RowCombo}"
+                SelectedIndex="{Binding AudioVideoDisabled}" />
+
+      <TextBlock Text="Log Directory" Style="{StaticResource RowLabel}" />
+      <StackPanel Orientation="Horizontal">
+        <TextBlock x:Name="LogDirectoryLabel" Text="{Binding LogDirectory}"
+                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="600" />
+        <Button x:Name="OpenLogButton" Content="Open" Margin="20,0,0,0" Padding="12,2" />
+      </StackPanel>
+
+      <CheckBox x:Name="StreamerModeBox" Margin="0,16,0,0"
+                Content="Streamer Mode (Hides Info)" IsChecked="{Binding StreamerMode}" />
+
+      <CheckBox x:Name="StreamMenuBox" Margin="0,8,0,0"
+                Content="Stream Menu Shortcut Enabled" IsChecked="{Binding StreamMenuEnabled}" />
+
+      <StackPanel x:Name="ShortcutRow"
+                  Visibility="{Binding StreamMenuShortcutsVisible, Converter={StaticResource BoolToVisibility}}">
+        <TextBlock Text="Stream Menu Combo" Style="{StaticResource RowLabel}" />
+        <StackPanel Orientation="Horizontal">
+          <ComboBox x:Name="Shortcut1Combo" Width="150" SelectedIndex="{Binding Shortcut1}" />
+          <ComboBox x:Name="Shortcut2Combo" Width="150" Margin="8,0,0,0"
+                    SelectedIndex="{Binding Shortcut2}" />
+          <ComboBox x:Name="Shortcut3Combo" Width="150" Margin="8,0,0,0"
+                    SelectedIndex="{Binding Shortcut3}" />
+          <ComboBox x:Name="Shortcut4Combo" Width="150" Margin="8,0,0,0"
+                    SelectedIndex="{Binding Shortcut4}" />
+        </StackPanel>
+      </StackPanel>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>
