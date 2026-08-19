@@ -103,6 +103,7 @@
 - ✅ **PP34** **the threading and logging layer exists to paper over pthreads and Win32, an abstraction .NET does not need** — the shim is deleted, not translated; only the predicate wait needed writing, and its deadline is asserted.
 - ✅ **PP119** **the registration request head is regist.c's snprintf, and its request line carries HTTP/1.1 twice** — the head is formatted in managed code now, doubled request line included, held against regist.c's own strings.
 - ✅ **PP105** **chiaki_ecdh_derive_secret is handed the console's signature and the handshake key and reads neither** — reachability pinned as five facts; the port matches libchiaki, refusing nothing.
+- ✅ **PP146** **json-c's accessors are lenient where System.Text.Json is strict, so holepunch.c's reads translate wrongly** — the accessors and the pointer, measured against json-c and agreeing with it in 81 cases.
 
 ## Block G — Test discipline
 

@@ -983,6 +983,53 @@ CHIAKI_SHIM_API const char *chiaki_shim_http_header_key(void *response, int32_t 
 CHIAKI_SHIM_API const char *chiaki_shim_http_header_value(void *response, int32_t index);
 
 /**
+ * PP33: json-c's accessors, exposed for the same reason the HTTP parser above is.
+ *
+ * holepunch.c is where json-c actually lives - 24 object_get_ex, 20 get_string, 8 get_int and 7
+ * json_pointer_get - and System.Text.Json does not answer any of those the same way. get_string on
+ * a number returns the number's text where GetString() throws; get_int on a string PARSES it where
+ * System.Text.Json refuses; and JSON Pointer has no managed equivalent at all. So the managed side
+ * cannot be written from the header and then trusted - it has to be run against this.
+ *
+ * Ownership is the trap and is why these are separate calls. json_tokener_parse returns a reference
+ * the caller owns, and object_get_ex, pointer_get and array_get_idx return BORROWED ones - putting
+ * a borrowed reference frees a subtree the root still points at. Only the handle from
+ * chiaki_shim_json_parse is passed to chiaki_shim_json_free; every other handle here is valid only
+ * while its root is.
+ */
+CHIAKI_SHIM_API void *chiaki_shim_json_parse(const char *text);
+
+/** Releases a root from chiaki_shim_json_parse. Never a handle from the lookups below. */
+CHIAKI_SHIM_API void chiaki_shim_json_free(void *root);
+
+/** json_object_get_type, as json-c numbers it: 0 null, 1 boolean, 2 double, 3 int, 4 object, 5 array, 6 string. */
+CHIAKI_SHIM_API int32_t chiaki_shim_json_type(void *node);
+
+/** json_object_object_get_ex. Borrowed, or NULL where the key is absent. */
+CHIAKI_SHIM_API void *chiaki_shim_json_get(void *node, const char *key);
+
+/** json_pointer_get, RFC 6901. Borrowed, or NULL where the path does not resolve. */
+CHIAKI_SHIM_API void *chiaki_shim_json_pointer(void *root, const char *path);
+
+/** json_object_array_length, or -1 where the node is not an array. */
+CHIAKI_SHIM_API int32_t chiaki_shim_json_array_length(void *node);
+
+/** json_object_array_get_idx. Borrowed. */
+CHIAKI_SHIM_API void *chiaki_shim_json_array_at(void *node, int32_t index);
+
+/** json_object_get_string, which is NOT string-typed only - see the note above. */
+CHIAKI_SHIM_API const char *chiaki_shim_json_string(void *node);
+
+/** json_object_get_int, which parses strings and saturates rather than wrapping. */
+CHIAKI_SHIM_API int32_t chiaki_shim_json_int(void *node);
+
+/** json_object_get_int64, same leniency at the wider width. */
+CHIAKI_SHIM_API int64_t chiaki_shim_json_int64(void *node);
+
+/** json_object_get_boolean, whose answer for a string is not what a port would guess. */
+CHIAKI_SHIM_API bool chiaki_shim_json_bool(void *node);
+
+/**
  * PP23: the bitstream parser, which is what tells the client what kind of frame just arrived.
  *
  * It reads H.264 and H.265 slice headers far enough to answer two questions: is this an I frame,

@@ -26,6 +26,10 @@
 #include "../lib/src/pb_utils.h"
 #include <chiaki/gkcrypt.h>
 #include <chiaki/http.h>
+/* PP33: json-c comes in through chiaki-lib, which links it whole-object for holepunch.c. */
+#include <json-c/json_object.h>
+#include <json-c/json_pointer.h>
+#include <json-c/json_tokener.h>
 #include <chiaki/regist.h>
 #include <chiaki/reorderqueue.h>
 #include <chiaki/rpcrypt.h>
@@ -1788,6 +1792,95 @@ CHIAKI_SHIM_API const char *chiaki_shim_http_header_value(void *response, int32_
 {
 	ChiakiHttpHeader *header = chiaki_shim_http_at((chiaki_shim_http *)response, index);
 	return header ? header->value : NULL;
+}
+
+/* PP33: json-c, reachable so the managed replacement can be held against it. See the header for
+ * why the lookups return borrowed references and only the root is freed. */
+
+CHIAKI_SHIM_API void *chiaki_shim_json_parse(const char *text)
+{
+	if(!text)
+		return NULL;
+	return json_tokener_parse(text);
+}
+
+CHIAKI_SHIM_API void chiaki_shim_json_free(void *root)
+{
+	if(root)
+		json_object_put((json_object *)root);
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_json_type(void *node)
+{
+	if(!node)
+		return -1;
+	return (int32_t)json_object_get_type((json_object *)node);
+}
+
+CHIAKI_SHIM_API void *chiaki_shim_json_get(void *node, const char *key)
+{
+	json_object *found = NULL;
+	if(!node || !key)
+		return NULL;
+	if(!json_object_object_get_ex((json_object *)node, key, &found))
+		return NULL;
+	return found;
+}
+
+CHIAKI_SHIM_API void *chiaki_shim_json_pointer(void *root, const char *path)
+{
+	json_object *found = NULL;
+	if(!root || !path)
+		return NULL;
+	if(json_pointer_get((json_object *)root, path, &found) != 0)
+		return NULL;
+	return found;
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_json_array_length(void *node)
+{
+	if(!node || json_object_get_type((json_object *)node) != json_type_array)
+		return -1;
+	return (int32_t)json_object_array_length((json_object *)node);
+}
+
+CHIAKI_SHIM_API void *chiaki_shim_json_array_at(void *node, int32_t index)
+{
+	if(!node || index < 0)
+		return NULL;
+	if(json_object_get_type((json_object *)node) != json_type_array)
+		return NULL;
+	if((size_t)index >= json_object_array_length((json_object *)node))
+		return NULL;
+	return json_object_array_get_idx((json_object *)node, (size_t)index);
+}
+
+CHIAKI_SHIM_API const char *chiaki_shim_json_string(void *node)
+{
+	if(!node)
+		return NULL;
+	return json_object_get_string((json_object *)node);
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_json_int(void *node)
+{
+	if(!node)
+		return 0;
+	return (int32_t)json_object_get_int((json_object *)node);
+}
+
+CHIAKI_SHIM_API int64_t chiaki_shim_json_int64(void *node)
+{
+	if(!node)
+		return 0;
+	return (int64_t)json_object_get_int64((json_object *)node);
+}
+
+CHIAKI_SHIM_API bool chiaki_shim_json_bool(void *node)
+{
+	if(!node)
+		return false;
+	return json_object_get_boolean((json_object *)node) ? true : false;
 }
 
 CHIAKI_SHIM_API void *chiaki_shim_bitstream_create(int32_t codec)
