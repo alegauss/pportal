@@ -33,9 +33,28 @@ public sealed class VlVlc
     /// an implementation detail, and it is a parameter here so the two implementations can be
     /// compared at each of the four.
     /// </param>
-    public VlVlc(byte[] data, int alignment = 0)
+    public VlVlc(byte[] data)
+        : this(data, data?.Length ?? 0, 0)
+    {
+    }
+
+    /// <param name="data">The buffer the payload lives in.</param>
+    /// <param name="size">
+    /// How much of it is the payload. Separate from the array's length because the caller's
+    /// declared size is what bounds the parse - a slice that arrived short sits in a buffer that
+    /// is not, and PP69's guard is written against this number rather than the allocation.
+    /// </param>
+    /// <param name="alignment">As above.</param>
+    /// <remarks>
+    /// Both are required, and neither has a default, deliberately: with `size` optional this
+    /// overload and the one above both took (byte[], int) and the second argument silently meant
+    /// two different things. The oracle caught it as an alignment of 32.
+    /// </remarks>
+    public VlVlc(byte[] data, int size, int alignment)
     {
         ArgumentNullException.ThrowIfNull(data);
+        ArgumentOutOfRangeException.ThrowIfNegative(size);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(size, data.Length);
         ArgumentOutOfRangeException.ThrowIfNegative(alignment);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(alignment, 3);
 
@@ -45,8 +64,8 @@ public sealed class VlVlc
         buffer = 0;
         invalidBits = 32;
         at = 0;
-        end = data.Length;
-        bytesLeft = (uint)data.Length;
+        end = size;
+        bytesLeft = (uint)size;
 
         AlignDataPtr();
         FillBits();
@@ -81,6 +100,20 @@ public sealed class VlVlc
 
     /// <summary>The signed count, which <see cref="VlRbsp.HasBits"/> has to ask on directly.</summary>
     public int InvalidBits => invalidBits;
+
+    /// <summary>
+    /// How far into the buffer the reader has pulled bytes - the C's `rbsp.nal.data`, as an index.
+    ///
+    /// Exposed because PP69's write path is positioned by it: the two words it edits are the eight
+    /// bytes ENDING here, so this is the number its bounds check is written against. Nothing in the
+    /// read path needs it.
+    /// </summary>
+    /// <remarks>
+    /// The matching upper bound is the caller's own declared size and NOT this reader's `end`:
+    /// <see cref="Limit"/> moves `end` back to wherever the next start code was found, and the C's
+    /// guard compares against `data + size` - the size the caller passed in.
+    /// </remarks>
+    public int At => at;
 
     /// <summary>Bits left across the buffer and the remaining payload.</summary>
     public uint BitsLeft

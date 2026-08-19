@@ -1,4 +1,4 @@
-using ChiakiNg.Protocol;
+﻿using ChiakiNg.Protocol;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -83,7 +83,7 @@ public class VlRbspOracleTests
             for (int alignment = 0; alignment < 4; alignment++)
             {
                 using var native = new NativeRbsp(payload, numBits, alignment);
-                var managed = new VlRbsp(new VlVlc(payload, alignment), numBits);
+                var managed = new VlRbsp(new VlVlc(payload, payload.Length, alignment), numBits);
 
                 string where =
                     $"payload=[{Convert.ToHexString(payload)}] alignment={alignment} numBits={numBits}";
@@ -145,7 +145,7 @@ public class VlRbspOracleTests
                 numBits = uint.MaxValue;
 
             using var native = new NativeRbsp(payload, numBits, alignment);
-            var managed = new VlRbsp(new VlVlc(payload, alignment), numBits);
+            var managed = new VlRbsp(new VlVlc(payload, payload.Length, alignment), numBits);
 
             for (int step = 0; step < 40; step++)
             {
@@ -279,3 +279,4 @@ public class VlRbspOracleTests
         }
     }
 }
+

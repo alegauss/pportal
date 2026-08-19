@@ -1,4 +1,4 @@
-using ChiakiNg.Session;
+﻿using ChiakiNg.Session;
 
 namespace ChiakiNg.Protocol;
 
@@ -37,10 +37,8 @@ public struct BitstreamSlice
 ///   A slice whose modification list terminates properly is accepted even if the reader ran off the
 ///   end getting there.
 ///
-/// The write path - slice_set_reference_frame_h265, the one place the bitstream is edited rather
-/// than described - is NOT here. It rewrites two words behind wherever the reader stopped, which is
-/// pointer arithmetic into the caller's buffer and its own task; until it lands the port keeps
-/// calling <see cref="Bitstream"/> for that one operation.
+/// The write path - <see cref="SetReferenceFrame"/> - is the one place the bitstream is edited
+/// rather than described, and it carries PP69's guard with it.
 /// </summary>
 public sealed class BitstreamParser
 {
@@ -114,6 +112,119 @@ public sealed class BitstreamParser
             return false;
 
         return Codec == ChiakiCodec.H264 ? SliceH264(data, ref slice) : SliceH265(data, ref slice);
+    }
+
+    /// <summary>
+    /// Rewrite which frame a P slice references, in place. H264 is refused outright - the C's
+    /// dispatcher returns false for it without looking at the data.
+    ///
+    /// This is the one place the bitstream is EDITED rather than described, and the edit is
+    /// positioned by the reader: it rewrites the two 32-bit words ending wherever the reader has
+    /// pulled bytes up to, with one bit flipped. Two things put that position somewhere the write
+    /// does not belong, and PP69's guard refuses both rather than clamping - a reference frame index
+    /// written to the wrong place is a corrupted frame either way:
+    ///
+    ///   an overrun parse, which since PP68 returns without consuming anything, so the position
+    ///   stands still and every remaining iteration would rewrite the same two words;
+    ///
+    ///   and a slice short enough that fewer than eight bytes have been consumed, which puts the
+    ///   lower word before the buffer the caller owns.
+    ///
+    /// Asked every iteration, because the position moves between them.
+    /// </summary>
+    /// <param name="data">The slice, edited in place.</param>
+    /// <param name="size">How much of <paramref name="data"/> is the slice.</param>
+    /// <param name="referenceFrame">The index to mark as used, clearing the others on the way.</param>
+    public bool SetReferenceFrame(byte[] data, int size, uint referenceFrame)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+
+        if (Codec == ChiakiCodec.H264)
+            return false;
+        if (size <= 0 || size > data.Length)
+            return false;
+
+        var vlc = new VlVlc(data, size, 0);
+        if (!SkipStartCode(vlc))
+            return false;
+
+        vlc.EatBits(1);   // forbidden_zero_bit
+        uint nalUnitType = vlc.GetUimsbf(6);
+        vlc.EatBits(6);   // nuh_layer_id
+        vlc.EatBits(3);   // nuh_temporal_id_plus1
+
+        // Type 20 is accepted by the read path and refused here, which is the two functions
+        // disagreeing about what a slice is rather than a simplification.
+        if (nalUnitType != 1)
+            return false;
+
+        var rbsp = new VlRbsp(vlc);
+        uint firstSliceSegmentInPic = rbsp.U(1);
+
+        rbsp.Ue();        // slice_pic_parameter_set_id
+        if (firstSliceSegmentInPic == 0)
+            rbsp.Ue();    // slice_segment_address
+
+        if (rbsp.Ue() != 1)   // not a P slice
+            return false;
+
+        rbsp.U(log2MaxPicOrderCntLsbMinus4 + 4);   // slice_pic_order_cnt_lsb
+
+        if (rbsp.U(1) == 0)   // short_term_ref_pic_set_sps_flag
+        {
+            uint numNegativePics = rbsp.Ue();
+            if (numNegativePics > 16)
+                return false;
+
+            rbsp.Ue();    // num_positive_pics
+            for (uint i = 0; i < numNegativePics; i++)
+            {
+                rbsp.Ue();    // delta_poc_s0_minus1[i]
+
+                int pos = rbsp.Nal.At;
+                if (rbsp.Overrun || pos < 8 || pos > size)
+                    return false;
+
+                // The two words ending at the reader's position, as one 64-bit value: the high word
+                // is the four bytes at pos-8 and the low word the four at pos-4, each big-endian.
+                ulong hi = ReadBigEndian(data, pos - 8);
+                ulong lo = ReadBigEndian(data, pos - 4);
+                ulong buffer = lo | (hi << 32);
+
+                // 64 - 1 - (64 - (32 - invalid_bits)) in the C, which is 31 - invalid_bits: the bit
+                // the reader is about to read next, counted from the top of that 64-bit window.
+                ulong mask = 1UL << (31 - rbsp.Nal.InvalidBits);
+
+                if (i == referenceFrame)
+                    buffer |= mask;
+                else
+                    buffer &= ~mask;
+
+                // Both words are written back every time, even when the bit did not change.
+                WriteBigEndian(data, pos - 8, (uint)(buffer >> 32));
+                WriteBigEndian(data, pos - 4, (uint)(buffer & 0xffffffff));
+
+                if (i == referenceFrame)
+                    return true;
+
+                rbsp.U(1);    // used_by_curr_pic_s0_flag[i]
+            }
+        }
+
+        // Falling out of the loop, or the set coming from the SPS, is a refusal - there was no
+        // flag to move.
+        return false;
+    }
+
+    private static uint ReadBigEndian(byte[] data, int at)
+        => ((uint)data[at] << 24) | ((uint)data[at + 1] << 16) | ((uint)data[at + 2] << 8) | data[at + 3];
+
+    private static void WriteBigEndian(byte[] data, int at, uint value)
+    {
+        data[at] = (byte)(value >> 24);
+        data[at + 1] = (byte)(value >> 16);
+        data[at + 2] = (byte)(value >> 8);
+        data[at + 3] = (byte)value;
     }
 
     /// <summary>The profile_idc values that carry the extended chroma fields.</summary>
@@ -366,3 +477,4 @@ public sealed class BitstreamParser
         return !rbsp.Overrun;
     }
 }
+

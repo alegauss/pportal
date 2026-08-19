@@ -111,6 +111,7 @@
 - ✅ **PP151** **the frame timing has three fallback chains and its oracle could not reach the duration one at all** — the duration made reachable, then the timing transcribed and agreed over the whole cross product.
 - ✅ **PP152** **the bit reader both slice-header parsers sit on is header-only, so nothing links it and nothing checks it** — the bit reader transcribed and agreed at all four alignments, whose state differs and output does not.
 - ✅ **PP153** **the slice-header parsers decide every loss response, and a failed header parse silently zeroes the SPS they need** — both parsers transcribed and agreeing on the recorded NALs and every prefix of them.
+- ✅ **PP154** **the one function that edits the bitstream is positioned by the reader, and nothing compares where a managed one writes** — the rewriter transcribed and compared byte for byte at every prefix, guard included.
 
 ## Block G — Test discipline
 
