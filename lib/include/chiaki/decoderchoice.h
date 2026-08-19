@@ -38,12 +38,12 @@ extern "C" {
 #define CHIAKI_DECODER_NAME_CUDA "cuda"
 #define CHIAKI_DECODER_NAME_D3D11VA "d3d11va"
 /**
- * No hardware decoder. Distinct from CHIAKI_DECODER_NAME_NONE below: this is what the
- * choice fell back to, that is what a user asked for. They differ downstream, and the
- * difference is currently a defect rather than a design - see the note there.
+ * No hardware decoder. It is what this function answers both when the choice fell back to
+ * it and when a user asked for "none"; the two used to differ, and PP78 is where they
+ * stopped. Downstream this is the empty decoder name ffmpeg already treats as software.
  */
 #define CHIAKI_DECODER_NAME_SOFTWARE "software"
-/** The literal the settings combo offers for "no hardware decoding", passed through unchanged. */
+/** The literal the settings combo offers for "no hardware decoding". Never an OUTPUT - see below. */
 #define CHIAKI_DECODER_NAME_NONE "none"
 /** The literal that asks for this function's judgement rather than naming a decoder. */
 #define CHIAKI_DECODER_NAME_AUTO "auto"
@@ -93,12 +93,14 @@ typedef struct chiaki_decoder_choice_inputs_t
  * The chosen decoder, as one of the CHIAKI_DECODER_NAME_* literals above. Never NULL,
  * and always a static string the caller does not own.
  *
- * "none" is returned unchanged when it was asked for. It is the one output that is not
- * a decoder this function believes in: ffmpeg has no device type by that name, so the
- * session that receives it fails to initialise rather than decoding in software. That
- * is a defect on the far side of this function and it is filed separately; reproducing
- * it faithfully is the point, because a fix that silently rewrote it here would move
- * the bug rather than close it.
+ * "none" is an input and not an output. Asking for it answers CHIAKI_DECODER_NAME_SOFTWARE,
+ * because ffmpeg has no device type by that name and a session handed the literal failed to
+ * initialise instead of decoding in software - so the one setting a user picks to rule out
+ * their hardware decoder was the only one that could not start a stream (PP78).
+ *
+ * It is mapped here rather than in the caller because this is the function that decides what
+ * decoder a machine gets. Answering with a name it does not believe in would leave every
+ * caller responsible for knowing that one of its outputs is a trap, and there are three.
  */
 CHIAKI_EXPORT const char *chiaki_decoder_choice(const ChiakiDecoderChoiceInputs *inputs);
 

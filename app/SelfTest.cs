@@ -517,6 +517,18 @@ public static class SelfTest
                 ChiakiNative.DecoderChoiceNeedsVulkanContext("vulkan")
                 && !ChiakiNative.DecoderChoiceNeedsVulkanContext("d3d11va"));
 
+            // PP78. The port's settings surface offers "none" the way the Qt combo does, and the
+            // whole reason it can hand it straight over is that the choice no longer answers with
+            // it. Asserted here and not only in C because this is the side that will one day map
+            // the answer to an ffmpeg device type, and that mapping must not need a special case.
+            Check("none is answered as software, on a machine that could do better",
+                ChiakiNative.DecoderChoice(true, true, true, true, ChiakiRenderer.Vulkan, "none") == "software",
+                ChiakiNative.DecoderChoice(true, true, true, true, ChiakiRenderer.Vulkan, "none") ?? "<null>");
+            Check("the literal none is never an answer",
+                ChiakiNative.DecoderChoice(true, true, true, true, ChiakiRenderer.Vulkan, "auto") != "none"
+                && ChiakiNative.DecoderChoice(false, false, false, false, ChiakiRenderer.OpenGL, "none") != "none"
+                && ChiakiNative.DecoderChoice(false, false, false, false, ChiakiRenderer.OpenGL, "quicksync") != "none");
+
             Console.WriteLine();
             Console.WriteLine("ChiakiLog - the seam in the other direction");
 

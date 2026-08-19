@@ -149,23 +149,69 @@ static MunitResult test_vulkan_context_retry_reruns_the_same_chain(const MunitPa
 }
 
 /**
- * "none" is returned as it was asked for, and this test says so on purpose rather than
- * by omission. ffmpeg has no device type of that name, so a session handed it fails to
- * initialise instead of decoding in software - a defect on the far side of this
- * function, filed separately. Pinning the pass-through here means the fix has to change
- * this line, which is where the decision to change it should be visible.
+ * PP78, and this is the line PP77 pinned so that the fix would have to arrive here.
+ *
+ * "none" used to be returned as it was asked for. ffmpeg has no device type of that name, so
+ * the session that received it failed to initialise instead of decoding in software, and the
+ * user who suspects their hardware decoder and turns it off got a stream that would not start.
+ * It now answers software, which is the same thing an empty request already answered and the
+ * same thing the automatic choice falls back to when nothing is listed.
  */
-static MunitResult test_none_is_passed_through_unchanged(const MunitParameter params[], void *user)
+static MunitResult test_none_is_software(const MunitParameter params[], void *user)
 {
 	ChiakiDecoderChoiceInputs inputs = plain_machine();
 	inputs.requested = CHIAKI_DECODER_NAME_NONE;
-	assert_choice(inputs, CHIAKI_DECODER_NAME_NONE);
+	assert_choice(inputs, CHIAKI_DECODER_NAME_SOFTWARE);
 
-	// Neither the renderer nor an NVIDIA card talks it out of the answer.
+	// A machine that could hardware-decode does not talk it out of the answer: "none" is a
+	// user's instruction, not a report about the machine, and every listed decoder stays
+	// unlisted-as-far-as-this-request-is-concerned.
 	inputs.renderer = CHIAKI_DECODER_RENDERER_OPENGL;
 	inputs.nvidia_card = true;
 	inputs.cuda_listed = true;
-	assert_choice(inputs, CHIAKI_DECODER_NAME_NONE);
+	assert_choice(inputs, CHIAKI_DECODER_NAME_SOFTWARE);
+
+	inputs.renderer = CHIAKI_DECODER_RENDERER_VULKAN;
+	inputs.vulkan_listed = true;
+	inputs.d3d11va_listed = true;
+	assert_choice(inputs, CHIAKI_DECODER_NAME_SOFTWARE);
+
+	// And it is not "auto" arriving at software by accident: the same machine, asked for a
+	// judgement instead of for none, answers vulkan.
+	inputs.requested = CHIAKI_DECODER_NAME_AUTO;
+	assert_choice(inputs, CHIAKI_DECODER_NAME_VULKAN);
+	return MUNIT_OK;
+}
+
+/**
+ * The literal is no longer an output. Nothing downstream has to know that one of the three
+ * names this function can answer is a trap, and this is what says so - a caller that maps
+ * the result to an ffmpeg device type can do it without a special case.
+ */
+static MunitResult test_none_is_never_returned(const MunitParameter params[], void *user)
+{
+	static const char *const requests[] = {
+		CHIAKI_DECODER_NAME_NONE, CHIAKI_DECODER_NAME_AUTO, CHIAKI_DECODER_NAME_VULKAN,
+		CHIAKI_DECODER_NAME_CUDA, CHIAKI_DECODER_NAME_D3D11VA, CHIAKI_DECODER_NAME_SOFTWARE,
+		"", NULL, "quicksync",
+	};
+
+	// Every machine in the input space, against every request the settings surface can write.
+	for(unsigned int bits = 0; bits < 16; bits++)
+	{
+		for(size_t i = 0; i < sizeof(requests) / sizeof(*requests); i++)
+		{
+			ChiakiDecoderChoiceInputs inputs = plain_machine();
+			inputs.vulkan_listed = (bits & 1) != 0;
+			inputs.cuda_listed = (bits & 2) != 0;
+			inputs.d3d11va_listed = (bits & 4) != 0;
+			inputs.nvidia_card = (bits & 8) != 0;
+			inputs.renderer = (bits & 8) ? CHIAKI_DECODER_RENDERER_OPENGL
+				: CHIAKI_DECODER_RENDERER_VULKAN;
+			inputs.requested = requests[i];
+			munit_assert_string_not_equal(chiaki_decoder_choice(&inputs), CHIAKI_DECODER_NAME_NONE);
+		}
+	}
 	return MUNIT_OK;
 }
 
@@ -222,8 +268,13 @@ MunitTest tests_decoderchoice[] = {
 		NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL
 	},
 	{
-		"/none_is_passed_through_unchanged",
-		test_none_is_passed_through_unchanged,
+		"/none_is_software",
+		test_none_is_software,
+		NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL
+	},
+	{
+		"/none_is_never_returned",
+		test_none_is_never_returned,
 		NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL
 	},
 	{

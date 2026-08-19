@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
+﻿// SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
 
 #include <chiaki/decoderchoice.h>
 
@@ -55,9 +55,16 @@ CHIAKI_EXPORT const char *chiaki_decoder_choice(const ChiakiDecoderChoiceInputs 
 			&& !listed(inputs, requested))
 		requested = CHIAKI_DECODER_NAME_AUTO;
 
-	// Passed through rather than translated to software, deliberately - see the header.
+	// PP78: "none" means software, and used to mean itself. ffmpeg has no device type by that
+	// name, so a session handed it failed to initialise - which meant the one setting a user
+	// picks to rule OUT their hardware decoder was the only one that could not start a stream,
+	// and reads as the machine being worse than it is.
+	//
+	// Mapped here rather than in the caller on purpose. This is the function that decides what
+	// decoder a machine gets; leaving it to answer with a name it does not believe in would make
+	// every caller responsible for knowing that one of its answers is a trap.
 	if(!strcmp(requested, CHIAKI_DECODER_NAME_NONE))
-		return CHIAKI_DECODER_NAME_NONE;
+		return CHIAKI_DECODER_NAME_SOFTWARE;
 
 	if(!*requested)
 		return CHIAKI_DECODER_NAME_SOFTWARE;
