@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 12
+#define CHIAKI_SHIM_ABI 13
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -634,6 +634,65 @@ CHIAKI_SHIM_API int32_t chiaki_shim_fec_decode(
 		uint32_t m,
 		const uint32_t *erasures,
 		int32_t erasures_count);
+
+/**
+ * PP23: the handshake's key agreement and the session key stream it produces.
+ *
+ * test/gkcrypt.c records a complete exchange - a local key pair, its signature under a handshake
+ * key, the console's public key and signature, and the 32-byte secret the two derived. It is the
+ * one place in this tree where a real console's half of an ECDH is written down.
+ *
+ * This is also where PP26's warning lands hardest: a wrong byte here does not throw. It produces a
+ * key that fails to open a session, with nothing to say which of eight steps was wrong. The
+ * recorded exchange is what turns that into one failing assertion.
+ */
+CHIAKI_SHIM_API int32_t chiaki_shim_ecdh_secret_size(void);
+
+CHIAKI_SHIM_API void *chiaki_shim_ecdh_create(void);
+CHIAKI_SHIM_API void chiaki_shim_ecdh_free(void *ecdh);
+
+/** Installs a recorded key pair, so a derivation can be repeated rather than generated afresh. */
+CHIAKI_SHIM_API int32_t chiaki_shim_ecdh_set_local_key(
+		void *ecdh,
+		const uint8_t *private_key, int32_t private_key_size,
+		const uint8_t *public_key, int32_t public_key_size);
+
+/**
+ * The local public key and its signature under `handshake_key`. Both sizes are in/out: the caller
+ * says how much room it has and gets back how much was written.
+ */
+CHIAKI_SHIM_API int32_t chiaki_shim_ecdh_local_pub_key(
+		void *ecdh,
+		const uint8_t *handshake_key,
+		uint8_t *key_out, int32_t *key_out_size,
+		uint8_t *sig_out, int32_t *sig_out_size);
+
+/** The shared secret, which is CHIAKI_ECDH_SECRET_SIZE bytes and is what keys the session. */
+CHIAKI_SHIM_API int32_t chiaki_shim_ecdh_derive_secret(
+		void *ecdh,
+		uint8_t *secret_out,
+		const uint8_t *remote_key, int32_t remote_key_size,
+		const uint8_t *handshake_key,
+		const uint8_t *remote_sig, int32_t remote_sig_size);
+
+/**
+ * A ChiakiGKCrypt over a handshake key and an ECDH secret. `log` may be NULL.
+ *
+ * `key_buf_chunks` of zero means no precomputed buffer, which is what the recorded case uses:
+ * every key stream is then generated on demand rather than read out of a window.
+ */
+CHIAKI_SHIM_API void *chiaki_shim_gkcrypt_create(
+		void *log,
+		int32_t key_buf_chunks,
+		uint8_t index,
+		const uint8_t *handshake_key,
+		const uint8_t *ecdh_secret);
+
+CHIAKI_SHIM_API void chiaki_shim_gkcrypt_free(void *gkcrypt);
+
+/** The key stream at a position, which is what every takion packet is XORed against. */
+CHIAKI_SHIM_API int32_t chiaki_shim_gkcrypt_gen_key_stream(
+		void *gkcrypt, uint64_t key_pos, uint8_t *buf, int32_t buf_size);
 
 #ifdef __cplusplus
 }

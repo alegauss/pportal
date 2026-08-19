@@ -6,7 +6,9 @@
 #include <chiaki/decoderchoice.h>
 #include <chiaki/controller.h>
 #include <chiaki/discovery.h>
+#include <chiaki/ecdh.h>
 #include <chiaki/fec.h>
+#include <chiaki/gkcrypt.h>
 #include <chiaki/rpcrypt.h>
 #include <chiaki/log.h>
 #include <chiaki/session.h>
@@ -990,6 +992,131 @@ CHIAKI_SHIM_API int32_t chiaki_shim_fec_decode(
 
 	return (int32_t)chiaki_fec_decode(frame_buf, (size_t)unit_size, (size_t)stride, k, m,
 			(const unsigned int *)erasures, (size_t)erasures_count);
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_ecdh_secret_size(void)
+{
+	return (int32_t)CHIAKI_ECDH_SECRET_SIZE;
+}
+
+CHIAKI_SHIM_API void *chiaki_shim_ecdh_create(void)
+{
+	ChiakiECDH *self = (ChiakiECDH *)calloc(1, sizeof(ChiakiECDH));
+	if(!self)
+		return NULL;
+
+	if(chiaki_ecdh_init(self) != CHIAKI_ERR_SUCCESS)
+	{
+		free(self);
+		return NULL;
+	}
+	return self;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_ecdh_free(void *ecdh)
+{
+	if(!ecdh)
+		return;
+
+	chiaki_ecdh_fini((ChiakiECDH *)ecdh);
+	free(ecdh);
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_ecdh_set_local_key(
+		void *ecdh,
+		const uint8_t *private_key, int32_t private_key_size,
+		const uint8_t *public_key, int32_t public_key_size)
+{
+	if(!ecdh || !private_key || !public_key || private_key_size <= 0 || public_key_size <= 0)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+
+	return (int32_t)chiaki_ecdh_set_local_key((ChiakiECDH *)ecdh, private_key,
+			(size_t)private_key_size, public_key, (size_t)public_key_size);
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_ecdh_local_pub_key(
+		void *ecdh,
+		const uint8_t *handshake_key,
+		uint8_t *key_out, int32_t *key_out_size,
+		uint8_t *sig_out, int32_t *sig_out_size)
+{
+	size_t key_size;
+	size_t sig_size;
+	ChiakiErrorCode err;
+
+	if(!ecdh || !handshake_key || !key_out || !key_out_size || !sig_out || !sig_out_size)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+	if(*key_out_size <= 0 || *sig_out_size <= 0)
+		return (int32_t)CHIAKI_ERR_BUF_TOO_SMALL;
+
+	key_size = (size_t)*key_out_size;
+	sig_size = (size_t)*sig_out_size;
+	err = chiaki_ecdh_get_local_pub_key((ChiakiECDH *)ecdh, key_out, &key_size, handshake_key,
+			sig_out, &sig_size);
+	*key_out_size = (int32_t)key_size;
+	*sig_out_size = (int32_t)sig_size;
+	return (int32_t)err;
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_ecdh_derive_secret(
+		void *ecdh,
+		uint8_t *secret_out,
+		const uint8_t *remote_key, int32_t remote_key_size,
+		const uint8_t *handshake_key,
+		const uint8_t *remote_sig, int32_t remote_sig_size)
+{
+	if(!ecdh || !secret_out || !remote_key || !handshake_key || !remote_sig)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+	if(remote_key_size <= 0 || remote_sig_size <= 0)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+
+	return (int32_t)chiaki_ecdh_derive_secret((ChiakiECDH *)ecdh, secret_out, remote_key,
+			(size_t)remote_key_size, handshake_key, remote_sig, (size_t)remote_sig_size);
+}
+
+CHIAKI_SHIM_API void *chiaki_shim_gkcrypt_create(
+		void *log,
+		int32_t key_buf_chunks,
+		uint8_t index,
+		const uint8_t *handshake_key,
+		const uint8_t *ecdh_secret)
+{
+	chiaki_shim_log *log_self = (chiaki_shim_log *)log;
+	ChiakiGKCrypt *self;
+
+	if(!handshake_key || !ecdh_secret || key_buf_chunks < 0)
+		return NULL;
+
+	self = (ChiakiGKCrypt *)calloc(1, sizeof(ChiakiGKCrypt));
+	if(!self)
+		return NULL;
+
+	if(chiaki_gkcrypt_init(self, log_self ? &log_self->log : NULL, (size_t)key_buf_chunks, index,
+			handshake_key, ecdh_secret) != CHIAKI_ERR_SUCCESS)
+	{
+		free(self);
+		return NULL;
+	}
+	return self;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_gkcrypt_free(void *gkcrypt)
+{
+	if(!gkcrypt)
+		return;
+
+	chiaki_gkcrypt_fini((ChiakiGKCrypt *)gkcrypt);
+	free(gkcrypt);
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_gkcrypt_gen_key_stream(
+		void *gkcrypt, uint64_t key_pos, uint8_t *buf, int32_t buf_size)
+{
+	if(!gkcrypt || !buf || buf_size <= 0)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+
+	return (int32_t)chiaki_gkcrypt_gen_key_stream((ChiakiGKCrypt *)gkcrypt, key_pos, buf,
+			(size_t)buf_size);
 }
 
 CHIAKI_SHIM_API void chiaki_shim_session_free(void *session)

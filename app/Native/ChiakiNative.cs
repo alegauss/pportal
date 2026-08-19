@@ -1,4 +1,4 @@
-using System.Reflection;
+﻿using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -40,7 +40,7 @@ public static class ChiakiNative
     internal const string Library = "chiaki-shim";
 
     /// <summary>Must equal CHIAKI_SHIM_ABI in shim/chiaki_shim.h.</summary>
-    public const uint ExpectedAbi = 12;
+    public const uint ExpectedAbi = 13;
 
     /// <summary>
     /// A module initializer and not a static constructor, because the resolver has to be in place

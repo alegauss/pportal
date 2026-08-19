@@ -1515,6 +1515,75 @@ public static class SelfTest
             }
 
             Console.WriteLine();
+            Console.WriteLine("Handshake - one recorded key agreement, repeated");
+
+            Check("the secret size comes from the shim", Ecdh.SecretSize == 32, Ecdh.SecretSize.ToString());
+
+            string? gkFile = SanitizerSource.LocateRelative(@"test\gkcrypt.c");
+            if (gkFile is null)
+            {
+                Console.WriteLine(@"  --    the recorded key agreement  (no test\gkcrypt.c here)");
+            }
+            else
+            {
+                IReadOnlyDictionary<string, byte[]> ex = CryptoVectors.InFunction(gkFile, "test_ecdh");
+                Check("the recorded exchange is readable",
+                    ex.Count == 7 && ex["secret"].Length == Ecdh.SecretSize,
+                    string.Join(",", ex.Keys));
+
+                using var ecdh = new Ecdh();
+                ecdh.SetLocalKey(ex["local_private_key"], ex["local_public_key"]);
+
+                // The signature over the local public key is the half a console verifies. It is
+                // deterministic under the handshake key, which is why it can be recorded at all.
+                (byte[] pub, byte[] sig) = ecdh.LocalPublicKey(ex["handshake_key"]);
+                Check("the local public key and its signature are the recorded ones",
+                    pub.SequenceEqual(ex["local_public_key"]) && sig.SequenceEqual(ex["local_public_key_sig"]),
+                    Convert.ToHexString(sig));
+
+                // And the agreement itself: the console's key and signature in, the secret that
+                // keys the whole session out.
+                byte[] secret = ecdh.DeriveSecret(
+                    ex["remote_public_key"], ex["handshake_key"], ex["remote_public_key_sig"]);
+                Check("the derived secret is the one the console agreed to",
+                    secret.SequenceEqual(ex["secret"]), Convert.ToHexString(secret));
+
+                // PP105, found by writing this as a negative and watching it pass. The remote
+                // signature is NOT checked: chiaki_ecdh_derive_secret takes handshake_key and
+                // remote_sig and uses neither, so a signature with a byte flipped still returns
+                // success and still yields the recorded secret. Asserted as the behaviour it is,
+                // because a port that quietly started verifying would differ from the client every
+                // user already has - and because a check that silently agrees is worse than none.
+                byte[] tampered = (byte[])ex["remote_public_key_sig"].Clone();
+                tampered[0] ^= 0xff;
+                Check("a tampered remote signature is accepted, which is libchiaki's behaviour",
+                    ecdh.DeriveSecret(ex["remote_public_key"], ex["handshake_key"], tampered)
+                        .SequenceEqual(ex["secret"]));
+                // …and the same for the handshake key, which is the other argument it ignores.
+                byte[] otherHandshake = (byte[])ex["handshake_key"].Clone();
+                otherHandshake[0] ^= 0xff;
+                Check("and so is a wrong handshake key, on this path",
+                    ecdh.DeriveSecret(ex["remote_public_key"], otherHandshake, ex["remote_public_key_sig"])
+                        .SequenceEqual(ex["secret"]));
+                // The key IS used where it is used: the local signature above changes with it, so
+                // this is not a handshake key that does nothing - it is one that does nothing HERE.
+                Check("the handshake key does change the local signature",
+                    !ecdh.LocalPublicKey(otherHandshake).Signature.SequenceEqual(ex["local_public_key_sig"]));
+
+                // The key stream, from its own recorded case. The position is part of it: the
+                // stream is a function of where in the session you are, so a rewrite that got the
+                // derivation right and the position wrong would be correct for a packet nobody
+                // sent. 0x30 is the position the case records.
+                IReadOnlyDictionary<string, byte[]> ks = CryptoVectors.InFunction(gkFile, "test_key_stream");
+                using var gk = new GkCrypt(0, 42, ks["handshake_key"], ks["ecdh_secret"]);
+                Check("the key stream at the recorded position is the recorded bytes",
+                    gk.KeyStream(0x30, ks["key_stream"].Length).SequenceEqual(ks["key_stream"]),
+                    Convert.ToHexString(gk.KeyStream(0x30, ks["key_stream"].Length)));
+                Check("and another position is a different stream",
+                    !gk.KeyStream(0x40, ks["key_stream"].Length).SequenceEqual(ks["key_stream"]));
+            }
+
+            Console.WriteLine();
             Console.WriteLine("Fec - sixty-four erasure cases a real stream produced");
 
             string? fecFile = FecVectors.Locate();

@@ -553,6 +553,33 @@ matters because the session log is a support artefact users are asked to attach.
 Filed early despite being small: every file translated after it inherits how these two
 are spelled, and changing that later means touching all of them.
 
+### §PP105 The signature nobody reads
+
+chiaki_ecdh_derive_secret takes a handshake key and the console's signature over its
+public key, and uses neither: its body loads the remote point and computes the shared
+secret, and the two authentication parameters are read nowhere in either the OpenSSL or
+the mbedTLS branch. Verified from the .NET harness against the recorded exchange in
+test/gkcrypt.c - flipping a byte of the signature, and separately of the handshake key,
+still returns success and the same secret.
+
+The signature is produced correctly in the other direction -
+chiaki_ecdh_get_local_pub_key signs the local key under the handshake key, and that
+signature does change when the key does. So this is a check that exists on one side of
+the exchange and not the other, which is what makes it look like an omission rather than
+a design.
+
+What it would cost is not established here and should not be guessed at. Whether
+anything between the client and the console can substitute a public key at that point is
+a different investigation, and needs someone who knows the transport.
+
+What is decided is that the port does not quietly start verifying. A client that rejects
+a session the one every user already has would accept is a client that fails
+differently, and a divergence in the handshake is the hardest kind to diagnose from a
+bug report.
+
+So this is filed to be decided rather than fixed: report upstream, patch and carry it,
+or record that it is understood and accepted.
+
 ## Block G — Test discipline
 
 ### §PP35 The suite that is already written
