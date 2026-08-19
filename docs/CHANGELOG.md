@@ -72,6 +72,7 @@
 - ✅ **PP143** **a mistyped XAML binding is not a build error, it is a control that silently shows nothing** — the console list screen loads and its bindings resolve, proved by a path that builds clean and fails red.
 - ✅ **PP18 (the mapping document)** **the controller mapping screen is QML bound to the live SDL mapping strings** — The SDL mapping string parsed, edited and rebuilt with the Qt client's own rules, including a reset-to-default branch that cannot be reached.
 - ✅ **PP14** **registration, manual host, console PIN and profile dialogs are QML with their own validation** — Registration is one dialog on a path and three reached from elsewhere; the identifier is text for one console and eight decoded bytes for the rest.
+- ✅ **PP13** **the console list, the front door of the application, is QML bound to the discovery model** — The row actions and the auto-connect screen; removing branches three ways and one of them is silence, and the exit outlasting the grace is load-bearing.
 
 ## Block E — Windows-only build
 

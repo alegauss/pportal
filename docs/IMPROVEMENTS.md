@@ -97,18 +97,6 @@ being a window.
 
 ## Block D — Screens
 
-### §PP13 The front door
-
-MainView.qml is 437 lines and AutoConnectView.qml another 105: the discovered and
-manually added consoles, their state, the wake and connect actions, the entry points
-into registration and settings, and the path that connects without asking when a console
-is already known.
-
-It is the second thing to draw and the first thing to demo. Discovery underneath it is
-real work already done, the controls are settled, and a list that fills itself with the
-consoles on the network is the moment the port stops being a build system and starts
-being an application.
-
 ### §PP15 The two screens this application does not own
 
 PSNLoginDialog.qml is 455 lines and PSNTokenDialog.qml 427. Between them they host
