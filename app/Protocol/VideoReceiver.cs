@@ -31,6 +31,18 @@ public delegate bool VideoSampleHandler(ReadOnlySpan<byte> frame, int framesLost
 ///
 /// The thunk and the GCHandle are the same pattern as every other callback in this port. What is
 /// new is only that this one carries a buffer rather than scalars.
+///
+/// ONE FRAME, AT INDEX 1
+/// ---------------------
+/// This drives a session synthesised for the purpose: zeroed apart from the log, the codec and the
+/// sample callback, which is what the path a single complete frame takes actually reads. A SECOND
+/// frame index makes the receiver report a corrupt frame into the stream connection, and there is
+/// no stream connection here - the report reaches zeroed memory and the process aborts, which is a
+/// crash and not a failure. test/videoreceiver.c avoids it the same way and says so: "frame index
+/// 1 is the one index that skips the corrupt-frame report".
+///
+/// So this is a harness for the callback contract, not a driver for a stream. Making it one means
+/// giving it a real session, which is where the rest of the transport lives.
 /// </summary>
 public sealed unsafe class VideoReceiver : IDisposable
 {
@@ -72,6 +84,22 @@ public sealed unsafe class VideoReceiver : IDisposable
         byte adaptiveStreamIndex = 0)
         => ReceiverAvPacket(Check(), frameIndex, unitIndex, unitIndex, total, fec,
             adaptiveStreamIndex, data, data.Length);
+
+    /// <summary>
+    /// The same by span, which is the one a stream uses: this runs once per packet, and PP113's
+    /// budget there is zero bytes.
+    /// </summary>
+    public void AvPacket(
+        ushort frameIndex, ushort unitIndex, ushort total, ushort fec, ReadOnlySpan<byte> data,
+        byte adaptiveStreamIndex = 0)
+    {
+        IntPtr handle = Check();
+        fixed (byte* p = data)
+        {
+            ReceiverAvPacketPtr(handle, frameIndex, unitIndex, unitIndex, total, fec,
+                adaptiveStreamIndex, (IntPtr)p, data.Length);
+        }
+    }
 
     public int FramesLost => ReceiverFramesLost(Check());
 
@@ -129,6 +157,12 @@ public sealed unsafe class VideoReceiver : IDisposable
     private static extern void ReceiverAvPacket(
         IntPtr receiver, ushort frameIndex, ushort packetIndex, ushort unitIndex,
         ushort total, ushort fec, byte adaptiveStreamIndex, byte[] data, int dataSize);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_video_receiver_av_packet",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern void ReceiverAvPacketPtr(
+        IntPtr receiver, ushort frameIndex, ushort packetIndex, ushort unitIndex,
+        ushort total, ushort fec, byte adaptiveStreamIndex, IntPtr data, int dataSize);
 
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_video_receiver_frames_lost",
         CallingConvention = CallingConvention.Cdecl)]

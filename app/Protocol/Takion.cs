@@ -83,7 +83,32 @@ public readonly record struct AvPacket(
 /// </summary>
 public static class Takion
 {
-    /// <summary>Parses a v9 AV packet header, or returns null with the error the parse gave.</summary>
+    /// <summary>
+    /// Parses a v9 AV packet header, or returns null with the error the parse gave.
+    ///
+    /// A span rather than an array, because this runs once per packet and PP113's budget is zero
+    /// bytes there. Note it is a <c>Span</c> and not a <c>ReadOnlySpan</c>: libchiaki parses the
+    /// datagram IN PLACE, so the caller's bytes are modified and the type says so.
+    /// </summary>
+    public static unsafe AvPacket? ParseV9(KeyState keyState, Span<byte> buffer, out ChiakiError error)
+    {
+        ArgumentNullException.ThrowIfNull(keyState);
+
+        fixed (byte* p = buffer)
+        {
+            int e = TakionV9ParsePtr(keyState.Handle, (IntPtr)p, buffer.Length,
+                out bool video, out ushort pi, out ushort fi, out ushort ui,
+                out ushort ut, out ushort uf, out byte c, out byte a,
+                out ulong kp, out int off, out int sz);
+
+            error = (ChiakiError)e;
+            return error == ChiakiError.Success
+                ? new AvPacket(video, pi, fi, ui, ut, uf, c, a, kp, off, sz)
+                : null;
+        }
+    }
+
+    /// <summary>The same, for a caller that already has an array.</summary>
     public static AvPacket? ParseV9(KeyState keyState, byte[] buffer, out ChiakiError error)
     {
         ArgumentNullException.ThrowIfNull(keyState);
@@ -106,6 +131,16 @@ public static class Takion
         CallingConvention = CallingConvention.Cdecl)]
     private static extern int TakionV9Parse(
         IntPtr keyState, byte[] buf, int bufSize,
+        [MarshalAs(UnmanagedType.I1)] out bool isVideo,
+        out ushort packetIndex, out ushort frameIndex, out ushort unitIndex,
+        out ushort unitsInFrameTotal, out ushort unitsInFrameFec,
+        out byte codec, out byte adaptiveStreamIndex, out ulong keyPos,
+        out int dataOffset, out int dataSize);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_takion_v9_av_packet_parse",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern int TakionV9ParsePtr(
+        IntPtr keyState, IntPtr buf, int bufSize,
         [MarshalAs(UnmanagedType.I1)] out bool isVideo,
         out ushort packetIndex, out ushort frameIndex, out ushort unitIndex,
         out ushort unitsInFrameTotal, out ushort unitsInFrameFec,

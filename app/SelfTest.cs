@@ -1523,6 +1523,9 @@ public static class SelfTest
             // "allocate little" but "allocate nothing", because that is what the code being
             // replaced does - and a transport that allocates per packet turns thousands of small
             // packets a second into a collection whose cost is the worst frame of a minute.
+            string? takionFileForBudget = SanitizerSource.LocateRelative(@"test\takion.c");
+            string? bsFileForBudget = SanitizerSource.LocateRelative(@"test\bitstream.c");
+
             using (var budgetLog = new ChiakiLog(ChiakiLogLevel.Error, (_, _) => { }))
             using (var fp = new FrameProcessor(budgetLog))
             {
@@ -1572,6 +1575,78 @@ public static class SelfTest
                 // Printed as well as asserted: the budget is a number that has to be readable to
                 // be argued with, and "zero against N" is the sentence a reviewer needs.
                 Console.WriteLine($"        span path {perPacket} B/packet, array path {convenience} B/packet");
+            }
+
+            // The rest of the per-packet path, held to the same number. These are the two calls a
+            // real stream makes for every datagram that arrives, so they are where the budget
+            // either holds or does not.
+            if (takionFileForBudget is not null && bsFileForBudget is not null)
+            {
+                byte[] recorded = CryptoVectors.InFunction(takionFileForBudget, "test_av_packet_parse")["packet"];
+                byte[] profileHdr = CryptoVectors.InFunction(bsFileForBudget, "test_bitstream_parse_h264")["header"];
+
+                using var keys = new KeyState();
+                var packetBuf = new byte[recorded.Length];
+
+                // Warmed up first, and re-copied each turn because the parse works IN PLACE: the
+                // Span overload says so in its type, and a second parse of a buffer the first one
+                // rewrote would not be measuring the same work.
+                for (int i = 0; i < 4; i++)
+                {
+                    recorded.CopyTo(packetBuf, 0);
+                    Takion.ParseV9(keys, packetBuf.AsSpan(), out _);
+                }
+
+                long before = GC.GetAllocatedBytesForCurrentThread();
+                for (int i = 0; i < 200; i++)
+                {
+                    recorded.CopyTo(packetBuf, 0);
+                    Takion.ParseV9(keys, packetBuf.AsSpan(), out _);
+                }
+                long parseCost = (GC.GetAllocatedBytesForCurrentThread() - before) / 200;
+
+                Check("parsing a packet header costs nothing", parseCost == 0, $"{parseCost} B/packet");
+
+                // The video receiver is deliberately NOT measured in a loop here. Driving it with
+                // a second frame index makes it report a corrupt frame into the stream connection,
+                // and the session this harness synthesises has none - so the report reaches zeroed
+                // memory and the host aborts. test/videoreceiver.c says the same thing in one
+                // line: "frame index 1 is the one index that skips the corrupt-frame report".
+                //
+                // Found by writing that loop and watching the process die rather than fail. The
+                // constraint is now stated on VideoReceiver itself; what the delivery costs per
+                // packet is the same span pin measured above, and claiming a number for it from a
+                // harness that cannot run the loop would be inventing one.
+                Console.WriteLine($"        parse {parseCost} B/packet");
+
+                byte[] slicePayload = [0x00, 0x00, 0x00, 0x01, 0x65, 0x88, 0x80, 0x82, 0x1f, 0x00];
+                var unitBuf2 = new byte[2 + slicePayload.Length];
+                slicePayload.CopyTo(unitBuf2, 2);
+
+                var delivered = new List<int>();
+                using (var vr = new VideoReceiver(
+                    (f, _, _) => { delivered.Add(f.Length); return true; },
+                    ChiakiNg.Session.ChiakiCodec.H264))
+                {
+                    vr.StreamInfo(profileHdr, 1920, 1080);
+
+                    before = GC.GetAllocatedBytesForCurrentThread();
+                    vr.AvPacket(1, 0, 1, 0, (ReadOnlySpan<byte>)unitBuf2);
+                    long oneFrame = GC.GetAllocatedBytesForCurrentThread() - before;
+
+                    // What IS asserted: the span overload delivers, which is the functional half.
+                    Check("the span overload delivers a frame like the array one",
+                        delivered.Count == 2 && delivered[^1] == slicePayload.Length,
+                        string.Join(",", delivered));
+
+                    // What is NOT asserted: a per-packet cost. This is the first frame this
+                    // receiver has ever seen, so the figure carries the JIT of the thunk and the
+                    // processor sizing its buffers, and the loop that would warm those away is the
+                    // one that aborts. Printed rather than asserted, because a budget claimed from
+                    // a single first call would be a number invented rather than measured.
+                    Console.WriteLine($"        first frame through the receiver {oneFrame} B "
+                        + "(first call, not a steady-state figure)");
+                }
             }
 
             Console.WriteLine();
