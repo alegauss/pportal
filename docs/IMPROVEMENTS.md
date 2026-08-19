@@ -355,17 +355,6 @@ The alternative is what a rewrite of a protocol usually looks like: it works aga
 console on one firmware, and every report afterwards is a guess about which of 16935
 translated lines was wrong.
 
-### §PP25 The part that is generated, not written
-
-lib/protobuf/takion.proto is the schema and nanopb is only the generator that turns it
-into C. Google.Protobuf runs the same file and produces C# with no translation and no
-judgement call.
-
-That makes it the natural first piece of the rewrite: it is a build step, it is
-verifiable by round-tripping bytes the C build produced, and every later task in this
-block sends or receives these messages. It also deletes a vendored dependency outright
-rather than replacing one, which is the only kind of dependency change that is free.
-
 ### §PP26 Crypto is where a rewrite dies quietly
 
 rpcrypt.c is 2428 lines, gkcrypt.c 574 and ecdh.c 240, all of it over OpenSSL's EVP,

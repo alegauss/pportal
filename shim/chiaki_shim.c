@@ -15,7 +15,14 @@
 #include <libavutil/frame.h>
 
 #include <pb_decode.h>
+#include <pb_encode.h>
 #include <takion.pb.h>
+
+// PP25: libchiaki's own nanopb callback helpers, which live in lib/src rather than in a public
+// header. Reached by relative path, which is what test/allocbudget.c already does for
+// takionreceive.h - and reusing them is what keeps the port's encoding the same as the client's
+// rather than a second one that happens to agree today.
+#include "../lib/src/pb_utils.h"
 #include <chiaki/gkcrypt.h>
 #include <chiaki/http.h>
 #include <chiaki/regist.h>
@@ -1807,6 +1814,77 @@ CHIAKI_SHIM_API bool chiaki_shim_takion_message_decode(
 			*version_accepted = msg.bang_payload.version_accepted;
 	}
 
+	return true;
+}
+
+/** A string field, written out through the callback nanopb asks for instead of storing it. */
+static bool chiaki_shim_pb_encode_string(
+		pb_ostream_t *stream, const pb_field_t *field, void *const *arg)
+{
+	const char *text = *arg;
+	if(!pb_encode_tag_for_field(stream, field))
+		return false;
+
+	return pb_encode_string(stream, (const uint8_t *)text, strlen(text));
+}
+
+CHIAKI_SHIM_API bool chiaki_shim_takion_message_encode_bang(
+		uint32_t server_version,
+		uint32_t token,
+		bool encrypted_key_accepted,
+		bool version_accepted,
+		const char *session_key,
+		const uint8_t *ecdh_pub_key, int32_t ecdh_pub_key_size,
+		const uint8_t *ecdh_sig, int32_t ecdh_sig_size,
+		uint8_t *buf,
+		int32_t *buf_size)
+{
+	tkproto_TakionMessage msg;
+	pb_ostream_t stream;
+	ChiakiPBBuf pub_key_buf;
+	ChiakiPBBuf sig_buf;
+
+	if(!session_key || !buf || !buf_size || *buf_size <= 0)
+		return false;
+
+	memset(&msg, 0, sizeof(msg));
+	msg.type = tkproto_TakionMessage_PayloadType_BANG;
+	msg.has_bang_payload = true;
+	msg.bang_payload.server_version = server_version;
+	msg.bang_payload.token = token;
+	msg.bang_payload.encrypted_key_accepted = encrypted_key_accepted;
+	msg.bang_payload.version_accepted = version_accepted;
+
+	// Three callbacks, because nanopb stores none of these: it calls back as the field goes past
+	// and the caller writes it. The pointers below have to outlive the encode, which they do -
+	// they are the caller's, and pb_encode returns before this function does.
+	msg.bang_payload.session_key.funcs.encode = chiaki_shim_pb_encode_string;
+	msg.bang_payload.session_key.arg = (void *)session_key;
+
+	if(ecdh_pub_key && ecdh_pub_key_size > 0)
+	{
+		pub_key_buf.buf = (uint8_t *)ecdh_pub_key;
+		pub_key_buf.size = (size_t)ecdh_pub_key_size;
+		msg.bang_payload.ecdh_pub_key.funcs.encode = chiaki_pb_encode_buf;
+		msg.bang_payload.ecdh_pub_key.arg = &pub_key_buf;
+	}
+
+	if(ecdh_sig && ecdh_sig_size > 0)
+	{
+		sig_buf.buf = (uint8_t *)ecdh_sig;
+		sig_buf.size = (size_t)ecdh_sig_size;
+		msg.bang_payload.ecdh_sig.funcs.encode = chiaki_pb_encode_buf;
+		msg.bang_payload.ecdh_sig.arg = &sig_buf;
+	}
+
+	stream = pb_ostream_from_buffer(buf, (size_t)*buf_size);
+	if(!pb_encode(&stream, tkproto_TakionMessage_fields, &msg))
+	{
+		*buf_size = 0;
+		return false;
+	}
+
+	*buf_size = (int32_t)stream.bytes_written;
 	return true;
 }
 

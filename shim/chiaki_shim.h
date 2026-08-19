@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 23
+#define CHIAKI_SHIM_ABI 24
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -999,6 +999,32 @@ CHIAKI_SHIM_API bool chiaki_shim_takion_message_decode(
 		uint32_t *token,
 		bool *encrypted_key_accepted,
 		bool *version_accepted);
+
+/**
+ * PP25, the other direction: a bang encoded BY nanopb, for the managed generator to read.
+ *
+ * Decoding proves the managed encoder is understood; this proves the managed decoder understands
+ * what a console's stack actually sends. Both are needed, and they fail differently - a message
+ * this side cannot write is a session that never opens, and one it cannot read is a session that
+ * opens and then stops.
+ *
+ * The string and bytes fields are the interesting part. nanopb does not store them: it hands the
+ * caller a CALLBACK and asks it to write them as the field goes past, which is the second
+ * ownership question this seam meets - and the reason those fields could not be checked by the
+ * decode direction alone.
+ *
+ * `buf_size` is in/out: room offered, then bytes written.
+ */
+CHIAKI_SHIM_API bool chiaki_shim_takion_message_encode_bang(
+		uint32_t server_version,
+		uint32_t token,
+		bool encrypted_key_accepted,
+		bool version_accepted,
+		const char *session_key,
+		const uint8_t *ecdh_pub_key, int32_t ecdh_pub_key_size,
+		const uint8_t *ecdh_sig, int32_t ecdh_sig_size,
+		uint8_t *buf,
+		int32_t *buf_size);
 
 CHIAKI_SHIM_API int64_t chiaki_shim_ffmpeg_nopts(void);
 

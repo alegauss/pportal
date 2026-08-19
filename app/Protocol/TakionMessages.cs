@@ -33,6 +33,40 @@ public static class TakionMessages
             : null;
     }
 
+    /// <summary>
+    /// A bang encoded by nanopb, for the managed generator to read.
+    ///
+    /// The other direction, and the one that reaches the string and bytes fields: nanopb does not
+    /// store those, it asks a callback to write them as the field goes past. Null when it refuses.
+    /// </summary>
+    public static byte[]? EncodeBangWithNanopb(
+        uint serverVersion, uint token, bool encryptedKeyAccepted, bool versionAccepted,
+        string sessionKey, byte[] ecdhPubKey, byte[] ecdhSig)
+    {
+        ArgumentNullException.ThrowIfNull(sessionKey);
+        ArgumentNullException.ThrowIfNull(ecdhPubKey);
+        ArgumentNullException.ThrowIfNull(ecdhSig);
+
+        var buf = new byte[1024];
+        int size = buf.Length;
+        return TakionMessageEncodeBang(serverVersion, token, encryptedKeyAccepted, versionAccepted,
+            sessionKey, ecdhPubKey, ecdhPubKey.Length, ecdhSig, ecdhSig.Length, buf, ref size)
+            ? buf[..size]
+            : null;
+    }
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_takion_message_encode_bang",
+        CallingConvention = CallingConvention.Cdecl)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    private static extern bool TakionMessageEncodeBang(
+        uint serverVersion, uint token,
+        [MarshalAs(UnmanagedType.I1)] bool encryptedKeyAccepted,
+        [MarshalAs(UnmanagedType.I1)] bool versionAccepted,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string sessionKey,
+        byte[] ecdhPubKey, int ecdhPubKeySize,
+        byte[] ecdhSig, int ecdhSigSize,
+        byte[] buf, ref int bufSize);
+
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_takion_message_decode",
         CallingConvention = CallingConvention.Cdecl)]
     [return: MarshalAs(UnmanagedType.I1)]

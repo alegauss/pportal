@@ -1571,6 +1571,36 @@ public static class SelfTest
             Check("nanopb refuses a bang missing its required fields",
                 TakionMessages.DecodeWithNanopb(incomplete.ToByteArray()) is null);
 
+            // The other direction, and the one that reaches the string and bytes fields: nanopb
+            // does not store those, it asks a callback to write them as the field goes past. So
+            // they cannot be checked by decoding alone - which is why this half exists.
+            byte[] pubKey = [0x04, 0xde, 0xad, 0xbe, 0xef];
+            byte[] bangSig = [0x13, 0x37, 0x42];
+            byte[]? fromNanopb = TakionMessages.EncodeBangWithNanopb(
+                9, 0x1337BEEF, true, true, "a-session-key", pubKey, bangSig);
+
+            Check("nanopb encodes a bang", fromNanopb is not null, $"{fromNanopb?.Length} bytes");
+
+            var readBack = Tkproto.TakionMessage.Parser.ParseFrom(fromNanopb);
+            Check("the managed generator reads back what nanopb wrote",
+                readBack.Type == Tkproto.TakionMessage.Types.PayloadType.Bang
+                && readBack.BangPayload.ServerVersion == 9
+                && readBack.BangPayload.Token == 0x1337BEEF
+                && readBack.BangPayload.SessionKey == "a-session-key",
+                readBack.BangPayload.SessionKey);
+            // The callback fields, which is the whole point of this direction.
+            Check("the bytes fields survive nanopb's callbacks",
+                readBack.BangPayload.EcdhPubKey.ToByteArray().SequenceEqual(pubKey)
+                && readBack.BangPayload.EcdhSig.ToByteArray().SequenceEqual(bangSig),
+                Convert.ToHexString(readBack.BangPayload.EcdhPubKey.ToByteArray()));
+
+            // And the round trip closes: what nanopb wrote, re-encoded by the managed generator,
+            // is what nanopb reads back the same way. Two encoders and two decoders agreeing on
+            // one message is the whole claim PP25 makes.
+            Check("the loop closes through both generators",
+                TakionMessages.DecodeWithNanopb(readBack.ToByteArray())
+                    is { Type: 1, ServerVersion: 9, Token: 0x1337BEEF, EncryptedKeyAccepted: true });
+
             Console.WriteLine();
             Console.WriteLine("FrameTiming - when a decoded frame is due");
 
