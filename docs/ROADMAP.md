@@ -55,6 +55,7 @@
 - 📋 **PP33** (deps: PP24 ✅) **HTTP and JSON in the core are curl and json-c, two vendored dependencies for what the runtime already does** — HttpClient and System.Text.Json replace them outright, so this is the one part of the core that gets smaller instead of merely moving. → §PP33
 - 📋 **PP34** (deps: PP24 ✅) **the threading and logging layer exists to paper over pthreads and Win32, an abstraction .NET does not need** — 502 lines that would be deleted rather than translated, and every file in the core calls them, so the shape they take decides how the translated files read. → §PP34
 - 💭 **PP105** (deps: —) **chiaki_ecdh_derive_secret is handed the console's signature and the handshake key and reads neither** — the signature is produced in the other direction and checked in none, so it is a check on one side of the exchange only. → §PP105
+- 💭 **PP107** (deps: —) **the reorder queue's drop does not remove the element and its peek dereferences a null takion passes it** — they are the only two functions of the module the C suite never calls, and both are on takion's re-check-MACs path. → §PP107
 
 ## Block G — Test discipline
 

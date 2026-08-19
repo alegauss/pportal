@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 14
+#define CHIAKI_SHIM_ABI 15
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -710,6 +710,44 @@ CHIAKI_SHIM_API bool chiaki_shim_seq_num_16_lt(uint16_t a, uint16_t b);
 CHIAKI_SHIM_API bool chiaki_shim_seq_num_16_gt(uint16_t a, uint16_t b);
 CHIAKI_SHIM_API bool chiaki_shim_seq_num_32_lt(uint32_t a, uint32_t b);
 CHIAKI_SHIM_API bool chiaki_shim_seq_num_32_gt(uint32_t a, uint32_t b);
+
+/**
+ * PP23: the reorder queue, which is what turns a UDP arrival order back into a stream.
+ *
+ * It is the module a managed rewrite would most confidently write from scratch - it is a ring
+ * buffer with a window, and it looks like one. What it actually is is a ring buffer indexed by the
+ * wrapping arithmetic above, with a drop policy that fires on four different occasions: a packet
+ * older than the window, a duplicate, an overflow at the low end and an overflow at the high end.
+ * Which of the four a given push takes is the whole behaviour, and the C suite records it.
+ *
+ * The payload is an opaque pointer libchiaki only ever hands back. Nothing dereferences it, so the
+ * managed side can pass an index rather than a handle and keep the GC out of it entirely.
+ *
+ * `drop_strategy` is 0 for BEGIN (drop the lowest) and 1 for END (drop the highest).
+ */
+typedef void (*ChiakiShimReorderDropCb)(uint64_t seq_num, void *elem_user, void *user);
+
+CHIAKI_SHIM_API void *chiaki_shim_reorder_queue_create_16(
+		int32_t size_exp, uint16_t seq_num_start, ChiakiShimReorderDropCb cb, void *user);
+
+CHIAKI_SHIM_API void chiaki_shim_reorder_queue_free(void *queue);
+
+CHIAKI_SHIM_API void chiaki_shim_reorder_queue_set_drop_strategy(void *queue, int32_t strategy);
+
+CHIAKI_SHIM_API int32_t chiaki_shim_reorder_queue_size(void *queue);
+CHIAKI_SHIM_API uint64_t chiaki_shim_reorder_queue_count(void *queue);
+
+CHIAKI_SHIM_API void chiaki_shim_reorder_queue_push(void *queue, uint64_t seq_num, void *elem_user);
+
+/** True when something came out in order; the two out-parameters are only then meaningful. */
+CHIAKI_SHIM_API bool chiaki_shim_reorder_queue_pull(
+		void *queue, uint64_t *seq_num, void **elem_user);
+
+/** `index` is an OFFSET from the window's start and not a sequence number. */
+CHIAKI_SHIM_API bool chiaki_shim_reorder_queue_peek(
+		void *queue, uint64_t index, uint64_t *seq_num, void **elem_user);
+
+CHIAKI_SHIM_API void chiaki_shim_reorder_queue_drop(void *queue, uint64_t index);
 
 #ifdef __cplusplus
 }

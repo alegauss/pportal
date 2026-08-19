@@ -55,6 +55,7 @@
 - ✅ **PP103** **the 3081 lines of recorded erasure cases run only from the C suite, so a managed FEC would have no judge** — all sixty-four recorded erasures decode from managed code, parsed out of the C suite, with a misdirected erasure proving the decode does work.
 - ✅ **PP104** **the recorded key agreement and the session key stream run only from the C suite** — the recorded ECDH exchange and the key stream at its recorded position run from managed code, out of the C suite's own vectors.
 - ✅ **PP106** **sequence number comparison is two inline functions in a C header, so a managed transport would spell them as integers** — both comparisons answer from managed code across all 65536 values twice, with the divergence from a plain integer compare measured.
+- ✅ **PP108** **the reorder queue runs only from the C suite, so a managed transport would rebuild its window from scratch** — the window, both drop strategies and the offset-not-sequence-number indexing run from managed code under twelve assertions.
 
 ## Block G — Test discipline
 

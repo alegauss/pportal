@@ -579,6 +579,34 @@ kind to diagnose from a report. lib/ is also the half this project does not edit
 
 To be decided: report upstream, carry a patch, or record it as accepted.
 
+### §PP107 The two nobody called
+
+chiaki_reorder_queue_drop and chiaki_reorder_queue_peek are the two functions of this
+module the C suite never calls, and both are broken.
+
+drop announces the element to the drop callback and then does not remove it. It never
+clears entry->set, so the element stays peekable and pullable - and its own
+count-reduction loop, written as `while(!entry->set)`, cannot run for the same reason.
+Demonstrated from the .NET harness: after a drop the callback has fired, the element is
+still there and count is unchanged.
+
+peek writes through its seq_num pointer unconditionally once the entry is set, and
+takion.c calls it with NULL for that argument. Read from the source rather than run,
+because running it is the crash.
+
+Both are on one path: when crypt becomes available, takion re-checks the MACs of
+everything already queued and drops what fails. With peek dereferencing NULL that loop
+cannot survive a set entry, and with drop not dropping, a packet whose MAC was rejected
+would be delivered anyway. The path is reached only when the data queue is non-empty at
+the moment crypt initialises, which is presumably why it has survived - postponed
+packets are handled separately, a few lines below.
+
+The port reproduces both and asserts them, because a client that behaves differently
+here is one whose bug reports cannot be compared. lib/ is the half this project does not
+edit, and this is two lines and a null check.
+
+To be decided with PP105: report upstream, carry a patch, or record as accepted.
+
 ## Block G — Test discipline
 
 ### §PP35 The suite that is already written

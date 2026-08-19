@@ -9,6 +9,7 @@
 #include <chiaki/ecdh.h>
 #include <chiaki/fec.h>
 #include <chiaki/gkcrypt.h>
+#include <chiaki/reorderqueue.h>
 #include <chiaki/rpcrypt.h>
 #include <chiaki/seqnum.h>
 #include <chiaki/log.h>
@@ -1138,6 +1139,113 @@ CHIAKI_SHIM_API bool chiaki_shim_seq_num_32_lt(uint32_t a, uint32_t b)
 CHIAKI_SHIM_API bool chiaki_shim_seq_num_32_gt(uint32_t a, uint32_t b)
 {
 	return chiaki_seq_num_32_gt(a, b);
+}
+
+/** As with the log and the session: the library's struct first, the callback beside it. */
+typedef struct chiaki_shim_reorder_queue_t
+{
+	ChiakiReorderQueue queue;
+	ChiakiShimReorderDropCb cb;
+	void *user;
+} chiaki_shim_reorder_queue;
+
+static void chiaki_shim_reorder_drop(uint64_t seq_num, void *elem_user, void *cb_user)
+{
+	chiaki_shim_reorder_queue *self = (chiaki_shim_reorder_queue *)cb_user;
+	if(self && self->cb)
+		self->cb(seq_num, elem_user, self->user);
+}
+
+CHIAKI_SHIM_API void *chiaki_shim_reorder_queue_create_16(
+		int32_t size_exp, uint16_t seq_num_start, ChiakiShimReorderDropCb cb, void *user)
+{
+	chiaki_shim_reorder_queue *self;
+	if(size_exp < 0)
+		return NULL;
+
+	self = (chiaki_shim_reorder_queue *)calloc(1, sizeof(chiaki_shim_reorder_queue));
+	if(!self)
+		return NULL;
+
+	if(chiaki_reorder_queue_init_16(&self->queue, (size_t)size_exp, seq_num_start)
+			!= CHIAKI_ERR_SUCCESS)
+	{
+		free(self);
+		return NULL;
+	}
+
+	self->cb = cb;
+	self->user = user;
+	chiaki_reorder_queue_set_drop_cb(&self->queue, cb ? chiaki_shim_reorder_drop : NULL, self);
+	return self;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_reorder_queue_free(void *queue)
+{
+	chiaki_shim_reorder_queue *self = (chiaki_shim_reorder_queue *)queue;
+	if(!self)
+		return;
+
+	// Cleared first, because fini drops what is still queued and every one of those is a callback
+	// into managed code that is about to stop being interested.
+	self->cb = NULL;
+	chiaki_reorder_queue_set_drop_cb(&self->queue, NULL, NULL);
+	chiaki_reorder_queue_fini(&self->queue);
+	free(self);
+}
+
+CHIAKI_SHIM_API void chiaki_shim_reorder_queue_set_drop_strategy(void *queue, int32_t strategy)
+{
+	chiaki_shim_reorder_queue *self = (chiaki_shim_reorder_queue *)queue;
+	if(self)
+		chiaki_reorder_queue_set_drop_strategy(&self->queue,
+				(ChiakiReorderQueueDropStrategy)strategy);
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_reorder_queue_size(void *queue)
+{
+	chiaki_shim_reorder_queue *self = (chiaki_shim_reorder_queue *)queue;
+	return self ? (int32_t)chiaki_reorder_queue_size(&self->queue) : 0;
+}
+
+CHIAKI_SHIM_API uint64_t chiaki_shim_reorder_queue_count(void *queue)
+{
+	chiaki_shim_reorder_queue *self = (chiaki_shim_reorder_queue *)queue;
+	return self ? chiaki_reorder_queue_count(&self->queue) : 0;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_reorder_queue_push(void *queue, uint64_t seq_num, void *elem_user)
+{
+	chiaki_shim_reorder_queue *self = (chiaki_shim_reorder_queue *)queue;
+	if(self)
+		chiaki_reorder_queue_push(&self->queue, seq_num, elem_user);
+}
+
+CHIAKI_SHIM_API bool chiaki_shim_reorder_queue_pull(
+		void *queue, uint64_t *seq_num, void **elem_user)
+{
+	chiaki_shim_reorder_queue *self = (chiaki_shim_reorder_queue *)queue;
+	if(!self || !seq_num || !elem_user)
+		return false;
+
+	return chiaki_reorder_queue_pull(&self->queue, seq_num, elem_user);
+}
+
+CHIAKI_SHIM_API bool chiaki_shim_reorder_queue_peek(
+		void *queue, uint64_t index, uint64_t *seq_num, void **elem_user)
+{
+	chiaki_shim_reorder_queue *self = (chiaki_shim_reorder_queue *)queue;
+	if(!self || !seq_num || !elem_user)
+		return false;
+
+	return chiaki_reorder_queue_peek(&self->queue, index, seq_num, elem_user);
+}
+
+CHIAKI_SHIM_API void chiaki_shim_reorder_queue_drop(void *queue, uint64_t index)
+{
+	chiaki_shim_reorder_queue *self = (chiaki_shim_reorder_queue *)queue;
+	if(self)
+		chiaki_reorder_queue_drop(&self->queue, index);
 }
 
 CHIAKI_SHIM_API void chiaki_shim_session_free(void *session)

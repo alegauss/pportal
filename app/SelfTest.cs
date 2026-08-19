@@ -1568,6 +1568,93 @@ public static class SelfTest
                 naiveDisagreements > 20000, $"{naiveDisagreements} of 65536");
 
             Console.WriteLine();
+            Console.WriteLine("ReorderQueue - four ways to drop a packet");
+
+            using (var queue = new ReorderQueue(2, 42))
+            {
+                queue.DropStrategy = ReorderDropStrategy.End;
+                Check("a window of 2^2 holds four and starts empty",
+                    queue is { Size: 4, Count: 0 }, $"{queue.Size}/{queue.Count}");
+
+                // Out of order in, in order out. Nothing comes out until the head arrives, which
+                // is the whole point of the structure.
+                queue.Push(44, 3);
+                queue.Push(43, 2);
+                // Count is the window's SPAN and not its population: begin is 42 and the highest
+                // set slot is 44, so it reads 3 with two elements in it. A rewrite that made it a
+                // population would be right on every full window and wrong on every gap - which is
+                // every window that has a packet outstanding, which is what the queue is for.
+                Check("nothing comes out while the head is missing",
+                    queue.Pull() is null && queue.Count == 3, queue.Count.ToString());
+
+                queue.Push(42, 1);
+                Check("the head arriving releases the run in order",
+                    queue.Pull() == (42ul, 1L) && queue.Pull() == (43ul, 2L)
+                    && queue.Pull() == (44ul, 3L) && queue.Pull() is null,
+                    queue.Count.ToString());
+
+                // Drop one: a sequence number BEHIND the window. The queue has moved past 42, so
+                // it can never be delivered and is handed straight to the drop callback.
+                queue.Push(42, 99);
+                Check("a packet older than the window is dropped, not queued",
+                    queue.Drops.Count == 1 && queue.Drops[^1] == new ReorderDrop(42, 99)
+                    && queue.Count == 0,
+                    queue.Drops.Count.ToString());
+
+                // Drop two: a duplicate of something already sitting in the window.
+                queue.Push(46, 10);
+                queue.Push(46, 11);
+                Check("a duplicate is dropped and the first one stays",
+                    queue.Drops.Count == 2 && queue.Drops[^1] == new ReorderDrop(46, 11)
+                    && queue.Peek(1) == (46ul, 10L),
+                    queue.Drops[^1].ToString());
+            }
+
+            // Drop three and four: overflow, from whichever end the strategy names. Same pushes,
+            // opposite victims - which is the assertion that says the strategy is read.
+            using (var endFirst = new ReorderQueue(1, 0))
+            using (var beginFirst = new ReorderQueue(1, 0))
+            {
+                endFirst.DropStrategy = ReorderDropStrategy.End;
+                beginFirst.DropStrategy = ReorderDropStrategy.Begin;
+
+                // A window of two, and a third sequence number beyond it.
+                foreach (ReorderQueue q in new[] { endFirst, beginFirst })
+                {
+                    q.Push(1, 1);
+                    q.Push(5, 5);
+                }
+
+                Check("overflowing at the end drops the newest",
+                    endFirst.Drops.Count == 1 && endFirst.Drops[0].SeqNum == 5,
+                    string.Join(",", endFirst.Drops));
+                Check("and overflowing at the begin drops the oldest",
+                    beginFirst.Drops.Count == 1 && beginFirst.Drops[0].SeqNum == 1,
+                    string.Join(",", beginFirst.Drops));
+            }
+
+            // The index is an OFFSET and not a sequence number, which is the mistake libchiaki's
+            // own parameter comment shouts about - so it is asserted rather than assumed.
+            using (var offsets = new ReorderQueue(3, 100))
+            {
+                offsets.Push(102, 2);
+                Check("peek takes an offset from the window, not a sequence number",
+                    offsets.Peek(2) == (102ul, 2L) && offsets.Peek(102) is null,
+                    offsets.Peek(2)?.ToString() ?? "<null>");
+
+                // PP107. chiaki_reorder_queue_drop announces the element to the drop callback and
+                // then does NOT remove it: it never clears entry->set, so its own count-reduction
+                // loop - `while(!entry->set)` - cannot run either. The element stays peekable and
+                // stays pullable. Asserted as the behaviour it is, because the port must not
+                // differ; the consequence is in the roadmap.
+                offsets.Drop(2);
+                Check("drop reports the element and leaves it in the queue",
+                    offsets.Drops.Count == 1 && offsets.Drops[0] == new ReorderDrop(102, 2)
+                    && offsets.Peek(2) == (102ul, 2L) && offsets.Count == 3,
+                    $"{offsets.Drops.Count} dropped, peek {offsets.Peek(2)?.ToString() ?? "null"}");
+            }
+
+            Console.WriteLine();
             Console.WriteLine("Handshake - one recorded key agreement, repeated");
 
             Check("the secret size comes from the shim", Ecdh.SecretSize == 32, Ecdh.SecretSize.ToString());
