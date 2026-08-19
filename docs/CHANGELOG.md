@@ -39,6 +39,7 @@
 - ✅ **PP117** **loading the portable tree's SDL2.dll does not return, so the managed host cannot call SDL at all** — the resolver puts the portable tree on the process search path, and sets the error mode so a failed load reports instead of waiting on a dialog nobody can see.
 - ✅ **PP118** **SDL has no thread of its own, so its event pump has nowhere to run but the dispatcher** — SDL owns a thread from init to quit, at Qt's 4ms interval, where the hotplug window lives.
 - ✅ **PP126** **what a button press becomes on the mapping screen is a token two clients have to agree on** — the three tokens and the three rules around them, held against the Qt client's own source.
+- ✅ **PP127** **the 47-byte DualSense effects report is a wire format the port writes by offset and nothing checks** — the three reports built by offset, held against the Qt struct's own comments and its firmware split.
 
 ## Block C — Video and input path
 
