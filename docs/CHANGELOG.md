@@ -80,6 +80,7 @@
 - ✅ **PP148** **the Video tab stores words that are not its labels on three of six rows, and its first decoder stores nothing** — the tab, its two combos that store something other than their labels, and the checkbox that restarts.
 - ✅ **PP19 (the two prompts)** **the confirm, remind, display, steam shortcut and dialog host screens are still QML** — the confirm and remind prompts, their focus latch and the three answers only one of which writes.
 - ✅ **PP155** **two display targets carry a mode and a value in one integer, and the contrast one's index order is not its value order** — the dialog, its two sentinel-carrying integers and the focus chain that moves with the mode.
+- ✅ **PP156** **the shortcut dialog writes outside the application, and carries a second copy of the PSN chain** — the dialog ported as-is, its success-only preference write and one copy of the PSN chain.
 
 ## Block E — Windows-only build
 

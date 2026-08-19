@@ -1,0 +1,47 @@
+<UserControl x:Class="ChiakiNg.Views.SteamShortcutView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    PP19: the non-Steam shortcut dialog, the last of the tail.
+
+    Two fields, a chosen path and one button. The button follows CanCreate - a trimmed name and no
+    creation in flight - and the markup states neither half, because both fields being present is not
+    the rule: the launch options are optional and never block it.
+
+    The base path is a label and a chooser, not a text box. The QML shows whatever the chooser
+    returned and does not validate it, so neither does this.
+  -->
+  <UserControl.Resources>
+    <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+
+    <Style TargetType="TextBlock" x:Key="FieldLabel">
+      <Setter Property="Margin" Value="0,8,0,2" />
+      <Setter Property="Opacity" Value="0.7" />
+    </Style>
+  </UserControl.Resources>
+
+  <StackPanel Margin="16">
+    <TextBlock Text="Steam Game Name" Style="{StaticResource FieldLabel}" />
+    <TextBox x:Name="NameField" Width="400" HorizontalAlignment="Left"
+             Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" />
+
+    <TextBlock Text="Launch Options [Optional]" Style="{StaticResource FieldLabel}" />
+    <TextBox x:Name="OptionsField" Width="400" HorizontalAlignment="Left"
+             Text="{Binding Options, UpdateSourceTrigger=PropertyChanged}" />
+
+    <TextBlock Text="Custom Steam Base Path (Optional)" Style="{StaticResource FieldLabel}" />
+    <TextBlock x:Name="BasePathLabel" Text="{Binding SteamBasePath}" MaxWidth="400"
+               HorizontalAlignment="Left" TextTrimming="CharacterEllipsis" />
+    <Button x:Name="ChoosePathButton" Content="Choose new steam base path"
+            HorizontalAlignment="Left" Margin="0,8,0,0" Padding="12,4" />
+
+    <Button x:Name="CreateButton" Content="Create"
+            HorizontalAlignment="Right" Margin="0,16,0,0" Padding="20,4"
+            IsEnabled="{Binding CanCreate}" />
+
+    <!-- The progress log, which is the only thing that ever explains a failure. -->
+    <TextBlock x:Name="RunningLabel" Margin="0,8,0,0" Opacity="0.8"
+               Text="Creating the shortcut..."
+               Visibility="{Binding Opening, Converter={StaticResource BoolToVisibility}}" />
+  </StackPanel>
+</UserControl>
