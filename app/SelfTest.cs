@@ -1843,6 +1843,37 @@ public static class SelfTest
             Console.WriteLine();
             Console.WriteLine("PlaceboBackends - what PP9's renderer decision rests on");
 
+            // PP9, built rather than read. The decision was taken from the source alone; this is
+            // the D3D11 backend actually initialising, which is the part a source read cannot say.
+            Check("the render seam loads and matches its own ABI",
+                ChiakiRender.AbiVersion() == ChiakiRender.ExpectedAbi,
+                ChiakiRender.AbiVersion().ToString());
+
+            using (RenderDevice? warp = ChiakiRender.CreateD3d11(forceSoftware: true))
+            {
+                // WARP is a real D3D11 implementation, so this is answerable on a machine with no
+                // GPU - which is what keeps "the backend is broken" and "this box has no hardware"
+                // from being the same answer in CI.
+                Check("the D3D11 backend initialises on a software adapter",
+                    warp is not null, warp?.Description ?? "null");
+
+                if (warp is not null)
+                {
+                    (int maxTexture, int maxBuffer) = warp.Limits();
+                    Check("and holds a 4K frame", maxTexture >= 3840, $"max 2D texture {maxTexture}");
+                    Console.WriteLine($"        {warp.Description}, max tex {maxTexture}, max buf {maxBuffer}");
+                }
+            }
+
+            // The hardware adapter, printed rather than asserted: a machine without one is not a
+            // defect in the decision, and saying which of the two ran is the point.
+            using (RenderDevice? gpu = ChiakiRender.CreateD3d11(forceSoftware: false))
+            {
+                Console.WriteLine(gpu is null
+                    ? "        no hardware adapter answered - the software path above is the evidence"
+                    : $"        hardware adapter: {gpu.Description}, max tex {gpu.Limits().MaxTexture2D}");
+            }
+
             // PP9 offered three shapes and all three assume libplacebo means Vulkan. These are the
             // checkable claims behind the fourth: run libplacebo ON D3D11. Nothing here has been
             // built or run - what is asserted is the ground the decision stands on, so that it

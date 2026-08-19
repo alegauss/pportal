@@ -53,6 +53,7 @@
 - ✅ **PP65** **d3d11va's decode submission stalls: a 103us median send against a 26990us p99, which is 1.6 frame intervals** — It is the harness, not the driver: fed at 60fps instead of as fast as it will take them, the p99 is 548us against 25124us, while the surface pool and the held frames move nothing.
 - ✅ **PP78** **picking "none" in the decoder setting fails the session instead of decoding in software** — chiaki_decoder_choice answers software for none and never returns the literal, so the caller's existing software mapping carries it to a stream that starts.
 - ✅ **PP9 (the decision)** **the video is presented by libplacebo into a Vulkan-backed QQuickWindow, which WPF cannot host** — libplacebo runs on D3D11 here, so the shaders survive and no Vulkan image has to be shared out.
+- ✅ **PP131** **PP9's renderer decision was taken from the source and nothing has ever built it** — libplacebo's D3D11 backend initialises on both adapters here, in a DLL of its own at ABI 1.
 
 ## Block D — Screens
 

@@ -31,3 +31,22 @@ if(MINGW)
 			-static-libgcc
 			-Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive,-Bdynamic)
 endif()
+
+# PP9: the renderer's own DLL, and deliberately not part of chiaki-shim.
+#
+# chiaki-shim.dll is loaded by every run of the selftest, on machines with no GPU and in CI.
+# Linking libplacebo into it would make a graphics driver a precondition for parsing a discovery
+# reply, and the first symptom would be a test host that cannot start. The two also change for
+# different reasons - the protocol seam when libchiaki's surface moves, this when PP9's renderer
+# decision does - so one ABI covering both would make every renderer experiment an ABI bump for
+# the protocol.
+add_library(chiaki-render SHARED chiaki_render.c chiaki_render.h)
+target_include_directories(chiaki-render PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(chiaki-render PkgConfig::LIBPLACEBO)
+set_target_properties(chiaki-render PROPERTIES PREFIX "" OUTPUT_NAME "chiaki-render")
+
+if(MINGW)
+	target_link_options(chiaki-render PRIVATE
+			-static-libgcc
+			-Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive,-Bdynamic)
+endif()

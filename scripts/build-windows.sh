@@ -74,7 +74,12 @@ fi
 # .NET host P/Invokes it, and dotnet build neither builds it nor notices that it is stale.
 # Left out, a run would load whatever DLL the last build happened to leave behind and
 # report on it - the same shape as PP56, with a managed assembly on the far side.
-targets=(chiaki chiaki-shim)
+# PP9: chiaki-render is here for the same reason chiaki-shim is, and adding it was not
+# optional - the first build after the target existed produced no DLL at all, because ninja
+# builds what it is asked for. Left out, the managed side would load whichever
+# chiaki-render.dll the last hand-run of ninja happened to leave, which is PP56 again with a
+# renderer on the far side.
+targets=(chiaki chiaki-shim chiaki-render)
 if [[ $do_tests -eq 1 ]]; then
     # Absent when the tree was configured with -DCHIAKI_ENABLE_TESTS=OFF, and asking ninja
     # for a target that does not exist is a hard error. Read from the cache the configure

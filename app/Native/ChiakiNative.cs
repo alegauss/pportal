@@ -106,6 +106,9 @@ public static class ChiakiNative
         {
             Library => "chiaki-shim.dll",
             Sdl => "SDL2.dll",
+            // PP9: the renderer's own DLL, resolved the same way and for the same reason - it
+            // links libplacebo, which lives in the portable tree beside the rest.
+            ChiakiRender.Library => "chiaki-render.dll",
             _ => "",
         };
 
