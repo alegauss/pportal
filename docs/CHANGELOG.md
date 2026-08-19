@@ -29,6 +29,7 @@
 - ✅ **PP98** **the haptics-to-rumble fold wraps at full scale, so the loudest frame tells the pad to rumble at zero** — all five intensity branches narrow through one saturating call in both clients, so the loudest frame is the strongest rumble.
 - ✅ **PP99** **the three latches between the pads and the wire are QTimer state on a QObject, so nothing managed can reproduce a press** — the input block, the shortcut chord and the dpad-touch gate run in managed code, and pads merge through libchiaki's own union.
 - ✅ **PP100** **the two DualSense intensity events pack into one byte through two tables, and neither is derivable from its enum** — both intensity tables, the nibble packing and the off sentinel that gates two paths run in managed code, under ten assertions.
+- ✅ **PP101** **the volume step is an SDL_MixAudioFormat call, so no managed host can scale a frame without SDL** — the volume scale, its drop-at-zero and its ceiling at 128 run in managed code under six assertions.
 
 ## Block C — Video and input path
 

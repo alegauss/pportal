@@ -1441,6 +1441,38 @@ public static class SelfTest
                 micSeam.Fill.ToString());
 
             Console.WriteLine();
+            Console.WriteLine("AudioVolume - mixing into silence, which is scaling");
+
+            // Zero is not silence, it is nothing: the frame returns early and never reaches the
+            // ring. Scaling by zero instead would keep feeding the sink, and a muted stream would
+            // hold its latency rather than letting the queue drain.
+            Check("volume zero drops the frame rather than muting it",
+                AudioVolume.ShouldDrop(0) && !AudioVolume.ShouldDrop(1)
+                && !AudioVolume.ShouldDrop(AudioVolume.MaxVolume));
+
+            short[] pcm = [32767, -32768, 1000, -1000, 0];
+            var scaled = new short[pcm.Length];
+
+            // At 128 and above the scaling is skipped, which is what makes it a ceiling rather
+            // than a midpoint - the branch, not the arithmetic.
+            AudioVolume.Apply(pcm, scaled, AudioVolume.MaxVolume);
+            Check("at the maximum the samples pass through untouched",
+                scaled.SequenceEqual(pcm), string.Join(",", scaled));
+            AudioVolume.Apply(pcm, scaled, 200);
+            Check("and above it they still do, so 128 is a ceiling",
+                scaled.SequenceEqual(pcm), string.Join(",", scaled));
+
+            AudioVolume.Apply(pcm, scaled, 64);
+            Check("half volume halves the samples, rounding toward zero",
+                scaled.SequenceEqual(new short[] { 16383, -16384, 500, -500, 0 }),
+                string.Join(",", scaled));
+
+            AudioVolume.Apply(pcm, scaled, 1);
+            Check("the quietest step is a divide and not a mute",
+                scaled.SequenceEqual(new short[] { 255, -256, 7, -7, 0 }),
+                string.Join(",", scaled));
+
+            Console.WriteLine();
             Console.WriteLine("DualSenseIntensity - two events, one byte, two nibbles");
 
             // The enum is not ordered by strength, and a port that compared these would read as
