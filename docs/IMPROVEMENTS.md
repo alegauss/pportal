@@ -16,19 +16,6 @@ navigation event, so the flow is unchanged; what changes is that the installer s
 carrying a browser. jsonrequester.cpp and psntoken.cpp then become HttpClient calls,
 which is the smallest part of this task and the part with no decision in it.
 
-### §PP8 Input is not a screen detail
-
-controllermanager.cpp is 950 lines: device hotplug, SDL mappings, the DualSense
-specifics - touchpad, motion, haptics, trigger effects - and the translation into what
-the session sends upstream. qmlcontroller.cpp is only the thin part that exposes it to
-QML.
-
-SDL is not Qt and does not have to move. What has to move is how the events arrive:
-SDL's own event loop against a WPF Dispatcher, on a thread that does not stall on
-rendering. The reason this is filed in the interop block rather than under a screen is
-that two very different consumers need it - the session, which sends the state, and the
-mapping screen, which shows it - and both are due before the settings screen.
-
 ### §PP93 Three answers to one question
 
 This client carries three different touchpad extents. streamsession.cpp picks per

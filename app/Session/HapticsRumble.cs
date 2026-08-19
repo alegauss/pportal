@@ -112,3 +112,62 @@ public static class HapticsRumble
 
     private static ushort Saturate(uint value) => value > ushort.MaxValue ? ushort.MaxValue : (ushort)value;
 }
+
+/// <summary>
+/// PP8: which motor a rumble goes to, and in which units - the last of the input path.
+///
+/// The strength <see cref="HapticsRumble"/> produces is one 16-bit number, and it reaches the pad
+/// two different ways. A DualSense gets it through the effects report of PP127, whose rumble
+/// fields are BYTES; anything else gets it through SDL_GameControllerRumble, which takes the
+/// 16-bit value whole and a duration in milliseconds.
+///
+/// So there are two decisions here, both easy to lose and neither loud.
+/// </summary>
+public static class RumbleRouting
+{
+    /// <summary>
+    /// The 16-bit strength as the byte a DualSense effects report carries.
+    ///
+    /// A SHIFT and not a scale. Dividing by 257 to map 0..65535 onto 0..255 would be the tidier
+    /// arithmetic and would differ by one across most of the range - which for a rumble motor is
+    /// nothing, except that the Qt client shifts, and two clients disagreeing by one on every
+    /// haptic frame is a difference nobody can measure and everybody could argue about.
+    /// </summary>
+    public static byte ToDualSenseAmplitude(ushort strength) => (byte)(strength >> 8);
+
+    /// <summary>
+    /// The duration SDL is given, in milliseconds.
+    ///
+    /// SDL's rumble STOPS on its own when this expires, so it is not a formality: a session that
+    /// stopped re-sending would have the pad fall silent five seconds later rather than keep
+    /// buzzing, which is the safer failure and the reason a duration is passed at all.
+    /// </summary>
+    public const uint SdlRumbleDurationMs = 5000;
+}
+
+/// <summary>
+/// PP8: the routing rules as the Qt client spells them.
+/// </summary>
+public static partial class RumbleRoutingSource
+{
+    /// <summary>The Qt client's controller code.</summary>
+    public const string RelativePath = @"gui\src\controllermanager.cpp";
+
+    /// <summary>The file, or null when this is not running out of a checkout.</summary>
+    public static string? Locate() => SanitizerSource.LocateRelative(RelativePath);
+
+    /// <summary>Whether the DualSense path still shifts by eight rather than scaling.</summary>
+    public static bool DualSenseAmplitudeIsShifted(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        return text.Contains("SetDualSenseRumble(left >> 8, right >> 8);", StringComparison.Ordinal);
+    }
+
+    /// <summary>Whether every other pad still gets the whole value and the same duration.</summary>
+    public static bool OtherPadsGetTheWholeValue(string text, uint durationMs)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        return text.Contains(
+            $"SDL_GameControllerRumble(controller, left, right, {durationMs});", StringComparison.Ordinal);
+    }
+}
