@@ -413,33 +413,6 @@ the cheapest visible progress in the block, it deletes two dependencies from the
 and it can be taken by whoever wants to see the shape of a translated file before
 starting one that matters. The 420 is what stops "cheapest" being read as "small".
 
-### §PP105 The signature nobody reads
-
-chiaki_ecdh_derive_secret takes a handshake key and the console's signature over its
-public key and reads neither: it loads the remote point and computes the secret, and
-both parameters appear in neither crypto branch. Verified against test/gkcrypt.c's
-recorded exchange - a flipped byte in either still returns the same secret.
-
-That signature is the only proof available at that moment. The handshake key is sixteen
-random bytes per session, and reaches the console inside a launch spec encrypted under
-the registration-derived rpcrypt key - so a signature under it proves the peer is the
-registered console.
-
-Reachability, previously open, is now established. The bang is accepted with no
-authentication at all: takion_handle_packet_mac returns SUCCESS while gkcrypt_remote is
-NULL, the state until the bang itself ends it. So the two checks that could refuse a
-forgery are the missing one and the one that cannot exist yet.
-
-What remains is not cryptographic. Both transports connect() the socket, and
-takion_parse_message refuses a bad tag - 32 random bits, sent in the clear in INIT.
-Off-path that is spoofing, guessing and a race at once; on-path, none of them, and a
-forged bang substitutes the attacker's public key: the client derives a secret with
-them, keys gkcrypt from it, and every later MAC verifies against the wrong peer.
-
-A missing check with a consequence, then; BangReachability holds the five facts. The
-port still does not verify unilaterally: a client refusing what others accept fails
-harder to diagnose. Reporting upstream is not this port's call.
-
 ### §PP107 The two nobody called
 
 chiaki_reorder_queue_drop and chiaki_reorder_queue_peek are the two functions of this
