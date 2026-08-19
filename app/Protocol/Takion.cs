@@ -146,4 +146,57 @@ public static class Takion
         out ushort unitsInFrameTotal, out ushort unitsInFrameFec,
         out byte codec, out byte adaptiveStreamIndex, out ulong keyPos,
         out int dataOffset, out int dataSize);
+
+    /// <summary>
+    /// PP124: CHIAKI_TAKION_CONGESTION_PACKET_SIZE - fifteen bytes, asked rather than written
+    /// down here as well.
+    /// </summary>
+    public static int CongestionPacketSize => TakionCongestionPacketSize();
+
+    /// <summary>
+    /// The congestion report the client sends UPSTREAM: how many packets it received and how many
+    /// it lost, which is what the console's bitrate control reacts to.
+    ///
+    /// The first thing this port sends rather than reads. A wrong byte here is not a stream that
+    /// fails - it is one that quietly degrades, with nothing on either side reporting it.
+    /// </summary>
+    public static byte[] FormatCongestion(ushort word0, ushort received, ushort lost, ulong keyPos)
+    {
+        var buf = new byte[CongestionPacketSize];
+        int err = TakionFormatCongestion(buf, buf.Length, word0, received, lost, keyPos);
+        if (err != (int)ChiakiError.Success)
+            throw new InvalidOperationException($"chiaki_takion_format_congestion failed: {(ChiakiError)err}.");
+
+        return buf;
+    }
+
+    /// <summary>
+    /// Writes the packet's MAC INTO it, at a fixed offset, over whatever was there.
+    ///
+    /// Not beside it and not after it. A rewrite that appended the MAC produces a packet of the
+    /// right length that the console silently ignores, which is the failure this exists to pin.
+    /// </summary>
+    public static void WritePacketMac(GkCrypt crypt, byte[] buf, ulong keyPos)
+    {
+        ArgumentNullException.ThrowIfNull(crypt);
+        ArgumentNullException.ThrowIfNull(buf);
+
+        int err = TakionPacketMac(crypt.Handle, buf, buf.Length, keyPos, null, null);
+        if (err != (int)ChiakiError.Success)
+            throw new InvalidOperationException($"chiaki_takion_packet_mac failed: {(ChiakiError)err}.");
+    }
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_takion_format_congestion",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern int TakionFormatCongestion(
+        byte[] buf, int bufSize, ushort word0, ushort received, ushort lost, ulong keyPos);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_takion_congestion_packet_size",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern int TakionCongestionPacketSize();
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_takion_packet_mac",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern int TakionPacketMac(
+        IntPtr gkcrypt, byte[] buf, int bufSize, ulong keyPos, byte[]? macOut, byte[]? macOldOut);
 }

@@ -1184,6 +1184,62 @@ CHIAKI_SHIM_API int32_t chiaki_shim_gkcrypt_gen_key_stream(
 }
 
 /**
+ * chiaki_takion_format_congestion, with the struct flattened to its three fields.
+ *
+ * The first thing the port has that goes UPSTREAM. Everything else across this seam reads what a
+ * console sent; this is what the client sends back - how many packets it received and how many it
+ * lost, which is what the console's bitrate control reacts to. A wrong byte here is not a stream
+ * that fails, it is one that quietly degrades, and the recording is fifteen bytes long.
+ *
+ * Three uint16s rather than a struct pointer, for the reason every builder here takes scalars:
+ * fifteen bytes of output with a fixed layout have no argument to lose, and a struct crossing the
+ * seam would put its packing into the managed side's marshalling.
+ */
+CHIAKI_SHIM_API int32_t chiaki_shim_takion_format_congestion(
+		uint8_t *buf, int32_t buf_size, uint16_t word_0, uint16_t received, uint16_t lost,
+		uint64_t key_pos)
+{
+	ChiakiTakionCongestionPacket packet;
+
+	if(!buf || buf_size < (int32_t)CHIAKI_TAKION_CONGESTION_PACKET_SIZE)
+		return (int32_t)CHIAKI_ERR_BUF_TOO_SMALL;
+
+	packet.word_0 = word_0;
+	packet.received = received;
+	packet.lost = lost;
+	chiaki_takion_format_congestion(buf, &packet, key_pos);
+	return (int32_t)CHIAKI_ERR_SUCCESS;
+}
+
+/** CHIAKI_TAKION_CONGESTION_PACKET_SIZE, so the managed side holds no second copy of it. */
+CHIAKI_SHIM_API int32_t chiaki_shim_takion_congestion_packet_size(void)
+{
+	return (int32_t)CHIAKI_TAKION_CONGESTION_PACKET_SIZE;
+}
+
+/**
+ * chiaki_takion_packet_mac, which writes the MAC INTO the packet rather than beside it.
+ *
+ * That is the part worth carrying across rather than reimplementing: the four bytes go at a fixed
+ * offset inside the buffer, over whatever was there, and the MAC is computed with those bytes
+ * zeroed. A rewrite that appended it instead produces a packet of the right length that the
+ * console silently ignores.
+ *
+ * Both out-pointers are optional here as they are in the C, and the port passes neither: what it
+ * asserts is the buffer afterwards.
+ */
+CHIAKI_SHIM_API int32_t chiaki_shim_takion_packet_mac(
+		void *gkcrypt, uint8_t *buf, int32_t buf_size, uint64_t key_pos,
+		uint8_t *mac_out, uint8_t *mac_old_out)
+{
+	if(!gkcrypt || !buf || buf_size <= 0)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+
+	return (int32_t)chiaki_takion_packet_mac((ChiakiGKCrypt *)gkcrypt, buf, (size_t)buf_size,
+			key_pos, mac_out, mac_old_out);
+}
+
+/**
  * chiaki_gkcrypt_decrypt, in place over the caller's buffer.
  *
  * The last piece the recorded video stream needed. Parsing an AV packet gives a payload and a key

@@ -142,6 +142,16 @@ public sealed class GkCrypt : IDisposable
     public static int BlockSize => GkCryptBlockSize();
 
     /// <summary>
+    /// PP124: the handle, for the send path.
+    ///
+    /// chiaki_takion_packet_mac takes a gkcrypt and a packet, and lives in Takion rather than here
+    /// because what it is about is the packet. Internal and not public: the handle is this class's
+    /// to free, and a caller holding one after a Dispose would be calling into freed memory.
+    /// </summary>
+    internal IntPtr Handle
+        => _handle != IntPtr.Zero ? _handle : throw new ObjectDisposedException(nameof(GkCrypt));
+
+    /// <summary>
     /// Decrypts a payload IN PLACE at a key position.
     ///
     /// In place because that is what the C does and what the receive path wants: the payload is

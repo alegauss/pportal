@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 29
+#define CHIAKI_SHIM_ABI 30
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -761,6 +761,30 @@ CHIAKI_SHIM_API void chiaki_shim_gkcrypt_free(void *gkcrypt);
 /** The key stream at a position, which is what every takion packet is XORed against. */
 CHIAKI_SHIM_API int32_t chiaki_shim_gkcrypt_gen_key_stream(
 		void *gkcrypt, uint64_t key_pos, uint8_t *buf, int32_t buf_size);
+
+/**
+ * PP124: the congestion report, which is the first thing this port sends rather than reads.
+ *
+ * Every other function across this seam parses what a console sent. This is the other direction:
+ * how many packets the client received and how many it lost, which is what the console's bitrate
+ * control reacts to. A wrong byte is not a stream that fails - it is one that quietly degrades,
+ * and nothing on either side reports it.
+ *
+ * The struct is flattened to its three fields, as every builder here does. The MAC goes INSIDE
+ * the packet at a fixed offset rather than after it, which is the detail a rewrite loses: a
+ * packet of the right length with the MAC appended is one the console silently ignores.
+ */
+CHIAKI_SHIM_API int32_t chiaki_shim_takion_format_congestion(
+		uint8_t *buf, int32_t buf_size, uint16_t word_0, uint16_t received, uint16_t lost,
+		uint64_t key_pos);
+
+/** CHIAKI_TAKION_CONGESTION_PACKET_SIZE. */
+CHIAKI_SHIM_API int32_t chiaki_shim_takion_congestion_packet_size(void);
+
+/** chiaki_takion_packet_mac, writing the MAC into the buffer. Both out-pointers may be NULL. */
+CHIAKI_SHIM_API int32_t chiaki_shim_takion_packet_mac(
+		void *gkcrypt, uint8_t *buf, int32_t buf_size, uint64_t key_pos,
+		uint8_t *mac_out, uint8_t *mac_old_out);
 
 /**
  * PP123: chiaki_gkcrypt_decrypt, in place, which is what turns a parsed AV packet into a NALU.
