@@ -26,6 +26,9 @@
 #include "../lib/src/pb_utils.h"
 #include <chiaki/gkcrypt.h>
 #include <chiaki/http.h>
+/* PP23: the bit reader both slice-header parsers sit on. Header-only, so including it here is the
+ * whole of reaching it - there is no symbol to link against. */
+#include "../lib/src/vl_rbsp.h"
 /* PP33: json-c comes in through chiaki-lib, which links it whole-object for holepunch.c. */
 #include <json-c/json_object.h>
 #include <json-c/json_pointer.h>
@@ -2402,6 +2405,130 @@ CHIAKI_SHIM_API bool chiaki_shim_takion_message_encode_bang(
 
 	*buf_size = (int32_t)stream.bytes_written;
 	return true;
+}
+
+/** PP23: a driveable vl_rbsp, with its payload placed at a chosen address alignment. */
+typedef struct chiaki_shim_rbsp_t
+{
+	uint8_t *block;   /* the allocation, freed on close */
+	uint8_t *payload; /* where inside it the NAL was copied, at the requested alignment */
+	struct vl_vlc vlc;
+	struct vl_rbsp rbsp;
+} chiaki_shim_rbsp;
+
+CHIAKI_SHIM_API void *chiaki_shim_rbsp_create(
+		const uint8_t *data, int32_t size, uint32_t num_bits, int32_t alignment)
+{
+	chiaki_shim_rbsp *self;
+	uint8_t *at;
+
+	if(!data || size < 0 || alignment < 0 || alignment > 3)
+		return NULL;
+
+	self = (chiaki_shim_rbsp *)calloc(1, sizeof(chiaki_shim_rbsp));
+	if(!self)
+		return NULL;
+
+	/* Four bytes of slack, so any of the four alignments can be hit. */
+	self->block = (uint8_t *)malloc((size_t)size + 8);
+	if(!self->block)
+	{
+		free(self);
+		return NULL;
+	}
+
+	at = self->block;
+	while((((uintptr_t)at) & 3) != (uintptr_t)alignment)
+		at++;
+
+	memcpy(at, data, (size_t)size);
+	self->payload = at;
+
+	vl_vlc_init(&self->vlc, self->payload, (unsigned)size);
+	vl_rbsp_init(&self->rbsp, &self->vlc, num_bits);
+	return self;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_rbsp_free(void *rbsp)
+{
+	chiaki_shim_rbsp *self = (chiaki_shim_rbsp *)rbsp;
+	if(!self)
+		return;
+
+	free(self->block);
+	free(self);
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_rbsp_alignment(void *rbsp)
+{
+	chiaki_shim_rbsp *self = (chiaki_shim_rbsp *)rbsp;
+	if(!self)
+		return -1;
+	return (int32_t)(((uintptr_t)self->payload) & 3);
+}
+
+CHIAKI_SHIM_API uint32_t chiaki_shim_rbsp_u(void *rbsp, uint32_t n)
+{
+	chiaki_shim_rbsp *self = (chiaki_shim_rbsp *)rbsp;
+	if(!self)
+		return 0;
+	return (uint32_t)vl_rbsp_u(&self->rbsp, n);
+}
+
+CHIAKI_SHIM_API uint32_t chiaki_shim_rbsp_ue(void *rbsp)
+{
+	chiaki_shim_rbsp *self = (chiaki_shim_rbsp *)rbsp;
+	if(!self)
+		return 0;
+	return (uint32_t)vl_rbsp_ue(&self->rbsp);
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_rbsp_se(void *rbsp)
+{
+	chiaki_shim_rbsp *self = (chiaki_shim_rbsp *)rbsp;
+	if(!self)
+		return 0;
+	return (int32_t)vl_rbsp_se(&self->rbsp);
+}
+
+CHIAKI_SHIM_API bool chiaki_shim_rbsp_overrun(void *rbsp)
+{
+	chiaki_shim_rbsp *self = (chiaki_shim_rbsp *)rbsp;
+	if(!self)
+		return false;
+	return vl_rbsp_overrun(&self->rbsp);
+}
+
+CHIAKI_SHIM_API bool chiaki_shim_rbsp_has_bits(void *rbsp, uint32_t n)
+{
+	chiaki_shim_rbsp *self = (chiaki_shim_rbsp *)rbsp;
+	if(!self)
+		return false;
+	return vl_rbsp_has_bits(&self->rbsp, n);
+}
+
+CHIAKI_SHIM_API bool chiaki_shim_rbsp_more_data(void *rbsp)
+{
+	chiaki_shim_rbsp *self = (chiaki_shim_rbsp *)rbsp;
+	if(!self)
+		return false;
+	return vl_rbsp_more_data(&self->rbsp);
+}
+
+CHIAKI_SHIM_API uint32_t chiaki_shim_rbsp_valid_bits(void *rbsp)
+{
+	chiaki_shim_rbsp *self = (chiaki_shim_rbsp *)rbsp;
+	if(!self)
+		return 0;
+	return (uint32_t)vl_vlc_valid_bits(&self->rbsp.nal);
+}
+
+CHIAKI_SHIM_API uint32_t chiaki_shim_rbsp_bits_left(void *rbsp)
+{
+	chiaki_shim_rbsp *self = (chiaki_shim_rbsp *)rbsp;
+	if(!self)
+		return 0;
+	return (uint32_t)vl_vlc_bits_left(&self->rbsp.nal);
 }
 
 CHIAKI_SHIM_API int64_t chiaki_shim_ffmpeg_nopts(void)

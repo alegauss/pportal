@@ -1284,6 +1284,51 @@ CHIAKI_SHIM_API bool chiaki_shim_takion_message_encode_bang(
 		uint8_t *buf,
 		int32_t *buf_size);
 
+/**
+ * PP23: vl_rbsp, the bit reader both slice-header parsers sit on, exposed so a managed one can be
+ * compared to it.
+ *
+ * `alignment` is the low two bits of the address the payload is placed at, 0-3. It is a parameter
+ * and not an accident because vl_vlc_align_data_ptr consumes bytes one at a time until the data
+ * pointer is dword-aligned and only then reads whole dwords - so the number of bits valid in the
+ * buffer after init depends on where malloc happened to put the NAL, and vl_rbsp_init's
+ * emulation-prevention scan is bounded by exactly that number. Whether the OUTPUT depends on it is
+ * the question this parameter exists to answer.
+ *
+ * The handle owns its copy of the payload, because vl_vlc keeps pointers into it.
+ */
+CHIAKI_SHIM_API void *chiaki_shim_rbsp_create(
+		const uint8_t *data, int32_t size, uint32_t num_bits, int32_t alignment);
+
+CHIAKI_SHIM_API void chiaki_shim_rbsp_free(void *rbsp);
+
+/** The low two bits of the address the payload actually landed on. */
+CHIAKI_SHIM_API int32_t chiaki_shim_rbsp_alignment(void *rbsp);
+
+/** vl_rbsp_u. Zero and a set overrun flag where there are not n bits left. */
+CHIAKI_SHIM_API uint32_t chiaki_shim_rbsp_u(void *rbsp, uint32_t n);
+
+/** vl_rbsp_ue, the exp-Golomb read whose prefix is capped at 32 zeroes (PP68). */
+CHIAKI_SHIM_API uint32_t chiaki_shim_rbsp_ue(void *rbsp);
+
+/** vl_rbsp_se. */
+CHIAKI_SHIM_API int32_t chiaki_shim_rbsp_se(void *rbsp);
+
+/** vl_rbsp_overrun: whether any read has gone past the end. */
+CHIAKI_SHIM_API bool chiaki_shim_rbsp_overrun(void *rbsp);
+
+/** vl_rbsp_has_bits. */
+CHIAKI_SHIM_API bool chiaki_shim_rbsp_has_bits(void *rbsp, uint32_t n);
+
+/** vl_rbsp_more_data. */
+CHIAKI_SHIM_API bool chiaki_shim_rbsp_more_data(void *rbsp);
+
+/** vl_vlc_valid_bits of the RBSP's own vlc, which is what the escape scan is bounded by. */
+CHIAKI_SHIM_API uint32_t chiaki_shim_rbsp_valid_bits(void *rbsp);
+
+/** vl_vlc_bits_left of the RBSP's own vlc. */
+CHIAKI_SHIM_API uint32_t chiaki_shim_rbsp_bits_left(void *rbsp);
+
 CHIAKI_SHIM_API int64_t chiaki_shim_ffmpeg_nopts(void);
 
 CHIAKI_SHIM_API bool chiaki_shim_ffmpeg_frame_timing(
