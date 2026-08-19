@@ -464,6 +464,107 @@ public static class SelfTest
             catch (ObjectDisposedException) { threwOnDisposed = true; }
             Check("a write after the free is refused rather than passed a dangling handle",
                 threwOnDisposed);
+
+            Console.WriteLine();
+            Console.WriteLine("ChiakiSession - the lifecycle's first end, with no console needed");
+
+            // Nothing managed had ever called this, and it is where WSAStartup lives. Twice on
+            // purpose: WSAStartup is reference counted and the rest are writes, so a host that
+            // calls it from two places must not be the thing that breaks.
+            Check("chiaki_lib_init succeeds", ChiakiSession.LibInit() == ChiakiError.Success,
+                ChiakiSession.LibInit().ToString());
+            Check("chiaki_lib_init is idempotent", ChiakiSession.LibInit() == ChiakiError.Success);
+
+            using (var info = new ChiakiConnectInfo())
+            {
+                // The default is not zeroes: a 0x0 profile is accepted by chiaki_session_init and
+                // then negotiated, so an unset one would be a black stream rather than an error.
+                Check("a fresh connect info is 1080p60",
+                    info.VideoProfile is { Width: 1920, Height: 1080, MaxFps: 60 },
+                    info.VideoProfile.ToString());
+
+                // The bitrate is the number worth not copying into C#: it lives in one switch in
+                // session.c, and a second copy here is one nothing would ever compare.
+                info.SetVideoPreset(ChiakiVideoResolution.P720, ChiakiVideoFps.Fps30);
+                Check("the 720p preset carries the library's own bitrate",
+                    info.VideoProfile == new ChiakiVideoProfile(1280, 720, 30, 10000, 0),
+                    info.VideoProfile.ToString());
+                info.SetVideoPreset(ChiakiVideoResolution.P1080, ChiakiVideoFps.Fps60);
+
+                // A key one byte over would write into the field that sits directly behind it,
+                // and the session it built would fail at a handshake step naming neither.
+                bool refusedLongKey = false;
+                try { info.SetRegistKey(new byte[17]); }
+                catch (ArgumentException) { refusedLongKey = true; }
+                Check("a regist key that does not fit is refused at the seam", refusedLongKey);
+
+                bool refusedShortMorning = false;
+                try { info.SetMorning(new byte[15]); }
+                catch (ArgumentException) { refusedShortMorning = true; }
+                Check("morning is refused at any length but 16", refusedShortMorning);
+
+                // The real shapes, out of what a registered console actually stores: an 8-byte
+                // regist key zero-padded into 16, and a 16-byte morning.
+                info.SetRegistKey("12345678"u8);
+                info.SetMorning(new byte[16]);
+                info.Ps5 = true;
+                info.PacketLossMax = 0.05;
+                info.SetFlags(autoDowngrade: true, keyboard: false, dualSense: true, idrOnFecFailure: false);
+
+                // A numeric address, so this resolves without a packet leaving the machine - the
+                // point being that construction is assertable on a build agent and only Start is
+                // not. The log is the one from above, which is what a session is handed.
+                info.Host = "127.0.0.1";
+                var sessionLines = new List<string>();
+                using var sessionLog = new ChiakiLog(ChiakiLogLevel.All, (_, t) => sessionLines.Add(t));
+
+                using (ChiakiSession? session = ChiakiSession.TryCreate(info, sessionLog, out ChiakiError err))
+                {
+                    Check("a session over a numeric host builds",
+                        session is not null && err == ChiakiError.Success, err.ToString());
+                    Check("the session handle is not null",
+                        session is not null && session.Handle != IntPtr.Zero);
+                }
+
+                // A host that cannot resolve is the ordinary failure - a console switched off, an
+                // address typed wrong - and it must arrive as a code rather than as a crash. The
+                // name below is over the 255 characters DNS allows, so Winsock rejects it before
+                // a query goes anywhere: this says the same thing on a machine with no network as
+                // on one with, which a name like "nosuchhost.invalid" would not.
+                info.Host = new string('a', 300);
+                ChiakiSession? refused = ChiakiSession.TryCreate(info, sessionLog, out ChiakiError addrErr);
+                Check("a host that does not resolve is CHIAKI_ERR_PARSE_ADDR",
+                    refused is null && addrErr == ChiakiError.ParseAddr, addrErr.ToString());
+                refused?.Dispose();
+
+                // The trap on the other side of that, found by writing the line above: an EMPTY
+                // host is not an error on Winsock - getaddrinfo answers it with the loopback
+                // address - so a connect dialog that hands one over builds a perfectly valid
+                // session pointed at the machine it is running on. Asserted rather than fixed,
+                // because the fix belongs to whichever screen collects the address (PP14), and an
+                // assertion is what stops it being discovered again there.
+                info.Host = "";
+                using (ChiakiSession? empty = ChiakiSession.TryCreate(info, sessionLog, out ChiakiError emptyErr))
+                {
+                    Check("an empty host is NOT refused by the library, so a screen must refuse it",
+                        empty is not null && emptyErr == ChiakiError.Success, emptyErr.ToString());
+                }
+
+                // …and the code is the one ErrorString already turns into a sentence, which is
+                // what makes the enum above a spelling of libchiaki's numbers and not a parallel
+                // set of them.
+                Check("the error code names itself through the seam",
+                    ChiakiNative.ErrorString((int)ChiakiError.ParseAddr) == "Failed to parse host address",
+                    ChiakiNative.ErrorString((int)ChiakiError.ParseAddr) ?? "<null>");
+            }
+
+            // The sentence a disconnect screen shows. NONE and an out-of-range reason share
+            // "Unknown" in session.c - reproduced rather than tidied, because a screen that says
+            // something else than the Qt build's says it for a reason nobody wrote down.
+            Check("a quit reason has the sentence the Qt build shows",
+                ChiakiSession.QuitReasonString(1) == "Stopped"
+                && ChiakiSession.QuitReasonString(0) == "Unknown",
+                $"{ChiakiSession.QuitReasonString(1)} / {ChiakiSession.QuitReasonString(0)}");
         }
 
         Console.WriteLine();

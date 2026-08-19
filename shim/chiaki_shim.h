@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 2
+#define CHIAKI_SHIM_ABI 3
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -151,6 +151,112 @@ CHIAKI_SHIM_API void chiaki_shim_log_write(void *log, int32_t level, const char 
 
 /** chiaki_log_level_char: 'I', 'W', 'E'… the letter that build's log file is written with. */
 CHIAKI_SHIM_API char chiaki_shim_log_level_char(int32_t level);
+
+/**
+ * chiaki_lib_init, which nothing on the managed side had called.
+ *
+ * It is not a formality. It seeds rand, builds jerasure's Galois field - which the frame
+ * processor needs before the first FEC block - and calls WSAStartup, without which every socket
+ * libchiaki opens fails with WSANOTINITIALISED. The Qt client calls it in main(); a .NET host has
+ * no main() the library knows about, so the first session-shaped call from managed code would
+ * have failed on a Windows error nothing in this tree names.
+ *
+ * Idempotent: WSAStartup is reference counted and the other two are writes, so calling it twice
+ * is calling it once. Returns a ChiakiErrorCode; 0 is CHIAKI_ERR_SUCCESS.
+ */
+CHIAKI_SHIM_API int32_t chiaki_shim_lib_init(void);
+
+/**
+ * A ChiakiConnectInfo, built field by field from managed code and never marshalled.
+ *
+ * The struct has sixteen members, two of them fixed-size byte arrays, one a nested video profile
+ * and two - the holepunch session and the rudp socket - types whose own layout the managed side
+ * would then also be tracking. A [StructLayout] over that is a promise about MinGW's padding on
+ * every future libchiaki, kept by nothing, and broken silently: the wrong bytes still parse as a
+ * plausible resolution and a key that simply fails to open a session.
+ *
+ * So it is built here. The handle is opaque, the setters take scalars, and the two byte arrays are
+ * copied under a length that is checked rather than trusted.
+ *
+ * What is not settable yet is the PSN path - holepunch session, rudp socket, account id - because
+ * a connect info that carries them is a session opened through PSN's relay and that is PP7's
+ * ground, not this one's. They stay zeroed, which is the local-network session the Qt client
+ * builds when the same fields are absent.
+ */
+CHIAKI_SHIM_API void *chiaki_shim_connect_info_create(void);
+CHIAKI_SHIM_API void chiaki_shim_connect_info_free(void *info);
+
+/** The console's address. Copied here, so the caller's string need not outlive the call. */
+CHIAKI_SHIM_API bool chiaki_shim_connect_info_set_host(void *info, const char *host);
+
+/** PS5 or PS4, which is the only thing that picks the target the session negotiates with. */
+CHIAKI_SHIM_API void chiaki_shim_connect_info_set_ps5(void *info, bool ps5);
+
+/**
+ * The registration key, zero-padded into its 16 bytes as libchiaki requires.
+ *
+ * `len` is checked rather than trusted: a key one byte over would otherwise write past a field
+ * that sits directly in front of `morning`, and the resulting session fails at a handshake step
+ * with no clue which of the two was wrong. False and nothing written when it does not fit.
+ */
+CHIAKI_SHIM_API bool chiaki_shim_connect_info_set_regist_key(
+		void *info, const uint8_t *key, int32_t len);
+
+/** The 16-byte morning key, which must be exactly that. False and nothing written otherwise. */
+CHIAKI_SHIM_API bool chiaki_shim_connect_info_set_morning(
+		void *info, const uint8_t *morning, int32_t len);
+
+/**
+ * chiaki_connect_video_profile_preset: the resolution and fps presets, resolved in C.
+ *
+ * The bitrate that comes with each preset is the part worth not re-deriving - 15000 for 1080p is
+ * a number in one switch statement in session.c, and a port that copied it into C# would carry a
+ * second copy that nothing compares.
+ */
+CHIAKI_SHIM_API void chiaki_shim_connect_info_set_video_preset(
+		void *info, int32_t resolution, int32_t fps);
+
+/** Reads the profile back out as scalars, so the preset above can be asserted and not assumed. */
+CHIAKI_SHIM_API void chiaki_shim_connect_info_video_profile(
+		void *info,
+		uint32_t *width,
+		uint32_t *height,
+		uint32_t *max_fps,
+		uint32_t *bitrate,
+		int32_t *codec);
+
+/** The four booleans a settings screen writes, set together because they are read together. */
+CHIAKI_SHIM_API void chiaki_shim_connect_info_set_flags(
+		void *info,
+		bool video_profile_auto_downgrade,
+		bool enable_keyboard,
+		bool enable_dualsense,
+		bool enable_idr_on_fec_failure);
+
+/** settings/packet_loss_max, whose 0.05 default PP2 already carries on the managed side. */
+CHIAKI_SHIM_API void chiaki_shim_connect_info_set_packet_loss_max(void *info, double packet_loss_max);
+
+/**
+ * chiaki_session_init over that connect info, with the log from above.
+ *
+ * This is the lifecycle's first end and it is reachable with no console on the network:
+ * chiaki_session_init resolves the host, allocates the ctrl and stream connection and starts no
+ * thread, so it either builds or says why. `error_out` takes the ChiakiErrorCode - notably
+ * CHIAKI_ERR_PARSE_ADDR for a host that does not resolve - and the return is NULL whenever that
+ * is not CHIAKI_ERR_SUCCESS.
+ *
+ * `log` may be NULL, which is libchiaki's own "print to stdout"; passing one made by
+ * chiaki_shim_log_create is what puts the session's own lines in front of a managed handler.
+ * The log must outlive the session, which is the first ownership rule this seam has that the
+ * managed side cannot check for itself.
+ */
+CHIAKI_SHIM_API void *chiaki_shim_session_create(void *connect_info, void *log, int32_t *error_out);
+
+/** chiaki_session_fini and the allocation with it. NULL is a no-op. */
+CHIAKI_SHIM_API void chiaki_shim_session_free(void *session);
+
+/** chiaki_quit_reason_string, which is the sentence a disconnect screen shows. */
+CHIAKI_SHIM_API const char *chiaki_shim_quit_reason_string(int32_t reason);
 
 #ifdef __cplusplus
 }
