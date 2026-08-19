@@ -19,6 +19,7 @@
 - ✅ **PP89** **the session log's name and its sanitiser are QDateTime and QRegularExpression, so no managed host can write one** — the log name, its rotation and all nine sanitiser rules are managed code, asserted against six filenames the Qt build left on disk.
 - ✅ **PP90** **the baseline ledger both builds are compared with has no managed writer, so the port contributes no rows** — the .NET host fills libchiaki's own baseline record and appends it with libchiaki's own formatter, with the schema pinned against the shim.
 - ✅ **PP88** **the log sanitiser leaves the tail of a compressed IPv6 address in a file users paste into issues** — both clients now redact a compressed address whole, from one pattern text the selftest holds them to character for character.
+- ✅ **PP92** **the keyboard and mouse paths are QKeyEvent and QMouseEvent, so no managed host can move a stick or a finger** — bindings and touchpad coordinates reach a real ChiakiControllerState from managed code, under thirteen assertions including both touchpad shapes.
 
 ## Block C — Video and input path
 

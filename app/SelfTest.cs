@@ -1149,6 +1149,82 @@ public static class SelfTest
                     SessionBaseline.LedgerPath == QtPaths.SessionBaselineFile
                     && SessionBaseline.LedgerPath.EndsWith("chiaki_baseline.jsonl", StringComparison.Ordinal));
             }
+
+            Console.WriteLine();
+            Console.WriteLine("InputTranslation - the keyboard and mouse, off the QEvent");
+
+            using (var keyState = new ChiakiControllerState())
+            {
+                // The trap that has no symptom but a wrong stream: the vertical half-axes are
+                // NEGATIVE up and the horizontal ones are POSITIVE up. A port that gave both the
+                // same sense inverts one axis, and a user calls that "the aiming feels wrong".
+                InputTranslation.ApplyBinding(keyState, (uint)ControllerButtonExt.AnalogStickLeftYUp, true);
+                InputTranslation.ApplyBinding(keyState, (uint)ControllerButtonExt.AnalogStickLeftXUp, true);
+                Check("up is negative on Y and positive on X",
+                    keyState.Sticks.LeftY == -0x7fff && keyState.Sticks.LeftX == 0x7fff,
+                    keyState.Sticks.ToString());
+
+                InputTranslation.ApplyBinding(keyState, (uint)ControllerButtonExt.AnalogStickRightYDown, true);
+                InputTranslation.ApplyBinding(keyState, (uint)ControllerButtonExt.AnalogStickRightXDown, true);
+                Check("down is the other sign on each axis",
+                    keyState.Sticks.RightY == 0x7fff && keyState.Sticks.RightX == -0x7fff,
+                    keyState.Sticks.ToString());
+
+                InputTranslation.ApplyBinding(keyState, (uint)ControllerButtonExt.AnalogStickLeftYUp, false);
+                Check("releasing a half-axis returns it to centre and leaves the others",
+                    keyState.Sticks == ((short)0x7fff, (short)0, (short)-0x7fff, (short)0x7fff),
+                    keyState.Sticks.ToString());
+
+                // The second trap: a trigger binding sets a PRESSURE, not the bit of the same
+                // name. The bit is what the mapping carries; the console reads l2_state.
+                InputTranslation.ApplyBinding(keyState, InputTranslation.AnalogButtonL2, true);
+                Check("L2 sets the pressure and not the analog-button bit",
+                    keyState.Triggers == ((byte)0xff, (byte)0)
+                    && ((uint)keyState.Buttons & InputTranslation.AnalogButtonL2) == 0,
+                    $"{keyState.Triggers} buttons={(uint)keyState.Buttons:x}");
+                InputTranslation.ApplyBinding(keyState, InputTranslation.AnalogButtonL2, false);
+                Check("releasing the trigger returns the pressure to zero",
+                    keyState.Triggers == ((byte)0, (byte)0));
+
+                // Everything else is an ordinary bit, set on press and cleared on release.
+                InputTranslation.ApplyBinding(keyState, (uint)ChiakiControllerButton.Cross, true);
+                InputTranslation.ApplyBinding(keyState, (uint)ChiakiControllerButton.Ps, true);
+                Check("an ordinary binding sets its bit",
+                    keyState.Buttons == (ChiakiControllerButton.Cross | ChiakiControllerButton.Ps),
+                    keyState.Buttons.ToString());
+                InputTranslation.ApplyBinding(keyState, (uint)ChiakiControllerButton.Cross, false);
+                Check("and releasing clears only that one",
+                    keyState.Buttons == ChiakiControllerButton.Ps, keyState.Buttons.ToString());
+            }
+
+            // The two touchpads are not the same shape - 1920x942 against 1919x1079 - so one pair
+            // used for both puts a touch in the wrong place on one console.
+            Check("the PS4 and PS5 touchpads differ on both axes",
+                InputTranslation.TouchpadBounds(false) == (1920.0f, 942.0f)
+                && InputTranslation.TouchpadBounds(true) == (1919.0f, 1079.0f));
+            Check("the middle of the window is the middle of each pad",
+                InputTranslation.MouseToTouchpad(640, 360, 1280, 720, ps5: true) == ((ushort)959, (ushort)539)
+                && InputTranslation.MouseToTouchpad(640, 360, 1280, 720, ps5: false) == ((ushort)960, (ushort)471),
+                InputTranslation.MouseToTouchpad(640, 360, 1280, 720, true).ToString());
+
+            // PP91. streamsession.cpp calls std::clamp(0.0, x, width) - the value first and the
+            // bounds after - so 0.0 is what gets clamped and the upper bound never applies. The
+            // negative side works by accident; the right edge does not, and a drag off the window
+            // sends the console a touch outside its own touchpad.
+            Check("a coordinate left of the window comes back at zero",
+                InputTranslation.MouseToTouchpad(-50, -50, 1280, 720, ps5: true) == ((ushort)0, (ushort)0));
+            Check("a coordinate past the right edge is NOT clamped, which is the defect",
+                InputTranslation.MouseToTouchpad(2560, 360, 1280, 720, ps5: true).X > 1919,
+                InputTranslation.MouseToTouchpad(2560, 360, 1280, 720, true).X.ToString());
+            Check("and the same transposition is in the normalised path",
+                InputTranslation.Normalize(2560, 1280) > 1.0f
+                && InputTranslation.Normalize(-10, 1280) == 0.0f,
+                InputTranslation.Normalize(2560, 1280).ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+            // The outer 5% of any edge is a touchpad click, judged on the normalised coordinate.
+            Check("the edges of the window are a touchpad click",
+                InputTranslation.IsEdgeTouch(0.02f, 0.5f) && InputTranslation.IsEdgeTouch(0.5f, 0.99f)
+                && !InputTranslation.IsEdgeTouch(0.5f, 0.5f));
         }
 
         Console.WriteLine();
