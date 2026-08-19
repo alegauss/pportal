@@ -79,10 +79,10 @@ public static class HapticsRumble
         switch (intensity)
         {
             case RumbleHapticsIntensity.VeryWeak:
-                (left16, right16) = ((ushort)(tempLeft / 5), (ushort)(tempRight / 5));
+                (left16, right16) = (Saturate(tempLeft / 5), Saturate(tempRight / 5));
                 break;
             case RumbleHapticsIntensity.Weak:
-                (left16, right16) = ((ushort)(tempLeft / 2), (ushort)(tempRight / 2));
+                (left16, right16) = (Saturate(tempLeft / 2), Saturate(tempRight / 2));
                 break;
             case RumbleHapticsIntensity.Strong:
                 (left16, right16) = (Saturate(tempLeft * 2), Saturate(tempRight * 2));
@@ -94,12 +94,12 @@ public static class HapticsRumble
                 // Normal, and everything else including Off - which never reaches here, because
                 // the caller checks it before folding the frame at all.
                 //
-                // This is the branch with no Saturate, and it is not an oversight to fix here: the
-                // C++ assigns a uint32 to a uint16 and lets it wrap. A frame of nothing but
-                // -32768 folds to exactly 65536, wraps to 0, and the pad goes SILENT at the
-                // loudest input there is - while Strong, which saturates, stays at full. Filed as
-                // PP98; reproduced here because the port must not differ.
-                (left16, right16) = ((ushort)tempLeft, (ushort)tempRight);
+                // PP98: this branch, and the two that divide, used to narrow without saturating.
+                // The two that multiply did, because an overflow there was obvious - but the mean
+                // itself already reaches 65536, twice the magnitude of short.MinValue and one past
+                // a ushort, so a fully clipped frame wrapped to zero here and the pad was told to
+                // rumble at nothing while Strong stayed at full.
+                (left16, right16) = (Saturate(tempLeft), Saturate(tempRight));
                 break;
         }
 

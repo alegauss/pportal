@@ -46,6 +46,14 @@
 #endif
 
 
+// PP98: the one place a folded haptics amplitude becomes a rumble strength. It is a function
+// rather than a ternary at five call sites so that there is exactly one narrowing to get right,
+// and so the .NET selftest can say that no branch of the intensity switch bypasses it.
+static uint16_t rumble_saturate(uint32_t value)
+{
+	return (value > UINT16_MAX) ? (uint16_t)UINT16_MAX : (uint16_t)value;
+}
+
 static bool isLocalAddress(QString host)
 {
     if(host.contains("."))
@@ -1812,35 +1820,35 @@ void StreamSession::PushHapticsFrame(uint8_t *buf, size_t buf_size)
 		temp_right = (temp_right > HAPTIC_RUMBLE_MIN_STRENGTH) ? temp_right : 0;
 		if(temp_left == 0 && temp_right == 0)
 			return;
+		// PP98: every branch narrows through rumble_saturate, and none of them assigns a
+		// uint32_t to a uint16_t bare. Three of them used to - the two that multiply saturated,
+		// because an overflow there was obvious, and the three that divide or pass through did
+		// not, because one there was not. But the mean itself already reaches 65536: twice the
+		// magnitude of INT16_MIN, and one past what a uint16_t holds. So a frame of nothing but
+		// -32768 wrapped to 0 on Normal and the pad was told to rumble at nothing, while Strong
+		// on the same frame stayed at full.
 		switch(rumble_haptics_intensity)
 		{
 			case RumbleHapticsIntensity::VeryWeak:
-				left = temp_left / 5;
-				right = temp_right / 5;
+				left = rumble_saturate(temp_left / 5);
+				right = rumble_saturate(temp_right / 5);
 				break;
 			case RumbleHapticsIntensity::Weak:
-				left = temp_left / 2;
-				right = temp_right / 2;
-				break;
-			case RumbleHapticsIntensity::Normal:
-				left = temp_left;
-				right = temp_right;
+				left = rumble_saturate(temp_left / 2);
+				right = rumble_saturate(temp_right / 2);
 				break;
 			case RumbleHapticsIntensity::Strong:
-				temp_left *= 2;
-				temp_right *= 2;
-				left = (temp_left > UINT16_MAX) ? UINT16_MAX : temp_left;
-				right = (temp_right > UINT16_MAX) ? UINT16_MAX : temp_right;
+				left = rumble_saturate(temp_left * 2);
+				right = rumble_saturate(temp_right * 2);
 				break;
 			case RumbleHapticsIntensity::VeryStrong:
-				temp_left *= 5;
-				temp_right *= 5;
-				left = (temp_left > UINT16_MAX) ? UINT16_MAX : temp_left;
-				right = (temp_right > UINT16_MAX) ? UINT16_MAX : temp_right;
+				left = rumble_saturate(temp_left * 5);
+				right = rumble_saturate(temp_right * 5);
 				break;
+			case RumbleHapticsIntensity::Normal:
 			default:
-				left = temp_left;
-				right = temp_right;
+				left = rumble_saturate(temp_left);
+				right = rumble_saturate(temp_right);
 				break;
 		}
 		// Set minimum rumble value if above rumble min for controllers that shift up to 9 bits when rumbling

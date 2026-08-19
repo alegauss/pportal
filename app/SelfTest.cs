@@ -1487,19 +1487,34 @@ public static class SelfTest
                 HapticsRumble.Strength(HapticFrame(120, 0, 8), RumbleHapticsIntensity.VeryWeak) == 512,
                 HapticsRumble.Strength(HapticFrame(120, 0, 8), RumbleHapticsIntensity.VeryWeak)?.ToString() ?? "null");
 
-            // PP98. The loudest input there is folds to exactly 65536, which is one past a ushort,
-            // and Normal assigns it without saturating - so the pad goes SILENT at full scale,
-            // while Strong, which does saturate, stays at maximum. Asserted as it is because the
-            // port must not differ from the Qt build.
+            // PP98. The loudest input there is folds to exactly 65536 - twice the magnitude of
+            // short.MinValue, one past a ushort. Three of the five branches used to narrow that
+            // bare, so a fully clipped frame wrapped to a rumble of ZERO on Normal while Strong,
+            // which saturated, stayed at full. It was a zero sent and not a frame skipped: the
+            // silence check runs before the switch.
             byte[] fullScale = HapticFrame(short.MinValue, short.MinValue, 8);
-            // Note it is a zero SENT and not a frame skipped: the silence check runs before the
-            // switch, so the wrap happens after it and the pad is told to rumble at nothing.
-            Check("full scale wraps to a rumble of zero on Normal",
-                HapticsRumble.Strength(fullScale, RumbleHapticsIntensity.Normal) == 0,
+            Check("full scale saturates instead of wrapping",
+                HapticsRumble.Strength(fullScale, RumbleHapticsIntensity.Normal) == 65535,
                 HapticsRumble.Strength(fullScale, RumbleHapticsIntensity.Normal)?.ToString() ?? "null");
-            Check("and stays at maximum on Strong, which saturates",
-                HapticsRumble.Strength(fullScale, RumbleHapticsIntensity.Strong) == 65535,
-                HapticsRumble.Strength(fullScale, RumbleHapticsIntensity.Strong)?.ToString() ?? "null");
+            Check("and every branch agrees at the top of the range",
+                HapticsRumble.Strength(fullScale, RumbleHapticsIntensity.Strong) == 65535
+                && HapticsRumble.Strength(fullScale, RumbleHapticsIntensity.Weak) == 32768
+                && HapticsRumble.Strength(fullScale, RumbleHapticsIntensity.VeryWeak) == 13107,
+                HapticsRumble.Strength(fullScale, RumbleHapticsIntensity.VeryWeak)?.ToString() ?? "null");
+
+            // The Qt client's own five branches, which this code cannot exercise. The property is
+            // narrow on purpose: an assignment straight from a temp is the shape of the mistake,
+            // and a saturating branch does not look like one.
+            if (sessionSource is null)
+            {
+                Console.WriteLine($"  --    the Qt client's haptics fold  (no {SessionSource.RelativePath} here)");
+            }
+            else
+            {
+                IReadOnlyList<string> bare = SessionSource.BareRumbleNarrowings(sessionSource);
+                Check("no branch of the Qt client's haptics fold narrows without saturating",
+                    bare.Count == 0, string.Join(" | ", bare));
+            }
         }
 
         Console.WriteLine();

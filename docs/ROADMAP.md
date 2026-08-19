@@ -17,7 +17,6 @@
 - 📋 **PP8** (deps: PP4 ✅) **controller input is SDL wired into Qt events, and 950 lines of it decide what a button does** — A remote play client is driven by a gamepad before a mouse, so the input path is a first-class port and not a detail of whichever screen is drawn first. → §PP8
 - 📋 **PP87** (deps: PP9) **the video and audio sample callbacks are the last uncrossed part of the seam, and nothing offline can drive one** — a frame buffer is borrowed only for the duration of the callback, so who copies it is decided where there is a decoder to feed. → §PP87
 - ⏳ **PP93** (deps: —) **the dpad touch path uses a third pair of touchpad bounds, matching neither console's pad** — the SDL touchpad path in controllermanager.cpp still scales by the fixed macros, having no session to ask which console is connected. → §PP93
-- 💭 **PP98** (deps: —) **the haptics-to-rumble fold wraps at full scale, so the loudest frame tells the pad to rumble at zero** — three of the five intensity branches narrow a uint32 mean into a uint16 without the saturation the other two have. → §PP98
 
 ## Block C — Video and input path
 

@@ -59,6 +59,31 @@ public static partial class SessionSource
         return first.Length > 0 && (char.IsAsciiDigit(first[0]) || first[0] is '-' or '+' or '.');
     }
 
+    /// <summary>
+    /// PP98: the property that keeps the haptics fold saturating.
+    ///
+    /// Every branch of the intensity switch narrows a uint32_t mean into a uint16_t, and three of
+    /// them used to do it bare. What can be said about the source instead of about the arithmetic
+    /// is that no assignment in PushHapticsFrame takes a temp straight across - they all go
+    /// through rumble_saturate. That is the shape of the mistake, and nothing else looks like it.
+    /// </summary>
+    public static IReadOnlyList<string> BareRumbleNarrowings(string filePath)
+    {
+        ArgumentNullException.ThrowIfNull(filePath);
+
+        string code = LineCommentRegex().Replace(File.ReadAllText(filePath), "");
+        return BareNarrowingRegex()
+            .Matches(code)
+            .Select(m => m.Value.Trim())
+            .ToList();
+    }
+
+    // `left = temp_left;` and its three siblings: an assignment straight from a temp with nothing
+    // between them. A saturating branch reads `left = rumble_saturate(temp_left / 5);` and does
+    // not match, which is the whole distinction.
+    [GeneratedRegex(@"\b(?:left|right)\s*=\s*temp_(?:left|right)\s*[;/*]")]
+    private static partial Regex BareNarrowingRegex();
+
     // Argument text up to the closing parenthesis. The calls in this file take no nested call in
     // the first argument, so a non-greedy run to the first ")" is enough; one that appeared would
     // truncate the text and, at worst, make this check say a call looks wrong - which is the

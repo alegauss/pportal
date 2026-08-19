@@ -26,6 +26,7 @@
 - ✅ **PP95** **the audio output ring is a QMutex around SDL, so no managed host can queue a frame without both** — the drop-oldest ring, its seam-bounded reads and its once-per-patch overflow report run in managed code under sixteen assertions.
 - ✅ **PP96** **the microphone ring is a second copy of the audio output ring, fifty lines that differ in one bound** — the port carries one ring for both paths, the capture drain being the same read with no target, under twenty assertions.
 - ✅ **PP97** **the haptics-to-rumble fold is SDL and a controller list, so no managed host can tell a PS4 pad what to feel** — a haptics frame folds to a rumble strength in managed code, with the floor, the ladder and the nine-bit minimum, under nine assertions.
+- ✅ **PP98** **the haptics-to-rumble fold wraps at full scale, so the loudest frame tells the pad to rumble at zero** — all five intensity branches narrow through one saturating call in both clients, so the loudest frame is the strongest rumble.
 
 ## Block C — Video and input path
 

@@ -123,29 +123,6 @@ Whatever the right pair is, the dpad path and the mouse path should read it from
 same place - and the reason to write that down now is that the port has just copied all
 three, so it is the moment when the duplication is visible.
 
-### §PP98 The loudest frame is silent
-
-PushHapticsFrame folds a stereo haptics frame to one rumble strength: the mean of twice
-each absolute amplitude. Twice the largest amplitude a signed 16-bit sample holds is
-65536, one past what a uint16 holds, and the VeryWeak, Weak and Normal branches assign
-that uint32 mean into a uint16 without saturating. Strong and VeryStrong do saturate:
-multiplying was obviously going to overflow, dividing obviously was not.
-
-So on Normal a frame of nothing but -32768 folds to 65536, wraps to 0, and the pad is
-told to rumble at nothing - and the zero is sent rather than skipped, because the
-silence check runs before the switch. Strong, on the same frame, stays at 65535. The
-louder the input, the weaker the rumble, until the loudest input turns it off.
-
-How reachable it is has not been measured. It needs the mean absolute amplitude to be
-the full 32768, which is a clipped waveform rather than a loud one. That is the honest
-reason this is an idea: the fix is one call and the risk is nil, but so is the evidence
-that anybody has felt it.
-
-The fix is to saturate the three branches that do not, the way the two that do already
-spell it. What makes it worth writing down rather than doing quietly is that it changes
-what a user feels at one end of a setting, and this port's rule is that a behaviour
-change is argued rather than smuggled in beside a transcription.
-
 ## Block C — Video and input path
 
 ### §PP9 Vulkan under a D3D9 compositor
