@@ -1,0 +1,20 @@
+<UserControl x:Class="ChiakiNg.Views.ConsolePinView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    PP14: the console PIN asked for on its own.
+
+    The same value the registration dialog treats as optional, required here - which is why there
+    is a second view model rather than a shared one, and why nothing in this file says four
+    digits. The rule is CanSubmit's, and a copy of it in the markup is a second place to be wrong.
+  -->
+  <StackPanel Margin="16">
+    <TextBlock x:Name="Prompt" Text="Enter the PIN shown on the console." Margin="0,0,0,8" />
+    <TextBox x:Name="PinField" MaxLength="4"
+             Text="{Binding Pin, UpdateSourceTrigger=PropertyChanged}" />
+
+    <Button x:Name="SubmitButton" Content="OK"
+            HorizontalAlignment="Right" Margin="0,16,0,0" Padding="20,4"
+            IsEnabled="{Binding CanSubmit}" />
+  </StackPanel>
+</UserControl>

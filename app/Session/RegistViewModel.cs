@@ -36,6 +36,8 @@ public sealed partial class RegistViewModel : INotifyPropertyChanged
     private string consolePin = "";
     private string onlineId = "";
     private string accountId = "";
+    private bool onlineIdVisible;
+    private bool accountIdVisible;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -79,10 +81,24 @@ public sealed partial class RegistViewModel : INotifyPropertyChanged
     /// part of the rule and not a detail of the layout: the QML reads `!onlineId.visible ||
     /// onlineId.text.trim()`, so a hidden field does not block the button however empty it is.
     /// </summary>
-    public bool OnlineIdVisible { get; set; }
+    ///
+    /// It raises CanRegister for the same reason every field does, and it has to: the console
+    /// generation is a choice on this dialog, so changing it moves a required field out of the
+    /// rule while the user is looking at the button. A silent property here leaves the button
+    /// disabled for a field that is no longer on screen.
+    /// </summary>
+    public bool OnlineIdVisible
+    {
+        get => onlineIdVisible;
+        set => SetVisible(ref onlineIdVisible, value);
+    }
 
     /// <summary>The other one. Both hidden is legal - a PS4 before firmware 8 needs neither.</summary>
-    public bool AccountIdVisible { get; set; }
+    public bool AccountIdVisible
+    {
+        get => accountIdVisible;
+        set => SetVisible(ref accountIdVisible, value);
+    }
 
     /// <summary>Whether the Remote Play PIN is acceptable: exactly eight digits.</summary>
     public bool RemotePlayPinValid => RemotePlayPinRegex().IsMatch(RemotePlayPin);
@@ -118,6 +134,16 @@ public sealed partial class RegistViewModel : INotifyPropertyChanged
 
         // The button's state depends on every field, so every field raises it. A view model that
         // raised only its own property would leave a button that is correct and never repainted.
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CanRegister)));
+    }
+
+    private void SetVisible(ref bool field, bool value, [CallerMemberName] string? name = null)
+    {
+        if (field == value)
+            return;
+
+        field = value;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CanRegister)));
     }
 

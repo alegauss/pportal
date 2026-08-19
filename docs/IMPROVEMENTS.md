@@ -121,6 +121,15 @@ reachability, the error a wrong PIN produces - and what makes the flow testable 
 flow. It also completes the first genuinely useful build: with this and the front door,
 a fresh install can register a console and reach the stream screen.
 
+The four are drawn and their bindings are asserted. Doing it turned up one thing the
+view models had wrong: the two PSN identifier fields decide whether they count toward
+the register button, so they are part of the rule - and they were silent properties.
+Changing the console generation moved a required field off screen and left the button
+disabled for it. They notify now.
+
+What is left is the flow: which dialog opens from where, what a wrong PIN puts on
+screen, and the console that exists at the end of it.
+
 ### §PP15 The two screens this application does not own
 
 PSNLoginDialog.qml is 455 lines and PSNTokenDialog.qml 427. Between them they host

@@ -1,0 +1,53 @@
+<UserControl x:Class="ChiakiNg.Views.RegistView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    PP14: registration, the longest of the four and the only one with a rule per field.
+
+    Every enabling decision on this screen is CanRegister and nothing else - PP37 - so there is no
+    IsEnabled expression here and no per-field validation in the markup. What IS here that could
+    not be moved is the two identifier fields being bound to their own visibility, because
+    "hidden" is part of the rule rather than a layout state: a field the console generation does
+    not ask for must not block the button, and the view model reads its own visibility to say so.
+  -->
+  <UserControl.Resources>
+    <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+
+    <Style TargetType="TextBlock" x:Key="FieldLabel">
+      <Setter Property="Margin" Value="0,8,0,2" />
+      <Setter Property="Opacity" Value="0.7" />
+    </Style>
+  </UserControl.Resources>
+
+  <StackPanel Margin="16">
+    <TextBlock Text="Host" Style="{StaticResource FieldLabel}" />
+    <TextBox x:Name="HostField" Text="{Binding Host, UpdateSourceTrigger=PropertyChanged}" />
+
+    <TextBlock Text="Remote Play PIN" Style="{StaticResource FieldLabel}" />
+    <TextBox x:Name="RemotePlayPinField"
+             Text="{Binding RemotePlayPin, UpdateSourceTrigger=PropertyChanged}" />
+
+    <!-- Optional, and saying so is the difference between a blank field and a blocked one. -->
+    <TextBlock Text="Console PIN (optional)" Style="{StaticResource FieldLabel}" />
+    <TextBox x:Name="ConsolePinField"
+             Text="{Binding ConsolePin, UpdateSourceTrigger=PropertyChanged}" />
+
+    <StackPanel x:Name="OnlineIdGroup"
+                Visibility="{Binding OnlineIdVisible, Converter={StaticResource BoolToVisibility}}">
+      <TextBlock Text="PSN Online ID" Style="{StaticResource FieldLabel}" />
+      <TextBox x:Name="OnlineIdField"
+               Text="{Binding OnlineId, UpdateSourceTrigger=PropertyChanged}" />
+    </StackPanel>
+
+    <StackPanel x:Name="AccountIdGroup"
+                Visibility="{Binding AccountIdVisible, Converter={StaticResource BoolToVisibility}}">
+      <TextBlock Text="PSN Account ID" Style="{StaticResource FieldLabel}" />
+      <TextBox x:Name="AccountIdField"
+               Text="{Binding AccountId, UpdateSourceTrigger=PropertyChanged}" />
+    </StackPanel>
+
+    <Button x:Name="RegisterButton" Content="Register"
+            HorizontalAlignment="Right" Margin="0,16,0,0" Padding="20,4"
+            IsEnabled="{Binding CanRegister}" />
+  </StackPanel>
+</UserControl>

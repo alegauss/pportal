@@ -1,0 +1,22 @@
+<UserControl x:Class="ChiakiNg.Views.ManualHostView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    PP14: adding a console discovery cannot see.
+
+    The combo is the whole of the interest. Its "nothing chosen" is an INDEX of -1 rather than an
+    empty selection, so SelectedIndex is what is bound and not SelectedItem - a fresh dialog has a
+    selection, and that selection means nothing. Binding the item would enable the button on open.
+  -->
+  <StackPanel Margin="16">
+    <TextBlock Text="Host" Margin="0,0,0,2" Opacity="0.7" />
+    <TextBox x:Name="HostField" Text="{Binding Host, UpdateSourceTrigger=PropertyChanged}" />
+
+    <TextBlock Text="Registered console" Margin="0,12,0,2" Opacity="0.7" />
+    <ComboBox x:Name="ConsoleCombo" SelectedIndex="{Binding RegisteredIndex}" />
+
+    <Button x:Name="AddButton" Content="Add"
+            HorizontalAlignment="Right" Margin="0,16,0,0" Padding="20,4"
+            IsEnabled="{Binding CanAdd}" />
+  </StackPanel>
+</UserControl>
