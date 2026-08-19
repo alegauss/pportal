@@ -1515,6 +1515,89 @@ public static class SelfTest
             }
 
             Console.WriteLine();
+            Console.WriteLine("Bitstream - what kind of frame just arrived");
+
+            string? bsFile = SanitizerSource.LocateRelative(@"test\bitstream.c");
+            if (bsFile is null)
+            {
+                Console.WriteLine(@"  --    the recorded slice headers  (no test\bitstream.c here)");
+            }
+            else
+            {
+                // The same reader the crypto vectors use: these are real headers and slices off a
+                // stream, and they stay in the C file so both suites cite one copy.
+                IReadOnlyDictionary<string, byte[]> h264 =
+                    CryptoVectors.InFunction(bsFile, "test_bitstream_parse_h264");
+                IReadOnlyDictionary<string, byte[]> h265 =
+                    CryptoVectors.InFunction(bsFile, "test_bitstream_parse_h265");
+
+                Check("the recorded headers and slices are readable",
+                    h264.Count == 4 && h265.Count == 4,
+                    $"{h264.Count}/{h265.Count}");
+
+                using (var bs = new Bitstream(ChiakiNg.Session.ChiakiCodec.H264))
+                {
+                    Check("an H.264 stream's parameter sets parse", bs.ReadHeader(h264["header"]));
+                    Check("an I slice is an I slice",
+                        bs.ReadSlice(h264["slice_i"]) is (BitstreamSliceType.I, _));
+                    // A P slice carries which frame it depends on, and that number is what a
+                    // reference rewrite later changes.
+                    Check("a P slice names the frame it references",
+                        bs.ReadSlice(h264["slice_p"]) == (BitstreamSliceType.P, 0u)
+                        && bs.ReadSlice(h264["slice_p_ref_5"]) == (BitstreamSliceType.P, 5u),
+                        bs.ReadSlice(h264["slice_p_ref_5"])?.ToString() ?? "<null>");
+                }
+
+                using (var bs = new Bitstream(ChiakiNg.Session.ChiakiCodec.H265))
+                {
+                    Check("an H.265 stream parses the same three ways",
+                        bs.ReadHeader(h265["header"])
+                        && bs.ReadSlice(h265["slice_i"]) is (BitstreamSliceType.I, _)
+                        && bs.ReadSlice(h265["slice_p"]) == (BitstreamSliceType.P, 0u)
+                        && bs.ReadSlice(h265["slice_p_ref_5"]) == (BitstreamSliceType.P, 5u));
+                }
+
+                // The regression the upstream issue number is attached to, cited by name so a
+                // change that reopens it says which bug it is.
+                IReadOnlyDictionary<string, byte[]> issue213 =
+                    CryptoVectors.InFunction(bsFile, "test_bitstream_issue_213");
+                using (var bs = new Bitstream(ChiakiNg.Session.ChiakiCodec.H265))
+                {
+                    Check("issue 213's slice still reads as a P frame referencing 0",
+                        bs.ReadHeader(issue213["header"])
+                        && bs.ReadSlice(issue213["slice_p"]) == (BitstreamSliceType.P, 0u),
+                        bs.ReadSlice(issue213["slice_p"])?.ToString() ?? "<null>");
+                }
+
+                // Rewriting a reference is what lets a frame survive the loss of the one it
+                // depended on, and it edits the caller's bytes rather than answering with new
+                // ones. The vectors are the C suite's own set-ref case: a slice from an arbitrary
+                // stream is not necessarily rewritable, which is what the refusal below is about.
+                IReadOnlyDictionary<string, byte[]> setRef =
+                    CryptoVectors.InFunction(bsFile, "test_bitstream_set_ref_h265");
+                using (var bs = new Bitstream(ChiakiNg.Session.ChiakiCodec.H265))
+                {
+                    Check("the set-ref case's header parses", bs.ReadHeader(setRef["header"]));
+
+                    byte[] slice = (byte[])setRef["slice_p"].Clone();
+                    bool allNine = true;
+                    for (uint i = 0; i < 9; i++)
+                    {
+                        if (!bs.SetReferenceFrame(slice, i) || bs.ReadSlice(slice) != (BitstreamSliceType.P, i))
+                            allNine = false;
+                    }
+
+                    Check("every one of the nine reference frames can be written and read back",
+                        allNine && !slice.SequenceEqual(setRef["slice_p"]),
+                        bs.ReadSlice(slice)?.ToString() ?? "<null>");
+
+                    // The slice has nine reference frames, so a tenth is refused rather than
+                    // written into whatever bits happen to follow.
+                    Check("a tenth reference frame is refused", !bs.SetReferenceFrame(slice, 10));
+                }
+            }
+
+            Console.WriteLine();
             Console.WriteLine("HttpResponse - two implementations, one set of bytes");
 
             // PP33's first piece, and the first time PP23's harness has two implementations to

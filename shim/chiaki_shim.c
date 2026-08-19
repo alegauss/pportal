@@ -4,6 +4,7 @@
 
 #include <chiaki/common.h>
 #include <chiaki/decoderchoice.h>
+#include <chiaki/bitstream.h>
 #include <chiaki/controller.h>
 #include <chiaki/discovery.h>
 #include <chiaki/ecdh.h>
@@ -1347,6 +1348,65 @@ CHIAKI_SHIM_API const char *chiaki_shim_http_header_value(void *response, int32_
 {
 	ChiakiHttpHeader *header = chiaki_shim_http_at((chiaki_shim_http *)response, index);
 	return header ? header->value : NULL;
+}
+
+CHIAKI_SHIM_API void *chiaki_shim_bitstream_create(int32_t codec)
+{
+	ChiakiBitstream *self = (ChiakiBitstream *)calloc(1, sizeof(ChiakiBitstream));
+	if(!self)
+		return NULL;
+
+	chiaki_bitstream_init(self, NULL, (ChiakiCodec)codec);
+	return self;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_bitstream_free(void *bitstream)
+{
+	free(bitstream);
+}
+
+CHIAKI_SHIM_API bool chiaki_shim_bitstream_header(void *bitstream, uint8_t *data, int32_t size)
+{
+	if(!bitstream || !data || size <= 0)
+		return false;
+
+	return chiaki_bitstream_header((ChiakiBitstream *)bitstream, data, (unsigned)size);
+}
+
+CHIAKI_SHIM_API bool chiaki_shim_bitstream_slice(
+		void *bitstream, uint8_t *data, int32_t size,
+		int32_t *slice_type, uint32_t *reference_frame)
+{
+	ChiakiBitstreamSlice slice;
+	bool ok;
+
+	if(slice_type)
+		*slice_type = 0;
+	if(reference_frame)
+		*reference_frame = 0;
+	if(!bitstream || !data || size <= 0)
+		return false;
+
+	memset(&slice, 0, sizeof(slice));
+	ok = chiaki_bitstream_slice((ChiakiBitstream *)bitstream, data, (unsigned)size, &slice);
+	if(!ok)
+		return false;
+
+	if(slice_type)
+		*slice_type = (int32_t)slice.slice_type;
+	if(reference_frame)
+		*reference_frame = (uint32_t)slice.reference_frame;
+	return true;
+}
+
+CHIAKI_SHIM_API bool chiaki_shim_bitstream_slice_set_reference_frame(
+		void *bitstream, uint8_t *data, int32_t size, uint32_t reference_frame)
+{
+	if(!bitstream || !data || size <= 0)
+		return false;
+
+	return chiaki_bitstream_slice_set_reference_frame((ChiakiBitstream *)bitstream, data,
+			(unsigned)size, (unsigned)reference_frame);
 }
 
 CHIAKI_SHIM_API void chiaki_shim_session_free(void *session)

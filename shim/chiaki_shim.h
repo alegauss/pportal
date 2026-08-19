@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 16
+#define CHIAKI_SHIM_ABI 17
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -770,6 +770,35 @@ CHIAKI_SHIM_API int32_t chiaki_shim_http_header_count(void *response);
 
 CHIAKI_SHIM_API const char *chiaki_shim_http_header_key(void *response, int32_t index);
 CHIAKI_SHIM_API const char *chiaki_shim_http_header_value(void *response, int32_t index);
+
+/**
+ * PP23: the bitstream parser, which is what tells the client what kind of frame just arrived.
+ *
+ * It reads H.264 and H.265 slice headers far enough to answer two questions: is this an I frame,
+ * and which frame does it reference. Everything the video path does about loss rests on those -
+ * whether a gap needs an IDR request, whether a frame can be decoded at all - so a parser that is
+ * subtly wrong shows up as stutter attributed to the network.
+ *
+ * test/bitstream.c records real headers and slices for both codecs, including one regression case
+ * carrying an upstream issue number, which is the closest this module has to a specification.
+ *
+ * `codec` is ChiakiCodec: 0 H264, 1 H265, 2 H265 HDR. The data is read, never written, except by
+ * set_reference_frame which rewrites it in place.
+ */
+CHIAKI_SHIM_API void *chiaki_shim_bitstream_create(int32_t codec);
+CHIAKI_SHIM_API void chiaki_shim_bitstream_free(void *bitstream);
+
+/** Parses the parameter sets a stream opens with. False when they are not understood. */
+CHIAKI_SHIM_API bool chiaki_shim_bitstream_header(void *bitstream, uint8_t *data, int32_t size);
+
+/** The slice type (0 unknown, 1 I, 2 P) and the frame it references. */
+CHIAKI_SHIM_API bool chiaki_shim_bitstream_slice(
+		void *bitstream, uint8_t *data, int32_t size,
+		int32_t *slice_type, uint32_t *reference_frame);
+
+/** Rewrites a slice's reference frame in place, which is how a lost frame is worked around. */
+CHIAKI_SHIM_API bool chiaki_shim_bitstream_slice_set_reference_frame(
+		void *bitstream, uint8_t *data, int32_t size, uint32_t reference_frame);
 
 #ifdef __cplusplus
 }
