@@ -14,6 +14,7 @@
 - ✅ **PP83** **the 22 callbacks libchiaki takes are uncrossed in the direction it calls them, so nothing above the seam can be built** — a managed handler now receives libchiaki's log callback through an UnmanagedCallersOnly thunk and a GCHandle, under ten assertions including one across a forced collection.
 - ✅ **PP84** **nothing managed has called chiaki_lib_init or built a ChiakiSession, so the lifecycle has no first end** — chiaki_lib_init and chiaki_session_init are reachable from .NET over an opaque connect-info builder, under twelve assertions and no console.
 - ✅ **PP85** **the session thread and its event callback are unreached, so nothing managed can hear a session end** — start, the event callback and join are reachable from .NET, and a quit off the session thread arrives at a managed handler under seven assertions.
+- ✅ **PP86** **the controller state is 21 scalars and a touch array, and nothing managed can put one into a session** — a controller state built in C crosses by handle and comes back equal by chiaki_controller_state_equals, under fifteen assertions.
 
 ## Block C — Video and input path
 

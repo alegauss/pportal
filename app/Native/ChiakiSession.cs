@@ -339,6 +339,31 @@ public sealed unsafe class ChiakiSession : IDisposable
         return (ChiakiError)SessionStop(_handle);
     }
 
+    /// <summary>
+    /// chiaki_session_set_controller_state, taken under the lock the feedback sender reads it
+    /// through - so it is safe while a stream is running and works before one is.
+    /// </summary>
+    public ChiakiError SetControllerState(ChiakiControllerState state)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ObjectDisposedException.ThrowIf(_handle == IntPtr.Zero, this);
+
+        return (ChiakiError)SessionSetControllerState(_handle, state.Handle);
+    }
+
+    /// <summary>
+    /// Whether what the session is holding equals <paramref name="state"/>, by
+    /// chiaki_controller_state_equals. The comparison is the library's, so it cannot agree with a
+    /// transcription this side also made.
+    /// </summary>
+    public bool ControllerStateMatches(ChiakiControllerState state)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ObjectDisposedException.ThrowIf(_handle == IntPtr.Zero, this);
+
+        return SessionControllerStateMatches(_handle, state.Handle);
+    }
+
     /// <summary>chiaki_session_join: waits for the session thread to end.</summary>
     public ChiakiError Join()
     {
@@ -433,4 +458,13 @@ public sealed unsafe class ChiakiSession : IDisposable
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_session_join",
         CallingConvention = CallingConvention.Cdecl)]
     private static extern int SessionJoin(IntPtr session);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_session_set_controller_state",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern int SessionSetControllerState(IntPtr session, IntPtr state);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_session_controller_state_matches",
+        CallingConvention = CallingConvention.Cdecl)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    private static extern bool SessionControllerStateMatches(IntPtr session, IntPtr state);
 }

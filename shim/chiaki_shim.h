@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 4
+#define CHIAKI_SHIM_ABI 5
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -306,6 +306,70 @@ CHIAKI_SHIM_API int32_t chiaki_shim_session_stop(void *session);
  * the mutex and the stop pipe the thread is still using.
  */
 CHIAKI_SHIM_API int32_t chiaki_shim_session_join(void *session);
+
+/**
+ * The controller state, which is what the session sends upstream sixty times a second.
+ *
+ * ChiakiControllerState is twenty-one scalars, a two-element touch array and ten floats of motion.
+ * Marshalling it per frame would be the seam's hottest path AND its most detailed layout promise
+ * at the same time, which is the worst combination available: an offset that is wrong by two
+ * bytes turns into a stick drift nobody can trace to a struct.
+ *
+ * So it is built here and pushed by handle. The touch functions are libchiaki's own - the id is
+ * allocated by chiaki_controller_state_start_touch and is -1 when both slots are taken - because
+ * a port that allocated its own would disagree with the console about which finger left.
+ *
+ * chiaki_shim_session_controller_state_matches is what closes the round trip, and it closes it
+ * with chiaki_controller_state_equals rather than with a field walk written here: the comparison
+ * that decides whether the state arrived is the library's, so it cannot agree with a transcription
+ * this file also made.
+ */
+CHIAKI_SHIM_API void *chiaki_shim_controller_state_create(void);
+CHIAKI_SHIM_API void chiaki_shim_controller_state_free(void *state);
+
+/** chiaki_controller_state_set_idle: the state a pad that is being held still reports. */
+CHIAKI_SHIM_API void chiaki_shim_controller_state_set_idle(void *state);
+
+/** The ChiakiControllerButton bitmask, plus the two analog-button bits above it. */
+CHIAKI_SHIM_API void chiaki_shim_controller_state_set_buttons(void *state, uint32_t buttons);
+CHIAKI_SHIM_API uint32_t chiaki_shim_controller_state_buttons(void *state);
+
+/** L2 and R2, which are pressures and not the bits in the mask above. */
+CHIAKI_SHIM_API void chiaki_shim_controller_state_set_triggers(void *state, uint8_t l2, uint8_t r2);
+CHIAKI_SHIM_API void chiaki_shim_controller_state_triggers(void *state, uint8_t *l2, uint8_t *r2);
+
+/** Both sticks, signed and centred on zero. */
+CHIAKI_SHIM_API void chiaki_shim_controller_state_set_sticks(
+		void *state, int16_t left_x, int16_t left_y, int16_t right_x, int16_t right_y);
+CHIAKI_SHIM_API void chiaki_shim_controller_state_sticks(
+		void *state, int16_t *left_x, int16_t *left_y, int16_t *right_x, int16_t *right_y);
+
+/** Gyro, accelerometer and orientation, in that order. */
+CHIAKI_SHIM_API void chiaki_shim_controller_state_set_motion(
+		void *state,
+		float gyro_x, float gyro_y, float gyro_z,
+		float accel_x, float accel_y, float accel_z,
+		float orient_x, float orient_y, float orient_z, float orient_w);
+
+/** The library's own touch allocation: a non-negative id, or -1 when both slots are taken. */
+CHIAKI_SHIM_API int8_t chiaki_shim_controller_state_start_touch(
+		void *state, uint16_t x, uint16_t y);
+CHIAKI_SHIM_API void chiaki_shim_controller_state_stop_touch(void *state, uint8_t id);
+CHIAKI_SHIM_API void chiaki_shim_controller_state_set_touch_pos(
+		void *state, uint8_t id, uint16_t x, uint16_t y);
+
+/** One touch slot, read back. False when `slot` is out of range; `id` is -1 for a finger that is up. */
+CHIAKI_SHIM_API bool chiaki_shim_controller_state_touch(
+		void *state, int32_t slot, uint16_t *x, uint16_t *y, int32_t *id);
+
+/** chiaki_controller_state_equals, which is the only comparison this seam uses. */
+CHIAKI_SHIM_API bool chiaki_shim_controller_state_equals(void *a, void *b);
+
+/** chiaki_session_set_controller_state, under the lock the feedback sender reads it through. */
+CHIAKI_SHIM_API int32_t chiaki_shim_session_set_controller_state(void *session, void *state);
+
+/** Whether what the session is holding equals `state`, by the library's own comparator. */
+CHIAKI_SHIM_API bool chiaki_shim_session_controller_state_matches(void *session, void *state);
 
 #ifdef __cplusplus
 }

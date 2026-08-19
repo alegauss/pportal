@@ -4,6 +4,7 @@
 
 #include <chiaki/common.h>
 #include <chiaki/decoderchoice.h>
+#include <chiaki/controller.h>
 #include <chiaki/log.h>
 #include <chiaki/session.h>
 
@@ -364,6 +365,165 @@ CHIAKI_SHIM_API int32_t chiaki_shim_session_join(void *session)
 {
 	chiaki_shim_session *self = (chiaki_shim_session *)session;
 	return self ? (int32_t)chiaki_session_join(&self->session) : (int32_t)CHIAKI_ERR_INVALID_DATA;
+}
+
+CHIAKI_SHIM_API void *chiaki_shim_controller_state_create(void)
+{
+	ChiakiControllerState *state = (ChiakiControllerState *)calloc(1, sizeof(ChiakiControllerState));
+	if(state)
+		chiaki_controller_state_set_idle(state);
+	return state;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_controller_state_free(void *state)
+{
+	free(state);
+}
+
+CHIAKI_SHIM_API void chiaki_shim_controller_state_set_idle(void *state)
+{
+	if(state)
+		chiaki_controller_state_set_idle((ChiakiControllerState *)state);
+}
+
+CHIAKI_SHIM_API void chiaki_shim_controller_state_set_buttons(void *state, uint32_t buttons)
+{
+	if(state)
+		((ChiakiControllerState *)state)->buttons = buttons;
+}
+
+CHIAKI_SHIM_API uint32_t chiaki_shim_controller_state_buttons(void *state)
+{
+	return state ? ((ChiakiControllerState *)state)->buttons : 0;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_controller_state_set_triggers(void *state, uint8_t l2, uint8_t r2)
+{
+	ChiakiControllerState *self = (ChiakiControllerState *)state;
+	if(!self)
+		return;
+
+	self->l2_state = l2;
+	self->r2_state = r2;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_controller_state_triggers(void *state, uint8_t *l2, uint8_t *r2)
+{
+	ChiakiControllerState *self = (ChiakiControllerState *)state;
+	if(l2)
+		*l2 = self ? self->l2_state : 0;
+	if(r2)
+		*r2 = self ? self->r2_state : 0;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_controller_state_set_sticks(
+		void *state, int16_t left_x, int16_t left_y, int16_t right_x, int16_t right_y)
+{
+	ChiakiControllerState *self = (ChiakiControllerState *)state;
+	if(!self)
+		return;
+
+	self->left_x = left_x;
+	self->left_y = left_y;
+	self->right_x = right_x;
+	self->right_y = right_y;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_controller_state_sticks(
+		void *state, int16_t *left_x, int16_t *left_y, int16_t *right_x, int16_t *right_y)
+{
+	ChiakiControllerState *self = (ChiakiControllerState *)state;
+	if(left_x)
+		*left_x = self ? self->left_x : 0;
+	if(left_y)
+		*left_y = self ? self->left_y : 0;
+	if(right_x)
+		*right_x = self ? self->right_x : 0;
+	if(right_y)
+		*right_y = self ? self->right_y : 0;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_controller_state_set_motion(
+		void *state,
+		float gyro_x, float gyro_y, float gyro_z,
+		float accel_x, float accel_y, float accel_z,
+		float orient_x, float orient_y, float orient_z, float orient_w)
+{
+	ChiakiControllerState *self = (ChiakiControllerState *)state;
+	if(!self)
+		return;
+
+	self->gyro_x = gyro_x;
+	self->gyro_y = gyro_y;
+	self->gyro_z = gyro_z;
+	self->accel_x = accel_x;
+	self->accel_y = accel_y;
+	self->accel_z = accel_z;
+	self->orient_x = orient_x;
+	self->orient_y = orient_y;
+	self->orient_z = orient_z;
+	self->orient_w = orient_w;
+}
+
+CHIAKI_SHIM_API int8_t chiaki_shim_controller_state_start_touch(void *state, uint16_t x, uint16_t y)
+{
+	return state ? chiaki_controller_state_start_touch((ChiakiControllerState *)state, x, y) : -1;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_controller_state_stop_touch(void *state, uint8_t id)
+{
+	if(state)
+		chiaki_controller_state_stop_touch((ChiakiControllerState *)state, id);
+}
+
+CHIAKI_SHIM_API void chiaki_shim_controller_state_set_touch_pos(
+		void *state, uint8_t id, uint16_t x, uint16_t y)
+{
+	if(state)
+		chiaki_controller_state_set_touch_pos((ChiakiControllerState *)state, id, x, y);
+}
+
+CHIAKI_SHIM_API bool chiaki_shim_controller_state_touch(
+		void *state, int32_t slot, uint16_t *x, uint16_t *y, int32_t *id)
+{
+	ChiakiControllerState *self = (ChiakiControllerState *)state;
+	if(!self || slot < 0 || (size_t)slot >= CHIAKI_CONTROLLER_TOUCHES_MAX)
+		return false;
+
+	if(x)
+		*x = self->touches[slot].x;
+	if(y)
+		*y = self->touches[slot].y;
+	if(id)
+		*id = self->touches[slot].id;
+	return true;
+}
+
+CHIAKI_SHIM_API bool chiaki_shim_controller_state_equals(void *a, void *b)
+{
+	if(!a || !b)
+		return false;
+
+	return chiaki_controller_state_equals((ChiakiControllerState *)a, (ChiakiControllerState *)b);
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_session_set_controller_state(void *session, void *state)
+{
+	chiaki_shim_session *self = (chiaki_shim_session *)session;
+	if(!self || !state)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+
+	return (int32_t)chiaki_session_set_controller_state(&self->session, (ChiakiControllerState *)state);
+}
+
+CHIAKI_SHIM_API bool chiaki_shim_session_controller_state_matches(void *session, void *state)
+{
+	chiaki_shim_session *self = (chiaki_shim_session *)session;
+	if(!self || !state)
+		return false;
+
+	return chiaki_controller_state_equals(&self->session.controller_state,
+			(ChiakiControllerState *)state);
 }
 
 CHIAKI_SHIM_API void chiaki_shim_session_free(void *session)

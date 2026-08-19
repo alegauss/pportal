@@ -644,6 +644,87 @@ public static class SelfTest
                         run.Join() == ChiakiError.Success);
                 }
             }
+
+            Console.WriteLine();
+            Console.WriteLine("ChiakiControllerState - the pad, sixty times a second");
+
+            using (var pad = new ChiakiControllerState())
+            using (var idle = new ChiakiControllerState())
+            {
+                // Both start idle, and idle is a state and not zeroes - the touch slots hold -1,
+                // which is a finger that is up rather than a finger at the origin.
+                Check("a fresh state is idle", pad.Matches(idle));
+                Check("idle means both fingers are up",
+                    pad.Touch(0).Id == -1 && pad.Touch(1).Id == -1,
+                    $"{pad.Touch(0).Id}, {pad.Touch(1).Id}");
+
+                // The library allocates touch ids, not this side. Two slots, and the third finger
+                // is refused - a port that numbered its own would disagree with the console about
+                // which finger left.
+                sbyte first = pad.StartTouch(100, 200);
+                sbyte second = pad.StartTouch(300, 400);
+                sbyte third = pad.StartTouch(500, 600);
+                Check("two touches are allocated and the third is refused",
+                    first >= 0 && second >= 0 && first != second && third == -1,
+                    $"{first}, {second}, {third}");
+                Check("a started touch keeps the position it was given",
+                    pad.Touch(0) is { X: 100, Y: 200 } && pad.Touch(0).Id == first,
+                    pad.Touch(0).ToString());
+
+                pad.SetTouchPos((byte)first, 111, 222);
+                Check("moving a touch moves the slot it is in",
+                    pad.Touch(0) is { X: 111, Y: 222 }, pad.Touch(0).ToString());
+
+                pad.StopTouch((byte)first);
+                Check("stopping a touch puts the finger up", pad.Touch(0).Id == -1);
+                pad.StopTouch((byte)second);
+
+                // The rest of the state, set and read back through the same handle.
+                pad.Buttons = ChiakiControllerButton.Cross | ChiakiControllerButton.L1
+                    | ChiakiControllerButton.Ps | ChiakiControllerButton.L2;
+                pad.Triggers = (255, 128);
+                pad.Sticks = (-32768, 32767, 100, -100);
+                pad.SetMotion(1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f, 10f);
+
+                Check("the button mask survives, analog bits included",
+                    pad.Buttons == (ChiakiControllerButton.Cross | ChiakiControllerButton.L1
+                        | ChiakiControllerButton.Ps | ChiakiControllerButton.L2),
+                    pad.Buttons.ToString());
+                Check("the triggers are pressures and not the bits of the same name",
+                    pad.Triggers == ((byte)255, (byte)128), pad.Triggers.ToString());
+                // The sticks are signed and centred on zero: a reader that took them as unsigned
+                // gets 32768 for full left, which is full RIGHT, and the port would steer backwards.
+                Check("the sticks keep their sign at both ends",
+                    pad.Sticks == ((short)-32768, (short)32767, (short)100, (short)-100),
+                    pad.Sticks.ToString());
+                Check("a state with anything set is no longer idle", !pad.Matches(idle));
+
+                // The round trip, and the reason the state is built in C at all: it goes into the
+                // session through libchiaki's own setter and is compared by libchiaki's own
+                // comparator - motion floats included - so nothing here can agree with itself.
+                using (var padInfo = new ChiakiConnectInfo())
+                {
+                    padInfo.Host = "127.0.0.1";
+                    padInfo.SetRegistKey("12345678"u8);
+                    padInfo.SetMorning(new byte[16]);
+
+                    using ChiakiSession? padSession = ChiakiSession.TryCreate(padInfo, null, out ChiakiError padErr);
+                    Check("a session for the pad builds", padSession is not null, padErr.ToString());
+                    if (padSession is not null)
+                    {
+                        Check("the session holds idle before anything is pushed",
+                            padSession.ControllerStateMatches(idle));
+                        Check("pushing the state succeeds",
+                            padSession.SetControllerState(pad) == ChiakiError.Success);
+                        Check("what the session holds equals what was pushed",
+                            padSession.ControllerStateMatches(pad));
+                        Check("and it is no longer idle", !padSession.ControllerStateMatches(idle));
+                    }
+                }
+
+                pad.SetIdle();
+                Check("set_idle returns the state to idle", pad.Matches(idle));
+            }
         }
 
         Console.WriteLine();
