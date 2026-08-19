@@ -1,4 +1,5 @@
 using ChiakiNg.Native;
+using ChiakiNg.Session;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -182,5 +183,34 @@ public class RenderProbeTests
         Assert.NotNull(shared);
 
         Assert.True(shared.Render(device), "pl_render_image refused the target");
+    }
+
+    /// <summary>
+    /// PP135: WPF taking the shared surface, which is the one link nothing in the graphics stack
+    /// can answer.
+    ///
+    /// D3DImage.SetBackBuffer VALIDATES what it is given - the device the surface came from, and
+    /// whether it is a render target WPF can compose - and THROWS rather than returning false. So
+    /// the texture, the wrap and the render can all be correct and the window still be black,
+    /// with the failure arriving at the first frame of the first session.
+    ///
+    /// On an STA thread with no Window: D3DImage is a DispatcherObject and needs a thread to be
+    /// created on, but does not need to be shown, which is what makes this answerable headless.
+    /// Bounded, because PP117 is a whole task about a graphics call that did not return.
+    /// </summary>
+    [Fact]
+    public void WpfTakesTheSharedSurfaceAsABackBuffer()
+    {
+        using RenderDevice? device = ChiakiRender.CreateD3d11(forceSoftware: false);
+        if (device is null)
+            return;
+
+        SurfacePresenter.Result result = SurfacePresenter.OfferSharedSurface(out string detail);
+
+        Assert.True(result != SurfacePresenter.Result.Refused, detail);
+
+        // Accepted is not enough: a D3DImage with no front buffer composes nothing, which looks
+        // exactly like a renderer that never drew.
+        Assert.Equal(SurfacePresenter.Result.Available, result);
     }
 }

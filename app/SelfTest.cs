@@ -1918,6 +1918,16 @@ public static class SelfTest
                         // client's own path rather than one invented to be testable.
                         Check("pl_render_image runs into the shared texture, with no swapchain",
                             shared.Render(shareDevice));
+
+                        // PP135: the last link, and the one nothing in the graphics stack can
+                        // answer. D3DImage VALIDATES the surface it is given, so the texture, the
+                        // wrap and the render can all be correct and the window still be black.
+                        SurfacePresenter.Result offered =
+                            SurfacePresenter.Offer(shared.Surface, TimeSpan.FromSeconds(10),
+                                out string offerDetail);
+                        Check("WPF takes the shared surface as a D3DImage back buffer",
+                            offered != SurfacePresenter.Result.Refused, offerDetail);
+                        Console.WriteLine($"        D3DImage: {offered} - {offerDetail}");
                     }
                 }
             }
