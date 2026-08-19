@@ -377,6 +377,93 @@ public static class SelfTest
             Check("needs_vulkan_context agrees with the choice",
                 ChiakiNative.DecoderChoiceNeedsVulkanContext("vulkan")
                 && !ChiakiNative.DecoderChoiceNeedsVulkanContext("d3d11va"));
+
+            Console.WriteLine();
+            Console.WriteLine("ChiakiLog - the seam in the other direction");
+
+            var lines = new List<(ChiakiLogLevel Level, string Text)>();
+            using (var log = new ChiakiLog(
+                ChiakiLogLevel.Info | ChiakiLogLevel.Warning | ChiakiLogLevel.Error,
+                (level, text) => lines.Add((level, text))))
+            {
+                // The mask is read back out of C rather than trusted from the constructor: the
+                // filter is what decides whether a callback happens at all, so every assertion
+                // below is an assertion about it as much as about the crossing.
+                Check("the log reports the mask it was created with",
+                    log.LevelMask == (ChiakiLogLevel.Info | ChiakiLogLevel.Warning | ChiakiLogLevel.Error),
+                    log.LevelMask.ToString());
+
+                // The point of the whole file. A collection here moves managed objects, and if
+                // the `user` pointer had been the instance's address rather than a GCHandle's,
+                // this is the line after which the callback lands in somebody else's memory -
+                // silently, because the bytes there are still readable.
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                GC.Collect();
+
+                log.Write(ChiakiLogLevel.Info, "the seam holds");
+                Check("a native callback reaches a managed handler after a collection",
+                    lines.Count == 1 && lines[0] == (ChiakiLogLevel.Info, "the seam holds"),
+                    lines.Count == 0 ? "<nothing arrived>" : $"{lines[0].Level} {lines[0].Text}");
+
+                // Filtered in C, before the callback. A level outside the mask that still arrived
+                // would mean the port pays for every debug line it has switched off.
+                log.Write(ChiakiLogLevel.Debug, "not in the mask");
+                Check("a level outside the mask never crosses", lines.Count == 1,
+                    lines.Count > 1 ? lines[^1].Text : "");
+
+                // …and the mask is live, which is what a verbosity setting changed mid-session is.
+                log.LevelMask = ChiakiLogLevel.All;
+                log.Write(ChiakiLogLevel.Debug, "now in the mask");
+                Check("re-masking lets the same level through",
+                    lines.Count == 2 && lines[^1] == (ChiakiLogLevel.Debug, "now in the mask"),
+                    lines.Count < 2 ? "<nothing arrived>" : $"{lines[^1].Level} {lines[^1].Text}");
+
+                // chiaki_log formats into a 0x100 stack buffer and reaches for the heap above it.
+                // A message that crosses that line proves what arrives is the pointer the library
+                // ended up with rather than the buffer it started in.
+                string longLine = new('x', 700);
+                log.Write(ChiakiLogLevel.Warning, longLine);
+                Check("a message past the library's stack buffer arrives whole",
+                    lines[^1] == (ChiakiLogLevel.Warning, longLine), lines[^1].Text.Length.ToString());
+
+                // The message is an argument to "%s" and never the format itself. If this ever
+                // comes back as anything else, the shim is reading the stack on every log line a
+                // console nickname happens to appear in.
+                log.Write(ChiakiLogLevel.Error, "100% of %s and %d");
+                Check("a percent sign is text and not a format",
+                    lines[^1] == (ChiakiLogLevel.Error, "100% of %s and %d"), lines[^1].Text);
+
+                // Two logs at once, each with its own sink: this is the `void *user` round trip,
+                // and it is the property that lets one process hold a log per session.
+                var other = new List<string>();
+                using (var second = new ChiakiLog(ChiakiLogLevel.All, (_, text) => other.Add(text)))
+                {
+                    second.Write(ChiakiLogLevel.Info, "second");
+                    log.Write(ChiakiLogLevel.Info, "first");
+                }
+                Check("each log's user pointer reaches its own handler",
+                    other.Count == 1 && other[0] == "second" && lines[^1].Text == "first",
+                    $"other=[{string.Join(", ", other)}] last={lines[^1].Text}");
+
+                Check("the level char is the one the log file is written with",
+                    ChiakiLog.LevelChar(ChiakiLogLevel.Info) == 'I'
+                    && ChiakiLog.LevelChar(ChiakiLogLevel.Error) == 'E'
+                    && ChiakiLog.LevelChar(ChiakiLogLevel.All) == '?');
+            }
+
+            // Disposed twice on purpose: the second free would be a double free in C, and the
+            // using block above already did the first one.
+            var disposedTwice = new ChiakiLog(ChiakiLogLevel.All, (_, _) => { });
+            disposedTwice.Dispose();
+            disposedTwice.Dispose();
+            Check("disposing twice frees once", disposedTwice.Handle == IntPtr.Zero);
+
+            bool threwOnDisposed = false;
+            try { disposedTwice.Write(ChiakiLogLevel.Info, "after the free"); }
+            catch (ObjectDisposedException) { threwOnDisposed = true; }
+            Check("a write after the free is refused rather than passed a dangling handle",
+                threwOnDisposed);
         }
 
         Console.WriteLine();

@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace ChiakiNg.Native;
@@ -32,12 +33,27 @@ public enum ChiakiRenderer { Vulkan = 0, OpenGL = 1 }
 /// </summary>
 public static class ChiakiNative
 {
-    private const string Library = "chiaki-shim";
+    /// <summary>
+    /// The name every DllImport in this assembly carries, including the ones in other types -
+    /// they all come through the one resolver below.
+    /// </summary>
+    internal const string Library = "chiaki-shim";
 
     /// <summary>Must equal CHIAKI_SHIM_ABI in shim/chiaki_shim.h.</summary>
-    public const uint ExpectedAbi = 1;
+    public const uint ExpectedAbi = 2;
 
-    static ChiakiNative()
+    /// <summary>
+    /// A module initializer and not a static constructor, because the resolver has to be in place
+    /// before the first P/Invoke in the ASSEMBLY, not before the first one in this class. A static
+    /// constructor runs when its own type is first touched, so a call into chiaki-shim.dll from
+    /// <see cref="ChiakiLog"/> - which is where the callbacks live - would have gone out through
+    /// the runtime's default search and loaded whichever chiaki-shim.dll the PATH offered.
+    ///
+    /// SetDllImportResolver throws if it is called twice for one assembly, so this is also the
+    /// reason there is exactly one of these.
+    /// </summary>
+    [ModuleInitializer]
+    internal static void InstallResolver()
         => NativeLibrary.SetDllImportResolver(typeof(ChiakiNative).Assembly, Resolve);
 
     /// <summary>The path the shim was loaded from, or null while it has never been loaded.</summary>

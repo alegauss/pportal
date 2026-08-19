@@ -29,6 +29,11 @@
     <!-- Keep the informational version exactly x.y.z, with no +commit suffix, so an installer
          can reuse it verbatim. -->
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <!-- PP4: `&Dispatch` on an [UnmanagedCallersOnly] method is a function pointer, and function
+         pointers are unsafe C#. This is the whole reason the flag is on - it buys the callback
+         seam a native thunk whose lifetime is the assembly's rather than a delegate's, which is
+         the lifetime bug the 22 libchiaki callbacks would otherwise each be one GC away from. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- Unconditional, so the output path is the same in Debug and Release and every script
          and note that spells bin\<config>\net10.0-windows\win-x64\ChiakiNg.exe stays true. -->
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>

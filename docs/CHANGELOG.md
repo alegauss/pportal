@@ -11,6 +11,7 @@
 ## Block B — Native interop
 
 - ✅ **PP4 (the shape and the first crossing)** **libchiaki is C with function-pointer callbacks and no managed binding, so no .NET code can start a session** — the seam is a shim DLL, and .NET calls chiaki_decoder_choice through it under eight assertions.
+- ✅ **PP83** **the 22 callbacks libchiaki takes are uncrossed in the direction it calls them, so nothing above the seam can be built** — a managed handler now receives libchiaki's log callback through an UnmanagedCallersOnly thunk and a GCHandle, under ten assertions including one across a forced collection.
 
 ## Block C — Video and input path
 

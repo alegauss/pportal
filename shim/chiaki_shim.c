@@ -4,6 +4,9 @@
 
 #include <chiaki/common.h>
 #include <chiaki/decoderchoice.h>
+#include <chiaki/log.h>
+
+#include <stdlib.h>
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void)
 {
@@ -41,4 +44,78 @@ CHIAKI_SHIM_API const char *chiaki_shim_decoder_choice(
 CHIAKI_SHIM_API bool chiaki_shim_decoder_choice_needs_vulkan_context(const char *choice)
 {
 	return chiaki_decoder_choice_needs_vulkan_context(choice);
+}
+
+/**
+ * The ChiakiLog is the first member on purpose: everything below hands `&self->log` to libchiaki,
+ * and every session function exported later will do the same, so the address the library keeps is
+ * this allocation's and stays valid until chiaki_shim_log_free.
+ */
+typedef struct chiaki_shim_log_t
+{
+	ChiakiLog log;
+	ChiakiShimLogCb cb;
+	void *user;
+} chiaki_shim_log;
+
+static void chiaki_shim_log_dispatch(ChiakiLogLevel level, const char *msg, void *user)
+{
+	chiaki_shim_log *self = (chiaki_shim_log *)user;
+	if(self && self->cb)
+		self->cb((int32_t)level, msg, self->user);
+}
+
+CHIAKI_SHIM_API void *chiaki_shim_log_create(uint32_t level_mask, ChiakiShimLogCb cb, void *user)
+{
+	chiaki_shim_log *self = (chiaki_shim_log *)calloc(1, sizeof(chiaki_shim_log));
+	if(!self)
+		return NULL;
+
+	self->cb = cb;
+	self->user = user;
+	// The `user` libchiaki gets is this allocation, not the caller's: the caller's pointer is
+	// re-attached in the dispatcher, which is what lets the level be re-emitted on the way past.
+	chiaki_log_init(&self->log, level_mask, chiaki_shim_log_dispatch, self);
+	return self;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_log_free(void *log)
+{
+	chiaki_shim_log *self = (chiaki_shim_log *)log;
+	if(!self)
+		return;
+
+	// Cleared before the free so that a message already inside chiaki_log on another thread
+	// finds no callback rather than a freed one. It narrows the window; it does not close it,
+	// and nothing here pretends otherwise - the caller frees a log no session is using.
+	self->cb = NULL;
+	chiaki_log_init(&self->log, 0, NULL, NULL);
+	free(self);
+}
+
+CHIAKI_SHIM_API void chiaki_shim_log_set_level(void *log, uint32_t level_mask)
+{
+	chiaki_shim_log *self = (chiaki_shim_log *)log;
+	if(self)
+		chiaki_log_set_level(&self->log, level_mask);
+}
+
+CHIAKI_SHIM_API uint32_t chiaki_shim_log_level_mask(void *log)
+{
+	chiaki_shim_log *self = (chiaki_shim_log *)log;
+	return self ? self->log.level_mask : 0;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_log_write(void *log, int32_t level, const char *msg)
+{
+	chiaki_shim_log *self = (chiaki_shim_log *)log;
+	if(!self || !msg)
+		return;
+
+	chiaki_log(&self->log, (ChiakiLogLevel)level, "%s", msg);
+}
+
+CHIAKI_SHIM_API char chiaki_shim_log_level_char(int32_t level)
+{
+	return chiaki_log_level_char((ChiakiLogLevel)level);
 }

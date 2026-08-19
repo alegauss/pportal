@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 1
+#define CHIAKI_SHIM_ABI 2
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -94,6 +94,63 @@ CHIAKI_SHIM_API const char *chiaki_shim_decoder_choice(
 
 /** Whether that answer still needs a vulkan device context from the window. */
 CHIAKI_SHIM_API bool chiaki_shim_decoder_choice_needs_vulkan_context(const char *choice);
+
+/**
+ * The log, and the first crossing in the other direction.
+ *
+ * Every one of the 22 callbacks libchiaki takes has this shape - a function pointer and a `void
+ * *user` handed over once, called back from whichever thread the library is on - so the cheapest
+ * one is worth getting exactly right before the session lifecycle is written on top of it.
+ * ChiakiLogCb is that cheapest one: it needs no console, no socket and no key, and it is also the
+ * first thing a ChiakiSession is handed, so nothing above it can be attempted without it.
+ *
+ * Three decisions are taken here rather than in C#.
+ *
+ *   - The ChiakiLog is allocated here and lives at a fixed address. libchiaki keeps the pointer
+ *     it is given for the whole life of a session, so it cannot be a managed struct however it
+ *     is pinned: the port would then be one GC compaction away from a callback into freed memory,
+ *     and the symptom would arrive minutes into a stream rather than at the call that caused it.
+ *   - What crosses is the handle, never the struct. The managed side never learns that a
+ *     ChiakiLog has three fields, so a libchiaki that grows a fourth does not silently move the
+ *     bytes a P/Invoke was reading.
+ *   - The trampoline is C. libchiaki's callback takes a ChiakiLogLevel, and an enum's underlying
+ *     type is the compiler's choice; casting a managed `int` function pointer into that slot
+ *     would be a bet that MinGW picked `int` today and will tomorrow. So the shim installs a
+ *     function of its own and re-emits the level as an int32_t, which has no such question.
+ */
+typedef void (*ChiakiShimLogCb)(int32_t level, const char *msg, void *user);
+
+/**
+ * A log whose messages arrive at `cb`, with `user` handed back untouched.
+ *
+ * `level_mask` is the OR of the CHIAKI_LOG_* bits to let through - the same mask libchiaki
+ * filters on, applied before the callback rather than inside it, so a debug-level flood costs
+ * nothing when it is off. NULL if the allocation failed.
+ */
+CHIAKI_SHIM_API void *chiaki_shim_log_create(uint32_t level_mask, ChiakiShimLogCb cb, void *user);
+
+/** Releases the log. `cb` is not called again after this returns; NULL is a no-op. */
+CHIAKI_SHIM_API void chiaki_shim_log_free(void *log);
+
+/** Re-masks an existing log, which is what a verbosity setting changed mid-session does. */
+CHIAKI_SHIM_API void chiaki_shim_log_set_level(void *log, uint32_t level_mask);
+
+/** The mask currently in force, so the managed side can assert the filter rather than assume it. */
+CHIAKI_SHIM_API uint32_t chiaki_shim_log_level_mask(void *log);
+
+/**
+ * Writes one message through chiaki_log, exactly as a library call would.
+ *
+ * Not a test hook: the port logs its own lines into the same log libchiaki writes to, so they
+ * interleave in one file in the order they happened. It goes through chiaki_log rather than
+ * straight to the callback so that the mask, the formatting and the over-long heap path are the
+ * library's and not a second implementation - `msg` is passed as an argument to "%s" and never as
+ * the format, so a message containing a percent sign is text and not a read off the stack.
+ */
+CHIAKI_SHIM_API void chiaki_shim_log_write(void *log, int32_t level, const char *msg);
+
+/** chiaki_log_level_char: 'I', 'W', 'E'… the letter that build's log file is written with. */
+CHIAKI_SHIM_API char chiaki_shim_log_level_char(int32_t level);
 
 #ifdef __cplusplus
 }
