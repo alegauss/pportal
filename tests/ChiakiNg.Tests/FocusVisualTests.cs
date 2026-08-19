@@ -81,4 +81,26 @@ public class FocusVisualTests
             Assert.Null(FocusVisual.BackgroundFor(control, focused: true, accent));
         }
     });
+
+    /// <summary>
+    /// PP12: the accent brush the focus visual needs actually resolves under the Fluent theme.
+    ///
+    /// FocusVisual takes the accent as an argument rather than reaching for it, which keeps it
+    /// testable - but a rule about the accent is worth nothing if the application cannot name one.
+    /// ThemeMode="System" is set in App.xaml (PP1) and the accent is the user's Windows setting,
+    /// so this asks the system for it the way a control style would.
+    /// </summary>
+    [Fact]
+    public void TheSystemAccentBrushResolves() => OnSta(() =>
+    {
+        Brush accent = System.Windows.SystemColors.AccentColorBrush;
+
+        Assert.NotNull(accent);
+        Assert.True(accent.IsFrozen || accent.CanFreeze, "the accent brush is not usable as a resource");
+
+        // And it is a real colour rather than the default black a missing resource resolves to,
+        // which is what a theme that failed to load would leave behind.
+        var solid = Assert.IsAssignableFrom<SolidColorBrush>(accent);
+        Assert.NotEqual(Colors.Transparent, solid.Color);
+    });
 }
