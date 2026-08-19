@@ -108,6 +108,7 @@
 - ✅ **PP146** **json-c's accessors are lenient where System.Text.Json is strict, so holepunch.c's reads translate wrongly** — the accessors and the pointer, measured against json-c and agreeing with it in 81 cases.
 - ✅ **PP149** **the port calls across the seam for two one-line comparisons, so nothing checks a managed version against them** — the comparison in managed code, agreeing with libchiaki across the whole 16-bit domain.
 - ✅ **PP150** **the reorder queue is the module a rewrite would most confidently get wrong, and nothing compares one to libchiaki's** — the queue transcribed, stepped against libchiaki's over random sequences, and two tidy-ups rejected.
+- ✅ **PP151** **the frame timing has three fallback chains and its oracle could not reach the duration one at all** — the duration made reachable, then the timing transcribed and agreed over the whole cross product.
 
 ## Block G — Test discipline
 

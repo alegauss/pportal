@@ -2412,6 +2412,7 @@ CHIAKI_SHIM_API int64_t chiaki_shim_ffmpeg_nopts(void)
 CHIAKI_SHIM_API bool chiaki_shim_ffmpeg_frame_timing(
 		int64_t best_effort_timestamp,
 		int64_t pts,
+		int64_t duration,
 		int32_t pkt_timebase_num, int32_t pkt_timebase_den,
 		int32_t ctx_timebase_num, int32_t ctx_timebase_den,
 		int32_t framerate_num, int32_t framerate_den,
@@ -2436,6 +2437,11 @@ CHIAKI_SHIM_API bool chiaki_shim_ffmpeg_frame_timing(
 
 	frame->best_effort_timestamp = best_effort_timestamp;
 	frame->pts = pts;
+
+	/* PP23: settable, because the duration > 0 branch was unreachable through this wrapper while
+	 * av_frame_alloc's zero was the only value it could ever see - so half of the duration
+	 * fallback chain had no oracle to be checked against. */
+	frame->duration = duration;
 
 	pkt_timebase.num = pkt_timebase_num;
 	pkt_timebase.den = pkt_timebase_den;

@@ -1289,6 +1289,7 @@ CHIAKI_SHIM_API int64_t chiaki_shim_ffmpeg_nopts(void);
 CHIAKI_SHIM_API bool chiaki_shim_ffmpeg_frame_timing(
 		int64_t best_effort_timestamp,
 		int64_t pts,
+		int64_t duration,
 		int32_t pkt_timebase_num, int32_t pkt_timebase_den,
 		int32_t ctx_timebase_num, int32_t ctx_timebase_den,
 		int32_t framerate_num, int32_t framerate_den,
