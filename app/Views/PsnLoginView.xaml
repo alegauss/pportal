@@ -1,0 +1,58 @@
+<UserControl x:Class="ChiakiNg.Views.PsnLoginView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    PP7: the PSN login, showing whichever of its three paths the view model is on.
+
+    Only one of the three needs a browser, and it is the only thing here that is still a hole:
+    BrowserHost is where the WebView2 control goes, and until it does this screen falls back to
+    the paste form exactly as the Qt client does when Qt.createQmlObject throws.
+
+    Every visibility on this screen is the view model's, and so is the button - the mode decides
+    what is shown and CanSubmit decides whether it can be pressed. The markup states neither rule,
+    because the paste path and the lookup path have the same button with two different reasons to
+    be disabled, and a copy of either here is a second place to be wrong.
+  -->
+  <UserControl.Resources>
+    <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+
+    <Style TargetType="TextBlock" x:Key="FieldLabel">
+      <Setter Property="Margin" Value="0,8,0,2" />
+      <Setter Property="Opacity" Value="0.7" />
+    </Style>
+  </UserControl.Resources>
+
+  <StackPanel Margin="16">
+    <!-- The embedded browser's slot. Empty, and named so the residue of PP7 has somewhere to land. -->
+    <Border x:Name="BrowserHost" MinHeight="240" BorderThickness="1" BorderBrush="#40808080"
+            Visibility="{Binding BrowserVisible, Converter={StaticResource BoolToVisibility}}" />
+
+    <StackPanel x:Name="RedirectGroup"
+                Visibility="{Binding RedirectVisible, Converter={StaticResource BoolToVisibility}}">
+      <TextBlock Text="Open the copied URL in a web browser, then paste where it lands."
+                 TextWrapping="Wrap" />
+      <TextBlock Text="Redirect URL from web browser" Style="{StaticResource FieldLabel}" />
+      <TextBox x:Name="RedirectField"
+               Text="{Binding RedirectUrl, UpdateSourceTrigger=PropertyChanged}" />
+    </StackPanel>
+
+    <StackPanel x:Name="UsernameGroup"
+                Visibility="{Binding UsernameVisible, Converter={StaticResource BoolToVisibility}}">
+      <TextBlock TextWrapping="Wrap"
+                 Text="This requires your PSN privacy settings to allow anyone to find you in your search" />
+      <TextBlock Text="Username" Style="{StaticResource FieldLabel}" />
+      <TextBox x:Name="UsernameField"
+               Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}" />
+    </StackPanel>
+
+    <!-- The reply's own error, which is the only thing that ever explains a failed lookup. -->
+    <TextBlock x:Name="ErrorLabel" Margin="0,12,0,0" TextWrapping="Wrap"
+               Foreground="#C05050" Text="{Binding ErrorText}"
+               Visibility="{Binding ErrorVisible, Converter={StaticResource BoolToVisibility}}" />
+
+    <Button x:Name="SubmitButton" Content="Get Account ID"
+            HorizontalAlignment="Right" Margin="0,16,0,0" Padding="20,4"
+            IsEnabled="{Binding CanSubmit}"
+            Visibility="{Binding SubmitVisible, Converter={StaticResource BoolToVisibility}}" />
+  </StackPanel>
+</UserControl>

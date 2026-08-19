@@ -44,6 +44,7 @@
 - ✅ **PP129** **SDL names a touch by touchpad and finger, the console by an id from a pool of two, and nothing maps them** — the pairs map onto the console's two slots, freed on lift, with the Qt client's three rules held.
 - ✅ **PP130** **the pad's sensors are fused into an orientation by a stateful filter the port has no access to** — the fusion is carried at ABI 32, and the two conversions around it are held against the Qt client.
 - ✅ **PP144** **the PSN token exchange is three Qt network requests whose shapes the port has to match exactly** — The three requests, the account id and the expiry, asserted offline; the four surprising shapes are pinned against the Qt source.
+- ✅ **PP145** **the login's two browserless paths have no port, so a machine WebView2 will not start on cannot log in at all** — the paste-back form, the online-id lookup, and the button only one of them gets back after a failure.
 
 ## Block C — Video and input path
 

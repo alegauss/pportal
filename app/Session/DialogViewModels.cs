@@ -28,6 +28,16 @@ public abstract class DialogViewModel : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(ButtonProperty));
     }
+
+    /// <summary>
+    /// Raises one more property, for a computed one that is not the button.
+    ///
+    /// <see cref="Set{T}"/> covers the field and the button because those are the two every
+    /// dialog has. A screen whose mode also decides what is VISIBLE has a third, and an
+    /// unraised visibility is the same stuck-repaint bug one step further out.
+    /// </summary>
+    protected void Raise(string name)
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }
 
 /// <summary>
