@@ -1,0 +1,50 @@
+<UserControl x:Class="ChiakiNg.Views.DialogHostView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    PP19: the dialog host - the chrome every screen in the tail opens inside.
+
+    A back button on the left, a centred title with a smaller header beside it, one configurable
+    action button on the right, and a content area the screen goes into.
+
+    The two dismissals are NOT the same and the markup does not pretend they are: back rejects and
+    closes, Escape closes only. Both are the view model's, because the difference is a reject
+    callback that does or does not run and nothing here would show it.
+
+    The action button's enabled state is the SCREEN's rule, arriving through ButtonEnabled - the host
+    owns the button and owns none of the conditions on it.
+  -->
+  <UserControl.Resources>
+    <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+  </UserControl.Resources>
+
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="80" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <Grid Grid.Row="0">
+      <Button x:Name="BackButton" Content="Back" HorizontalAlignment="Left"
+              Width="100" Margin="10,0,0,0" Focusable="False" />
+
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"
+                  VerticalAlignment="Center">
+        <TextBlock x:Name="TitleLabel" Text="{Binding Title}"
+                   FontWeight="Bold" FontSize="26" VerticalAlignment="Center" />
+        <TextBlock x:Name="HeaderLabel" Text="{Binding Header}" Margin="16,0,0,0"
+                   FontWeight="Bold" FontSize="14" VerticalAlignment="Center"
+                   TextWrapping="Wrap" MaxWidth="360" />
+      </StackPanel>
+
+      <Button x:Name="ActionButton" Content="{Binding ButtonText}"
+              HorizontalAlignment="Right" Margin="0,0,10,0" Padding="30,4" FontSize="25"
+              Focusable="False"
+              IsEnabled="{Binding ButtonEnabled}"
+              Visibility="{Binding ButtonVisible, Converter={StaticResource BoolToVisibility}}" />
+    </Grid>
+
+    <!-- Where the screen goes. Named so a test can put one in and read it back. -->
+    <ContentControl x:Name="ContentHost" Grid.Row="1" />
+  </Grid>
+</UserControl>

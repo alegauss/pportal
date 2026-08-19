@@ -166,22 +166,6 @@ not fixed.
 What is left is the screen: the pad drawing, the row a press lands on, and the live
 event stream that is the reason this waited for PP8.
 
-### §PP19 The tail
-
-ConfirmDialog.qml at 104 lines, RemindDialog.qml 135, DisplaySettingsDialog.qml 193,
-SteamShortcutDialog.qml 194 and DialogView.qml 131, which is the host the others open
-inside.
-
-Nothing here is hard and nothing here is interesting, which is the argument for doing it
-last: by then the confirm and cancel bindings, the focus behaviour and the dialog chrome
-are decided by six screens that had to decide them, and this becomes transcription.
-Taken first, each of these would be a small independent invention of the same three
-things.
-
-SteamShortcutDialog is the one to look at twice - it writes into Steam's own
-configuration, and whether that still belongs in a Windows-only build is a question for
-whoever takes it.
-
 ## Block E — Windows-only build
 
 ### §PP21 The dependency that says it is over
