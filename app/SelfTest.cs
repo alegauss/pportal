@@ -1207,19 +1207,38 @@ public static class SelfTest
                 && InputTranslation.MouseToTouchpad(640, 360, 1280, 720, ps5: false) == ((ushort)960, (ushort)471),
                 InputTranslation.MouseToTouchpad(640, 360, 1280, 720, true).ToString());
 
-            // PP91. streamsession.cpp calls std::clamp(0.0, x, width) - the value first and the
-            // bounds after - so 0.0 is what gets clamped and the upper bound never applies. The
-            // negative side works by accident; the right edge does not, and a drag off the window
-            // sends the console a touch outside its own touchpad.
+            // PP91. Both paths used to read std::clamp(0.0, x, width) - the value first and the
+            // bounds after - so 0.0 was what got clamped and the upper bound never applied. The
+            // negative side worked by accident; the right edge did not, and a drag off the window
+            // told the console the finger was past the end of its own touchpad.
             Check("a coordinate left of the window comes back at zero",
                 InputTranslation.MouseToTouchpad(-50, -50, 1280, 720, ps5: true) == ((ushort)0, (ushort)0));
-            Check("a coordinate past the right edge is NOT clamped, which is the defect",
-                InputTranslation.MouseToTouchpad(2560, 360, 1280, 720, ps5: true).X > 1919,
-                InputTranslation.MouseToTouchpad(2560, 360, 1280, 720, true).X.ToString());
-            Check("and the same transposition is in the normalised path",
-                InputTranslation.Normalize(2560, 1280) > 1.0f
+            Check("a coordinate past the right edge stops at the edge of the pad",
+                InputTranslation.MouseToTouchpad(2560, 1440, 1280, 720, ps5: true) == ((ushort)1919, (ushort)1079),
+                InputTranslation.MouseToTouchpad(2560, 1440, 1280, 720, true).ToString());
+            Check("the normalised path is bounded at both ends too",
+                InputTranslation.Normalize(2560, 1280) == 1.0f
                 && InputTranslation.Normalize(-10, 1280) == 0.0f,
                 InputTranslation.Normalize(2560, 1280).ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+            // And the Qt client's own four calls, which is the half this code cannot exercise.
+            // The check is narrow on purpose: the value being clamped is never a constant, so a
+            // literal in the first position means the value and the bounds were swapped - which is
+            // exactly the mistake that was made, four times, in one file.
+            string? sessionSource = SessionSource.Locate();
+            if (sessionSource is null)
+            {
+                Console.WriteLine($"  --    the Qt client's clamps  (no {SessionSource.RelativePath} here)");
+            }
+            else
+            {
+                IReadOnlyList<string> clamps = SessionSource.ClampCalls(sessionSource);
+                Check("the Qt client still has its four clamps",
+                    clamps.Count == 4, clamps.Count.ToString());
+                Check("and none of them clamps a literal",
+                    clamps.All(c => !SessionSource.FirstArgumentIsLiteral(c)),
+                    string.Join(" | ", clamps.Where(SessionSource.FirstArgumentIsLiteral)));
+            }
 
             // The outer 5% of any edge is a touchpad click, judged on the normalised coordinate.
             Check("the edges of the window are a touchpad click",

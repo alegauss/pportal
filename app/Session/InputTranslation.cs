@@ -49,22 +49,21 @@ public static class InputTranslation
         => ps5 ? (1919.0f, 1079.0f) : (1920.0f, 942.0f);
 
     /// <summary>
-    /// The mouse path: a scene coordinate scaled into touchpad space.
+    /// The mouse path: a scene coordinate clamped to the window, then scaled into touchpad space.
     ///
-    /// The guard reproduces what streamsession.cpp actually does, which is not what it reads as.
-    /// It calls <c>std::clamp(0.0, x, width)</c> - value first, bounds after - so the value being
-    /// clamped is 0.0 and the BOUNDS are x and width. The effect is that a negative coordinate
-    /// comes back as 0 and a coordinate past the right edge comes back unchanged, so a drag off
-    /// the window sends the console a touch outside its own touchpad. Reproduced here because the
-    /// port must not differ, and filed as PP91 because it is a defect either way.
+    /// PP91 is why the clamp is worth a sentence. Both touch paths in streamsession.cpp used to
+    /// read <c>std::clamp(0.0, x, width)</c> - the value first and the bounds after, so the thing
+    /// being clamped was the literal 0.0 and the upper bound never applied. A drag past the right
+    /// edge told the console the finger was somewhere its touchpad does not reach. Fixed in both
+    /// clients at once, and <see cref="SessionSource"/> keeps it fixed.
     /// </summary>
     public static (ushort X, ushort Y) MouseToTouchpad(
         double sceneX, double sceneY, double width, double height, bool ps5)
     {
         (float maxX, float maxY) = TouchpadBounds(ps5);
 
-        float x = TransposedClamp(sceneX, width);
-        float y = TransposedClamp(sceneY, height);
+        float x = (float)Math.Clamp(sceneX, 0.0, width);
+        float y = (float)Math.Clamp(sceneY, 0.0, height);
 
         // The ratio stays double and only the product narrows, which is what the C++ does: the
         // width is a qreal, so `PS_TOUCHPAD_MAX_X / width` is a double division and the float
@@ -74,10 +73,11 @@ public static class InputTranslation
     }
 
     /// <summary>
-    /// The touch path: normalise first, then scale. The same transposed clamp, so a normalised
-    /// value above 1.0 survives and lands off the touchpad.
+    /// The touch path: normalise first, then scale. Clamped to 0..1, so a pointer outside the
+    /// window lands on the edge of the touchpad rather than past it (PP91).
     /// </summary>
-    public static float Normalize(double scene, double extent) => TransposedClamp(scene / extent, 1.0);
+    public static float Normalize(double scene, double extent)
+        => (float)Math.Clamp(scene / extent, 0.0, 1.0);
 
     /// <summary>A normalised point in touchpad coordinates.</summary>
     public static (ushort X, ushort Y) NormalizedToTouchpad(float normX, float normY, bool ps5)
@@ -153,19 +153,5 @@ public static class InputTranslation
     {
         (short lx, short ly, short rx, short ry) = state.Sticks;
         state.Sticks = (leftX ?? lx, leftY ?? ly, rightX ?? rx, rightY ?? ry);
-    }
-
-    /// <summary>
-    /// std::clamp(0.0, value, bound) as the C++ actually spells it: 0.0 is the value being
-    /// clamped and the two after it are the bounds. So the answer is `value` whenever value is
-    /// above zero - the upper bound never applies - and 0.0 otherwise.
-    /// </summary>
-    private static float TransposedClamp(double value, double bound)
-    {
-        if (0.0 < value)
-            return (float)value;
-        if (bound < 0.0)
-            return (float)bound;
-        return 0.0f;
     }
 }

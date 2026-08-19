@@ -23,15 +23,21 @@ public static partial class SanitizerSource
     public const string RelativePath = @"gui\src\sessionlog.cpp";
 
     /// <summary>The file, or null when this is not running out of a checkout.</summary>
-    public static string? Locate()
-    {
-        string? dir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+    public static string? Locate() => LocateRelative(RelativePath);
 
-        // Upwards rather than a fixed depth: the host builds into app\bin\<config>\<tfm>\<rid>,
-        // and a count of ".." is the kind of thing that survives exactly one layout change.
+    /// <summary>
+    /// Any repository file, found by walking up from the assembly. Upwards rather than a fixed
+    /// depth: the host builds into app\bin\&lt;config&gt;\&lt;tfm&gt;\&lt;rid&gt;, and a count of ".." is the
+    /// kind of thing that survives exactly one layout change.
+    /// </summary>
+    public static string? LocateRelative(string relativePath)
+    {
+        ArgumentNullException.ThrowIfNull(relativePath);
+
+        string? dir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
         while (dir is not null)
         {
-            string candidate = Path.Combine(dir, RelativePath);
+            string candidate = Path.Combine(dir, relativePath);
             if (File.Exists(candidate))
                 return candidate;
             dir = Path.GetDirectoryName(dir);

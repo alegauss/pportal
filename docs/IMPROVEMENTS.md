@@ -100,30 +100,6 @@ So it lands where there is a decoder to feed it. PP9 decides what presents a fra
 first thing that decoder does is take this callback, and the assertion is the frame it
 produces rather than a buffer this side invented.
 
-### §PP91 The clamp that clamps nothing
-
-Both touch paths in streamsession.cpp write `std::clamp(0.0, value, bound)`. std::clamp
-takes the value first and the two bounds after, so what is being clamped there is the
-literal 0.0, and the bounds are the coordinate and the extent. The result is `value`
-whenever value is above zero and 0.0 otherwise: the lower guard works by accident and
-the upper one is not there at all.
-
-What that costs is a touch reported outside the console's own touchpad. A pointer
-dragged past the right edge of a 1280-wide window scales to well over 1919, and the
-console is told the finger is somewhere the pad does not reach. The line appears twice -
-once on the scene coordinate for the mouse, once on the normalised coordinate for touch,
-where a value above 1.0 reaches the edge-click test as well. It is also undefined
-behaviour left of the window, where lo exceeds hi.
-
-Found while transcribing the input path for the .NET host, and reproduced there rather
-than fixed, for the same reason as every other quirk in this port: two clients that
-place a touch differently cannot be compared. The fix is transposing two arguments and
-belongs in both at once, which is what makes it a line.
-
-The reason it has not been noticed is that a stream is played inside the window. It is
-visible when a drag leaves it, which is where a touchpad gesture ends up if the pointer
-is not grabbed.
-
 ## Block C — Video and input path
 
 ### §PP9 Vulkan under a D3D9 compositor

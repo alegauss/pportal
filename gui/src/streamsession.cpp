@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
+﻿// SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
 
 #include <streamsession.h>
 #include <settings.h>
@@ -627,8 +627,13 @@ void StreamSession::HandleMouseMoveEvent(QMouseEvent *event, qreal width, qreal 
 	// left button with move => touchpad gesture, otherwise ignore
 	if (event->buttons() == Qt::LeftButton)
 	{
-		float x = std::clamp(0.0, event->scenePosition().x(), width);
-		float y = std::clamp(0.0, event->scenePosition().y(), height);
+		// PP91: the value goes first and the bounds after. These read std::clamp(0.0, x, width),
+		// which clamps the literal 0.0 between x and width - so the answer was x whenever x was
+		// above zero, the upper bound never applied, and a drag past the right edge of the window
+		// told the console the finger was somewhere its touchpad does not reach. Left of the
+		// window it was also lo > hi, which std::clamp does not define.
+		float x = std::clamp(event->scenePosition().x(), 0.0, width);
+		float y = std::clamp(event->scenePosition().y(), 0.0, height);
 		float psx = x * (PS_TOUCHPAD_MAX_X / width);
 		float psy = y * (PS_TOUCHPAD_MAX_Y / height);
 		// if touch id is set, move, otherwise start
@@ -714,8 +719,10 @@ void StreamSession::HandleTouchEvent(QTouchEvent *event, qreal width, qreal heig
 			case QEventPoint::State::Pressed:
 			case QEventPoint::State::Updated:
 			{
-				float norm_x = std::clamp(0.0, touchPoint.scenePosition().x() / width, 1.0);
-				float norm_y = std::clamp(0.0, touchPoint.scenePosition().y() / height, 1.0);
+				// PP91, the same transposition on the normalised coordinate: a value above 1.0
+				// used to survive into both the scale below and the edge-click test above it.
+				float norm_x = std::clamp(touchPoint.scenePosition().x() / width, 0.0, 1.0);
+				float norm_y = std::clamp(touchPoint.scenePosition().y() / height, 0.0, 1.0);
 
 				// Touching edges of screen is a touchpad click
 				if(norm_x <= 0.05 || norm_x >= 0.95 || norm_y <= 0.05 || norm_y >= 0.95)

@@ -16,7 +16,6 @@
 - 📋 **PP7** (deps: PP4 ✅) **PSN OAuth login runs in a QtWebEngine view, a bundled browser the WPF host has no equivalent for** — WebView2 ships with Windows and catches the same redirect, so the account link costs a control instead of a second rendering engine in the installer. → §PP7
 - 📋 **PP8** (deps: PP4 ✅) **controller input is SDL wired into Qt events, and 950 lines of it decide what a button does** — A remote play client is driven by a gamepad before a mouse, so the input path is a first-class port and not a detail of whichever screen is drawn first. → §PP8
 - 📋 **PP87** (deps: PP9) **the video and audio sample callbacks are the last uncrossed part of the seam, and nothing offline can drive one** — a frame buffer is borrowed only for the duration of the callback, so who copies it is decided where there is a decoder to feed. → §PP87
-- 💭 **PP91** (deps: —) **std::clamp's arguments are transposed in both touch paths, so a drag past the window edge is never clamped** — the value clamped is the literal 0.0 and the bounds are the coordinate and the extent, so only the negative side works. → §PP91
 
 ## Block C — Video and input path
 
