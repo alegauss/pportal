@@ -51,7 +51,24 @@ public sealed class Bitstream : IDisposable
     /// a frame whose reference was lost is made decodable against one that survived.
     /// </summary>
     public bool SetReferenceFrame(byte[] data, uint referenceFrame)
-        => BitstreamSetReferenceFrame(Handle, data, data.Length, referenceFrame);
+        => SetReferenceFrame(data, data.Length, referenceFrame);
+
+    /// <summary>
+    /// The same, with the slice occupying only the first <paramref name="length"/> bytes.
+    ///
+    /// PP35: this exists because the array is the only arena managed code has. test/bitstream.c
+    /// asserts that rewriting a TRUNCATED slice writes nothing outside it, and does so by placing
+    /// the slice inside a larger buffer of sentinel bytes - which needs a length that is shorter
+    /// than the buffer. Real callers pass the whole array and use the overload above.
+    /// </summary>
+    public bool SetReferenceFrame(byte[] data, int length, uint referenceFrame)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        ArgumentOutOfRangeException.ThrowIfNegative(length);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(length, data.Length);
+
+        return BitstreamSetReferenceFrame(Handle, data, length, referenceFrame);
+    }
 
     public void Dispose()
     {

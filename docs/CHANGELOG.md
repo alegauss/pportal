@@ -90,6 +90,7 @@
 - ✅ **PP35 (the xUnit runner over the FEC vectors)** **5512 lines of munit tests cover the modules this port rewrites, and nothing in a managed tree runs them** — one case per recorded case, over PP23's readers, so a failure names which vector broke.
 - ✅ **PP120** **the GMAC that authenticates every takion packet has four recorded vectors and the port checks none** — the shim carries GMAC at ABI 27, and all four recorded vectors are xUnit cases now.
 - ✅ **PP121** **eight of test/rpcrypt.c's nine recorded cases are unchecked, four of them a whole console generation** — the registration schedule is checked on both generations now, with the PIN and the key offset each proven to matter.
+- ✅ **PP122** **the four bitstream cases that parse a truncated packet are recorded and the port drove none** — all four are xUnit cases now, and the overrun check goes red when the length is believed rather than checked.
 
 ## Block H — Performance and telemetry
 
