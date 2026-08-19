@@ -379,21 +379,6 @@ The alternative is what a rewrite of a protocol usually looks like: it works aga
 console on one firmware, and every report afterwards is a guess about which of 16935
 translated lines was wrong.
 
-### §PP24 What Visual Studio has to open
-
-Today the tree is CMakeLists.txt plus a vcpkg.json naming eleven ports. Visual Studio
-can open that as a CMake folder, and it is not the same thing as a solution: no project
-references, no NuGet, no F5 with a managed debugger attached to the code being written.
-
-The target is ordinary for .NET and unremarkable to describe - a .sln, one csproj per
-component, NuGet where vcpkg was, MSBuild all the way down. It is filed second rather
-than first because the oracle above has to exist even if this never happens, but it is
-filed early because everything after it is easier inside a solution than beside one.
-
-Whatever stays native - and the decoder task in this block argues that at least the
-decoder does - keeps its own build and is consumed as a binary or a vcxproj the solution
-references, which is a thing a solution does well.
-
 ### §PP25 The part that is generated, not written
 
 lib/protobuf/takion.proto is the schema and nanopb is only the generator that turns it

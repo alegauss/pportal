@@ -1,0 +1,25 @@
+﻿<!--
+  PP24: what Visual Studio opens.
+
+  The tree is CMakeLists.txt plus a vcpkg.json, which Visual Studio can open as a CMake folder -
+  and a folder is not a solution: no project references, no NuGet, and no F5 with a managed
+  debugger attached to the code being written. This is the solution the managed half of the port is
+  written inside rather than beside.
+
+  Why .slnx and not .sln. The XML form is what the .NET 10 SDK's `dotnet new sln` now produces, and
+  the classic format's blocks of GUIDs are a merge conflict waiting for the first branch that adds
+  a project - which this port will do repeatedly as Block F splits the core into components. The
+  cost is tooling older than Visual Studio 2022 17.10, and this project targets net10.0-windows, so
+  nothing that can build it is that old.
+
+  The native half is deliberately absent. lib/ and the Qt client are CMake and stay CMake -
+  compile.cmd remains the only build for them, and it is what produces the chiaki-shim.dll this
+  solution's project loads. Whatever of Block F ends up staying native is consumed as a binary or
+  as a vcxproj this file references, which is a thing a solution does well; inventing that entry
+  before there is anything behind it would be a reference to nothing.
+-->
+<Solution>
+  <Folder Name="/app/">
+    <Project Path="app/ChiakiNg.csproj" />
+  </Folder>
+</Solution>
