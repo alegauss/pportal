@@ -51,6 +51,7 @@
 ## Block F — Managed core
 
 - ✅ **PP24** **the build is CMake with vcpkg, so Visual Studio opens a folder rather than a solution** — the tree is a solution: Visual Studio opens ChiakiNg.slnx, compile.cmd builds through it, and Block F's components add their projects to it.
+- ✅ **PP23 (the harness and its first module)** **the protocol has no specification, so a managed rewrite has no oracle except the C code it replaces** — the key derivation runs from managed code against the vectors parsed out of test/rpcrypt.c, so one oracle serves both sides.
 
 ## Block G — Test discipline
 

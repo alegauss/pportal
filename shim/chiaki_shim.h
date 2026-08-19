@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 10
+#define CHIAKI_SHIM_ABI 11
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -567,6 +567,50 @@ CHIAKI_SHIM_API int32_t chiaki_shim_discovery_reply_request_port(void *host);
 
 /** One string field, or NULL where the reply did not carry it. */
 CHIAKI_SHIM_API const char *chiaki_shim_discovery_reply_field(void *host, int32_t field);
+
+/**
+ * PP23: the registration crypto, reachable so that both implementations can be run on one input.
+ *
+ * The protocol has no specification, so the oracle for a managed rewrite is the C code it replaces
+ * plus whatever real hardware already agreed to. For this module both exist: test/rpcrypt.c holds
+ * nonces, morning keys and the exact bytes a console produced from them, and they are the closest
+ * thing the key derivation has to a written-down truth.
+ *
+ * What crosses here is the derivation and not the struct. A ChiakiRPCrypt is a target and two
+ * 16-byte keys, and handing that layout to .NET would put the port one libchiaki field away from
+ * deriving a key that fails to open a session with no clue which of eight steps was wrong.
+ */
+#define CHIAKI_SHIM_RPCRYPT_KEY_SIZE 0x10
+
+CHIAKI_SHIM_API int32_t chiaki_shim_rpcrypt_key_size(void);
+
+/**
+ * chiaki_rpcrypt_bright_ambassador: the two keys a nonce and a morning key derive to.
+ *
+ * `bright` and `ambassador` are each written with exactly CHIAKI_SHIM_RPCRYPT_KEY_SIZE bytes, and
+ * `nonce` and `morning` are read for the same. False where any of them is null.
+ */
+CHIAKI_SHIM_API bool chiaki_shim_rpcrypt_bright_ambassador(
+		int32_t target,
+		uint8_t *bright,
+		uint8_t *ambassador,
+		const uint8_t *nonce,
+		const uint8_t *morning);
+
+/** A ChiakiRPCrypt initialised for the auth exchange, held here as an opaque handle. */
+CHIAKI_SHIM_API void *chiaki_shim_rpcrypt_create_auth(
+		int32_t target, const uint8_t *nonce, const uint8_t *morning);
+
+CHIAKI_SHIM_API void chiaki_shim_rpcrypt_free(void *rpcrypt);
+
+/** chiaki_rpcrypt_generate_iv, which is what every counter's block is encrypted under. */
+CHIAKI_SHIM_API int32_t chiaki_shim_rpcrypt_generate_iv(void *rpcrypt, uint64_t counter, uint8_t *iv);
+
+CHIAKI_SHIM_API int32_t chiaki_shim_rpcrypt_encrypt(
+		void *rpcrypt, uint64_t counter, const uint8_t *in, uint8_t *out, int32_t size);
+
+CHIAKI_SHIM_API int32_t chiaki_shim_rpcrypt_decrypt(
+		void *rpcrypt, uint64_t counter, const uint8_t *in, uint8_t *out, int32_t size);
 
 #ifdef __cplusplus
 }

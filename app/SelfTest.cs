@@ -3,6 +3,7 @@ using System.Text;
 using ChiakiNg.Settings;
 using ChiakiNg.Native;
 using ChiakiNg.Session;
+using ChiakiNg.Protocol;
 
 namespace ChiakiNg;
 
@@ -1439,6 +1440,79 @@ public static class SelfTest
             Check("an unbounded read still stops at the end of the storage",
                 micSeam.Read().SequenceEqual(new byte[] { 7, 8 }) && micSeam.Fill == 2,
                 micSeam.Fill.ToString());
+
+            Console.WriteLine();
+            Console.WriteLine("RpCrypt - the oracle, read out of the suite that holds it");
+
+            Check("the key size comes from the shim", RpCrypt.KeySize == 16, RpCrypt.KeySize.ToString());
+
+            string? vectorFile = CryptoVectors.Locate();
+            if (vectorFile is null)
+            {
+                // Not a failure. The vectors live in test/rpcrypt.c and a published executable has
+                // no test/ beside it; a check that cannot run should say so rather than pass.
+                Console.WriteLine($"  --    the recorded key vectors  (no {CryptoVectors.RelativePath} here)");
+            }
+            else
+            {
+                // Every byte below is the munit case's, parsed out of the C file rather than
+                // copied here. Two copies of an oracle agree with each other long after either
+                // agrees with a console, which is the failure PP82 named about the preference
+                // table - so there is one copy, and both suites cite it.
+                IReadOnlyDictionary<string, byte[]> pre10 =
+                    CryptoVectors.InFunction(vectorFile, "test_bright_ambassador_ps4_pre10");
+                Check("the pre-10 case's vectors are readable",
+                    pre10.Count == 4 && pre10["nonce"].Length == 16,
+                    string.Join(",", pre10.Keys));
+
+                (byte[] bright, byte[] ambassador) = RpCrypt.BrightAmbassador(
+                    ChiakiTarget.Ps4_9, pre10["nonce"], pre10["morning"]);
+                Check("a PS4 before firmware 10 derives the keys a console agreed to",
+                    bright.SequenceEqual(pre10["bright_expected"])
+                    && ambassador.SequenceEqual(pre10["ambassador_expected"]),
+                    Convert.ToHexString(bright));
+
+                // The target is part of the derivation and not a label on it, which is why the
+                // vectors come in pairs: the same two inputs give different keys on either side
+                // of firmware 10.
+                IReadOnlyDictionary<string, byte[]> post10 =
+                    CryptoVectors.InFunction(vectorFile, "test_bright_ambassador");
+                (byte[] bright10, byte[] amb10) = RpCrypt.BrightAmbassador(
+                    ChiakiTarget.Ps4_10, post10["nonce_local"], post10["morning_local"]);
+                Check("and firmware 10 derives different ones from its own vectors",
+                    bright10.SequenceEqual(post10["bright_expected"])
+                    && amb10.SequenceEqual(post10["ambassador_expected"]),
+                    Convert.ToHexString(bright10));
+
+                // The negative that makes the pair mean something: the target genuinely changes
+                // the answer, so a port that ignored it would pass one case and fail the other.
+                (byte[] wrongTarget, _) = RpCrypt.BrightAmbassador(
+                    ChiakiTarget.Ps4_10, pre10["nonce"], pre10["morning"]);
+                Check("deriving with the wrong target gives the wrong key",
+                    !wrongTarget.SequenceEqual(pre10["bright_expected"]));
+
+                IReadOnlyDictionary<string, byte[]> ivCase =
+                    CryptoVectors.InFunction(vectorFile, "test_iv_ps4_pre10");
+                using var crypt = new RpCrypt(ChiakiTarget.Ps4_9, ivCase["nonce"], ivCase["morning"]);
+                Check("counter zero gives the recorded iv",
+                    crypt.GenerateIv(0).SequenceEqual(ivCase["iv_a_expected"]),
+                    Convert.ToHexString(crypt.GenerateIv(0)));
+                Check("and a counter gives its own, repeatably",
+                    crypt.GenerateIv(0x0102030405060708).SequenceEqual(ivCase["iv_b_expected"])
+                    && crypt.GenerateIv(0x0102030405060708).SequenceEqual(ivCase["iv_b_expected"]),
+                    Convert.ToHexString(crypt.GenerateIv(0x0102030405060708)));
+
+                // A round trip through the cipher, which is the property the vectors cannot state:
+                // they pin the keys and the ivs, and this pins that the stream they key is one
+                // stream and not two.
+                byte[] plain = "the seam holds"u8.ToArray();
+                byte[] cipher = crypt.Encrypt(7, plain);
+                Check("what one counter encrypts, the same counter decrypts",
+                    !cipher.SequenceEqual(plain) && crypt.Decrypt(7, cipher).SequenceEqual(plain),
+                    Convert.ToHexString(cipher));
+                Check("and a different counter does not",
+                    !crypt.Decrypt(8, cipher).SequenceEqual(plain));
+            }
 
             Console.WriteLine();
             Console.WriteLine("Discovery - the bytes a console answers, or does not");

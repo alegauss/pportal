@@ -6,6 +6,7 @@
 #include <chiaki/decoderchoice.h>
 #include <chiaki/controller.h>
 #include <chiaki/discovery.h>
+#include <chiaki/rpcrypt.h>
 #include <chiaki/log.h>
 #include <chiaki/session.h>
 #include <chiaki/sessionbaseline.h>
@@ -905,6 +906,71 @@ CHIAKI_SHIM_API const char *chiaki_shim_discovery_reply_field(void *host, int32_
 		default:
 			return NULL;
 	}
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_rpcrypt_key_size(void)
+{
+	return (int32_t)CHIAKI_RPCRYPT_KEY_SIZE;
+}
+
+CHIAKI_SHIM_API bool chiaki_shim_rpcrypt_bright_ambassador(
+		int32_t target,
+		uint8_t *bright,
+		uint8_t *ambassador,
+		const uint8_t *nonce,
+		const uint8_t *morning)
+{
+	if(!bright || !ambassador || !nonce || !morning)
+		return false;
+
+	chiaki_rpcrypt_bright_ambassador((ChiakiTarget)target, bright, ambassador, nonce, morning);
+	return true;
+}
+
+CHIAKI_SHIM_API void *chiaki_shim_rpcrypt_create_auth(
+		int32_t target, const uint8_t *nonce, const uint8_t *morning)
+{
+	ChiakiRPCrypt *self;
+	if(!nonce || !morning)
+		return NULL;
+
+	self = (ChiakiRPCrypt *)calloc(1, sizeof(ChiakiRPCrypt));
+	if(!self)
+		return NULL;
+
+	chiaki_rpcrypt_init_auth(self, (ChiakiTarget)target, nonce, morning);
+	return self;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_rpcrypt_free(void *rpcrypt)
+{
+	free(rpcrypt);
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_rpcrypt_generate_iv(void *rpcrypt, uint64_t counter, uint8_t *iv)
+{
+	if(!rpcrypt || !iv)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+
+	return (int32_t)chiaki_rpcrypt_generate_iv((ChiakiRPCrypt *)rpcrypt, iv, counter);
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_rpcrypt_encrypt(
+		void *rpcrypt, uint64_t counter, const uint8_t *in, uint8_t *out, int32_t size)
+{
+	if(!rpcrypt || !in || !out || size < 0)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+
+	return (int32_t)chiaki_rpcrypt_encrypt((ChiakiRPCrypt *)rpcrypt, counter, in, out, (size_t)size);
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_rpcrypt_decrypt(
+		void *rpcrypt, uint64_t counter, const uint8_t *in, uint8_t *out, int32_t size)
+{
+	if(!rpcrypt || !in || !out || size < 0)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+
+	return (int32_t)chiaki_rpcrypt_decrypt((ChiakiRPCrypt *)rpcrypt, counter, in, out, (size_t)size);
 }
 
 CHIAKI_SHIM_API void chiaki_shim_session_free(void *session)
