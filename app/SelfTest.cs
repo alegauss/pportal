@@ -1515,6 +1515,75 @@ public static class SelfTest
             }
 
             Console.WriteLine();
+            Console.WriteLine("Takion - the key position, and a real packet's header");
+
+            using (var keys = new KeyState())
+            {
+                // The C suite's own ladder. The step that matters is the fourth: 0x1337 arriving
+                // after 0xffff0000 is 0x1_00001337, because the low half wrapped and the high half
+                // went up. A reader that took the wire's 32 bits as the whole number would key the
+                // stream four billion bytes back and decrypt noise from there on.
+                Check("a position below the last one is a wrap and not a step backwards",
+                    keys.RequestPos(0) == 0
+                    && keys.RequestPos(0x1337) == 0x1337
+                    && keys.RequestPos(0xffff0000) == 0xffff0000
+                    && keys.RequestPos(0x1337) == 0x1_00001337,
+                    keys.RequestPos(0x1337).ToString("x"));
+
+                // …and it is the NEAREST candidate, not the next one. From 0x1_00001337, a wire
+                // value of 0xffff1337 could mean 0x0_ffff1337 (just behind) or 0x1_ffff1337 (far
+                // ahead); it takes the near one. So the high half can go DOWN again, which is the
+                // half of this that "remember the high bits and increment on wrap" does not
+                // describe - and a reorder that arrives a packet late is exactly that case.
+                Check("the nearest candidate wins, even when it is behind",
+                    keys.RequestPos(0xffff1337) == 0xffff1337,
+                    keys.RequestPos(0xffff1337).ToString("x"));
+
+                Check("and the ladder keeps climbing from there",
+                    keys.RequestPos(0x50000000) == 0x1_50000000
+                    && keys.RequestPos(0xb0000000) == 0x1_b0000000
+                    && keys.RequestPos(0x00000000) == 0x2_00000000,
+                    keys.RequestPos(0x00000000).ToString("x"));
+            }
+
+            using (var keys = new KeyState())
+            {
+                // Without commit the state does not move, which is what lets a packet be parsed
+                // before it is known to be genuine: a corrupt one asks and is thrown away without
+                // having dragged the counter forward with it.
+                Check("an uncommitted request answers without advancing",
+                    keys.RequestPos(0xffff0000, commit: false) == 0xffff0000
+                    && keys.RequestPos(0x1337, commit: false) == 0x1337,
+                    keys.RequestPos(0x1337, commit: false).ToString("x"));
+            }
+
+            string? takionFile = SanitizerSource.LocateRelative(@"test\takion.c");
+            if (takionFile is null)
+            {
+                Console.WriteLine(@"  --    the recorded AV packet  (no test\takion.c here)");
+            }
+            else
+            {
+                IReadOnlyDictionary<string, byte[]> av =
+                    CryptoVectors.InFunction(takionFile, "test_av_packet_parse");
+                using var keys = new KeyState();
+                AvPacket? parsed = Takion.ParseV9(keys, av["packet"], out ChiakiError avErr);
+
+                Check("a recorded video packet's header parses",
+                    parsed is not null && avErr == ChiakiError.Success, avErr.ToString());
+                Check("every field is the one the C suite records",
+                    parsed is { IsVideo: true, PacketIndex: 45, FrameIndex: 5, UnitIndex: 6,
+                        UnitsInFrameTotal: 8, UnitsInFrameFec: 1, Codec: 3, AdaptiveStreamIndex: 0 },
+                    parsed?.ToString() ?? "<null>");
+                // The payload is named by where it sits rather than by a pointer: 0x15 in, 0x99
+                // long. That is the same ownership rule as the discovery reply, taken further -
+                // the buffer is already the caller's, so an offset costs no lifetime at all.
+                Check("the payload is an offset into the buffer the caller already has",
+                    parsed is { DataOffset: 0x15, DataSize: 0x99 },
+                    $"{parsed?.DataOffset:x}/{parsed?.DataSize:x}");
+            }
+
+            Console.WriteLine();
             Console.WriteLine("Bitstream - what kind of frame just arrived");
 
             string? bsFile = SanitizerSource.LocateRelative(@"test\bitstream.c");

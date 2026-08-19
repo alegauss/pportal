@@ -17,6 +17,7 @@
 #include <chiaki/log.h>
 #include <chiaki/session.h>
 #include <chiaki/sessionbaseline.h>
+#include <chiaki/takion.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -1407,6 +1408,82 @@ CHIAKI_SHIM_API bool chiaki_shim_bitstream_slice_set_reference_frame(
 
 	return chiaki_bitstream_slice_set_reference_frame((ChiakiBitstream *)bitstream, data,
 			(unsigned)size, (unsigned)reference_frame);
+}
+
+CHIAKI_SHIM_API void *chiaki_shim_key_state_create(void)
+{
+	ChiakiKeyState *self = (ChiakiKeyState *)calloc(1, sizeof(ChiakiKeyState));
+	if(self)
+		chiaki_key_state_init(self);
+	return self;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_key_state_free(void *state)
+{
+	free(state);
+}
+
+CHIAKI_SHIM_API uint64_t chiaki_shim_key_state_request_pos(void *state, uint32_t low, bool commit)
+{
+	return state ? chiaki_key_state_request_pos((ChiakiKeyState *)state, low, commit) : 0;
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_takion_v9_av_packet_parse(
+		void *key_state,
+		uint8_t *buf,
+		int32_t buf_size,
+		bool *is_video,
+		uint16_t *packet_index,
+		uint16_t *frame_index,
+		uint16_t *unit_index,
+		uint16_t *units_in_frame_total,
+		uint16_t *units_in_frame_fec,
+		uint8_t *codec,
+		uint8_t *adaptive_stream_index,
+		uint64_t *key_pos,
+		int32_t *data_offset,
+		int32_t *data_size)
+{
+	ChiakiTakionAVPacket packet;
+	ChiakiErrorCode err;
+
+	if(!key_state || !buf || buf_size <= 0)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+
+	memset(&packet, 0, sizeof(packet));
+	err = chiaki_takion_v9_av_packet_parse(&packet, (ChiakiKeyState *)key_state, buf,
+			(size_t)buf_size);
+	if(err != CHIAKI_ERR_SUCCESS)
+		return (int32_t)err;
+
+	if(is_video)
+		*is_video = packet.is_video;
+	if(packet_index)
+		*packet_index = packet.packet_index;
+	if(frame_index)
+		*frame_index = packet.frame_index;
+	if(unit_index)
+		*unit_index = packet.unit_index;
+	if(units_in_frame_total)
+		*units_in_frame_total = packet.units_in_frame_total;
+	if(units_in_frame_fec)
+		*units_in_frame_fec = packet.units_in_frame_fec;
+	if(codec)
+		*codec = packet.codec;
+	if(adaptive_stream_index)
+		*adaptive_stream_index = packet.adaptive_stream_index;
+	if(key_pos)
+		*key_pos = packet.key_pos;
+
+	// The payload is a pointer INTO the caller's buffer, so it crosses as the offset it sits at.
+	// A pointer would be a second lifetime for the managed side to keep track of, and the buffer
+	// it points into is one the caller already holds.
+	if(data_offset)
+		*data_offset = packet.data ? (int32_t)(packet.data - buf) : -1;
+	if(data_size)
+		*data_size = (int32_t)packet.data_size;
+
+	return (int32_t)CHIAKI_ERR_SUCCESS;
 }
 
 CHIAKI_SHIM_API void chiaki_shim_session_free(void *session)

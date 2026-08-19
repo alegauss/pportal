@@ -1,0 +1,114 @@
+using System.Runtime.InteropServices;
+using ChiakiNg.Native;
+
+namespace ChiakiNg.Protocol;
+
+/// <summary>
+/// PP23: the key position, which is the counter every encrypted byte of a session is keyed by.
+///
+/// The wire carries 32 bits of it and the cipher needs 64. Expanding one into the other is the
+/// whole of this: remember the high half, increment it when the low half wraps, so a packet at
+/// 0x1337 arriving after one at 0xffff0000 is 0x1_00001337 and not four billion bytes backwards.
+///
+/// Getting it wrong does not throw. It keys the stream at the wrong offset, so every packet after
+/// the first wrap decrypts to noise and the session dies on a MAC failure - four gigabytes in,
+/// which is far enough from the start that nothing points at a counter.
+/// </summary>
+public sealed class KeyState : IDisposable
+{
+    private IntPtr _handle;
+
+    public KeyState()
+    {
+        _handle = KeyStateCreate();
+        if (_handle == IntPtr.Zero)
+            throw new OutOfMemoryException("chiaki_shim_key_state_create returned null.");
+    }
+
+    internal IntPtr Handle
+        => _handle != IntPtr.Zero ? _handle : throw new ObjectDisposedException(nameof(KeyState));
+
+    /// <summary>
+    /// The 64-bit position a 32-bit one on the wire means.
+    /// </summary>
+    /// <param name="commit">
+    /// Whether this request advances the state. A parse that may still turn out to be garbage asks
+    /// without committing, so a corrupt packet cannot drag the counter forward with it.
+    /// </param>
+    public ulong RequestPos(uint low, bool commit = true) => KeyStateRequestPos(Handle, low, commit);
+
+    public void Dispose()
+    {
+        if (_handle == IntPtr.Zero)
+            return;
+
+        KeyStateFree(_handle);
+        _handle = IntPtr.Zero;
+    }
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_key_state_create",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr KeyStateCreate();
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_key_state_free",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern void KeyStateFree(IntPtr state);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_key_state_request_pos",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern ulong KeyStateRequestPos(
+        IntPtr state, uint low, [MarshalAs(UnmanagedType.I1)] bool commit);
+}
+
+/// <summary>One audio or video packet's header, with the payload named by where it sits.</summary>
+public readonly record struct AvPacket(
+    bool IsVideo,
+    ushort PacketIndex,
+    ushort FrameIndex,
+    ushort UnitIndex,
+    ushort UnitsInFrameTotal,
+    ushort UnitsInFrameFec,
+    byte Codec,
+    byte AdaptiveStreamIndex,
+    ulong KeyPos,
+    int DataOffset,
+    int DataSize);
+
+/// <summary>
+/// PP23: takion's AV packet header, which is what every frame of picture and sound arrives inside.
+///
+/// The payload comes back as an OFFSET into the caller's buffer rather than as a pointer. That is
+/// the same ownership rule as the discovery reply, taken one step further: the buffer is already
+/// the caller's, so naming a position in it costs no lifetime at all.
+/// </summary>
+public static class Takion
+{
+    /// <summary>Parses a v9 AV packet header, or returns null with the error the parse gave.</summary>
+    public static AvPacket? ParseV9(KeyState keyState, byte[] buffer, out ChiakiError error)
+    {
+        ArgumentNullException.ThrowIfNull(keyState);
+        ArgumentNullException.ThrowIfNull(buffer);
+
+        int err = TakionV9Parse(keyState.Handle, buffer, buffer.Length,
+            out bool isVideo, out ushort packetIndex, out ushort frameIndex, out ushort unitIndex,
+            out ushort unitsTotal, out ushort unitsFec, out byte codec, out byte adaptive,
+            out ulong keyPos, out int dataOffset, out int dataSize);
+
+        error = (ChiakiError)err;
+        if (error != ChiakiError.Success)
+            return null;
+
+        return new AvPacket(isVideo, packetIndex, frameIndex, unitIndex, unitsTotal, unitsFec,
+            codec, adaptive, keyPos, dataOffset, dataSize);
+    }
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_takion_v9_av_packet_parse",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern int TakionV9Parse(
+        IntPtr keyState, byte[] buf, int bufSize,
+        [MarshalAs(UnmanagedType.I1)] out bool isVideo,
+        out ushort packetIndex, out ushort frameIndex, out ushort unitIndex,
+        out ushort unitsInFrameTotal, out ushort unitsInFrameFec,
+        out byte codec, out byte adaptiveStreamIndex, out ulong keyPos,
+        out int dataOffset, out int dataSize);
+}

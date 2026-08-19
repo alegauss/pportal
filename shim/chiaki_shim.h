@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 17
+#define CHIAKI_SHIM_ABI 18
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -799,6 +799,48 @@ CHIAKI_SHIM_API bool chiaki_shim_bitstream_slice(
 /** Rewrites a slice's reference frame in place, which is how a lost frame is worked around. */
 CHIAKI_SHIM_API bool chiaki_shim_bitstream_slice_set_reference_frame(
 		void *bitstream, uint8_t *data, int32_t size, uint32_t reference_frame);
+
+/**
+ * PP23: the key position, which is the counter every encrypted byte of a session is keyed by.
+ *
+ * The wire carries 32 bits of it and the cipher needs 64. Expanding one to the other is the whole
+ * of ChiakiKeyState: it remembers the high half and increments it when the low half wraps, so a
+ * packet arriving at 0x1337 after one at 0xffff0000 is 0x100001337 and not a step backwards.
+ *
+ * Getting that wrong does not throw. It produces a key stream at the wrong offset, so every packet
+ * after the first wrap decrypts to noise and the session dies with a MAC failure four gigabytes in.
+ *
+ * `commit` is what makes a request advance the state. A parse that later turns out to be garbage
+ * asks without committing, so a corrupt packet cannot drag the counter forward with it.
+ */
+CHIAKI_SHIM_API void *chiaki_shim_key_state_create(void);
+CHIAKI_SHIM_API void chiaki_shim_key_state_free(void *state);
+CHIAKI_SHIM_API uint64_t chiaki_shim_key_state_request_pos(void *state, uint32_t low, bool commit);
+
+/**
+ * chiaki_takion_v9_av_packet_parse: one audio or video packet's header, flattened.
+ *
+ * ChiakiTakionAVPacket ends in a borrowed pointer into the datagram, which is the same ownership
+ * shape as the discovery reply - so the payload comes back as an OFFSET and a length rather than
+ * as a pointer, and the caller already has the buffer it indexes.
+ *
+ * Every out-parameter may be NULL. Returns a ChiakiErrorCode.
+ */
+CHIAKI_SHIM_API int32_t chiaki_shim_takion_v9_av_packet_parse(
+		void *key_state,
+		uint8_t *buf,
+		int32_t buf_size,
+		bool *is_video,
+		uint16_t *packet_index,
+		uint16_t *frame_index,
+		uint16_t *unit_index,
+		uint16_t *units_in_frame_total,
+		uint16_t *units_in_frame_fec,
+		uint8_t *codec,
+		uint8_t *adaptive_stream_index,
+		uint64_t *key_pos,
+		int32_t *data_offset,
+		int32_t *data_size);
 
 #ifdef __cplusplus
 }

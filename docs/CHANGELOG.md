@@ -58,6 +58,7 @@
 - ✅ **PP108** **the reorder queue runs only from the C suite, so a managed transport would rebuild its window from scratch** — the window, both drop strategies and the offset-not-sequence-number indexing run from managed code under twelve assertions.
 - ✅ **PP33 (the response parser)** **HTTP and JSON in the core are curl and json-c, two vendored dependencies for what the runtime already does** — a managed HTTP response parser agrees with libchiaki's on twelve inputs, which is the first module the port replaces rather than calls.
 - ✅ **PP110** **the bitstream parser runs only from the C suite, so nothing managed can tell an I frame from a P frame** — both codecs' recorded headers and slices parse from managed code, reference rewriting included, out of the C suite's own vectors.
+- ✅ **PP111** **the key position expansion and the AV packet header run only from the C suite, so a managed transport has neither** — the key position ladder and a recorded AV packet header parse from managed code, the payload named by offset rather than pointer.
 
 ## Block G — Test discipline
 
