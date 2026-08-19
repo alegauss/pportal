@@ -1865,6 +1865,34 @@ public static class SelfTest
                 }
             }
 
+            // PP131: the hop D3DImage requires, which PP9 accepted as a cost without measuring.
+            // WPF composes through D3D9Ex and takes an IDirect3DSurface9 and nothing else, so this
+            // is not an optimisation - it is the whole path from libplacebo to a window.
+            // The HARDWARE device, not WARP. A shared handle only opens on the adapter that made
+            // it, and the D3D9Ex device below is D3DADAPTER_DEFAULT - so sharing a WARP texture to
+            // it fails at Open for a reason that has nothing to do with the decision. Measured,
+            // because the first version of this check did exactly that and read as a defect.
+            using (RenderDevice? shareDevice = ChiakiRender.CreateD3d11(forceSoftware: false))
+            {
+                if (shareDevice is null)
+                {
+                    Console.WriteLine("        no hardware device to share from - the hop is unproven here");
+                }
+                else
+                {
+                    using SharedSurface? shared =
+                        SharedSurface.Create(shareDevice, 1920, 1080, out ShareStage stage);
+
+                    Check("a D3D11 texture opens again as the D3D9Ex surface D3DImage takes",
+                        shared is not null && shared.Surface != IntPtr.Zero,
+                        shared is null ? $"failed at {stage}" : "surface is null");
+
+                    if (shared is not null)
+                        Check("and DXGI produced the shared handle D3D9Ex was given",
+                            shared.HasSharedHandle);
+                }
+            }
+
             // The hardware adapter, printed rather than asserted: a machine without one is not a
             // defect in the decision, and saying which of the two ran is the point.
             using (RenderDevice? gpu = ChiakiRender.CreateD3d11(forceSoftware: false))

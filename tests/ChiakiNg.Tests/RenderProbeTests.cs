@@ -77,4 +77,51 @@ public class RenderProbeTests
         (int maxTexture, _) = device.Limits();
         Assert.True(maxTexture >= 3840, $"max 2D texture was {maxTexture} on {device.Description}");
     }
+
+    /// <summary>
+    /// PP131: the hop D3DImage requires - a D3D11 texture opened again as an IDirect3DSurface9.
+    ///
+    /// From the HARDWARE device, not WARP. A shared handle opens only on the adapter that made
+    /// it, and the D3D9Ex device is D3DADAPTER_DEFAULT, so sharing a WARP texture to it fails at
+    /// Open for a reason that has nothing to do with PP9's decision. The first version of this
+    /// check did exactly that and read as a defect in the architecture.
+    ///
+    /// Skipped where there is no hardware adapter, and that is a real limit rather than a hedge:
+    /// unlike the device probe above, this one has no software equivalent that means anything.
+    /// </summary>
+    [Fact]
+    public void AD3d11TextureOpensAsTheSurfaceD3dImageTakes()
+    {
+        using RenderDevice? device = ChiakiRender.CreateD3d11(forceSoftware: false);
+        if (device is null)
+            return;
+
+        using SharedSurface? shared = SharedSurface.Create(device, 1920, 1080, out ShareStage stage);
+
+        Assert.True(shared is not null, $"the share failed at {stage}");
+        Assert.NotEqual(IntPtr.Zero, shared.Surface);
+        Assert.True(shared.HasSharedHandle);
+    }
+
+    /// <summary>
+    /// And a WARP texture does NOT open on the default D3D9Ex adapter, which is the constraint
+    /// worth writing down: the share is adapter-bound, so a renderer that let libplacebo pick a
+    /// different device than WPF composes on would fail here rather than draw nothing.
+    /// </summary>
+    [Fact]
+    public void ASoftwareTextureDoesNotOpenOnTheDefaultAdapter()
+    {
+        using RenderDevice? warp = ChiakiRender.CreateD3d11(forceSoftware: true);
+        Assert.NotNull(warp);
+
+        using SharedSurface? shared = SharedSurface.Create(warp, 640, 480, out ShareStage stage);
+
+        // If it ever DOES succeed - a machine whose default adapter is WARP - that is fine and
+        // this says so rather than failing, because the claim is about the binding and not about
+        // WARP being second-class.
+        if (shared is not null)
+            return;
+
+        Assert.Equal(ShareStage.Open, stage);
+    }
 }

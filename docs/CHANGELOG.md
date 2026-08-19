@@ -54,6 +54,7 @@
 - ✅ **PP78** **picking "none" in the decoder setting fails the session instead of decoding in software** — chiaki_decoder_choice answers software for none and never returns the literal, so the caller's existing software mapping carries it to a stream that starts.
 - ✅ **PP9 (the decision)** **the video is presented by libplacebo into a Vulkan-backed QQuickWindow, which WPF cannot host** — libplacebo runs on D3D11 here, so the shaders survive and no Vulkan image has to be shared out.
 - ✅ **PP131** **PP9's renderer decision was taken from the source and nothing has ever built it** — libplacebo's D3D11 backend initialises on both adapters here, in a DLL of its own at ABI 1.
+- ✅ **PP132** **the D3D11-to-D3D9Ex hop D3DImage requires was accepted as a cost and never built** — a libplacebo texture opens as the surface D3DImage takes, and the share is adapter-bound both ways.
 
 ## Block D — Screens
 

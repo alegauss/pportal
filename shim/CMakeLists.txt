@@ -42,7 +42,9 @@ endif()
 # the protocol.
 add_library(chiaki-render SHARED chiaki_render.c chiaki_render.h)
 target_include_directories(chiaki-render PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
-target_link_libraries(chiaki-render PkgConfig::LIBPLACEBO)
+# d3d11/d3d9/dxgi for the D3DImage share (PP131). Named here rather than assumed present in
+# libplacebo's own link line, which does not export them.
+target_link_libraries(chiaki-render PkgConfig::LIBPLACEBO d3d11 d3d9 dxgi)
 set_target_properties(chiaki-render PROPERTIES PREFIX "" OUTPUT_NAME "chiaki-render")
 
 if(MINGW)

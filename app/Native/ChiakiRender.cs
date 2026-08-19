@@ -21,7 +21,7 @@ public static class ChiakiRender
     internal const string Library = "chiaki-render";
 
     /// <summary>Must equal CHIAKI_RENDER_ABI in shim/chiaki_render.h. Independent of the shim's.</summary>
-    public const uint ExpectedAbi = 1;
+    public const uint ExpectedAbi = 2;
 
     [DllImport(Library, EntryPoint = "chiaki_render_abi_version", CallingConvention = CallingConvention.Cdecl)]
     public static extern uint AbiVersion();
@@ -57,6 +57,82 @@ public static class ChiakiRender
     private static extern IntPtr D3d11Create([MarshalAs(UnmanagedType.I1)] bool forceSoftware);
 }
 
+/// <summary>Which step of the D3D11-to-D3D9Ex share failed, or Ok.</summary>
+public enum ShareStage
+{
+    Ok = 0,
+    NoDevice,
+    Texture,
+    Query,
+    Handle,
+    D3d9,
+    Open,
+    Surface,
+}
+
+/// <summary>
+/// PP131: a D3D11 texture opened again as the IDirect3DSurface9 D3DImage takes.
+///
+/// WPF composes through D3D9Ex and D3DImage accepts nothing else, so this hop is not an
+/// optimisation - it is the whole path from libplacebo to a window. PP9 named it as an accepted
+/// cost and an accepted risk; naming a risk is not measuring it.
+///
+/// The surface here is never handed to WPF. What is being answered is whether the pointer can
+/// exist at all, which is the half that fails in a driver rather than in a dispatcher.
+/// </summary>
+public sealed class SharedSurface : IDisposable
+{
+    private IntPtr _handle;
+
+    private SharedSurface(IntPtr handle) => _handle = handle;
+
+    /// <summary>
+    /// Shares a texture out of a libplacebo D3D11 device. Null when any step fails, with
+    /// <paramref name="stage"/> naming which - because "sharing did not work" is the answer this
+    /// exists to improve on.
+    /// </summary>
+    public static SharedSurface? Create(RenderDevice device, int width, int height, out ShareStage stage)
+    {
+        ArgumentNullException.ThrowIfNull(device);
+
+        IntPtr handle = ShareToD3d9(device.Raw, width, height, out int raw);
+        stage = (ShareStage)raw;
+        return handle == IntPtr.Zero ? null : new SharedSurface(handle);
+    }
+
+    /// <summary>The IDirect3DSurface9 D3DImage.SetBackBuffer would be given.</summary>
+    public IntPtr Surface => ShareSurface(_handle);
+
+    /// <summary>Whether DXGI produced a shared handle, which is what D3D9Ex is asked to open.</summary>
+    public bool HasSharedHandle => ShareHasHandle(_handle);
+
+    public void Dispose()
+    {
+        if (_handle == IntPtr.Zero)
+            return;
+
+        ShareDestroy(_handle);
+        _handle = IntPtr.Zero;
+    }
+
+    [DllImport(ChiakiRender.Library, EntryPoint = "chiaki_render_share_to_d3d9",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr ShareToD3d9(IntPtr d3d11, int width, int height, out int stage);
+
+    [DllImport(ChiakiRender.Library, EntryPoint = "chiaki_render_share_surface",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr ShareSurface(IntPtr share);
+
+    [DllImport(ChiakiRender.Library, EntryPoint = "chiaki_render_share_has_handle",
+        CallingConvention = CallingConvention.Cdecl)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    private static extern bool ShareHasHandle(IntPtr share);
+
+    [DllImport(ChiakiRender.Library, EntryPoint = "chiaki_render_share_destroy",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern void ShareDestroy(IntPtr share);
+}
+
 /// <summary>One libplacebo D3D11 device, and the limits a renderer would be written against.</summary>
 public sealed class RenderDevice : IDisposable
 {
@@ -66,6 +142,9 @@ public sealed class RenderDevice : IDisposable
 
     private IntPtr Handle
         => _handle != IntPtr.Zero ? _handle : throw new ObjectDisposedException(nameof(RenderDevice));
+
+    /// <summary>The native device, for the share below. Internal: this class owns its lifetime.</summary>
+    internal IntPtr Raw => Handle;
 
     /// <summary>What libplacebo says it is, for a log line that names a version rather than a guess.</summary>
     public string Description => Marshal.PtrToStringUTF8(D3d11Description(Handle)) ?? "";

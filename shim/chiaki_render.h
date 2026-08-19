@@ -36,7 +36,7 @@ extern "C" {
 #endif
 
 /** Bumped whenever an exported signature here changes meaning. Independent of CHIAKI_SHIM_ABI. */
-#define CHIAKI_RENDER_ABI 1
+#define CHIAKI_RENDER_ABI 2
 
 CHIAKI_RENDER_API uint32_t chiaki_render_abi_version(void);
 
@@ -78,6 +78,53 @@ CHIAKI_RENDER_API bool chiaki_render_d3d11_limits(
 
 /** The API version libplacebo reports for the device, so a log line can name it. */
 CHIAKI_RENDER_API const char *chiaki_render_d3d11_description(void *d3d11);
+
+/**
+ * PP131: the hop PP9 accepted a cost for, built.
+ *
+ * WPF composes through D3D9Ex. D3DImage takes an IDirect3DSurface9 and nothing else, so a D3D11
+ * texture reaches the screen only by being SHARED: created with D3D11_RESOURCE_MISC_SHARED, its
+ * handle taken from IDXGIResource, and that handle opened again as a D3D9Ex texture. PP9's design
+ * named this as an accepted cost and an accepted risk, and naming a risk is not measuring it.
+ *
+ * The constraints are real and narrow, which is why this is worth building rather than assuming.
+ * The share is the OLD kind - D3D9Ex cannot open a keyed-mutex resource - and the format has to be
+ * one both APIs agree on, which in practice is B8G8R8A8. Get either wrong and the open fails with
+ * E_INVALIDARG, at the first frame, in a renderer that is otherwise complete.
+ *
+ * Returns NULL on any failure and fills `out_stage` with the step that failed, because "sharing
+ * did not work" is the answer this exists to improve on.
+ */
+typedef enum chiaki_render_share_stage
+{
+	CHIAKI_RENDER_SHARE_OK = 0,
+	CHIAKI_RENDER_SHARE_NO_DEVICE,
+	CHIAKI_RENDER_SHARE_TEXTURE,       /**< ID3D11Device::CreateTexture2D */
+	CHIAKI_RENDER_SHARE_QUERY,         /**< QueryInterface for IDXGIResource */
+	CHIAKI_RENDER_SHARE_HANDLE,        /**< IDXGIResource::GetSharedHandle */
+	CHIAKI_RENDER_SHARE_D3D9,          /**< Direct3DCreate9Ex or CreateDeviceEx */
+	CHIAKI_RENDER_SHARE_OPEN,          /**< IDirect3DDevice9Ex::CreateTexture on the handle */
+	CHIAKI_RENDER_SHARE_SURFACE,       /**< IDirect3DTexture9::GetSurfaceLevel */
+} chiaki_render_share_stage;
+
+/**
+ * Shares a texture of `width` x `height` from the D3D11 device into a fresh D3D9Ex device, and
+ * hands back the IDirect3DSurface9 D3DImage would be given.
+ *
+ * The surface is what SetBackBuffer takes. Nothing here calls into WPF - what is being answered
+ * is whether the pointer can exist at all, which is the half that fails in a driver rather than
+ * in a dispatcher.
+ */
+CHIAKI_RENDER_API void *chiaki_render_share_to_d3d9(
+		void *d3d11, int32_t width, int32_t height, int32_t *out_stage);
+
+/** The IDirect3DSurface9 the share produced, or NULL. Owned by the share; do not release. */
+CHIAKI_RENDER_API void *chiaki_render_share_surface(void *share);
+
+/** Whether the shared handle was non-null, which is what D3D9Ex is asked to open. */
+CHIAKI_RENDER_API bool chiaki_render_share_has_handle(void *share);
+
+CHIAKI_RENDER_API void chiaki_render_share_destroy(void *share);
 
 #ifdef __cplusplus
 }
