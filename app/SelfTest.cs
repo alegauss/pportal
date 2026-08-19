@@ -1,5 +1,6 @@
 ﻿using System.Buffers.Binary;
 using System.Text;
+using Google.Protobuf;
 using ChiakiNg.Settings;
 using ChiakiNg.Native;
 using ChiakiNg.Session;
@@ -1513,6 +1514,62 @@ public static class SelfTest
                 Check("and a different counter does not",
                     !crypt.Decrypt(8, cipher).SequenceEqual(plain));
             }
+
+            Console.WriteLine();
+            Console.WriteLine("TakionMessages - one .proto, two generators, the same bytes");
+
+            // The bang: the message that carries the ECDH key and the two flags a session is
+            // refused on. Built with the C# types protoc generated from lib/protobuf/takion.proto,
+            // then handed to nanopb - which was generated from the same file and is what the
+            // console's protocol is actually spoken with today.
+            var bang = new Tkproto.TakionMessage
+            {
+                Type = Tkproto.TakionMessage.Types.PayloadType.Bang,
+                BangPayload = new Tkproto.BangPayload
+                {
+                    ServerVersion = 9,
+                    Token = 0x1337BEEF,
+                    EncryptedKeyAccepted = true,
+                    VersionAccepted = true,
+                    SessionKey = "a-session-key",
+                },
+            };
+
+            byte[] encoded = bang.ToByteArray();
+            DecodedTakionMessage? read = TakionMessages.DecodeWithNanopb(encoded);
+
+            Check("nanopb accepts what the managed generator produced",
+                read is not null, $"{encoded.Length} bytes");
+            Check("and reads back every scalar unchanged",
+                read is { Type: 1, HasBang: true, ServerVersion: 9, Token: 0x1337BEEF,
+                    EncryptedKeyAccepted: true, VersionAccepted: true },
+                read?.ToString() ?? "<null>");
+
+            // The enum is the field most likely to drift between two generators, because it is the
+            // one thing that is a NAME on one side and a number on the other. BANG is 1 in the
+            // .proto and has to be 1 on the wire.
+            Check("the payload type is the number the .proto assigns",
+                (int)Tkproto.TakionMessage.Types.PayloadType.Bang == 1
+                && read?.Type == (int)Tkproto.TakionMessage.Types.PayloadType.Bang);
+
+            // A round trip through the managed side too, so the encoder and its own decoder are
+            // not the only thing agreeing.
+            var reparsed = Tkproto.TakionMessage.Parser.ParseFrom(encoded);
+            Check("the managed parser reads its own bytes back",
+                reparsed.BangPayload.Token == 0x1337BEEF
+                && reparsed.BangPayload.SessionKey == "a-session-key",
+                reparsed.BangPayload.SessionKey);
+
+            // proto2 required fields: a message missing one is not a message. Both generators have
+            // to refuse it, and the managed one refuses at encode rather than at parse - which is
+            // the earlier of the two places and the better one.
+            var incomplete = new Tkproto.TakionMessage
+            {
+                Type = Tkproto.TakionMessage.Types.PayloadType.Bang,
+                BangPayload = new Tkproto.BangPayload { ServerVersion = 1 },
+            };
+            Check("nanopb refuses a bang missing its required fields",
+                TakionMessages.DecodeWithNanopb(incomplete.ToByteArray()) is null);
 
             Console.WriteLine();
             Console.WriteLine("FrameTiming - when a decoded frame is due");

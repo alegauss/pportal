@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 22
+#define CHIAKI_SHIM_ABI 23
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -973,6 +973,32 @@ CHIAKI_SHIM_API void chiaki_shim_rpcrypt_regist_bright_ps4_pre10(
  * A timestamp of CHIAKI_SHIM_AV_NOPTS is "absent", which is what selects the next fallback.
  */
 #define CHIAKI_SHIM_AV_NOPTS INT64_MIN
+
+/**
+ * PP25: one takion control message, decoded by nanopb.
+ *
+ * The wire format is the one part of this core that is regenerated rather than translated:
+ * lib/protobuf/takion.proto becomes C through nanopb and C# through protoc, from the same file.
+ * What that leaves open is whether the two generators agree on the bytes, and this is the answer -
+ * the managed side encodes a message and nanopb, which is what the console's protocol is spoken
+ * with today, is asked what it reads.
+ *
+ * The bang is the message worth checking: it is the one that carries the ECDH key and the flags a
+ * session is refused on, and it is the message PP105 traced. Only its scalars come back; the
+ * string and bytes fields are nanopb callbacks, which is a second ownership question and not this
+ * one's.
+ *
+ * `type` is the PayloadType enum. Every out-parameter may be NULL. False when nanopb refuses.
+ */
+CHIAKI_SHIM_API bool chiaki_shim_takion_message_decode(
+		const uint8_t *buf,
+		int32_t size,
+		int32_t *type,
+		bool *has_bang,
+		uint32_t *server_version,
+		uint32_t *token,
+		bool *encrypted_key_accepted,
+		bool *version_accepted);
 
 CHIAKI_SHIM_API int64_t chiaki_shim_ffmpeg_nopts(void);
 

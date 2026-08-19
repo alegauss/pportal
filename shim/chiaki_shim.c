@@ -13,6 +13,9 @@
 #include <chiaki/frameprocessor.h>
 
 #include <libavutil/frame.h>
+
+#include <pb_decode.h>
+#include <takion.pb.h>
 #include <chiaki/gkcrypt.h>
 #include <chiaki/http.h>
 #include <chiaki/regist.h>
@@ -1751,6 +1754,60 @@ CHIAKI_SHIM_API void chiaki_shim_rpcrypt_regist_bright_ps4_pre10(
 
 	chiaki_rpcrypt_init_regist_ps4_pre10(&rpcrypt, ambassador, pin);
 	memcpy(bright, rpcrypt.bright, CHIAKI_RPCRYPT_KEY_SIZE);
+}
+
+CHIAKI_SHIM_API bool chiaki_shim_takion_message_decode(
+		const uint8_t *buf,
+		int32_t size,
+		int32_t *type,
+		bool *has_bang,
+		uint32_t *server_version,
+		uint32_t *token,
+		bool *encrypted_key_accepted,
+		bool *version_accepted)
+{
+	tkproto_TakionMessage msg;
+	pb_istream_t stream;
+
+	if(type)
+		*type = 0;
+	if(has_bang)
+		*has_bang = false;
+	if(server_version)
+		*server_version = 0;
+	if(token)
+		*token = 0;
+	if(encrypted_key_accepted)
+		*encrypted_key_accepted = false;
+	if(version_accepted)
+		*version_accepted = false;
+
+	if(!buf || size < 0)
+		return false;
+
+	memset(&msg, 0, sizeof(msg));
+	stream = pb_istream_from_buffer(buf, (size_t)size);
+	if(!pb_decode(&stream, tkproto_TakionMessage_fields, &msg))
+		return false;
+
+	if(type)
+		*type = (int32_t)msg.type;
+	if(has_bang)
+		*has_bang = msg.has_bang_payload;
+
+	if(msg.has_bang_payload)
+	{
+		if(server_version)
+			*server_version = msg.bang_payload.server_version;
+		if(token)
+			*token = msg.bang_payload.token;
+		if(encrypted_key_accepted)
+			*encrypted_key_accepted = msg.bang_payload.encrypted_key_accepted;
+		if(version_accepted)
+			*version_accepted = msg.bang_payload.version_accepted;
+	}
+
+	return true;
 }
 
 CHIAKI_SHIM_API int64_t chiaki_shim_ffmpeg_nopts(void)

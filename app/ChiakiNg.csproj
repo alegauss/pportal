@@ -65,6 +65,19 @@
     <Using Include="System.IO" />
   </ItemGroup>
 
+  <!-- PP25: the wire format, regenerated rather than translated.
+       lib/protobuf/takion.proto is checked in and nanopb turns it into C at build time. This
+       turns the same file into C# at build time, from the same source, so the two halves cannot
+       describe different messages: a field added to the .proto reaches both or neither.
+       Grpc.Tools carries protoc and is PrivateAssets so it does not become a dependency of
+       anything that references this project. GrpcServices=None because there are no services
+       here - takion.proto is messages only. -->
+  <ItemGroup>
+    <PackageReference Include="Google.Protobuf" Version="3.32.1" />
+    <PackageReference Include="Grpc.Tools" Version="2.72.0" PrivateAssets="All" />
+    <Protobuf Include="..\lib\protobuf\takion.proto" ProtoRoot="..\lib\protobuf" GrpcServices="None" />
+  </ItemGroup>
+
   <!-- The assertion for "the version as a single source of truth" (PP1). app.manifest carries
        its own assemblyIdentity version, and nothing in the SDK relates the two: they are set
        in different files, in different syntaxes, and a release with two different numbers in
