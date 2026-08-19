@@ -108,6 +108,7 @@
 - ✅ **PP123** **the only end-to-end recording in the tree, 24 real video packets, is checked by nothing in the port** — all 24 packets parse and decrypt to their recorded NALUs, and both the block offset and the crypt index are asserted negatively too.
 - ✅ **PP124** **nothing the port sends upstream is checked, and the congestion report is recorded twice** — the fifteen bytes match before and after the MAC, and every field is asserted to change them.
 - ✅ **PP125** **takion's send buffer decides what gets retransmitted and the port drove none of it** — six properties across the seam, the serial-order wrap included, and the double free on a refused push is gone.
+- ✅ **PP37** **a screen ported into code-behind can only be exercised by opening a window** — the first view model is the registration dialog, nineteen assertions and not one window.
 
 ## Block H — Performance and telemetry
 

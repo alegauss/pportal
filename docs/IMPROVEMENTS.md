@@ -497,22 +497,6 @@ It is filed early in this block because the two tasks after it are both worthles
 without it - a suite and a ratchet that only run when someone remembers are a suite and
 a ratchet that report on the day they were written.
 
-### §PP37 Testable screens, or eight that are not
-
-The QML being replaced kept its logic in C++ behind a property surface, which is why
-qmlsettings and qmlbackend are testable objects and the markup is thin. A WPF port can
-reproduce that with view models, or it can put the same logic in code-behind and lose
-it.
-
-The difference is not style. A view model can assert the things that actually break: a
-PIN field that enables the button one character early, a console list that keeps a stale
-entry after a failed refresh, a settings property that writes on every keystroke rather
-than on commit, a dialog that stays open after the operation it was waiting on failed.
-None of those are reachable from a test that has to instantiate a window.
-
-Filed against the control vocabulary rather than against any one screen, because it is a
-decision taken once and inherited by all eight - and taken late, it is eight rewrites.
-
 ### §PP38 The ratchet
 
 The non-goal says no line ships without an assertion that fails without it. Stated and
