@@ -56,6 +56,23 @@ public sealed class TouchpadTracker
     }
 
     /// <summary>
+    /// A finger arriving, with SDL's fractions and the pad they are a fraction OF.
+    ///
+    /// PP93: the extents are a parameter and not a constant, and they come from
+    /// <see cref="TouchpadExtents"/> rather than from a pair of numbers here. The Qt client's SDL
+    /// path scales by PS_TOUCHPAD_MAXX/MAXY - a pad that is neither console's - because this layer
+    /// has no session to ask. The port's layer has none either; what it has instead is a caller
+    /// obliged to say which pad, so the question cannot be answered by default.
+    /// </summary>
+    public bool Down(
+        ChiakiControllerState state, int touchpad, int finger,
+        float normX, float normY, TouchpadExtents extents)
+    {
+        (ushort x, ushort y) = extents.Scale(normX, normY);
+        return Down(state, touchpad, finger, x, y);
+    }
+
+    /// <summary>
     /// A finger moving. False when this pair never went down - dropped rather than started,
     /// because a touch the console does not know about has no id to move.
     /// </summary>
@@ -68,6 +85,15 @@ public sealed class TouchpadTracker
 
         state.SetTouchPos(id, x, y);
         return true;
+    }
+
+    /// <summary>A finger moving, scaled the same way and by the same pad.</summary>
+    public bool Motion(
+        ChiakiControllerState state, int touchpad, int finger,
+        float normX, float normY, TouchpadExtents extents)
+    {
+        (ushort x, ushort y) = extents.Scale(normX, normY);
+        return Motion(state, touchpad, finger, x, y);
     }
 
     /// <summary>

@@ -44,9 +44,15 @@ public static class InputTranslation
     /// The touchpad the console expects coordinates in, and the two are not the same shape: a PS4
     /// pad is 1920x942 and a PS5 pad is 1919x1079. Off by one on the width and by a third on the
     /// height, so one pair used for both puts a touch in the wrong place on one of them.
+    ///
+    /// PP93: the numbers are <see cref="TouchpadExtents"/>'s and not this file's any more. They were
+    /// here first, and leaving a copy behind is how the Qt client ended up with three answers.
     /// </summary>
     public static (float MaxX, float MaxY) TouchpadBounds(bool ps5)
-        => ps5 ? (1919.0f, 1079.0f) : (1920.0f, 942.0f);
+    {
+        TouchpadExtents pad = TouchpadExtents.For(ps5);
+        return (pad.MaxX, pad.MaxY);
+    }
 
     /// <summary>
     /// The mouse path: a scene coordinate clamped to the window, then scaled into touchpad space.
