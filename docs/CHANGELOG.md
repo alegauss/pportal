@@ -107,6 +107,7 @@
 - ✅ **PP105** **chiaki_ecdh_derive_secret is handed the console's signature and the handshake key and reads neither** — reachability pinned as five facts; the port matches libchiaki, refusing nothing.
 - ✅ **PP146** **json-c's accessors are lenient where System.Text.Json is strict, so holepunch.c's reads translate wrongly** — the accessors and the pointer, measured against json-c and agreeing with it in 81 cases.
 - ✅ **PP149** **the port calls across the seam for two one-line comparisons, so nothing checks a managed version against them** — the comparison in managed code, agreeing with libchiaki across the whole 16-bit domain.
+- ✅ **PP150** **the reorder queue is the module a rewrite would most confidently get wrong, and nothing compares one to libchiaki's** — the queue transcribed, stepped against libchiaki's over random sequences, and two tidy-ups rejected.
 
 ## Block G — Test discipline
 

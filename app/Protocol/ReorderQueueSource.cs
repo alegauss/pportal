@@ -59,6 +59,50 @@ public static partial class ReorderQueueSource
         return close.Success ? text.Substring(start, close.Index) : null;
     }
 
+    /// <summary>The port's own seam, which is where the fini callbacks are deliberately lost.</summary>
+    public const string ShimRelativePath = @"shim\chiaki_shim.c";
+
+    /// <summary>The shim, or null outside a checkout.</summary>
+    public static string? LocateShim() => SanitizerSource.LocateRelative(ShimRelativePath);
+
+    /// <summary>
+    /// Whether fini still reports every element left in the queue.
+    ///
+    /// PP23 needs this stated in the source rather than measured, because it is the one thing the
+    /// oracle cannot answer: the shim clears the drop callback before calling fini, on purpose, so
+    /// the native side reports nothing at teardown no matter what libchiaki does. See
+    /// <see cref="ShimSuppressesFiniCallbacks"/> - the two predicates are a pair, and the managed
+    /// queue follows libchiaki here rather than the seam.
+    /// </summary>
+    public static bool FiniReportsWhatIsStillQueued(string body)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+
+        return body.Contains("for(uint64_t i=0; i<queue->count; i++)", StringComparison.Ordinal)
+            && Regex.IsMatch(
+                body,
+                @"if\(entry->set\)\s*\r?\n\s*queue->drop_cb\(seq_num, entry->user, queue->drop_cb_user\);",
+                RegexOptions.None,
+                TimeSpan.FromSeconds(1));
+    }
+
+    /// <summary>
+    /// Whether the shim still clears the drop callback before fini, which is what makes the native
+    /// queue silent at teardown. Deliberate, and documented there: a callback into managed code
+    /// that is about to stop being interested is a lifetime bug waiting to happen.
+    /// </summary>
+    public static bool ShimSuppressesFiniCallbacks(string shimText)
+    {
+        ArgumentNullException.ThrowIfNull(shimText);
+
+        return Regex.IsMatch(
+            shimText,
+            @"chiaki_reorder_queue_set_drop_cb\(&self->queue, NULL, NULL\);\s*\r?\n\s*"
+                + @"chiaki_reorder_queue_fini\(&self->queue\);",
+            RegexOptions.None,
+            TimeSpan.FromSeconds(1));
+    }
+
     /// <summary>
     /// Whether drop still leaves the element in the queue: it clears no entry's set flag.
     ///
