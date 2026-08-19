@@ -40,6 +40,7 @@
 - ✅ **PP118** **SDL has no thread of its own, so its event pump has nowhere to run but the dispatcher** — SDL owns a thread from init to quit, at Qt's 4ms interval, where the hotplug window lives.
 - ✅ **PP126** **what a button press becomes on the mapping screen is a token two clients have to agree on** — the three tokens and the three rules around them, held against the Qt client's own source.
 - ✅ **PP127** **the 47-byte DualSense effects report is a wire format the port writes by offset and nothing checks** — the three reports built by offset, held against the Qt struct's own comments and its firmware split.
+- ✅ **PP128** **the roster a hotplug event updates is keyed by identity and enumerated by position, and nothing checks it** — the reconcile keys on instance ids and filters buttonless motion pads, with the Qt list read rather than copied.
 
 ## Block C — Video and input path
 
