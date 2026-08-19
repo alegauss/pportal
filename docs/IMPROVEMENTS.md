@@ -100,17 +100,29 @@ being a window.
 ### §PP12 The control vocabulary, and the focus nobody ships
 
 gui/src/qml/controls holds Button, CheckBox, ComboBox, RadioButton, Slider and TextField
-in 263 lines. The size is misleading: they are what makes every screen below look like
-one application, and they are where directional focus lives - which control the stick
-moves to, what the cross button confirms, what circle cancels.
+in 263 lines. They make every screen below look like one application, and every screen
+after this is drawn in whatever vocabulary they settle.
 
-WPF's Fluent ThemeMode answers the first half for free and the second half not at all.
-Keyboard tab order is not gamepad navigation: a couch application needs a focus engine
-that takes a direction and a current element and picks the next one, plus a consistent
-confirm and cancel binding, plus a focus visual that is legible from three metres.
+This was filed saying directional focus lives there, "which control the stick moves to".
+It does not, and finding that out first was worth more than the code it saved. All six
+controls handle exactly Up and Down, and both walk the TAB CHAIN -
+nextItemInFocusChain(false) and nextItemInFocusChain(). None handles Left or Right.
 
-Filed first in this block because every screen after it is drawn in whatever vocabulary
-this task settles. Doing it after two or three screens means porting them twice.
+So the port needs a chain, not a focus engine. Building the engine would have produced a
+second navigation model, correct on its own terms and different from the client people
+use: a screen where the stick goes somewhere else.
+
+Left and right are not missing, they are LEFT ALONE - a slider changes its value with
+them, a combo box its selection - so claiming them for navigation takes that away while
+the screens still look right.
+
+Three decisions live in the chain. A boundary belongs to the control, not its position,
+so one column can hold two chains. At a boundary focus stays AND the key is not consumed
+- how a list hands navigation back out; consume it and the list traps focus. And
+sendOutput moves focus while passing the key through.
+
+Confirm and cancel are not uniform: five take Return, the Slider having nothing to
+confirm; only TextField takes Escape, so cancel is a text affordance, not a global back.
 
 ### §PP13 The front door
 

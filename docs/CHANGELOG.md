@@ -56,6 +56,8 @@
 
 ## Block D — Screens
 
+- ✅ **PP12 (the focus chain)** **the six custom QML controls carry the theme, and gamepad focus navigation is built into them** — it is a tab chain and not a directional engine, which the six controls say and this now holds.
+
 ## Block E — Windows-only build
 
 - ✅ **PP62** **the tree's only build cannot include QtWebEngine, so the login screen the port replaces is compiled out** — The reference build is an MSVC configure built once for the purpose, filed as PP63: MSYS2 has no qt6-webengine and the published Windows releases carry no Chromium, measured.
