@@ -65,6 +65,7 @@
 - ✅ **PP136** **the focus chain is a decision with nothing binding it to a WPF control** — attached properties on any focusable control, with the decision split from the handler and asserted on all six.
 - ✅ **PP137** **the focus visual PP12 asks for exists on one of the Qt client's six controls** — Button's accent-background rule is ported and the other five are recorded as having none.
 - ✅ **PP138** **the console list merges three sources and two of them are suppressed by different mechanisms** — the merge is a view model now, with both suppressions kept distinct and held against the Qt source.
+- ✅ **PP139** **three of the four registration dialogs have validation rules nothing in the port states** — manual host, console PIN and profile as view models, with the two PIN validators kept apart.
 
 ## Block E — Windows-only build
 
