@@ -22,4 +22,12 @@
   <Folder Name="/app/">
     <Project Path="app/ChiakiNg.csproj" />
   </Folder>
+  <!-- PP35. The test project holds no expected values: it drives the same vector readers the
+       host's own selftest does, so the C suite stays the single oracle and this adds only
+       granularity, one xUnit case per recorded case rather than one assertion over all of them.
+       (The switch that runs that selftest is spelled with two leading dashes, which an XML
+       comment cannot contain - this file refuses to parse with it written out.) -->
+  <Folder Name="/tests/">
+    <Project Path="tests/ChiakiNg.Tests/ChiakiNg.Tests.csproj" />
+  </Folder>
 </Solution>

@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- PP35: the C suite's vectors, one test each.
+       This project deliberately holds NO expected values. Every case it runs is parsed out of
+       test/*.c at run time by the readers in the app assembly - FecVectors, CryptoVectors and the
+       rest - which is the whole point: two copies of an oracle agree with each other long after
+       either agrees with hardware, and that is the failure PP82 was filed for.
+       What this adds over the host's selftest is granularity. The 64 recorded erasure cases are
+       one assertion there and report "63 of 64" when they fail; here each is a test with the
+       case's own name, so a failure says which unit count and which erasure pattern broke. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <!-- UseWPF, because the referenced project is a WPF assembly and the test host has to resolve
+         the same framework reference to load it at all. -->
+    <UseWPF>true</UseWPF>
+    <!-- The app's own single-file gate does not apply here: this project is never published as
+         one, and its assembly has a real path on disk. -->
+    <EnableSingleFileAnalyzer>false</EnableSingleFileAnalyzer>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="System.IO" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\app\ChiakiNg.csproj" />
+  </ItemGroup>
+
+</Project>

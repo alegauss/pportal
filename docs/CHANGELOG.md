@@ -87,6 +87,7 @@
 - ✅ **PP75** **test.cmd runs ctest and nothing runs the .NET host's selftest, so 11 assertions sit in the tree ungated** — test.cmd runs the C suite and then the .NET host's selftest; a broken decoder that the gate could not see now exits 1, and noapp skips it out loud.
 - ✅ **PP109** **the two reorder queue functions with defects in them are the two the suite never calls** — peek and drop are covered by the C suite for the first time, pinning the behaviour PP107 names so a fix has to change a test.
 - ✅ **PP82** **the 148-row preference table was extracted from settings.cpp once and nothing re-checks it** — the extraction runs as a check now, both ways, and the first audit found the 148 rows correct.
+- ✅ **PP35 (the xUnit runner over the FEC vectors)** **5512 lines of munit tests cover the modules this port rewrites, and nothing in a managed tree runs them** — one case per recorded case, over PP23's readers, so a failure names which vector broke.
 
 ## Block H — Performance and telemetry
 

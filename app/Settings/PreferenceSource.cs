@@ -35,8 +35,8 @@ public static partial class PreferenceSource
     /// <summary>The files, or null when this is not running out of a checkout.</summary>
     public static IReadOnlyList<string>? Locate()
     {
-        var found = RelativePaths.Select(SanitizerSource.LocateRelative).ToList();
-        return found.Any(f => f is null) ? null : found!;
+        List<string?> found = [.. RelativePaths.Select(SanitizerSource.LocateRelative)];
+        return found.Any(f => f is null) ? null : [.. found.Cast<string>()];
     }
 
     /// <summary>

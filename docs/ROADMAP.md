@@ -51,7 +51,7 @@
 
 ## Block G — Test discipline
 
-- 📋 **PP35** (deps: PP24 ✅) **5512 lines of munit tests cover the modules this port rewrites, and nothing in a managed tree runs them** — They carry captured FEC cases and a real video packet, which makes them the closest thing this protocol has to a specification and the cheapest baseline to inherit. → §PP35
+- ⏳ **PP35** (deps: PP24 ✅) **5512 lines of munit tests cover the modules this port rewrites, and nothing in a managed tree runs them** — the other modules' vectors as xUnit cases: gkcrypt, rpcrypt, takion, bitstream, the reorder queue. → §PP35
 - 📋 **PP36** (deps: PP22 ⏳, PP24 ✅) **the only CI job is the roadkeep lint gate, so no test result can turn a branch red** — A suite nobody runs on a push goes red quietly, and Test Explorer is a local convenience rather than a gate that holds a policy in place. → §PP36
 - 📋 **PP37** (deps: PP12) **a screen ported into code-behind can only be exercised by opening a window** — What is worth asserting about a screen is its view model, so a port that keeps logic behind the window makes eight screens untestable by construction. → §PP37
 - 📋 **PP38** (deps: PP36) **nothing counts the shipped lines that carry no assertion, so the rule is a sentence rather than a gate** — A count that may only go down is what survives a busy week, and without it the discipline lasts exactly as long as the person remembering it. → §PP38

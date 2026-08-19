@@ -1,0 +1,4 @@
+# Build output, the same way app/.gitignore does it - project-local rather than a rule at the
+# root, so a project that moves takes its own ignores with it.
+bin/
+obj/

@@ -91,5 +91,15 @@ echo [test] .NET host selftest
 "%APP_EXE%" --selftest
 if errorlevel 1 set "CRC=1"
 
+rem ---- the xUnit project (PP35) ------------------------------------------
+rem Both, and not one instead of the other. The selftest above runs inside the shipped binary,
+rem which is what PP22's CI runs against the published single file; this runs against the
+rem assemblies with one case per recorded vector, so a failure names which vector. They share
+rem their oracle - the readers that parse test/*.c - so neither is a second copy of the other.
+echo.
+echo [test] xUnit vectors
+dotnet test "%~dp0ChiakiNg.slnx" --nologo -v quiet
+if errorlevel 1 set "CRC=1"
+
 :after_app
 exit /b %CRC%

@@ -512,21 +512,29 @@ Repair any upstream and the port's copy becomes the divergence, on the next run.
 
 ### §PP35 The suite that is already written
 
-test/ holds 2095 lines of munit tests and 3417 lines of captured vectors: gkcrypt at 440
-lines, rpcrypt at 311, takion at 232, bitstream at 207, ffmpegdecoder at 201,
-reorderqueue at 185, and fec_test_cases.inl alone at 3081 lines of recorded erasure
-cases with a real video packet parse beside it.
+test/ holds 2095 lines of munit tests and 3417 of captured vectors, fec_test_cases.inl
+alone being 3081 lines of recorded erasure cases. For crypto, FEC, bitstream and the
+reorder queue there are fixed inputs and expected outputs already agreed with a real
+console - the modules where a silent translation error is most expensive.
 
-This changes what the managed rewrite is. Reading it as a translation with no
-specification is only true of the parts nobody tested; for crypto, FEC, bitstream and
-the reorder queue there are fixed inputs and expected outputs already agreed with a real
-console, and they are the exact modules where a silent translation error is most
-expensive.
+Most of that coverage arrived with PP23, which reads the vectors out of the C at run
+time and asserts against them. What was missing was granularity and a runner: the
+sixty-four erasure cases are ONE assertion in the host selftest, reporting "63 of 64"
+and not which, and a single failing pattern among sixty-four reads as flakiness rather
+than a bug.
 
-So this is filed as the first test task and as a dependency of the rewrite rather than a
-chore after it. Ported to xUnit, these run in Test Explorer and in CI against the
-managed implementation, and every one of them that stays green is a claim the C build
-already backed.
+So tests/ChiakiNg.Tests is xUnit over the same readers - one case per recorded case, and
+no expected values of its own. Copying the vectors in would make a second oracle that
+agrees with the first long after either agrees with hardware, which is what PP82 was
+filed for.
+
+Both runners stay. The selftest runs inside the shipped binary, which is what PP22's CI
+runs against the published single file; xUnit runs against the assemblies and names what
+broke. test.cmd runs both.
+
+The first thing it showed: rounding the FEC stride to 8 instead of 16 leaves all
+sixty-four recorded cases green, because every unit size they record is already a
+multiple of 16. Five inline sizes carry that claim, and none of them is recorded.
 
 ### §PP36 Where a red test has to stop something
 
