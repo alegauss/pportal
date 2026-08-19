@@ -64,6 +64,34 @@ public sealed class FrameProcessor : IDisposable
         => (ChiakiError)ProcessorPutUnit(Handle, true, frameIndex, unitIndex, unitIndex, total, fec,
             data, data.Length);
 
+    /// <summary>
+    /// The same, and the same for <see cref="FlushInto"/>: written so that a steady-state packet
+    /// costs NOTHING.
+    ///
+    /// PP44 measured the C transport and found it allocates zero bytes and makes zero allocator
+    /// calls per packet after the first frame - the buffers are sized once from the frame's own
+    /// header and reused. That makes the budget the managed side inherits unusually strict and
+    /// unusually defensible: not "allocate little" but "allocate nothing", because that is what
+    /// the code being replaced does.
+    ///
+    /// A managed transport that allocates per packet turns thousands of small packets a second
+    /// into a collection under load, and what that costs is the worst frame of a minute - which is
+    /// invisible to every check that watches a mean.
+    /// </summary>
+    public ChiakiError PutUnit(
+        ushort frameIndex, ushort unitIndex, ushort total, ushort fec,
+        ReadOnlySpan<byte> data)
+    {
+        unsafe
+        {
+            fixed (byte* p = data)
+            {
+                return (ChiakiError)ProcessorPutUnitPtr(Handle, true, frameIndex, unitIndex, unitIndex,
+                    total, fec, (IntPtr)p, data.Length);
+            }
+        }
+    }
+
     /// <summary>Whether enough units are in for a flush to be worth trying.</summary>
     public bool FlushPossible => ProcessorFlushPossible(Handle);
 
@@ -77,6 +105,27 @@ public sealed class FrameProcessor : IDisposable
         int size = buf.Length;
         var result = (FrameFlushResult)ProcessorFlush(Handle, buf, ref size);
         return (result, result == FrameFlushResult.Failed ? [] : buf[..size]);
+    }
+
+    /// <summary>
+    /// Flushes into a buffer the caller already has, so a steady-state frame allocates nothing.
+    /// <paramref name="written"/> is how much of it was filled.
+    /// </summary>
+    public FrameFlushResult FlushInto(Span<byte> destination, out int written)
+    {
+        int size = destination.Length;
+        FrameFlushResult result;
+
+        unsafe
+        {
+            fixed (byte* p = destination)
+            {
+                result = (FrameFlushResult)ProcessorFlushPtr(Handle, (IntPtr)p, ref size);
+            }
+        }
+
+        written = result == FrameFlushResult.Failed ? 0 : size;
+        return result;
     }
 
     /// <summary>How many frames a timed stage has been charged for.</summary>
@@ -121,6 +170,20 @@ public sealed class FrameProcessor : IDisposable
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_frame_processor_flush",
         CallingConvention = CallingConvention.Cdecl)]
     private static extern int ProcessorFlush(IntPtr processor, byte[] frame, ref int frameSize);
+
+    // The same two entry points taken by pointer. A byte[] parameter is marshalled by pinning and
+    // costs nothing itself, but it forces the caller to HAVE an array - and the caller that has a
+    // span into a pooled buffer is the one that allocates nothing.
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_frame_processor_put_unit",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern int ProcessorPutUnitPtr(
+        IntPtr processor, [MarshalAs(UnmanagedType.I1)] bool isVideo,
+        ushort frameIndex, ushort packetIndex, ushort unitIndex,
+        ushort total, ushort fec, IntPtr data, int dataSize);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_frame_processor_flush",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern int ProcessorFlushPtr(IntPtr processor, IntPtr frame, ref int frameSize);
 
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_frame_processor_stage_samples",
         CallingConvention = CallingConvention.Cdecl)]

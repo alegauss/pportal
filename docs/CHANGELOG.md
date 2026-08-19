@@ -61,6 +61,7 @@
 - ✅ **PP110** **the bitstream parser runs only from the C suite, so nothing managed can tell an I frame from a P frame** — both codecs' recorded headers and slices parse from managed code, reference rewriting included, out of the C suite's own vectors.
 - ✅ **PP111** **the key position expansion and the AV packet header run only from the C suite, so a managed transport has neither** — the key position ladder and a recorded AV packet header parse from managed code, the payload named by offset rather than pointer.
 - ✅ **PP112** **the frame processor runs only from the C suite, so nothing managed can turn units into a frame or drive FEC** — units become frames from managed code, with reconstruction driven and the stage accounting asserted, under eleven assertions.
+- ✅ **PP113** **nothing on the managed side of the seam is measured against the zero-allocation budget PP44 set for the transport** — the span path through the frame processor allocates zero bytes per packet, measured, against 2202 for the array one it exists to replace.
 
 ## Block G — Test discipline
 

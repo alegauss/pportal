@@ -1515,6 +1515,66 @@ public static class SelfTest
             }
 
             Console.WriteLine();
+            Console.WriteLine("Alloc budget - what a packet costs on this side of the seam");
+
+            // PP44 measured the C transport and found it allocates ZERO bytes and makes zero
+            // allocator calls per packet in steady state: the buffers are sized once from the
+            // frame's own header and reused. So the budget the managed side inherits is not
+            // "allocate little" but "allocate nothing", because that is what the code being
+            // replaced does - and a transport that allocates per packet turns thousands of small
+            // packets a second into a collection whose cost is the worst frame of a minute.
+            using (var budgetLog = new ChiakiLog(ChiakiLogLevel.Error, (_, _) => { }))
+            using (var fp = new FrameProcessor(budgetLog))
+            {
+                var unitBuf = new byte[2 + 32];
+                var frameBuf = new byte[4096];
+
+                // Warm up: the first frame sizes the buffers, on both sides of the seam. Steady
+                // state is what the budget is about, so it is measured after this.
+                for (ushort f = 1; f <= 2; f++)
+                {
+                    fp.AllocFrame(f, 0, 2, 0, unitBuf);
+                    fp.PutUnit(f, 0, 2, 0, (ReadOnlySpan<byte>)unitBuf);
+                    fp.PutUnit(f, 1, 2, 0, (ReadOnlySpan<byte>)unitBuf);
+                    fp.FlushInto(frameBuf, out _);
+                }
+
+                const int packets = 200;
+                long before = GC.GetAllocatedBytesForCurrentThread();
+                for (ushort f = 3; f < 3 + packets / 2; f++)
+                {
+                    fp.AllocFrame(f, 0, 2, 0, unitBuf);
+                    fp.PutUnit(f, 0, 2, 0, (ReadOnlySpan<byte>)unitBuf);
+                    fp.PutUnit(f, 1, 2, 0, (ReadOnlySpan<byte>)unitBuf);
+                    fp.FlushInto(frameBuf, out _);
+                }
+                long perPacket = (GC.GetAllocatedBytesForCurrentThread() - before) / packets;
+
+                Check("the span path costs nothing per packet, as the C path does",
+                    perPacket == 0, $"{perPacket} bytes/packet");
+
+                // And the convenience path, measured rather than assumed: Flush() hands back a
+                // fresh array every time. It is the right shape for a test and the wrong one for
+                // a stream, and the number is here so that choosing it is a decision.
+                before = GC.GetAllocatedBytesForCurrentThread();
+                for (ushort f = 200; f < 210; f++)
+                {
+                    fp.AllocFrame(f, 0, 2, 0, unitBuf);
+                    fp.PutUnit(f, 0, 2, 0, unitBuf);
+                    fp.PutUnit(f, 1, 2, 0, unitBuf);
+                    fp.Flush(4096);
+                }
+                long convenience = (GC.GetAllocatedBytesForCurrentThread() - before) / 20;
+
+                Check("the array path is the one that costs, which is why both exist",
+                    convenience > 0, $"{convenience} bytes/packet");
+
+                // Printed as well as asserted: the budget is a number that has to be readable to
+                // be argued with, and "zero against N" is the sentence a reviewer needs.
+                Console.WriteLine($"        span path {perPacket} B/packet, array path {convenience} B/packet");
+            }
+
+            Console.WriteLine();
             Console.WriteLine("VideoReceiver - who owns the buffer a frame arrives in");
 
             string? bsFileForVideo = SanitizerSource.LocateRelative(@"test\bitstream.c");
