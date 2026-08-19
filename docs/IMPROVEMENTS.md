@@ -25,21 +25,6 @@ differently.
 
 ## Block B — Native interop
 
-### §PP5 The session, without Qt
-
-This is the file the whole port turns on. It holds the connect flow, the audio and video
-callbacks, the keyboard and controller state that is sent upstream, the reconnect logic
-and the teardown - and it expresses all of it in QObject, signals, QThread and QTimer.
-
-Nothing about that logic is Qt. The dependency is in how it announces itself. So the
-task is mechanical in shape and large in size: the same state machine with the framework
-types removed, announcing over whatever the shim in PP4 settled on.
-
-Doing it here, and not inside the first screen that needs a stream, is what keeps the
-video work in Block C from being blocked behind a UI decision. It is also the only
-honest way to size the port: until this file is Qt-free, every estimate below it is a
-guess.
-
 ### §PP6 Discovery as the first proof
 
 discoverymanager.cpp is 428 lines over a UDP broadcast, a reply parser and a wake
