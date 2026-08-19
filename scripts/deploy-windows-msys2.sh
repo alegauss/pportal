@@ -31,6 +31,20 @@ else
     echo "warning: chiaki-shim.dll not found at $shim_dll - the .NET host has nothing to call" >&2
 fi
 
+# PP9: the renderer's DLL, for the same reason and one that bit before it was written down.
+#
+# chiaki-render.dll links libplacebo, whose own DLLs live in this tree and nowhere the managed
+# resolver looks. Left in build/shim it loads only when something ELSE has already put this
+# directory on the process search path - which chiaki-shim does - so the render tests passed in a
+# full run and failed every time they were run alone. Deploying it here is what makes its
+# dependencies resolvable on its own terms rather than by accident of ordering.
+render_dll="$(dirname "$exe_path")/../shim/chiaki-render.dll"
+if [[ -f "$render_dll" ]]; then
+    cp "$render_dll" "$output_dir/"
+else
+    echo "warning: chiaki-render.dll not found at $render_dll - the renderer probe cannot load" >&2
+fi
+
 export PATH="${tool_dir}:${msys_prefix}/share/qt6/bin:${PATH}"
 export QT_PLUGIN_PATH="${msys_prefix}/share/qt6/plugins"
 export QML2_IMPORT_PATH="${msys_prefix}/share/qt6/qml"
