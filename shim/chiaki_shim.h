@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 31
+#define CHIAKI_SHIM_ABI 32
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -761,6 +761,45 @@ CHIAKI_SHIM_API void chiaki_shim_gkcrypt_free(void *gkcrypt);
 /** The key stream at a position, which is what every takion packet is XORed against. */
 CHIAKI_SHIM_API int32_t chiaki_shim_gkcrypt_gen_key_stream(
 		void *gkcrypt, uint64_t key_pos, uint8_t *buf, int32_t buf_size);
+
+/**
+ * PP130: the orientation tracker, which turns a pad's raw sensors into what the console is told.
+ *
+ * A DualSense sends accelerometer and gyroscope samples and the console expects an ORIENTATION -
+ * a quaternion - alongside them. The fusion is carried rather than ported because it is a filter
+ * with state: each update depends on the previous one and on the time between them, so a managed
+ * reimplementation would be a second filter that drifts differently. Drift is a picture that
+ * slowly tilts, not an error anyone reports.
+ *
+ * The tracker and the accel zero are separate handles because their lifetimes differ - the zero
+ * is the user's calibration and survives the pad being unplugged.
+ *
+ * The update's timestamp is MICROseconds. SDL reports milliseconds, so the caller multiplies by
+ * 1000, which is the one unit conversion on this path and the kind that produces a filter running
+ * a thousand times too slowly rather than an error.
+ */
+CHIAKI_SHIM_API void *chiaki_shim_orientation_tracker_create(void);
+CHIAKI_SHIM_API void chiaki_shim_orientation_tracker_free(void *tracker);
+
+CHIAKI_SHIM_API void *chiaki_shim_accel_new_zero_create(void);
+CHIAKI_SHIM_API void chiaki_shim_accel_new_zero_free(void *accel_zero);
+CHIAKI_SHIM_API void chiaki_shim_accel_new_zero_set_active(
+		void *accel_zero, float accel_x, float accel_y, float accel_z, bool real_accel);
+CHIAKI_SHIM_API void chiaki_shim_accel_new_zero_set_inactive(void *accel_zero, bool real_accel);
+
+CHIAKI_SHIM_API void chiaki_shim_orientation_tracker_update(
+		void *tracker, float gx, float gy, float gz, float ax, float ay, float az,
+		void *accel_zero, bool accel_zero_applied, uint32_t timestamp_us);
+
+/** The orientation a controller state carries, which is what the console is actually sent. */
+CHIAKI_SHIM_API bool chiaki_shim_controller_state_orient(void *state, float *out_orient);
+
+/** Writes the tracker's orientation into a controller state, which is what the console reads. */
+CHIAKI_SHIM_API void chiaki_shim_orientation_tracker_apply(void *tracker, void *state);
+
+/** The tracker's sensors and orientation, flattened. Any out-pointer may be NULL. */
+CHIAKI_SHIM_API bool chiaki_shim_orientation_tracker_read(
+		void *tracker, float *out_gyro, float *out_accel, float *out_orient, uint32_t *out_timestamp);
 
 /**
  * PP125: takion's send buffer, which is what makes its retransmission work.

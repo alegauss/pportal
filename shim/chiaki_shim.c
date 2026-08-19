@@ -31,6 +31,7 @@
 #include <chiaki/rpcrypt.h>
 #include <chiaki/seqnum.h>
 #include <chiaki/log.h>
+#include <chiaki/orientation.h>
 #include <chiaki/session.h>
 #include <chiaki/sessionbaseline.h>
 #include <chiaki/takion.h>
@@ -1182,6 +1183,130 @@ CHIAKI_SHIM_API int32_t chiaki_shim_gkcrypt_gen_key_stream(
 
 	return (int32_t)chiaki_gkcrypt_gen_key_stream((ChiakiGKCrypt *)gkcrypt, key_pos, buf,
 			(size_t)buf_size);
+}
+
+/**
+ * PP130: the orientation tracker, which turns a pad's raw sensors into what the console is told.
+ *
+ * A DualSense sends accelerometer and gyroscope samples and the console expects an ORIENTATION -
+ * a quaternion - alongside them. The fusion between the two is here rather than in the port
+ * because it is a filter with state: each update depends on the last one and on the time between
+ * them, so a managed reimplementation would be a second filter that drifts differently, and drift
+ * is a picture that slowly tilts rather than an error anyone reports.
+ *
+ * The tracker and the accel zero are separate handles because they have separate lifetimes: the
+ * zero survives a controller being unplugged, since it is the user's calibration and not the
+ * device's state.
+ */
+CHIAKI_SHIM_API void *chiaki_shim_orientation_tracker_create(void)
+{
+	ChiakiOrientationTracker *self = (ChiakiOrientationTracker *)calloc(1, sizeof(ChiakiOrientationTracker));
+	if(!self)
+		return NULL;
+
+	chiaki_orientation_tracker_init(self);
+	return self;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_orientation_tracker_free(void *tracker)
+{
+	free(tracker);
+}
+
+CHIAKI_SHIM_API void *chiaki_shim_accel_new_zero_create(void)
+{
+	return calloc(1, sizeof(ChiakiAccelNewZero));
+}
+
+CHIAKI_SHIM_API void chiaki_shim_accel_new_zero_free(void *accel_zero)
+{
+	free(accel_zero);
+}
+
+CHIAKI_SHIM_API void chiaki_shim_accel_new_zero_set_active(
+		void *accel_zero, float accel_x, float accel_y, float accel_z, bool real_accel)
+{
+	if(!accel_zero)
+		return;
+
+	chiaki_accel_new_zero_set_active((ChiakiAccelNewZero *)accel_zero, accel_x, accel_y, accel_z,
+			real_accel);
+}
+
+CHIAKI_SHIM_API void chiaki_shim_accel_new_zero_set_inactive(void *accel_zero, bool real_accel)
+{
+	if(!accel_zero)
+		return;
+
+	chiaki_accel_new_zero_set_inactive((ChiakiAccelNewZero *)accel_zero, real_accel);
+}
+
+/** The timestamp is MICROseconds; SDL reports milliseconds, so the caller multiplies by 1000. */
+CHIAKI_SHIM_API void chiaki_shim_orientation_tracker_update(
+		void *tracker, float gx, float gy, float gz, float ax, float ay, float az,
+		void *accel_zero, bool accel_zero_applied, uint32_t timestamp_us)
+{
+	if(!tracker)
+		return;
+
+	chiaki_orientation_tracker_update((ChiakiOrientationTracker *)tracker, gx, gy, gz, ax, ay, az,
+			(ChiakiAccelNewZero *)accel_zero, accel_zero_applied, timestamp_us);
+}
+
+/** The orientation a controller state currently carries - the quaternion the console reads. */
+CHIAKI_SHIM_API bool chiaki_shim_controller_state_orient(void *state, float *out_orient)
+{
+	ChiakiControllerState *self = (ChiakiControllerState *)state;
+	if(!self || !out_orient)
+		return false;
+
+	out_orient[0] = self->orient_x;
+	out_orient[1] = self->orient_y;
+	out_orient[2] = self->orient_z;
+	out_orient[3] = self->orient_w;
+	return true;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_orientation_tracker_apply(void *tracker, void *state)
+{
+	if(!tracker || !state)
+		return;
+
+	chiaki_orientation_tracker_apply_to_controller_state((ChiakiOrientationTracker *)tracker,
+			(ChiakiControllerState *)state);
+}
+
+/** The tracker's current sensors and orientation, flattened out rather than handed over. */
+CHIAKI_SHIM_API bool chiaki_shim_orientation_tracker_read(
+		void *tracker, float *out_gyro, float *out_accel, float *out_orient, uint32_t *out_timestamp)
+{
+	ChiakiOrientationTracker *self = (ChiakiOrientationTracker *)tracker;
+	if(!self)
+		return false;
+
+	if(out_gyro)
+	{
+		out_gyro[0] = self->gyro_x;
+		out_gyro[1] = self->gyro_y;
+		out_gyro[2] = self->gyro_z;
+	}
+	if(out_accel)
+	{
+		out_accel[0] = self->accel_x;
+		out_accel[1] = self->accel_y;
+		out_accel[2] = self->accel_z;
+	}
+	if(out_orient)
+	{
+		out_orient[0] = self->orient.x;
+		out_orient[1] = self->orient.y;
+		out_orient[2] = self->orient.z;
+		out_orient[3] = self->orient.w;
+	}
+	if(out_timestamp)
+		*out_timestamp = self->timestamp;
+
+	return true;
 }
 
 /**

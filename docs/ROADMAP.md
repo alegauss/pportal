@@ -10,7 +10,7 @@
 ## Block B — Native interop
 
 - ⏳ **PP7** (deps: PP4 ✅) **PSN OAuth login runs in a QtWebEngine view, a bundled browser the WPF host has no equivalent for** — the WebView2 control itself, and the token exchange, which need a browser and a PSN account. → §PP7
-- ⏳ **PP8** (deps: PP4 ✅) **controller input is SDL wired into Qt events, and 950 lines of it decide what a button does** — the DualSense motion and haptics; the loop, mappings, effects, roster and touchpad landed. → §PP8
+- ⏳ **PP8** (deps: PP4 ✅) **controller input is SDL wired into Qt events, and 950 lines of it decide what a button does** — the DualSense haptics; the loop, mappings, effects, roster, touchpad and motion landed. → §PP8
 - ⏳ **PP93** (deps: —) **the dpad touch path uses a third pair of touchpad bounds, matching neither console's pad** — the SDL touchpad path in controllermanager.cpp still scales by the fixed macros, having no session to ask which console is connected. → §PP93
 
 ## Block C — Video and input path

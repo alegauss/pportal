@@ -99,6 +99,21 @@ public sealed class ChiakiControllerState : IDisposable
     }
 
     /// <summary>Gyro, accelerometer and orientation, in that order.</summary>
+    /// <summary>
+    /// PP130: the orientation quaternion the state carries, which is what the console is sent.
+    ///
+    /// A getter and not only a setter, because the orientation is written by the fusion filter
+    /// rather than by the caller - so without this there is no way to see that it arrived.
+    /// </summary>
+    public (float X, float Y, float Z, float W) Orientation()
+    {
+        var orient = new float[4];
+        if (!ControllerStateOrient(Handle, orient))
+            throw new InvalidOperationException("chiaki_shim_controller_state_orient failed.");
+
+        return (orient[0], orient[1], orient[2], orient[3]);
+    }
+
     public void SetMotion(
         float gyroX, float gyroY, float gyroZ,
         float accelX, float accelY, float accelZ,
@@ -193,6 +208,11 @@ public sealed class ChiakiControllerState : IDisposable
         CallingConvention = CallingConvention.Cdecl)]
     private static extern void ControllerStateSticks(
         IntPtr state, out short leftX, out short leftY, out short rightX, out short rightY);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_controller_state_orient",
+        CallingConvention = CallingConvention.Cdecl)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    private static extern bool ControllerStateOrient(IntPtr state, float[] orient);
 
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_controller_state_set_motion",
         CallingConvention = CallingConvention.Cdecl)]
