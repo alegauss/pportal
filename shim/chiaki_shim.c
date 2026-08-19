@@ -5,6 +5,7 @@
 #include <chiaki/common.h>
 #include <chiaki/decoderchoice.h>
 #include <chiaki/controller.h>
+#include <chiaki/discovery.h>
 #include <chiaki/log.h>
 #include <chiaki/session.h>
 #include <chiaki/sessionbaseline.h>
@@ -701,6 +702,74 @@ CHIAKI_SHIM_API int32_t chiaki_shim_baseline_append(void *baseline, const char *
 		return (int32_t)CHIAKI_ERR_INVALID_DATA;
 
 	return (int32_t)chiaki_session_baseline_append((const ChiakiSessionBaseline *)baseline, path);
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_discovery_port(bool ps5)
+{
+	return ps5 ? CHIAKI_DISCOVERY_PORT_PS5 : CHIAKI_DISCOVERY_PORT_PS4;
+}
+
+CHIAKI_SHIM_API const char *chiaki_shim_discovery_protocol_version(bool ps5)
+{
+	return ps5 ? CHIAKI_DISCOVERY_PROTOCOL_VERSION_PS5 : CHIAKI_DISCOVERY_PROTOCOL_VERSION_PS4;
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_discovery_local_port_min(void)
+{
+	return CHIAKI_DISCOVERY_PORT_LOCAL_MIN;
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_discovery_local_port_max(void)
+{
+	return CHIAKI_DISCOVERY_PORT_LOCAL_MAX;
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_discovery_packet_fmt(
+		int32_t cmd,
+		const char *protocol_version,
+		uint64_t user_credential,
+		char *buf,
+		int32_t buf_size)
+{
+	ChiakiDiscoveryPacket packet;
+	if(!buf || buf_size <= 0)
+		return -1;
+
+	packet.cmd = (ChiakiDiscoveryCmd)cmd;
+	// The field is a char* rather than a const char* in libchiaki and is only read, so the cast
+	// is dropping a const the caller's string never lost.
+	packet.protocol_version = (char *)protocol_version;
+	packet.user_credential = user_credential;
+	return (int32_t)chiaki_discovery_packet_fmt(buf, (size_t)buf_size, &packet);
+}
+
+/** Fills only the two fields the classification reads, leaving the rest as a reply never had. */
+static void chiaki_shim_discovery_host_of(
+		ChiakiDiscoveryHost *host, const char *system_version, const char *protocol_version)
+{
+	memset(host, 0, sizeof(*host));
+	host->system_version = system_version ? system_version : "";
+	host->device_discovery_protocol_version = protocol_version;
+}
+
+CHIAKI_SHIM_API bool chiaki_shim_discovery_is_ps5(const char *device_discovery_protocol_version)
+{
+	ChiakiDiscoveryHost host;
+	chiaki_shim_discovery_host_of(&host, "", device_discovery_protocol_version);
+	return chiaki_discovery_host_is_ps5(&host);
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_discovery_target(
+		const char *system_version, const char *device_discovery_protocol_version)
+{
+	ChiakiDiscoveryHost host;
+	chiaki_shim_discovery_host_of(&host, system_version, device_discovery_protocol_version);
+	return (int32_t)chiaki_discovery_host_system_version_target(&host);
+}
+
+CHIAKI_SHIM_API const char *chiaki_shim_discovery_host_state_string(int32_t state)
+{
+	return chiaki_discovery_host_state_string((ChiakiDiscoveryHostState)state);
 }
 
 CHIAKI_SHIM_API void chiaki_shim_session_free(void *session)

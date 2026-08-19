@@ -1441,6 +1441,71 @@ public static class SelfTest
                 micSeam.Fill.ToString());
 
             Console.WriteLine();
+            Console.WriteLine("Discovery - the bytes a console answers, or does not");
+
+            // A console that does not answer looks exactly like a console that is switched off,
+            // so the packet is the part of discovery worth pinning byte for byte.
+            Check("the ports and protocol versions are the console's",
+                Discovery.Port(false) == 987 && Discovery.Port(true) == 9302
+                && Discovery.ProtocolVersion(false) == "00020020"
+                && Discovery.ProtocolVersion(true) == "00030010",
+                $"{Discovery.Port(true)} {Discovery.ProtocolVersion(true)}");
+            Check("the local reply ports are 9303 through 9319",
+                Discovery.LocalPortRange == (9303, 9319), Discovery.LocalPortRange.ToString());
+
+            // Line-based and newline-terminated, with no carriage returns despite the HTTP/1.1
+            // in the request line - a port that "corrected" that would be talking to nothing.
+            string srch5 = Discovery.PacketText(DiscoveryCommand.Search, ps5: true);
+            Check("a PS5 search is the exact request line and one header",
+                srch5 == "SRCH * HTTP/1.1\ndevice-discovery-protocol-version:00030010\n",
+                srch5.Replace("\n", "\\n"));
+            Check("a PS4 search differs only in the version",
+                Discovery.PacketText(DiscoveryCommand.Search, ps5: false)
+                    == "SRCH * HTTP/1.1\ndevice-discovery-protocol-version:00020020\n");
+            Check("there are no carriage returns in it",
+                !srch5.Contains('\r', StringComparison.Ordinal));
+
+            // The wake packet carries the registration key as a DECIMAL number - it is the key
+            // reinterpreted as hex, formatted with %llu - and five headers nobody would guess.
+            string wake = Discovery.PacketText(DiscoveryCommand.Wakeup, ps5: true, 0x1234ABCD);
+            Check("a wake packet carries its credential in decimal",
+                wake == "WAKEUP * HTTP/1.1\nclient-type:vr\nauth-type:R\nmodel:w\napp-type:r\n"
+                    + "user-credential:305441741\ndevice-discovery-protocol-version:00030010\n",
+                wake.Replace("\n", "\\n"));
+
+            // The two-call sizing, which is what stops a wake packet's credential being truncated
+            // by a buffer somebody guessed at.
+            Check("the packet is sized by asking rather than by guessing",
+                Discovery.Packet(DiscoveryCommand.Wakeup, true, ulong.MaxValue).Length
+                    > Discovery.Packet(DiscoveryCommand.Wakeup, true, 1).Length);
+
+            // What answered. A PS5 is identified by the protocol version it announced and NOT by
+            // its host type, which is what it looks like it should be.
+            Check("a PS5 is known by its protocol version",
+                Discovery.IsPs5("00030010") && !Discovery.IsPs5("00020020")
+                && !Discovery.IsPs5(null));
+
+            // The ladder, including the rung that surprises: both PS5 rungs require the PS5
+            // protocol version, so a PS5 system version announced with a PS4 protocol lands on
+            // Ps4_10. That is the ladder's own answer, not a fallback.
+            Check("the target ladder resolves each rung",
+                Discovery.Target("8050001", "00030010") == ChiakiTarget.Ps5_1
+                && Discovery.Target("8050000", "00030010") == ChiakiTarget.Ps5Unknown
+                && Discovery.Target("8000000", "00020020") == ChiakiTarget.Ps4_10
+                && Discovery.Target("7000000", "00020020") == ChiakiTarget.Ps4_9
+                && Discovery.Target("1", "00020020") == ChiakiTarget.Ps4_8
+                && Discovery.Target("0", "00020020") == ChiakiTarget.Ps4Unknown,
+                Discovery.Target("8050001", "00030010").ToString());
+            Check("a PS5 version on a PS4 protocol is a PS4",
+                Discovery.Target("8050001", "00020020") == ChiakiTarget.Ps4_10,
+                Discovery.Target("8050001", "00020020").ToString());
+
+            Check("a host state has the word the list shows",
+                Discovery.HostStateString(DiscoveryHostState.Ready) == "ready"
+                && Discovery.HostStateString(DiscoveryHostState.Standby) == "standby",
+                Discovery.HostStateString(DiscoveryHostState.Ready) ?? "<null>");
+
+            Console.WriteLine();
             Console.WriteLine("AudioVolume - mixing into silence, which is scaling");
 
             // Zero is not silence, it is nothing: the frame returns early and never reaches the

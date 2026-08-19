@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 8
+#define CHIAKI_SHIM_ABI 9
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -471,6 +471,57 @@ CHIAKI_SHIM_API int32_t chiaki_shim_baseline_format(
 
 /** Appends the line to the ledger at `path`, creating it if it is not there. */
 CHIAKI_SHIM_API int32_t chiaki_shim_baseline_append(void *baseline, const char *path);
+
+/**
+ * PP6: discovery, which is what fills the console list.
+ *
+ * What crosses here is the protocol and not the socket. .NET has UdpClient and libchiaki has its
+ * own discovery service; whichever carries the datagram, the BYTES have to be the console's, and
+ * they are the part a port gets wrong silently - a console that does not answer looks exactly like
+ * a console that is switched off.
+ *
+ * So the packet is formatted by libchiaki, the ports and protocol versions are read from its
+ * headers rather than copied, and the two classification rules come back through the functions
+ * that already decide them for the Qt client.
+ */
+CHIAKI_SHIM_API int32_t chiaki_shim_discovery_port(bool ps5);
+
+/** The device-discovery-protocol-version a search must carry, which is also what identifies a PS5. */
+CHIAKI_SHIM_API const char *chiaki_shim_discovery_protocol_version(bool ps5);
+
+/** The local reply port range, 9303..9319 inclusive. */
+CHIAKI_SHIM_API int32_t chiaki_shim_discovery_local_port_min(void);
+CHIAKI_SHIM_API int32_t chiaki_shim_discovery_local_port_max(void);
+
+/**
+ * chiaki_discovery_packet_fmt: the exact bytes of a SRCH or a WAKEUP.
+ *
+ * `cmd` is 0 for SRCH and 1 for WAKEUP. Returns what snprintf would - the length the packet WANTED,
+ * so a value at or above `buf_size` means it was truncated - or negative for an unknown command or
+ * a null protocol version.
+ */
+CHIAKI_SHIM_API int32_t chiaki_shim_discovery_packet_fmt(
+		int32_t cmd,
+		const char *protocol_version,
+		uint64_t user_credential,
+		char *buf,
+		int32_t buf_size);
+
+/**
+ * Whether a reply came from a PS5, which is decided by the protocol version it announced and NOT
+ * by its host type.
+ */
+CHIAKI_SHIM_API bool chiaki_shim_discovery_is_ps5(const char *device_discovery_protocol_version);
+
+/**
+ * The ChiakiTarget a reply resolves to, by libchiaki's own ladder over the two fields that decide
+ * it. Built into a host struct here so the ladder is the library's rather than a copy of it.
+ */
+CHIAKI_SHIM_API int32_t chiaki_shim_discovery_target(
+		const char *system_version, const char *device_discovery_protocol_version);
+
+/** chiaki_discovery_host_state_string: what the console list shows beside a name. */
+CHIAKI_SHIM_API const char *chiaki_shim_discovery_host_state_string(int32_t state);
 
 #ifdef __cplusplus
 }
