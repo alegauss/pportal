@@ -1441,6 +1441,121 @@ public static class SelfTest
                 micSeam.Fill.ToString());
 
             Console.WriteLine();
+            Console.WriteLine("FeedbackState - three latches between the pads and the wire");
+
+            using (var merged = new ChiakiControllerState())
+            using (var second = new ChiakiControllerState())
+            {
+                // chiaki_controller_state_or, and none of its three interesting rules is what
+                // "or" suggests. Reached through the seam rather than rewritten for exactly that.
+                merged.Buttons = ChiakiControllerButton.Cross;
+                merged.Sticks = (-30000, 0, 0, 0);
+                merged.Triggers = (10, 200);
+                second.Buttons = ChiakiControllerButton.Box;
+                second.Sticks = (100, 0, 0, 0);
+                second.Triggers = (250, 5);
+                merged.Or(second);
+
+                Check("buttons union and triggers take the larger",
+                    merged.Buttons == (ChiakiControllerButton.Cross | ChiakiControllerButton.Box)
+                    && merged.Triggers == ((byte)250, (byte)200),
+                    $"{merged.Buttons} {merged.Triggers}");
+                // The trap: a stick takes the larger MAGNITUDE and keeps its sign. A plain max
+                // would have +100 beat -30000 and the stick would fall to almost centre whenever
+                // a second device reported anything at all.
+                Check("a stick takes the larger magnitude, sign and all",
+                    merged.Sticks.LeftX == -30000, merged.Sticks.ToString());
+
+                // Motion comes WHOLE from the first state that has any. Averaging two devices
+                // produces an orientation that belongs to neither.
+                using var still = new ChiakiControllerState();
+                using var moving = new ChiakiControllerState();
+                moving.SetMotion(1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f, 10f);
+                using var expected = new ChiakiControllerState();
+                expected.SetMotion(1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f, 10f);
+                still.Or(moving);
+                Check("motion is taken from whichever side has any",
+                    still.Matches(expected));
+            }
+
+            using (var input = new ChiakiControllerState())
+            using (var keys = new ChiakiControllerState())
+            {
+                var feedback = new FeedbackState { InputBlock = 2 };
+                input.Buttons = ChiakiControllerButton.Cross;
+                keys.Buttons = ChiakiControllerButton.Cross;
+
+                // Blocked while anything is held, and the keyboard state is blanked too - it is
+                // sticky, and the key-up that would clear it happened while nobody was listening.
+                Check("a block with a button held blanks both states",
+                    feedback.ApplyInputBlock(input, keys)
+                    && input.Buttons == ChiakiControllerButton.None
+                    && keys.Buttons == ChiakiControllerButton.None
+                    && feedback.InputBlock == 2);
+
+                // …and lifts only once every button is up.
+                Check("an empty mask lifts the block, once",
+                    !feedback.ApplyInputBlock(input, keys) && feedback.InputBlock == 0);
+            }
+
+            using (var chord = new ChiakiControllerState())
+            {
+                // Shortcut 4 is zero by default in the Qt settings, and a zero is NOT part of the
+                // chord. "At least one set, and every set one held" is neither "any held" nor
+                // "all four held", and the two wrong readings both look right in a debugger.
+                var feedback = new FeedbackState
+                {
+                    Shortcuts = [(uint)ChiakiControllerButton.L1, (uint)ChiakiControllerButton.R1, 0, 0],
+                };
+
+                chord.Buttons = ChiakiControllerButton.L1;
+                Check("half the chord does nothing",
+                    !feedback.ApplyDpadShortcut(chord) && feedback.DpadRegular);
+
+                chord.Buttons = ChiakiControllerButton.L1 | ChiakiControllerButton.R1;
+                Check("the whole chord toggles the dpad", feedback.ApplyDpadShortcut(chord) && !feedback.DpadRegular);
+                // The latch, which is the difference between a setting toggling and a setting
+                // flickering sixty times a second while the buttons are held.
+                Check("holding it does not toggle again",
+                    !feedback.ApplyDpadShortcut(chord) && !feedback.DpadRegular);
+
+                chord.Buttons = ChiakiControllerButton.None;
+                feedback.ApplyDpadShortcut(chord);
+                chord.Buttons = ChiakiControllerButton.L1 | ChiakiControllerButton.R1;
+                Check("releasing and pressing again toggles back",
+                    feedback.ApplyDpadShortcut(chord) && feedback.DpadRegular);
+
+                // A configuration with no shortcut at all must never fire, which is what the
+                // "at least one is set" half of the guard is for.
+                var noChord = new FeedbackState();
+                Check("no shortcuts configured means no chord",
+                    !noChord.ApplyDpadShortcut(chord) && noChord.DpadRegular);
+            }
+
+            using (var gate = new ChiakiControllerState())
+            {
+                var feedback = new FeedbackState { DpadRegular = false, DpadTouchIncrement = 30 };
+                gate.Buttons = ChiakiControllerButton.DpadLeft;
+                Check("the dpad drives a finger when all three conditions hold",
+                    feedback.ShouldDriveDpadTouch(gate));
+
+                // An increment of zero is how "the feature is off" is expressed - there is no
+                // second flag - so it is checked here rather than anywhere a boolean would be.
+                feedback.DpadTouchIncrement = 0;
+                Check("an increment of zero is the feature being off",
+                    !feedback.ShouldDriveDpadTouch(gate));
+
+                feedback.DpadTouchIncrement = 30;
+                feedback.DpadRegular = true;
+                Check("and a regular dpad stays a dpad", !feedback.ShouldDriveDpadTouch(gate));
+
+                feedback.DpadRegular = false;
+                gate.Buttons = ChiakiControllerButton.Cross;
+                Check("a button that is not a direction does not drive it",
+                    !feedback.ShouldDriveDpadTouch(gate));
+            }
+
+            Console.WriteLine();
             Console.WriteLine("HapticsRumble - what a pad with no haptic motors feels");
 
             static byte[] HapticFrame(short left, short right, int samples)

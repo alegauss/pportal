@@ -132,6 +132,21 @@ public sealed class ChiakiControllerState : IDisposable
         return ControllerStateEquals(Handle, other.Handle);
     }
 
+    /// <summary>
+    /// chiaki_controller_state_or, folding <paramref name="other"/> into this state.
+    ///
+    /// Not a union in three places, which is why it is the library's and not a loop here: the
+    /// sticks take the larger MAGNITUDE and keep its sign, a touch slot prefers whichever side has
+    /// a finger in it, and the motion axes are taken whole from the first state that has any
+    /// rather than mixed - gyro and accelerometer readings from two devices average into an
+    /// orientation that belongs to neither.
+    /// </summary>
+    public void Or(ChiakiControllerState other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+        ControllerStateOr(Handle, Handle, other.Handle);
+    }
+
     public void Dispose()
     {
         if (_handle == IntPtr.Zero)
@@ -209,4 +224,8 @@ public sealed class ChiakiControllerState : IDisposable
         CallingConvention = CallingConvention.Cdecl)]
     [return: MarshalAs(UnmanagedType.I1)]
     private static extern bool ControllerStateEquals(IntPtr a, IntPtr b);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_controller_state_or",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern void ControllerStateOr(IntPtr outState, IntPtr a, IntPtr b);
 }

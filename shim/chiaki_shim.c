@@ -522,6 +522,15 @@ CHIAKI_SHIM_API bool chiaki_shim_controller_state_equals(void *a, void *b)
 	return chiaki_controller_state_equals((ChiakiControllerState *)a, (ChiakiControllerState *)b);
 }
 
+CHIAKI_SHIM_API void chiaki_shim_controller_state_or(void *out, void *a, void *b)
+{
+	if(!out || !a || !b)
+		return;
+
+	chiaki_controller_state_or((ChiakiControllerState *)out, (ChiakiControllerState *)a,
+			(ChiakiControllerState *)b);
+}
+
 CHIAKI_SHIM_API int32_t chiaki_shim_session_set_controller_state(void *session, void *state)
 {
 	chiaki_shim_session *self = (chiaki_shim_session *)session;

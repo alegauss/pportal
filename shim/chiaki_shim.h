@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 7
+#define CHIAKI_SHIM_ABI 8
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -375,6 +375,20 @@ CHIAKI_SHIM_API bool chiaki_shim_controller_state_touch(
 
 /** chiaki_controller_state_equals, which is the only comparison this seam uses. */
 CHIAKI_SHIM_API bool chiaki_shim_controller_state_equals(void *a, void *b);
+
+/**
+ * chiaki_controller_state_or: the union of two pads, and not a union at all in three places.
+ *
+ * A session with a pad, a keyboard and a touchpad has three states to send as one, and this is
+ * what merges them. It is worth reaching for rather than rewriting because none of its three
+ * interesting rules is what "or" suggests: the sticks take the larger MAGNITUDE and keep its sign,
+ * a touch slot prefers whichever side has a finger in it, and the motion axes are taken WHOLE from
+ * the first state that has any rather than combined - mixing gyro and accelerometer readings from
+ * two devices produces an orientation that belongs to neither.
+ *
+ * `out` may alias `a`, which is how the Qt client folds a list of controllers into one state.
+ */
+CHIAKI_SHIM_API void chiaki_shim_controller_state_or(void *out, void *a, void *b);
 
 /** chiaki_session_set_controller_state, under the lock the feedback sender reads it through. */
 CHIAKI_SHIM_API int32_t chiaki_shim_session_set_controller_state(void *session, void *state);
