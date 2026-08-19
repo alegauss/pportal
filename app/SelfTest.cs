@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using ChiakiNg.Settings;
 using ChiakiNg.Native;
 using ChiakiNg.Session;
@@ -153,7 +153,7 @@ public static class SelfTest
             QSettingsValue.AsString("@@home") == "@home", QSettingsValue.AsString("@@home") ?? "<null>");
         Check("an ordinary string keeps its text",
             QSettingsValue.AsString("PS5-385") == "PS5-385");
-        // …and the escape is one level, not a strip-all: `@@home` typed by a user is `@@@home`.
+        // â€¦and the escape is one level, not a strip-all: `@@home` typed by a user is `@@@home`.
         Check("the escape is one '@' and not all of them",
             QSettingsValue.AsString("@@@home") == "@@home", QSettingsValue.AsString("@@@home") ?? "<null>");
 
@@ -456,7 +456,7 @@ public static class SelfTest
                 Check("a level outside the mask never crosses", lines.Count == 1,
                     lines.Count > 1 ? lines[^1].Text : "");
 
-                // …and the mask is live, which is what a verbosity setting changed mid-session is.
+                // â€¦and the mask is live, which is what a verbosity setting changed mid-session is.
                 log.LevelMask = ChiakiLogLevel.All;
                 log.Write(ChiakiLogLevel.Debug, "now in the mask");
                 Check("re-masking lets the same level through",
@@ -594,7 +594,7 @@ public static class SelfTest
                         empty is not null && emptyErr == ChiakiError.Success, emptyErr.ToString());
                 }
 
-                // …and the code is the one ErrorString already turns into a sentence, which is
+                // â€¦and the code is the one ErrorString already turns into a sentence, which is
                 // what makes the enum above a spelling of libchiaki's numbers and not a parallel
                 // set of them.
                 Check("the error code names itself through the seam",
@@ -1271,7 +1271,7 @@ public static class SelfTest
                     touch.Touch(0).Id == dpad.TouchId && touch.Touch(0) is { X: 0, Y: 539 },
                     touch.Touch(0).ToString());
 
-                // …so the second press in the same direction cannot move it. Worth asserting
+                // â€¦so the second press in the same direction cannot move it. Worth asserting
                 // rather than assuming: a port that started in the middle would give the user a
                 // different gesture for the same two presses.
                 pad2.Buttons = ChiakiControllerButton.DpadLeft;
@@ -1340,17 +1340,17 @@ public static class SelfTest
             }
 
             Console.WriteLine();
-            Console.WriteLine("AudioOutRing - drop the oldest, never the newest");
+            Console.WriteLine("AudioRing - drop the oldest, never the newest");
 
             // The three multipliers are the latency policy, and they are the numbers a port picks
             // differently by accident: eight buffers of ring, fill the sink to two, clear it past
             // three.
             Check("the ring, the drain target and the clear threshold are 8, 2 and 3 buffers",
-                AudioOutRing.CapacityFor(1024) == 8192
-                && AudioOutRing.DrainTargetFor(1024) == 2048
-                && AudioOutRing.ClearThresholdFor(1024) == 3072);
+                AudioRing.CapacityFor(1024) == 8192
+                && AudioRing.DrainTargetFor(1024) == 2048
+                && AudioRing.ClearThresholdFor(1024) == 3072);
 
-            var ring = new AudioOutRing(8);
+            var ring = new AudioRing(8);
             Check("a fresh ring is empty", ring is { Fill: 0, Capacity: 8, OverflowReported: false });
 
             Check("what goes in comes out in order",
@@ -1360,7 +1360,7 @@ public static class SelfTest
             // The seam. A read never crosses the end of the storage, so a drain that wants more
             // than the tail holds takes two turns - which is what the Qt client does, and a port
             // that stitched the two halves would take a different number of iterations.
-            var seam = new AudioOutRing(8);
+            var seam = new AudioRing(8);
             seam.Write([1, 2, 3, 4, 5, 6]);
             seam.Read(6);
             seam.Write([7, 8, 9, 10]);
@@ -1374,7 +1374,7 @@ public static class SelfTest
             // A frame that does not fit drops the OLDEST bytes. This is the whole policy: audio
             // is only worth playing if it is current, so what the listener has not heard yet is
             // what goes.
-            var tight = new AudioOutRing(4);
+            var tight = new AudioRing(4);
             tight.Write([1, 2, 3]);
             Check("a write that overflows drops the oldest and keeps the newest",
                 tight.Write([4, 5, 6]) && tight.Fill == 4
@@ -1383,7 +1383,7 @@ public static class SelfTest
 
             // A frame larger than the whole ring keeps its own TAIL. Keeping the head would play
             // the oldest slice of a frame that is already too late.
-            var small = new AudioOutRing(3);
+            var small = new AudioRing(3);
             small.Write([9, 9]);
             small.Write([1, 2, 3, 4, 5]);
             Check("a frame bigger than the ring keeps its tail, not its head",
@@ -1391,7 +1391,7 @@ public static class SelfTest
                 string.Join(",", small.Read(3)));
 
             // The log fires once per slow patch, not once per frame, and running dry re-arms it.
-            var noisy = new AudioOutRing(4);
+            var noisy = new AudioRing(4);
             noisy.Write([1, 2, 3, 4]);
             noisy.Write([5, 6]);
             Check("an overflow is reported", noisy.OverflowReported);
@@ -1409,15 +1409,35 @@ public static class SelfTest
             // Degenerate inputs are no-ops rather than exceptions: an empty frame is what a muted
             // stream sends, and a zero-capacity ring is what exists before InitAudio has run.
             Check("an empty frame and a zero ring do nothing",
-                !new AudioOutRing(0).Write([1, 2, 3]) && !ring.Write([])
-                && new AudioOutRing(0).Read(4).Length == 0);
+                !new AudioRing(0).Write([1, 2, 3]) && !ring.Write([])
+                && new AudioRing(0).Read(4).Length == 0);
 
             // Clearing is what happens when the sink is more than three buffers behind.
-            var full = new AudioOutRing(4);
+            var full = new AudioRing(4);
             full.Write([1, 2, 3, 4]);
             full.Reset();
             Check("a reset empties the ring and re-arms the log",
                 full is { Fill: 0, OverflowReported: false } && full.Read(4).Length == 0);
+
+            // The microphone path is this same ring with no target to stop at, which is the only
+            // difference between QueueAudioOutData and QueueMicData in the Qt client - the other
+            // fifty lines are the same twice. Asserted here so the one ring is known to cover both.
+            var mic = new AudioRing(AudioRing.CapacityFor(2));
+            Check("both rings are eight frames deep", mic.Capacity == 16);
+            mic.Write([1, 2, 3, 4, 5]);
+            Check("an unbounded read takes everything contiguous",
+                mic.Read().SequenceEqual(new byte[] { 1, 2, 3, 4, 5 }) && mic.Fill == 0,
+                mic.Fill.ToString());
+
+            // …and it is still bounded by the seam, which is the property that is easy to lose
+            // when a read has no size argument to look at.
+            var micSeam = new AudioRing(8);
+            micSeam.Write([1, 2, 3, 4, 5, 6]);
+            micSeam.Read();
+            micSeam.Write([7, 8, 9, 10]);
+            Check("an unbounded read still stops at the end of the storage",
+                micSeam.Read().SequenceEqual(new byte[] { 7, 8 }) && micSeam.Fill == 2,
+                micSeam.Fill.ToString());
         }
 
         Console.WriteLine();

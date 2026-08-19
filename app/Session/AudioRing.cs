@@ -1,12 +1,17 @@
 namespace ChiakiNg.Session;
 
 /// <summary>
-/// PP5: the audio output ring from streamsession.cpp, with the QMutex and SDL taken off it.
+/// PP5: the audio ring from streamsession.cpp, with the QMutex and SDL taken off it.
 ///
-/// What is left is a drop-oldest ring with three distinct overflow behaviours, and it is the piece
-/// of the audio path that decides whether a slow sink costs latency or costs a dropout. Getting it
-/// wrong is not a crash: it is audio that drifts a second behind the picture over an evening, or
-/// that clicks every few minutes, and neither points at a ring buffer.
+/// ONE ring, where the Qt client has two. QueueAudioOutData and QueueMicData are the same fifty
+/// lines twice - the same three overflow branches, the same drop-oldest policy, the same depth of
+/// eight frames - differing only in that the output drain stops at a target queue size and the
+/// microphone drain does not. That is <see cref="Read(int)"/> against <see cref="Read()"/> here,
+/// and nothing else. Two copies of a ring buffer is two places for a fix to land in one of.
+///
+/// It is the piece of the audio path that decides whether a slow sink costs latency or costs a
+/// dropout. Getting it wrong is not a crash: it is audio that drifts a second behind the picture
+/// over an evening, or that clicks every few minutes, and neither points at a ring buffer.
 ///
 /// The policy is drop the OLDEST, always. A stream's audio is only worth playing if it is current,
 /// so when the producer outruns the sink the ring throws away what the listener has not heard yet
@@ -15,29 +20,32 @@ namespace ChiakiNg.Session;
 /// merely does not fit advances the read cursor over exactly as much as it needs.
 ///
 /// The multipliers around it are the latency policy and live at the call sites in the Qt client:
-/// the ring is <c>audio_buffer_size * 8</c>, the drain fills the sink to <c>* 2</c>, and a sink
-/// holding more than <c>* 3</c> is cleared outright. They are named in <see cref="CapacityFor"/>
-/// and the two properties beside it so the port cannot pick different ones by accident.
+/// both rings are their own frame size times eight, the output drain fills the sink to times two,
+/// and a sink holding more than times three is cleared outright. They are named below so the port
+/// cannot pick different ones by accident.
 /// </summary>
-public sealed class AudioOutRing
+public sealed class AudioRing
 {
     private readonly byte[] buffer;
     private int readPos;
     private int writePos;
 
-    public AudioOutRing(int capacity)
+    public AudioRing(int capacity)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(capacity);
         buffer = new byte[capacity];
     }
 
-    /// <summary>The ring is eight audio buffers deep.</summary>
-    public static int CapacityFor(int audioBufferSize) => audioBufferSize * 8;
+    /// <summary>
+    /// Eight frames deep, which is both rings: audio_buffer_size * 8 for the output and
+    /// mic_buf.size_bytes * 8 for the microphone.
+    /// </summary>
+    public static int CapacityFor(int frameSize) => frameSize * 8;
 
-    /// <summary>The drain stops once the sink holds two buffers.</summary>
+    /// <summary>The output drain stops once the sink holds two buffers. The mic drain has no target.</summary>
     public static int DrainTargetFor(int audioBufferSize) => audioBufferSize * 2;
 
-    /// <summary>A sink holding more than three buffers is behind, and is cleared rather than drained.</summary>
+    /// <summary>An output sink holding more than three buffers is behind, and is cleared rather than drained.</summary>
     public static int ClearThresholdFor(int audioBufferSize) => audioBufferSize * 3;
 
     public int Capacity => buffer.Length;
@@ -93,6 +101,12 @@ public sealed class AudioOutRing
         Fill += data.Length;
         return dropped;
     }
+
+    /// <summary>
+    /// The microphone drain: one contiguous chunk, as much as there is. The capture path has no
+    /// target queue size to stop at - what it has captured goes to the console.
+    /// </summary>
+    public byte[] Read() => Read(Capacity);
 
     /// <summary>
     /// One contiguous chunk, at most <paramref name="maxBytes"/> and never across the seam.
