@@ -582,6 +582,32 @@ this task: a test has to be able to name the line it holds, whether by conventio
 test name or by an attribute the count can read. Without that join, the number is a
 guess and a gate on a guess is worse than no gate.
 
+### §PP121 The firmware nobody checked
+
+test/rpcrypt.c records nine cases and the port drove one: test_bright_ambassador, on the
+modern target. Four of the eight it did not are PS4 firmware below 10, which is a key
+schedule and not a constant - a whole console generation nothing in this port touched.
+
+They needed no new seam: bright_ambassador, init_auth, generate_iv, encrypt and decrypt
+were all carried already, so what was missing was pointing them at the older target and
+comparing. All four matched on the first run.
+
+That they cover a distinct path is measured rather than assumed: driven against
+CHIAKI_TARGET_PS5_1 instead, every one of them fails. The derivation really does differ,
+so a port that special-cased the target in the wrong direction would have been caught.
+
+Three properties come with them that the modern vectors do not carry. generate_iv is
+recorded TWICE at each of two counters and asserted equal both times, which says it is a
+function of the counter and not of how often it has been called - a rewrite holding
+state passes the first assertion and fails the second. Encryption is recorded under a
+block size, its expected cipher five bytes rather than a padded sixteen. And decryption
+is recorded at 4, 16, 20 and 32 bytes, where 20 is the one that matters: a rewrite
+handling whole blocks and a short tail separately gets the first two right and the tail
+wrong.
+
+The registration-mode cases are still uncovered. chiaki_rpcrypt_init_regist is not on
+the shim, and adding it is its own change.
+
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed
