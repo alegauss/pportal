@@ -78,6 +78,7 @@
 - ✅ **PP13** **the console list, the front door of the application, is QML bound to the discovery model** — The row actions and the auto-connect screen; removing branches three ways and one of them is silence, and the exit outlasting the grace is load-bearing.
 - ✅ **PP16 (the General tab)** **the settings screen is 2984 lines of QML against 149 properties exposed from C++** — the tab's ten controls, and the two combos whose index is not what the store holds.
 - ✅ **PP148** **the Video tab stores words that are not its labels on three of six rows, and its first decoder stores nothing** — the tab, its two combos that store something other than their labels, and the checkbox that restarts.
+- ✅ **PP19 (the two prompts)** **the confirm, remind, display, steam shortcut and dialog host screens are still QML** — the confirm and remind prompts, their focus latch and the three answers only one of which writes.
 
 ## Block E — Windows-only build
 

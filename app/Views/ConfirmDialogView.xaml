@@ -1,0 +1,23 @@
+<UserControl x:Class="ChiakiNg.Views.ConfirmDialogView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    PP19: the confirm prompt. Two answers, and nothing to validate - both buttons are live from the
+    moment it opens, so IsEnabled follows the view model's "not yet answered" rather than a rule.
+
+    The focus handover is not here. Which exit restores focus is the view model's latch, because
+    getting it wrong means restoring focus twice on accept - which takes focus off whatever the
+    callback just opened, and looks like the new dialog failing to take it.
+  -->
+  <StackPanel Margin="16">
+    <TextBlock x:Name="MessageLabel" Text="{Binding Text}" TextWrapping="Wrap"
+               HorizontalAlignment="Center" TextAlignment="Center" Margin="0,0,0,20" />
+
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+      <Button x:Name="YesButton" Content="Yes" Padding="20,4" MinWidth="90"
+              IsEnabled="{Binding CanSubmit}" />
+      <Button x:Name="NoButton" Content="No" Margin="12,0,0,0" Padding="20,4" MinWidth="90"
+              IsEnabled="{Binding CanSubmit}" />
+    </StackPanel>
+  </StackPanel>
+</UserControl>

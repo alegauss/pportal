@@ -1,0 +1,27 @@
+<UserControl x:Class="ChiakiNg.Views.RemindDialogView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    PP19: the remind prompt - THREE buttons, because it has three answers.
+
+    Yes runs the callback, No writes the "stop asking" preference, and Remind Me Later writes
+    nothing so the prompt returns next run. The markup states none of that: which preference a
+    decline writes is the view model's, and so is whether the closure chains into the PSN prompt.
+
+    The drawing follows the vocabulary the six earlier screens settled - a centred message, a right
+    aligned button row, and no per-control IsEnabled expression.
+  -->
+  <StackPanel Margin="16">
+    <TextBlock x:Name="MessageLabel" Text="{Binding Text}" TextWrapping="Wrap"
+               HorizontalAlignment="Center" TextAlignment="Center" Margin="0,0,0,20" />
+
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+      <Button x:Name="YesButton" Content="Yes" Padding="20,4" MinWidth="90"
+              IsEnabled="{Binding CanSubmit}" />
+      <Button x:Name="NoButton" Content="No" Margin="12,0,0,0" Padding="20,4" MinWidth="90"
+              IsEnabled="{Binding CanSubmit}" />
+      <Button x:Name="LaterButton" Content="Remind Me Later" Margin="12,0,0,0" Padding="20,4"
+              IsEnabled="{Binding CanSubmit}" />
+    </StackPanel>
+  </StackPanel>
+</UserControl>
