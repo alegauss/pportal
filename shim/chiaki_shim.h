@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 20
+#define CHIAKI_SHIM_ABI 21
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -938,6 +938,33 @@ CHIAKI_SHIM_API void chiaki_shim_video_receiver_av_packet(
 		int32_t data_size);
 
 CHIAKI_SHIM_API int32_t chiaki_shim_video_receiver_frames_lost(void *receiver);
+
+/**
+ * PP23 and PP29: registration, which is the first thing a fresh install sends.
+ *
+ * A console that will not pair gives a user nothing to go on, and the request is one payload of
+ * ciphertext - so every byte of it either matches what a console accepts or the pairing fails with
+ * no clue which field was wrong. test/regist.c records that whole payload, which makes it the one
+ * vector in this tree that pins an entire message rather than a key.
+ *
+ * `psn_account_id` may be NULL, which is the pre-firmware-10 PS4 case that takes an online id
+ * instead. `buf_size` is in/out: room offered, then bytes written.
+ */
+CHIAKI_SHIM_API void chiaki_shim_rpcrypt_aeropause_ps4_pre10(
+		const uint8_t *ambassador, uint8_t *aeropause);
+
+/** The bright key a registration PIN derives, which is what encrypts the payload below. */
+CHIAKI_SHIM_API void chiaki_shim_rpcrypt_regist_bright_ps4_pre10(
+		const uint8_t *ambassador, uint32_t pin, uint8_t *bright);
+
+CHIAKI_SHIM_API int32_t chiaki_shim_regist_request_payload(
+		int32_t target,
+		const uint8_t *ambassador,
+		const char *psn_online_id,
+		const uint8_t *psn_account_id,
+		uint32_t pin,
+		uint8_t *buf,
+		int32_t *buf_size);
 
 #ifdef __cplusplus
 }

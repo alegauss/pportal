@@ -12,6 +12,7 @@
 #include <chiaki/frameprocessor.h>
 #include <chiaki/gkcrypt.h>
 #include <chiaki/http.h>
+#include <chiaki/regist.h>
 #include <chiaki/reorderqueue.h>
 #include <chiaki/rpcrypt.h>
 #include <chiaki/seqnum.h>
@@ -1729,6 +1730,54 @@ CHIAKI_SHIM_API int32_t chiaki_shim_video_receiver_frames_lost(void *receiver)
 {
 	chiaki_shim_video_receiver *self = (chiaki_shim_video_receiver *)receiver;
 	return self ? chiaki_video_receiver_get_frames_lost_total(&self->receiver) : 0;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_rpcrypt_aeropause_ps4_pre10(
+		const uint8_t *ambassador, uint8_t *aeropause)
+{
+	if(ambassador && aeropause)
+		chiaki_rpcrypt_aeropause_ps4_pre10(aeropause, ambassador);
+}
+
+CHIAKI_SHIM_API void chiaki_shim_rpcrypt_regist_bright_ps4_pre10(
+		const uint8_t *ambassador, uint32_t pin, uint8_t *bright)
+{
+	ChiakiRPCrypt rpcrypt;
+	if(!ambassador || !bright)
+		return;
+
+	chiaki_rpcrypt_init_regist_ps4_pre10(&rpcrypt, ambassador, pin);
+	memcpy(bright, rpcrypt.bright, CHIAKI_RPCRYPT_KEY_SIZE);
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_regist_request_payload(
+		int32_t target,
+		const uint8_t *ambassador,
+		const char *psn_online_id,
+		const uint8_t *psn_account_id,
+		uint32_t pin,
+		uint8_t *buf,
+		int32_t *buf_size)
+{
+	ChiakiRPCrypt rpcrypt;
+	size_t size;
+	ChiakiErrorCode err;
+
+	if(!ambassador || !buf || !buf_size || *buf_size <= 0)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+
+	size = (size_t)*buf_size;
+	*buf_size = 0;
+
+	// The holepunch info is NULL: that is the local registration, which is the one the recorded
+	// payload was taken from. A PSN registration carries a different tail and is PP7's ground.
+	err = chiaki_regist_request_payload_format((ChiakiTarget)target, ambassador, buf, &size,
+			&rpcrypt, psn_online_id, psn_account_id, pin, NULL);
+	if(err != CHIAKI_ERR_SUCCESS)
+		return (int32_t)err;
+
+	*buf_size = (int32_t)size;
+	return (int32_t)CHIAKI_ERR_SUCCESS;
 }
 
 CHIAKI_SHIM_API void chiaki_shim_session_free(void *session)

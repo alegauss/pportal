@@ -1515,6 +1515,65 @@ public static class SelfTest
             }
 
             Console.WriteLine();
+            Console.WriteLine("Regist - the first thing a fresh install sends");
+
+            string? registFile = SanitizerSource.LocateRelative(@"test\regist.c");
+            if (registFile is null)
+            {
+                Console.WriteLine(@"  --    the recorded registration payload  (no test\regist.c here)");
+            }
+            else
+            {
+                // The ambassador is declared once at file scope and every case is derived from it,
+                // so it is read from the file rather than from a function - and the pin and the id
+                // are cited as literals rather than copied, for the same reason the bytes are.
+                IReadOnlyDictionary<string, byte[]> reg = CryptoVectors.InFile(registFile);
+                string? pinText = CryptoVectors.ScalarInFile(registFile, "pin");
+                string? idText = CryptoVectors.ScalarInFile(registFile, "psn_id");
+
+                Check("the shared vectors and the scalars are readable",
+                    reg.ContainsKey("ambassador") && pinText == "13374201"
+                    && idText == "\"ChiakiNanami1337\"",
+                    $"{pinText} / {idText}");
+
+                uint pin = uint.Parse(pinText!, System.Globalization.CultureInfo.InvariantCulture);
+                string psnId = idText!.Trim('"');
+                byte[] ambassador = reg["ambassador"];
+
+                // Each case declares its own `expected`, so every one of these is read from ITS
+                // function. A file-wide lookup would answer with whichever came last, which is how
+                // this assertion first failed while computing the right bytes.
+                byte[] aeropauseExpected =
+                    CryptoVectors.InFunction(registFile, "test_aeropause_ps4_pre10")["expected"];
+                Check("the aeropause is the recorded one",
+                    RpCrypt.AeropausePs4Pre10(ambassador).SequenceEqual(aeropauseExpected),
+                    Convert.ToHexString(RpCrypt.AeropausePs4Pre10(ambassador)));
+
+                byte[] brightExpected =
+                    CryptoVectors.InFunction(registFile, "test_pin_bright_ps4_pre10")["expected"];
+                Check("the PIN derives the recorded bright key",
+                    RpCrypt.RegistBrightPs4Pre10(ambassador, pin).SequenceEqual(brightExpected),
+                    Convert.ToHexString(RpCrypt.RegistBrightPs4Pre10(ambassador, pin)));
+
+                IReadOnlyDictionary<string, byte[]> payloadCase =
+                    CryptoVectors.InFunction(registFile, "test_request_payload_ps4_pre10");
+
+                byte[] payload = RpCrypt.RegistRequestPayload(
+                    ChiakiTarget.Ps4_9, ambassador, psnId, pin);
+
+                Check("the whole registration request is the recorded payload",
+                    payload.SequenceEqual(payloadCase["expected"]),
+                    $"{payload.Length} vs {payloadCase["expected"].Length} bytes");
+
+                // The PIN is what a user types off the console's screen, and it keys the payload.
+                // A port that dropped it would produce a request of the right shape that no
+                // console accepts - which is the failure with no symptom this vector exists for.
+                Check("a different PIN produces a different request",
+                    !RpCrypt.RegistRequestPayload(ChiakiTarget.Ps4_9, ambassador, psnId, pin + 1)
+                        .SequenceEqual(payload));
+            }
+
+            Console.WriteLine();
             Console.WriteLine("Alloc budget - what a packet costs on this side of the seam");
 
             // PP44 measured the C transport and found it allocates ZERO bytes and makes zero

@@ -71,11 +71,54 @@ public static partial class CryptoVectors
         return found;
     }
 
+    /// <summary>
+    /// Every byte array in a file, at any scope. Some vectors are declared once at file scope and
+    /// shared by every case in it - test/regist.c's ambassador is one - so a function-scoped
+    /// lookup alone would miss exactly the value all the others are derived from.
+    ///
+    /// For UNIQUELY named arrays only. Names repeat across cases - every one of them declares its
+    /// own `expected` - and this answers with whichever came last, silently. Use
+    /// <see cref="InFunction"/> for anything a case owns.
+    /// </summary>
+    public static IReadOnlyDictionary<string, byte[]> InFile(string filePath)
+    {
+        ArgumentNullException.ThrowIfNull(filePath);
+
+        var found = new Dictionary<string, byte[]>(StringComparer.Ordinal);
+        foreach (Match m in ArrayRegex().Matches(File.ReadAllText(filePath)))
+        {
+            found[m.Groups[1].Value] = m.Groups[2].Value
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(ParseByte)
+                .ToArray();
+        }
+
+        return found;
+    }
+
+    /// <summary>
+    /// A scalar constant's literal text, so a pin or an id can be cited rather than copied. Null
+    /// where the file does not declare one by that name.
+    /// </summary>
+    public static string? ScalarInFile(string filePath, string name)
+    {
+        ArgumentNullException.ThrowIfNull(filePath);
+        ArgumentNullException.ThrowIfNull(name);
+
+        Match m = Regex.Match(
+            File.ReadAllText(filePath),
+            @"\b" + Regex.Escape(name) + @"\s*=\s*([^;]+);");
+
+        return m.Success ? m.Groups[1].Value.Trim() : null;
+    }
+
     private static byte ParseByte(string token)
         => token.StartsWith("0x", StringComparison.OrdinalIgnoreCase)
             ? byte.Parse(token[2..], NumberStyles.HexNumber, CultureInfo.InvariantCulture)
             : byte.Parse(token, CultureInfo.InvariantCulture);
 
-    [GeneratedRegex(@"uint8_t\s+(\w+)\s*\[\s*\]\s*=\s*\{([^}]*)\}", RegexOptions.Singleline)]
+    // The bracket may carry a size. test/regist.c writes `ambassador[CHIAKI_RPCRYPT_KEY_SIZE]`
+    // where test/rpcrypt.c writes `nonce[]`, and both are vectors this has to be able to read.
+    [GeneratedRegex(@"uint8_t\s+(\w+)\s*\[[^\]]*\]\s*=\s*\{([^}]*)\}", RegexOptions.Singleline)]
     private static partial Regex ArrayRegex();
 }

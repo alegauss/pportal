@@ -63,6 +63,7 @@
 - ✅ **PP112** **the frame processor runs only from the C suite, so nothing managed can turn units into a frame or drive FEC** — units become frames from managed code, with reconstruction driven and the stage accounting asserted, under eleven assertions.
 - ✅ **PP113** **nothing on the managed side of the seam is measured against the zero-allocation budget PP44 set for the transport** — the span path through the frame processor allocates zero bytes per packet, measured, against 2202 for the array one it exists to replace.
 - ✅ **PP114** **the packet parse and the frame delivery still take arrays, so the hot path allocates where the C one does not** — parsing a packet header allocates nothing per packet, measured, and the receiver's one-frame limit is stated where it bites.
+- ✅ **PP115** **the registration request runs only from the C suite, so nothing managed can pair a console** — the whole recorded registration payload is produced from managed code byte for byte, with the PIN shown to key it.
 
 ## Block G — Test discipline
 

@@ -71,6 +71,48 @@ public sealed class RpCrypt : IDisposable
         return iv;
     }
 
+    /// <summary>
+    /// PP29: the whole registration request, which is the first thing a fresh install sends.
+    ///
+    /// A console that will not pair gives a user nothing to go on - the request is one payload of
+    /// ciphertext, so every byte either matches what a console accepts or the pairing fails with
+    /// no clue which field was wrong. test/regist.c records the payload in full, which makes it the
+    /// one vector in this tree that pins an entire message rather than a key.
+    /// </summary>
+    public static byte[] RegistRequestPayload(
+        ChiakiTarget target, ReadOnlySpan<byte> ambassador, string? psnOnlineId, uint pin)
+    {
+        RequireKeySize(ambassador, nameof(ambassador));
+
+        var buf = new byte[0x400];
+        int size = buf.Length;
+        int err = RegistRequestPayloadRaw((int)target, ambassador.ToArray(), psnOnlineId, null, pin, buf, ref size);
+        if (err != (int)ChiakiError.Success)
+            throw new InvalidOperationException($"chiaki_regist_request_payload_format failed: {(ChiakiError)err}.");
+
+        return buf[..size];
+    }
+
+    /// <summary>chiaki_rpcrypt_aeropause_ps4_pre10, which the payload carries in the clear.</summary>
+    public static byte[] AeropausePs4Pre10(ReadOnlySpan<byte> ambassador)
+    {
+        RequireKeySize(ambassador, nameof(ambassador));
+
+        var aeropause = new byte[KeySize];
+        AeropauseRaw(ambassador.ToArray(), aeropause);
+        return aeropause;
+    }
+
+    /// <summary>The bright key a registration PIN derives, which is what encrypts the payload.</summary>
+    public static byte[] RegistBrightPs4Pre10(ReadOnlySpan<byte> ambassador, uint pin)
+    {
+        RequireKeySize(ambassador, nameof(ambassador));
+
+        var bright = new byte[KeySize];
+        RegistBrightRaw(ambassador.ToArray(), pin, bright);
+        return bright;
+    }
+
     public byte[] Encrypt(ulong counter, ReadOnlySpan<byte> plain) => Crypt(counter, plain, encrypt: true);
 
     public byte[] Decrypt(ulong counter, ReadOnlySpan<byte> cipher) => Crypt(counter, cipher, encrypt: false);
@@ -133,4 +175,19 @@ public sealed class RpCrypt : IDisposable
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_rpcrypt_decrypt",
         CallingConvention = CallingConvention.Cdecl)]
     private static extern int RpCryptDecrypt(IntPtr rpcrypt, ulong counter, byte[] input, byte[] output, int size);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_rpcrypt_aeropause_ps4_pre10",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern void AeropauseRaw(byte[] ambassador, byte[] aeropause);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_rpcrypt_regist_bright_ps4_pre10",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern void RegistBrightRaw(byte[] ambassador, uint pin, byte[] bright);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_regist_request_payload",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern int RegistRequestPayloadRaw(
+        int target, byte[] ambassador,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string? psnOnlineId,
+        byte[]? psnAccountId, uint pin, byte[] buf, ref int bufSize);
 }
