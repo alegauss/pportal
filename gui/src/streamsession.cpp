@@ -770,6 +770,18 @@ void StreamSession::HandleTouchEvent(QTouchEvent *event, qreal width, qreal heig
 
 void StreamSession::HandleDpadTouchEvent(ChiakiControllerState *state, bool placeholder)
 {
+	// PP93: the bounds this walks to are the connected console's, not the fixed macros in
+	// controllermanager.h. Those are 1920x1079 - the larger value of each axis, and therefore
+	// neither pad: a DualShock 4 is 1920x942 and a DualSense is 1919x1079. Walking a PS4 finger to
+	// y=1079 puts it a seventh of the height past the end of the pad.
+	//
+	// The pair below is the one this file already resolved per console for the mouse and touch
+	// paths, so this is the dpad path joining them rather than a fourth answer. The SDL touchpad
+	// path in controllermanager.cpp still uses the macros: it has no session to ask which console
+	// is connected, and giving it one belongs with the input port (PP8).
+	const uint16_t dpad_max_x = (uint16_t)PS_TOUCHPAD_MAX_X;
+	const uint16_t dpad_max_y = (uint16_t)PS_TOUCHPAD_MAX_Y;
+
 	ChiakiControllerState placeholder_touch_state;
 	if(!placeholder)
 		dpad_touch_timer->start();
@@ -778,7 +790,7 @@ void StreamSession::HandleDpadTouchEvent(ChiakiControllerState *state, bool plac
 		state->buttons &= ~CHIAKI_CONTROLLER_BUTTON_DPAD_LEFT;
 		if(dpad_touch_id < 0)
 		{
-			dpad_touch_value = QPair<uint16_t, uint16_t>((uint16_t)(0), (uint16_t)(PS_TOUCHPAD_MAXY / 2));
+			dpad_touch_value = QPair<uint16_t, uint16_t>((uint16_t)(0), (uint16_t)(dpad_max_y / 2));
 			dpad_touch_id = chiaki_controller_state_start_touch(&dpad_touch_state, dpad_touch_value.first, dpad_touch_value.second);
 			if(dpad_touch_stop_timer->isActive() && !placeholder)
 				dpad_touch_stop_timer->stop();
@@ -799,7 +811,7 @@ void StreamSession::HandleDpadTouchEvent(ChiakiControllerState *state, bool plac
 		// starting new touch
 		if(dpad_touch_id < 0)
 		{
-			dpad_touch_value = QPair<uint16_t, uint16_t>((uint16_t)(PS_TOUCHPAD_MAXX), (uint16_t)(PS_TOUCHPAD_MAXY / 2));
+			dpad_touch_value = QPair<uint16_t, uint16_t>((uint16_t)(dpad_max_x), (uint16_t)(dpad_max_y / 2));
 			dpad_touch_id = chiaki_controller_state_start_touch(&dpad_touch_state, dpad_touch_value.first, dpad_touch_value.second);
 			if(dpad_touch_stop_timer->isActive() && !placeholder)
 				dpad_touch_stop_timer->stop();
@@ -807,8 +819,8 @@ void StreamSession::HandleDpadTouchEvent(ChiakiControllerState *state, bool plac
 		}
 		if(dpad_touch_stop_timer->isActive() && !placeholder)
 			dpad_touch_stop_timer->stop();
-		if(dpad_touch_value.first > (PS_TOUCHPAD_MAXX - dpad_touch_increment))
-			dpad_touch_value.first = PS_TOUCHPAD_MAXX;
+		if(dpad_touch_value.first > (dpad_max_x - dpad_touch_increment))
+			dpad_touch_value.first = dpad_max_x;
 		else
 			dpad_touch_value.first += dpad_touch_increment;
 		chiaki_controller_state_set_touch_pos(&dpad_touch_state, dpad_touch_id, dpad_touch_value.first, dpad_touch_value.second);
@@ -820,7 +832,7 @@ void StreamSession::HandleDpadTouchEvent(ChiakiControllerState *state, bool plac
 		// starting new touch
 		if(dpad_touch_id < 0)
 		{
-			dpad_touch_value = QPair<uint16_t, uint16_t>((uint16_t)(PS_TOUCHPAD_MAXX / 2), (uint16_t)(PS_TOUCHPAD_MAXY));
+			dpad_touch_value = QPair<uint16_t, uint16_t>((uint16_t)(dpad_max_x / 2), (uint16_t)(dpad_max_y));
 			dpad_touch_id = chiaki_controller_state_start_touch(&dpad_touch_state, dpad_touch_value.first, dpad_touch_value.second);
 			if(dpad_touch_stop_timer->isActive() && !placeholder)
 				dpad_touch_stop_timer->stop();
@@ -828,8 +840,8 @@ void StreamSession::HandleDpadTouchEvent(ChiakiControllerState *state, bool plac
 		}
 		if(dpad_touch_stop_timer->isActive() && !placeholder)
 			dpad_touch_stop_timer->stop();
-		if(dpad_touch_value.second > PS_TOUCHPAD_MAXY - dpad_touch_increment)
-			dpad_touch_value.second = PS_TOUCHPAD_MAXY;
+		if(dpad_touch_value.second > dpad_max_y - dpad_touch_increment)
+			dpad_touch_value.second = dpad_max_y;
 		else
 			dpad_touch_value.second += dpad_touch_increment;
 		chiaki_controller_state_set_touch_pos(&dpad_touch_state, dpad_touch_id, dpad_touch_value.first, dpad_touch_value.second);
@@ -841,7 +853,7 @@ void StreamSession::HandleDpadTouchEvent(ChiakiControllerState *state, bool plac
 		// starting new touch
 		if(dpad_touch_id < 0)
 		{
-			dpad_touch_value = QPair<uint16_t, uint16_t>((uint16_t)(PS_TOUCHPAD_MAXX / 2), (uint16_t)(0));
+			dpad_touch_value = QPair<uint16_t, uint16_t>((uint16_t)(dpad_max_x / 2), (uint16_t)(0));
 			dpad_touch_id = chiaki_controller_state_start_touch(&dpad_touch_state, dpad_touch_value.first, dpad_touch_value.second);
 			if(dpad_touch_stop_timer->isActive() && !placeholder)
 				dpad_touch_stop_timer->stop();

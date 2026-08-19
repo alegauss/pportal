@@ -1251,7 +1251,7 @@ public static class SelfTest
             using (var pad2 = new ChiakiControllerState())
             using (var touch = new ChiakiControllerState())
             {
-                var dpad = new DpadTouch { Increment = 30 };
+                var dpad = new DpadTouch(ps5: true) { Increment = 30 };
 
                 // Two directions held at once. The C++ tests left first and returns, so this is a
                 // step left - and only the left bit is cleared, so the up bit survives into
@@ -1307,27 +1307,37 @@ public static class SelfTest
             using (var touch3 = new ChiakiControllerState())
             {
                 // The far edge, which is the other half of the clamp and uses the other test.
-                var dpad = new DpadTouch { Increment = 30 };
+                var dpad = new DpadTouch(ps5: true) { Increment = 30 };
                 pad3.Buttons = ChiakiControllerButton.DpadDown;
                 dpad.Handle(pad3, touch3);
                 Check("a down press starts at the bottom, halfway across",
-                    dpad.Value == ((ushort)960, (ushort)1079), dpad.Value.ToString());
+                    dpad.Value == ((ushort)959, (ushort)1079), dpad.Value.ToString());
 
                 pad3.Buttons = ChiakiControllerButton.DpadDown;
                 dpad.Handle(pad3, touch3);
                 Check("and cannot step past it",
-                    dpad.Value == ((ushort)960, (ushort)1079), dpad.Value.ToString());
+                    dpad.Value == ((ushort)959, (ushort)1079), dpad.Value.ToString());
             }
 
-            // PP93. These are a THIRD pair of touchpad bounds: 1920x1079, used whichever console
-            // is connected, against the mouse path's 1920x942 for a PS4 and 1919x1079 for a PS5.
-            // Asserted as it is, because the port must not differ - it is each axis's larger
-            // value and matches neither pad exactly.
-            Check("the dpad path uses bounds that match neither console's pad",
-                (DpadTouch.MaxX, DpadTouch.MaxY) != InputTranslation.TouchpadBounds(true)
-                && (DpadTouch.MaxX, DpadTouch.MaxY) != InputTranslation.TouchpadBounds(false)
-                && DpadTouch.MaxY > InputTranslation.TouchpadBounds(false).MaxY,
-                $"{DpadTouch.MaxX}x{DpadTouch.MaxY}");
+            // PP93, and the whole of it: the walk ends on the connected console's own pad. It used
+            // to end on 1920x1079 whichever console was attached - the larger value of each axis,
+            // and therefore neither pad - so a PS4 finger was driven to y=1079 on a pad that stops
+            // at 942. A seventh of the height, on every dpad-down gesture.
+            using (var pad4 = new ChiakiControllerState())
+            using (var touch4 = new ChiakiControllerState())
+            {
+                var ps4Dpad = new DpadTouch(ps5: false);
+                pad4.Buttons = ChiakiControllerButton.DpadDown;
+                ps4Dpad.Handle(pad4, touch4);
+                Check("a PS4 dpad-down stops at 942 and not at 1079",
+                    ps4Dpad.Value == ((ushort)960, (ushort)942), ps4Dpad.Value.ToString());
+
+                Check("each console's dpad walks its own pad",
+                    (ps4Dpad.MaxX, ps4Dpad.MaxY) == ((ushort)1920, (ushort)942)
+                    && (new DpadTouch(ps5: true).MaxX, new DpadTouch(ps5: true).MaxY)
+                        == ((ushort)1919, (ushort)1079),
+                    $"{ps4Dpad.MaxX}x{ps4Dpad.MaxY}");
+            }
         }
 
         Console.WriteLine();

@@ -22,6 +22,7 @@
 - ✅ **PP92** **the keyboard and mouse paths are QKeyEvent and QMouseEvent, so no managed host can move a stick or a finger** — bindings and touchpad coordinates reach a real ChiakiControllerState from managed code, under thirteen assertions including both touchpad shapes.
 - ✅ **PP91** **std::clamp's arguments are transposed in both touch paths, so a drag past the window edge is never clamped** — both clients clamp the value and not the literal, so a drag off the window stops at the edge of the touchpad instead of past it.
 - ✅ **PP94** **the dpad-as-touchpad gesture is a QTimer state machine, so no managed host can drive a finger with it** — the gesture's priority, its edge starts and both clamps run in managed code against a real controller state, under eleven assertions.
+- ✅ **PP93 (the dpad path)** **the dpad touch path uses a third pair of touchpad bounds, matching neither console's pad** — the dpad walks the connected console's own pad in both clients, so a PS4 finger stops at 942 instead of 1079.
 
 ## Block C — Video and input path
 

@@ -35,14 +35,23 @@ public enum DpadTouchAction
 public sealed class DpadTouch
 {
     /// <summary>
-    /// PS_TOUCHPAD_MAXX and PS_TOUCHPAD_MAXY from controllermanager.h, and they are a THIRD pair of
-    /// touchpad bounds: 1920x1079, against the mouse path's 1920x942 for a PS4 and 1919x1079 for a
-    /// PS5. It is each axis's larger value, and it is used whichever console is connected - so a
-    /// dpad-touch "down" on a PS4 drives the finger to 1079 on a pad that ends at 942. Reproduced,
-    /// and filed as PP93 rather than reconciled here.
+    /// PP93: the connected console's own pad, which is what the mouse and touch paths already use.
+    ///
+    /// It used to be PS_TOUCHPAD_MAXX/MAXY from controllermanager.h - 1920x1079, the larger value
+    /// of each axis and therefore neither pad, applied whichever console was connected. A
+    /// DualShock 4 is 1920x942, so a dpad-touch "down" walked the finger a seventh of the height
+    /// past the end of it.
     /// </summary>
-    public const ushort MaxX = 1920;
-    public const ushort MaxY = 1079;
+    public ushort MaxX { get; }
+    public ushort MaxY { get; }
+
+    /// <param name="ps5">Which console is connected, which is the whole of what picks the pad.</param>
+    public DpadTouch(bool ps5)
+    {
+        (float maxX, float maxY) = InputTranslation.TouchpadBounds(ps5);
+        MaxX = (ushort)maxX;
+        MaxY = (ushort)maxY;
+    }
 
     /// <summary>
     /// settings/dpad_touch_increment, which is zero when the feature is off. Zero is not a special
@@ -66,17 +75,21 @@ public sealed class DpadTouch
         ArgumentNullException.ThrowIfNull(touchState);
 
         // Order is the C++ file's order, and it is load-bearing: each block returns.
+        // The halves are integer division, as the C++ macros are: 1079/2 is 539, not 539.5.
+        ushort halfX = (ushort)(MaxX / 2);
+        ushort halfY = (ushort)(MaxY / 2);
+
         if (Take(padState, ChiakiControllerButton.DpadLeft))
-            return Step(touchState, start: (0, MaxY / 2), stepped: (Down(Value.X), Value.Y));
+            return Step(touchState, start: ((ushort)0, halfY), stepped: (Down(Value.X), Value.Y));
 
         if (Take(padState, ChiakiControllerButton.DpadRight))
-            return Step(touchState, start: (MaxX, MaxY / 2), stepped: (Up(Value.X, MaxX), Value.Y));
+            return Step(touchState, start: (MaxX, halfY), stepped: (Up(Value.X, MaxX), Value.Y));
 
         if (Take(padState, ChiakiControllerButton.DpadDown))
-            return Step(touchState, start: (MaxX / 2, MaxY), stepped: (Value.X, Up(Value.Y, MaxY)));
+            return Step(touchState, start: (halfX, MaxY), stepped: (Value.X, Up(Value.Y, MaxY)));
 
         if (Take(padState, ChiakiControllerButton.DpadUp))
-            return Step(touchState, start: (MaxX / 2, 0), stepped: (Value.X, Down(Value.Y)));
+            return Step(touchState, start: (halfX, (ushort)0), stepped: (Value.X, Down(Value.Y)));
 
         return DpadTouchAction.None;
     }
@@ -93,7 +106,7 @@ public sealed class DpadTouch
         TouchId = -1;
     }
 
-    private bool Take(ChiakiControllerState padState, ChiakiControllerButton direction)
+    private static bool Take(ChiakiControllerState padState, ChiakiControllerButton direction)
     {
         if ((padState.Buttons & direction) == 0)
             return false;
