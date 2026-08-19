@@ -967,6 +967,48 @@ CHIAKI_SHIM_API void *chiaki_shim_rpcrypt_create_auth(
 	return self;
 }
 
+/**
+ * The registration-mode init, which derives from an ambassador and a PIN rather than from a nonce
+ * and a morning key. Same struct out, entirely different schedule in - and the four recorded cases
+ * for it are the ones the port could not reach until this existed.
+ */
+CHIAKI_SHIM_API void *chiaki_shim_rpcrypt_create_regist(
+		int32_t target, const uint8_t *ambassador, int32_t key_0_off, uint32_t pin)
+{
+	ChiakiRPCrypt *self;
+	if(!ambassador || key_0_off < 0)
+		return NULL;
+
+	self = (ChiakiRPCrypt *)calloc(1, sizeof(ChiakiRPCrypt));
+	if(!self)
+		return NULL;
+
+	if(chiaki_rpcrypt_init_regist(self, (ChiakiTarget)target, ambassador, (size_t)key_0_off, pin)
+			!= CHIAKI_ERR_SUCCESS)
+	{
+		free(self);
+		return NULL;
+	}
+	return self;
+}
+
+/**
+ * The derived key itself, copied out rather than the struct handed over.
+ *
+ * test/rpcrypt.c's registration cases assert on rpcrypt.bright directly, so reaching them means
+ * reading one field - and reading one field is what an accessor is for. Letting ChiakiRPCrypt
+ * cross as a layout would put the offset of `bright` into the managed side's marshalling, where a
+ * libchiaki that reorders the struct becomes a wrong answer rather than a build error.
+ */
+CHIAKI_SHIM_API bool chiaki_shim_rpcrypt_bright(void *rpcrypt, uint8_t *bright_out)
+{
+	if(!rpcrypt || !bright_out)
+		return false;
+
+	memcpy(bright_out, ((ChiakiRPCrypt *)rpcrypt)->bright, CHIAKI_RPCRYPT_KEY_SIZE);
+	return true;
+}
+
 CHIAKI_SHIM_API void chiaki_shim_rpcrypt_free(void *rpcrypt)
 {
 	free(rpcrypt);

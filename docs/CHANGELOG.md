@@ -89,7 +89,7 @@
 - ✅ **PP82** **the 148-row preference table was extracted from settings.cpp once and nothing re-checks it** — the extraction runs as a check now, both ways, and the first audit found the 148 rows correct.
 - ✅ **PP35 (the xUnit runner over the FEC vectors)** **5512 lines of munit tests cover the modules this port rewrites, and nothing in a managed tree runs them** — one case per recorded case, over PP23's readers, so a failure names which vector broke.
 - ✅ **PP120** **the GMAC that authenticates every takion packet has four recorded vectors and the port checks none** — the shim carries GMAC at ABI 27, and all four recorded vectors are xUnit cases now.
-- ✅ **PP121 (the four auth-mode cases)** **eight of test/rpcrypt.c's nine recorded cases are unchecked, four of them a whole console generation** — the pre-10 schedule is checked now, and driving it on the modern target fails every one.
+- ✅ **PP121** **eight of test/rpcrypt.c's nine recorded cases are unchecked, four of them a whole console generation** — the registration schedule is checked on both generations now, with the PIN and the key offset each proven to matter.
 
 ## Block H — Performance and telemetry
 

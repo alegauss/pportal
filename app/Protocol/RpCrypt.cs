@@ -36,6 +36,47 @@ public sealed class RpCrypt : IDisposable
             throw new OutOfMemoryException("chiaki_shim_rpcrypt_create_auth returned null.");
     }
 
+    private RpCrypt(IntPtr handle) => _handle = handle;
+
+    /// <summary>
+    /// PP121: a crypt initialised for REGISTRATION, which derives from an ambassador and the PIN
+    /// a user types rather than from a nonce and a morning key.
+    ///
+    /// A named factory and not a second constructor, because the two take the same number of
+    /// arguments and one of them would silently become the other at a call site that got the
+    /// order wrong - and getting it wrong produces a key rather than an error.
+    /// </summary>
+    /// <param name="key0Offset">
+    /// An offset into the request payload, not a constant: regist.c reads it from a byte of the
+    /// randomised header, so the same PIN on the same console derives different keys per attempt.
+    /// </param>
+    public static RpCrypt ForRegistration(
+        ChiakiTarget target, ReadOnlySpan<byte> ambassador, int key0Offset, uint pin)
+    {
+        RequireKeySize(ambassador, nameof(ambassador));
+        ArgumentOutOfRangeException.ThrowIfNegative(key0Offset);
+
+        IntPtr handle = RpCryptCreateRegist((int)target, ambassador.ToArray(), key0Offset, pin);
+        if (handle == IntPtr.Zero)
+            throw new InvalidOperationException("chiaki_rpcrypt_init_regist failed.");
+
+        return new RpCrypt(handle);
+    }
+
+    /// <summary>
+    /// The derived bright key. Read across the seam rather than recomputed, and it is what the
+    /// recorded registration cases assert on - the only observable output of that derivation
+    /// before a console is involved.
+    /// </summary>
+    public byte[] Bright()
+    {
+        var bright = new byte[KeySize];
+        if (!RpCryptBright(Handle, bright))
+            throw new InvalidOperationException("chiaki_shim_rpcrypt_bright failed.");
+
+        return bright;
+    }
+
     private IntPtr Handle
         => _handle != IntPtr.Zero ? _handle : throw new ObjectDisposedException(nameof(RpCrypt));
 
@@ -159,6 +200,15 @@ public sealed class RpCrypt : IDisposable
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_rpcrypt_create_auth",
         CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr RpCryptCreateAuth(int target, byte[] nonce, byte[] morning);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_rpcrypt_create_regist",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr RpCryptCreateRegist(int target, byte[] ambassador, int key0Off, uint pin);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_rpcrypt_bright",
+        CallingConvention = CallingConvention.Cdecl)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    private static extern bool RpCryptBright(IntPtr rpcrypt, byte[] brightOut);
 
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_rpcrypt_free",
         CallingConvention = CallingConvention.Cdecl)]

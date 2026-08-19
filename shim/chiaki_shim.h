@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 27
+#define CHIAKI_SHIM_ABI 28
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -650,6 +650,24 @@ CHIAKI_SHIM_API bool chiaki_shim_rpcrypt_bright_ambassador(
 /** A ChiakiRPCrypt initialised for the auth exchange, held here as an opaque handle. */
 CHIAKI_SHIM_API void *chiaki_shim_rpcrypt_create_auth(
 		int32_t target, const uint8_t *nonce, const uint8_t *morning);
+
+/**
+ * PP121: the registration-mode init, and the four recorded cases that needed it.
+ *
+ * Registration derives its keys from an ambassador and the PIN a user types, not from a nonce and
+ * a morning key - a different schedule producing the same struct. test/rpcrypt.c records it on
+ * both console generations, and none of those four cases was reachable from managed code until
+ * this existed, which made registration the one flow with recorded answers and no comparison.
+ *
+ * key_0_off is an offset into the request payload the caller chose, not a constant: regist.c
+ * takes it from a byte of the randomised header, so the same PIN on the same console derives
+ * different keys per attempt. It is an argument here for the same reason.
+ */
+CHIAKI_SHIM_API void *chiaki_shim_rpcrypt_create_regist(
+		int32_t target, const uint8_t *ambassador, int32_t key_0_off, uint32_t pin);
+
+/** The derived bright key, copied out - the recorded registration cases assert on it directly. */
+CHIAKI_SHIM_API bool chiaki_shim_rpcrypt_bright(void *rpcrypt, uint8_t *bright_out);
 
 CHIAKI_SHIM_API void chiaki_shim_rpcrypt_free(void *rpcrypt);
 
