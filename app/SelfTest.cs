@@ -1,8 +1,52 @@
 using System.Text;
 using ChiakiNg.Settings;
 using ChiakiNg.Native;
+using ChiakiNg.Session;
 
 namespace ChiakiNg;
+
+/// <summary>
+/// A preference store held in a dictionary, so PP5's translation can be exercised on the branches
+/// a user actually takes without writing to HKCU.
+///
+/// Every key it does not hold falls through to the declared default, which is what makes it a
+/// stand-in for the real store rather than a second table: the defaults still come from
+/// Preferences, so a row that is wrong there is still wrong here.
+/// </summary>
+internal sealed class FakePreferences : IPreferences
+{
+    private readonly Dictionary<string, object> values = new(StringComparer.Ordinal);
+
+    public FakePreferences Set(string key, object value)
+    {
+        values[key] = value;
+        return this;
+    }
+
+    private static T Default<T>(string key, T fallback)
+        => Preferences.Find(key)?.Default is T d ? d : fallback;
+
+    public string? GetString(string key)
+        => values.TryGetValue(key, out object? v) ? (string?)v : Default<string?>(key, null);
+
+    public bool GetBool(string key)
+        => values.TryGetValue(key, out object? v) ? (bool)v : Default(key, false);
+
+    public int GetInt(string key)
+        => values.TryGetValue(key, out object? v) ? (int)v : Default(key, 0);
+
+    public uint GetUInt(string key)
+        => values.TryGetValue(key, out object? v) ? (uint)v : Default(key, 0u);
+
+    public double GetDouble(string key)
+        => values.TryGetValue(key, out object? v) ? (double)v : Default(key, 0.0);
+
+    public QRectValue? GetRect(string key)
+        => values.TryGetValue(key, out object? v) ? (QRectValue?)v : null;
+
+    public byte[]? GetBytes(string key)
+        => values.TryGetValue(key, out object? v) ? (byte[]?)v : null;
+}
 
 /// <summary>
 /// PP2's assertion, and the shape claude-tray already uses: a selftest inside the executable,
@@ -725,6 +769,137 @@ public static class SelfTest
                 pad.SetIdle();
                 Check("set_idle returns the state to idle", pad.Matches(idle));
             }
+
+            Console.WriteLine();
+            Console.WriteLine("SessionConnectInfo - streamsession.cpp's first Qt-free piece");
+
+            // isLocalAddress is a string test and not an address test, and the negatives are the
+            // half that matters: each of these takes the REMOTE profile - lower resolution, lower
+            // bitrate - on a machine that may be sitting beside the console.
+            Check("the RFC 1918 literals are local",
+                SessionConnectInfo.IsLocalAddress("10.0.0.5")
+                && SessionConnectInfo.IsLocalAddress("192.168.1.7")
+                && SessionConnectInfo.IsLocalAddress("172.16.0.1")
+                && SessionConnectInfo.IsLocalAddress("172.31.255.1"));
+            Check("172.15 and 172.32 are outside the block",
+                !SessionConnectInfo.IsLocalAddress("172.15.0.1")
+                && !SessionConnectInfo.IsLocalAddress("172.32.0.1"));
+            // The quirk, reproduced rather than fixed: loopback and link-local are not in the
+            // literal list, so the Qt client streams them at the remote profile.
+            Check("loopback and link-local are NOT local by this rule",
+                !SessionConnectInfo.IsLocalAddress("127.0.0.1")
+                && !SessionConnectInfo.IsLocalAddress("169.254.1.1"));
+            Check("a name with neither dot nor colon is not local",
+                !SessionConnectInfo.IsLocalAddress("ps5")
+                && !SessionConnectInfo.IsLocalAddress("") && !SessionConnectInfo.IsLocalAddress(null));
+            Check("the IPv6 unique-local block is local, either case",
+                SessionConnectInfo.IsLocalAddress("fd00::1")
+                && SessionConnectInfo.IsLocalAddress("FC00::1")
+                && !SessionConnectInfo.IsLocalAddress("fe80::1"));
+
+            // A duid means the session goes through PSN's relay, and that is remote whatever the
+            // address says - the address is not the console's in that case.
+            Check("a duid makes even a local address remote",
+                SessionConnectInfo.IsLocalConnection("192.168.1.7", null)
+                && !SessionConnectInfo.IsLocalConnection("192.168.1.7", "some-duid"));
+
+            var untouched = new FakePreferences();
+
+            // The four groups, on a store where nothing was set. These are the numbers a fresh
+            // install streams at, and the PS5 pair differs by resolution while the PS4 pair does
+            // not - which is settings.cpp's own table and not a simplification here.
+            VideoProfileChoice ps5Local = SessionConnectInfo.VideoProfile(untouched, ps5: true, "192.168.1.7", null);
+            VideoProfileChoice ps5Remote = SessionConnectInfo.VideoProfile(untouched, ps5: true, "8.8.8.8", null);
+            VideoProfileChoice ps4Local = SessionConnectInfo.VideoProfile(untouched, ps5: false, "192.168.1.7", null);
+            VideoProfileChoice ps4Remote = SessionConnectInfo.VideoProfile(untouched, ps5: false, "8.8.8.8", null);
+
+            Check("a PS5 on the LAN defaults to 1080p60 h265",
+                ps5Local == new VideoProfileChoice(ChiakiVideoResolution.P1080, ChiakiVideoFps.Fps60, 0, ChiakiCodec.H265),
+                ps5Local.ToString());
+            Check("a PS5 off the LAN drops to 720p and keeps h265",
+                ps5Remote == new VideoProfileChoice(ChiakiVideoResolution.P720, ChiakiVideoFps.Fps60, 0, ChiakiCodec.H265),
+                ps5Remote.ToString());
+            Check("a PS4 is 720p60 h264 on either side",
+                ps4Local == ps4Remote
+                && ps4Local == new VideoProfileChoice(ChiakiVideoResolution.P720, ChiakiVideoFps.Fps60, 0, ChiakiCodec.H264),
+                ps4Local.ToString());
+
+            // The branches a user takes, which the default store cannot reach.
+            var tuned = new FakePreferences()
+                .Set("settings/resolution_local_ps5", "540p")
+                .Set("settings/fps_local_ps5", 30)
+                .Set("settings/bitrate_local_ps5", 30000u)
+                .Set("settings/codec_local_ps5", "h265_hdr");
+
+            VideoProfileChoice tunedChoice = SessionConnectInfo.VideoProfile(tuned, ps5: true, "10.0.0.5", null);
+            Check("a set resolution, fps, bitrate and codec all reach the profile",
+                tunedChoice == new VideoProfileChoice(ChiakiVideoResolution.P540, ChiakiVideoFps.Fps30, 30000, ChiakiCodec.H265Hdr),
+                tunedChoice.ToString());
+
+            // clampCodecForBackend: an OpenGL window cannot present HDR. Applied to the PS5
+            // codecs and not to the PS4 one, which is settings.cpp's asymmetry, not a shortcut.
+            var openGl = new FakePreferences()
+                .Set("settings/render_backend", "opengl")
+                .Set("settings/codec_local_ps5", "h265_hdr")
+                .Set("settings/codec_ps4", "h265_hdr");
+            Check("HDR is clamped away on an OpenGL backend",
+                SessionConnectInfo.VideoProfile(openGl, ps5: true, "10.0.0.5", null).Codec == ChiakiCodec.H265,
+                SessionConnectInfo.VideoProfile(openGl, ps5: true, "10.0.0.5", null).Codec.ToString());
+            Check("the PS4 codec is NOT clamped, as settings.cpp leaves it",
+                SessionConnectInfo.VideoProfile(openGl, ps5: false, "10.0.0.5", null).Codec == ChiakiCodec.H265Hdr);
+            Check("vulkan keeps HDR",
+                SessionConnectInfo.VideoProfile(
+                    new FakePreferences().Set("settings/codec_local_ps5", "h265_hdr"),
+                    ps5: true, "10.0.0.5", null).Codec == ChiakiCodec.H265Hdr);
+
+            // A value a newer client wrote reads as the default rather than throwing, which is
+            // QMap::key's behaviour where the string is not in the table.
+            Check("an unknown resolution or codec falls back to the default",
+                SessionConnectInfo.VideoProfile(
+                    new FakePreferences()
+                        .Set("settings/resolution_local_ps5", "1440p")
+                        .Set("settings/codec_local_ps5", "av1"),
+                    ps5: true, "10.0.0.5", null)
+                    == new VideoProfileChoice(ChiakiVideoResolution.P1080, ChiakiVideoFps.Fps60, 0, ChiakiCodec.H265));
+
+            // And the profile as libchiaki ends up holding it. The codec line is the one that
+            // matters: chiaki_connect_video_profile_preset writes H264 into every preset, so a
+            // caller that stopped there would stream H264 on a PS5 whose default is H265 - a
+            // working stream at the wrong codec, reported by nothing.
+            using (var applied = new ChiakiConnectInfo())
+            {
+                SessionConnectInfo.Apply(applied, ps5Local);
+                Check("the default PS5 profile lands as 1080p60 at the preset bitrate, h265",
+                    applied.VideoProfile == new ChiakiVideoProfile(1920, 1080, 60, 15000, (int)ChiakiCodec.H265),
+                    applied.VideoProfile.ToString());
+
+                SessionConnectInfo.Apply(applied, tunedChoice);
+                Check("a set bitrate replaces the preset's, and the rest comes from the preset",
+                    applied.VideoProfile == new ChiakiVideoProfile(960, 540, 30, 30000, (int)ChiakiCodec.H265Hdr),
+                    applied.VideoProfile.ToString());
+            }
+
+            // The settings screen stores a one-based index and the session wants the bit. An
+            // off-by-one here is a shortcut that fires on the neighbouring button.
+            Check("a dpad shortcut of zero stays off",
+                SessionConnectInfo.DpadTouchShortcutBit(0) == 0);
+            Check("a one-based index becomes its bit",
+                SessionConnectInfo.DpadTouchShortcutBit(1) == 1
+                && SessionConnectInfo.DpadTouchShortcutBit(2) == 2
+                && SessionConnectInfo.DpadTouchShortcutBit(3) == 4
+                && SessionConnectInfo.DpadTouchShortcutBit(5) == 16);
+
+            // The increment is zero when the feature is off, which is how the session is told it
+            // is off at all - there is no second flag. The feature defaults to ON, so an untouched
+            // store carries the increment rather than a zero.
+            Check("the dpad increment is zero only once the feature is switched off",
+                SessionConnectInfo.DpadTouchIncrement(
+                    new FakePreferences().Set("settings/dpad_touch_enabled", false)) == 0);
+            Check("an untouched store has the feature on at Qt's 30",
+                SessionConnectInfo.DpadTouchIncrement(new FakePreferences()) == 30);
+            Check("and a set increment is what crosses",
+                SessionConnectInfo.DpadTouchIncrement(
+                    new FakePreferences().Set("settings/dpad_touch_increment", 45u)) == 45);
         }
 
         Console.WriteLine();

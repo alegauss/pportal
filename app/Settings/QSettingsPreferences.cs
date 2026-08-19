@@ -207,6 +207,26 @@ public static class Preferences
 }
 
 /// <summary>
+/// What a caller needs from a preference store, apart from where it lives.
+///
+/// PP5 is the reason this exists rather than the registry class alone: the settings-to-session
+/// translation is a pure function of these reads, and asserting it against the default store only
+/// asserts the row where the user changed nothing. The interface is what lets the branch a user
+/// actually takes - a bitrate set, a codec set, OpenGL selected - be exercised without writing to
+/// HKCU from a test.
+/// </summary>
+public interface IPreferences
+{
+    string? GetString(string key);
+    bool GetBool(string key);
+    int GetInt(string key);
+    uint GetUInt(string key);
+    double GetDouble(string key);
+    QRectValue? GetRect(string key);
+    byte[]? GetBytes(string key);
+}
+
+/// <summary>
 /// Reads a declared preference out of whichever store declares it, falling back to the Qt
 /// default when the user has never set it.
 ///
@@ -214,7 +234,7 @@ public static class Preferences
 /// or a preference nobody transcribed, and both are bugs in this tree; answering them with a zero
 /// would hide the second one for as long as the port lasts.
 /// </summary>
-public sealed class QSettingsPreferences
+public sealed class QSettingsPreferences : IPreferences
 {
     private readonly QSettingsStore store;
 

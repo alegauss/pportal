@@ -113,6 +113,18 @@ public sealed class ChiakiConnectInfo : IDisposable
     public void SetVideoPreset(ChiakiVideoResolution resolution, ChiakiVideoFps fps)
         => ConnectInfoSetVideoPreset(Handle, (int)resolution, (int)fps);
 
+    /// <summary>
+    /// The bitrate override Settings applies on top of the preset when the stored one is not zero.
+    /// </summary>
+    public uint Bitrate { set => ConnectInfoSetBitrate(Handle, value); }
+
+    /// <summary>
+    /// The codec, which is not optional: chiaki_connect_video_profile_preset writes H264 into
+    /// every preset it fills, so a caller that stopped at the preset streams H264 on a PS5 whose
+    /// default is H265 - a working stream at the wrong codec that nothing reports.
+    /// </summary>
+    public int Codec { set => ConnectInfoSetCodec(Handle, value); }
+
     /// <summary>What the preset resolved to, read back out of C.</summary>
     public ChiakiVideoProfile VideoProfile
     {
@@ -167,6 +179,14 @@ public sealed class ChiakiConnectInfo : IDisposable
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_connect_info_set_video_preset",
         CallingConvention = CallingConvention.Cdecl)]
     private static extern void ConnectInfoSetVideoPreset(IntPtr info, int resolution, int fps);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_connect_info_set_bitrate",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern void ConnectInfoSetBitrate(IntPtr info, uint bitrate);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_connect_info_set_codec",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern void ConnectInfoSetCodec(IntPtr info, int codec);
 
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_connect_info_video_profile",
         CallingConvention = CallingConvention.Cdecl)]

@@ -226,6 +226,20 @@ CHIAKI_SHIM_API void chiaki_shim_connect_info_set_video_preset(
 				(ChiakiVideoResolutionPreset)resolution, (ChiakiVideoFPSPreset)fps);
 }
 
+CHIAKI_SHIM_API void chiaki_shim_connect_info_set_bitrate(void *info, uint32_t bitrate)
+{
+	chiaki_shim_connect_info *self = (chiaki_shim_connect_info *)info;
+	if(self)
+		self->info.video_profile.bitrate = bitrate;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_connect_info_set_codec(void *info, int32_t codec)
+{
+	chiaki_shim_connect_info *self = (chiaki_shim_connect_info *)info;
+	if(self)
+		self->info.video_profile.codec = (ChiakiCodec)codec;
+}
+
 CHIAKI_SHIM_API void chiaki_shim_connect_info_video_profile(
 		void *info,
 		uint32_t *width,

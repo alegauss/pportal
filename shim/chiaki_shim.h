@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 5
+#define CHIAKI_SHIM_ABI 6
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -215,6 +215,17 @@ CHIAKI_SHIM_API bool chiaki_shim_connect_info_set_morning(
  */
 CHIAKI_SHIM_API void chiaki_shim_connect_info_set_video_preset(
 		void *info, int32_t resolution, int32_t fps);
+
+/**
+ * The two overrides Settings applies on top of the preset, in the order it applies them.
+ *
+ * settings.cpp reads a preset, then replaces the bitrate when the stored one is non-zero and
+ * replaces the codec unconditionally - which matters, because
+ * chiaki_connect_video_profile_preset always writes CHIAKI_CODEC_H264. A port that took the
+ * preset as final would stream H264 on every PS5, whose default is H265.
+ */
+CHIAKI_SHIM_API void chiaki_shim_connect_info_set_bitrate(void *info, uint32_t bitrate);
+CHIAKI_SHIM_API void chiaki_shim_connect_info_set_codec(void *info, int32_t codec);
 
 /** Reads the profile back out as scalars, so the preset above can be asserted and not assumed. */
 CHIAKI_SHIM_API void chiaki_shim_connect_info_video_profile(

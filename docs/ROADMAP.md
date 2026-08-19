@@ -11,7 +11,7 @@
 
 ## Block B — Native interop
 
-- 📋 **PP5** (deps: PP4 ✅) **streamsession.cpp drives the session through Qt signals and QThread, so a session cannot run without Qt** — 2862 lines mix protocol callbacks with Qt types, and a Qt-free session is what lets the interface be replaced once instead of rewritten twice. → §PP5
+- ⏳ **PP5** (deps: PP4 ✅) **streamsession.cpp drives the session through Qt signals and QThread, so a session cannot run without Qt** — the connect flow, the audio and video callbacks, the reconnect logic and the teardown, all still in QObject and QThread. → §PP5
 - 📋 **PP6** (deps: PP4 ✅) **console discovery and wake use QUdpSocket, so the console list has no source in a Qt-free host** — Discovery is small, self-contained and the first thing the front door needs, so it is the cheapest proof that the interop boundary holds. → §PP6
 - 📋 **PP7** (deps: PP4 ✅) **PSN OAuth login runs in a QtWebEngine view, a bundled browser the WPF host has no equivalent for** — WebView2 ships with Windows and catches the same redirect, so the account link costs a control instead of a second rendering engine in the installer. → §PP7
 - 📋 **PP8** (deps: PP4 ✅) **controller input is SDL wired into Qt events, and 950 lines of it decide what a button does** — A remote play client is driven by a gamepad before a mouse, so the input path is a first-class port and not a detail of whichever screen is drawn first. → §PP8
@@ -19,7 +19,7 @@
 
 ## Block C — Video and input path
 
-- 📋 **PP9** (deps: PP5, PP43 ✅) **the video is presented by libplacebo into a Vulkan-backed QQuickWindow, which WPF cannot host** — WPF composes through D3D9 and cannot present a Vulkan swapchain, so the choice between a child window and a shared texture is what every stream screen is then built on. → §PP9
+- 📋 **PP9** (deps: PP5 ⏳, PP43 ✅) **the video is presented by libplacebo into a Vulkan-backed QQuickWindow, which WPF cannot host** — WPF composes through D3D9 and cannot present a Vulkan swapchain, so the choice between a child window and a shared texture is what every stream screen is then built on. → §PP9
 - 📋 **PP10** (deps: PP9) **the stream HUD and the in-stream menu are QML drawn over the video and disappear with the renderer** — 1740 lines of overlay assume the compositor they are drawn in, so what replaces the renderer decides whether they are XAML above a surface or drawn into the frame. → §PP10
 - 📋 **PP11** (deps: PP9) **fullscreen, HDR handoff and refresh-rate switching are handled by the Qt window** — These are the three settings a remote play session is actually judged by, and each is a Win32 or DXGI call the new window has to make for itself. → §PP11
 - 📋 **PP78** (deps: —) **picking "none" in the decoder setting fails the session instead of decoding in software** — ffmpeg has no device type by that name, so the one option a user picks to rule out hardware decoding is the only one that cannot start a stream. → §PP78
