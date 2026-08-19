@@ -7,6 +7,7 @@
 #include <chiaki/controller.h>
 #include <chiaki/log.h>
 #include <chiaki/session.h>
+#include <chiaki/sessionbaseline.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -538,6 +539,159 @@ CHIAKI_SHIM_API bool chiaki_shim_session_controller_state_matches(void *session,
 
 	return chiaki_controller_state_equals(&self->session.controller_state,
 			(ChiakiControllerState *)state);
+}
+
+CHIAKI_SHIM_API uint32_t chiaki_shim_baseline_schema(void)
+{
+	return (uint32_t)CHIAKI_SESSION_BASELINE_SCHEMA;
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_baseline_line_max(void)
+{
+	return (int32_t)CHIAKI_SESSION_BASELINE_LINE_MAX;
+}
+
+CHIAKI_SHIM_API void *chiaki_shim_baseline_create(void)
+{
+	ChiakiSessionBaseline *self = (ChiakiSessionBaseline *)calloc(1, sizeof(ChiakiSessionBaseline));
+	if(self)
+		chiaki_session_baseline_init(self);
+	return self;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_baseline_free(void *baseline)
+{
+	free(baseline);
+}
+
+CHIAKI_SHIM_API void chiaki_shim_baseline_set_started(void *baseline, uint64_t unix_seconds)
+{
+	if(baseline)
+		chiaki_session_baseline_set_started((ChiakiSessionBaseline *)baseline, unix_seconds);
+}
+
+CHIAKI_SHIM_API void chiaki_shim_baseline_set_duration_ms(void *baseline, uint64_t duration_ms)
+{
+	if(baseline)
+		((ChiakiSessionBaseline *)baseline)->duration_ms = duration_ms;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_baseline_set_app_version(void *baseline, const char *version)
+{
+	if(baseline && version)
+		chiaki_session_baseline_set_app_version((ChiakiSessionBaseline *)baseline, version);
+}
+
+CHIAKI_SHIM_API void chiaki_shim_baseline_set_video(
+		void *baseline,
+		const char *codec,
+		uint32_t width,
+		uint32_t height,
+		uint32_t fps,
+		uint32_t bitrate_kbps)
+{
+	ChiakiSessionBaseline *self = (ChiakiSessionBaseline *)baseline;
+	if(!self)
+		return;
+
+	if(codec)
+		chiaki_session_baseline_set_video_codec(self, codec);
+	self->video_width = width;
+	self->video_height = height;
+	self->video_fps = fps;
+	self->bitrate_kbps = bitrate_kbps;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_baseline_set_config(
+		void *baseline,
+		const char *hw_decoder,
+		const char *renderer,
+		double packet_loss_max,
+		bool idr_on_fec_failure)
+{
+	ChiakiSessionBaseline *self = (ChiakiSessionBaseline *)baseline;
+	if(!self)
+		return;
+
+	if(hw_decoder)
+		chiaki_session_baseline_set_hw_decoder(self, hw_decoder);
+	if(renderer)
+		chiaki_session_baseline_set_renderer(self, renderer);
+	self->packet_loss_max = packet_loss_max;
+	self->idr_on_fec_failure = idr_on_fec_failure;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_baseline_set_measured(
+		void *baseline,
+		double measured_bitrate_mbps,
+		double average_packet_loss,
+		uint64_t frames_presented,
+		uint64_t frames_lost,
+		uint64_t frames_dropped,
+		uint64_t network_rtt_us)
+{
+	ChiakiSessionBaseline *self = (ChiakiSessionBaseline *)baseline;
+	if(!self)
+		return;
+
+	self->measured_bitrate_mbps = measured_bitrate_mbps;
+	self->average_packet_loss = average_packet_loss;
+	self->frames_presented = frames_presented;
+	self->frames_lost = frames_lost;
+	self->frames_dropped = frames_dropped;
+	self->network_rtt_us = network_rtt_us;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_baseline_push_handoff(void *baseline, uint64_t handoff_us)
+{
+	if(baseline)
+		chiaki_session_baseline_push_handoff((ChiakiSessionBaseline *)baseline, handoff_us);
+}
+
+CHIAKI_SHIM_API void chiaki_shim_baseline_push_input_to_wire(void *baseline, uint64_t input_us)
+{
+	if(baseline)
+		chiaki_session_baseline_push_input_to_wire((ChiakiSessionBaseline *)baseline, input_us);
+}
+
+CHIAKI_SHIM_API uint64_t chiaki_shim_baseline_handoff_avg_us(void *baseline)
+{
+	return baseline
+			? chiaki_session_baseline_handoff_us_avg((const ChiakiSessionBaseline *)baseline)
+			: 0;
+}
+
+CHIAKI_SHIM_API uint64_t chiaki_shim_baseline_latency_estimate_us(void *baseline)
+{
+	return baseline
+			? chiaki_session_baseline_latency_estimate_us((const ChiakiSessionBaseline *)baseline)
+			: 0;
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_baseline_format(
+		void *baseline, char *buf, int32_t buf_size, int32_t *written)
+{
+	size_t out = 0;
+	ChiakiErrorCode err;
+
+	if(written)
+		*written = 0;
+	if(!baseline || !buf || buf_size <= 0)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+
+	err = chiaki_session_baseline_format((const ChiakiSessionBaseline *)baseline, buf,
+			(size_t)buf_size, &out);
+	if(written)
+		*written = (int32_t)out;
+	return (int32_t)err;
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_baseline_append(void *baseline, const char *path)
+{
+	if(!baseline || !path)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+
+	return (int32_t)chiaki_session_baseline_append((const ChiakiSessionBaseline *)baseline, path);
 }
 
 CHIAKI_SHIM_API void chiaki_shim_session_free(void *session)

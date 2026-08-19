@@ -1019,6 +1019,98 @@ public static class SelfTest
                 SessionLogSanitizer.Sanitize("Switched to profile 0, resolution: 1920x1080")
                     == "Switched to profile 0, resolution: 1920x1080",
                 SessionLogSanitizer.Sanitize("Switched to profile 0, resolution: 1920x1080"));
+
+            Console.WriteLine();
+            Console.WriteLine("SessionBaseline - the ledger the two builds are compared with");
+
+            // The pin. A libchiaki that bumps the schema has to break this rather than let the
+            // host append rows a reader silently mixes with the old ones.
+            Check("the schema is the one this host was written against",
+                SessionBaseline.Schema == SessionBaseline.ExpectedSchema,
+                $"{SessionBaseline.Schema} vs {SessionBaseline.ExpectedSchema}");
+
+            using (var baseline = new SessionBaseline())
+            {
+                baseline.SetStarted(DateTimeOffset.FromUnixTimeSeconds(1_786_000_000));
+                baseline.SetDuration(TimeSpan.FromSeconds(90));
+                baseline.SetAppVersion("1.10.0");
+                baseline.SetVideo("h265", 1920, 1080, 60, 15000);
+                baseline.SetConfig("d3d11va", "vulkan", 0.05, idrOnFecFailure: true);
+                baseline.SetMeasured(11.25, 0.004, framesPresented: 5400, framesLost: 3,
+                    framesDropped: 1, networkRttUs: 12000);
+
+                // The latency estimate is a sum of three terms, and pushing into any of them has
+                // to move it. Asserted as a direction rather than as an arithmetic identity,
+                // because re-deriving the sum here would be a second implementation of the thing
+                // being checked.
+                ulong before = baseline.LatencyEstimateUs;
+                baseline.PushHandoff(4000);
+                baseline.PushHandoff(6000);
+                baseline.PushInputToWire(800);
+                Check("the handoff average is the library's own fold",
+                    baseline.HandoffAverageUs == 5000, baseline.HandoffAverageUs.ToString());
+                Check("samples move the latency estimate and the rtt is already in it",
+                    before == 12000 && baseline.LatencyEstimateUs > before,
+                    $"{before} -> {baseline.LatencyEstimateUs}");
+
+                // The line, produced by libchiaki and parsed back with a real JSON reader - which
+                // is what any tool comparing the two builds will do to it.
+                string line = baseline.Format();
+                Check("the line is one JSON object ending in a newline",
+                    line.EndsWith('\n') && line.TrimEnd('\n').Count(c => c == '\n') == 0
+                    && line.StartsWith('{'),
+                    line.Length.ToString());
+
+                using var doc = System.Text.Json.JsonDocument.Parse(line);
+                System.Text.Json.JsonElement root = doc.RootElement;
+                Check("the row carries the schema, the timestamp and the app version",
+                    root.GetProperty("schema").GetInt32() == (int)SessionBaseline.ExpectedSchema
+                    && root.GetProperty("started_utc").GetString() == "2026-08-06T07:06:40Z"
+                    && root.GetProperty("app_version").GetString() == "1.10.0",
+                    root.GetProperty("started_utc").GetString() ?? "<null>");
+                Check("the picture that was asked for is in it",
+                    root.GetProperty("video").GetProperty("width").GetInt32() == 1920
+                    && root.GetProperty("video").GetProperty("codec").GetString() == "h265"
+                    && root.GetProperty("settings").GetProperty("bitrate_kbps").GetInt32() == 15000);
+                // The decoder and the renderer travel together: a row naming one without the
+                // other cannot be compared with another row (PP72).
+                Check("the decoder and the renderer that allowed it are both there",
+                    root.GetProperty("settings").GetProperty("hw_decoder").GetString() == "d3d11va"
+                    && root.GetProperty("settings").GetProperty("renderer").GetString() == "vulkan");
+                // And what it must NOT carry. The identifying fields are the ones the log needs a
+                // sanitiser for, so the record does not collect them - asserted here because the
+                // row is the thing that would be shared, and "no field to transmit" is the guard.
+                Check("no console, address, session id or account is in the row",
+                    !line.Contains("nickname", StringComparison.OrdinalIgnoreCase)
+                    && !line.Contains("host", StringComparison.OrdinalIgnoreCase)
+                    && !line.Contains("account", StringComparison.OrdinalIgnoreCase)
+                    && !line.Contains("session_id", StringComparison.OrdinalIgnoreCase)
+                    && !line.Contains("duid", StringComparison.OrdinalIgnoreCase));
+
+                // Appending, which is what makes the file a ledger rather than a report: two
+                // sessions are two lines, and the second must not rewrite the first.
+                string ledger = Path.Combine(Path.GetTempPath(), $"chiaki_baseline_selftest_{Environment.ProcessId}.jsonl");
+                try
+                {
+                    File.Delete(ledger);
+                    Check("appending a row succeeds", baseline.AppendTo(ledger) == ChiakiError.Success);
+                    baseline.SetDuration(TimeSpan.FromSeconds(120));
+                    baseline.AppendTo(ledger);
+
+                    string[] rows = File.ReadAllLines(ledger);
+                    Check("two sessions are two lines, oldest first",
+                        rows.Length == 2 && rows[0] == line.TrimEnd('\n') && rows[1] != rows[0],
+                        rows.Length.ToString());
+                }
+                finally
+                {
+                    File.Delete(ledger);
+                }
+
+                Check("the ledger this host would write to is the one the Qt build uses",
+                    SessionBaseline.LedgerPath == QtPaths.SessionBaselineFile
+                    && SessionBaseline.LedgerPath.EndsWith("chiaki_baseline.jsonl", StringComparison.Ordinal));
+            }
         }
 
         Console.WriteLine();

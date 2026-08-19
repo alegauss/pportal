@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 6
+#define CHIAKI_SHIM_ABI 7
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -381,6 +381,82 @@ CHIAKI_SHIM_API int32_t chiaki_shim_session_set_controller_state(void *session, 
 
 /** Whether what the session is holding equals `state`, by the library's own comparator. */
 CHIAKI_SHIM_API bool chiaki_shim_session_controller_state_matches(void *session, void *state);
+
+/**
+ * The session baseline: one JSON line per session, appended to the file both builds share.
+ *
+ * This is the ledger PP46 compares the two clients with, so the one thing the managed host must
+ * not do is write its own JSON. A second formatter would drift a key or a rounding and the rows
+ * would stop being comparable - which is the only thing the file is for. So the record is
+ * libchiaki's struct, filled through these setters and formatted by
+ * chiaki_session_baseline_format, and the .NET host contributes rows rather than a format.
+ *
+ * chiaki_shim_baseline_schema is what makes that checkable: the managed side pins the number it
+ * was written against, and a libchiaki that bumps it turns an assertion red instead of appending
+ * rows that a reader silently mixes with the old ones.
+ *
+ * Nothing here takes a console name, an address, a session id or an account. That is the record's
+ * own design and not an omission at this seam: the identifying fields are exactly the ones the
+ * session log needs a sanitiser to remove, so they are not collected.
+ */
+CHIAKI_SHIM_API uint32_t chiaki_shim_baseline_schema(void);
+
+/** The longest line chiaki_session_baseline_format can produce, so a caller can size a buffer. */
+CHIAKI_SHIM_API int32_t chiaki_shim_baseline_line_max(void);
+
+CHIAKI_SHIM_API void *chiaki_shim_baseline_create(void);
+CHIAKI_SHIM_API void chiaki_shim_baseline_free(void *baseline);
+
+/** The start time, taken rather than read off the clock, so a record can be reproduced. */
+CHIAKI_SHIM_API void chiaki_shim_baseline_set_started(void *baseline, uint64_t unix_seconds);
+CHIAKI_SHIM_API void chiaki_shim_baseline_set_duration_ms(void *baseline, uint64_t duration_ms);
+CHIAKI_SHIM_API void chiaki_shim_baseline_set_app_version(void *baseline, const char *version);
+
+/** The picture: what was asked for, which is what measured_bitrate_mbps is a shortfall against. */
+CHIAKI_SHIM_API void chiaki_shim_baseline_set_video(
+		void *baseline,
+		const char *codec,
+		uint32_t width,
+		uint32_t height,
+		uint32_t fps,
+		uint32_t bitrate_kbps);
+
+/** The settings that explain the numbers: the decoder, the renderer that allowed it, and the two
+ *  network knobs. A row naming one without the other cannot be compared to another row. */
+CHIAKI_SHIM_API void chiaki_shim_baseline_set_config(
+		void *baseline,
+		const char *hw_decoder,
+		const char *renderer,
+		double packet_loss_max,
+		bool idr_on_fec_failure);
+
+/** What the session achieved. */
+CHIAKI_SHIM_API void chiaki_shim_baseline_set_measured(
+		void *baseline,
+		double measured_bitrate_mbps,
+		double average_packet_loss,
+		uint64_t frames_presented,
+		uint64_t frames_lost,
+		uint64_t frames_dropped,
+		uint64_t network_rtt_us);
+
+/** One decoder-to-present handoff sample, folded into the histogram as it arrives. */
+CHIAKI_SHIM_API void chiaki_shim_baseline_push_handoff(void *baseline, uint64_t handoff_us);
+
+/** One controller-state-to-wire sample, which is the input half of the delay a client can see. */
+CHIAKI_SHIM_API void chiaki_shim_baseline_push_input_to_wire(void *baseline, uint64_t input_us);
+
+CHIAKI_SHIM_API uint64_t chiaki_shim_baseline_handoff_avg_us(void *baseline);
+
+/** Input queueing plus the network round trip plus the handoff: a floor on glass to glass. */
+CHIAKI_SHIM_API uint64_t chiaki_shim_baseline_latency_estimate_us(void *baseline);
+
+/** The line, as the Qt build writes it. `written` may be NULL. Returns a ChiakiErrorCode. */
+CHIAKI_SHIM_API int32_t chiaki_shim_baseline_format(
+		void *baseline, char *buf, int32_t buf_size, int32_t *written);
+
+/** Appends the line to the ledger at `path`, creating it if it is not there. */
+CHIAKI_SHIM_API int32_t chiaki_shim_baseline_append(void *baseline, const char *path);
 
 #ifdef __cplusplus
 }
