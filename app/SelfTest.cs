@@ -1647,32 +1647,83 @@ public static class SelfTest
                 unset.Count == 0 && Gamepads.Hints.All(h => Gamepads.GetHint(h.Name) == h.Value),
                 string.Join(", ", Gamepads.Hints.Select(h => $"{h.Name}={Gamepads.GetHint(h.Name) ?? "<unset>"}")));
 
-            // The subsystem itself, on a thread of its own and bounded - PP8's rationale asks for
-            // the first, and a suite that hangs reports nothing, which asks for the second.
-            bool sdlStarted = false;
+            // The subsystem itself, now through SdlThread, which is the thing PP8's rationale asks
+            // for: SDL's own loop on a thread that does not stall on rendering. Every wait below is
+            // bounded, because a suite that hangs reports nothing - which this port learned twice.
             int joysticks = -1;
-            var sdlThread = new Thread(() =>
+            int workRanOn = -1;
+            var seen = new List<SdlEvent>();
+
+            using var sdl = new SdlThread(ev => seen.Add(ev));
+            SdlStart started = sdl.Start(TimeSpan.FromSeconds(30));
+
+            Check("the game controller subsystem starts on its own thread",
+                started == SdlStart.Started,
+                started == SdlStart.TimedOut ? "no answer within 30s" : $"{started}: {sdl.Error}");
+
+            if (started == SdlStart.Started)
             {
-                sdlStarted = Gamepads.Start();
-                if (!sdlStarted)
-                    return;
-                joysticks = Gamepads.NumJoysticks();
-                Gamepads.Stop();
-            })
-            { IsBackground = true, Name = "sdl-selftest" };
+                // Everything that touches a controller handle has to run where SDL was started,
+                // so the first thing to assert about Post is WHERE it ran, not that it ran.
+                bool invoked = sdl.Invoke(() =>
+                {
+                    workRanOn = Environment.CurrentManagedThreadId;
+                    joysticks = Gamepads.NumJoysticks();
+                }, TimeSpan.FromSeconds(5));
 
-            sdlThread.Start();
-            bool sdlDone = sdlThread.Join(TimeSpan.FromSeconds(30));
+                Check("posted work runs on the thread that owns SDL",
+                    invoked && workRanOn == sdl.ThreadId,
+                    invoked ? $"ran on {workRanOn}, SDL owns {sdl.ThreadId}" : "not invoked within 5s");
 
-            Check("the game controller subsystem starts and stops",
-                sdlDone && sdlStarted && Gamepads.WasInit(Gamepads.InitGameController) == 0,
-                sdlDone ? Gamepads.Error() : "did not return within 30s");
-            // Zero pads is an ordinary answer on a machine with none: what is asserted is that
-            // ASKING works, because a count is not a pad.
-            Check("and the joystick count is answerable, whatever it is",
-                joysticks >= 0, joysticks.ToString());
+                // Zero pads is an ordinary answer on a machine with none: what is asserted is that
+                // ASKING works, because a count is not a pad.
+                Check("and the joystick count is answerable, whatever it is",
+                    joysticks >= 0, joysticks.ToString());
 
-            Console.WriteLine($"        SDL {Gamepads.LinkedVersion()}, {joysticks} joystick(s), from {ChiakiNative.SdlLoadedFrom}");
+                // The pump, exercised without a controller. The event goes in through SDL and comes
+                // back out of SDL, so what survives the trip is the 56-byte layout, the offset of
+                // `which`, and the event number - all three against the binary that is loaded
+                // rather than against the header they were written from.
+                const int Marker = 0x5AFE;
+                bool Push(uint type) =>
+                    sdl.Invoke(() => Gamepads.PushEvent(type, Marker), TimeSpan.FromSeconds(5))
+                    && SpinWait.SpinUntil(() => seen.Any(e => e.Type == type), TimeSpan.FromSeconds(5));
+
+                // The pump itself, exercised on a machine with no pad. A user event is the one SDL
+                // queues without interpreting, so what survives the round trip is the port's own
+                // marshalling - the 56-byte union, and `which` at offset 8 - measured against the
+                // binary that is loaded rather than against the header it was written from.
+                Check("an event pushed through SDL comes back out of the pump intact",
+                    Push(Gamepads.UserEvent)
+                    && seen.Any(e => e.Type == Gamepads.UserEvent && e.Which == Marker),
+                    string.Join(", ", seen.Select(e => $"{e.Type:x}=>{e.Which:x}")));
+
+                // And the finding that costs, measured the same way: SDL owns `which` on every
+                // joystick and controller event. A device index it cannot resolve comes back as
+                // -1, so a synthesised device event is not a stand-in for a plugged-in pad and
+                // the rest of PP8 cannot be tested by inventing one. The type still arrives,
+                // which is what makes this a rewritten field rather than a dropped event.
+                //
+                // It is also what pins the offset, and only as a pair with the check above. Move
+                // `which` to 12 and the user event still round-trips - 12 is padding in the device
+                // structs, so SDL leaves it alone and every push appears to survive. This is the
+                // one that then goes red, because reading padding is not reading `which`.
+                Check("but SDL rewrites `which` on device events, so one cannot be faked",
+                    Push(Gamepads.EventType.ControllerDeviceAdded)
+                    && Push(Gamepads.EventType.ControllerDeviceRemoved)
+                    && Push(Gamepads.EventType.JoyDeviceRemoved)
+                    && seen.Count(e => e.Which == Marker) == 1
+                    && seen.Any(e => e.Type == Gamepads.EventType.ControllerDeviceAdded),
+                    string.Join(", ", seen.Select(e => $"{e.Type:x}=>{e.Which:x}")));
+
+                Console.WriteLine($"        SDL {Gamepads.LinkedVersion()}, {joysticks} joystick(s), from {ChiakiNative.SdlLoadedFrom}");
+            }
+
+            sdl.Stop(TimeSpan.FromSeconds(10));
+            Check("stopping quits SDL and is idempotent",
+                !sdl.Running && Gamepads.WasInit(Gamepads.InitGameController) == 0,
+                Gamepads.WasInit(Gamepads.InitGameController).ToString());
+            sdl.Stop(TimeSpan.FromSeconds(1));
 
             // The half this code cannot exercise: that the Qt client sets the same four. A pad
             // that behaves differently between the two clients is not something a user would
