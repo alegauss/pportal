@@ -47,7 +47,6 @@
 - 📋 **PP31** (deps: PP28) **the video decoder is where 100% managed stops being achievable, and no task above says so** — There is no managed H.264 or HEVC decoder that holds 1080p60 at remote play latency, so this boundary is chosen deliberately or discovered late. → §PP31
 - 📋 **PP32** (deps: PP28) **audio decode and resampling are Opus and speexdsp, both native and both on the latency path** — Managed Opus exists and speexdsp has no equivalent, so the two halves of the audio path have different answers and only one of them is a choice. → §PP32
 - ⏳ **PP33** (deps: PP24 ✅) **HTTP and JSON in the core are curl and json-c, two vendored dependencies for what the runtime already does** — the request side, the JSON that json-c parses, and the curl transfers themselves. → §PP33
-- 📋 **PP34** (deps: PP24 ✅) **the threading and logging layer exists to paper over pthreads and Win32, an abstraction .NET does not need** — 502 lines that would be deleted rather than translated, and every file in the core calls them, so the shape they take decides how the translated files read. → §PP34
 - 💭 **PP105** (deps: —) **chiaki_ecdh_derive_secret is handed the console's signature and the handshake key and reads neither** — the signature is produced in the other direction and checked in none, so it is a check on one side of the exchange only. → §PP105
 
 ## Block G — Test discipline

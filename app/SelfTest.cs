@@ -1754,6 +1754,93 @@ public static class SelfTest
             }
 
             Console.WriteLine();
+            Console.WriteLine("Waiting - the one part of thread.c that is not identity");
+
+            // PP34. thread.c is deleted rather than translated, and almost every row of the
+            // mapping is an identity - lock, Monitor.Pulse, Thread.Join. These are the two rows
+            // where it is not obvious, held against the C so the deletion stays justified.
+            string? threadFile = ThreadSource.Locate();
+            if (threadFile is null)
+            {
+                Console.WriteLine($"  --    thread.c's two semantics  (no {ThreadSource.RelativePath} here)");
+            }
+            else
+            {
+                string threadText = File.ReadAllText(threadFile);
+
+                // Why all 23 chiaki mutexes can be `lock`, when 22 of them ask for non-recursive:
+                // on Windows the flag is discarded and the mutex is a CRITICAL_SECTION. If that
+                // ever stops being true, lock is quietly more permissive than what it replaced.
+                Check("a chiaki mutex is reentrant whatever the caller asked for, so lock matches",
+                    ThreadSource.MutexIsAlwaysRecursive(threadText));
+
+                Check("the predicate wait's timeout is a deadline, not a per-wake budget",
+                    ThreadSource.TimeoutIsADeadline(threadText));
+                Check("and the predicate is tested before the deadline is",
+                    ThreadSource.PredicateBeatsTheDeadline(threadText));
+            }
+
+            // And the managed side actually behaving that way. Measured, because the deadline
+            // property is the one a rewrite loses by accident: a wait woken repeatedly must still
+            // end when the deadline does, and asserting the return value alone would pass for an
+            // implementation that waited the full timeout after every single wake.
+            var waitGate = new object();
+            bool open = false;
+
+            // ONE wake, well before the deadline, and then silence. A pulse train would not test
+            // this: with something arriving every few ms the loop re-reads the clock often enough
+            // that a per-wake budget still lands near the deadline, and the check passes for the
+            // wrong reason. What separates the two implementations is the LAST wait - the one with
+            // nothing left to wake it - and its length is the whole remaining budget or the whole
+            // original one. So the wake is at 60 of 400, and a per-wake budget ends at 460.
+            var pulseOnce = new Thread(() =>
+            {
+                Thread.Sleep(60);
+                lock (waitGate) Monitor.PulseAll(waitGate);   // predicate still false
+            })
+            { IsBackground = true };
+
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            pulseOnce.Start();
+            bool held;
+            lock (waitGate)
+                held = Waiting.Until(waitGate, () => open, TimeSpan.FromMilliseconds(400));
+            clock.Stop();
+
+            Check("a wait woken partway still ends at its deadline, not one timeout later",
+                !held && clock.ElapsedMilliseconds < 430,
+                $"{(held ? "predicate" : "timeout")} after {clock.ElapsedMilliseconds}ms of 400");
+
+            // The other direction: a predicate that comes true is not made to wait out the clock.
+            open = false;
+            var opener = new Thread(() =>
+            {
+                Thread.Sleep(30);
+                lock (waitGate) { open = true; Monitor.PulseAll(waitGate); }
+            })
+            { IsBackground = true };
+
+            clock.Restart();
+            opener.Start();
+            lock (waitGate)
+                held = Waiting.Until(waitGate, () => open, TimeSpan.FromSeconds(5));
+            clock.Stop();
+
+            Check("and a predicate that comes true returns then, not at the deadline",
+                held && clock.ElapsedMilliseconds < 2000,
+                $"{(held ? "predicate" : "timeout")} after {clock.ElapsedMilliseconds}ms of 5000");
+
+            // A predicate already true must not wait at all, which is the C's while() and not a
+            // do/while - the difference is one whole timeout on the commonest path there is.
+            clock.Restart();
+            lock (waitGate)
+                held = Waiting.Until(waitGate, () => true, TimeSpan.FromMilliseconds(500));
+            clock.Stop();
+
+            Check("a predicate already true does not wait once",
+                held && clock.ElapsedMilliseconds < 100, $"{clock.ElapsedMilliseconds}ms");
+
+            Console.WriteLine();
             Console.WriteLine("PlaceboBackends - what PP9's renderer decision rests on");
 
             // PP9 offered three shapes and all three assume libplacebo means Vulkan. These are the

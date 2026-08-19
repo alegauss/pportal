@@ -454,21 +454,6 @@ the cheapest visible progress in the block, it deletes two dependencies from the
 and it can be taken by whoever wants to see the shape of a translated file before
 starting one that matters. The 420 is what stops "cheapest" being read as "small".
 
-### §PP34 The layer that disappears
-
-thread.c is 270 lines and log.c 232. The first is a portability shim - threads, mutexes,
-condition variables, one API over pthreads and Win32 - and the second is the logging
-every other file calls.
-
-In managed code the first has no reason to exist: Task, lock, SemaphoreSlim and
-CancellationToken are the platform, and a translation that reproduces the shim
-faithfully would be the clearest sign that the port was mechanical rather than
-considered. The second becomes whatever the .NET host already logs through, which
-matters because the session log is a support artefact users are asked to attach.
-
-Filed early despite being small: every file translated after it inherits how these two
-are spelled, and changing that later means touching all of them.
-
 ### §PP105 The signature nobody reads
 
 chiaki_ecdh_derive_secret takes a handshake key and the console's signature over its
