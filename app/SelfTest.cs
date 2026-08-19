@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Buffers.Binary;
+using System.Text;
 using ChiakiNg.Settings;
 using ChiakiNg.Native;
 using ChiakiNg.Session;
@@ -1438,6 +1439,67 @@ public static class SelfTest
             Check("an unbounded read still stops at the end of the storage",
                 micSeam.Read().SequenceEqual(new byte[] { 7, 8 }) && micSeam.Fill == 2,
                 micSeam.Fill.ToString());
+
+            Console.WriteLine();
+            Console.WriteLine("HapticsRumble - what a pad with no haptic motors feels");
+
+            static byte[] HapticFrame(short left, short right, int samples)
+            {
+                var f = new byte[samples * HapticsRumble.SampleSize];
+                for (int i = 0; i < samples; i++)
+                {
+                    BinaryPrimitives.WriteInt16LittleEndian(f.AsSpan(i * 4), left);
+                    BinaryPrimitives.WriteInt16LittleEndian(f.AsSpan(i * 4 + 2), right);
+                }
+                return f;
+            }
+
+            // Three ways of sending nothing, which the Qt client treats alike by returning early.
+            Check("an empty or misaligned frame sends nothing",
+                HapticsRumble.Strength([], RumbleHapticsIntensity.Normal) is null
+                && HapticsRumble.Strength(new byte[6], RumbleHapticsIntensity.Normal) is null);
+            // Silence is the common one: a zero would be a rumble command per frame for a pad
+            // that should be still.
+            Check("a frame under the floor sends nothing, not a zero",
+                HapticsRumble.Strength(HapticFrame(40, 40, 8), RumbleHapticsIntensity.Normal) is null,
+                HapticsRumble.Strength(HapticFrame(40, 40, 8), RumbleHapticsIntensity.Normal)?.ToString() ?? "null");
+
+            // The fold is the mean of twice the absolute amplitude, and the louder channel wins.
+            Check("the amplitude is doubled and the louder channel decides",
+                HapticsRumble.Strength(HapticFrame(1000, 300, 8), RumbleHapticsIntensity.Normal) == 2000,
+                HapticsRumble.Strength(HapticFrame(1000, 300, 8), RumbleHapticsIntensity.Normal)?.ToString() ?? "null");
+            Check("the sign of the amplitude does not matter",
+                HapticsRumble.Strength(HapticFrame(-1000, 0, 8), RumbleHapticsIntensity.Normal) == 2000);
+
+            // The five intensities, on one frame, so the ladder is visible.
+            byte[] loud = HapticFrame(10000, 0, 8);
+            Check("the intensity ladder scales the same frame",
+                HapticsRumble.Strength(loud, RumbleHapticsIntensity.VeryWeak) == 4000
+                && HapticsRumble.Strength(loud, RumbleHapticsIntensity.Weak) == 10000
+                && HapticsRumble.Strength(loud, RumbleHapticsIntensity.Normal) == 20000
+                && HapticsRumble.Strength(loud, RumbleHapticsIntensity.Strong) == 40000
+                && HapticsRumble.Strength(loud, RumbleHapticsIntensity.VeryStrong) == 65535,
+                HapticsRumble.Strength(loud, RumbleHapticsIntensity.VeryStrong)?.ToString() ?? "null");
+
+            // The nine-bit floor: audible but small is raised, so a controller that shifts the
+            // value up to nine bits does not shift it away to nothing.
+            Check("a small non-zero strength is raised to the nine-bit floor",
+                HapticsRumble.Strength(HapticFrame(120, 0, 8), RumbleHapticsIntensity.VeryWeak) == 512,
+                HapticsRumble.Strength(HapticFrame(120, 0, 8), RumbleHapticsIntensity.VeryWeak)?.ToString() ?? "null");
+
+            // PP98. The loudest input there is folds to exactly 65536, which is one past a ushort,
+            // and Normal assigns it without saturating - so the pad goes SILENT at full scale,
+            // while Strong, which does saturate, stays at maximum. Asserted as it is because the
+            // port must not differ from the Qt build.
+            byte[] fullScale = HapticFrame(short.MinValue, short.MinValue, 8);
+            // Note it is a zero SENT and not a frame skipped: the silence check runs before the
+            // switch, so the wrap happens after it and the pad is told to rumble at nothing.
+            Check("full scale wraps to a rumble of zero on Normal",
+                HapticsRumble.Strength(fullScale, RumbleHapticsIntensity.Normal) == 0,
+                HapticsRumble.Strength(fullScale, RumbleHapticsIntensity.Normal)?.ToString() ?? "null");
+            Check("and stays at maximum on Strong, which saturates",
+                HapticsRumble.Strength(fullScale, RumbleHapticsIntensity.Strong) == 65535,
+                HapticsRumble.Strength(fullScale, RumbleHapticsIntensity.Strong)?.ToString() ?? "null");
         }
 
         Console.WriteLine();
