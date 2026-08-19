@@ -39,6 +39,15 @@ public static class ChiakiNative
     /// </summary>
     internal const string Library = "chiaki-shim";
 
+    /// <summary>
+    /// PP8: SDL, which the port calls directly rather than through the shim.
+    ///
+    /// "SDL is not Qt and does not have to move" - so it does not. What it does need is the same
+    /// resolver: SDL2.dll lives in the portable tree beside chiaki-shim.dll, and letting the
+    /// runtime find it on PATH would pick up whichever SDL a machine happens to have.
+    /// </summary>
+    internal const string Sdl = "SDL2";
+
     /// <summary>Must equal CHIAKI_SHIM_ABI in shim/chiaki_shim.h.</summary>
     public const uint ExpectedAbi = 26;
 
@@ -63,43 +72,58 @@ public static class ChiakiNative
     /// Where a shim built by this repository can be. Relative to the assembly, because the .NET
     /// host builds into app\bin\&lt;config&gt;\&lt;tfm&gt;\&lt;rid&gt; and the native build into build\ beside it.
     /// </summary>
-    private static IEnumerable<string> Candidates()
+    private static IEnumerable<string> Candidates(string dll = "chiaki-shim.dll")
     {
         string? here = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
         if (here is null)
             yield break;
 
         // Beside the assembly first: that is where a published host will carry it.
-        yield return Path.Combine(here, "chiaki-shim.dll");
+        yield return Path.Combine(here, dll);
 
         // ...then the repository, five levels up from app\bin\Debug\net10.0-windows\win-x64.
         string repo = Path.GetFullPath(Path.Combine(here, "..", "..", "..", "..", ".."));
-        yield return Path.Combine(repo, "build", "chiaki-ng-Win", "chiaki-shim.dll");
-        yield return Path.Combine(repo, "build", "shim", "chiaki-shim.dll");
+        yield return Path.Combine(repo, "build", "chiaki-ng-Win", dll);
+        yield return Path.Combine(repo, "build", "shim", dll);
     }
 
     private static IntPtr Resolve(string name, Assembly assembly, DllImportSearchPath? path)
     {
-        if (name != Library)
+        // The shim and SDL both come out of the portable tree, and for the same reason: whatever
+        // the runtime's own search would find on PATH is not this build's.
+        string dll = name switch
+        {
+            Library => "chiaki-shim.dll",
+            Sdl => "SDL2.dll",
+            _ => "",
+        };
+
+        if (dll.Length == 0)
             return IntPtr.Zero;
 
-        foreach (string candidate in Candidates())
+        foreach (string candidate in Candidates(dll))
         {
             if (!File.Exists(candidate))
                 continue;
             if (!NativeLibrary.TryLoad(candidate, out IntPtr handle))
                 continue;
-            LoadedFrom = candidate;
+            if (name == Library)
+                LoadedFrom = candidate;
+            else
+                SdlLoadedFrom = candidate;
             return handle;
         }
 
         // IntPtr.Zero would let the runtime fall back to its own search, which could find a
         // chiaki-shim.dll that is not this build's. Refusing by name says which build is missing.
         throw new DllNotFoundException(
-            $"chiaki-shim.dll was not found. Looked in:{Environment.NewLine}  "
-            + string.Join(Environment.NewLine + "  ", Candidates())
+            $"{dll} was not found. Looked in:{Environment.NewLine}  "
+            + string.Join(Environment.NewLine + "  ", Candidates(dll))
             + $"{Environment.NewLine}Run compile.cmd, which builds it and copies it into the portable tree.");
     }
+
+    /// <summary>Where SDL2 was loaded from, or null while it has never been loaded.</summary>
+    public static string? SdlLoadedFrom { get; private set; }
 
     /// <summary>
     /// Checked before anything else is called, because the failure it prevents has no symptom: a

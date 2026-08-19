@@ -12,8 +12,9 @@
 ## Block B — Native interop
 
 - ⏳ **PP7** (deps: PP4 ✅) **PSN OAuth login runs in a QtWebEngine view, a bundled browser the WPF host has no equivalent for** — the WebView2 control itself, and the token exchange, which need a browser and a PSN account. → §PP7
-- 📋 **PP8** (deps: PP4 ✅) **controller input is SDL wired into Qt events, and 950 lines of it decide what a button does** — A remote play client is driven by a gamepad before a mouse, so the input path is a first-class port and not a detail of whichever screen is drawn first. → §PP8
+- ⏳ **PP8** (deps: PP4 ✅) **controller input is SDL wired into Qt events, and 950 lines of it decide what a button does** — everything that needs SDL loaded, which PP117 blocks: the event loop, hotplug, and the DualSense specifics. → §PP8
 - ⏳ **PP93** (deps: —) **the dpad touch path uses a third pair of touchpad bounds, matching neither console's pad** — the SDL touchpad path in controllermanager.cpp still scales by the fixed macros, having no session to ask which console is connected. → §PP93
+- 💭 **PP117** (deps: —) **loading the portable tree's SDL2.dll does not return, so the managed host cannot call SDL at all** — it blocks in a bare process too, which rules out the dispatcher and the resolver, and the cause is not established. → §PP117
 
 ## Block C — Video and input path
 
@@ -24,13 +25,13 @@
 
 ## Block D — Screens
 
-- 📋 **PP12** (deps: PP1 ✅, PP8) **the six custom QML controls carry the theme, and gamepad focus navigation is built into them** — Fluent gives the look but no gamepad focus engine, so the thing every screen inherits has to exist before the screens that inherit it. → §PP12
+- 📋 **PP12** (deps: PP1 ✅, PP8 ⏳) **the six custom QML controls carry the theme, and gamepad focus navigation is built into them** — Fluent gives the look but no gamepad focus engine, so the thing every screen inherits has to exist before the screens that inherit it. → §PP12
 - 📋 **PP13** (deps: PP6 ✅, PP12) **the console list, the front door of the application, is QML bound to the discovery model** — It is the first screen a user sees and the first that proves the ported discovery, so it is the smallest slice that can be judged end to end. → §PP13
 - 📋 **PP14** (deps: PP6 ✅, PP12) **registration, manual host, console PIN and profile dialogs are QML with their own validation** — Registering a console is the step between an installed application and a working one, and its four dialogs are one flow rather than four screens. → §PP14
 - 📋 **PP15** (deps: PP7 ⏳, PP12) **the PSN login and token dialogs are 882 lines of QML wrapped around the embedded browser** — The account link is what remote play outside the local network depends on, and these are the only screens whose content is a third party page. → §PP15
 - 📋 **PP16** (deps: PP2 ✅, PP12) **the settings screen is 2984 lines of QML against 149 properties exposed from C++** — It is the largest single screen by a factor of three, and the property surface behind it is the real measure of the work rather than the markup. → §PP16
 - 📋 **PP17** (deps: PP9, PP12) **the renderer tuning and colour mapping screens are 2132 lines of QML over libplacebo options** — Every control on them writes an option that only exists while libplacebo does, so they can only be drawn once the renderer decision has been taken. → §PP17
-- 📋 **PP18** (deps: PP8, PP12) **the controller mapping screen is QML bound to the live SDL mapping strings** — A mapping screen is unusable without input arriving from the device being mapped, so it lands with the input path rather than with the other dialogs. → §PP18
+- 📋 **PP18** (deps: PP8 ⏳, PP12) **the controller mapping screen is QML bound to the live SDL mapping strings** — A mapping screen is unusable without input arriving from the device being mapped, so it lands with the input path rather than with the other dialogs. → §PP18
 - 📋 **PP19** (deps: PP12) **the confirm, remind, display, steam shortcut and dialog host screens are still QML** — They are small and repetitive, and taking them last means each is drawn in a control vocabulary the earlier screens already settled. → §PP19
 
 ## Block E — Windows-only build

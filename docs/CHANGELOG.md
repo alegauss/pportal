@@ -34,6 +34,7 @@
 - ✅ **PP102** **a discovery reply parses in place, so every field of a parsed console points into the datagram it came from** — a reply crosses as a console whose strings outlive the datagram, and the shim's undeclared import is held against libchiaki's definition.
 - ✅ **PP87** **the video and audio sample callbacks are the last uncrossed part of the seam, and nothing offline can drive one** — a frame reaches a managed handler as a span over libchiaki's own buffer, driven with no console, no renderer and no decoder.
 - ✅ **PP7 (the flow around the browser)** **PSN OAuth login runs in a QtWebEngine view, a bundled browser the WPF host has no equivalent for** — the authorize url, the redirect match, the code extraction and both token bodies are managed, held against the Qt client's own constants.
+- ✅ **PP8 (the hints)** **controller input is SDL wired into Qt events, and 950 lines of it decide what a button does** — the four SDL hints the input path depends on are declared and held against the Qt client's own, which is the part that needed writing down.
 
 ## Block C — Video and input path
 

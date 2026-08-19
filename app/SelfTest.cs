@@ -1516,6 +1516,50 @@ public static class SelfTest
             }
 
             Console.WriteLine();
+            Console.WriteLine("Gamepads - SDL, before a pad is plugged in");
+
+            // NOTHING here calls into SDL, and PP117 is why: loading SDL2.dll out of this build's
+            // portable tree does not return. Not in this host, and not in a bare PowerShell
+            // process either - which is what rules out the WPF dispatcher, the resolver and this
+            // assembly as the cause. Why it blocks is not established, and a suite that hangs
+            // reports nothing at all, so the call is not made until it is.
+            //
+            // What is left is what does not need SDL loaded: the hint table, held against the Qt
+            // client's own. Those are the four decisions a rewrite drops by omission - the rumble
+            // pair, background events, and the Steam Deck one - and getting them written down is
+            // most of the value even before a pad can be read.
+            Check("the hint table names the four the input path depends on",
+                Gamepads.Hints.Count == 4
+                && Gamepads.Hints.All(h => h.Name.StartsWith("SDL_", StringComparison.Ordinal))
+                && Gamepads.Hints.Count(h => h.Value == "1") == 3,
+                string.Join(", ", Gamepads.Hints.Select(h => $"{h.Name}={h.Value}")));
+
+            // The half this code cannot exercise: that the Qt client sets the same four. A pad
+            // that behaves differently between the two clients is not something a user would
+            // report as a port defect.
+            string? cmSource = SanitizerSource.LocateRelative(@"gui\src\controllermanager.cpp");
+            if (cmSource is null)
+            {
+                Console.WriteLine(@"  --    the Qt client's SDL hints  (no gui\src\controllermanager.cpp here)");
+            }
+            else
+            {
+                // The C++ names the MACRO, not the string it expands to - SDL_HINT_FOO is "SDL_FOO"
+                // - so that is what is looked for. Comparing against the string value found none of
+                // them and said the Qt client set no hints at all, which was this check being
+                // wrong rather than the client.
+                string cm = File.ReadAllText(cmSource);
+                var missing = Gamepads.Hints
+                    .Where(h => !cm.Contains("SDL_HINT_" + h.Name["SDL_".Length..], StringComparison.Ordinal))
+                    .Select(h => h.Name)
+                    .ToList();
+                Check("the Qt client sets the same four hints",
+                    missing.Count == 0, string.Join(", ", missing));
+                Check("and the buttons-by-position hint is the one it sets separately",
+                    cm.Contains("SDL_HINT_" + Gamepads.ButtonLabelsHint["SDL_".Length..], StringComparison.Ordinal));
+            }
+
+            Console.WriteLine();
             Console.WriteLine("PsnAuth - the login, minus the browser");
 
             // The device id comes from libchiaki rather than from a Guid here: it identifies this
