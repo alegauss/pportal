@@ -33,7 +33,7 @@
 ## Block E — Windows-only build
 
 - 📋 **PP21** (deps: Block D) **Qt6 is still required to build: Core, Gui, Quick, Qml, Svg, Widgets, Concurrent and WebEngineQuick** — The port is only finished when the toolchain says so, and dropping Qt is the check that no screen or service quietly still depends on it. → §PP21
-- 📋 **PP22** (deps: PP1 ✅) **every CI workflow was deleted, so nothing builds, signs or packages the application** — A Windows-only application with no Windows build is a source tree, and claude-tray already has the shape: publish one self-contained exe, then wrap it in an installer. → §PP22
+- ⏳ **PP22** (deps: PP1 ✅) **every CI workflow was deleted, so nothing builds, signs or packages the application** — the native side through vcpkg, and the installer; the publish and its selftest gate landed. → §PP22
 - 📋 **PP63** (deps: PP62 ✅) **nothing in the tree can configure a Qt build carrying WebEngine, so PP46's before cannot be produced at all** — MSYS2 has no qt6-webengine and no published Windows release carries Chromium, so an MSVC configure built once is the only reference the port can measure against. → §PP63
 
 ## Block F — Managed core
@@ -53,7 +53,7 @@
 ## Block G — Test discipline
 
 - 📋 **PP35** (deps: PP24 ✅) **5512 lines of munit tests cover the modules this port rewrites, and nothing in a managed tree runs them** — They carry captured FEC cases and a real video packet, which makes them the closest thing this protocol has to a specification and the cheapest baseline to inherit. → §PP35
-- 📋 **PP36** (deps: PP22, PP24 ✅) **the only CI job is the roadkeep lint gate, so no test result can turn a branch red** — A suite nobody runs on a push goes red quietly, and Test Explorer is a local convenience rather than a gate that holds a policy in place. → §PP36
+- 📋 **PP36** (deps: PP22 ⏳, PP24 ✅) **the only CI job is the roadkeep lint gate, so no test result can turn a branch red** — A suite nobody runs on a push goes red quietly, and Test Explorer is a local convenience rather than a gate that holds a policy in place. → §PP36
 - 📋 **PP37** (deps: PP12) **a screen ported into code-behind can only be exercised by opening a window** — What is worth asserting about a screen is its view model, so a port that keeps logic behind the window makes eight screens untestable by construction. → §PP37
 - 📋 **PP38** (deps: PP36) **nothing counts the shipped lines that carry no assertion, so the rule is a sentence rather than a gate** — A count that may only go down is what survives a busy week, and without it the discipline lasts exactly as long as the person remembering it. → §PP38
 - 📋 **PP82** (deps: —) **the 148-row preference table was extracted from settings.cpp once and nothing re-checks it** — a key added to the Qt client later is one the port reads as absent, and the suite stays green because it only asserts the table against itself. → §PP82

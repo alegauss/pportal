@@ -69,22 +69,33 @@ public static class ChiakiNative
     public static string? LoadedFrom { get; private set; }
 
     /// <summary>
-    /// Where a shim built by this repository can be. Relative to the assembly, because the .NET
-    /// host builds into app\bin\&lt;config&gt;\&lt;tfm&gt;\&lt;rid&gt; and the native build into build\ beside it.
+    /// Where a shim built by this repository can be: beside the executable, then in the native
+    /// build tree of the checkout it came out of.
+    ///
+    /// PP22: AppContext.BaseDirectory and not Assembly.Location. The latter is the empty string in
+    /// a single-file publish - the assembly is inside the .exe, so it has no path of its own - and
+    /// what that produced was a published host that could not find its shim at all, while every
+    /// build directly out of the tree worked. The compiler says so as IL3000; the publish that
+    /// exposed it is the one this exists for.
+    ///
+    /// The checkout is found by walking up rather than by counting "..". A count is a fixed depth,
+    /// and the depth is not fixed: a publish sits one deeper than a build, which is exactly the
+    /// layout that would have been silently wrong here.
     /// </summary>
     private static IEnumerable<string> Candidates(string dll = "chiaki-shim.dll")
     {
-        string? here = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-        if (here is null)
-            yield break;
+        string here = AppContext.BaseDirectory;
 
-        // Beside the assembly first: that is where a published host will carry it.
+        // Beside the executable first: that is where a published host carries it.
         yield return Path.Combine(here, dll);
 
-        // ...then the repository, five levels up from app\bin\Debug\net10.0-windows\win-x64.
-        string repo = Path.GetFullPath(Path.Combine(here, "..", "..", "..", "..", ".."));
-        yield return Path.Combine(repo, "build", "chiaki-ng-Win", dll);
-        yield return Path.Combine(repo, "build", "shim", dll);
+        // ...then the native build tree of whatever checkout this came out of. Both spellings,
+        // because compile.cmd's portable tree and a bare cmake build put it in different places.
+        for (string? dir = here; dir is not null; dir = Path.GetDirectoryName(dir))
+        {
+            yield return Path.Combine(dir, "build", "chiaki-ng-Win", dll);
+            yield return Path.Combine(dir, "build", "shim", dll);
+        }
     }
 
     private static IntPtr Resolve(string name, Assembly assembly, DllImportSearchPath? path)

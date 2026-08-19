@@ -37,6 +37,16 @@
     <!-- Unconditional, so the output path is the same in Debug and Release and every script
          and note that spells bin\<config>\net10.0-windows\win-x64\ChiakiNg.exe stays true. -->
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <!-- PP22: on for every build, not just the publish that would otherwise be the first to
+         mention it. Assembly.Location is the empty string once the assembly lives inside a
+         single-file .exe, and the two places this port called it were the shim resolver and the
+         root of every source drift check - so the published host could not load libchiaki, and
+         could not tell anyone why, while every build out of the tree was green.
+
+         An error and not a warning. The whole failure mode is that it is invisible until a
+         release, and a warning in a build that prints hundreds of lines is invisible too. -->
+    <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
+    <WarningsAsErrors>$(WarningsAsErrors);IL3000;IL3001;IL3002</WarningsAsErrors>
   </PropertyGroup>
 
   <!-- One self-contained .exe, Release only. Not a style choice: claude-tray measured what the

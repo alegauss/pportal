@@ -1,5 +1,4 @@
-using System.Reflection;
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 
 namespace ChiakiNg.Session;
 
@@ -26,15 +25,20 @@ public static partial class SanitizerSource
     public static string? Locate() => LocateRelative(RelativePath);
 
     /// <summary>
-    /// Any repository file, found by walking up from the assembly. Upwards rather than a fixed
+    /// Any repository file, found by walking up from the executable. Upwards rather than a fixed
     /// depth: the host builds into app\bin\&lt;config&gt;\&lt;tfm&gt;\&lt;rid&gt;, and a count of ".." is the
     /// kind of thing that survives exactly one layout change.
+    ///
+    /// PP22: from AppContext.BaseDirectory, not Assembly.Location, which is the empty string once
+    /// the assembly is embedded in a single-file publish. Every drift check in this port starts
+    /// here, so what that returned was not one broken check but all of them at once - and quietly,
+    /// because a source file that cannot be found is reported as "could not run" by design.
     /// </summary>
     public static string? LocateRelative(string relativePath)
     {
         ArgumentNullException.ThrowIfNull(relativePath);
 
-        string? dir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+        string? dir = AppContext.BaseDirectory;
         while (dir is not null)
         {
             string candidate = Path.Combine(dir, relativePath);

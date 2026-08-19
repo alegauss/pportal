@@ -91,6 +91,42 @@ public static class SelfTest
 
         static string Hex(byte[]? b) => b is null ? "<null>" : Convert.ToHexString(b).ToLowerInvariant();
 
+        // PP22, and it runs first because everything below it can be skipped without failing.
+        //
+        // Fifteen blocks in this suite read a C or C++ source and compare the port against it, and
+        // every one of them prints "no <file> here" and moves on when it cannot find the file -
+        // correct in an installed copy, where there is no checkout to read. What that also means
+        // is that losing the ability to FIND the checkout costs fifteen blocks in silence.
+        //
+        // Which is what happened: a single-file publish leaves Assembly.Location empty, the walk
+        // upward started nowhere, and the published host skipped every drift check and failed to
+        // load the shim - while every build out of the tree stayed green. So the rule is now
+        // stated rather than assumed: inside a checkout, nothing may skip.
+        string[] driftSources =
+        [
+            SanitizerSource.RelativePath, SessionSource.RelativePath, CryptoVectors.RelativePath,
+            FecVectors.RelativePath, LibSource.RelativePath, LibSource.ShimRelativePath,
+            ReorderQueueSource.RelativePath, BangReachability.TakionRelativePath,
+            BangReachability.StreamConnectionRelativePath,
+            @"gui\src\controllermanager.cpp", @"gui\include\psnaccountid.h",
+            @"lib\src\remote\holepunch.c", @"test\bitstream.c", @"test\gkcrypt.c",
+            @"test\regist.c", @"test\takion.c",
+        ];
+
+        bool inCheckout = SanitizerSource.LocateRelative("roadkeep.toml") is not null;
+        string[] unfindable = inCheckout
+            ? driftSources.Where(p => SanitizerSource.LocateRelative(p) is null).ToArray()
+            : [];
+
+        Console.WriteLine(inCheckout
+            ? $"Sources - {driftSources.Length} drift checks, in a checkout"
+            : "Sources - not a checkout, so the drift checks below will say so one by one");
+
+        Check("every source a drift check reads is findable, or this is not a checkout",
+            unfindable.Length == 0,
+            unfindable.Length == 0 ? "" : string.Join(", ", unfindable));
+
+        Console.WriteLine();
         Console.WriteLine("QSettingsValue - the encodings PP2 reads");
 
         // A plain REG_SZ is itself.
