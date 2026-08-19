@@ -67,6 +67,7 @@
 - ✅ **PP138** **the console list merges three sources and two of them are suppressed by different mechanisms** — the merge is a view model now, with both suppressions kept distinct and held against the Qt source.
 - ✅ **PP139** **three of the four registration dialogs have validation rules nothing in the port states** — manual host, console PIN and profile as view models, with the two PIN validators kept apart.
 - ✅ **PP140** **the settings screen writes on commit and nothing in the port says so** — commit-on-finish with JavaScript's lenient parse, and chiaki-render.dll deployed where its deps are.
+- ✅ **PP141** **the registration progress dialog ignores whether the operation succeeded, and nothing says so** — the dialog stays open on both outcomes, and Escape leaves mid-registration where Return does not.
 
 ## Block E — Windows-only build
 
