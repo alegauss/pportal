@@ -9,7 +9,7 @@
 
 ## Block B — Native interop
 
-- ⏳ **PP7** (deps: PP4 ✅) **PSN OAuth login runs in a QtWebEngine view, a bundled browser the WPF host has no equivalent for** — the WebView2 control itself, and the token exchange, which need a browser and a PSN account. → §PP7
+- ⏳ **PP7** (deps: PP4 ✅) **PSN OAuth login runs in a QtWebEngine view, a bundled browser the WPF host has no equivalent for** — the WebView2 control itself, which needs a browser and a PSN account to drive; the exchange landed in PP144. → §PP7
 - ⏳ **PP93** (deps: —) **the dpad touch path uses a third pair of touchpad bounds, matching neither console's pad** — the SDL touchpad path in controllermanager.cpp still scales by the fixed macros, having no session to ask which console is connected. → §PP93
 
 ## Block C — Video and input path

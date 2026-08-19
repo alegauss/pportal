@@ -43,6 +43,7 @@
 - ✅ **PP128** **the roster a hotplug event updates is keyed by identity and enumerated by position, and nothing checks it** — the reconcile keys on instance ids and filters buttonless motion pads, with the Qt list read rather than copied.
 - ✅ **PP129** **SDL names a touch by touchpad and finger, the console by an id from a pool of two, and nothing maps them** — the pairs map onto the console's two slots, freed on lift, with the Qt client's three rules held.
 - ✅ **PP130** **the pad's sensors are fused into an orientation by a stateful filter the port has no access to** — the fusion is carried at ABI 32, and the two conversions around it are held against the Qt client.
+- ✅ **PP144** **the PSN token exchange is three Qt network requests whose shapes the port has to match exactly** — The three requests, the account id and the expiry, asserted offline; the four surprising shapes are pinned against the Qt source.
 
 ## Block C — Video and input path
 
