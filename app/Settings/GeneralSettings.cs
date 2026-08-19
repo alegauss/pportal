@@ -1,51 +1,20 @@
+﻿using System.Text.RegularExpressions;
 using ChiakiNg.Session;
 
 namespace ChiakiNg.Settings;
 
 /// <summary>
-/// PP16: a combo whose INDEX is the property and whose STRING is what the store holds.
-///
-/// The settings screen binds `currentIndex: Chiaki.settings.disconnectAction` and assigns the
-/// index straight back, so the property is an int and the port would reasonably store an int. The
-/// Qt client does not: Settings::SetDisconnectAction writes "nothing", "sleep" or "ask", and
-/// GetDisconnectAction reads the string back through `QMap::key(v, default)`.
-///
-/// That is the whole reason this type exists rather than a cast. A port that stored the index
-/// writes 2 where the Qt client writes "ask"; the Qt client then finds no key for "2", falls back
-/// to its default, and the user's choice is gone. Nothing throws, nothing logs, and the two
-/// clients share one settings file - so the symptom is a preference that resets when the other
-/// client is opened, which is not a symptom anybody traces back to a screen.
-///
-/// The fallback is copied too. An unknown string is the default, not an error: a settings file
-/// written by a newer version, or edited by hand, must leave the screen usable.
+/// PP16: the General tab's two action combos, whose index is the property and whose string is what
+/// the store holds. The mechanism is <see cref="StoredChoice"/>; these are the two instances.
 /// </summary>
-public sealed class ActionChoice
+public static class ActionChoice
 {
-    private readonly string[] stored;
-
-    private ActionChoice(string key, IReadOnlyList<string> labels, string[] stored, int defaultIndex)
-    {
-        Key = key;
-        Labels = labels;
-        this.stored = stored;
-        DefaultIndex = defaultIndex;
-    }
-
-    /// <summary>The preference this choice is stored under.</summary>
-    public string Key { get; }
-
-    /// <summary>What the combo shows, in the order the QML declares - the index IS the enum value.</summary>
-    public IReadOnlyList<string> Labels { get; }
-
-    /// <summary>The index taken when the store holds nothing, or holds something unrecognised.</summary>
-    public int DefaultIndex { get; }
-
     /// <summary>
     /// Action On Disconnect. Three choices, and the default is the LAST of them - which is worth
     /// noticing, because an index-based port that defaulted to 0 would silently change what a
     /// fresh install does on disconnect from asking to doing nothing.
     /// </summary>
-    public static ActionChoice Disconnect { get; } = new(
+    public static StoredChoice Disconnect { get; } = new(
         "settings/disconnect_action",
         new[] { "Do Nothing", "Enter Sleep Mode", "Ask" },
         // DisconnectAction: AlwaysNothing, AlwaysSleep, Ask - settings.h's order, which is the
@@ -58,32 +27,11 @@ public sealed class ActionChoice
     /// so index 0 is "nothing" in both and the two are still not interchangeable: "ask" is a
     /// disconnect string only, and one shared converter would accept it here.
     /// </summary>
-    public static ActionChoice Suspend { get; } = new(
+    public static StoredChoice Suspend { get; } = new(
         "settings/suspend_action",
         new[] { "Do Nothing", "Enter Sleep Mode" },
         new[] { "nothing", "sleep" },
         0);
-
-    /// <summary>What the store holds for an index. Out-of-range takes the default's string.</summary>
-    public string StoredFor(int index)
-        => stored[index >= 0 && index < stored.Length ? index : DefaultIndex];
-
-    /// <summary>
-    /// The index for a stored string, or the default index where it is not one of them - which is
-    /// `QMap::key(v, default)` and includes the case of a key never written.
-    /// </summary>
-    public int IndexOf(string? storedValue)
-    {
-        if (storedValue is null)
-            return DefaultIndex;
-
-        int found = Array.IndexOf(stored, storedValue);
-        return found < 0 ? DefaultIndex : found;
-    }
-
-    /// <summary>Whether a string is one this choice recognises. Used to state the fallback, not to gate it.</summary>
-    public bool Recognises(string? storedValue)
-        => storedValue is not null && Array.IndexOf(stored, storedValue) >= 0;
 }
 
 /// <summary>
@@ -288,17 +236,27 @@ public static class GeneralSettingsSource
     public static string? LocateQml() => SettingsFieldSource.Locate();
 
     /// <summary>
-    /// Whether an action is still stored as a string rather than as the combo's index. Both maps
-    /// are checked entry by entry, because a single wrong pair is a preference that resets.
+    /// Whether a choice is still stored as a string rather than as the combo's index.
+    ///
+    /// Both directions are checked: the setter writing through the map, and the getter reading back
+    /// through `QMap::key(v, default)` - which is the fallback the port copies. The setter's
+    /// parameter name is not pinned, because settings.cpp spells it `action` for the two actions
+    /// and `type` for the window type, and neither is the fact being asserted.
     /// </summary>
-    public static bool StoredAsStrings(string cpp, ActionChoice choice, string mapName)
+    public static bool StoredAsStrings(string cpp, StoredChoice choice, string mapName)
     {
         ArgumentNullException.ThrowIfNull(cpp);
         ArgumentNullException.ThrowIfNull(choice);
         ArgumentNullException.ThrowIfNull(mapName);
 
-        return cpp.Contains($"settings.setValue(\"{choice.Key}\", {mapName}[action]);",
-                StringComparison.Ordinal)
+        bool writesThroughTheMap = Regex.IsMatch(
+            cpp,
+            @"settings\.setValue\(""" + Regex.Escape(choice.Key) + @""", "
+                + Regex.Escape(mapName) + @"\[\w+\]\);",
+            RegexOptions.None,
+            TimeSpan.FromSeconds(1));
+
+        return writesThroughTheMap
             && cpp.Contains($"return {mapName}.key(v, ", StringComparison.Ordinal);
     }
 

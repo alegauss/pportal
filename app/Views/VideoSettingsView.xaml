@@ -1,0 +1,71 @@
+<UserControl x:Class="ChiakiNg.Views.VideoSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    PP16: the settings screen's Video tab, the second of the nine.
+
+    Two combos, and neither states its mapping here: the window type stores words that are not the
+    labels on this screen, and the decoder's first entry stores the empty string. SelectedIndex
+    binds and the view model owns what the store receives.
+
+    The two resolution fields commit on LostFocus and not on text change - PP140's rule, and the
+    reason there is no UpdateSourceTrigger=PropertyChanged on them. Writing per keystroke would
+    store 1, then 19, then 192 on the way to 1920.
+
+    The restart warning is bound, not conditional markup: whether ticking Vertical Sync relaunches
+    the application depends on the renderer actually running, which is a runtime value.
+  -->
+  <UserControl.Resources>
+    <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+
+    <Style TargetType="TextBlock" x:Key="RowLabel">
+      <Setter Property="Margin" Value="0,8,0,2" />
+      <Setter Property="Opacity" Value="0.7" />
+    </Style>
+
+    <Style TargetType="ComboBox" x:Key="RowCombo">
+      <Setter Property="Width" Value="400" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+    </Style>
+  </UserControl.Resources>
+
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="16">
+      <TextBlock Text="Hardware Decoder" Style="{StaticResource RowLabel}" />
+      <StackPanel Orientation="Horizontal">
+        <ComboBox x:Name="DecoderCombo" Width="220" SelectedIndex="{Binding DecoderIndex}" />
+        <CheckBox x:Name="ZeroCopyBox" Content="Zero-Copy" Margin="16,0,0,0"
+                  VerticalAlignment="Center" IsChecked="{Binding ZeroCopy}" />
+      </StackPanel>
+
+      <TextBlock Text="Window Type" Style="{StaticResource RowLabel}" />
+      <ComboBox x:Name="WindowTypeCombo" Style="{StaticResource RowCombo}"
+                SelectedIndex="{Binding WindowIndex}" />
+
+      <StackPanel x:Name="CustomResolutionGroup"
+                  Visibility="{Binding CustomResolutionVisible, Converter={StaticResource BoolToVisibility}}">
+        <TextBlock Text="Custom Resolution Width" Style="{StaticResource RowLabel}" />
+        <TextBox x:Name="WidthField" Width="400" HorizontalAlignment="Left"
+                 Text="{Binding Width.Text, UpdateSourceTrigger=LostFocus}" />
+
+        <TextBlock Text="Custom Resolution Height" Style="{StaticResource RowLabel}" />
+        <TextBox x:Name="HeightField" Width="400" HorizontalAlignment="Left"
+                 Text="{Binding Height.Text, UpdateSourceTrigger=LostFocus}" />
+      </StackPanel>
+
+      <CheckBox x:Name="DoubleClickBox" Margin="0,16,0,0"
+                Content="Toggle Fullscreen on Double-click" IsChecked="{Binding FullscreenDoubleClick}" />
+
+      <CheckBox x:Name="HideCursorBox" Margin="0,8,0,0"
+                Content="Hide Cursor during Stream" IsChecked="{Binding HideCursor}" />
+
+      <CheckBox x:Name="VSyncBox" Margin="0,8,0,0"
+                Content="Vertical Sync" IsChecked="{Binding VSync}" />
+
+      <!-- The only control on this screen that can end the process, so it says so. -->
+      <TextBlock x:Name="RestartWarning" Margin="24,2,0,0" TextWrapping="Wrap" Opacity="0.8"
+                 Text="Changing this restarts the application on the current renderer."
+                 Visibility="{Binding VSyncNeedsRestart, Converter={StaticResource BoolToVisibility}}" />
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>
