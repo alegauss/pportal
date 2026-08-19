@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 24
+#define CHIAKI_SHIM_ABI 25
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -567,6 +567,40 @@ CHIAKI_SHIM_API int32_t chiaki_shim_discovery_reply_request_port(void *host);
 
 /** One string field, or NULL where the reply did not carry it. */
 CHIAKI_SHIM_API const char *chiaki_shim_discovery_reply_field(void *host, int32_t field);
+
+/**
+ * PP6, the rest of it: the discovery service - the socket, the search timer and the reply callback.
+ *
+ * This was filed as needing a console on the network. It does not: it needs an address that
+ * answers, and the service sends its search to whatever `send_host` names rather than only to a
+ * broadcast. Pointed at the loopback, a socket that replies is a console as far as it is
+ * concerned - which is what makes the whole path testable with no hardware.
+ *
+ * `hosts` in the callback is libchiaki's own array, valid only for the duration of the call, and
+ * read through chiaki_shim_discovery_service_host_field the way a reply is. Nothing here copies
+ * it: a screen that wants to keep a console copies what it needs while it is being told.
+ *
+ * `ping_ms` is how often the search goes out, and `hosts_max` how many consoles may be remembered.
+ */
+typedef void (*ChiakiShimDiscoveryServiceCb)(void *hosts, int32_t hosts_count, void *user);
+
+CHIAKI_SHIM_API void *chiaki_shim_discovery_service_create(
+		void *log,
+		const char *send_host,
+		uint64_t ping_ms,
+		int32_t hosts_max,
+		ChiakiShimDiscoveryServiceCb cb,
+		void *user);
+
+CHIAKI_SHIM_API void chiaki_shim_discovery_service_free(void *service);
+
+/** One field of one host in the array a callback was handed. Same field ids as a parsed reply. */
+CHIAKI_SHIM_API const char *chiaki_shim_discovery_service_host_field(
+		void *hosts, int32_t index, int32_t field);
+
+/** That host's state and request port, which are not strings. */
+CHIAKI_SHIM_API int32_t chiaki_shim_discovery_service_host_state(void *hosts, int32_t index);
+CHIAKI_SHIM_API int32_t chiaki_shim_discovery_service_host_request_port(void *hosts, int32_t index);
 
 /**
  * PP23: the registration crypto, reachable so that both implementations can be run on one input.

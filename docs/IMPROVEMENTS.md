@@ -25,17 +25,6 @@ differently.
 
 ## Block B — Native interop
 
-### §PP6 Discovery as the first proof
-
-discoverymanager.cpp is 428 lines over a UDP broadcast, a reply parser and a wake
-packet. It talks to libchiaki for the protocol and to Qt for the socket and the timer,
-and the Qt half has a direct .NET equivalent in UdpClient.
-
-It is filed early for its size rather than its importance. The console list is the first
-screen worth drawing, discovery is what fills it, and a working list is the end-to-end
-evidence that the managed side can call the native side and get an answer back. If the
-boundary in PP4 is wrong, this is where it costs an afternoon instead of a block.
-
 ### §PP7 The browser the login needs
 
 PSNLoginDialog.qml imports QtWebEngine and hosts a WebEngineView because the login is

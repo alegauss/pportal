@@ -2625,6 +2625,96 @@ public static class SelfTest
                 kept is { Name: "PS5-385", Id: "0011223344556677" },
                 kept?.Name ?? "<null>");
 
+            // PP6's remainder, which was filed as needing a console on the network. It needs an
+            // address that ANSWERS - so this is one: a socket on the loopback bound to the PS5
+            // discovery port, replying to the service's own search. The service, the socket, the
+            // timer and the reply callback all run; the only thing the loopback is standing in for
+            // is the console's willingness to answer.
+            using (var responder = new System.Net.Sockets.UdpClient(
+                new System.Net.IPEndPoint(System.Net.IPAddress.Loopback, 9302)))
+            using (var ps4Drain = new System.Net.Sockets.UdpClient(
+                new System.Net.IPEndPoint(System.Net.IPAddress.Loopback, 987)))
+            {
+                // The second socket listens and says nothing, and it is not optional. The service
+                // searches for a PS4 on 987 before it searches for a PS5 on 9302, and a UDP
+                // datagram sent to a loopback port with no listener comes back as an ICMP port
+                // unreachable - which Windows reports on the SENDER's next receive as a reset.
+                // Without this the service's own socket fails its read before the reply arrives,
+                // and the log says "Discovery thread failed to read from socket".
+                //
+                // A real network does not show this: the search goes out as a broadcast, and
+                // nothing answers a broadcast with ICMP. It is the loopback that makes it visible,
+                // which is worth knowing before somebody points this client at one console's
+                // address and wonders why discovery stops.
+                _ = Task.Run(() =>
+                {
+                    var any = new System.Net.IPEndPoint(System.Net.IPAddress.Any, 0);
+                    try { ps4Drain.Receive(ref any); }
+                    catch (System.Net.Sockets.SocketException) { }
+                    catch (ObjectDisposedException) { }
+                });
+
+                var found = new List<DiscoveredConsole>();
+                using var announced = new ManualResetEventSlim(false);
+                using var searched = new ManualResetEventSlim(false);
+
+                // Answer the first search that arrives, from the port it arrived at, so the
+                // service's own socket receives the reply.
+                var answering = Task.Run(() =>
+                {
+                    var from = new System.Net.IPEndPoint(System.Net.IPAddress.Any, 0);
+                    byte[] search = responder.Receive(ref from);
+                    searched.Set();
+
+                    if (!Encoding.UTF8.GetString(search).StartsWith("SRCH", StringComparison.Ordinal))
+                        return;
+
+                    byte[] reply = Encoding.UTF8.GetBytes(
+                        "HTTP/1.1 200 Ok\n"
+                        + "host-id:00112233445566aa\n"
+                        + "host-type:PS5\n"
+                        + "host-name:LoopbackPS5\n"
+                        + "host-request-port:9295\n"
+                        + "device-discovery-protocol-version:00030010\n"
+                        + "system-version:8050001\n");
+                    responder.Send(reply, reply.Length, from);
+                });
+
+                using (var service = new DiscoveryService("127.0.0.1", consoles =>
+                {
+                    lock (found)
+                    {
+                        found.Clear();
+                        found.AddRange(consoles);
+                    }
+                    if (consoles.Count > 0)
+                        announced.Set();
+                }, pingMs: 200))
+                {
+                    Check("the service sends a search to where it is pointed",
+                        searched.Wait(TimeSpan.FromSeconds(10)));
+
+                    bool told = announced.Wait(TimeSpan.FromSeconds(10));
+                    Check("and a socket that answers is announced as a console", told);
+
+                    DiscoveredConsole console;
+                    lock (found)
+                        console = found.Count > 0 ? found[0] : default;
+
+                    Check("the console arrives with the fields its reply carried",
+                        told && console is { Name: "LoopbackPS5", HostType: "PS5",
+                            Id: "00112233445566aa", RequestPort: 9295,
+                            State: DiscoveryHostState.Ready },
+                        console.ToString());
+                    // The address is where the datagram came from, not something in the reply -
+                    // which is what a session is later opened to.
+                    Check("and the address is the one that answered",
+                        told && console.Address == "127.0.0.1", console.Address ?? "<null>");
+                }
+
+                answering.Wait(TimeSpan.FromSeconds(2));
+            }
+
             // The shim declares chiaki_discovery_srch_response_parse itself, because libchiaki
             // exports it and declares it in no header - and lib/ is the half of this project that
             // is not edited. A signature no compiler compares is not a build error when it is

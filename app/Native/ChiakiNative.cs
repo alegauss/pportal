@@ -40,7 +40,7 @@ public static class ChiakiNative
     internal const string Library = "chiaki-shim";
 
     /// <summary>Must equal CHIAKI_SHIM_ABI in shim/chiaki_shim.h.</summary>
-    public const uint ExpectedAbi = 24;
+    public const uint ExpectedAbi = 25;
 
     /// <summary>
     /// A module initializer and not a static constructor, because the resolver has to be in place

@@ -7,6 +7,7 @@
 #include <chiaki/bitstream.h>
 #include <chiaki/controller.h>
 #include <chiaki/discovery.h>
+#include <chiaki/discoveryservice.h>
 #include <chiaki/ecdh.h>
 #include <chiaki/fec.h>
 #include <chiaki/ffmpegdecoder.h>
@@ -1968,6 +1969,134 @@ CHIAKI_SHIM_API int32_t chiaki_shim_regist_request_payload(
 
 	*buf_size = (int32_t)size;
 	return (int32_t)CHIAKI_ERR_SUCCESS;
+}
+
+typedef struct chiaki_shim_discovery_service_t
+{
+	ChiakiDiscoveryService service;
+	ChiakiShimDiscoveryServiceCb cb;
+	void *user;
+} chiaki_shim_discovery_service;
+
+static void chiaki_shim_discovery_service_dispatch(
+		ChiakiDiscoveryHost *hosts, size_t hosts_count, void *user)
+{
+	chiaki_shim_discovery_service *self = (chiaki_shim_discovery_service *)user;
+	if(self && self->cb)
+		self->cb(hosts, (int32_t)hosts_count, self->user);
+}
+
+CHIAKI_SHIM_API void *chiaki_shim_discovery_service_create(
+		void *log,
+		const char *send_host,
+		uint64_t ping_ms,
+		int32_t hosts_max,
+		ChiakiShimDiscoveryServiceCb cb,
+		void *user)
+{
+	chiaki_shim_log *log_self = (chiaki_shim_log *)log;
+	chiaki_shim_discovery_service *self;
+	ChiakiDiscoveryServiceOptions options;
+	struct sockaddr_storage addr;
+	struct sockaddr_in *addr_in;
+
+	if(!send_host || hosts_max <= 0)
+		return NULL;
+
+	memset(&addr, 0, sizeof(addr));
+	addr_in = (struct sockaddr_in *)&addr;
+	addr_in->sin_family = AF_INET;
+	if(inet_pton(AF_INET, send_host, &addr_in->sin_addr) != 1)
+		return NULL;
+
+	self = (chiaki_shim_discovery_service *)calloc(1, sizeof(chiaki_shim_discovery_service));
+	if(!self)
+		return NULL;
+
+	self->cb = cb;
+	self->user = user;
+
+	memset(&options, 0, sizeof(options));
+	options.hosts_max = (size_t)hosts_max;
+	options.host_drop_pings = 3;
+	options.ping_ms = ping_ms;
+	options.ping_initial_ms = ping_ms;
+	options.send_addr = &addr;
+	options.send_addr_size = sizeof(struct sockaddr_in);
+	options.broadcast_addrs = NULL;
+	options.broadcast_num = 0;
+	options.send_host = NULL;
+	options.cb = cb ? chiaki_shim_discovery_service_dispatch : NULL;
+	options.cb_user = self;
+
+	if(chiaki_discovery_service_init(&self->service, &options,
+			log_self ? &log_self->log : NULL) != CHIAKI_ERR_SUCCESS)
+	{
+		free(self);
+		return NULL;
+	}
+
+	return self;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_discovery_service_free(void *service)
+{
+	chiaki_shim_discovery_service *self = (chiaki_shim_discovery_service *)service;
+	if(!self)
+		return;
+
+	// Cleared before fini, because fini joins a thread that may be inside the callback - and what
+	// it would be calling into is about to stop existing.
+	self->cb = NULL;
+	chiaki_discovery_service_fini(&self->service);
+	free(self);
+}
+
+static ChiakiDiscoveryHost *chiaki_shim_discovery_host_at(void *hosts, int32_t index)
+{
+	return hosts && index >= 0 ? ((ChiakiDiscoveryHost *)hosts) + index : NULL;
+}
+
+CHIAKI_SHIM_API const char *chiaki_shim_discovery_service_host_field(
+		void *hosts, int32_t index, int32_t field)
+{
+	ChiakiDiscoveryHost *host = chiaki_shim_discovery_host_at(hosts, index);
+	if(!host)
+		return NULL;
+
+	switch((ChiakiShimDiscoveryField)field)
+	{
+		case CHIAKI_SHIM_DISCOVERY_HOST_ADDR:
+			return host->host_addr;
+		case CHIAKI_SHIM_DISCOVERY_SYSTEM_VERSION:
+			return host->system_version;
+		case CHIAKI_SHIM_DISCOVERY_PROTOCOL_VERSION:
+			return host->device_discovery_protocol_version;
+		case CHIAKI_SHIM_DISCOVERY_HOST_NAME:
+			return host->host_name;
+		case CHIAKI_SHIM_DISCOVERY_HOST_TYPE:
+			return host->host_type;
+		case CHIAKI_SHIM_DISCOVERY_HOST_ID:
+			return host->host_id;
+		case CHIAKI_SHIM_DISCOVERY_RUNNING_APP_TITLEID:
+			return host->running_app_titleid;
+		case CHIAKI_SHIM_DISCOVERY_RUNNING_APP_NAME:
+			return host->running_app_name;
+		default:
+			return NULL;
+	}
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_discovery_service_host_state(void *hosts, int32_t index)
+{
+	ChiakiDiscoveryHost *host = chiaki_shim_discovery_host_at(hosts, index);
+	return host ? (int32_t)host->state : 0;
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_discovery_service_host_request_port(void *hosts, int32_t index)
+{
+	ChiakiDiscoveryHost *host = chiaki_shim_discovery_host_at(hosts, index);
+	return host ? (int32_t)host->host_request_port : 0;
 }
 
 CHIAKI_SHIM_API void chiaki_shim_session_free(void *session)

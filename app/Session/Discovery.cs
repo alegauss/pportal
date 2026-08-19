@@ -152,6 +152,28 @@ public static class Discovery
         }
     }
 
+    /// <summary>The eight string fields, in the order libchiaki declares them.</summary>
+    internal static string? HostField(IntPtr hosts, int index, int field)
+        => Marshal.PtrToStringUTF8(DiscoveryServiceHostField(hosts, index, field));
+
+    internal static DiscoveryHostState HostState(IntPtr hosts, int index)
+        => (DiscoveryHostState)DiscoveryServiceHostState(hosts, index);
+
+    internal static ushort HostRequestPort(IntPtr hosts, int index)
+        => (ushort)DiscoveryServiceHostRequestPort(hosts, index);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_discovery_service_host_field",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr DiscoveryServiceHostField(IntPtr hosts, int index, int field);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_discovery_service_host_state",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern int DiscoveryServiceHostState(IntPtr hosts, int index);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_discovery_service_host_request_port",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern int DiscoveryServiceHostRequestPort(IntPtr hosts, int index);
+
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_discovery_reply_parse",
         CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr DiscoveryReplyParse(
