@@ -2231,6 +2231,66 @@ public static class SelfTest
             Console.WriteLine();
             Console.WriteLine("Regist - the first thing a fresh install sends");
 
+            // PP33: the request head, formatted here instead of by regist.c's snprintf.
+            string? registSrc = RegistRequestSource.Locate();
+            if (registSrc is null)
+            {
+                Console.WriteLine($"  --    the request head  (no {RegistRequestSource.RelativePath} here)");
+            }
+            else
+            {
+                string rc = File.ReadAllText(registSrc);
+
+                // The bytes are not what a reader would write, so this is what says the port meant
+                // them. "HTTP/1.1" twice, the second behind a space - which makes the second line
+                // a header folded onto nothing. Six years upstream, and the console registers.
+                Check("the request line still carries HTTP/1.1 twice, so the port still should",
+                    RegistRequestSource.RequestLineIsStillDoubled(rc));
+
+                byte[] head = RegistRequest.Head(
+                    RegistRequest.Path.Ps5, "10.0.2.15", 0x1e0 + 0x50, "10.0");
+                string headText = Encoding.ASCII.GetString(head);
+
+                Check("the formatted head repeats the version the same way",
+                    headText.StartsWith("POST /sie/ps5/rp/sess/rgst HTTP/1.1\r\n HTTP/1.1\r\n",
+                        StringComparison.Ordinal),
+                    headText.Split('\n')[0].TrimEnd('\r'));
+
+                // Every header the port emits, spelled as the C spells it. A capitalisation the
+                // console happens to care about is not something a rewrite would notice losing -
+                // "HOST:" is upper case here and nowhere else in the codebase.
+                Check("every header line is the C's own spelling",
+                    RegistRequestSource.Declares(rc, "User-Agent: remoteplay Windows")
+                    && RegistRequestSource.Declares(rc, "Connection: close")
+                    && headText.Contains("HOST: 10.0.2.15\r\n", StringComparison.Ordinal)
+                    && headText.Contains("User-Agent: remoteplay Windows\r\n", StringComparison.Ordinal)
+                    && headText.Contains("Connection: close\r\n", StringComparison.Ordinal));
+
+                Check("the three request paths are the C's, in its own order",
+                    RegistRequestSource.Paths(rc).SequenceEqual(
+                        [RegistRequest.PathFor(RegistRequest.Path.Ps5),
+                         RegistRequest.PathFor(RegistRequest.Path.Ps4),
+                         RegistRequest.PathFor(RegistRequest.Path.Ps4Pre10)]),
+                    string.Join(" ", RegistRequestSource.Paths(rc)));
+
+                // RP-Version is omitted entirely below PS4 9.0, not sent empty - a different
+                // request, and the kind of difference a console answers with a refusal.
+                Check("RP-Version is absent rather than empty when there is none",
+                    !Encoding.ASCII.GetString(
+                        RegistRequest.Head(RegistRequest.Path.Ps4Pre10, "10.0.2.15", 0x200, null))
+                        .Contains("RP-Version", StringComparison.Ordinal));
+
+                Check("the head ends on a blank line",
+                    headText.EndsWith("\r\n\r\n", StringComparison.Ordinal));
+
+                // And the two guards that are dead as written. Recorded, not repaired: lib/ is not
+                // this port's to edit, and the managed side has no fixed buffer to overrun - so it
+                // inherits the bytes without the bug. This is what keeps that claim from going
+                // stale if the C is ever corrected.
+                Check("regist.c still bounds the head with the payload size, which cannot fire",
+                    RegistRequestSource.GuardsUseThePayloadSize(rc));
+            }
+
             string? registFile = SanitizerSource.LocateRelative(@"test\regist.c");
             if (registFile is null)
             {
