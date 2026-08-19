@@ -135,6 +135,34 @@ public sealed class GkCrypt : IDisposable
             throw new InvalidOperationException("chiaki_gkcrypt_init failed.");
     }
 
+    /// <summary>
+    /// PP123: CHIAKI_GKCRYPT_BLOCK_SIZE, which a caller adds to a packet's key position before
+    /// decrypting its payload. Asked rather than written down a second time.
+    /// </summary>
+    public static int BlockSize => GkCryptBlockSize();
+
+    /// <summary>
+    /// Decrypts a payload IN PLACE at a key position.
+    ///
+    /// In place because that is what the C does and what the receive path wants: the payload is
+    /// already a span of the buffer the packet arrived in, and copying it to decrypt would be a
+    /// copy per packet on the one path PP113 measured at zero.
+    ///
+    /// The position is the packet's plus <see cref="BlockSize"/>. Getting it wrong does not fail -
+    /// it produces plausible garbage, which the decoder then reports as a corrupt frame, and the
+    /// fault reads as the network's.
+    /// </summary>
+    public void Decrypt(ulong keyPos, byte[] buf, int length)
+    {
+        ObjectDisposedException.ThrowIf(_handle == IntPtr.Zero, this);
+        ArgumentNullException.ThrowIfNull(buf);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(length, buf.Length);
+
+        int err = GkCryptDecrypt(_handle, keyPos, buf, length);
+        if (err != (int)ChiakiError.Success)
+            throw new InvalidOperationException($"chiaki_gkcrypt_decrypt failed: {(ChiakiError)err}.");
+    }
+
     /// <summary>The key stream at a position, generated rather than looked up.</summary>
     public byte[] KeyStream(ulong keyPos, int length)
     {
@@ -169,6 +197,14 @@ public sealed class GkCrypt : IDisposable
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_gkcrypt_gen_key_stream",
         CallingConvention = CallingConvention.Cdecl)]
     private static extern int GkCryptGenKeyStream(IntPtr gkcrypt, ulong keyPos, byte[] buf, int bufSize);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_gkcrypt_decrypt",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern int GkCryptDecrypt(IntPtr gkcrypt, ulong keyPos, byte[] buf, int bufSize);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_gkcrypt_block_size",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern int GkCryptBlockSize();
 }
 
 /// <summary>

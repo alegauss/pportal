@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 28
+#define CHIAKI_SHIM_ABI 29
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -761,6 +761,23 @@ CHIAKI_SHIM_API void chiaki_shim_gkcrypt_free(void *gkcrypt);
 /** The key stream at a position, which is what every takion packet is XORed against. */
 CHIAKI_SHIM_API int32_t chiaki_shim_gkcrypt_gen_key_stream(
 		void *gkcrypt, uint64_t key_pos, uint8_t *buf, int32_t buf_size);
+
+/**
+ * PP123: chiaki_gkcrypt_decrypt, in place, which is what turns a parsed AV packet into a NALU.
+ *
+ * test/takion_av_packet_parse_real_video.inl is 24 packets off a real stream with the NALU each
+ * decrypts to. Without this the port could check the header of a real packet and nothing inside
+ * it, which is the half where a wrong key position produces plausible garbage rather than an
+ * error - the decoder then reports a corrupt frame and the fault reads as the network's.
+ *
+ * The key position a payload decrypts at is the packet's plus one block, and the block size is
+ * asked for below rather than written down twice.
+ */
+CHIAKI_SHIM_API int32_t chiaki_shim_gkcrypt_decrypt(
+		void *gkcrypt, uint64_t key_pos, uint8_t *buf, int32_t buf_size);
+
+/** CHIAKI_GKCRYPT_BLOCK_SIZE. */
+CHIAKI_SHIM_API int32_t chiaki_shim_gkcrypt_block_size(void);
 
 /**
  * PP35: the GMAC that authenticates every takion packet, and its four recorded vectors.

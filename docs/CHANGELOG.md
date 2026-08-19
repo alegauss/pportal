@@ -91,6 +91,7 @@
 - ✅ **PP120** **the GMAC that authenticates every takion packet has four recorded vectors and the port checks none** — the shim carries GMAC at ABI 27, and all four recorded vectors are xUnit cases now.
 - ✅ **PP121** **eight of test/rpcrypt.c's nine recorded cases are unchecked, four of them a whole console generation** — the registration schedule is checked on both generations now, with the PIN and the key offset each proven to matter.
 - ✅ **PP122** **the four bitstream cases that parse a truncated packet are recorded and the port drove none** — all four are xUnit cases now, and the overrun check goes red when the length is believed rather than checked.
+- ✅ **PP123** **the only end-to-end recording in the tree, 24 real video packets, is checked by nothing in the port** — all 24 packets parse and decrypt to their recorded NALUs, and both the block offset and the crypt index are asserted negatively too.
 
 ## Block H — Performance and telemetry
 

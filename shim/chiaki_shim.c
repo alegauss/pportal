@@ -1183,6 +1183,32 @@ CHIAKI_SHIM_API int32_t chiaki_shim_gkcrypt_gen_key_stream(
 			(size_t)buf_size);
 }
 
+/**
+ * chiaki_gkcrypt_decrypt, in place over the caller's buffer.
+ *
+ * The last piece the recorded video stream needed. Parsing an AV packet gives a payload and a key
+ * position; turning that into the NALU a decoder can read is this, and without it the port could
+ * check the header of a real packet and nothing inside it.
+ *
+ * In place because that is what the C does and what the caller wants: the payload is already a
+ * span of the receive buffer, and copying it to decrypt would be a copy per packet on the one
+ * path where PP113 measured zero.
+ */
+CHIAKI_SHIM_API int32_t chiaki_shim_gkcrypt_decrypt(
+		void *gkcrypt, uint64_t key_pos, uint8_t *buf, int32_t buf_size)
+{
+	if(!gkcrypt || !buf || buf_size < 0)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+
+	return (int32_t)chiaki_gkcrypt_decrypt((ChiakiGKCrypt *)gkcrypt, key_pos, buf, (size_t)buf_size);
+}
+
+/** The block size a caller has to add to a packet's key_pos before decrypting its payload. */
+CHIAKI_SHIM_API int32_t chiaki_shim_gkcrypt_block_size(void)
+{
+	return (int32_t)CHIAKI_GKCRYPT_BLOCK_SIZE;
+}
+
 CHIAKI_SHIM_API void chiaki_shim_gkcrypt_gen_gmac_key(
 		uint64_t index, const uint8_t *key_base, const uint8_t *iv, uint8_t *key_out)
 {
