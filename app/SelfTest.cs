@@ -2732,6 +2732,40 @@ public static class SelfTest
                 Check("the handshake key does change the local signature",
                     !ecdh.LocalPublicKey(otherHandshake).Signature.SequenceEqual(ex["local_public_key_sig"]));
 
+                // PP105's open half. The three above say the signature is unread; these five say
+                // what that costs, which is the question the roadmap could not answer without
+                // reading the transport. Each is a step an attacker takes or is spared, and each
+                // is a predicate over lib/'s own text - so the conclusion in BangReachability
+                // stops being true out loud if the code moves underneath it.
+                string? tkFile = BangReachability.LocateTakion();
+                string? scFile = BangReachability.LocateStreamConnection();
+                string? hpFile = SanitizerSource.LocateRelative(@"lib\src\remote\holepunch.c");
+                if (tkFile is null || scFile is null || hpFile is null)
+                {
+                    Console.WriteLine(@"  --    what a forged bang would have to beat  (no lib\src here)");
+                }
+                else
+                {
+                    string tk = File.ReadAllText(tkFile);
+                    string sc = File.ReadAllText(scFile);
+
+                    // The two checks that could refuse a forged bang are the one that is missing
+                    // and the one that cannot exist yet. This is the second.
+                    Check("the MAC check passes everything while gkcrypt_remote is still null",
+                        BangReachability.MacPassesWhileUnkeyed(tk));
+                    Check("and the bang is what ends that window, so it was never inside it",
+                        BangReachability.SecretIsDerivedBeforeCryptInit(sc));
+
+                    // What is left is not cryptography. Off-path it is three things at once.
+                    Check("the tag is checked and is 32 random bits",
+                        BangReachability.TagIsCheckedAndRandom(tk));
+                    Check("but it is sent in the clear in INIT, so on-path it is free",
+                        BangReachability.TagIsSentInTheClear(tk));
+                    Check("both transports connect() the socket, which is what makes it on-path",
+                        BangReachability.SocketIsConnected(tk)
+                        && BangReachability.SocketIsConnected(File.ReadAllText(hpFile)));
+                }
+
                 // The key stream, from its own recorded case. The position is part of it: the
                 // stream is a function of where in the session you are, so a rewrite that got the
                 // derivation right and the position wrong would be correct for a packet nobody

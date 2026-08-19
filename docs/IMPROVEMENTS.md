@@ -470,28 +470,29 @@ are spelled, and changing that later means touching all of them.
 ### §PP105 The signature nobody reads
 
 chiaki_ecdh_derive_secret takes a handshake key and the console's signature over its
-public key and reads neither: it loads the remote point and computes the shared secret,
-and the two authentication parameters appear nowhere in either the OpenSSL or the
-mbedTLS branch. Verified from the .NET harness against test/gkcrypt.c's recorded
-exchange - a flipped byte in the signature, and separately in the handshake key, still
-returns success and the same secret.
+public key and reads neither: it loads the remote point and computes the secret, and
+both parameters appear in neither crypto branch. Verified against test/gkcrypt.c's
+recorded exchange - a flipped byte in either still returns the same secret.
 
-What that signature is worth is now established rather than guessed. The handshake key is sixteen
-random bytes per session, and it reaches the console inside the launch spec, which
-streamconnection.c encrypts under the registration-derived rpcrypt key. Only a party holding the
-registration secret can read it, so a signature under it proves the peer is the registered console
-- and it is the only such proof at that moment: the bang carrying the remote key arrives before
-stream_connection_init_crypt, so takion is not yet keyed.
+That signature is the only proof available at that moment. The handshake key is sixteen
+random bytes per session, and reaches the console inside a launch spec encrypted under
+the registration-derived rpcrypt key - so a signature under it proves the peer is the
+registered console.
 
-What is still not established is reachability - whether anything on a given path can
-inject that bang. That needs someone who knows the transport, and it is the difference
-between a missing check and an exploitable one.
+Reachability, previously open, is now established. The bang is accepted with no
+authentication at all: takion_handle_packet_mac returns SUCCESS while gkcrypt_remote is
+NULL, the state until the bang itself ends it. So the two checks that could refuse a
+forgery are the missing one and the one that cannot exist yet.
 
-The port does not quietly start verifying either way. A client that refuses a session
-every other client accepts fails differently, and a handshake divergence is the hardest
-kind to diagnose from a report. lib/ is also the half this project does not edit.
+What remains is not cryptographic. Both transports connect() the socket, and
+takion_parse_message refuses a bad tag - 32 random bits, sent in the clear in INIT.
+Off-path that is spoofing, guessing and a race at once; on-path, none of them, and a
+forged bang substitutes the attacker's public key: the client derives a secret with
+them, keys gkcrypt from it, and every later MAC verifies against the wrong peer.
 
-To be decided: report upstream, carry a patch, or record it as accepted.
+A missing check with a consequence, then; BangReachability holds the five facts. The
+port still does not verify unilaterally: a client refusing what others accept fails
+harder to diagnose. Reporting upstream is not this port's call.
 
 ### §PP107 The two nobody called
 
