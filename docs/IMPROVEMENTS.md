@@ -25,22 +25,6 @@ differently.
 
 ## Block B — Native interop
 
-### §PP4 Where managed code stops
-
-lib/ is the part of this project that is not being ported. It is C, it is where the
-protocol lives, and it is the reason a rewrite is out of the question. What has to exist
-is the seam: which functions .NET calls, how a native callback reaches a managed handler
-without the GC moving it, and who owns the buffers a video frame arrives in.
-
-Two shapes are on the table. Direct P/Invoke over the existing headers is less code and
-puts every marshalling decision in C#. A thin native shim - a C++ DLL exporting a flat,
-callback-free surface the way the Qt GUI already consumes it - is more code and moves
-the hard parts to the side of the boundary that already compiles them.
-
-The measure is not elegance: it is how much of streamsession.cpp survives. That file
-already adapts libchiaki to a GUI, and the shim question is whether the port re-adapts
-it in C# or keeps a Qt-free copy of it in C++.
-
 ### §PP5 The session, without Qt
 
 This is the file the whole port turns on. It holds the connect flow, the audio and video
