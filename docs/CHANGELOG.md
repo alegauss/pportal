@@ -62,6 +62,7 @@
 ## Block D — Screens
 
 - ✅ **PP12 (the focus chain)** **the six custom QML controls carry the theme, and gamepad focus navigation is built into them** — it is a tab chain and not a directional engine, which the six controls say and this now holds.
+- ✅ **PP136** **the focus chain is a decision with nothing binding it to a WPF control** — attached properties on any focusable control, with the decision split from the handler and asserted on all six.
 
 ## Block E — Windows-only build
 
