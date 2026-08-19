@@ -556,29 +556,28 @@ are spelled, and changing that later means touching all of them.
 ### §PP105 The signature nobody reads
 
 chiaki_ecdh_derive_secret takes a handshake key and the console's signature over its
-public key, and uses neither: its body loads the remote point and computes the shared
-secret, and the two authentication parameters are read nowhere in either the OpenSSL or
-the mbedTLS branch. Verified from the .NET harness against the recorded exchange in
-test/gkcrypt.c - flipping a byte of the signature, and separately of the handshake key,
-still returns success and the same secret.
+public key and reads neither: it loads the remote point and computes the shared secret,
+and the two authentication parameters appear nowhere in either the OpenSSL or the
+mbedTLS branch. Verified from the .NET harness against test/gkcrypt.c's recorded
+exchange - a flipped byte in the signature, and separately in the handshake key, still
+returns success and the same secret.
 
-The signature is produced correctly in the other direction -
-chiaki_ecdh_get_local_pub_key signs the local key under the handshake key, and that
-signature does change when the key does. So this is a check that exists on one side of
-the exchange and not the other, which is what makes it look like an omission rather than
-a design.
+What that signature is worth is now established rather than guessed. The handshake key is sixteen
+random bytes per session, and it reaches the console inside the launch spec, which
+streamconnection.c encrypts under the registration-derived rpcrypt key. Only a party holding the
+registration secret can read it, so a signature under it proves the peer is the registered console
+- and it is the only such proof at that moment: the bang carrying the remote key arrives before
+stream_connection_init_crypt, so takion is not yet keyed.
 
-What it would cost is not established here and should not be guessed at. Whether
-anything between the client and the console can substitute a public key at that point is
-a different investigation, and needs someone who knows the transport.
+What is still not established is reachability - whether anything on a given path can
+inject that bang. That needs someone who knows the transport, and it is the difference
+between a missing check and an exploitable one.
 
-What is decided is that the port does not quietly start verifying. A client that rejects
-a session the one every user already has would accept is a client that fails
-differently, and a divergence in the handshake is the hardest kind to diagnose from a
-bug report.
+The port does not quietly start verifying either way. A client that refuses a session
+every other client accepts fails differently, and a handshake divergence is the hardest
+kind to diagnose from a report. lib/ is also the half this project does not edit.
 
-So this is filed to be decided rather than fixed: report upstream, patch and carry it,
-or record that it is understood and accepted.
+To be decided: report upstream, carry a patch, or record it as accepted.
 
 ## Block G — Test discipline
 
