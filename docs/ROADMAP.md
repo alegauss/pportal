@@ -16,6 +16,7 @@
 - 📋 **PP6** (deps: PP4 ⏳) **console discovery and wake use QUdpSocket, so the console list has no source in a Qt-free host** — Discovery is small, self-contained and the first thing the front door needs, so it is the cheapest proof that the interop boundary holds. → §PP6
 - 📋 **PP7** (deps: PP4 ⏳) **PSN OAuth login runs in a QtWebEngine view, a bundled browser the WPF host has no equivalent for** — WebView2 ships with Windows and catches the same redirect, so the account link costs a control instead of a second rendering engine in the installer. → §PP7
 - 📋 **PP8** (deps: PP4 ⏳) **controller input is SDL wired into Qt events, and 950 lines of it decide what a button does** — A remote play client is driven by a gamepad before a mouse, so the input path is a first-class port and not a detail of whichever screen is drawn first. → §PP8
+- 📋 **PP87** (deps: PP9) **the video and audio sample callbacks are the last uncrossed part of the seam, and nothing offline can drive one** — a frame buffer is borrowed only for the duration of the callback, so who copies it is decided where there is a decoder to feed. → §PP87
 
 ## Block C — Video and input path
 

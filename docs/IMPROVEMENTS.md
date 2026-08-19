@@ -92,6 +92,30 @@ rendering. The reason this is filed in the interop block rather than under a scr
 that two very different consumers need it - the session, which sends the state, and the
 mapping screen, which shows it - and both are due before the settings screen.
 
+### §PP87 Who owns a frame
+
+Three of the seam's four questions are answered and asserted: which functions .NET
+calls, how a native callback reaches a managed handler without the GC moving it, and how
+state that must not be marshalled gets across. The fourth is who owns the buffers a
+video frame arrives in, and it is the one left because it is the one nothing offline can
+exercise.
+
+The shape is not in doubt. libchiaki hands the frame processor's own buffer to
+ChiakiVideoSampleCallback and takes it back when the call returns, sixty times a second,
+on the stream connection's thread. A managed handler therefore reads it as a
+ReadOnlySpan over the native pointer - no copy, and a ref struct that cannot outlive the
+frame it names. The audio sink is the same shape twice, a header and a frame.
+
+What is missing is an oracle. video_sample_cb is only called by the video receiver under
+a real stream, so the assertion that the span holds is either a console on the network
+or a shim export that calls the managed callback with a buffer the test made - and that
+second one is a hook that agrees with itself, which is the failure PP82 already names in
+this tree.
+
+So it lands where there is a decoder to feed it. PP9 decides what presents a frame; the
+first thing that decoder does is take this callback, and the assertion is the frame it
+produces rather than a buffer this side invented.
+
 ## Block C — Video and input path
 
 ### §PP9 Vulkan under a D3D9 compositor
