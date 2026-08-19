@@ -565,6 +565,85 @@ public static class SelfTest
                 ChiakiSession.QuitReasonString(1) == "Stopped"
                 && ChiakiSession.QuitReasonString(0) == "Unknown",
                 $"{ChiakiSession.QuitReasonString(1)} / {ChiakiSession.QuitReasonString(0)}");
+
+            Console.WriteLine();
+            Console.WriteLine("ChiakiSession - the thread, and the callback a UI is driven by");
+
+            // The loopback, with nothing listening on a remote play port. The session therefore
+            // fails on its own and reports it through exactly the path a real disconnect takes,
+            // which makes the whole lifecycle - start, event, join - assertable on a build agent.
+            using (var runInfo = new ChiakiConnectInfo())
+            {
+                runInfo.Host = "127.0.0.1";
+                runInfo.Ps5 = true;
+                runInfo.SetRegistKey("12345678"u8);
+                runInfo.SetMorning(new byte[16]);
+                runInfo.PacketLossMax = 0.05;
+
+                var events = new List<ChiakiSessionEvent>();
+                int callbackThread = 0;
+                using var quitArrived = new ManualResetEventSlim(false);
+                using var runLog = new ChiakiLog(ChiakiLogLevel.Error, (_, _) => { });
+                using ChiakiSession? run = ChiakiSession.TryCreate(runInfo, runLog, out ChiakiError runErr);
+
+                Check("a session for the run builds", run is not null, runErr.ToString());
+                if (run is not null)
+                {
+                    run.SetEventHandler(e =>
+                    {
+                        lock (events)
+                            events.Add(e);
+                        if (e.Type != ChiakiEventType.Quit)
+                            return;
+                        callbackThread = Environment.CurrentManagedThreadId;
+                        quitArrived.Set();
+                    });
+
+                    Check("the session thread starts", run.Start() == ChiakiError.Success);
+
+                    // Bounded, because nothing in libchiaki promises this ends: a suite that
+                    // waits forever on a network stack is a suite that reports nothing at all.
+                    bool arrived = quitArrived.Wait(TimeSpan.FromSeconds(45));
+                    Check("a quit event arrives from an address nothing answers", arrived);
+
+                    ChiakiSessionEvent quit = default;
+                    lock (events)
+                    {
+                        if (events.Count > 0)
+                            quit = events[^1];
+                    }
+
+                    Check("the quit carries a reason",
+                        arrived && quit.Type == ChiakiEventType.Quit
+                        && quit.QuitReason != ChiakiQuitReason.None,
+                        $"{quit.QuitReason}: {quit.QuitReasonString ?? "<null>"}");
+
+                    // And the reason's own sentence is what a screen shows. The event's
+                    // reason_str is NOT that sentence: session.c sets it only when the console
+                    // sent a disconnect reason of its own, so it is null on every failure that
+                    // never reached a console - which is this one. qmlbackend.cpp shows
+                    // chiaki_quit_reason_string and appends reason_str only when it is there, and
+                    // a port that read reason_str as the message would show an empty dialog for
+                    // the commonest failure there is.
+                    Check("the reason has a sentence even with no reason_str",
+                        arrived && quit.QuitReasonString is null
+                        && !string.IsNullOrEmpty(ChiakiSession.QuitReasonString((int)quit.QuitReason)),
+                        ChiakiSession.QuitReasonString((int)quit.QuitReason) ?? "<null>");
+
+                    // The property PP83's log could not show. That callback ran on the thread
+                    // that called it; this one runs on libchiaki's session thread, which the CLR
+                    // never created and has to attach on the way in.
+                    Check("the callback ran on a thread this side never created",
+                        arrived && callbackThread != 0
+                        && callbackThread != Environment.CurrentManagedThreadId,
+                        $"session={callbackThread} main={Environment.CurrentManagedThreadId}");
+
+                    if (!arrived)
+                        run.Stop();
+                    Check("join returns once the session thread has ended",
+                        run.Join() == ChiakiError.Success);
+                }
+            }
         }
 
         Console.WriteLine();

@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace ChiakiNg.Native;
@@ -187,21 +188,88 @@ public sealed class ChiakiConnectInfo : IDisposable
 }
 
 /// <summary>
-/// PP4: the session's two ends, which is as far as a lifecycle goes before there is a console.
+/// ChiakiEventType, in declaration order. Only <see cref="Quit"/> carries a decoded payload so
+/// far; the rest arrive as a type until the screen that reads their payload exists.
+/// </summary>
+public enum ChiakiEventType
+{
+    Connected = 0,
+    LoginPinRequest,
+    Holepunch,
+    Regist,
+    NicknameReceived,
+    KeyboardOpen,
+    KeyboardTextChange,
+    KeyboardRemoteClose,
+    Rumble,
+    Quit,
+    TriggerEffects,
+    MotionReset,
+    LedColor,
+    PlayerIndex,
+    HapticIntensity,
+    TriggerIntensity,
+    VideoFecFailure,
+}
+
+/// <summary>
+/// One event off the session thread.
 ///
-/// chiaki_session_init is reachable with nothing on the network: it resolves the host, builds the
-/// ctrl and the stream connection, and starts no thread. So the construction of a session - the
-/// part every screen above eventually depends on - is assertable on a build machine, and only
-/// <c>Start</c> is not. That boundary is why this class exists before any of it streams.
+/// <c>QuitReasonString</c> is not the message to show. libchiaki fills it only from a disconnect
+/// reason the console itself sent, so it is null on every failure that never reached one - which
+/// includes the commonest of them all, a console that is switched off. The sentence a screen
+/// shows is <see cref="ChiakiSession.QuitReasonString(int)"/> of the reason, with this appended
+/// when it is there; that is what qmlbackend.cpp's own dialog does. It is copied here because
+/// libchiaki's pointer dies when the callback returns.
+/// </summary>
+public readonly record struct ChiakiSessionEvent(
+    ChiakiEventType Type, ChiakiQuitReason QuitReason, string? QuitReasonString);
+
+/// <summary>ChiakiQuitReason, in declaration order.</summary>
+public enum ChiakiQuitReason
+{
+    None = 0,
+    Stopped,
+    SessionRequestUnknown,
+    SessionRequestConnectionRefused,
+    SessionRequestRpInUse,
+    SessionRequestRpCrash,
+    SessionRequestRpVersionMismatch,
+    CtrlUnknown,
+    CtrlConnectFailed,
+    CtrlConnectionRefused,
+    StreamConnectionUnknown,
+    StreamConnectionRemoteDisconnected,
+    StreamConnectionRemoteShutdown,
+    PsnRegistFailed,
+}
+
+/// <summary>
+/// PP4: the session lifecycle, as far as it goes without a console answering.
+///
+/// chiaki_session_init needs nothing on the network - it resolves the host, builds the ctrl and
+/// the stream connection, and starts no thread - and chiaki_session_start needs only a thread. So
+/// the whole shape is exercisable on a build machine: start against an address nothing answers on
+/// and the session reports its own failure through the event callback, which is the same path a
+/// real disconnect takes.
+///
+/// The event callback is the second of libchiaki's 22 and the one every screen above the stream
+/// is driven by. It differs from the log's in one way that matters: it arrives on the session
+/// thread, which is a thread the CLR never created. The runtime attaches such a thread on the way
+/// in, so the [UnmanagedCallersOnly] thunk and the GCHandle work there unchanged - asserted rather
+/// than assumed, because "it worked from the calling thread" says nothing about this one.
 ///
 /// The log is not owned here. libchiaki keeps the pointer for the session's whole life, so a
 /// <see cref="ChiakiLog"/> disposed first leaves the session logging into freed memory - the one
 /// ownership rule at this seam that the managed side cannot check for itself, and therefore the
 /// one worth stating twice.
 /// </summary>
-public sealed class ChiakiSession : IDisposable
+public sealed unsafe class ChiakiSession : IDisposable
 {
     private IntPtr _handle;
+    private GCHandle _self;
+    private Action<ChiakiSessionEvent>? _handler;
+    private bool _started;
 
     private ChiakiSession(IntPtr handle) => _handle = handle;
 
@@ -232,13 +300,104 @@ public sealed class ChiakiSession : IDisposable
     public static string? QuitReasonString(int reason)
         => Marshal.PtrToStringUTF8(QuitReasonStringPtr(reason));
 
+    /// <summary>
+    /// Where the session reports everything it does. Set it before <see cref="Start"/>: a handler
+    /// installed afterwards misses whatever already happened, and on a console that answers fast
+    /// that is CONNECTED.
+    /// </summary>
+    public void SetEventHandler(Action<ChiakiSessionEvent> handler)
+    {
+        ArgumentNullException.ThrowIfNull(handler);
+        ObjectDisposedException.ThrowIf(_handle == IntPtr.Zero, this);
+
+        _handler = handler;
+        if (!_self.IsAllocated)
+            _self = GCHandle.Alloc(this);
+
+        SessionSetEventCb(_handle, &Dispatch, GCHandle.ToIntPtr(_self));
+    }
+
+    /// <summary>
+    /// chiaki_session_start: spawns the session thread and returns at once. Success means a
+    /// thread exists, not that a console answered - that arrives as
+    /// <see cref="ChiakiEventType.Quit"/> when it does not.
+    /// </summary>
+    public ChiakiError Start()
+    {
+        ObjectDisposedException.ThrowIf(_handle == IntPtr.Zero, this);
+
+        ChiakiError err = (ChiakiError)SessionStart(_handle);
+        if (err == ChiakiError.Success)
+            _started = true;
+        return err;
+    }
+
+    /// <summary>chiaki_session_stop: asks the session thread to wind up, without waiting.</summary>
+    public ChiakiError Stop()
+    {
+        ObjectDisposedException.ThrowIf(_handle == IntPtr.Zero, this);
+        return (ChiakiError)SessionStop(_handle);
+    }
+
+    /// <summary>chiaki_session_join: waits for the session thread to end.</summary>
+    public ChiakiError Join()
+    {
+        ObjectDisposedException.ThrowIf(_handle == IntPtr.Zero, this);
+
+        ChiakiError err = (ChiakiError)SessionJoin(_handle);
+        if (err == ChiakiError.Success)
+            _started = false;
+        return err;
+    }
+
     public void Dispose()
     {
         if (_handle == IntPtr.Zero)
             return;
 
+        // Stop and join before the free, not as a courtesy: chiaki_session_fini tears down the
+        // mutex and the stop pipe the session thread is still standing on. A dispose that skipped
+        // this would be a use-after-free with a stack in libchiaki and no managed frame in it.
+        if (_started)
+        {
+            SessionStop(_handle);
+            SessionJoin(_handle);
+            _started = false;
+        }
+
         SessionFree(_handle);
         _handle = IntPtr.Zero;
+
+        // After the free, so the thunk cannot be reached with a handle that is about to go.
+        if (_self.IsAllocated)
+            _self.Free();
+        _handler = null;
+    }
+
+    /// <summary>
+    /// Called on the session thread. Nothing may escape it - the frame above is C - and the quit
+    /// sentence is copied here because libchiaki's pointer dies with the event.
+    /// </summary>
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
+    private static void Dispatch(int type, int quitReason, IntPtr quitReasonStr, IntPtr user)
+    {
+        try
+        {
+            if (user == IntPtr.Zero)
+                return;
+            if (GCHandle.FromIntPtr(user).Target is not ChiakiSession self)
+                return;
+
+            self._handler?.Invoke(new ChiakiSessionEvent(
+                (ChiakiEventType)type,
+                (ChiakiQuitReason)quitReason,
+                quitReasonStr == IntPtr.Zero ? null : Marshal.PtrToStringUTF8(quitReasonStr)));
+        }
+        catch
+        {
+            // Deliberately silent, for the same reason as ChiakiLog.Dispatch: an exception
+            // crossing back into C aborts the process with a stack that names neither side.
+        }
     }
 
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_lib_init",
@@ -256,4 +415,22 @@ public sealed class ChiakiSession : IDisposable
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_quit_reason_string",
         CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr QuitReasonStringPtr(int reason);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_session_set_event_cb",
+        CallingConvention = CallingConvention.Cdecl)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    private static extern bool SessionSetEventCb(
+        IntPtr session, delegate* unmanaged[Cdecl]<int, int, IntPtr, IntPtr, void> cb, IntPtr user);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_session_start",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern int SessionStart(IntPtr session);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_session_stop",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern int SessionStop(IntPtr session);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_session_join",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern int SessionJoin(IntPtr session);
 }

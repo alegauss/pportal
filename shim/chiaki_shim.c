@@ -273,6 +273,33 @@ CHIAKI_SHIM_API void chiaki_shim_connect_info_set_packet_loss_max(
 		self->info.packet_loss_max = packet_loss_max;
 }
 
+/**
+ * As with the log: the ChiakiSession is the first member, so the handle the managed side holds is
+ * the address libchiaki was given, and the callback and its user pointer ride alongside it where
+ * only this file can see them.
+ */
+typedef struct chiaki_shim_session_t
+{
+	ChiakiSession session;
+	ChiakiShimEventCb cb;
+	void *user;
+} chiaki_shim_session;
+
+static void chiaki_shim_session_dispatch(ChiakiEvent *event, void *user)
+{
+	chiaki_shim_session *self = (chiaki_shim_session *)user;
+	if(!self || !self->cb || !event)
+		return;
+
+	// Decoded arm by arm rather than handed over whole. The quit arm is the one that ends every
+	// session; the rest arrive as a type until the screen that reads their payload exists.
+	if(event->type == CHIAKI_EVENT_QUIT)
+		self->cb((int32_t)event->type, (int32_t)event->quit.reason, event->quit.reason_str,
+				self->user);
+	else
+		self->cb((int32_t)event->type, 0, NULL, self->user);
+}
+
 CHIAKI_SHIM_API void *chiaki_shim_session_create(void *connect_info, void *log, int32_t *error_out)
 {
 	chiaki_shim_connect_info *info = (chiaki_shim_connect_info *)connect_info;
@@ -283,15 +310,15 @@ CHIAKI_SHIM_API void *chiaki_shim_session_create(void *connect_info, void *log, 
 	if(!info || !info->info.host)
 		return NULL;
 
-	ChiakiSession *session = (ChiakiSession *)calloc(1, sizeof(ChiakiSession));
-	if(!session)
+	chiaki_shim_session *self = (chiaki_shim_session *)calloc(1, sizeof(chiaki_shim_session));
+	if(!self)
 	{
 		if(error_out)
 			*error_out = (int32_t)CHIAKI_ERR_MEMORY;
 		return NULL;
 	}
 
-	ChiakiErrorCode err = chiaki_session_init(session, &info->info,
+	ChiakiErrorCode err = chiaki_session_init(&self->session, &info->info,
 			log_self ? &log_self->log : NULL);
 	if(error_out)
 		*error_out = (int32_t)err;
@@ -301,20 +328,51 @@ CHIAKI_SHIM_API void *chiaki_shim_session_create(void *connect_info, void *log, 
 		// No chiaki_session_fini here on purpose: chiaki_session_init unwinds whatever it had
 		// built before it failed, and the address-parse path calls fini itself before returning.
 		// A second one would be a double free of the ctrl and the stop pipe.
-		free(session);
+		free(self);
 		return NULL;
 	}
 
-	return session;
+	return self;
+}
+
+CHIAKI_SHIM_API bool chiaki_shim_session_set_event_cb(
+		void *session, ChiakiShimEventCb cb, void *user)
+{
+	chiaki_shim_session *self = (chiaki_shim_session *)session;
+	if(!self)
+		return false;
+
+	self->cb = cb;
+	self->user = user;
+	chiaki_session_set_event_cb(&self->session, cb ? chiaki_shim_session_dispatch : NULL, self);
+	return true;
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_session_start(void *session)
+{
+	chiaki_shim_session *self = (chiaki_shim_session *)session;
+	return self ? (int32_t)chiaki_session_start(&self->session) : (int32_t)CHIAKI_ERR_INVALID_DATA;
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_session_stop(void *session)
+{
+	chiaki_shim_session *self = (chiaki_shim_session *)session;
+	return self ? (int32_t)chiaki_session_stop(&self->session) : (int32_t)CHIAKI_ERR_INVALID_DATA;
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_session_join(void *session)
+{
+	chiaki_shim_session *self = (chiaki_shim_session *)session;
+	return self ? (int32_t)chiaki_session_join(&self->session) : (int32_t)CHIAKI_ERR_INVALID_DATA;
 }
 
 CHIAKI_SHIM_API void chiaki_shim_session_free(void *session)
 {
-	ChiakiSession *self = (ChiakiSession *)session;
+	chiaki_shim_session *self = (chiaki_shim_session *)session;
 	if(!self)
 		return;
 
-	chiaki_session_fini(self);
+	chiaki_session_fini(&self->session);
 	free(self);
 }
 

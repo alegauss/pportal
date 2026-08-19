@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 3
+#define CHIAKI_SHIM_ABI 4
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -257,6 +257,55 @@ CHIAKI_SHIM_API void chiaki_shim_session_free(void *session);
 
 /** chiaki_quit_reason_string, which is the sentence a disconnect screen shows. */
 CHIAKI_SHIM_API const char *chiaki_shim_quit_reason_string(int32_t reason);
+
+/**
+ * The session's event callback, which is the one every screen above the stream is driven by.
+ *
+ * ChiakiEvent is a tagged union of seventeen shapes, three of them structs with their own arrays,
+ * and it is exactly what must not cross: a managed union over that is a layout promise per arm,
+ * and the arm that is wrong is the one nobody exercises until a console sends it.
+ *
+ * So the type crosses as an int32_t and the payload is decoded here, arm by arm, as the screens
+ * that need each one land. What is decoded today is CHIAKI_EVENT_QUIT, because it is the arm that
+ * ends every session and the one a disconnect screen shows. Every other type still arrives, with
+ * its payload arguments zeroed, so a host can already know that CONNECTED happened; rumble goes
+ * with the input path (PP8), the keyboard arms with the controls (PP12) and the nickname with the
+ * console list (PP13).
+ *
+ * `quit_reason_str` is not the message. It is NULL on every failure that never reached a console,
+ * because session.c only fills it from a disconnect reason the console itself sent - the sentence
+ * a screen shows is chiaki_quit_reason_string(quit_reason), with this appended when it is there,
+ * which is what qmlmainwindow's own dialog does. It is also only valid for the duration of the
+ * call: it points at the session's storage and the event is gone when the callback returns.
+ *
+ * The callback runs on the session thread, which is a thread the caller never created.
+ */
+typedef void (*ChiakiShimEventCb)(
+		int32_t type, int32_t quit_reason, const char *quit_reason_str, void *user);
+
+/** Installs the callback. Set it before chiaki_shim_session_start or the first events are lost. */
+CHIAKI_SHIM_API bool chiaki_shim_session_set_event_cb(
+		void *session, ChiakiShimEventCb cb, void *user);
+
+/**
+ * chiaki_session_start: spawns the session thread and returns at once.
+ *
+ * Everything a session does after this happens on that thread and is reported through the event
+ * callback. A start that returns CHIAKI_ERR_SUCCESS says a thread exists, not that a console
+ * answered - the answer arrives as CHIAKI_EVENT_QUIT when it does not.
+ */
+CHIAKI_SHIM_API int32_t chiaki_shim_session_start(void *session);
+
+/** chiaki_session_stop: asks the session thread to wind up. Does not wait for it. */
+CHIAKI_SHIM_API int32_t chiaki_shim_session_stop(void *session);
+
+/**
+ * chiaki_session_join: waits for the session thread to end.
+ *
+ * Required before chiaki_shim_session_free on a session that was started, because fini tears down
+ * the mutex and the stop pipe the thread is still using.
+ */
+CHIAKI_SHIM_API int32_t chiaki_shim_session_join(void *session);
 
 #ifdef __cplusplus
 }
