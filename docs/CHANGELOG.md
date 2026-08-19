@@ -64,6 +64,7 @@
 - ✅ **PP113** **nothing on the managed side of the seam is measured against the zero-allocation budget PP44 set for the transport** — the span path through the frame processor allocates zero bytes per packet, measured, against 2202 for the array one it exists to replace.
 - ✅ **PP114** **the packet parse and the frame delivery still take arrays, so the hot path allocates where the C one does not** — parsing a packet header allocates nothing per packet, measured, and the receiver's one-frame limit is stated where it bites.
 - ✅ **PP115** **the registration request runs only from the C suite, so nothing managed can pair a console** — the whole recorded registration payload is produced from managed code byte for byte, with the PIN shown to key it.
+- ✅ **PP116** **the frame timing fallbacks run only from the C suite, so nothing managed knows when a decoded frame is due** — all three timing fallbacks answer from managed code, with ffmpeg's AVFrame kept on the side of the seam that owns it.
 
 ## Block G — Test discipline
 

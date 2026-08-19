@@ -1515,6 +1515,46 @@ public static class SelfTest
             }
 
             Console.WriteLine();
+            Console.WriteLine("FrameTiming - when a decoded frame is due");
+
+            long noPts = FrameTiming.NoPts;
+            Check("the absent-timestamp sentinel is ffmpeg's own",
+                noPts == long.MinValue, noPts.ToString());
+
+            // The ordinary case: the best-effort timestamp against the packet's timebase, and the
+            // duration from the framerate.
+            (double p, double d) = FrameTiming.Of(12345, noPts, (1, 90000), (0, 0), (60, 1));
+            Check("a best-effort timestamp is scaled by the packet timebase",
+                Math.Abs(p - 12345.0 / 90000.0) < 1e-9 && Math.Abs(d - 1.0 / 60.0) < 1e-9,
+                $"{p} / {d}");
+
+            // Fallback one: no best-effort timestamp, so the raw pts is used instead. A stream
+            // that carries one and not the other is what this exists for.
+            (double p2, _) = FrameTiming.Of(noPts, 9000, (1, 90000), (0, 0), (60, 1));
+            Check("an absent best-effort timestamp falls back to the raw one",
+                Math.Abs(p2 - 0.1) < 1e-9, p2.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+            // …and with neither, there is no time to report at all.
+            (double p3, _) = FrameTiming.Of(noPts, noPts, (1, 90000), (0, 0), (60, 1));
+            Check("with neither timestamp the frame has no presentation time",
+                p3 == 0.0, p3.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+            // Fallback two: an invalid packet timebase means the decoder context's is used. The
+            // two are different scales, so taking the wrong one is not a rounding error - it is
+            // the whole clock.
+            (double p4, _) = FrameTiming.Of(12345, noPts, (0, 0), (1, 1000), (60, 1));
+            Check("an invalid packet timebase falls back to the context's",
+                Math.Abs(p4 - 12.345) < 1e-9, p4.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+            // Fallback three: the framerate decides the duration, and a stream that reports none
+            // gets a default rather than a division by zero.
+            (_, double d2) = FrameTiming.Of(12345, noPts, (1, 90000), (0, 0), (120, 1));
+            (_, double d3) = FrameTiming.Of(12345, noPts, (1, 90000), (0, 0), (0, 0));
+            Check("the framerate sets the duration, and its absence does not divide by zero",
+                Math.Abs(d2 - 1.0 / 120.0) < 1e-9 && d3 > 0.0 && !double.IsInfinity(d3),
+                $"{d2} / {d3}");
+
+            Console.WriteLine();
             Console.WriteLine("Regist - the first thing a fresh install sends");
 
             string? registFile = SanitizerSource.LocateRelative(@"test\regist.c");

@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 21
+#define CHIAKI_SHIM_ABI 22
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -956,6 +956,34 @@ CHIAKI_SHIM_API void chiaki_shim_rpcrypt_aeropause_ps4_pre10(
 /** The bright key a registration PIN derives, which is what encrypts the payload below. */
 CHIAKI_SHIM_API void chiaki_shim_rpcrypt_regist_bright_ps4_pre10(
 		const uint8_t *ambassador, uint32_t pin, uint8_t *bright);
+
+/**
+ * PP23 and PP31: when a decoded frame is due, and for how long.
+ *
+ * chiaki_ffmpeg_frame_get_timing turns a decoded frame's timestamps into a presentation time and a
+ * duration, through three fallbacks: the best-effort timestamp or the raw one, the packet timebase
+ * or the context's, the framerate or a default. Each fallback exists because some stream does not
+ * carry the field above it, and picking the wrong one does not fail - it paces the picture wrong,
+ * which reads as stutter and gets blamed on the network.
+ *
+ * The AVFrame is built here from scalars. It is ffmpeg's struct, so it is exactly the kind of
+ * layout .NET must not be handed - and the two rationals are four ints, which have no padding to
+ * disagree about.
+ *
+ * A timestamp of CHIAKI_SHIM_AV_NOPTS is "absent", which is what selects the next fallback.
+ */
+#define CHIAKI_SHIM_AV_NOPTS INT64_MIN
+
+CHIAKI_SHIM_API int64_t chiaki_shim_ffmpeg_nopts(void);
+
+CHIAKI_SHIM_API bool chiaki_shim_ffmpeg_frame_timing(
+		int64_t best_effort_timestamp,
+		int64_t pts,
+		int32_t pkt_timebase_num, int32_t pkt_timebase_den,
+		int32_t ctx_timebase_num, int32_t ctx_timebase_den,
+		int32_t framerate_num, int32_t framerate_den,
+		double *pts_out,
+		double *duration_out);
 
 CHIAKI_SHIM_API int32_t chiaki_shim_regist_request_payload(
 		int32_t target,

@@ -9,7 +9,10 @@
 #include <chiaki/discovery.h>
 #include <chiaki/ecdh.h>
 #include <chiaki/fec.h>
+#include <chiaki/ffmpegdecoder.h>
 #include <chiaki/frameprocessor.h>
+
+#include <libavutil/frame.h>
 #include <chiaki/gkcrypt.h>
 #include <chiaki/http.h>
 #include <chiaki/regist.h>
@@ -1748,6 +1751,58 @@ CHIAKI_SHIM_API void chiaki_shim_rpcrypt_regist_bright_ps4_pre10(
 
 	chiaki_rpcrypt_init_regist_ps4_pre10(&rpcrypt, ambassador, pin);
 	memcpy(bright, rpcrypt.bright, CHIAKI_RPCRYPT_KEY_SIZE);
+}
+
+CHIAKI_SHIM_API int64_t chiaki_shim_ffmpeg_nopts(void)
+{
+	return (int64_t)AV_NOPTS_VALUE;
+}
+
+CHIAKI_SHIM_API bool chiaki_shim_ffmpeg_frame_timing(
+		int64_t best_effort_timestamp,
+		int64_t pts,
+		int32_t pkt_timebase_num, int32_t pkt_timebase_den,
+		int32_t ctx_timebase_num, int32_t ctx_timebase_den,
+		int32_t framerate_num, int32_t framerate_den,
+		double *pts_out,
+		double *duration_out)
+{
+	AVFrame *frame;
+	AVRational pkt_timebase;
+	AVRational ctx_timebase;
+	AVRational framerate;
+	double pts_value = 0.0;
+	double duration_value = 0.0;
+
+	if(pts_out)
+		*pts_out = 0.0;
+	if(duration_out)
+		*duration_out = 0.0;
+
+	frame = av_frame_alloc();
+	if(!frame)
+		return false;
+
+	frame->best_effort_timestamp = best_effort_timestamp;
+	frame->pts = pts;
+
+	pkt_timebase.num = pkt_timebase_num;
+	pkt_timebase.den = pkt_timebase_den;
+	ctx_timebase.num = ctx_timebase_num;
+	ctx_timebase.den = ctx_timebase_den;
+	framerate.num = framerate_num;
+	framerate.den = framerate_den;
+
+	chiaki_ffmpeg_frame_get_timing(frame, pkt_timebase, ctx_timebase, framerate,
+			&pts_value, &duration_value);
+
+	if(pts_out)
+		*pts_out = pts_value;
+	if(duration_out)
+		*duration_out = duration_value;
+
+	av_frame_free(&frame);
+	return true;
 }
 
 CHIAKI_SHIM_API int32_t chiaki_shim_regist_request_payload(
