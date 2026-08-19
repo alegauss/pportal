@@ -16,6 +16,7 @@
 - ✅ **PP85** **the session thread and its event callback are unreached, so nothing managed can hear a session end** — start, the event callback and join are reachable from .NET, and a quit off the session thread arrives at a managed handler under seven assertions.
 - ✅ **PP86** **the controller state is 21 scalars and a touch array, and nothing managed can put one into a session** — a controller state built in C crosses by handle and comes back equal by chiaki_controller_state_equals, under fifteen assertions.
 - ✅ **PP5 (the connect info)** **streamsession.cpp drives the session through Qt signals and QThread, so a session cannot run without Qt** — settings become session parameters with no Qt: the local-address rule, the four profile groups and both overrides, under twenty-one assertions.
+- ✅ **PP89** **the session log's name and its sanitiser are QDateTime and QRegularExpression, so no managed host can write one** — the log name, its rotation and all nine sanitiser rules are managed code, asserted against six filenames the Qt build left on disk.
 
 ## Block C — Video and input path
 

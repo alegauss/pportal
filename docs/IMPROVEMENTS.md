@@ -100,6 +100,28 @@ So it lands where there is a decoder to feed it. PP9 decides what presents a fra
 first thing that decoder does is take this callback, and the assertion is the frame it
 produces rather than a buffer this side invented.
 
+### §PP88 The half-redacted address
+
+SanitizeLogMessage exists so a session log can be attached to a public issue. Its IPv6
+rule has two alternatives and the regex engine takes the leftmost match, so on a
+compressed address the four-group branch wins and the remainder is left behind:
+`fd00:1234:5678:9abc::1` becomes `<redacted-ipv6>::1`. The marker makes the line look
+handled, which is worse than no rule at all - a reader scanning for leaks skips it.
+
+Found while transcribing the sanitiser for the .NET host, and reproduced there rather
+than fixed, because a port that redacts differently from the Qt build is a port whose
+logs cannot be compared with the ones users already have. The fix has to land in both,
+which is what makes this a line and not a patch.
+
+What it is not: a claim that the addresses matter much on their own. A link-local or
+unique-local address says which subnet somebody is on, not who they are. What makes it
+worth a line is that this is the one function in the tree whose whole job is to be
+trusted, and it currently reports success on an input it half handled.
+
+Whether the answer is a longer alternation, an anchored full-address pattern, or parsing
+the token and asking the address type is open - the last of those is the only one that
+stops this recurring on the next form nobody thought of.
+
 ## Block C — Video and input path
 
 ### §PP9 Vulkan under a D3D9 compositor

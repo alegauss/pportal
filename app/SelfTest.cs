@@ -900,6 +900,125 @@ public static class SelfTest
             Check("and a set increment is what crosses",
                 SessionConnectInfo.DpadTouchIncrement(
                     new FakePreferences().Set("settings/dpad_touch_increment", 45u)) == 45);
+
+            Console.WriteLine();
+            Console.WriteLine("SessionLogFile - the name two clients have to agree on");
+
+            // These six are real filenames the Qt client left on this machine, and they are the
+            // whole reason this file exists: the fractional part is a THREE-digit millisecond
+            // written TWICE, because Qt reads "zzzzzz" as "zzz" twice rather than as microseconds.
+            string[] realNames =
+            {
+                "chiaki_session_2026-08-11_18-52-48-402402.log",
+                "chiaki_session_2026-08-11_20-10-38-088088.log",
+                "chiaki_session_2026-08-11_20-39-13-285285.log",
+                "chiaki_session_2026-08-11_21-00-13-133133.log",
+                "chiaki_session_2026-08-11_21-12-26-220220.log",
+                "chiaki_session_2026-08-11_21-16-40-818818.log",
+            };
+
+            Check("every name the Qt build wrote parses",
+                realNames.All(n => SessionLogFile.TimestampOf(n) is not null),
+                string.Join(", ", realNames.Where(n => SessionLogFile.TimestampOf(n) is null)));
+            // The negative that makes the point: if this ever fails, somebody read the format as
+            // six digits of microseconds and the two clients stopped writing the same names.
+            Check("the fraction is one millisecond written twice, on every one of them",
+                realNames.All(SessionLogFile.FractionIsDoubledMillisecond));
+            Check("a real name decodes to the time it says",
+                SessionLogFile.TimestampOf(realNames[1]) == new DateTime(2026, 8, 11, 20, 10, 38, 88),
+                SessionLogFile.TimestampOf(realNames[1])?.ToString("O") ?? "<null>");
+
+            // And this port writes the same shape. Asserted against a name Qt produced rather
+            // than against the format string, which is the thing that was misread in the first place.
+            Check("this port writes the shape Qt wrote",
+                SessionLogFile.NameFor(new DateTime(2026, 8, 11, 20, 10, 38, 88)) == realNames[1],
+                SessionLogFile.NameFor(new DateTime(2026, 8, 11, 20, 10, 38, 88)));
+            Check("the log goes in the directory the Qt build already uses",
+                SessionLogFile.PathFor(DateTime.Now).StartsWith(QtPaths.LogDirectory, StringComparison.Ordinal));
+
+            Check("a name that is not a session log has no timestamp",
+                SessionLogFile.TimestampOf("chiaki_baseline.jsonl") is null
+                && SessionLogFile.TimestampOf("chiaki_session_hello.log") is null);
+
+            // Rotation: newest five stay.
+            string[] seven = realNames.Append("chiaki_session_2026-08-12_09-00-00-001001.log").ToArray();
+            IReadOnlyList<string> removed = SessionLogFile.ToRemove(seven);
+            Check("rotation keeps five and removes the oldest",
+                removed.Count == 2
+                && removed.Contains("chiaki_session_2026-08-11_18-52-48-402402.log")
+                && removed.Contains("chiaki_session_2026-08-11_20-10-38-088088.log"),
+                string.Join(", ", removed));
+
+            // The `break` on an unparseable name reads alarming and is not: a dateless entry
+            // sorts below every real one, so the loop meets it only after every actual log has
+            // been considered. What it does mean is that a stray file matching the wildcard is
+            // never deleted - asserted because "it stops rotation" was the first reading of it,
+            // and the difference is a directory that grows for ever against one that does not.
+            IReadOnlyList<string> withStray = SessionLogFile.ToRemove(seven.Append("chiaki_session_stray.log"));
+            Check("a stray file is spared and the rotation still runs",
+                withStray.Count == 2 && !withStray.Contains("chiaki_session_stray.log"),
+                string.Join(", ", withStray));
+
+            Console.WriteLine();
+            Console.WriteLine("SessionLogSanitizer - what a log may be pasted into an issue with");
+
+            Check("a bare address is redacted",
+                SessionLogSanitizer.Sanitize("connecting to 192.168.1.7 now")
+                    == "connecting to <redacted-ipv4> now",
+                SessionLogSanitizer.Sanitize("connecting to 192.168.1.7 now"));
+
+            // The order is the design: the address rule runs first, and then the label rule
+            // replaces the marker it left. A reordering would leak the shape of the value.
+            Check("a labelled address ends as <redacted> and not as <redacted-ipv4>",
+                SessionLogSanitizer.Sanitize("console ip: 10.0.0.1") == "console ip: <redacted>",
+                SessionLogSanitizer.Sanitize("console ip: 10.0.0.1"));
+
+            Check("a full IPv6 address is redacted",
+                SessionLogSanitizer.Sanitize("bound fd00:1234:5678:9abc:0:0:0:1 ok")
+                    == "bound <redacted-ipv6> ok",
+                SessionLogSanitizer.Sanitize("bound fd00:1234:5678:9abc:0:0:0:1 ok"));
+
+            // …and a COMPRESSED one is only half redacted, which is the Qt regex's own behaviour
+            // and not a transcription slip. The alternation is leftmost-first, so the four-group
+            // branch matches "fd00:1234:5678:9abc" and the "::1" is left in the log. Asserted as
+            // it is, because the port must not differ here - and filed as PP88, because a log a
+            // user pastes into a public issue still carries the tail of an address.
+            Check("a compressed IPv6 keeps its tail, as the Qt regex leaves it",
+                SessionLogSanitizer.Sanitize("bound fd00:1234:5678:9abc::1 ok")
+                    == "bound <redacted-ipv6>::1 ok",
+                SessionLogSanitizer.Sanitize("bound fd00:1234:5678:9abc::1 ok"));
+
+            Check("account and duid assignments are redacted",
+                SessionLogSanitizer.Sanitize("account_id=abcdef duid=0011ZZ")
+                    == "account_id=<redacted> duid=<redacted>",
+                SessionLogSanitizer.Sanitize("account_id=abcdef duid=0011ZZ"));
+
+            Check("a session id is redacted both spellings",
+                SessionLogSanitizer.Sanitize("session id = Zm9vYmFy") == "session id = <redacted>"
+                && SessionLogSanitizer.Sanitize("Session ID QUJDRUZH") == "Session ID <redacted>",
+                SessionLogSanitizer.Sanitize("Session ID QUJDRUZH"));
+
+            Check("a uuid is redacted",
+                SessionLogSanitizer.Sanitize("did 123e4567-e89b-12d3-a456-426614174000 x")
+                    == "did <redacted-uuid> x",
+                SessionLogSanitizer.Sanitize("did 123e4567-e89b-12d3-a456-426614174000 x"));
+
+            // The blunt one, and the last to run: any sixteen hex digits. It is what catches a
+            // console id nobody labelled, and it over-redacts on purpose.
+            Check("a long hex run is redacted",
+                SessionLogSanitizer.Sanitize("mac 0011223344556677 seen")
+                    == "mac <redacted-hex> seen",
+                SessionLogSanitizer.Sanitize("mac 0011223344556677 seen"));
+            Check("fifteen hex digits are left alone, which is where the line is drawn",
+                SessionLogSanitizer.Sanitize("id 001122334455667 seen")
+                    == "id 001122334455667 seen",
+                SessionLogSanitizer.Sanitize("id 001122334455667 seen"));
+
+            // Ordinary text must survive, or the log stops being worth keeping.
+            Check("ordinary text is untouched",
+                SessionLogSanitizer.Sanitize("Switched to profile 0, resolution: 1920x1080")
+                    == "Switched to profile 0, resolution: 1920x1080",
+                SessionLogSanitizer.Sanitize("Switched to profile 0, resolution: 1920x1080"));
         }
 
         Console.WriteLine();
