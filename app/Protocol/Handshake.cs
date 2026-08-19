@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using ChiakiNg.Native;
 
 namespace ChiakiNg.Protocol;
@@ -169,4 +169,95 @@ public sealed class GkCrypt : IDisposable
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_gkcrypt_gen_key_stream",
         CallingConvention = CallingConvention.Cdecl)]
     private static extern int GkCryptGenKeyStream(IntPtr gkcrypt, ulong keyPos, byte[] buf, int bufSize);
+}
+
+/// <summary>
+/// PP35: the GMAC that authenticates every takion packet.
+///
+/// gkcrypt's other half, and the port had none of it. It matters more than a missing test usually
+/// does because of what PP105 established: takion checks no MAC at all until crypt is available,
+/// and checks this one on everything afterwards. A GMAC computed differently from the C is a
+/// session that rejects every packet the console sends, reported as a stream that will not start.
+///
+/// Separate from <see cref="GkCrypt"/> because it is a different object, not a different method.
+/// test/gkcrypt.c's recorded GMACs are taken against a gkcrypt built by hand - zeroed, with only
+/// the current GMAC key and the IV written in and no key buffer - which chiaki_gkcrypt_init cannot
+/// produce, since it derives both from a handshake key and an ECDH secret. Folding that onto
+/// GkCrypt would give one class two constructors with incompatible lifetimes and one Dispose that
+/// has to guess which it was.
+/// </summary>
+public sealed class GkGmac : IDisposable
+{
+    private IntPtr _handle;
+
+    /// <summary>CHIAKI_GKCRYPT_GMAC_SIZE, asked rather than copied.</summary>
+    public static int Size => GmacSize();
+
+    /// <summary>
+    /// The GMAC key for an index, derived from a base key and an IV. A pure function on the C
+    /// side too - no gkcrypt is involved, which is why this is static here as well.
+    /// </summary>
+    public static byte[] GenKey(ulong index, ReadOnlySpan<byte> keyBase, ReadOnlySpan<byte> iv)
+    {
+        var key = new byte[16];
+        GenGmacKey(index, keyBase.ToArray(), iv.ToArray(), key);
+        return key;
+    }
+
+    public GkGmac(ReadOnlySpan<byte> currentGmacKey, ReadOnlySpan<byte> iv)
+    {
+        _handle = CreateForGmac(currentGmacKey.ToArray(), iv.ToArray());
+        if (_handle == IntPtr.Zero)
+            throw new InvalidOperationException("chiaki_shim_gkcrypt_create_for_gmac failed.");
+    }
+
+    /// <summary>
+    /// The four bytes takion compares a received packet's tail against.
+    ///
+    /// keyPos is part of the input and not a bookkeeping detail: the same buffer under the same
+    /// key answers differently at a different position, which is what the recorded high and low
+    /// cases exist to pin.
+    /// </summary>
+    public byte[] Compute(ulong keyPos, ReadOnlySpan<byte> buf)
+    {
+        ObjectDisposedException.ThrowIf(_handle == IntPtr.Zero, this);
+
+        var mac = new byte[Size];
+        int err = Gmac(_handle, keyPos, buf.ToArray(), buf.Length, mac);
+        if (err != (int)ChiakiError.Success)
+            throw new InvalidOperationException($"chiaki_gkcrypt_gmac failed: {(ChiakiError)err}.");
+
+        return mac;
+    }
+
+    public void Dispose()
+    {
+        if (_handle == IntPtr.Zero)
+            return;
+
+        // The free that matches the constructor. Passing this handle to chiaki_shim_gkcrypt_free
+        // would run chiaki_gkcrypt_fini over a struct chiaki_gkcrypt_init never built.
+        FreeForGmac(_handle);
+        _handle = IntPtr.Zero;
+    }
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_gkcrypt_gen_gmac_key",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern void GenGmacKey(ulong index, byte[] keyBase, byte[] iv, byte[] keyOut);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_gkcrypt_create_for_gmac",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr CreateForGmac(byte[] currentGmacKey, byte[] iv);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_gkcrypt_free_for_gmac",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern void FreeForGmac(IntPtr gkcrypt);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_gkcrypt_gmac",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern int Gmac(IntPtr gkcrypt, ulong keyPos, byte[] buf, int bufSize, byte[] gmacOut);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_gkcrypt_gmac_size",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern int GmacSize();
 }

@@ -1141,6 +1141,73 @@ CHIAKI_SHIM_API int32_t chiaki_shim_gkcrypt_gen_key_stream(
 			(size_t)buf_size);
 }
 
+CHIAKI_SHIM_API void chiaki_shim_gkcrypt_gen_gmac_key(
+		uint64_t index, const uint8_t *key_base, const uint8_t *iv, uint8_t *key_out)
+{
+	if(!key_base || !iv || !key_out)
+		return;
+
+	chiaki_gkcrypt_gen_gmac_key(index, key_base, iv, key_out);
+}
+
+/**
+ * A gkcrypt carrying only what a GMAC needs, which is not a gkcrypt any session produces.
+ *
+ * test/gkcrypt.c's recorded GMACs are taken against a struct built by hand: zeroed, then the
+ * current GMAC key and the IV written straight in, with no key buffer at all. chiaki_gkcrypt_init
+ * cannot produce that - it derives both from a handshake key and an ECDH secret it was never
+ * given here - so the vector is unreachable through the ordinary constructor.
+ *
+ * Built on this side because the struct never crosses the seam. The managed half gets a handle
+ * and the fields it may set, which is the same rule every other builder here follows; letting
+ * ChiakiGKCrypt through as a layout would make the port's marshalling depend on a header it is
+ * explicitly not allowed to include.
+ */
+CHIAKI_SHIM_API void *chiaki_shim_gkcrypt_create_for_gmac(
+		const uint8_t *key_gmac_current, const uint8_t *iv)
+{
+	ChiakiGKCrypt *self;
+
+	if(!key_gmac_current || !iv)
+		return NULL;
+
+	self = (ChiakiGKCrypt *)calloc(1, sizeof(ChiakiGKCrypt));
+	if(!self)
+		return NULL;
+
+	memcpy(self->key_gmac_current, key_gmac_current, sizeof(self->key_gmac_current));
+	memcpy(self->iv, iv, sizeof(self->iv));
+	self->key_buf = NULL;
+	self->key_buf_size = 0;
+	self->key_gmac_index_current = 0;
+	return self;
+}
+
+/**
+ * Freed with plain free and not chiaki_gkcrypt_fini: nothing above was initialised through
+ * chiaki_gkcrypt_init, so there is no key buffer and no thread for fini to take down, and calling
+ * it on a struct it did not build is how a test harness acquires a crash of its own.
+ */
+CHIAKI_SHIM_API void chiaki_shim_gkcrypt_free_for_gmac(void *gkcrypt)
+{
+	free(gkcrypt);
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_gkcrypt_gmac(
+		void *gkcrypt, uint64_t key_pos, const uint8_t *buf, int32_t buf_size, uint8_t *gmac_out)
+{
+	if(!gkcrypt || !buf || buf_size <= 0 || !gmac_out)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+
+	return (int32_t)chiaki_gkcrypt_gmac((ChiakiGKCrypt *)gkcrypt, key_pos, buf, (size_t)buf_size,
+			gmac_out);
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_gkcrypt_gmac_size(void)
+{
+	return (int32_t)CHIAKI_GKCRYPT_GMAC_SIZE;
+}
+
 CHIAKI_SHIM_API bool chiaki_shim_seq_num_16_lt(uint16_t a, uint16_t b)
 {
 	return chiaki_seq_num_16_lt(a, b);

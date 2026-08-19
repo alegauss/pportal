@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 26
+#define CHIAKI_SHIM_ABI 27
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -743,6 +743,35 @@ CHIAKI_SHIM_API void chiaki_shim_gkcrypt_free(void *gkcrypt);
 /** The key stream at a position, which is what every takion packet is XORed against. */
 CHIAKI_SHIM_API int32_t chiaki_shim_gkcrypt_gen_key_stream(
 		void *gkcrypt, uint64_t key_pos, uint8_t *buf, int32_t buf_size);
+
+/**
+ * PP35: the GMAC that authenticates every takion packet, and its four recorded vectors.
+ *
+ * This is the other half of gkcrypt and the port had none of it. PP105 is where it matters: the
+ * MAC is what takion checks once crypt is available, and until then it checks nothing - so a GMAC
+ * the port computed differently from the C would be a session that authenticates every packet
+ * against the wrong answer and reports a stream that will not start.
+ *
+ * The key derivation is a pure function and passes straight through. The GMAC itself needs a
+ * gkcrypt, and the one test/gkcrypt.c records against is built by hand rather than by
+ * chiaki_gkcrypt_init - hence the second constructor, which is the only way to reach the vector.
+ */
+CHIAKI_SHIM_API void chiaki_shim_gkcrypt_gen_gmac_key(
+		uint64_t index, const uint8_t *key_base, const uint8_t *iv, uint8_t *key_out);
+
+/** A gkcrypt carrying only a current GMAC key and an IV, as the recorded vectors are taken. */
+CHIAKI_SHIM_API void *chiaki_shim_gkcrypt_create_for_gmac(
+		const uint8_t *key_gmac_current, const uint8_t *iv);
+
+/** Frees one of the above. NOT interchangeable with chiaki_shim_gkcrypt_free - see the note there. */
+CHIAKI_SHIM_API void chiaki_shim_gkcrypt_free_for_gmac(void *gkcrypt);
+
+/** chiaki_gkcrypt_gmac: the four bytes takion compares a received packet's tail against. */
+CHIAKI_SHIM_API int32_t chiaki_shim_gkcrypt_gmac(
+		void *gkcrypt, uint64_t key_pos, const uint8_t *buf, int32_t buf_size, uint8_t *gmac_out);
+
+/** CHIAKI_GKCRYPT_GMAC_SIZE, so the managed side does not carry a second copy of it. */
+CHIAKI_SHIM_API int32_t chiaki_shim_gkcrypt_gmac_size(void);
 
 /**
  * PP23: RFC 1982 serial number comparison, which is the arithmetic the whole transport rests on.

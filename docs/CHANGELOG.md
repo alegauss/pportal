@@ -88,6 +88,7 @@
 - ✅ **PP109** **the two reorder queue functions with defects in them are the two the suite never calls** — peek and drop are covered by the C suite for the first time, pinning the behaviour PP107 names so a fix has to change a test.
 - ✅ **PP82** **the 148-row preference table was extracted from settings.cpp once and nothing re-checks it** — the extraction runs as a check now, both ways, and the first audit found the 148 rows correct.
 - ✅ **PP35 (the xUnit runner over the FEC vectors)** **5512 lines of munit tests cover the modules this port rewrites, and nothing in a managed tree runs them** — one case per recorded case, over PP23's readers, so a failure names which vector broke.
+- ✅ **PP120** **the GMAC that authenticates every takion packet has four recorded vectors and the port checks none** — the shim carries GMAC at ABI 27, and all four recorded vectors are xUnit cases now.
 
 ## Block H — Performance and telemetry
 
