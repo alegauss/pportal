@@ -4,7 +4,7 @@ using Xunit;
 namespace ChiakiNg.Tests;
 
 /// <summary>
-/// PP126: test/reorderqueue.c's sequence, which closes PP35's last module.
+/// PP35: test/reorderqueue.c's sequence, the last module of the munit suite to be driven.
 ///
 /// Unlike the five that came before it, this one is mostly granularity rather than new coverage:
 /// the host's selftest already drives the window size, the head-missing case, in-order release,

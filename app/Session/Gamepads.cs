@@ -18,7 +18,17 @@ namespace ChiakiNg.Session;
 /// resolves the field against its device tables on the way through the queue, which is measured
 /// rather than assumed - a pushed event carrying 0x5afe comes back carrying -1.
 /// </param>
-public readonly record struct SdlEvent(uint Type, uint Timestamp, int Which);
+/// <param name="Index">
+/// PP126: the axis, button or hat index, at offset 12 in all three joystick events - SDL_JoyAxis
+/// Event.axis, SDL_JoyButtonEvent.button and SDL_JoyHatEvent.hat share that position. Zero for
+/// every other event type, where the byte is padding or something else entirely, so a caller
+/// reads it only after checking Type.
+/// </param>
+/// <param name="Value">
+/// The hat's position, at offset 13 - the one field that is not shared: a button event has its
+/// state there and an axis event a padding byte. Meaningful only for SDL_JOYHATMOTION.
+/// </param>
+public readonly record struct SdlEvent(uint Type, uint Timestamp, int Which, byte Index, byte Value);
 
 /// <summary>
 /// PP8: SDL's game controller subsystem, driven from managed code.
@@ -115,7 +125,7 @@ public static class Gamepads
             return false;
         }
 
-        ev = new SdlEvent(raw.Type, raw.Timestamp, raw.Which);
+        ev = new SdlEvent(raw.Type, raw.Timestamp, raw.Which, raw.Index, raw.Value);
         return true;
     }
 
@@ -125,9 +135,12 @@ public static class Gamepads
     /// of SDL, so what it proves is the marshalling and the constants below, against the binary
     /// actually loaded rather than against the header this was written from.
     /// </summary>
-    public static bool PushEvent(uint type, int which)
+    public static bool PushEvent(uint type, int which, byte index = 0, byte value = 0)
     {
-        var raw = new SdlEventRaw { Type = type, Timestamp = 0, Which = which };
+        var raw = new SdlEventRaw
+        {
+            Type = type, Timestamp = 0, Which = which, Index = index, Value = value,
+        };
         return SdlPushEvent(ref raw) == 1;
     }
 
@@ -153,6 +166,10 @@ public static class Gamepads
         private const uint JoystickBase = 0x600;
         private const uint ControllerBase = 0x650;
 
+        public const uint JoyAxisMotion = JoystickBase + 0;
+        public const uint JoyHatMotion = JoystickBase + 2;
+        public const uint JoyButtonDown = JoystickBase + 3;
+        public const uint JoyButtonUp = JoystickBase + 4;
         public const uint JoyDeviceAdded = JoystickBase + 5;
         public const uint JoyDeviceRemoved = JoystickBase + 6;
         public const uint ControllerAxisMotion = ControllerBase + 0;
@@ -179,6 +196,13 @@ public static class Gamepads
         [FieldOffset(0)] public uint Type;
         [FieldOffset(4)] public uint Timestamp;
         [FieldOffset(8)] public int Which;
+
+        // PP126. All three joystick events put their index at 12 - SDL_JoyAxisEvent.axis,
+        // SDL_JoyButtonEvent.button, SDL_JoyHatEvent.hat - which is what lets one overlay read
+        // any of them. 13 is NOT shared: it is the hat's value, a button's state, and an axis's
+        // padding, so only SDL_JOYHATMOTION may read it.
+        [FieldOffset(12)] public byte Index;
+        [FieldOffset(13)] public byte Value;
     }
 
     [DllImport(ChiakiNative.Sdl, EntryPoint = "SDL_PollEvent", CallingConvention = CallingConvention.Cdecl)]
