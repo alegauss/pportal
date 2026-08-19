@@ -9,6 +9,7 @@
 #include <chiaki/ecdh.h>
 #include <chiaki/fec.h>
 #include <chiaki/gkcrypt.h>
+#include <chiaki/http.h>
 #include <chiaki/reorderqueue.h>
 #include <chiaki/rpcrypt.h>
 #include <chiaki/seqnum.h>
@@ -1246,6 +1247,106 @@ CHIAKI_SHIM_API void chiaki_shim_reorder_queue_drop(void *queue, uint64_t index)
 	chiaki_shim_reorder_queue *self = (chiaki_shim_reorder_queue *)queue;
 	if(self)
 		chiaki_reorder_queue_drop(&self->queue, index);
+}
+
+/** The parsed response plus the copy of the text its keys and values point into. */
+typedef struct chiaki_shim_http_t
+{
+	ChiakiHttpResponse response;
+	char *text;
+} chiaki_shim_http;
+
+CHIAKI_SHIM_API void *chiaki_shim_http_parse(
+		const char *text, int32_t len, int32_t *code_out, int32_t *error_out)
+{
+	chiaki_shim_http *self;
+	ChiakiErrorCode err;
+
+	if(code_out)
+		*code_out = 0;
+	if(error_out)
+		*error_out = (int32_t)CHIAKI_ERR_INVALID_DATA;
+	if(!text || len <= 0)
+		return NULL;
+
+	self = (chiaki_shim_http *)calloc(1, sizeof(chiaki_shim_http));
+	if(!self)
+		return NULL;
+
+	self->text = (char *)malloc((size_t)len + 1);
+	if(!self->text)
+	{
+		free(self);
+		return NULL;
+	}
+	memcpy(self->text, text, (size_t)len);
+	self->text[len] = '\0';
+
+	err = chiaki_http_response_parse(&self->response, self->text, (size_t)len);
+	if(error_out)
+		*error_out = (int32_t)err;
+
+	if(err != CHIAKI_ERR_SUCCESS)
+	{
+		free(self->text);
+		free(self);
+		return NULL;
+	}
+
+	if(code_out)
+		*code_out = self->response.code;
+	return self;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_http_free(void *response)
+{
+	chiaki_shim_http *self = (chiaki_shim_http *)response;
+	if(!self)
+		return;
+
+	chiaki_http_response_fini(&self->response);
+	free(self->text);
+	free(self);
+}
+
+static ChiakiHttpHeader *chiaki_shim_http_at(chiaki_shim_http *self, int32_t index)
+{
+	ChiakiHttpHeader *header;
+	if(!self || index < 0)
+		return NULL;
+
+	for(header = self->response.headers; header; header = header->next)
+	{
+		if(index-- == 0)
+			return header;
+	}
+	return NULL;
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_http_header_count(void *response)
+{
+	chiaki_shim_http *self = (chiaki_shim_http *)response;
+	ChiakiHttpHeader *header;
+	int32_t count = 0;
+
+	if(!self)
+		return 0;
+
+	for(header = self->response.headers; header; header = header->next)
+		count++;
+	return count;
+}
+
+CHIAKI_SHIM_API const char *chiaki_shim_http_header_key(void *response, int32_t index)
+{
+	ChiakiHttpHeader *header = chiaki_shim_http_at((chiaki_shim_http *)response, index);
+	return header ? header->key : NULL;
+}
+
+CHIAKI_SHIM_API const char *chiaki_shim_http_header_value(void *response, int32_t index)
+{
+	ChiakiHttpHeader *header = chiaki_shim_http_at((chiaki_shim_http *)response, index);
+	return header ? header->value : NULL;
 }
 
 CHIAKI_SHIM_API void chiaki_shim_session_free(void *session)

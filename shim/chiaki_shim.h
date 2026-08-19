@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 15
+#define CHIAKI_SHIM_ABI 16
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -748,6 +748,28 @@ CHIAKI_SHIM_API bool chiaki_shim_reorder_queue_peek(
 		void *queue, uint64_t index, uint64_t *seq_num, void **elem_user);
 
 CHIAKI_SHIM_API void chiaki_shim_reorder_queue_drop(void *queue, uint64_t index);
+
+/**
+ * PP23 and PP33: libchiaki's HTTP response parser, exposed so a managed one can be compared to it.
+ *
+ * This is the first module the port replaces outright rather than calls: HttpClient and
+ * System.Text.Json do what curl and json-c were vendored for. That makes it the first place a
+ * managed implementation and the C one can be run on the same bytes and their answers compared,
+ * which is the shape PP23 asks for and the shape every module after it inherits.
+ *
+ * Parsed in place, like the discovery reply, so the shim owns a copy of the text for as long as
+ * the handle. `error_out` and `code_out` may be NULL.
+ */
+CHIAKI_SHIM_API void *chiaki_shim_http_parse(
+		const char *text, int32_t len, int32_t *code_out, int32_t *error_out);
+
+CHIAKI_SHIM_API void chiaki_shim_http_free(void *response);
+
+/** How many headers the parser found. They come back in the order the list holds them. */
+CHIAKI_SHIM_API int32_t chiaki_shim_http_header_count(void *response);
+
+CHIAKI_SHIM_API const char *chiaki_shim_http_header_key(void *response, int32_t index);
+CHIAKI_SHIM_API const char *chiaki_shim_http_header_value(void *response, int32_t index);
 
 #ifdef __cplusplus
 }

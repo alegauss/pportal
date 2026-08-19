@@ -56,6 +56,7 @@
 - ✅ **PP104** **the recorded key agreement and the session key stream run only from the C suite** — the recorded ECDH exchange and the key stream at its recorded position run from managed code, out of the C suite's own vectors.
 - ✅ **PP106** **sequence number comparison is two inline functions in a C header, so a managed transport would spell them as integers** — both comparisons answer from managed code across all 65536 values twice, with the divergence from a plain integer compare measured.
 - ✅ **PP108** **the reorder queue runs only from the C suite, so a managed transport would rebuild its window from scratch** — the window, both drop strategies and the offset-not-sequence-number indexing run from managed code under twelve assertions.
+- ✅ **PP33 (the response parser)** **HTTP and JSON in the core are curl and json-c, two vendored dependencies for what the runtime already does** — a managed HTTP response parser agrees with libchiaki's on twelve inputs, which is the first module the port replaces rather than calls.
 
 ## Block G — Test discipline
 

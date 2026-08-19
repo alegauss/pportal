@@ -1515,6 +1515,86 @@ public static class SelfTest
             }
 
             Console.WriteLine();
+            Console.WriteLine("HttpResponse - two implementations, one set of bytes");
+
+            // PP33's first piece, and the first time PP23's harness has two implementations to
+            // compare rather than one to call. Every input below goes through the managed parser
+            // AND libchiaki's, and the answers must agree header for header, in order.
+            string[] httpCases =
+            [
+                // The two the C suite records, one CRLF and one LF.
+                "HTTP/1.1 200 OK\r\nContent-type: text/html, text, plain\r\nUltimate Ability: Gamer\r\n\r\n",
+                "HTTP/1.1 200 Ok\nContent-type: text/html, text, plain\nUltimate Ability:Gamer\n",
+                // A discovery reply, which is the shape this parser actually meets.
+                "HTTP/1.1 620 Server Standby\nhost-id:0011223344556677\nhost-type:PS5\n",
+                // One space is skipped, not a run of them - so the second space survives.
+                "HTTP/1.1 200 Ok\nKey:  two spaces\n",
+                // A header with no trailing line ending is lost, silently, by both.
+                "HTTP/1.1 200 Ok\nFirst:one\nSecond:two",
+                // Blank lines between headers are skipped rather than ending the parse.
+                "HTTP/1.1 200 Ok\n\nA:1\n\n\nB:2\n",
+                // And the refusals: no colon, empty key, empty value, not a response at all.
+                "HTTP/1.1 200 Ok\ngarbage\n",
+                "HTTP/1.1 200 Ok\n:novalue\n",
+                "HTTP/1.1 200 Ok\nKey:\n",
+                "HTTP/1.1 zero\nA:1\n",
+                "hello\n",
+                "HTTP/1.1 200 Ok\n",
+            ];
+
+            int agreed = 0;
+            var disagreements = new List<string>();
+            foreach (string c in httpCases)
+            {
+                var mine = HttpResponse.Parse(c);
+                var theirs = NativeHttp.Parse(c);
+
+                bool same = (mine is null) == (theirs is null)
+                    && (mine is null
+                        || (mine.Value.Code == theirs!.Value.Code
+                            && mine.Value.Headers.SequenceEqual(theirs.Value.Headers)));
+
+                if (same)
+                    agreed++;
+                else
+                    disagreements.Add(Describe(c, mine, theirs));
+            }
+
+            Check("the managed parser agrees with the one it replaces, on every case",
+                agreed == httpCases.Length,
+                disagreements.Count == 0 ? "" : disagreements[0]);
+
+            // The specific behaviours worth naming, so a future change that breaks one of them
+            // fails with a sentence rather than as "case 4 disagrees".
+            var crlf = HttpResponse.Parse(httpCases[0]);
+            Check("headers come out in reverse, because libchiaki prepends them",
+                crlf?.Headers.Count == 2
+                && crlf.Value.Headers[0] == new HttpHeader("Ultimate Ability", "Gamer")
+                && crlf.Value.Headers[1] == new HttpHeader("Content-type", "text/html, text, plain"),
+                crlf is null ? "<null>" : string.Join(" | ", crlf.Value.Headers));
+            Check("620 parses as a code like any other",
+                HttpResponse.Parse(httpCases[2])?.Code == 620);
+            Check("exactly one space is skipped after the colon",
+                HttpResponse.Parse(httpCases[3])?.Headers[0].Value == " two spaces",
+                $"[{HttpResponse.Parse(httpCases[3])?.Headers[0].Value}]");
+            // The trap: a last header with no line ending is dropped with no error at all.
+            Check("a header with no trailing newline is lost, silently, by both",
+                HttpResponse.Parse(httpCases[4])?.Headers.Count == 1
+                && NativeHttp.Parse(httpCases[4])?.Headers.Count == 1,
+                HttpResponse.Parse(httpCases[4])?.Headers.Count.ToString() ?? "<null>");
+
+            static string Describe(
+                string input,
+                (int Code, IReadOnlyList<HttpHeader> Headers)? a,
+                (int Code, IReadOnlyList<HttpHeader> Headers)? b)
+            {
+                static string One((int Code, IReadOnlyList<HttpHeader> Headers)? r)
+                    => r is null ? "refused" : $"{r.Value.Code} [{string.Join(", ", r.Value.Headers)}]";
+
+                return $"{input.Replace("\r", "\\r").Replace("\n", "\\n")}: managed {One(a)} vs native {One(b)}";
+            }
+
+            Console.WriteLine();
             Console.WriteLine("SeqNum - the comparison that survives the counter turning over");
 
             // The C suite sweeps all 65536 values twice; so does this, because it costs
