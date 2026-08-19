@@ -32,6 +32,7 @@
 - ✅ **PP101** **the volume step is an SDL_MixAudioFormat call, so no managed host can scale a frame without SDL** — the volume scale, its drop-at-zero and its ceiling at 128 run in managed code under six assertions.
 - ✅ **PP6 (the protocol)** **console discovery and wake use QUdpSocket, so the console list has no source in a Qt-free host** — the search and wake packets, the ports and the two classification rules come from libchiaki under fifteen assertions, byte for byte.
 - ✅ **PP102** **a discovery reply parses in place, so every field of a parsed console points into the datagram it came from** — a reply crosses as a console whose strings outlive the datagram, and the shim's undeclared import is held against libchiaki's definition.
+- ✅ **PP87** **the video and audio sample callbacks are the last uncrossed part of the seam, and nothing offline can drive one** — a frame reaches a managed handler as a span over libchiaki's own buffer, driven with no console, no renderer and no decoder.
 
 ## Block C — Video and input path
 

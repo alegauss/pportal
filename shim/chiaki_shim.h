@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 19
+#define CHIAKI_SHIM_ABI 20
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -894,6 +894,50 @@ CHIAKI_SHIM_API int32_t chiaki_shim_frame_processor_flush(
 
 /** How many samples each timed stage has taken, which is what a baseline row reports. */
 CHIAKI_SHIM_API uint64_t chiaki_shim_frame_processor_stage_samples(void *processor, int32_t stage);
+
+/**
+ * PP87: the video sample callback, which is the last of PP4's four questions.
+ *
+ * "Who owns the buffers a video frame arrives in" was filed as unanswerable without a decoder to
+ * feed. That was wrong, and test/videoreceiver.c is the proof: it drives this callback with a
+ * synthesised session, a real profile header and one whole frame in one unit. No console, no
+ * renderer, no decoder.
+ *
+ * The ownership is the point. `buf` is the frame processor's own storage, lent for the duration of
+ * the call and reused after it - so the managed side reads it in place and copies what it wants to
+ * keep. Returning false is how a client says it could not take the frame, which makes the receiver
+ * report a corrupt frame and ask for a keyframe.
+ *
+ * The session this needs is built here and zeroed apart from the four fields the path reads, which
+ * is what the C suite does and for the same reason: a ChiakiSession is not a thing to hand .NET.
+ */
+typedef bool (*ChiakiShimVideoSampleCb)(
+		uint8_t *buf, int32_t buf_size, int32_t frames_lost, bool frame_recovered, void *user);
+
+CHIAKI_SHIM_API void *chiaki_shim_video_receiver_create(
+		void *log, int32_t codec, ChiakiShimVideoSampleCb cb, void *user);
+
+CHIAKI_SHIM_API void chiaki_shim_video_receiver_free(void *receiver);
+
+/**
+ * The stream info a session opens with. The header is copied here, because the receiver takes
+ * ownership of what it is given and frees it - which is not a thing a managed array can be.
+ */
+CHIAKI_SHIM_API bool chiaki_shim_video_receiver_stream_info(
+		void *receiver, const uint8_t *header, int32_t header_size, uint32_t width, uint32_t height);
+
+CHIAKI_SHIM_API void chiaki_shim_video_receiver_av_packet(
+		void *receiver,
+		uint16_t frame_index,
+		uint16_t packet_index,
+		uint16_t unit_index,
+		uint16_t units_in_frame_total,
+		uint16_t units_in_frame_fec,
+		uint8_t adaptive_stream_index,
+		uint8_t *data,
+		int32_t data_size);
+
+CHIAKI_SHIM_API int32_t chiaki_shim_video_receiver_frames_lost(void *receiver);
 
 #ifdef __cplusplus
 }

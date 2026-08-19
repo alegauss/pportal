@@ -1515,6 +1515,91 @@ public static class SelfTest
             }
 
             Console.WriteLine();
+            Console.WriteLine("VideoReceiver - who owns the buffer a frame arrives in");
+
+            string? bsFileForVideo = SanitizerSource.LocateRelative(@"test\bitstream.c");
+            if (bsFileForVideo is null)
+            {
+                Console.WriteLine(@"  --    the video sample callback  (no test\bitstream.c here)");
+            }
+            else
+            {
+                // The profile header has to be one the bitstream parser accepts, so it is the real
+                // SPS and PPS out of test/bitstream.c. A hand-written approximation is worse than
+                // useless: a truncated SPS walks the RBSP reader off the end, and that costs a
+                // hang rather than a refusal.
+                byte[] profileHeader =
+                    CryptoVectors.InFunction(bsFileForVideo, "test_bitstream_parse_h264")["header"];
+
+                var frames = new List<byte[]>();
+                var order = new List<string>();
+                int lastFramesLost = -1;
+
+                bool Take(ReadOnlySpan<byte> frame, int framesLost, bool recovered)
+                {
+                    // The profile header goes out through this same callback, so it is identified
+                    // by its contents rather than by its position - counting it as a frame would
+                    // make everything below pass for a wrong reason.
+                    if (frame.SequenceEqual(profileHeader))
+                    {
+                        order.Add("header");
+                        return true;
+                    }
+
+                    lastFramesLost = framesLost;
+                    frames.Add(frame.ToArray());
+                    order.Add("frame");
+                    return true;
+                }
+
+                // A whole frame in one unit: total of 1 makes this unit the last one, which is
+                // what makes the receiver flush inside the call rather than on the next frame.
+                byte[] payload = [0x00, 0x00, 0x00, 0x01, 0x65, 0x88, 0x80, 0x82, 0x1f, 0x00];
+                var unit = new byte[2 + payload.Length];
+                payload.CopyTo(unit, 2);
+
+                using (var vr = new VideoReceiver(Take, ChiakiNg.Session.ChiakiCodec.H264))
+                {
+                    Check("the stream info is accepted", vr.StreamInfo(profileHeader, 1920, 1080));
+                    // Nothing is delivered yet. The header does not go out when the profiles are
+                    // registered - it goes out when a packet SELECTS one, which is a switch and
+                    // not a setup step. A client that expected it at stream info would draw a
+                    // black window until the first packet arrived.
+                    Check("registering the profiles delivers nothing on its own",
+                        order.Count == 0, string.Join(",", order));
+
+                    vr.AvPacket(1, 0, 1, 0, unit);
+
+                    // PP87, answered. The buffer is libchiaki's, lent for the call, and the
+                    // handler read it in place - the copy above is the handler's choice, which is
+                    // exactly the ownership rule this was filed to establish.
+                    Check("a whole frame reaches a managed handler",
+                        frames.Count == 1 && frames[0].SequenceEqual(payload),
+                        frames.Count == 0 ? "none" : Convert.ToHexString(frames[0]));
+                    Check("and it arrived with no losses to report",
+                        lastFramesLost == 0, lastFramesLost.ToString());
+                    // The header comes out first, inside the same call: the profile switch runs
+                    // before the frame it switched for is flushed. A decoder that took them in
+                    // the other order would be given a frame it has no parameter sets for.
+                    Check("the first packet delivers the header and then its frame",
+                        order.SequenceEqual(["header", "frame"]), string.Join(",", order));
+                }
+
+                // Returning false is how a client says it could not take the frame. The receiver
+                // treats that as a corrupt frame, which is what asks the console for a keyframe.
+                var refused = new List<int>();
+                using (var vr = new VideoReceiver(
+                    (f, _, _) => { refused.Add(f.Length); return false; },
+                    ChiakiNg.Session.ChiakiCodec.H264))
+                {
+                    vr.StreamInfo(profileHeader, 1920, 1080);
+                    vr.AvPacket(1, 0, 1, 0, unit);
+                    Check("a handler that declines a frame is still handed it",
+                        refused.Count >= 1, string.Join(",", refused));
+                }
+            }
+
+            Console.WriteLine();
             Console.WriteLine("FrameProcessor - where units become a frame");
 
             // The unit shape the C suite synthesises: two bytes of size extension, left at zero,

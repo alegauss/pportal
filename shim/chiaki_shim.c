@@ -19,6 +19,7 @@
 #include <chiaki/session.h>
 #include <chiaki/sessionbaseline.h>
 #include <chiaki/takion.h>
+#include <chiaki/videoreceiver.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -1618,6 +1619,116 @@ CHIAKI_SHIM_API uint64_t chiaki_shim_frame_processor_stage_samples(void *process
 		return 0;
 
 	return stage == 0 ? self->stage_reassemble.samples : self->stage_correct.samples;
+}
+
+/**
+ * The receiver, the session it reads four fields out of, and the managed callback.
+ *
+ * The session is zeroed apart from the log, the codec, the sample callback and its user - which is
+ * exactly what test/videoreceiver.c does, and for the same reason: nothing else on the path a
+ * single complete frame takes is touched.
+ */
+typedef struct chiaki_shim_video_receiver_t
+{
+	ChiakiVideoReceiver receiver;
+	ChiakiSession session;
+	ChiakiShimVideoSampleCb cb;
+	void *user;
+} chiaki_shim_video_receiver;
+
+static bool chiaki_shim_video_sample(
+		uint8_t *buf, size_t buf_size, int32_t frames_lost, bool frame_recovered, void *user)
+{
+	chiaki_shim_video_receiver *self = (chiaki_shim_video_receiver *)user;
+	if(!self || !self->cb)
+		return true;
+
+	return self->cb(buf, (int32_t)buf_size, frames_lost, frame_recovered, self->user);
+}
+
+CHIAKI_SHIM_API void *chiaki_shim_video_receiver_create(
+		void *log, int32_t codec, ChiakiShimVideoSampleCb cb, void *user)
+{
+	chiaki_shim_log *log_self = (chiaki_shim_log *)log;
+	chiaki_shim_video_receiver *self =
+			(chiaki_shim_video_receiver *)calloc(1, sizeof(chiaki_shim_video_receiver));
+	if(!self)
+		return NULL;
+
+	self->cb = cb;
+	self->user = user;
+	self->session.log = log_self ? &log_self->log : NULL;
+	self->session.connect_info.video_profile.codec = (ChiakiCodec)codec;
+	self->session.video_sample_cb = chiaki_shim_video_sample;
+	self->session.video_sample_cb_user = self;
+
+	chiaki_video_receiver_init(&self->receiver, &self->session, NULL);
+	return self;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_video_receiver_free(void *receiver)
+{
+	chiaki_shim_video_receiver *self = (chiaki_shim_video_receiver *)receiver;
+	if(!self)
+		return;
+
+	self->cb = NULL;
+	chiaki_video_receiver_fini(&self->receiver);
+	free(self);
+}
+
+CHIAKI_SHIM_API bool chiaki_shim_video_receiver_stream_info(
+		void *receiver, const uint8_t *header, int32_t header_size, uint32_t width, uint32_t height)
+{
+	chiaki_shim_video_receiver *self = (chiaki_shim_video_receiver *)receiver;
+	ChiakiVideoProfile profile;
+
+	if(!self || !header || header_size <= 0)
+		return false;
+
+	memset(&profile, 0, sizeof(profile));
+	profile.width = width;
+	profile.height = height;
+	profile.header_sz = (size_t)header_size;
+
+	// Copied, because the receiver takes ownership of this buffer and frees it in fini. A managed
+	// array is not something a C free() can be handed.
+	profile.header = (uint8_t *)malloc((size_t)header_size);
+	if(!profile.header)
+		return false;
+	memcpy(profile.header, header, (size_t)header_size);
+
+	chiaki_video_receiver_stream_info(&self->receiver, &profile, 1);
+	return true;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_video_receiver_av_packet(
+		void *receiver,
+		uint16_t frame_index,
+		uint16_t packet_index,
+		uint16_t unit_index,
+		uint16_t units_in_frame_total,
+		uint16_t units_in_frame_fec,
+		uint8_t adaptive_stream_index,
+		uint8_t *data,
+		int32_t data_size)
+{
+	chiaki_shim_video_receiver *self = (chiaki_shim_video_receiver *)receiver;
+	ChiakiTakionAVPacket packet;
+
+	if(!self || !data || data_size <= 0)
+		return;
+
+	chiaki_shim_unit_packet(&packet, true, frame_index, packet_index, unit_index,
+			units_in_frame_total, units_in_frame_fec, data, data_size);
+	packet.adaptive_stream_index = adaptive_stream_index;
+	chiaki_video_receiver_av_packet(&self->receiver, &packet);
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_video_receiver_frames_lost(void *receiver)
+{
+	chiaki_shim_video_receiver *self = (chiaki_shim_video_receiver *)receiver;
+	return self ? chiaki_video_receiver_get_frames_lost_total(&self->receiver) : 0;
 }
 
 CHIAKI_SHIM_API void chiaki_shim_session_free(void *session)
