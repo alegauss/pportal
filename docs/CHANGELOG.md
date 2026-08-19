@@ -63,6 +63,7 @@
 
 - ✅ **PP12 (the focus chain)** **the six custom QML controls carry the theme, and gamepad focus navigation is built into them** — it is a tab chain and not a directional engine, which the six controls say and this now holds.
 - ✅ **PP136** **the focus chain is a decision with nothing binding it to a WPF control** — attached properties on any focusable control, with the decision split from the handler and asserted on all six.
+- ✅ **PP137** **the focus visual PP12 asks for exists on one of the Qt client's six controls** — Button's accent-background rule is ported and the other five are recorded as having none.
 
 ## Block E — Windows-only build
 
