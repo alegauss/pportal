@@ -91,6 +91,23 @@ public static class SelfTest
 
         static string Hex(byte[]? b) => b is null ? "<null>" : Convert.ToHexString(b).ToLowerInvariant();
 
+        // PP82. The table holds a default as the CLR type the store hands back - 0u, 128, 1.0 -
+        // and the C++ writes one literal for all of them, so 0 and 0u and 0.0 are the same
+        // default expressed twice. Compared as numbers where both are numbers, and by value
+        // otherwise; a null on either side only matches a null.
+        static bool SameDefault(object? table, object? cpp)
+        {
+            if (table is null || cpp is null)
+                return table is null && cpp is null;
+            if (table is bool || cpp is bool)
+                return table is bool a && cpp is bool b && a == b;
+            if (table is string || cpp is string)
+                return string.Equals(table as string, cpp as string, StringComparison.Ordinal);
+
+            return Convert.ToDouble(table, System.Globalization.CultureInfo.InvariantCulture)
+                == Convert.ToDouble(cpp, System.Globalization.CultureInfo.InvariantCulture);
+        }
+
         // PP22, and it runs first because everything below it can be skipped without failing.
         //
         // Fifteen blocks in this suite read a C or C++ source and compare the port against it, and
@@ -282,6 +299,87 @@ public static class SelfTest
         // no error, no screen that shows it, and nothing else in this tree that would notice.
         Check("every declared key is unique",
             Preferences.All.Count == 148, Preferences.All.Count.ToString());
+
+        // PP82: the extraction run as a check rather than once by hand.
+        //
+        // Every assertion above this one passes if the table is internally consistent and
+        // completely wrong, because the C++ it is a transcription of is a file nothing here read.
+        // The count being 148 makes that worse rather than better: a number that specific reads
+        // as verified, and it was only ever verified against the file that states it.
+        IReadOnlyList<string>? prefFiles = PreferenceSource.Locate();
+        if (prefFiles is null)
+        {
+            Console.WriteLine(@"  --    the table against gui\src\settings.cpp  (not a checkout)");
+        }
+        else
+        {
+            IReadOnlyList<PreferenceRead> reads =
+                [.. prefFiles.SelectMany(f => PreferenceSource.ReadsIn(File.ReadAllText(f)))];
+            HashSet<string> cppKeys = reads.Select(r => r.Key).ToHashSet(StringComparer.Ordinal);
+
+            // Two keys the Qt client reads that are deliberately not rows, and they are named
+            // here rather than filtered by a pattern - the exclusions were a judgement made once
+            // too, and a rule broad enough to drop them silently would drop the next one as well.
+            //
+            //   settings/this_profile lives in settings_backup, the export file, and not in any
+            //   of the three stores this table describes.
+            //
+            //   keymap/ is the literal half of `"keymap/" + button_name`, one key per button
+            //   rather than a preference - the same shape as the arrays PP81 reads.
+            string[] notPreferences = ["keymap/", "settings/this_profile"];
+
+            Check("the extractor finds the Qt client's preference reads at all",
+                reads.Count > 140 && cppKeys.Count > 140,
+                $"{reads.Count} calls, {cppKeys.Count} keys");
+
+            // The direction PP82 names: a key the Qt client gained is one the port reads as
+            // absent on a store where the user set it, and no screen would report that.
+            string[] undeclared = [.. cppKeys
+                .Where(k => Preferences.Find(k) is null && !notPreferences.Contains(k))
+                .Order(StringComparer.Ordinal)];
+            Check("every key the Qt client reads is declared, or named as not a preference",
+                undeclared.Length == 0, string.Join(" ", undeclared));
+
+            // And the other direction, which is a row describing a preference that no longer
+            // exists - harmless to read, and a lie about what the Qt client does.
+            string[] phantom = [.. Preferences.All.Keys
+                .Where(k => !cppKeys.Contains(k)).Order(StringComparer.Ordinal)];
+            Check("and every declared row is a key the Qt client actually reads",
+                phantom.Length == 0, string.Join(" ", phantom));
+
+            // The kind, from the .to*() that follows each call. Qt's toFloat and toDouble both
+            // land on Double here, which is the one place the mapping is not 1:1.
+            string[] unknownConversions = [.. reads
+                .Where(r => PreferenceSource.KindOf(r.Conversion) is null)
+                .Select(r => $"{r.Key}:to{r.Conversion}").Distinct().Order(StringComparer.Ordinal)];
+            Check("every conversion the Qt client applies maps onto a declared kind",
+                unknownConversions.Length == 0, string.Join(" ", unknownConversions));
+
+            string[] wrongKind = [.. reads
+                .Where(r => Preferences.Find(r.Key) is PreferenceKey p
+                    && PreferenceSource.KindOf(r.Conversion) is QSettingsKind k && p.Kind != k)
+                .Select(r => $"{r.Key}: table {Preferences.Find(r.Key)!.Kind}, Qt to{r.Conversion}")
+                .Distinct().Order(StringComparer.Ordinal)];
+            Check("and reads it back as the kind the table declares",
+                wrongKind.Length == 0, string.Join("; ", wrongKind));
+
+            // The defaults, for the ones expressed as literals. The rest index an enum table in
+            // the C++ and are not compared - which is REPORTED, because a check that quietly
+            // skipped them would be measuring its own reach again, and that is all of PP82.
+            var literal = reads
+                .Where(r => PreferenceSource.IsLiteral(r.Default) && Preferences.Find(r.Key) is not null)
+                .ToList();
+            string[] wrongDefault = [.. literal
+                .Where(r => !SameDefault(Preferences.Find(r.Key)!.Default,
+                    PreferenceSource.LiteralValue(r.Default)))
+                .Select(r => $"{r.Key}: table {Preferences.Find(r.Key)!.Default ?? "null"}, Qt {r.Default}")
+                .Distinct().Order(StringComparer.Ordinal)];
+            Check($"the {literal.Count} literal defaults agree with the Qt client's",
+                wrongDefault.Length == 0, string.Join("; ", wrongDefault));
+
+            Console.WriteLine($"        {cppKeys.Count} keys read, {literal.Count} defaults literal, "
+                + $"{reads.Count - literal.Count} indirect and not compared");
+        }
         Check("the three scopes are all populated",
             Preferences.All.Values.Count(p => p.Scope == QSettingsScope.Default) == 2
             && Preferences.All.Values.Count(p => p.Scope == QSettingsScope.Profile) == 81

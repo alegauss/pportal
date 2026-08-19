@@ -589,27 +589,6 @@ this task: a test has to be able to name the line it holds, whether by conventio
 test name or by an attribute the count can read. Without that join, the number is a
 guess and a gate on a guess is worse than no gate.
 
-### §PP82 A table that only agrees with itself
-
-The preference table asserts its own row count, its own scopes and its own kinds. Every
-one of those passes if the table is internally consistent and completely wrong, because
-the thing it is a transcription OF is a C++ file no assertion here reads.
-
-This is the shape PP56, PP74 and PP75 each closed somewhere else: a green that measures
-the absence of a check rather than the presence of a property. The counts make it worse
-rather than better - 148 is asserted, so a reviewer reads the number as verified, and it
-is only verified against the same file that states it.
-
-What would close it is the extraction run as a check rather than once by hand: walk
-gui/src/settings.cpp and gui/include/settings.h for the value("key", default).toX()
-calls, resolve the enum tables the defaults index into, and compare the result against
-the declared rows - failing on a key in one and not the other, and on a default that
-disagrees. The extraction already exists as the script that produced the table; what it
-lacks is a home in the tree and a place in test.cmd.
-
-The alternative is to accept drift and say so, which for a port whose whole point is
-reading the old client's store is not a position worth defending.
-
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed

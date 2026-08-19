@@ -84,6 +84,7 @@
 - ✅ **PP74** **compile.cmd builds the Qt client and knows nothing about app/, so the tree's only gate now covers half of it** — A default compile.cmd builds app\ after the Qt client and goes red when it breaks; noapp skips it and says so, and a machine with no .NET SDK gets a note rather than a refusal.
 - ✅ **PP75** **test.cmd runs ctest and nothing runs the .NET host's selftest, so 11 assertions sit in the tree ungated** — test.cmd runs the C suite and then the .NET host's selftest; a broken decoder that the gate could not see now exits 1, and noapp skips it out loud.
 - ✅ **PP109** **the two reorder queue functions with defects in them are the two the suite never calls** — peek and drop are covered by the C suite for the first time, pinning the behaviour PP107 names so a fix has to change a test.
+- ✅ **PP82** **the 148-row preference table was extracted from settings.cpp once and nothing re-checks it** — the extraction runs as a check now, both ways, and the first audit found the 148 rows correct.
 
 ## Block H — Performance and telemetry
 
