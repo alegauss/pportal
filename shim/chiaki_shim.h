@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 11
+#define CHIAKI_SHIM_ABI 12
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -611,6 +611,29 @@ CHIAKI_SHIM_API int32_t chiaki_shim_rpcrypt_encrypt(
 
 CHIAKI_SHIM_API int32_t chiaki_shim_rpcrypt_decrypt(
 		void *rpcrypt, uint64_t counter, const uint8_t *in, uint8_t *out, int32_t size);
+
+/**
+ * PP23 and PP30: forward error correction, which is the module with the largest recorded oracle.
+ *
+ * test/fec_test_cases.inl is 3081 lines of erasure cases taken off a real stream - the frame
+ * buffer as it arrived, which units were lost, and the bytes that had to come back. FEC runs on
+ * every frame and is two vendored C libraries doing Galois field arithmetic, so a managed rewrite
+ * is a port rather than a swap; these cases are what would judge it.
+ *
+ * `frame_buf` is decoded in place. `stride` is the distance between units, which the recorded
+ * cases round up to a multiple of 16 - that padding is the layout the decoder expects, not a
+ * convenience of the test. `erasures` names which unit indices were lost.
+ *
+ * chiaki_shim_lib_init must have run: the Galois field tables are built there.
+ */
+CHIAKI_SHIM_API int32_t chiaki_shim_fec_decode(
+		uint8_t *frame_buf,
+		int32_t unit_size,
+		int32_t stride,
+		uint32_t k,
+		uint32_t m,
+		const uint32_t *erasures,
+		int32_t erasures_count);
 
 #ifdef __cplusplus
 }

@@ -6,6 +6,7 @@
 #include <chiaki/decoderchoice.h>
 #include <chiaki/controller.h>
 #include <chiaki/discovery.h>
+#include <chiaki/fec.h>
 #include <chiaki/rpcrypt.h>
 #include <chiaki/log.h>
 #include <chiaki/session.h>
@@ -971,6 +972,24 @@ CHIAKI_SHIM_API int32_t chiaki_shim_rpcrypt_decrypt(
 		return (int32_t)CHIAKI_ERR_INVALID_DATA;
 
 	return (int32_t)chiaki_rpcrypt_decrypt((ChiakiRPCrypt *)rpcrypt, counter, in, out, (size_t)size);
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_fec_decode(
+		uint8_t *frame_buf,
+		int32_t unit_size,
+		int32_t stride,
+		uint32_t k,
+		uint32_t m,
+		const uint32_t *erasures,
+		int32_t erasures_count)
+{
+	if(!frame_buf || unit_size <= 0 || stride <= 0 || erasures_count < 0)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+	if(erasures_count > 0 && !erasures)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+
+	return (int32_t)chiaki_fec_decode(frame_buf, (size_t)unit_size, (size_t)stride, k, m,
+			(const unsigned int *)erasures, (size_t)erasures_count);
 }
 
 CHIAKI_SHIM_API void chiaki_shim_session_free(void *session)

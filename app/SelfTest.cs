@@ -1515,6 +1515,48 @@ public static class SelfTest
             }
 
             Console.WriteLine();
+            Console.WriteLine("Fec - sixty-four erasure cases a real stream produced");
+
+            string? fecFile = FecVectors.Locate();
+            if (fecFile is null)
+            {
+                Console.WriteLine($"  --    the recorded erasure cases  (no {FecVectors.RelativePath} here)");
+            }
+            else
+            {
+                IReadOnlyList<FecCase> fecCases = FecVectors.Parse(fecFile);
+                Check("every recorded case parses out of the C suite",
+                    fecCases.Count == 64, fecCases.Count.ToString());
+                // The shape of the data, asserted before it is trusted: a case whose buffer did
+                // not hold k+m whole units would decode into the wrong places and still pass a
+                // comparison against itself.
+                Check("each case's buffer is exactly its units",
+                    fecCases.All(c => c.FrameBuffer.Length == c.UnitSize * (c.K + c.M))
+                    && fecCases.All(c => c.Erasures.Length > 0),
+                    fecCases.Count == 0 ? "none" : fecCases[0].FrameBuffer.Length.ToString());
+                // The stride is the layout the decoder addresses units at, not a convenience of
+                // the test. 1400 rounds to 1408, and a rewrite that packed units tightly would
+                // decode the right bytes into the wrong places.
+                Check("the stride rounds up to sixteen",
+                    FecVectors.StrideFor(1400) == 1408 && FecVectors.StrideFor(1408) == 1408
+                    && FecVectors.StrideFor(1) == 16);
+
+                int recovered = fecCases.Count(c => Fec.Recovers(c));
+                Check("every recorded erasure is recovered byte for byte",
+                    recovered == fecCases.Count, $"{recovered} of {fecCases.Count}");
+
+                // The negative that gives the run its meaning. The unit that is actually blanked
+                // stays blanked and the decoder is told a DIFFERENT one was lost - so it repairs
+                // the wrong hole and the real one is still garbage. Without this, a decode that
+                // returned the buffer untouched would pass all sixty-four cases above.
+                FecCase probe = fecCases[0];
+                uint lied = (probe.Erasures[0] + 1) % probe.K;
+                Check("told the wrong unit was lost, the frame does not come back",
+                    !Fec.Recovers(probe, [lied]),
+                    $"blanked {probe.Erasures[0]}, declared {lied}");
+            }
+
+            Console.WriteLine();
             Console.WriteLine("Discovery - the bytes a console answers, or does not");
 
             // A console that does not answer looks exactly like a console that is switched off,
