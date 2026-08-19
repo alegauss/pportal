@@ -1441,6 +1441,69 @@ public static class SelfTest
                 micSeam.Fill.ToString());
 
             Console.WriteLine();
+            Console.WriteLine("DualSenseIntensity - two events, one byte, two nibbles");
+
+            // The enum is not ordered by strength, and a port that compared these would read as
+            // sensible code and invert the ladder.
+            Check("the console's numbers do not rank by strength",
+                (int)DualSenseEffectIntensity.Strong == 1
+                && (int)DualSenseEffectIntensity.Medium == 2
+                && (int)DualSenseEffectIntensity.Weak == 3);
+
+            var intensity = new DualSenseIntensity();
+            Check("both sides start at Strong",
+                intensity is { RumbleCode: 0x00, TriggerCode: 0x00, Packed: 0x00 }
+                && intensity.RumbleMultiplier == 1.0,
+                intensity.Packed.ToString("x2"));
+
+            // The rumble codes are the enum's own values for Medium and Weak and NOT for Strong,
+            // which is 1 as an enum and 0 as a code. Passing the enum straight through would work
+            // for three arms out of four and send 0x01 for the fourth.
+            intensity.SetRumble(DualSenseEffectIntensity.Medium);
+            Check("Medium's code happens to be its enum value", intensity.RumbleCode == 0x02);
+            intensity.SetRumble(DualSenseEffectIntensity.Strong);
+            Check("Strong's is not, which is the trap",
+                intensity.RumbleCode == 0x00 && (int)DualSenseEffectIntensity.Strong == 1,
+                intensity.RumbleCode.ToString());
+
+            // The trigger codes are not derivable from anything.
+            intensity.SetTrigger(DualSenseEffectIntensity.Weak);
+            Check("the trigger ladder is its own table",
+                intensity.TriggerCode == 0x90, intensity.TriggerCode.ToString("x2"));
+            intensity.SetTrigger(DualSenseEffectIntensity.Medium);
+            Check("and Medium is 0x60, not 0x02 or 2",
+                intensity.TriggerCode == 0x60, intensity.TriggerCode.ToString("x2"));
+
+            // The packing: trigger high, rumble low, one byte.
+            intensity.SetRumble(DualSenseEffectIntensity.Weak);
+            Check("the byte is the trigger nibble over the rumble nibble",
+                intensity.Packed == 0x63, intensity.Packed.ToString("x2"));
+
+            // Off is not a code. It is a negative that gates a whole path, and only becomes a
+            // nibble of ones when the byte is packed - and only for its own half.
+            intensity.SetTrigger(DualSenseEffectIntensity.Off);
+            Check("an off trigger fills its own nibble and leaves the other",
+                intensity.Packed == 0xF3 && !intensity.TriggerEffectsEnabled && intensity.RumbleEnabled,
+                intensity.Packed.ToString("x2"));
+
+            intensity.SetRumble(DualSenseEffectIntensity.Off);
+            Check("both off is 0xff, and both paths are shut",
+                intensity.Packed == 0xFF
+                && !intensity.RumbleEnabled && !intensity.TriggerEffectsEnabled
+                && intensity.RumbleMultiplier == 0.0,
+                intensity.Packed.ToString("x2"));
+
+            // The multiplier ladder, which is what a haptics frame is scaled by before it is
+            // folded to a rumble strength.
+            var ladder = new DualSenseIntensity();
+            ladder.SetRumble(DualSenseEffectIntensity.Medium);
+            double medium = ladder.RumbleMultiplier;
+            ladder.SetRumble(DualSenseEffectIntensity.Weak);
+            Check("the multiplier ladder is 1, 0.5 and 0.33",
+                medium == 0.5 && ladder.RumbleMultiplier == 0.33,
+                $"{medium} / {ladder.RumbleMultiplier}");
+
+            Console.WriteLine();
             Console.WriteLine("FeedbackState - three latches between the pads and the wire");
 
             using (var merged = new ChiakiControllerState())
