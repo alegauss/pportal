@@ -70,6 +70,7 @@
 - ✅ **PP141** **the registration progress dialog ignores whether the operation succeeded, and nothing says so** — the dialog stays open on both outcomes, and Escape leaves mid-registration where Return does not.
 - ✅ **PP142** **the port has 148 preferences and no names for them, and the names cannot be derived** — the naming is the QML's own: a convention for 63, no property for 65, and three renames that cannot be derived.
 - ✅ **PP143** **a mistyped XAML binding is not a build error, it is a control that silently shows nothing** — the console list screen loads and its bindings resolve, proved by a path that builds clean and fails red.
+- ✅ **PP18 (the mapping document)** **the controller mapping screen is QML bound to the live SDL mapping strings** — The SDL mapping string parsed, edited and rebuilt with the Qt client's own rules, including a reset-to-default branch that cannot be reached.
 
 ## Block E — Windows-only build
 
