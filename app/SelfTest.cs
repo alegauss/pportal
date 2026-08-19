@@ -1515,6 +1515,93 @@ public static class SelfTest
             }
 
             Console.WriteLine();
+            Console.WriteLine("FrameProcessor - where units become a frame");
+
+            // The unit shape the C suite synthesises: two bytes of size extension, left at zero,
+            // then a payload that identifies which unit it is.
+            static byte[] Unit(int index)
+            {
+                var u = new byte[2 + 32];
+                for (int i = 0; i < 32; i++)
+                    u[2 + i] = (byte)(index * 0x10 + i);
+                return u;
+            }
+
+            using (var fp = new FrameProcessor())
+            {
+                // Three units, one of them parity: two source units make a whole frame.
+                Check("a fresh processor has charged nothing",
+                    fp.StageSamples(FrameStage.Reassemble) == 0
+                    && fp.StageSamples(FrameStage.Correct) == 0);
+
+                Check("the frame is sized from its first unit",
+                    fp.AllocFrame(1, 0, 3, 1, Unit(0)) == ChiakiError.Success
+                    && fp.PutUnit(1, 0, 3, 1, Unit(0)) == ChiakiError.Success
+                    && fp.PutUnit(1, 1, 3, 1, Unit(1)) == ChiakiError.Success);
+
+                Check("both source units in means a flush needs no reconstruction",
+                    fp.FlushPossible);
+
+                (FrameFlushResult result, byte[] frame) = fp.Flush();
+                Check("a whole frame flushes as a plain success",
+                    result == FrameFlushResult.Success && frame.Length == 64,
+                    $"{result}, {frame.Length} bytes");
+
+                // The accounting the stage timings rest on: a frame that never lost a unit must
+                // not appear in the correct stage, or the baseline would report a reconstruction
+                // cost that no lossy minute really pays.
+                Check("reassembly is charged once and correction not at all",
+                    fp.StageSamples(FrameStage.Reassemble) == 1
+                    && fp.StageSamples(FrameStage.Correct) == 0,
+                    $"{fp.StageSamples(FrameStage.Reassemble)}/{fp.StageSamples(FrameStage.Correct)}");
+
+                // The receiver flushes the same frame again when the next frame's head arrives
+                // first. That is one reassembly, not two.
+                fp.Flush();
+                Check("flushing the same frame twice is still one reassembly",
+                    fp.StageSamples(FrameStage.Reassemble) == 1);
+            }
+
+            using (var fp = new FrameProcessor())
+            {
+                // A frame missing a source unit, with the parity unit standing in for it. This is
+                // where the FEC already across this seam actually gets driven.
+                fp.AllocFrame(1, 0, 3, 1, Unit(0));
+                fp.PutUnit(1, 0, 3, 1, Unit(0));
+                fp.PutUnit(1, 2, 3, 1, Unit(2));
+
+                (FrameFlushResult result, byte[] frame) = fp.Flush();
+                Check("a missing source unit is reconstructed from the parity one",
+                    result == FrameFlushResult.FecSuccess && frame.Length == 64,
+                    $"{result}, {frame.Length} bytes");
+                Check("and the correction is charged exactly once",
+                    fp.StageSamples(FrameStage.Correct) == 1
+                    && fp.StageSamples(FrameStage.Reassemble) == 1,
+                    $"{fp.StageSamples(FrameStage.Reassemble)}/{fp.StageSamples(FrameStage.Correct)}");
+            }
+
+            // The failure case gets a log of its own, because libchiaki's default writes "FEC
+            // failed" to stdout in red - and a passing run of this suite should not look like one
+            // that broke. PP83's log is what makes that a capture rather than a redirect.
+            var fecComplaints = new List<string>();
+            using (var quietLog = new ChiakiLog(ChiakiLogLevel.All, (_, text) => fecComplaints.Add(text)))
+            using (var fp = new FrameProcessor(quietLog))
+            {
+                // Two units missing with one parity unit: nothing can be recovered, and the
+                // processor says so rather than handing back a frame with a hole in it.
+                fp.AllocFrame(1, 0, 4, 1, Unit(0));
+                fp.PutUnit(1, 0, 4, 1, Unit(0));
+
+                Check("too few units in is not worth a flush", !fp.FlushPossible);
+                Check("and flushing anyway does not claim success",
+                    fp.Flush().Result is FrameFlushResult.FecFailed or FrameFlushResult.Failed,
+                    fp.Flush().Result.ToString());
+                Check("and the library said so through the log rather than to stdout",
+                    fecComplaints.Any(m => m.Contains("FEC", StringComparison.Ordinal)),
+                    string.Join(" | ", fecComplaints));
+            }
+
+            Console.WriteLine();
             Console.WriteLine("Takion - the key position, and a real packet's header");
 
             using (var keys = new KeyState())

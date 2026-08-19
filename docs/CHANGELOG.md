@@ -59,6 +59,7 @@
 - ✅ **PP33 (the response parser)** **HTTP and JSON in the core are curl and json-c, two vendored dependencies for what the runtime already does** — a managed HTTP response parser agrees with libchiaki's on twelve inputs, which is the first module the port replaces rather than calls.
 - ✅ **PP110** **the bitstream parser runs only from the C suite, so nothing managed can tell an I frame from a P frame** — both codecs' recorded headers and slices parse from managed code, reference rewriting included, out of the C suite's own vectors.
 - ✅ **PP111** **the key position expansion and the AV packet header run only from the C suite, so a managed transport has neither** — the key position ladder and a recorded AV packet header parse from managed code, the payload named by offset rather than pointer.
+- ✅ **PP112** **the frame processor runs only from the C suite, so nothing managed can turn units into a frame or drive FEC** — units become frames from managed code, with reconstruction driven and the stage accounting asserted, under eleven assertions.
 
 ## Block G — Test discipline
 

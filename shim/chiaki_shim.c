@@ -9,6 +9,7 @@
 #include <chiaki/discovery.h>
 #include <chiaki/ecdh.h>
 #include <chiaki/fec.h>
+#include <chiaki/frameprocessor.h>
 #include <chiaki/gkcrypt.h>
 #include <chiaki/http.h>
 #include <chiaki/reorderqueue.h>
@@ -1484,6 +1485,139 @@ CHIAKI_SHIM_API int32_t chiaki_shim_takion_v9_av_packet_parse(
 		*data_size = (int32_t)packet.data_size;
 
 	return (int32_t)CHIAKI_ERR_SUCCESS;
+}
+
+static void chiaki_shim_unit_packet(
+		ChiakiTakionAVPacket *packet,
+		bool is_video,
+		uint16_t frame_index,
+		uint16_t packet_index,
+		uint16_t unit_index,
+		uint16_t units_in_frame_total,
+		uint16_t units_in_frame_fec,
+		uint8_t *data,
+		int32_t data_size)
+{
+	memset(packet, 0, sizeof(*packet));
+	packet->is_video = is_video;
+	packet->frame_index = frame_index;
+	packet->packet_index = packet_index;
+	packet->unit_index = unit_index;
+	packet->units_in_frame_total = units_in_frame_total;
+	packet->units_in_frame_fec = units_in_frame_fec;
+	packet->data = data;
+	packet->data_size = (size_t)data_size;
+}
+
+CHIAKI_SHIM_API void *chiaki_shim_frame_processor_create(void *log)
+{
+	chiaki_shim_log *log_self = (chiaki_shim_log *)log;
+	ChiakiFrameProcessor *self = (ChiakiFrameProcessor *)calloc(1, sizeof(ChiakiFrameProcessor));
+	if(!self)
+		return NULL;
+
+	chiaki_frame_processor_init(self, log_self ? &log_self->log : NULL);
+	return self;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_frame_processor_free(void *processor)
+{
+	if(!processor)
+		return;
+
+	chiaki_frame_processor_fini((ChiakiFrameProcessor *)processor);
+	free(processor);
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_frame_processor_alloc_frame(
+		void *processor,
+		bool is_video,
+		uint16_t frame_index,
+		uint16_t packet_index,
+		uint16_t unit_index,
+		uint16_t units_in_frame_total,
+		uint16_t units_in_frame_fec,
+		uint8_t *data,
+		int32_t data_size)
+{
+	ChiakiTakionAVPacket packet;
+	if(!processor || !data || data_size <= 0)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+
+	chiaki_shim_unit_packet(&packet, is_video, frame_index, packet_index, unit_index,
+			units_in_frame_total, units_in_frame_fec, data, data_size);
+	return (int32_t)chiaki_frame_processor_alloc_frame((ChiakiFrameProcessor *)processor, &packet);
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_frame_processor_put_unit(
+		void *processor,
+		bool is_video,
+		uint16_t frame_index,
+		uint16_t packet_index,
+		uint16_t unit_index,
+		uint16_t units_in_frame_total,
+		uint16_t units_in_frame_fec,
+		uint8_t *data,
+		int32_t data_size)
+{
+	ChiakiTakionAVPacket packet;
+	if(!processor || !data || data_size <= 0)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+
+	chiaki_shim_unit_packet(&packet, is_video, frame_index, packet_index, unit_index,
+			units_in_frame_total, units_in_frame_fec, data, data_size);
+	return (int32_t)chiaki_frame_processor_put_unit((ChiakiFrameProcessor *)processor, &packet);
+}
+
+CHIAKI_SHIM_API bool chiaki_shim_frame_processor_flush_possible(void *processor)
+{
+	return processor
+			? chiaki_frame_processor_flush_possible((ChiakiFrameProcessor *)processor)
+			: false;
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_frame_processor_flush(
+		void *processor, uint8_t *frame, int32_t *frame_size)
+{
+	uint8_t *out = NULL;
+	size_t out_size = 0;
+	ChiakiFrameProcessorFlushResult result;
+	int32_t room;
+
+	if(!processor || !frame_size)
+		return (int32_t)CHIAKI_FRAME_PROCESSOR_FLUSH_RESULT_FAILED;
+
+	room = *frame_size;
+	*frame_size = 0;
+
+	result = chiaki_frame_processor_flush((ChiakiFrameProcessor *)processor, &out, &out_size);
+	if(result == CHIAKI_FRAME_PROCESSOR_FLUSH_RESULT_FAILED || !out)
+		return (int32_t)result;
+
+	// Copied out, because what flush hands back points into the processor's own buffer and stops
+	// being valid at the next call to it. A managed caller that held the pointer would be reading
+	// the next frame's bytes, or a reallocation's.
+	if(frame && room > 0)
+	{
+		int32_t n = (int32_t)out_size < room ? (int32_t)out_size : room;
+		memcpy(frame, out, (size_t)n);
+		*frame_size = n;
+	}
+	else
+	{
+		*frame_size = (int32_t)out_size;
+	}
+
+	return (int32_t)result;
+}
+
+CHIAKI_SHIM_API uint64_t chiaki_shim_frame_processor_stage_samples(void *processor, int32_t stage)
+{
+	ChiakiFrameProcessor *self = (ChiakiFrameProcessor *)processor;
+	if(!self)
+		return 0;
+
+	return stage == 0 ? self->stage_reassemble.samples : self->stage_correct.samples;
 }
 
 CHIAKI_SHIM_API void chiaki_shim_session_free(void *session)

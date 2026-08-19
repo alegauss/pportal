@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 18
+#define CHIAKI_SHIM_ABI 19
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -841,6 +841,59 @@ CHIAKI_SHIM_API int32_t chiaki_shim_takion_v9_av_packet_parse(
 		uint64_t *key_pos,
 		int32_t *data_offset,
 		int32_t *data_size);
+
+/**
+ * PP23: the frame processor, where units become a frame and FEC is driven.
+ *
+ * It is the join between the two modules already across this seam - takion hands it units, and it
+ * hands FEC the ones that are missing. Its flush answers the only question the video path asks
+ * about a frame: did it arrive whole, was it reconstructed, or is it gone.
+ *
+ * The unit is passed as scalars rather than as a ChiakiTakionAVPacket, for the reason every struct
+ * at this seam is: the packet ends in a borrowed pointer, and building one on this side would put
+ * .NET in charge of a layout it has no way to check.
+ *
+ * `flush` hands back a pointer into the processor's own buffer that is invalid after the next call
+ * to it, so the frame is copied out here and the caller gets bytes it owns.
+ */
+CHIAKI_SHIM_API void *chiaki_shim_frame_processor_create(void *log);
+CHIAKI_SHIM_API void chiaki_shim_frame_processor_free(void *processor);
+
+/** Sizes the frame from the first unit of it. Must precede the units. */
+CHIAKI_SHIM_API int32_t chiaki_shim_frame_processor_alloc_frame(
+		void *processor,
+		bool is_video,
+		uint16_t frame_index,
+		uint16_t packet_index,
+		uint16_t unit_index,
+		uint16_t units_in_frame_total,
+		uint16_t units_in_frame_fec,
+		uint8_t *data,
+		int32_t data_size);
+
+CHIAKI_SHIM_API int32_t chiaki_shim_frame_processor_put_unit(
+		void *processor,
+		bool is_video,
+		uint16_t frame_index,
+		uint16_t packet_index,
+		uint16_t unit_index,
+		uint16_t units_in_frame_total,
+		uint16_t units_in_frame_fec,
+		uint8_t *data,
+		int32_t data_size);
+
+/** Whether enough units are in for a flush to be worth trying. */
+CHIAKI_SHIM_API bool chiaki_shim_frame_processor_flush_possible(void *processor);
+
+/**
+ * Flushes into `frame`, which the caller owns and sizes. 0 success, 1 reconstructed, 2 FEC failed,
+ * 3 failed. `frame_size` is in/out: room offered, then bytes written.
+ */
+CHIAKI_SHIM_API int32_t chiaki_shim_frame_processor_flush(
+		void *processor, uint8_t *frame, int32_t *frame_size);
+
+/** How many samples each timed stage has taken, which is what a baseline row reports. */
+CHIAKI_SHIM_API uint64_t chiaki_shim_frame_processor_stage_samples(void *processor, int32_t stage);
 
 #ifdef __cplusplus
 }
