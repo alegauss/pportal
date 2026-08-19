@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 30
+#define CHIAKI_SHIM_ABI 31
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -761,6 +761,40 @@ CHIAKI_SHIM_API void chiaki_shim_gkcrypt_free(void *gkcrypt);
 /** The key stream at a position, which is what every takion packet is XORed against. */
 CHIAKI_SHIM_API int32_t chiaki_shim_gkcrypt_gen_key_stream(
 		void *gkcrypt, uint64_t key_pos, uint8_t *buf, int32_t buf_size);
+
+/**
+ * PP125: takion's send buffer, which is what makes its retransmission work.
+ *
+ * Every reliable message the client sends is held here until the console acknowledges it, and an
+ * ack releases that packet AND every older one. That is the whole of the semantics and the whole
+ * of what can go wrong: release too much and a message nobody received is never sent again;
+ * release too little and the buffer fills, which the C reports as OVERFLOW and after which the
+ * session stops sending. Neither failure mentions a send buffer.
+ *
+ * The payload is allocated on this side because the buffer takes ownership and frees it on ack -
+ * handing over a managed array would have a C allocator free memory it never allocated.
+ *
+ * WHICH packets remain is not askable. ChiakiTakionSendBufferPacket is an incomplete type in the
+ * public header and its layout lives in takionsendbuffer.c, which the C's own test reaches by
+ * #including that file - the shim cannot, because chiaki-lib is already linked in. Declaring the
+ * layout here instead would be a guess a field reorder breaks silently. So the count is the
+ * observable, and every property below is expressed in it.
+ *
+ * The count is read under the buffer's own mutex, as the C's test does by hand and for the same
+ * reason: a retransmit thread may be walking the same array.
+ */
+CHIAKI_SHIM_API void *chiaki_shim_takion_send_buffer_create(int32_t size);
+CHIAKI_SHIM_API void chiaki_shim_takion_send_buffer_free(void *send_buffer);
+
+/** Pushes a packet of `buf_size` zero bytes. CHIAKI_ERR_OVERFLOW once the buffer is full. */
+CHIAKI_SHIM_API int32_t chiaki_shim_takion_send_buffer_push(
+		void *send_buffer, uint32_t seq_num, int32_t buf_size);
+
+/** Acknowledges a sequence number, releasing it and everything older. */
+CHIAKI_SHIM_API int32_t chiaki_shim_takion_send_buffer_ack(void *send_buffer, uint32_t seq_num);
+
+/** How many packets are still waiting, or -1. */
+CHIAKI_SHIM_API int32_t chiaki_shim_takion_send_buffer_count(void *send_buffer);
 
 /**
  * PP124: the congestion report, which is the first thing this port sends rather than reads.

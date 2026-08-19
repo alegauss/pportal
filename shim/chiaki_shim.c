@@ -34,6 +34,7 @@
 #include <chiaki/session.h>
 #include <chiaki/sessionbaseline.h>
 #include <chiaki/takion.h>
+#include <chiaki/takionsendbuffer.h>
 #include <chiaki/videoreceiver.h>
 
 #include <stdlib.h>
@@ -1181,6 +1182,111 @@ CHIAKI_SHIM_API int32_t chiaki_shim_gkcrypt_gen_key_stream(
 
 	return (int32_t)chiaki_gkcrypt_gen_key_stream((ChiakiGKCrypt *)gkcrypt, key_pos, buf,
 			(size_t)buf_size);
+}
+
+/**
+ * PP125: the send buffer, which is what makes takion's retransmission work.
+ *
+ * Every reliable message the client sends is held here until the console acknowledges it. An ack
+ * releases that packet AND every older one, which is the whole of the semantics and the whole of
+ * what can go wrong: release too much and a message nobody received is never sent again; release
+ * too little and the buffer fills, which the C reports as OVERFLOW and a session then stops
+ * sending. Neither says anything about the send buffer when it happens.
+ *
+ * A NULL takion, as the C's own test passes: the buffer only needs one to retransmit on a timer,
+ * and nothing here runs that timer. What is exercised is which packets remain.
+ */
+CHIAKI_SHIM_API void *chiaki_shim_takion_send_buffer_create(int32_t size)
+{
+	ChiakiTakionSendBuffer *self;
+
+	if(size <= 0)
+		return NULL;
+
+	self = (ChiakiTakionSendBuffer *)calloc(1, sizeof(ChiakiTakionSendBuffer));
+	if(!self)
+		return NULL;
+
+	if(chiaki_takion_send_buffer_init(self, NULL, (size_t)size) != CHIAKI_ERR_SUCCESS)
+	{
+		free(self);
+		return NULL;
+	}
+	return self;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_takion_send_buffer_free(void *send_buffer)
+{
+	if(!send_buffer)
+		return;
+
+	chiaki_takion_send_buffer_fini((ChiakiTakionSendBuffer *)send_buffer);
+	free(send_buffer);
+}
+
+/**
+ * Pushes a packet of `buf_size` bytes.
+ *
+ * The payload is allocated HERE because the send buffer takes ownership of it - a managed array
+ * handed over would be freed by a C allocator that never allocated it, which is heap corruption
+ * rather than an error.
+ *
+ * And ownership transfers ON FAILURE TOO, which is the opposite of what the shape of the call
+ * suggests: chiaki_takion_send_buffer_push frees `buf` itself at its `beach:` label whenever it
+ * returns anything but SUCCESS. Freeing it here as well is a double free, and it does not fault
+ * where it happens - the first version of this function did exactly that, and the crash landed
+ * two tests later in one that never overflows.
+ */
+CHIAKI_SHIM_API int32_t chiaki_shim_takion_send_buffer_push(
+		void *send_buffer, uint32_t seq_num, int32_t buf_size)
+{
+	uint8_t *buf;
+
+	if(!send_buffer || buf_size <= 0)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+
+	buf = (uint8_t *)calloc(1, (size_t)buf_size);
+	if(!buf)
+		return (int32_t)CHIAKI_ERR_MEMORY;
+
+	return (int32_t)chiaki_takion_send_buffer_push((ChiakiTakionSendBuffer *)send_buffer,
+			(ChiakiSeqNum32)seq_num, buf, (size_t)buf_size);
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_takion_send_buffer_ack(void *send_buffer, uint32_t seq_num)
+{
+	if(!send_buffer)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+
+	return (int32_t)chiaki_takion_send_buffer_ack((ChiakiTakionSendBuffer *)send_buffer,
+			(ChiakiSeqNum32)seq_num, NULL, NULL);
+}
+
+/**
+ * How many packets are still waiting - and only that.
+ *
+ * Which packets is not askable from here. ChiakiTakionSendBufferPacket is an incomplete type in
+ * the public header; its layout lives in takionsendbuffer.c, and the C's own test reaches it by
+ * #including that file. The shim cannot: chiaki-lib is already linked in, so including it again
+ * is a duplicate symbol, and declaring the layout here instead would be a guess that a field
+ * reorder breaks silently - which costs more than knowing which sequence numbers remain is worth.
+ *
+ * Under the buffer's mutex, as the C's test does by hand and for the same reason: a retransmit
+ * thread may be walking the same array while this reads its count.
+ */
+CHIAKI_SHIM_API int32_t chiaki_shim_takion_send_buffer_count(void *send_buffer)
+{
+	ChiakiTakionSendBuffer *self = (ChiakiTakionSendBuffer *)send_buffer;
+	int32_t count;
+
+	if(!self)
+		return -1;
+	if(chiaki_mutex_lock(&self->mutex) != CHIAKI_ERR_SUCCESS)
+		return -1;
+
+	count = (int32_t)self->packets_count;
+	chiaki_mutex_unlock(&self->mutex);
+	return count;
 }
 
 /**
