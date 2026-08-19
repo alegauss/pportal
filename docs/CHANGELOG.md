@@ -54,6 +54,7 @@
 - ✅ **PP23 (the harness and its first module)** **the protocol has no specification, so a managed rewrite has no oracle except the C code it replaces** — the key derivation runs from managed code against the vectors parsed out of test/rpcrypt.c, so one oracle serves both sides.
 - ✅ **PP103** **the 3081 lines of recorded erasure cases run only from the C suite, so a managed FEC would have no judge** — all sixty-four recorded erasures decode from managed code, parsed out of the C suite, with a misdirected erasure proving the decode does work.
 - ✅ **PP104** **the recorded key agreement and the session key stream run only from the C suite** — the recorded ECDH exchange and the key stream at its recorded position run from managed code, out of the C suite's own vectors.
+- ✅ **PP106** **sequence number comparison is two inline functions in a C header, so a managed transport would spell them as integers** — both comparisons answer from managed code across all 65536 values twice, with the divergence from a plain integer compare measured.
 
 ## Block G — Test discipline
 

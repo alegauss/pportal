@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 13
+#define CHIAKI_SHIM_ABI 14
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -693,6 +693,23 @@ CHIAKI_SHIM_API void chiaki_shim_gkcrypt_free(void *gkcrypt);
 /** The key stream at a position, which is what every takion packet is XORed against. */
 CHIAKI_SHIM_API int32_t chiaki_shim_gkcrypt_gen_key_stream(
 		void *gkcrypt, uint64_t key_pos, uint8_t *buf, int32_t buf_size);
+
+/**
+ * PP23: RFC 1982 serial number comparison, which is the arithmetic the whole transport rests on.
+ *
+ * Sequence numbers wrap. 0xffff is followed by 0, and a packet numbered 1 is NEWER than one
+ * numbered 0xfff5 even though the integer is smaller. Every reorder decision, every duplicate
+ * check and every "have I already seen this" in takion is one of these two comparisons, so a
+ * rewrite that spells them `a < b` works perfectly until the counter turns over - once every
+ * 65536 packets on the 16-bit ones, which at a stream's packet rate is minutes.
+ *
+ * They are static inline in libchiaki's header rather than exported, so these wrap them: the
+ * compiler checks the call, and what crosses is the answer.
+ */
+CHIAKI_SHIM_API bool chiaki_shim_seq_num_16_lt(uint16_t a, uint16_t b);
+CHIAKI_SHIM_API bool chiaki_shim_seq_num_16_gt(uint16_t a, uint16_t b);
+CHIAKI_SHIM_API bool chiaki_shim_seq_num_32_lt(uint32_t a, uint32_t b);
+CHIAKI_SHIM_API bool chiaki_shim_seq_num_32_gt(uint32_t a, uint32_t b);
 
 #ifdef __cplusplus
 }

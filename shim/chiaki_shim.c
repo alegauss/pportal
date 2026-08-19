@@ -10,6 +10,7 @@
 #include <chiaki/fec.h>
 #include <chiaki/gkcrypt.h>
 #include <chiaki/rpcrypt.h>
+#include <chiaki/seqnum.h>
 #include <chiaki/log.h>
 #include <chiaki/session.h>
 #include <chiaki/sessionbaseline.h>
@@ -1117,6 +1118,26 @@ CHIAKI_SHIM_API int32_t chiaki_shim_gkcrypt_gen_key_stream(
 
 	return (int32_t)chiaki_gkcrypt_gen_key_stream((ChiakiGKCrypt *)gkcrypt, key_pos, buf,
 			(size_t)buf_size);
+}
+
+CHIAKI_SHIM_API bool chiaki_shim_seq_num_16_lt(uint16_t a, uint16_t b)
+{
+	return chiaki_seq_num_16_lt(a, b);
+}
+
+CHIAKI_SHIM_API bool chiaki_shim_seq_num_16_gt(uint16_t a, uint16_t b)
+{
+	return chiaki_seq_num_16_gt(a, b);
+}
+
+CHIAKI_SHIM_API bool chiaki_shim_seq_num_32_lt(uint32_t a, uint32_t b)
+{
+	return chiaki_seq_num_32_lt(a, b);
+}
+
+CHIAKI_SHIM_API bool chiaki_shim_seq_num_32_gt(uint32_t a, uint32_t b)
+{
+	return chiaki_seq_num_32_gt(a, b);
 }
 
 CHIAKI_SHIM_API void chiaki_shim_session_free(void *session)

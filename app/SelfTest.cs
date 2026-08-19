@@ -1515,6 +1515,59 @@ public static class SelfTest
             }
 
             Console.WriteLine();
+            Console.WriteLine("SeqNum - the comparison that survives the counter turning over");
+
+            // The C suite sweeps all 65536 values twice; so does this, because it costs
+            // milliseconds and it is the only way to say the wrap is handled EVERYWHERE rather
+            // than at the one boundary somebody thought to test.
+            bool adjacentHolds = true;
+            bool distantHolds = true;
+            ushort n = 0;
+            do
+            {
+                ushort next = (ushort)(n + 1);
+                if (!SeqNum.Gt(next, n) || SeqNum.Gt(n, next) || !SeqNum.Lt(n, next) || SeqNum.Lt(next, n))
+                    adjacentHolds = false;
+
+                ushort far = (ushort)(n + 0xfff);
+                if (!SeqNum.Gt(far, n) || SeqNum.Gt(n, far) || !SeqNum.Lt(n, far) || SeqNum.Lt(far, n))
+                    distantHolds = false;
+
+                n++;
+            }
+            while (n != 0);
+
+            Check("every one of 65536 successors is newer than its predecessor", adjacentHolds);
+            Check("and so is every value 0xfff ahead, all the way round", distantHolds);
+
+            // The case the whole thing exists for: 1 is newer than 0xfff5, even though the
+            // integer is smaller.
+            Check("1 is newer than 0xfff5, which a plain comparison denies",
+                SeqNum.Gt((ushort)1, (ushort)0xfff5) && !SeqNum.Gt((ushort)0xfff5, (ushort)1));
+            Check("32-bit numbers wrap the same way",
+                SeqNum.Gt(1u, 0xfffffff5u) && !SeqNum.Gt(0xfffffff5u, 1u)
+                && SeqNum.Lt(0u, 1u) && !SeqNum.Lt(1u, 0u));
+
+            // Equality is neither, which is what stops a duplicate being treated as progress.
+            Check("a number is neither newer nor older than itself",
+                !SeqNum.Gt((ushort)42, (ushort)42) && !SeqNum.Lt((ushort)42, (ushort)42)
+                && !SeqNum.Gt(42u, 42u) && !SeqNum.Lt(42u, 42u));
+
+            // And the measurement that says the function is load-bearing rather than decorative:
+            // count how far a plain integer comparison would diverge over one sweep. If this ever
+            // came out zero, the wrap logic would not be doing anything.
+            int naiveDisagreements = 0;
+            for (int i = 0; i < 65536; i++)
+            {
+                var a = (ushort)i;
+                var b = (ushort)(i + 0x9000);
+                if (SeqNum.Gt(a, b) != a > b)
+                    naiveDisagreements++;
+            }
+            Check("a plain comparison disagrees on tens of thousands of pairs",
+                naiveDisagreements > 20000, $"{naiveDisagreements} of 65536");
+
+            Console.WriteLine();
             Console.WriteLine("Handshake - one recorded key agreement, repeated");
 
             Check("the secret size comes from the shim", Ecdh.SecretSize == 32, Ecdh.SecretSize.ToString());
