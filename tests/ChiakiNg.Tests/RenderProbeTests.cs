@@ -158,4 +158,29 @@ public class RenderProbeTests
         // is a change someone looks at rather than one nobody notices.
         Assert.False(caps.HasFlag(ShareCaps.HostReadable), "a shared texture cannot be read back");
     }
+
+    /// <summary>
+    /// PP133: pl_render_image into the shared texture, which is the call the port makes per frame.
+    ///
+    /// With a NULL image, and that is not a shortcut - qmlmainwindow.cpp makes exactly that call
+    /// when it has no new frame to show, so this is the client's own path rather than one
+    /// invented to be testable. It exercises the renderer, the target frame and the wrapped
+    /// texture together without needing a decoder to have produced anything.
+    ///
+    /// And with no swapchain, which is the correction this turned up: the Qt client builds its
+    /// target with pl_frame_from_swapchain because it presents to a window itself. Here WPF
+    /// presents, from the shared surface, so there is no swapchain in the design at all.
+    /// </summary>
+    [Fact]
+    public void PlRenderImageRunsIntoTheSharedTexture()
+    {
+        using RenderDevice? device = ChiakiRender.CreateD3d11(forceSoftware: false);
+        if (device is null)
+            return;
+
+        using SharedSurface? shared = SharedSurface.Create(device, 1920, 1080, out _);
+        Assert.NotNull(shared);
+
+        Assert.True(shared.Render(device), "pl_render_image refused the target");
+    }
 }

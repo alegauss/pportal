@@ -36,7 +36,7 @@ extern "C" {
 #endif
 
 /** Bumped whenever an exported signature here changes meaning. Independent of CHIAKI_SHIM_ABI. */
-#define CHIAKI_RENDER_ABI 3
+#define CHIAKI_RENDER_ABI 4
 
 CHIAKI_RENDER_API uint32_t chiaki_render_abi_version(void);
 
@@ -144,6 +144,20 @@ CHIAKI_RENDER_API void chiaki_render_share_destroy(void *share);
  */
 CHIAKI_RENDER_API bool chiaki_render_share_clear_and_read(
 		void *d3d11, void *share, const float *rgba, uint8_t *out_pixel, int32_t *out_caps);
+
+/**
+ * PP133: pl_render_image into the shared texture, which is the call the port makes per frame.
+ *
+ * The Qt client builds its target from a SWAPCHAIN - pl_frame_from_swapchain - because it presents
+ * to a window itself. This design does not present: WPF does, from the shared surface, so there is
+ * no swapchain anywhere in it and the target is the texture directly. PP9's remaining scope still
+ * named a swapchain; it does not have one.
+ *
+ * Rendered with a NULL image, which is not a shortcut. qmlmainwindow.cpp makes exactly that call
+ * when it has no new frame to show, so it is a real path rather than an invented one - and it
+ * exercises the renderer, the target frame and the wrapped texture without needing a decoder.
+ */
+CHIAKI_RENDER_API bool chiaki_render_share_render(void *d3d11, void *share);
 
 #ifdef __cplusplus
 }

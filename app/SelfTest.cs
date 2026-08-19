@@ -1912,6 +1912,12 @@ public static class SelfTest
                         // never asks for. Printed so the absence is a recorded fact.
                         Console.WriteLine($"        shared texture caps: {caps}"
                             + " (no blit_dst or host_readable, which a shared render target cannot have)");
+
+                        // And the call the port will make per frame. NULL image is the same call
+                        // qmlmainwindow.cpp makes with no new frame to show, so this is the
+                        // client's own path rather than one invented to be testable.
+                        Check("pl_render_image runs into the shared texture, with no swapchain",
+                            shared.Render(shareDevice));
                     }
                 }
             }

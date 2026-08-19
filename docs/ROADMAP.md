@@ -14,7 +14,7 @@
 
 ## Block C — Video and input path
 
-- ⏳ **PP9** (deps: PP5 ✅, PP43 ✅) **the video is presented by libplacebo into a Vulkan-backed QQuickWindow, which WPF cannot host** — the D3D11 renderer itself: pl_d3d11_create, the swapchain, and the shared surface D3DImage takes. → §PP9
+- ⏳ **PP9** (deps: PP5 ✅, PP43 ✅) **the video is presented by libplacebo into a Vulkan-backed QQuickWindow, which WPF cannot host** — the renderer proper: a decoded frame through pl_render_image, and D3DImage bound to the shared surface. → §PP9
 - 📋 **PP10** (deps: PP9 ⏳) **the stream HUD and the in-stream menu are QML drawn over the video and disappear with the renderer** — 1740 lines of overlay assume the compositor they are drawn in, so what replaces the renderer decides whether they are XAML above a surface or drawn into the frame. → §PP10
 - 📋 **PP11** (deps: PP9 ⏳) **fullscreen, HDR handoff and refresh-rate switching are handled by the Qt window** — These are the three settings a remote play session is actually judged by, and each is a Win32 or DXGI call the new window has to make for itself. → §PP11
 

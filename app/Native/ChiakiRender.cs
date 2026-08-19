@@ -21,7 +21,7 @@ public static class ChiakiRender
     internal const string Library = "chiaki-render";
 
     /// <summary>Must equal CHIAKI_RENDER_ABI in shim/chiaki_render.h. Independent of the shim's.</summary>
-    public const uint ExpectedAbi = 3;
+    public const uint ExpectedAbi = 4;
 
     [DllImport(Library, EntryPoint = "chiaki_render_abi_version", CallingConvention = CallingConvention.Cdecl)]
     public static extern uint AbiVersion();
@@ -176,6 +176,28 @@ public sealed class SharedSurface : IDisposable
     [return: MarshalAs(UnmanagedType.I1)]
     private static extern bool ShareClearAndRead(
         IntPtr d3d11, IntPtr share, float[] rgba, byte[] pixel, out int caps);
+
+    /// <summary>
+    /// PP133: runs pl_render_image into the shared texture - the call the port makes per frame.
+    ///
+    /// With a NULL image, which is not a shortcut: qmlmainwindow.cpp makes exactly that call when
+    /// it has no new frame to show. So this exercises the renderer, the target frame and the
+    /// wrapped texture together, without needing a decoder to have produced anything.
+    ///
+    /// There is no swapchain involved and there is not meant to be. The Qt client builds its
+    /// target with pl_frame_from_swapchain because it presents to a window itself; here WPF
+    /// presents, from the shared surface, so the target is the texture directly.
+    /// </summary>
+    public bool Render(RenderDevice device)
+    {
+        ArgumentNullException.ThrowIfNull(device);
+        return ShareRender(device.Raw, _handle);
+    }
+
+    [DllImport(ChiakiRender.Library, EntryPoint = "chiaki_render_share_render",
+        CallingConvention = CallingConvention.Cdecl)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    private static extern bool ShareRender(IntPtr d3d11, IntPtr share);
 
     [DllImport(ChiakiRender.Library, EntryPoint = "chiaki_render_share_destroy",
         CallingConvention = CallingConvention.Cdecl)]

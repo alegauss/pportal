@@ -15,6 +15,7 @@
 #include <libplacebo/config.h>
 #include <libplacebo/d3d11.h>
 #include <libplacebo/gpu.h>
+#include <libplacebo/renderer.h>
 #include <libplacebo/log.h>
 
 #include <stdio.h>
@@ -362,6 +363,63 @@ CHIAKI_RENDER_API bool chiaki_render_share_clear_and_read(
 	return ok;
 #else
 	(void)d3d11; (void)share; (void)rgba; (void)out_pixel;
+	return false;
+#endif
+}
+
+CHIAKI_RENDER_API bool chiaki_render_share_render(void *d3d11, void *share)
+{
+#ifdef PL_HAVE_D3D11
+	chiaki_render_d3d11 *placebo = (chiaki_render_d3d11 *)d3d11;
+	chiaki_render_share *self = (chiaki_render_share *)share;
+	struct pl_d3d11_wrap_params wrap;
+	struct pl_frame target;
+	pl_renderer renderer;
+	pl_tex tex;
+	bool ok;
+
+	if(!placebo || !placebo->d3d11 || !placebo->d3d11->gpu || !self || !self->texture)
+		return false;
+
+	memset(&wrap, 0, sizeof(wrap));
+	wrap.tex = (ID3D11Resource *)self->texture;
+	tex = pl_d3d11_wrap(placebo->d3d11->gpu, &wrap);
+	if(!tex)
+		return false;
+
+	renderer = pl_renderer_create(placebo->log, placebo->d3d11->gpu);
+	if(!renderer)
+	{
+		pl_tex_destroy(placebo->d3d11->gpu, &tex);
+		return false;
+	}
+
+	// The target, built from the texture rather than from a swapchain. There is no swapchain in
+	// this design: WPF presents, from the shared surface, so pl_frame_from_swapchain has nothing
+	// to be given here.
+	memset(&target, 0, sizeof(target));
+	target.num_planes = 1;
+	target.planes[0].texture = tex;
+	target.planes[0].components = 3;
+	target.planes[0].component_mapping[0] = PL_CHANNEL_R;
+	target.planes[0].component_mapping[1] = PL_CHANNEL_G;
+	target.planes[0].component_mapping[2] = PL_CHANNEL_B;
+	target.crop.x0 = 0;
+	target.crop.y0 = 0;
+	target.crop.x1 = (float)tex->params.w;
+	target.crop.y1 = (float)tex->params.h;
+	target.repr = pl_color_repr_rgb;
+	target.color = pl_color_space_srgb;
+
+	// NULL image: the same call qmlmainwindow.cpp makes when it has no new frame, so this is a
+	// path the client already takes rather than one invented to be testable.
+	ok = pl_render_image(renderer, NULL, &target, &pl_render_default_params);
+
+	pl_renderer_destroy(&renderer);
+	pl_tex_destroy(placebo->d3d11->gpu, &tex);
+	return ok;
+#else
+	(void)d3d11; (void)share;
 	return false;
 #endif
 }
