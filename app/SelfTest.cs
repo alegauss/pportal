@@ -1,6 +1,7 @@
 ﻿using System.Buffers.Binary;
 using System.Text;
 using Google.Protobuf;
+using Microsoft.Win32;
 using ChiakiNg.Settings;
 using ChiakiNg.Native;
 using ChiakiNg.Session;
@@ -311,6 +312,97 @@ public static class SelfTest
         try { prefs.GetInt("settings/keyboard_enabled"); }
         catch (InvalidOperationException) { threwOnKind = true; }
         Check("a read at the wrong width is refused", threwOnKind);
+
+        Console.WriteLine();
+        Console.WriteLine("QSettingsStore - the three arrays beside registered_hosts");
+
+        // An absent store is every fresh install, and each of these must read as nothing rather
+        // than throw - a user with no manual hosts is the common case, not an error.
+        var noStore = new QSettingsStore(@"SOFTWARE\ClaudeAbsent\ClaudeAbsent");
+        Check("an absent store has no hidden, manual or mapped anything",
+            noStore.HiddenHosts().Count == 0 && noStore.ManualHosts().Count == 0
+            && noStore.ControllerMappings().Count == 0);
+
+        // A store written here, in QSettings' own array shape, and removed again. Written rather
+        // than mocked because the shape IS the thing under test: a `size` value beside subkeys
+        // numbered from one, which is not a layout any interface could stand in for.
+        const string testRoot = @"SOFTWARE\ClaudeSelfTest\PP81";
+        try
+        {
+            using (RegistryKey root = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(testRoot))
+            {
+                static string Bytes(params byte[] b) => "@ByteArray(" + Encoding.Latin1.GetString(b) + ")";
+
+                using (RegistryKey hidden = root.CreateSubKey("hidden_hosts"))
+                {
+                    hidden.SetValue("size", 2, RegistryValueKind.DWord);
+                    using RegistryKey one = hidden.CreateSubKey("1");
+                    one.SetValue("server_nickname", "Bedroom PS5");
+                    one.SetValue("server_mac", Bytes(0x90, 0x47, 0x48, 0x82, 0xfc, 0x29));
+                    // The second entry has no MAC, which is what an interrupted write leaves.
+                    using RegistryKey two = hidden.CreateSubKey("2");
+                    two.SetValue("server_nickname", "half written");
+                }
+
+                using (RegistryKey manual = root.CreateSubKey("manual_hosts"))
+                {
+                    manual.SetValue("size", 2, RegistryValueKind.DWord);
+                    using RegistryKey one = manual.CreateSubKey("1");
+                    one.SetValue("id", 7, RegistryValueKind.DWord);
+                    one.SetValue("host", "192.168.1.50");
+                    one.SetValue("registered", "true");
+                    one.SetValue("registered_mac", Bytes(0x01, 0x02, 0x03, 0x04, 0x05, 0x06));
+                    // No id at all, which LoadFromSettings defaults to -1 and drops.
+                    using RegistryKey two = manual.CreateSubKey("2");
+                    two.SetValue("host", "10.0.0.9");
+                }
+
+                using (RegistryKey maps = root.CreateSubKey("controller_mappings"))
+                {
+                    maps.SetValue("size", 2, RegistryValueKind.DWord);
+                    using RegistryKey one = maps.CreateSubKey("1");
+                    one.SetValue("vidpid", "0x054c:0x0ce6");
+                    one.SetValue("mapping", "030000004c050000e60c000000000000,DualSense,a:b1,");
+                    // The OLD spelling, which a store written before the Qt client's migration
+                    // still has - and that migration only runs when the Qt client starts.
+                    using RegistryKey two = maps.CreateSubKey("2");
+                    two.SetValue("guid", "0x0079:0x0011");
+                    two.SetValue("mapping", "79000000000000001100000000000000,Generic,a:b2,");
+                }
+            }
+
+            var store81 = new QSettingsStore(testRoot);
+
+            IReadOnlyList<HiddenHost> hiddenHosts = store81.HiddenHosts();
+            Check("a hidden host is read, and one without a MAC is not",
+                hiddenHosts.Count == 1 && hiddenHosts[0].ServerNickname == "Bedroom PS5"
+                && hiddenHosts[0].MacText == "90:47:48:82:fc:29",
+                $"{hiddenHosts.Count}: {(hiddenHosts.Count > 0 ? hiddenHosts[0].MacText : "")}");
+
+            IReadOnlyList<ManualHost> manualHosts = store81.ManualHosts();
+            Check("a manual host keeps its id, address and registration",
+                manualHosts.Count == 1
+                && manualHosts[0] is { Id: 7, Host: "192.168.1.50", Registered: true }
+                && manualHosts[0].RegisteredMac is { Length: 6 },
+                $"{manualHosts.Count}: {(manualHosts.Count > 0 ? manualHosts[0].ToString() : "")}");
+
+            // The one that would go silently: both spellings of the key, because a store the user
+            // has not opened the Qt client with since the migration still says `guid`.
+            IReadOnlyList<ControllerMapping> maps81 = store81.ControllerMappings();
+            Check("both spellings of a mapping key are read",
+                maps81.Count == 2
+                && maps81[0].VidPid == "0x054c:0x0ce6"
+                && maps81[1].VidPid == "0x0079:0x0011",
+                string.Join(", ", maps81.Select(m => m.VidPid)));
+            Check("and each carries its SDL mapping string",
+                maps81.All(m => m.Mapping.Contains(",a:b", StringComparison.Ordinal)));
+        }
+        finally
+        {
+            // The store this port reads is never written; this key is the test's own and goes
+            // with it.
+            Microsoft.Win32.Registry.CurrentUser.DeleteSubKeyTree(@"SOFTWARE\ClaudeSelfTest", throwOnMissingSubKey: false);
+        }
 
         Console.WriteLine();
         Console.WriteLine("QtPaths - where the Qt client already put the file");

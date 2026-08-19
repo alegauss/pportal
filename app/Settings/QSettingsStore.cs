@@ -20,6 +20,27 @@ public sealed record RegisteredHost
 }
 
 /// <summary>
+/// A console the user told the client to stop showing. Keyed by MAC, which is why an entry
+/// without one hides nothing.
+/// </summary>
+public sealed record HiddenHost(string? ServerNickname, byte[] ServerMac)
+{
+    public string MacText => string.Join(':', ServerMac.Select(b => b.ToString("x2")));
+}
+
+/// <summary>
+/// A console the user added by address, because discovery never found it - which makes it exactly
+/// the console they cannot re-add by discovery if this list is lost.
+/// </summary>
+public sealed record ManualHost(int Id, string? Host, bool Registered, byte[]? RegisteredMac);
+
+/// <summary>
+/// One SDL mapping string for one vid:pid. A user who remapped a third-party pad did it because
+/// the client mishandles that pad, so losing this is losing the fix and keeping the problem.
+/// </summary>
+public sealed record ControllerMapping(string VidPid, string Mapping);
+
+/// <summary>
 /// PP2: the store the port inherits, read where it already is.
 ///
 /// The decision this implements is which side moves. Reading QSettings from .NET is a registry
@@ -185,6 +206,115 @@ public sealed class QSettingsStore
             });
         }
         return hosts;
+    }
+
+    /// <summary>
+    /// PP81: the three arrays that sit beside registered_hosts, and what each costs if it is
+    /// dropped.
+    ///
+    /// A MANUAL host is a console the user added by address because discovery never found it -
+    /// which is exactly the console they cannot re-add by discovery. A HIDDEN host is one they
+    /// told the client to stop showing, and losing that list makes the console list grow back. A
+    /// controller MAPPING is an SDL mapping string per vid:pid, and a user who remapped a
+    /// third-party pad has to do it again with a pad the client currently mishandles.
+    ///
+    /// None of them is the reinstall PP2 was about. Together they are the difference between a
+    /// port that opens on the user's setup and one that opens on a default.
+    /// </summary>
+    public IReadOnlyList<HiddenHost> HiddenHosts()
+    {
+        var hosts = new List<HiddenHost>();
+        foreach (RegistryKey entry in ArrayEntries("hidden_hosts"))
+        {
+            using (entry)
+            {
+                byte[]? mac = QSettingsValue.AsByteArray(entry.GetValue("server_mac"));
+                // The MAC is the key this list is indexed by in the Qt client, so an entry
+                // without one cannot hide anything and is not one.
+                if (mac is null)
+                    continue;
+
+                hosts.Add(new HiddenHost(
+                    QSettingsValue.AsString(entry.GetValue("server_nickname")), mac));
+            }
+        }
+        return hosts;
+    }
+
+    /// <summary>
+    /// Manual hosts, keyed by an id the Qt client also uses to pick the next one.
+    ///
+    /// An id below zero is skipped rather than kept: LoadFromSettings defaults it to -1, so a
+    /// missing id is an entry that was never written properly, and the Qt client drops it too.
+    /// </summary>
+    public IReadOnlyList<ManualHost> ManualHosts()
+    {
+        var hosts = new List<ManualHost>();
+        foreach (RegistryKey entry in ArrayEntries("manual_hosts"))
+        {
+            using (entry)
+            {
+                int id = QSettingsValue.AsInt(entry.GetValue("id")) ?? -1;
+                if (id < 0)
+                    continue;
+
+                hosts.Add(new ManualHost(
+                    id,
+                    QSettingsValue.AsString(entry.GetValue("host")),
+                    QSettingsValue.AsBool(entry.GetValue("registered")) ?? false,
+                    QSettingsValue.AsByteArray(entry.GetValue("registered_mac"))));
+            }
+        }
+        return hosts;
+    }
+
+    /// <summary>
+    /// Controller mappings, keyed by vid:pid.
+    ///
+    /// The key is read as `vidpid` AND as `guid`, because a store written before the Qt client's
+    /// own migration spells it the second way - and that migration only runs when the Qt client
+    /// starts. A port that read one spelling would silently lose every mapping on a store the
+    /// user has not opened the other client with since.
+    /// </summary>
+    public IReadOnlyList<ControllerMapping> ControllerMappings()
+    {
+        var mappings = new List<ControllerMapping>();
+        foreach (RegistryKey entry in ArrayEntries("controller_mappings"))
+        {
+            using (entry)
+            {
+                string? key = QSettingsValue.AsString(entry.GetValue("vidpid"))
+                    ?? QSettingsValue.AsString(entry.GetValue("guid"));
+                string? mapping = QSettingsValue.AsString(entry.GetValue("mapping"));
+                if (key is null || mapping is null)
+                    continue;
+
+                mappings.Add(new ControllerMapping(key, mapping));
+            }
+        }
+        return mappings;
+    }
+
+    /// <summary>
+    /// The entries of a QSettings array, in the order it stored them.
+    ///
+    /// The size is trusted only as far as a subkey actually exists: a store interrupted mid-write
+    /// has a size that runs past its entries, and a user with three consoles should see three
+    /// rather than an exception. Callers dispose each key.
+    /// </summary>
+    private IEnumerable<RegistryKey> ArrayEntries(string name)
+    {
+        using RegistryKey? array = Registry.CurrentUser.OpenSubKey($@"{KeyPath}\{name}");
+        if (array is null)
+            yield break;
+
+        int size = QSettingsValue.AsInt(array.GetValue("size")) ?? 0;
+        for (int i = 1; i <= size; i++)
+        {
+            RegistryKey? entry = array.OpenSubKey(i.ToString());
+            if (entry is not null)
+                yield return entry;
+        }
     }
 
     /// <summary>

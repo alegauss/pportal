@@ -7,8 +7,6 @@
 
 ## Block A — Core
 
-- 📋 **PP81** (deps: —) **the store reader knows registered_hosts and none of the other three arrays beside it** — hidden_hosts, manual_hosts and controller_mappings are what Settings loads next, so a port that reads one array drops a manually added console and every pad mapping. → §PP81
-
 ## Block B — Native interop
 
 - ⏳ **PP7** (deps: PP4 ✅) **PSN OAuth login runs in a QtWebEngine view, a bundled browser the WPF host has no equivalent for** — the WebView2 control itself, and the token exchange, which need a browser and a PSN account. → §PP7

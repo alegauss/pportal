@@ -2,27 +2,6 @@
 
 ## Block A — Core
 
-### §PP81 Three arrays nobody reads yet
-
-Settings::Settings calls four loaders in a row and PP2 ported the first. The three left
-are hidden_hosts, manual_hosts and controller_mappings, all in the profile store, all
-QSettings arrays with the same size-plus-numbered-subkeys shape registered_hosts already
-has - so the reading is solved and only the fields are not.
-
-What each one costs if it is dropped. A manual host is a console the user added by
-address because discovery never found it, which is exactly the console they cannot
-re-add by discovery. A hidden host is one they told the client to stop showing, and
-losing that list makes the console list grow back. A controller mapping is an SDL
-mapping string per vid:pid, and a user who remapped a third-party pad has to do it again
-with a pad the client currently mishandles.
-
-None of them is the reinstall PP2 was about, and together they are the difference
-between a port that opens on the user's setup and one that opens on a default. The
-fields are worth reading off a real store the way the console fields were, rather than
-off settings.cpp: the controller_mappings entry stores its key as vidpid, and the
-migration at line 235 renames it, so a store written before that migration spells it
-differently.
-
 ## Block B — Native interop
 
 ### §PP7 The browser the login needs
