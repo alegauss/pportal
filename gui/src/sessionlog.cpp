@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
+﻿// SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
 
 #include <sessionlog.h>
 #include <chiaki/log.h>
@@ -116,10 +116,25 @@ static const QRegularExpression &sanitize_ipv4_re()
 		R"(\b(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\b)");
 	return *re;
 }
+// PP88: the first alternative used to be (?:[0-9A-Fa-f]{1,4}:){3,7}[0-9A-Fa-f]{1,4}, which stops
+// at the first "::" it meets - the engine takes the leftmost match, so fd00:1234:5678:9abc::1 was
+// replaced down to <redacted-ipv6>::1 and the marker made the line look handled. A reader scanning
+// a log for leaks skips a line that says redacted, which is what made a partial redaction worse
+// than none.
+//
+// The shape below matches a whole token instead: an optional group, then three or more runs of one
+// or two colons with an optional group after each. Three is the floor that keeps a clock out of it
+// - 20:10:38 is two runs and does not match, while aa:bb:cc:dd is four and does, exactly as the old
+// pattern did. The second alternative is still there for a token whose only separator is "::",
+// which the first cannot reach.
+//
+// This text is duplicated in app/Session/SessionLogSanitizer.cs and the .NET selftest asserts the
+// two are character-identical, because two clients that redact differently produce logs that
+// cannot be compared with the ones users already have.
 static const QRegularExpression &sanitize_ipv6_re()
 {
 	static const auto *re = new QRegularExpression(
-		R"((?<![0-9A-Za-z])\[?(?:(?:[0-9A-Fa-f]{1,4}:){3,7}[0-9A-Fa-f]{1,4}|(?:[0-9A-Fa-f]{0,4}:){0,7}::(?:[0-9A-Fa-f]{0,4}:){0,7}[0-9A-Fa-f]{0,4})\]?(?![0-9A-Za-z]))");
+		R"((?<![0-9A-Za-z])\[?(?:[0-9A-Fa-f]{0,4}(?::{1,2}[0-9A-Fa-f]{0,4}){3,}|[0-9A-Fa-f]{0,4}::[0-9A-Fa-f]{0,4}(?::[0-9A-Fa-f]{0,4})*)\]?(?![0-9A-Za-z]))");
 	return *re;
 }
 static const QRegularExpression &sanitize_labeled_secret_re()

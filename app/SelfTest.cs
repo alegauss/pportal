@@ -978,15 +978,31 @@ public static class SelfTest
                     == "bound <redacted-ipv6> ok",
                 SessionLogSanitizer.Sanitize("bound fd00:1234:5678:9abc:0:0:0:1 ok"));
 
-            // …and a COMPRESSED one is only half redacted, which is the Qt regex's own behaviour
-            // and not a transcription slip. The alternation is leftmost-first, so the four-group
-            // branch matches "fd00:1234:5678:9abc" and the "::1" is left in the log. Asserted as
-            // it is, because the port must not differ here - and filed as PP88, because a log a
-            // user pastes into a public issue still carries the tail of an address.
-            Check("a compressed IPv6 keeps its tail, as the Qt regex leaves it",
+            // PP88, and the case that was leaking: the old pattern stopped at the first "::" and
+            // left the tail in the log behind a marker that said redacted.
+            Check("a compressed IPv6 is redacted whole, tail included",
                 SessionLogSanitizer.Sanitize("bound fd00:1234:5678:9abc::1 ok")
-                    == "bound <redacted-ipv6>::1 ok",
+                    == "bound <redacted-ipv6> ok",
                 SessionLogSanitizer.Sanitize("bound fd00:1234:5678:9abc::1 ok"));
+            // The brackets go with the address - \[? and \]? are inside the pattern, which is what
+            // the old one did too - and the port survives, which is the part worth keeping in a
+            // log: a wrong port is a real diagnosis and the address is not.
+            Check("a bracketed address loses its brackets and keeps its port",
+                SessionLogSanitizer.Sanitize("peer [fe80::1]:9295 up")
+                    == "peer <redacted-ipv6>:9295 up",
+                SessionLogSanitizer.Sanitize("peer [fe80::1]:9295 up"));
+            Check("the shortest forms are still caught",
+                SessionLogSanitizer.Sanitize("via ::1 now") == "via <redacted-ipv6> now"
+                && SessionLogSanitizer.Sanitize("via fe80::1 now") == "via <redacted-ipv6> now",
+                SessionLogSanitizer.Sanitize("via ::1 now"));
+
+            // The floor that keeps the widened pattern off ordinary text. Three runs is what a
+            // clock does not reach, and it is the same floor the old pattern had - a rule that
+            // redacted timestamps would make the log useless in the other direction.
+            Check("a clock is not an address",
+                SessionLogSanitizer.Sanitize("at 20:10:38 the stream started")
+                    == "at 20:10:38 the stream started",
+                SessionLogSanitizer.Sanitize("at 20:10:38 the stream started"));
 
             Check("account and duid assignments are redacted",
                 SessionLogSanitizer.Sanitize("account_id=abcdef duid=0011ZZ")
@@ -1019,6 +1035,28 @@ public static class SelfTest
                 SessionLogSanitizer.Sanitize("Switched to profile 0, resolution: 1920x1080")
                     == "Switched to profile 0, resolution: 1920x1080",
                 SessionLogSanitizer.Sanitize("Switched to profile 0, resolution: 1920x1080"));
+
+            // The half of PP88 that cannot be asserted by running this code: the Qt client's own
+            // copy of the same nine patterns. libchiaki has no regex engine, so there is no C
+            // translation unit both halves could share without hand-rolling nine matchers -
+            // duplication was the choice, and this is the check that it stays a duplication rather
+            // than becoming a divergence.
+            string? cppSource = SanitizerSource.Locate();
+            if (cppSource is null)
+            {
+                // Not a failure. A published executable has no gui/src beside it, and a check
+                // that cannot run should say so rather than pass.
+                Console.WriteLine($"  --    the Qt client's patterns  (no {SanitizerSource.RelativePath} here)");
+            }
+            else
+            {
+                IReadOnlyList<string> cppPatterns = SanitizerSource.PatternsIn(cppSource);
+                Check("the Qt client declares the same nine patterns, character for character",
+                    cppPatterns.Count == SessionLogSanitizer.Patterns.Count
+                    && cppPatterns.OrderBy(p => p, StringComparer.Ordinal)
+                        .SequenceEqual(SessionLogSanitizer.Patterns.OrderBy(p => p, StringComparer.Ordinal)),
+                    string.Join(" | ", SessionLogSanitizer.Patterns.Except(cppPatterns, StringComparer.Ordinal)));
+            }
 
             Console.WriteLine();
             Console.WriteLine("SessionBaseline - the ledger the two builds are compared with");

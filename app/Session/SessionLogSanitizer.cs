@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 namespace ChiakiNg.Session;
 
 /// <summary>
-/// PP5: SanitizeLogMessage, which is what keeps a session log attachable to a bug report.
+/// PP5 and PP88: SanitizeLogMessage, which is what keeps a session log attachable to a bug report.
 ///
 /// Nine rules, and the ORDER is the design. The address rules run first, so a labelled address is
 /// already redacted by the time the label rule sees it - and the label rule then replaces the
@@ -11,13 +11,72 @@ namespace ChiakiNg.Session;
 /// "console ip: &lt;redacted-ipv4&gt;". Reordering these is not a tidy-up; it changes what a user
 /// pastes into a public issue.
 ///
-/// The patterns are gui/src/sessionlog.cpp's, character for character, with Qt's "\1" backreference
-/// written as .NET's "$1". They are deliberately blunt - the last rule redacts any run of sixteen
-/// hex digits, which catches console ids and device uids and also catches anything else that
-/// happens to look like one. Over-redaction is the intended failure direction here.
+/// One text, two clients
+/// ---------------------
+/// Every pattern below is character-identical to the one in gui/src/sessionlog.cpp, and
+/// <see cref="Patterns"/> exists so the selftest can hold them against that file. Two clients that
+/// redact differently produce logs that cannot be compared with the ones users already have, and a
+/// divergence here is invisible until somebody reads a log looking for something that was supposed
+/// to be gone.
+///
+/// The patterns are deliberately blunt - the last rule redacts any run of sixteen hex digits,
+/// which catches console ids and device uids and also catches anything else that looks like one.
+/// Over-redaction is the intended failure direction.
 /// </summary>
 public static partial class SessionLogSanitizer
 {
+    private const string Ipv4Pattern =
+        @"\b(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\b";
+
+    /// <summary>
+    /// PP88. The old first alternative was <c>(?:[0-9A-Fa-f]{1,4}:){3,7}[0-9A-Fa-f]{1,4}</c>, which
+    /// stops at the first <c>::</c> it meets: the engine takes the leftmost match, so
+    /// <c>fd00:1234:5678:9abc::1</c> came out as <c>&lt;redacted-ipv6&gt;::1</c> and the marker made
+    /// the line look handled. A partial redaction is worse than none, because a reader scanning for
+    /// leaks skips a line that says redacted.
+    ///
+    /// This matches a whole token: an optional group, then three or more runs of one or two colons
+    /// each followed by an optional group. Three is the floor that keeps a clock out of it -
+    /// <c>20:10:38</c> is two runs and does not match, while <c>aa:bb:cc:dd</c> is four and does,
+    /// exactly as the old pattern did. The second alternative stays for a token whose only
+    /// separator is <c>::</c>, which the first cannot reach.
+    /// </summary>
+    private const string Ipv6Pattern =
+        @"(?<![0-9A-Za-z])\[?(?:[0-9A-Fa-f]{0,4}(?::{1,2}[0-9A-Fa-f]{0,4}){3,}|[0-9A-Fa-f]{0,4}::[0-9A-Fa-f]{0,4}(?::[0-9A-Fa-f]{0,4})*)\]?(?![0-9A-Za-z])";
+
+    private const string LabeledSecretPattern =
+        @"(((?:console|host|server|session|account|psn|public|remote)\s+(?:id|ip|address)|duid)\s*:\s*)([^\s,;]+)";
+
+    private const string SessionIdTokenPattern = @"(session\s+id\s+)([A-Za-z0-9+/=_-]{8,})";
+
+    private const string UuidPattern =
+        @"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}\b";
+
+    private const string LongHexPattern = @"\b[a-fA-F0-9]{16,}\b";
+
+    private const string AccountIdPattern = @"(account(?:_id)?\s*=\s*)([^\s,;]+)";
+
+    private const string DuidPattern = @"(duid\s*=\s*)([^\s,;]+)";
+
+    private const string SessionIdEqualsPattern = @"(session\s+id\s*=\s*)([^\s,;]+)";
+
+    /// <summary>
+    /// Every pattern, so the selftest can hold this file against gui/src/sessionlog.cpp. Order is
+    /// the C++ file's declaration order, which is not the order they are applied in.
+    /// </summary>
+    public static IReadOnlyList<string> Patterns { get; } =
+    [
+        Ipv4Pattern,
+        Ipv6Pattern,
+        LabeledSecretPattern,
+        SessionIdTokenPattern,
+        UuidPattern,
+        LongHexPattern,
+        AccountIdPattern,
+        DuidPattern,
+        SessionIdEqualsPattern,
+    ];
+
     /// <summary>Applies every rule in sessionlog.cpp's order.</summary>
     public static string Sanitize(string message)
     {
@@ -36,31 +95,30 @@ public static partial class SessionLogSanitizer
         return LongHex().Replace(s, "<redacted-hex>");
     }
 
-    [GeneratedRegex(@"\b(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\b")]
+    [GeneratedRegex(Ipv4Pattern)]
     private static partial Regex Ipv4();
 
-    [GeneratedRegex(@"(?<![0-9A-Za-z])\[?(?:(?:[0-9A-Fa-f]{1,4}:){3,7}[0-9A-Fa-f]{1,4}|(?:[0-9A-Fa-f]{0,4}:){0,7}::(?:[0-9A-Fa-f]{0,4}:){0,7}[0-9A-Fa-f]{0,4})\]?(?![0-9A-Za-z])")]
+    [GeneratedRegex(Ipv6Pattern)]
     private static partial Regex Ipv6();
 
-    [GeneratedRegex(@"(((?:console|host|server|session|account|psn|public|remote)\s+(?:id|ip|address)|duid)\s*:\s*)([^\s,;]+)",
-        RegexOptions.IgnoreCase)]
+    [GeneratedRegex(LabeledSecretPattern, RegexOptions.IgnoreCase)]
     private static partial Regex LabeledSecret();
 
-    [GeneratedRegex(@"(session\s+id\s+)([A-Za-z0-9+/=_-]{8,})", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(SessionIdTokenPattern, RegexOptions.IgnoreCase)]
     private static partial Regex SessionIdToken();
 
-    [GeneratedRegex(@"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}\b")]
+    [GeneratedRegex(UuidPattern)]
     private static partial Regex Uuid();
 
-    [GeneratedRegex(@"\b[a-fA-F0-9]{16,}\b")]
+    [GeneratedRegex(LongHexPattern)]
     private static partial Regex LongHex();
 
-    [GeneratedRegex(@"(account(?:_id)?\s*=\s*)([^\s,;]+)", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(AccountIdPattern, RegexOptions.IgnoreCase)]
     private static partial Regex AccountId();
 
-    [GeneratedRegex(@"(duid\s*=\s*)([^\s,;]+)", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(DuidPattern, RegexOptions.IgnoreCase)]
     private static partial Regex Duid();
 
-    [GeneratedRegex(@"(session\s+id\s*=\s*)([^\s,;]+)", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(SessionIdEqualsPattern, RegexOptions.IgnoreCase)]
     private static partial Regex SessionIdEquals();
 }
