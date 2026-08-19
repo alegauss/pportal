@@ -41,6 +41,7 @@
 - ✅ **PP126** **what a button press becomes on the mapping screen is a token two clients have to agree on** — the three tokens and the three rules around them, held against the Qt client's own source.
 - ✅ **PP127** **the 47-byte DualSense effects report is a wire format the port writes by offset and nothing checks** — the three reports built by offset, held against the Qt struct's own comments and its firmware split.
 - ✅ **PP128** **the roster a hotplug event updates is keyed by identity and enumerated by position, and nothing checks it** — the reconcile keys on instance ids and filters buttonless motion pads, with the Qt list read rather than copied.
+- ✅ **PP129** **SDL names a touch by touchpad and finger, the console by an id from a pool of two, and nothing maps them** — the pairs map onto the console's two slots, freed on lift, with the Qt client's three rules held.
 
 ## Block C — Video and input path
 
