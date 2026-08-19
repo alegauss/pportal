@@ -73,32 +73,6 @@ Whatever the right pair is, the dpad path and the mouse path should read it from
 same place - and the reason to write that down now is that the port has just copied all
 three, so it is the moment when the duplication is visible.
 
-### §PP117 The library that will not load
-
-Loading build/chiaki-ng-Win/SDL2.dll does not return. LoadLibraryEx on its absolute path
-with LOAD_WITH_ALTERED_SEARCH_PATH blocks for at least two minutes and was killed rather
-than observed finishing - so the port cannot call SDL, and the input path PP8 describes
-cannot start.
-
-That rules out most of what it looks like. Not the WPF dispatcher: it blocks on a
-dedicated thread and in a bare PowerShell process too. Not the resolver this port added,
-which the probe bypasses. Not SDL_Init: the first call to reach SDL hangs, before a
-subsystem is asked for.
-
-What is not established is why, and it should not be guessed at. Candidates worth
-separating: a dependency of that DLL that itself blocks, something in its DllMain that
-wants a window or a console the probe process does not offer, and a device on this
-machine that the HIDAPI backend scans at load rather than at init.
-
-The Qt client links the same file at build time and therefore loads it at startup, so
-either it does not block there or it has never been started on this machine since the
-tree was built. That comparison is the cheapest next step and needs nothing but running
-it.
-
-Until then the port declares the four hints and holds them against the Qt client's,
-which is the part that needed writing down anyway, and calls nothing. A gamepad path
-that hangs on load is worse than one that is not written yet.
-
 ## Block C — Video and input path
 
 ### §PP9 Vulkan under a D3D9 compositor

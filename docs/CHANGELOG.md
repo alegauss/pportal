@@ -35,6 +35,7 @@
 - ✅ **PP87** **the video and audio sample callbacks are the last uncrossed part of the seam, and nothing offline can drive one** — a frame reaches a managed handler as a span over libchiaki's own buffer, driven with no console, no renderer and no decoder.
 - ✅ **PP7 (the flow around the browser)** **PSN OAuth login runs in a QtWebEngine view, a bundled browser the WPF host has no equivalent for** — the authorize url, the redirect match, the code extraction and both token bodies are managed, held against the Qt client's own constants.
 - ✅ **PP8 (the hints)** **controller input is SDL wired into Qt events, and 950 lines of it decide what a button does** — the four SDL hints the input path depends on are declared and held against the Qt client's own, which is the part that needed writing down.
+- ✅ **PP117** **loading the portable tree's SDL2.dll does not return, so the managed host cannot call SDL at all** — the resolver puts the portable tree on the process search path, and sets the error mode so a failed load reports instead of waiting on a dialog nobody can see.
 
 ## Block C — Video and input path
 

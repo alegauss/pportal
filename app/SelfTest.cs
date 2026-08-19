@@ -1518,21 +1518,57 @@ public static class SelfTest
             Console.WriteLine();
             Console.WriteLine("Gamepads - SDL, before a pad is plugged in");
 
-            // NOTHING here calls into SDL, and PP117 is why: loading SDL2.dll out of this build's
-            // portable tree does not return. Not in this host, and not in a bare PowerShell
-            // process either - which is what rules out the WPF dispatcher, the resolver and this
-            // assembly as the cause. Why it blocks is not established, and a suite that hangs
-            // reports nothing at all, so the call is not made until it is.
-            //
-            // What is left is what does not need SDL loaded: the hint table, held against the Qt
-            // client's own. Those are the four decisions a rewrite drops by omission - the rumble
-            // pair, background events, and the Steam Deck one - and getting them written down is
-            // most of the value even before a pad can be read.
             Check("the hint table names the four the input path depends on",
                 Gamepads.Hints.Count == 4
                 && Gamepads.Hints.All(h => h.Name.StartsWith("SDL_", StringComparison.Ordinal))
                 && Gamepads.Hints.Count(h => h.Value == "1") == 3,
                 string.Join(", ", Gamepads.Hints.Select(h => $"{h.Name}={h.Value}")));
+
+            // PP117, resolved. SDL2 loads now because the resolver puts the portable tree on the
+            // PROCESS search path: SDL resolves a dependency from inside its own initialisation,
+            // and LOAD_WITH_ALTERED_SEARCH_PATH - which is what NativeLibrary.TryLoad uses - does
+            // not reach that lookup. The failure presented as a hang because Windows reports
+            // ERROR_DLL_INIT_FAILED with a modal dialog, and a process with no visible window has
+            // nothing to click.
+            Check("SDL loads and reports its version",
+                Gamepads.LinkedVersion().Major >= 2, Gamepads.LinkedVersion().ToString());
+            Check("and it came out of the portable tree, not off PATH",
+                ChiakiNative.SdlLoadedFrom?.EndsWith("SDL2.dll", StringComparison.OrdinalIgnoreCase) == true,
+                ChiakiNative.SdlLoadedFrom ?? "<null>");
+
+            // The hints are set before SDL_Init reads past them, which is the order the real host
+            // uses anyway - so this is not a test-only sequence.
+            var unset = Gamepads.Hints.Where(h => !Gamepads.SetHint(h.Name, h.Value)).ToList();
+            Check("every hint can be set and reads back as it was set",
+                unset.Count == 0 && Gamepads.Hints.All(h => Gamepads.GetHint(h.Name) == h.Value),
+                string.Join(", ", Gamepads.Hints.Select(h => $"{h.Name}={Gamepads.GetHint(h.Name) ?? "<unset>"}")));
+
+            // The subsystem itself, on a thread of its own and bounded - PP8's rationale asks for
+            // the first, and a suite that hangs reports nothing, which asks for the second.
+            bool sdlStarted = false;
+            int joysticks = -1;
+            var sdlThread = new Thread(() =>
+            {
+                sdlStarted = Gamepads.Start();
+                if (!sdlStarted)
+                    return;
+                joysticks = Gamepads.NumJoysticks();
+                Gamepads.Stop();
+            })
+            { IsBackground = true, Name = "sdl-selftest" };
+
+            sdlThread.Start();
+            bool sdlDone = sdlThread.Join(TimeSpan.FromSeconds(30));
+
+            Check("the game controller subsystem starts and stops",
+                sdlDone && sdlStarted && Gamepads.WasInit(Gamepads.InitGameController) == 0,
+                sdlDone ? Gamepads.Error() : "did not return within 30s");
+            // Zero pads is an ordinary answer on a machine with none: what is asserted is that
+            // ASKING works, because a count is not a pad.
+            Check("and the joystick count is answerable, whatever it is",
+                joysticks >= 0, joysticks.ToString());
+
+            Console.WriteLine($"        SDL {Gamepads.LinkedVersion()}, {joysticks} joystick(s), from {ChiakiNative.SdlLoadedFrom}");
 
             // The half this code cannot exercise: that the Qt client sets the same four. A pad
             // that behaves differently between the two clients is not something a user would

@@ -14,7 +14,6 @@
 - ⏳ **PP7** (deps: PP4 ✅) **PSN OAuth login runs in a QtWebEngine view, a bundled browser the WPF host has no equivalent for** — the WebView2 control itself, and the token exchange, which need a browser and a PSN account. → §PP7
 - ⏳ **PP8** (deps: PP4 ✅) **controller input is SDL wired into Qt events, and 950 lines of it decide what a button does** — everything that needs SDL loaded, which PP117 blocks: the event loop, hotplug, and the DualSense specifics. → §PP8
 - ⏳ **PP93** (deps: —) **the dpad touch path uses a third pair of touchpad bounds, matching neither console's pad** — the SDL touchpad path in controllermanager.cpp still scales by the fixed macros, having no session to ask which console is connected. → §PP93
-- 💭 **PP117** (deps: —) **loading the portable tree's SDL2.dll does not return, so the managed host cannot call SDL at all** — it blocks in a bare process too, which rules out the dispatcher and the resolver, and the cause is not established. → §PP117
 
 ## Block C — Video and input path
 

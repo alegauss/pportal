@@ -105,6 +105,8 @@ public static class ChiakiNative
         {
             if (!File.Exists(candidate))
                 continue;
+
+            AllowDependenciesFrom(Path.GetDirectoryName(candidate));
             if (!NativeLibrary.TryLoad(candidate, out IntPtr handle))
                 continue;
             if (name == Library)
@@ -124,6 +126,45 @@ public static class ChiakiNative
 
     /// <summary>Where SDL2 was loaded from, or null while it has never been loaded.</summary>
     public static string? SdlLoadedFrom { get; private set; }
+
+    private static readonly HashSet<string> allowedDirs = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// PP117: puts a directory on the PROCESS's dll search path, not just on this load's.
+    ///
+    /// NativeLibrary.TryLoad of an absolute path uses LOAD_WITH_ALTERED_SEARCH_PATH, which covers
+    /// the static imports of the module being loaded and nothing else. SDL2 resolves a dependency
+    /// from inside its own initialisation instead, and that lookup runs through the process search
+    /// order - so the altered path does not reach it and the load fails with ERROR_DLL_INIT_FAILED.
+    ///
+    /// Which is not what it looked like. Windows reports that failure as a MODAL DIALOG, and in a
+    /// process with no visible window there is nothing to dismiss and nothing to see: the load
+    /// simply never returns. Two days of "SDL hangs" is one error box nobody can click. So the
+    /// error mode is set first, and permanently - a future dependency that goes missing has to
+    /// fail rather than wait.
+    /// </summary>
+    private static void AllowDependenciesFrom(string? directory)
+    {
+        if (directory is null || !allowedDirs.Add(directory))
+            return;
+
+        // SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX | SEM_NOOPENFILEERRORBOX.
+        SetErrorMode(0x0001 | 0x0002 | 0x8000);
+
+        // LOAD_LIBRARY_SEARCH_DEFAULT_DIRS, which is what makes AddDllDirectory count.
+        SetDefaultDllDirectories(0x00001000);
+        AddDllDirectory(directory);
+    }
+
+    [DllImport("kernel32", SetLastError = true)]
+    private static extern uint SetErrorMode(uint mode);
+
+    [DllImport("kernel32", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetDefaultDllDirectories(uint directoryFlags);
+
+    [DllImport("kernel32", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern IntPtr AddDllDirectory(string newDirectory);
 
     /// <summary>
     /// Checked before anything else is called, because the failure it prevents has no symptom: a
