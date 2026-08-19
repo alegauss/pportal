@@ -100,6 +100,29 @@ So it lands where there is a decoder to feed it. PP9 decides what presents a fra
 first thing that decoder does is take this callback, and the assertion is the frame it
 produces rather than a buffer this side invented.
 
+### §PP93 Three answers to one question
+
+This client carries three different touchpad extents. streamsession.cpp picks per
+console - 1920x942 for a PS4, 1919x1079 for a PS5 - which are the real dimensions of a
+DualShock 4 and a DualSense pad. controllermanager.h defines PS_TOUCHPAD_MAXX 1920 and
+PS_TOUCHPAD_MAXY 1079, which is each axis's larger value and therefore neither pad, and
+the dpad-touch path and the SDL touchpad path both use it whichever console is
+connected.
+
+On a PS4, holding dpad-down walks the finger to y=1079 on a pad that ends at 942, and
+dpad-right reaches x=1920 on a PS5 pad that ends at 1919. The error is always outward,
+so the gesture keeps working and stops near the edge rather than at it.
+
+Whether that is worth changing is genuinely open, which is why this is an idea and not a
+task. The console may well clamp what it is sent, in which case the only cost is that
+the last increment of travel does nothing. Nobody has measured it, and measuring it
+needs a PS4 as well as a PS5.
+
+What is not open is that one client should not hold three answers to one question.
+Whatever the right pair is, the dpad path and the mouse path should read it from the
+same place - and the reason to write that down now is that the port has just copied all
+three, so it is the moment when the duplication is visible.
+
 ## Block C — Video and input path
 
 ### §PP9 Vulkan under a D3D9 compositor

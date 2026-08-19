@@ -1244,6 +1244,90 @@ public static class SelfTest
             Check("the edges of the window are a touchpad click",
                 InputTranslation.IsEdgeTouch(0.02f, 0.5f) && InputTranslation.IsEdgeTouch(0.5f, 0.99f)
                 && !InputTranslation.IsEdgeTouch(0.5f, 0.5f));
+
+            Console.WriteLine();
+            Console.WriteLine("DpadTouch - the dpad as a finger on the touchpad");
+
+            using (var pad2 = new ChiakiControllerState())
+            using (var touch = new ChiakiControllerState())
+            {
+                var dpad = new DpadTouch { Increment = 30 };
+
+                // Two directions held at once. The C++ tests left first and returns, so this is a
+                // step left - and only the left bit is cleared, so the up bit survives into
+                // whatever reads the pad state next.
+                pad2.Buttons = ChiakiControllerButton.DpadLeft | ChiakiControllerButton.DpadUp;
+                DpadTouchAction first = dpad.Handle(pad2, touch);
+                Check("left wins over up, and only left is consumed",
+                    first == DpadTouchAction.Started
+                    && pad2.Buttons == ChiakiControllerButton.DpadUp,
+                    $"{first} / {pad2.Buttons}");
+
+                // A touch starts AT the edge it comes from, not in the middle. 1079/2 is 539.
+                Check("a left press starts the finger at the left edge, halfway down",
+                    dpad.Value == ((ushort)0, (ushort)539) && dpad.TouchId >= 0,
+                    dpad.Value.ToString());
+                Check("and libchiaki is holding that finger",
+                    touch.Touch(0).Id == dpad.TouchId && touch.Touch(0) is { X: 0, Y: 539 },
+                    touch.Touch(0).ToString());
+
+                // …so the second press in the same direction cannot move it. Worth asserting
+                // rather than assuming: a port that started in the middle would give the user a
+                // different gesture for the same two presses.
+                pad2.Buttons = ChiakiControllerButton.DpadLeft;
+                Check("pressing left again cannot go past the edge",
+                    dpad.Handle(pad2, touch) == DpadTouchAction.Moved
+                    && dpad.Value == ((ushort)0, (ushort)539),
+                    dpad.Value.ToString());
+
+                // A different direction moves by the increment on its own axis only.
+                pad2.Buttons = ChiakiControllerButton.DpadDown;
+                dpad.Handle(pad2, touch);
+                pad2.Buttons = ChiakiControllerButton.DpadRight;
+                dpad.Handle(pad2, touch);
+                Check("down then right moves one axis each",
+                    dpad.Value == ((ushort)30, (ushort)569), dpad.Value.ToString());
+                Check("and the touch libchiaki holds followed it",
+                    touch.Touch(0) is { X: 30, Y: 569 }, touch.Touch(0).ToString());
+
+                // Nothing held is not an error, it is a no-op with a warning in the Qt build.
+                pad2.Buttons = ChiakiControllerButton.Cross;
+                Check("no direction held does nothing and consumes nothing",
+                    dpad.Handle(pad2, touch) == DpadTouchAction.None
+                    && pad2.Buttons == ChiakiControllerButton.Cross
+                    && dpad.Value == ((ushort)30, (ushort)569));
+
+                // The stop timer's job: the finger comes up and the id is free again.
+                dpad.Stop(touch);
+                Check("stopping lifts the finger",
+                    dpad.TouchId == -1 && touch.Touch(0).Id == -1, touch.Touch(0).ToString());
+            }
+
+            using (var pad3 = new ChiakiControllerState())
+            using (var touch3 = new ChiakiControllerState())
+            {
+                // The far edge, which is the other half of the clamp and uses the other test.
+                var dpad = new DpadTouch { Increment = 30 };
+                pad3.Buttons = ChiakiControllerButton.DpadDown;
+                dpad.Handle(pad3, touch3);
+                Check("a down press starts at the bottom, halfway across",
+                    dpad.Value == ((ushort)960, (ushort)1079), dpad.Value.ToString());
+
+                pad3.Buttons = ChiakiControllerButton.DpadDown;
+                dpad.Handle(pad3, touch3);
+                Check("and cannot step past it",
+                    dpad.Value == ((ushort)960, (ushort)1079), dpad.Value.ToString());
+            }
+
+            // PP93. These are a THIRD pair of touchpad bounds: 1920x1079, used whichever console
+            // is connected, against the mouse path's 1920x942 for a PS4 and 1919x1079 for a PS5.
+            // Asserted as it is, because the port must not differ - it is each axis's larger
+            // value and matches neither pad exactly.
+            Check("the dpad path uses bounds that match neither console's pad",
+                (DpadTouch.MaxX, DpadTouch.MaxY) != InputTranslation.TouchpadBounds(true)
+                && (DpadTouch.MaxX, DpadTouch.MaxY) != InputTranslation.TouchpadBounds(false)
+                && DpadTouch.MaxY > InputTranslation.TouchpadBounds(false).MaxY,
+                $"{DpadTouch.MaxX}x{DpadTouch.MaxY}");
         }
 
         Console.WriteLine();
