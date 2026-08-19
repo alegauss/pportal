@@ -69,6 +69,7 @@
 - ✅ **PP140** **the settings screen writes on commit and nothing in the port says so** — commit-on-finish with JavaScript's lenient parse, and chiaki-render.dll deployed where its deps are.
 - ✅ **PP141** **the registration progress dialog ignores whether the operation succeeded, and nothing says so** — the dialog stays open on both outcomes, and Escape leaves mid-registration where Return does not.
 - ✅ **PP142** **the port has 148 preferences and no names for them, and the names cannot be derived** — the naming is the QML's own: a convention for 63, no property for 65, and three renames that cannot be derived.
+- ✅ **PP143** **a mistyped XAML binding is not a build error, it is a control that silently shows nothing** — the console list screen loads and its bindings resolve, proved by a path that builds clean and fails red.
 
 ## Block E — Windows-only build
 

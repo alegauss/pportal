@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Text.RegularExpressions;
 
 namespace ChiakiNg.Session;
@@ -178,4 +179,50 @@ public static partial class ConsoleListSource
 
     [GeneratedRegex(@"discovered_nicknames\.append\(QString\(""([^""]+)""\)\)")]
     private static partial Regex MainPs4Regex();
+}
+
+/// <summary>
+/// PP13: the front door's view model - the rows, and whether any of them show.
+///
+/// A thin wrapper over <see cref="ConsoleList.Build"/> rather than a second merge. The rules are
+/// there and asserted there; what this adds is the two things a screen binds to and cannot
+/// compute in markup.
+/// </summary>
+public sealed class ConsoleListViewModel : INotifyPropertyChanged
+{
+    private IReadOnlyList<ConsoleRow> rows = [];
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    /// <summary>Every row, shown or not - the model keeps what it does not display.</summary>
+    public IReadOnlyList<ConsoleRow> Rows
+    {
+        get => rows;
+        private set
+        {
+            rows = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Rows)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasVisibleRows)));
+        }
+    }
+
+    /// <summary>
+    /// Whether anything is on screen, which is NOT whether the list is empty.
+    ///
+    /// A list of nothing but hidden consoles shows nothing, and a screen that decided by count
+    /// would leave a blank panel where the empty message belongs - which reads as broken rather
+    /// than as quiet.
+    /// </summary>
+    public bool HasVisibleRows => Rows.Any(r => r.Display);
+
+    /// <summary>Rebuilds from what discovery, the manual list and PSN currently say.</summary>
+    public void Refresh(
+        IEnumerable<DiscoveredConsole> discovered,
+        IEnumerable<ManualConsole> manual,
+        IEnumerable<PsnConsole> psn,
+        IReadOnlySet<string> hiddenMacs,
+        IReadOnlySet<string> registeredMacs,
+        int registeredPs4Count = 0)
+        => Rows = ConsoleList.Build(
+            discovered, manual, psn, hiddenMacs, registeredMacs, registeredPs4Count);
 }
