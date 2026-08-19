@@ -1,0 +1,63 @@
+<UserControl x:Class="ChiakiNg.Views.DisplaySettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    PP19: the display settings dialog.
+
+    Four rows. Two are long index combos and nothing else. The other two are a combo that picks a
+    MODE and a slider that only exists in one of those modes - and the mode is not stored: it is
+    read back out of the value, where zero means Auto and, for contrast, minus one means Infinity.
+    None of that is here. The markup binds an index and a value and asks the view model which is
+    which.
+
+    The slider ranges are bound rather than written, because they are what excludes the sentinels:
+    a floor of 10 is why zero can mean something other than a number.
+  -->
+  <UserControl.Resources>
+    <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+
+    <Style TargetType="TextBlock" x:Key="RowLabel">
+      <Setter Property="Margin" Value="0,8,0,2" />
+      <Setter Property="Opacity" Value="0.7" />
+    </Style>
+  </UserControl.Resources>
+
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="16">
+      <TextBlock Text="* Defaults in () to right of value or marked with (Default)"
+                 Margin="0,0,0,8" Opacity="0.6" TextWrapping="Wrap" />
+
+      <TextBlock Text="Target Primaries" Style="{StaticResource RowLabel}" />
+      <ComboBox x:Name="PrimariesCombo" Width="600" HorizontalAlignment="Left"
+                SelectedIndex="{Binding Primaries}" />
+
+      <TextBlock Text="Target Transfer Characteristics" Style="{StaticResource RowLabel}" />
+      <ComboBox x:Name="TransferCombo" Width="600" HorizontalAlignment="Left"
+                SelectedIndex="{Binding Transfer}" />
+
+      <TextBlock Text="Target Peak" Style="{StaticResource RowLabel}" />
+      <ComboBox x:Name="PeakCombo" Width="400" HorizontalAlignment="Left"
+                SelectedIndex="{Binding PeakIndex}" />
+
+      <StackPanel x:Name="PeakValueGroup" Orientation="Horizontal" Margin="0,8,0,0"
+                  Visibility="{Binding PeakSliderVisible, Converter={StaticResource BoolToVisibility}}">
+        <Slider x:Name="PeakSlider" Width="250" VerticalAlignment="Center"
+                Value="{Binding PeakValue}" />
+        <TextBlock x:Name="PeakValueLabel" Margin="10,0,0,0" VerticalAlignment="Center"
+                   Text="{Binding PeakValue, StringFormat={}{0} nits}" />
+      </StackPanel>
+
+      <TextBlock Text="Target Contrast" Style="{StaticResource RowLabel}" />
+      <ComboBox x:Name="ContrastCombo" Width="400" HorizontalAlignment="Left"
+                SelectedIndex="{Binding ContrastIndex}" />
+
+      <StackPanel x:Name="ContrastValueGroup" Orientation="Horizontal" Margin="0,8,0,0"
+                  Visibility="{Binding ContrastSliderVisible, Converter={StaticResource BoolToVisibility}}">
+        <Slider x:Name="ContrastSlider" Width="250" VerticalAlignment="Center"
+                Value="{Binding ContrastValue}" />
+        <TextBlock x:Name="ContrastValueLabel" Margin="10,0,0,0" VerticalAlignment="Center"
+                   Text="{Binding ContrastValue}" />
+      </StackPanel>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>
