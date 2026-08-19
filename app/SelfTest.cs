@@ -1505,6 +1505,96 @@ public static class SelfTest
                 && Discovery.HostStateString(DiscoveryHostState.Standby) == "standby",
                 Discovery.HostStateString(DiscoveryHostState.Ready) ?? "<null>");
 
+            // The reply path. What follows asserts the CROSSING and the status mapping, not that a
+            // console spells the headers this way - the header names below are read out of
+            // lib/src/discovery.c, so they cannot testify about themselves. That oracle is a
+            // console answering, and PP6's remainder is still waiting for one: a search broadcast
+            // from this machine on 2026-08-19 got no reply.
+            static byte[] Reply(string text) => Encoding.UTF8.GetBytes(text);
+
+            const string readyReply =
+                "HTTP/1.1 200 Ok\n"
+                + "host-id:0011223344556677\n"
+                + "host-type:PS5\n"
+                + "host-name:PS5-385\n"
+                + "host-request-port:9295\n"
+                + "device-discovery-protocol-version:00030010\n"
+                + "system-version:8050001\n"
+                + "running-app-titleid:CUSA00000\n"
+                + "running-app-name:Some Game\n";
+
+            DiscoveredConsole? ready = Discovery.ParseReply(Reply(readyReply), "192.168.1.7", out ChiakiError replyErr);
+            Check("a reply parses into a console",
+                ready is not null && replyErr == ChiakiError.Success, replyErr.ToString());
+            Check("every field crosses the seam intact",
+                ready is { Name: "PS5-385", HostType: "PS5", Id: "0011223344556677",
+                    SystemVersion: "8050001", ProtocolVersion: "00030010",
+                    RunningAppTitleId: "CUSA00000", RunningAppName: "Some Game",
+                    RequestPort: 9295 },
+                ready?.ToString() ?? "<null>");
+            // The address is not in the datagram: it is where the datagram came from, and it is
+            // what a session is later opened to.
+            Check("the address comes from the sender and not the reply",
+                ready?.Address == "192.168.1.7", ready?.Address ?? "<null>");
+
+            // 620 is the piece of protocol knowledge here. It is not an HTTP status anybody would
+            // guess, and it is the difference between a console the list offers to wake and one it
+            // offers to connect to.
+            Check("620 is standby, 200 is ready, anything else is unknown",
+                Discovery.ParseReply(Reply("HTTP/1.1 620 Server Standby\nhost-name:PS5-385\n"), "10.0.0.5", out _)
+                    ?.State == DiscoveryHostState.Standby
+                && ready?.State == DiscoveryHostState.Ready
+                && Discovery.ParseReply(Reply("HTTP/1.1 404 Nope\n\n"), "10.0.0.5", out _)
+                    ?.State == DiscoveryHostState.Unknown);
+
+            // strtoul with base 0, so the port is read as C would read a literal - a leading 0x is
+            // hexadecimal and a leading 0 is octal. Nothing sends those, and a rewrite that used a
+            // decimal parse would differ on exactly the input that would say so.
+            Check("the request port is parsed as a C literal, base and all",
+                Discovery.ParseReply(Reply("HTTP/1.1 200 Ok\nhost-request-port:0x2447\n"), "10.0.0.5", out _)
+                    ?.RequestPort == 9287,
+                Discovery.ParseReply(Reply("HTTP/1.1 200 Ok\nhost-request-port:0x2447\n"), "10.0.0.5", out _)
+                    ?.RequestPort.ToString() ?? "<null>");
+
+            // A datagram that is not a reply is refused rather than guessed at.
+            Check("something that is not an HTTP response is refused",
+                Discovery.ParseReply(Reply("hello\n"), "10.0.0.5", out ChiakiError junkErr) is null
+                && junkErr != ChiakiError.Success, junkErr.ToString());
+            Check("a bad sender address is refused too",
+                Discovery.ParseReply(Reply(readyReply), "not-an-address", out _) is null);
+
+            // The ownership rule this handle exists for. chiaki_http_response_parse works IN
+            // PLACE, so every field of a parsed host points into the datagram - and the shim keeps
+            // its own copy alive only until the handle is freed. Parsing a second reply and then
+            // reading the first console proves the strings were copied out rather than left
+            // pointing at a buffer that has since been freed and reused.
+            DiscoveredConsole? kept = Discovery.ParseReply(Reply(readyReply), "192.168.1.7", out _);
+            for (int i = 0; i < 16; i++)
+                Discovery.ParseReply(Reply($"HTTP/1.1 200 Ok\nhost-name:filler-{i}\nhost-id:{i}\n"), "10.0.0.5", out _);
+            Check("a parsed console survives the buffer it was parsed from",
+                kept is { Name: "PS5-385", Id: "0011223344556677" },
+                kept?.Name ?? "<null>");
+
+            // The shim declares chiaki_discovery_srch_response_parse itself, because libchiaki
+            // exports it and declares it in no header - and lib/ is the half of this project that
+            // is not edited. A signature no compiler compares is not a build error when it is
+            // wrong, it is a corrupted stack at the first reply, so it is compared here.
+            string? libSource = LibSource.Locate();
+            string? shimSource = LibSource.LocateShim();
+            if (libSource is null || shimSource is null)
+            {
+                Console.WriteLine($"  --    the shim's undeclared import  (no {LibSource.RelativePath} here)");
+            }
+            else
+            {
+                const string fn = "chiaki_discovery_srch_response_parse";
+                string? defined = LibSource.SignatureOf(libSource, fn);
+                string? declared = LibSource.SignatureOf(shimSource, fn);
+                Check("the shim's declaration matches libchiaki's definition",
+                    defined is not null && declared is not null && defined == declared,
+                    $"{defined ?? "<none>"}  ||  {declared ?? "<none>"}");
+            }
+
             Console.WriteLine();
             Console.WriteLine("AudioVolume - mixing into silence, which is scaling");
 

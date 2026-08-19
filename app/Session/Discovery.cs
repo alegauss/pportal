@@ -10,6 +10,22 @@ public enum DiscoveryCommand { Search = 0, Wakeup = 1 }
 /// <summary>ChiakiDiscoveryHostState, which is what the console list shows beside a name.</summary>
 public enum DiscoveryHostState { Unknown = 0, Ready = 1, Standby = 2 }
 
+/// <summary>
+/// One console as its reply described it, with every string already copied out of the datagram.
+/// A null field is one the reply did not carry, which is most of them on a console in standby.
+/// </summary>
+public readonly record struct DiscoveredConsole(
+    string? Address,
+    string? SystemVersion,
+    string? ProtocolVersion,
+    string? Name,
+    string? HostType,
+    string? Id,
+    string? RunningAppTitleId,
+    string? RunningAppName,
+    DiscoveryHostState State,
+    ushort RequestPort);
+
 /// <summary>ChiakiTarget, with the console's own numbers.</summary>
 public enum ChiakiTarget
 {
@@ -95,6 +111,68 @@ public static class Discovery
     /// <summary>The word shown beside a console: "ready", "standby" or "unknown".</summary>
     public static string? HostStateString(DiscoveryHostState state)
         => Marshal.PtrToStringUTF8(DiscoveryHostStateString((int)state));
+
+    /// <summary>
+    /// Parses one reply datagram into a console the list can show.
+    ///
+    /// The strings are copied out here and the native handle is freed before this returns, which
+    /// is not tidiness: chiaki_http_response_parse works IN PLACE, so every field of a parsed host
+    /// points into the datagram it came from. Holding the host past its buffer would hand a screen
+    /// eight pointers that still read correctly until something reused the page.
+    /// </summary>
+    public static DiscoveredConsole? ParseReply(ReadOnlySpan<byte> reply, string fromAddress, out ChiakiError error)
+    {
+        ArgumentNullException.ThrowIfNull(fromAddress);
+
+        byte[] buf = reply.ToArray();
+        IntPtr handle = DiscoveryReplyParse(buf, buf.Length, fromAddress, out int err);
+        error = (ChiakiError)err;
+        if (handle == IntPtr.Zero)
+            return null;
+
+        try
+        {
+            string? Field(int field) => Marshal.PtrToStringUTF8(DiscoveryReplyField(handle, field));
+
+            return new DiscoveredConsole(
+                Address: Field(0),
+                SystemVersion: Field(1),
+                ProtocolVersion: Field(2),
+                Name: Field(3),
+                HostType: Field(4),
+                Id: Field(5),
+                RunningAppTitleId: Field(6),
+                RunningAppName: Field(7),
+                State: (DiscoveryHostState)DiscoveryReplyState(handle),
+                RequestPort: (ushort)DiscoveryReplyRequestPort(handle));
+        }
+        finally
+        {
+            DiscoveryReplyFree(handle);
+        }
+    }
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_discovery_reply_parse",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr DiscoveryReplyParse(
+        byte[] reply, int replyLen,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string fromAddress, out int error);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_discovery_reply_free",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern void DiscoveryReplyFree(IntPtr host);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_discovery_reply_state",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern int DiscoveryReplyState(IntPtr host);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_discovery_reply_request_port",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern int DiscoveryReplyRequestPort(IntPtr host);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_discovery_reply_field",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr DiscoveryReplyField(IntPtr host, int field);
 
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_discovery_port",
         CallingConvention = CallingConvention.Cdecl)]

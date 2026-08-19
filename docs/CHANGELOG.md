@@ -31,6 +31,7 @@
 - ✅ **PP100** **the two DualSense intensity events pack into one byte through two tables, and neither is derivable from its enum** — both intensity tables, the nibble packing and the off sentinel that gates two paths run in managed code, under ten assertions.
 - ✅ **PP101** **the volume step is an SDL_MixAudioFormat call, so no managed host can scale a frame without SDL** — the volume scale, its drop-at-zero and its ceiling at 128 run in managed code under six assertions.
 - ✅ **PP6 (the protocol)** **console discovery and wake use QUdpSocket, so the console list has no source in a Qt-free host** — the search and wake packets, the ports and the two classification rules come from libchiaki under fifteen assertions, byte for byte.
+- ✅ **PP102** **a discovery reply parses in place, so every field of a parsed console points into the datagram it came from** — a reply crosses as a console whose strings outlive the datagram, and the shim's undeclared import is held against libchiaki's definition.
 
 ## Block C — Video and input path
 

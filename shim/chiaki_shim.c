@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
+﻿// SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
 
 #include "chiaki_shim.h"
 
@@ -770,6 +770,141 @@ CHIAKI_SHIM_API int32_t chiaki_shim_discovery_target(
 CHIAKI_SHIM_API const char *chiaki_shim_discovery_host_state_string(int32_t state)
 {
 	return chiaki_discovery_host_state_string((ChiakiDiscoveryHostState)state);
+}
+
+/**
+ * PP6: declared here because libchiaki declares it nowhere.
+ *
+ * chiaki_discovery_srch_response_parse is CHIAKI_EXPORT in lib/src/discovery.c and appears in no
+ * header, so it is reachable and unannounced. Reaching for it anyway is the lesser of two evils:
+ * the alternative is a second reply parser on this side of the seam, which is the one piece of
+ * discovery a console would have to be present to disprove.
+ *
+ * What that costs is a signature the compiler cannot check against its definition, which is the
+ * same debt PP88's duplicated regex took on. It is paid the same way: the .NET selftest reads
+ * lib/src/discovery.c and holds this declaration against the definition there, so a libchiaki that
+ * changes the signature turns a test red rather than corrupting a stack quietly.
+ *
+ * lib/ stays untouched, which is the rule this works around rather than breaks.
+ */
+ChiakiErrorCode chiaki_discovery_srch_response_parse(ChiakiDiscoveryHost *response, struct sockaddr *addr, char *addr_buf, size_t addr_buf_size, char *buf, size_t buf_size);
+
+/**
+ * The parsed host plus the two buffers its strings point into.
+ *
+ * `reply` is this side's copy of the datagram, because the parse is in place and every string in
+ * `host` is an offset into it. `addr` is where sockaddr_str wrote the sender's address, which
+ * host_addr points at for the same reason. Both live exactly as long as the handle.
+ */
+typedef struct chiaki_shim_discovery_reply_t
+{
+	ChiakiDiscoveryHost host;
+	char *reply;
+	char addr[64];
+} chiaki_shim_discovery_reply;
+
+CHIAKI_SHIM_API void *chiaki_shim_discovery_reply_parse(
+		const char *reply, int32_t reply_len, const char *from_addr, int32_t *error_out)
+{
+	struct sockaddr_in addr;
+	chiaki_shim_discovery_reply *self;
+	ChiakiErrorCode err;
+
+	if(error_out)
+		*error_out = (int32_t)CHIAKI_ERR_INVALID_DATA;
+	if(!reply || reply_len <= 0 || !from_addr)
+		return NULL;
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	if(inet_pton(AF_INET, from_addr, &addr.sin_addr) != 1)
+		return NULL;
+
+	self = (chiaki_shim_discovery_reply *)calloc(1, sizeof(chiaki_shim_discovery_reply));
+	if(!self)
+	{
+		if(error_out)
+			*error_out = (int32_t)CHIAKI_ERR_MEMORY;
+		return NULL;
+	}
+
+	// The parser writes NULs into what it is given, so it is given this copy and not the caller's
+	// string. One byte over for a terminator the datagram may not carry.
+	self->reply = (char *)malloc((size_t)reply_len + 1);
+	if(!self->reply)
+	{
+		free(self);
+		if(error_out)
+			*error_out = (int32_t)CHIAKI_ERR_MEMORY;
+		return NULL;
+	}
+	memcpy(self->reply, reply, (size_t)reply_len);
+	self->reply[reply_len] = '\0';
+
+	err = chiaki_discovery_srch_response_parse(&self->host, (struct sockaddr *)&addr, self->addr,
+			sizeof(self->addr), self->reply, (size_t)reply_len);
+	if(error_out)
+		*error_out = (int32_t)err;
+
+	if(err != CHIAKI_ERR_SUCCESS)
+	{
+		free(self->reply);
+		free(self);
+		return NULL;
+	}
+
+	return self;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_discovery_reply_free(void *host)
+{
+	chiaki_shim_discovery_reply *self = (chiaki_shim_discovery_reply *)host;
+	if(!self)
+		return;
+
+	free(self->reply);
+	free(self);
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_discovery_reply_state(void *host)
+{
+	chiaki_shim_discovery_reply *self = (chiaki_shim_discovery_reply *)host;
+	return self ? (int32_t)self->host.state : (int32_t)CHIAKI_DISCOVERY_HOST_STATE_UNKNOWN;
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_discovery_reply_request_port(void *host)
+{
+	chiaki_shim_discovery_reply *self = (chiaki_shim_discovery_reply *)host;
+	return self ? (int32_t)self->host.host_request_port : 0;
+}
+
+CHIAKI_SHIM_API const char *chiaki_shim_discovery_reply_field(void *host, int32_t field)
+{
+	chiaki_shim_discovery_reply *self = (chiaki_shim_discovery_reply *)host;
+	if(!self)
+		return NULL;
+
+	switch((ChiakiShimDiscoveryField)field)
+	{
+		case CHIAKI_SHIM_DISCOVERY_HOST_ADDR:
+			return self->host.host_addr;
+		case CHIAKI_SHIM_DISCOVERY_SYSTEM_VERSION:
+			return self->host.system_version;
+		case CHIAKI_SHIM_DISCOVERY_PROTOCOL_VERSION:
+			return self->host.device_discovery_protocol_version;
+		case CHIAKI_SHIM_DISCOVERY_HOST_NAME:
+			return self->host.host_name;
+		case CHIAKI_SHIM_DISCOVERY_HOST_TYPE:
+			return self->host.host_type;
+		case CHIAKI_SHIM_DISCOVERY_HOST_ID:
+			return self->host.host_id;
+		case CHIAKI_SHIM_DISCOVERY_RUNNING_APP_TITLEID:
+			return self->host.running_app_titleid;
+		case CHIAKI_SHIM_DISCOVERY_RUNNING_APP_NAME:
+			return self->host.running_app_name;
+		default:
+			return NULL;
+	}
 }
 
 CHIAKI_SHIM_API void chiaki_shim_session_free(void *session)

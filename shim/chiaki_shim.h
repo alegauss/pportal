@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 9
+#define CHIAKI_SHIM_ABI 10
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -522,6 +522,51 @@ CHIAKI_SHIM_API int32_t chiaki_shim_discovery_target(
 
 /** chiaki_discovery_host_state_string: what the console list shows beside a name. */
 CHIAKI_SHIM_API const char *chiaki_shim_discovery_host_state_string(int32_t state);
+
+/** Which string of a parsed reply to read, in the order ChiakiDiscoveryHost declares them. */
+typedef enum chiaki_shim_discovery_field_t
+{
+	CHIAKI_SHIM_DISCOVERY_HOST_ADDR = 0,
+	CHIAKI_SHIM_DISCOVERY_SYSTEM_VERSION,
+	CHIAKI_SHIM_DISCOVERY_PROTOCOL_VERSION,
+	CHIAKI_SHIM_DISCOVERY_HOST_NAME,
+	CHIAKI_SHIM_DISCOVERY_HOST_TYPE,
+	CHIAKI_SHIM_DISCOVERY_HOST_ID,
+	CHIAKI_SHIM_DISCOVERY_RUNNING_APP_TITLEID,
+	CHIAKI_SHIM_DISCOVERY_RUNNING_APP_NAME
+} ChiakiShimDiscoveryField;
+
+/**
+ * A console's reply, parsed by libchiaki and owned here.
+ *
+ * The ownership is the reason this is a handle and not a set of out-parameters.
+ * chiaki_http_response_parse works IN PLACE: it writes NULs into the caller's datagram and every
+ * header value in the parsed host points into it, while chiaki_http_response_fini frees only the
+ * list nodes. So a ChiakiDiscoveryHost is a set of pointers into a buffer somebody else owns, and
+ * the buffer a shim function parsed from would be gone the moment it returned - handing .NET eight
+ * pointers into freed memory that still read as the right strings for as long as nothing reused
+ * the page.
+ *
+ * So the shim keeps its own copy of the datagram alive for exactly as long as the handle, and the
+ * managed side copies each string out through the getter. Freeing the handle is what ends both.
+ *
+ * `from_addr` is the address the datagram came from, as text; it becomes the host_addr field, which
+ * is what a connection is later made to. `error_out` takes a ChiakiErrorCode and the return is NULL
+ * whenever that is not CHIAKI_ERR_SUCCESS.
+ */
+CHIAKI_SHIM_API void *chiaki_shim_discovery_reply_parse(
+		const char *reply, int32_t reply_len, const char *from_addr, int32_t *error_out);
+
+CHIAKI_SHIM_API void chiaki_shim_discovery_reply_free(void *host);
+
+/** The ChiakiDiscoveryHostState the reply's status code mapped to. */
+CHIAKI_SHIM_API int32_t chiaki_shim_discovery_reply_state(void *host);
+
+/** host-request-port, which is the port a session is opened on. */
+CHIAKI_SHIM_API int32_t chiaki_shim_discovery_reply_request_port(void *host);
+
+/** One string field, or NULL where the reply did not carry it. */
+CHIAKI_SHIM_API const char *chiaki_shim_discovery_reply_field(void *host, int32_t field);
 
 #ifdef __cplusplus
 }
