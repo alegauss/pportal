@@ -82,6 +82,7 @@
 - ✅ **PP155** **two display targets carry a mode and a value in one integer, and the contrast one's index order is not its value order** — the dialog, its two sentinel-carrying integers and the focus chain that moves with the mode.
 - ✅ **PP156** **the shortcut dialog writes outside the application, and carries a second copy of the PSN chain** — the dialog ported as-is, its success-only preference write and one copy of the PSN chain.
 - ✅ **PP157** **the Stream tab's resolution has three representations and choosing one silently zeroes a bitrate** — the tab, its three-layer resolution and the bitrate a resolution change quietly zeroes.
+- ✅ **PP158** **four Audio tab controls carry a unit conversion the store does not show, and one of two percent sliders scales** — the tab's four unit conversions, and the empty-first-entry rule moved into one type.
 
 ## Block E — Windows-only build
 

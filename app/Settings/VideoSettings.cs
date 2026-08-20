@@ -98,27 +98,25 @@ public static class DecoderChoice
     public static IReadOnlySet<string> Allowed { get; } =
         new HashSet<string>(StringComparer.Ordinal) { "vulkan", "d3d11va", "cuda" };
 
-    /// <summary>The list as availableDecoders() builds it, for whichever types are present.</summary>
+    /// <summary>
+    /// The list as availableDecoders() builds it, for whichever types are present. Unlike the audio
+    /// device lists it also has a trailing entry, "auto", which is its default.
+    /// </summary>
     public static IReadOnlyList<string> Available(IEnumerable<string> ffmpegTypes)
     {
         ArgumentNullException.ThrowIfNull(ffmpegTypes);
 
-        var list = new List<string> { NoneLabel };
-        list.AddRange(ffmpegTypes.Where(Allowed.Contains));
+        var list = EmptyFirstChoice.Build(NoneLabel, ffmpegTypes.Where(Allowed.Contains)).ToList();
         list.Add(Auto);
         return list;
     }
 
-    /// <summary>What the store receives for a chosen index. Index 0 is the empty string.</summary>
+    /// <summary>
+    /// What the store receives for a chosen index. Index 0 is the empty string - the rule is
+    /// <see cref="EmptyFirstChoice"/>'s, shared with the two audio device lists.
+    /// </summary>
     public static string StoredFor(IReadOnlyList<string> available, int index)
-    {
-        ArgumentNullException.ThrowIfNull(available);
-
-        if (index <= 0 || index >= available.Count)
-            return NoneStored;
-
-        return available[index];
-    }
+        => EmptyFirstChoice.StoredFor(available, index);
 
     /// <summary>
     /// The index a stored value shows at: its position, or 0 for anything the list does not hold.
@@ -126,30 +124,14 @@ public static class DecoderChoice
     /// rather than as "auto".
     /// </summary>
     public static int IndexOf(IReadOnlyList<string> available, string? stored)
-    {
-        ArgumentNullException.ThrowIfNull(available);
-
-        if (string.IsNullOrEmpty(stored))
-            return 0;
-
-        int found = -1;
-        for (int i = 0; i < available.Count; i++)
-        {
-            if (string.Equals(available[i], stored, StringComparison.Ordinal))
-            {
-                found = i;
-                break;
-            }
-        }
-
-        return Math.Max(0, found);
-    }
+        => EmptyFirstChoice.IndexOf(available, stored);
 
     /// <summary>
     /// Whether a stored value means "no hardware decoder" downstream, which is `isEmpty()` and
     /// nothing else - so the word "none" does NOT mean it.
     /// </summary>
-    public static bool MeansNoHardwareDecoder(string? stored) => string.IsNullOrEmpty(stored);
+    public static bool MeansNoHardwareDecoder(string? stored)
+        => EmptyFirstChoice.MeansAutomatic(stored);
 }
 
 /// <summary>
