@@ -1,0 +1,113 @@
+﻿<UserControl x:Class="ChiakiNg.Views.AudioSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    PP16: the settings screen's Audio and Wifi tab, the fourth of the nine.
+
+    Nine controls, four of which carry a unit conversion. None of the conversions is here: the buffer
+    slider is in steps and its caption in milliseconds, the volume slider is 0-128 and its caption a
+    percentage, and the two percent sliders look identical while only one of them scales on the way
+    to the store. Every one of those is the view model's, because each is a different kind of wrong
+    and none shows up on screen.
+
+    The two device lists ARE bound here, and that works only because the view model mutates its
+    collections in place rather than replacing them. Re-assigning an ItemsSource resets SelectedIndex
+    to -1 and the two-way binding writes that back; an observable collection bound once and refilled
+    never triggers it. These two lists are the only genuinely dynamic ones on any tab - they are
+    re-enumerated whenever the tab becomes visible.
+
+    The three speech controls are collapsed by a BUILD-time gate, not by a preference. Hidden rather
+    than disabled, because a control that cannot work is better absent than greyed out.
+  -->
+  <UserControl.Resources>
+    <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+
+    <Style TargetType="TextBlock" x:Key="RowLabel">
+      <Setter Property="Margin" Value="0,8,0,2" />
+      <Setter Property="Opacity" Value="0.7" />
+    </Style>
+
+    <Style TargetType="TextBlock" x:Key="Caption">
+      <Setter Property="Margin" Value="10,0,0,0" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Opacity" Value="0.8" />
+    </Style>
+  </UserControl.Resources>
+
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="16">
+      <TextBlock Text="Output Device" Style="{StaticResource RowLabel}" />
+      <ComboBox x:Name="OutputCombo" Width="400" HorizontalAlignment="Left"
+                ItemsSource="{Binding OutputDevices}"
+                SelectedIndex="{Binding OutputIndex}" />
+
+      <TextBlock Text="Input Device" Style="{StaticResource RowLabel}" />
+      <ComboBox x:Name="InputCombo" Width="400" HorizontalAlignment="Left"
+                ItemsSource="{Binding InputDevices}"
+                SelectedIndex="{Binding InputIndex}" />
+
+      <TextBlock Text="Audio Buffer Size" Style="{StaticResource RowLabel}" />
+      <StackPanel Orientation="Horizontal">
+        <Slider x:Name="BufferSlider" Width="250" Value="{Binding BufferSteps}" />
+        <TextBlock x:Name="BufferCaption" Text="{Binding BufferCaption}" Style="{StaticResource Caption}" />
+      </StackPanel>
+
+      <TextBlock Text="Audio Volume" Style="{StaticResource RowLabel}" />
+      <StackPanel Orientation="Horizontal">
+        <Slider x:Name="VolumeSlider" Width="250" Value="{Binding Volume}" />
+        <TextBlock x:Name="VolumeCaption" Text="{Binding VolumeCaption}" Style="{StaticResource Caption}" />
+      </StackPanel>
+
+      <CheckBox x:Name="StartMicUnmutedBox" Margin="0,16,0,0"
+                Content="Start Mic Unmuted" IsChecked="{Binding StartMicUnmuted}" />
+
+      <!-- The build-time gate: absent, not disabled. -->
+      <StackPanel x:Name="SpeechGroup"
+                  Visibility="{Binding SpeechControlsVisible, Converter={StaticResource BoolToVisibility}}">
+        <CheckBox x:Name="SpeechProcessingBox" Margin="0,8,0,0"
+                  Content="Noise suppression + echo cancellation"
+                  IsChecked="{Binding SpeechProcessing}" />
+
+        <StackPanel x:Name="SuppressionGroup"
+                    Visibility="{Binding SuppressionSlidersVisible, Converter={StaticResource BoolToVisibility}}">
+          <TextBlock Text="Noise To Suppress" Style="{StaticResource RowLabel}" />
+          <StackPanel Orientation="Horizontal">
+            <Slider x:Name="NoiseSlider" Width="250" Value="{Binding NoiseSuppressDb}" />
+            <TextBlock Text="{Binding NoiseSuppressCaption}"
+                       Style="{StaticResource Caption}" />
+          </StackPanel>
+
+          <TextBlock Text="Echo To Suppress" Style="{StaticResource RowLabel}" />
+          <StackPanel Orientation="Horizontal">
+            <Slider x:Name="EchoSlider" Width="250" Value="{Binding EchoSuppressDb}" />
+            <TextBlock Text="{Binding EchoSuppressCaption}"
+                       Style="{StaticResource Caption}" />
+          </StackPanel>
+        </StackPanel>
+      </StackPanel>
+
+      <TextBlock Text="Weak Wifi Notification" Style="{StaticResource RowLabel}" />
+      <StackPanel Orientation="Horizontal">
+        <Slider x:Name="WifiSlider" Width="250" Value="{Binding WifiDroppedPercent}" />
+        <TextBlock Text="{Binding WifiDroppedCaption}"
+                   Style="{StaticResource Caption}" />
+      </StackPanel>
+
+      <TextBlock Text="Packet Loss Reported Max" Style="{StaticResource RowLabel}" />
+      <StackPanel Orientation="Horizontal">
+        <Slider x:Name="PacketLossSlider" Width="250" Value="{Binding PacketLossPercent}" />
+        <TextBlock x:Name="PacketLossCaption"
+                   Text="{Binding PacketLossCaption}"
+                   Style="{StaticResource Caption}" />
+      </StackPanel>
+
+      <CheckBox x:Name="IdrOnFecFailureBox" Margin="0,16,0,0"
+                Content="Request IDR Frame on FEC Failure" IsChecked="{Binding IdrOnFecFailure}" />
+
+      <CheckBox x:Name="ShowStreamStatsBox" Margin="0,8,0,0"
+                Content="Show Stream Stats During Gameplay" IsChecked="{Binding ShowStreamStats}" />
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>
+
+

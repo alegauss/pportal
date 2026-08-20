@@ -1,4 +1,5 @@
-﻿using ChiakiNg.Session;
+﻿using System.Collections.ObjectModel;
+using ChiakiNg.Session;
 
 namespace ChiakiNg.Settings;
 
@@ -135,8 +136,36 @@ public sealed class AudioSettingsViewModel : DialogViewModel
     /// <summary>The label the two device lists lead with.</summary>
     public const string AutoLabel = "Auto";
 
-    private IReadOnlyList<string> outputs = EmptyFirstChoice.Build(AutoLabel, []);
-    private IReadOnlyList<string> inputs = EmptyFirstChoice.Build(AutoLabel, []);
+    /// <summary>
+    /// Brings a bound collection to match a new list, in place and WITHOUT emptying it.
+    ///
+    /// Clear-then-add would be simpler and loses the selection: an empty collection has no valid
+    /// index, so the combo drops to -1 and re-adding the items does not bring it back. Replacing
+    /// entry by entry and only removing a genuine surplus means a device that is still present keeps
+    /// its position - which is the case that matters, because a re-enumeration usually returns the
+    /// same devices.
+    /// </summary>
+    private static void Sync(ObservableCollection<string> target, IReadOnlyList<string> items)
+    {
+        for (int i = target.Count - 1; i >= items.Count; i--)
+            target.RemoveAt(i);
+
+        for (int i = 0; i < items.Count; i++)
+        {
+            if (i >= target.Count)
+                target.Add(items[i]);
+            else if (!string.Equals(target[i], items[i], StringComparison.Ordinal))
+                target[i] = items[i];
+        }
+    }
+
+        // Mutated, never replaced. Assigning a combo's ItemsSource resets SelectedIndex to -1 and the
+    // two-way binding writes that back - the Stream tab measured it twice. An observable collection
+    // whose contents change in place is bound once in the markup and never re-assigned, so the reset
+    // cannot happen at all. That matters here and not on the other tabs because these two lists are
+    // genuinely dynamic: they are re-enumerated every time the tab becomes visible.
+    private readonly ObservableCollection<string> outputs = new(EmptyFirstChoice.Build(AutoLabel, []));
+    private readonly ObservableCollection<string> inputs = new(EmptyFirstChoice.Build(AutoLabel, []));
 
     private int outputIndex;
     private int inputIndex;
@@ -168,8 +197,8 @@ public sealed class AudioSettingsViewModel : DialogViewModel
 
         SpeechProcessingAvailable = speechAvailable;
 
-        outputs = EmptyFirstChoice.Build(AutoLabel, outputDevices ?? []);
-        inputs = EmptyFirstChoice.Build(AutoLabel, inputDevices ?? []);
+        Sync(outputs, EmptyFirstChoice.Build(AutoLabel, outputDevices ?? []));
+        Sync(inputs, EmptyFirstChoice.Build(AutoLabel, inputDevices ?? []));
 
         outputIndex = EmptyFirstChoice.IndexOf(outputs, preferences.GetString("settings/audio_out_device"));
         inputIndex = EmptyFirstChoice.IndexOf(inputs, preferences.GetString("settings/audio_in_device"));
@@ -198,10 +227,10 @@ public sealed class AudioSettingsViewModel : DialogViewModel
     public bool SpeechProcessingAvailable { get; init; } = true;
 
     /// <summary>What the output list offers, first entry included.</summary>
-    public IReadOnlyList<string> OutputDevices => outputs;
+    public ObservableCollection<string> OutputDevices => outputs;
 
     /// <summary>What the input list offers.</summary>
-    public IReadOnlyList<string> InputDevices => inputs;
+    public ObservableCollection<string> InputDevices => inputs;
 
     /// <summary>How many times the device lists have been re-enumerated.</summary>
     public int RefreshCount => refreshCount;
@@ -218,8 +247,8 @@ public sealed class AudioSettingsViewModel : DialogViewModel
         string chosenOut = OutputStored;
         string chosenIn = InputStored;
 
-        outputs = EmptyFirstChoice.Build(AutoLabel, outputDevices);
-        inputs = EmptyFirstChoice.Build(AutoLabel, inputDevices);
+        Sync(outputs, EmptyFirstChoice.Build(AutoLabel, outputDevices));
+        Sync(inputs, EmptyFirstChoice.Build(AutoLabel, inputDevices));
         refreshCount++;
 
         // The chosen device is looked up again in the new list, so one that went away reads as the
@@ -240,6 +269,14 @@ public sealed class AudioSettingsViewModel : DialogViewModel
         get => outputIndex;
         set
         {
+            // A negative index is the ItemsSource reset, not a choice - refused for the same reason the
+            // Stream tab refuses one.
+            if (value < 0)
+            {
+                Raise(nameof(OutputIndex));
+                return;
+            }
+
             Set(ref outputIndex, value);
             Raise(nameof(OutputStored));
         }
@@ -250,6 +287,12 @@ public sealed class AudioSettingsViewModel : DialogViewModel
         get => inputIndex;
         set
         {
+            if (value < 0)
+            {
+                Raise(nameof(InputIndex));
+                return;
+            }
+
             Set(ref inputIndex, value);
             Raise(nameof(InputStored));
         }
@@ -322,20 +365,32 @@ public sealed class AudioSettingsViewModel : DialogViewModel
     public int NoiseSuppressDb
     {
         get => noiseSuppress;
-        set => Set(ref noiseSuppress, value);
+        set
+        {
+            Set(ref noiseSuppress, value);
+            Raise(nameof(NoiseSuppressCaption));
+        }
     }
 
     public int EchoSuppressDb
     {
         get => echoSuppress;
-        set => Set(ref echoSuppress, value);
+        set
+        {
+            Set(ref echoSuppress, value);
+            Raise(nameof(EchoSuppressCaption));
+        }
     }
 
     /// <summary>The weak-wifi threshold, a whole percent everywhere.</summary>
     public int WifiDroppedPercent
     {
         get => wifiDroppedPercent;
-        set => Set(ref wifiDroppedPercent, value);
+        set
+        {
+            Set(ref wifiDroppedPercent, value);
+            Raise(nameof(WifiDroppedCaption));
+        }
     }
 
     /// <summary>The reported-loss cap, a percent here and a fraction in the store.</summary>
@@ -346,11 +401,30 @@ public sealed class AudioSettingsViewModel : DialogViewModel
         {
             Set(ref packetLossPercent, value);
             Raise(nameof(PacketLossStored));
+            Raise(nameof(PacketLossCaption));
         }
     }
 
     /// <summary>What the store receives for it: the percentage over a hundred.</summary>
     public double PacketLossStored => LossThresholds.FractionFromPercent(PacketLossPercent);
+
+    // The four remaining captions, on the model with the other two rather than as StringFormat in
+    // the markup. Not only for consistency: ">= %1% dropped packets" cannot be written as a
+    // StringFormat inside a markup extension at all, because the parser reads the `=` as a
+    // name-value separator. A caption that has to live in one place is better than three that live
+    // in the markup and one that cannot.
+
+    /// <summary>`>= %1% dropped packets`, as the QML spells it.</summary>
+    public string WifiDroppedCaption => $">= {WifiDroppedPercent}% dropped packets";
+
+    /// <summary>`%1% packet loss`.</summary>
+    public string PacketLossCaption => $"{PacketLossPercent}% packet loss";
+
+    /// <summary>`%1 dB`, for the noise slider.</summary>
+    public string NoiseSuppressCaption => $"{NoiseSuppressDb} dB";
+
+    /// <summary>And for the echo slider.</summary>
+    public string EchoSuppressCaption => $"{EchoSuppressDb} dB";
 
     public bool IdrOnFecFailure
     {
@@ -476,4 +550,8 @@ public static class AudioSettingsSource
             || !qmlSettingsCpp.Contains("GetWifiDroppedNotif() * 100", StringComparison.Ordinal);
     }
 }
+
+
+
+
 
