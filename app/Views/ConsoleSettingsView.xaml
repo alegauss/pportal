@@ -1,0 +1,73 @@
+<UserControl x:Class="ChiakiNg.Views.ConsoleSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    PP16: the settings screen's Consoles tab, the fifth of the nine.
+
+    Two lists that look alike. Both bind a caption collection the view model refills IN PLACE - the
+    rule PP159 arrived at - so no ItemsSource is ever re-assigned and no selection is ever lost.
+
+    What the markup deliberately does not know: that the caption leads with the address rather than
+    the name, that streamer mode replaces the address and not the name, and that deleting a
+    registered console is positional where unhiding a hidden one is keyed. All three are the view
+    model's, and the last one is why the two buttons are not one style.
+  -->
+  <UserControl.Resources>
+    <Style TargetType="TextBlock" x:Key="ListHeading">
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="0,16,0,6" />
+    </Style>
+  </UserControl.Resources>
+
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="16">
+      <Button x:Name="RegisterNewButton" Content="Register New"
+              HorizontalAlignment="Center" Padding="20,4" />
+
+      <TextBlock Text="Registered Consoles" Style="{StaticResource ListHeading}" />
+      <ListBox x:Name="RegisteredList" MinHeight="120" MaxHeight="240"
+               ItemsSource="{Binding RegisteredCaptions}" HorizontalContentAlignment="Stretch">
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <Grid Margin="0,4">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+
+              <!-- One setting behind N boxes: the tick is derived from the MAC, not the row. -->
+              <CheckBox Grid.Column="0" Content="Auto-Connect" VerticalAlignment="Center"
+                        Margin="4,0,16,0" Tag="{Binding}" />
+              <TextBlock Grid.Column="1" Text="{Binding}" VerticalAlignment="Center"
+                         TextTrimming="CharacterEllipsis" />
+              <Button Grid.Column="2" Content="Delete" Padding="12,2" Margin="16,0,4,0"
+                      Tag="{Binding}" />
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+
+      <TextBlock Text="Hidden Consoles" Style="{StaticResource ListHeading}" />
+      <ListBox x:Name="HiddenList" MinHeight="80" MaxHeight="200"
+               ItemsSource="{Binding HiddenCaptions}" HorizontalContentAlignment="Stretch">
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <Grid Margin="0,4">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+
+              <TextBlock Grid.Column="0" Text="{Binding}" VerticalAlignment="Center"
+                         TextTrimming="CharacterEllipsis" />
+              <Button Grid.Column="1" Content="Unhide" Padding="12,2" Margin="16,0,4,0"
+                      Tag="{Binding}" />
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

@@ -84,6 +84,7 @@
 - ✅ **PP157** **the Stream tab's resolution has three representations and choosing one silently zeroes a bitrate** — the tab, its three-layer resolution and the bitrate a resolution change quietly zeroes.
 - ✅ **PP158** **four Audio tab controls carry a unit conversion the store does not show, and one of two percent sliders scales** — the tab's four unit conversions, and the empty-first-entry rule moved into one type.
 - ✅ **PP159** **PP158 shipped the Audio tab's rules with no screen to draw them on, and its device lists are the only dynamic ones** — the screen, and the one list on any tab that has to be refilled rather than assigned.
+- ✅ **PP160** **the Consoles tab deletes by index and unhides by MAC, and streamer mode hides the address rather than the name** — the tab, its two captions, the radio group over one setting and the two ways a row is named.
 
 ## Block E — Windows-only build
 
