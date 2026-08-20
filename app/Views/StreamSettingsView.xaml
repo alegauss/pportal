@@ -1,0 +1,115 @@
+<UserControl x:Class="ChiakiNg.Views.StreamSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    PP16: the settings screen's Stream tab, the third of the nine.
+
+    Twelve controls: resolution, frame rate and bitrate, for two consoles and two connections. All
+    twelve are declared and one console's six are hidden - which is the QML's own structure, and it is
+    here for a reason rather than by imitation. Six controls whose contents changed with the console
+    meant re-assigning a ComboBox's ItemsSource inside a property-changed cascade, because the four
+    resolution rows carry three different label lists between them. That left a correct SelectedIndex
+    with a blank SelectedItem: the right value stored and an empty box on screen. No list in this file
+    changes after construction.
+
+    Nothing here states a conversion. The resolution index is not the stored value and neither is the
+    frame-rate index; the bitrate is Mbps here and kbps in the store; and choosing a resolution also
+    zeroes the row's bitrate. All of that is the view model's, because each one is a different kind of
+    wrong and none of them shows up on screen.
+  -->
+  <UserControl.Resources>
+    <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+
+    <Style TargetType="TextBlock" x:Key="RowLabel">
+      <Setter Property="Margin" Value="0,8,0,2" />
+      <Setter Property="Opacity" Value="0.7" />
+    </Style>
+
+    <Style TargetType="TextBlock" x:Key="ColumnHead">
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="0,0,0,4" />
+    </Style>
+  </UserControl.Resources>
+
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="16">
+      <TextBlock Text="Settings for" Style="{StaticResource RowLabel}" />
+      <ComboBox x:Name="ConsoleCombo" Width="400" HorizontalAlignment="Left"
+                SelectedIndex="{Binding SelectedConsoleIndex}" />
+
+      <Grid Margin="0,16,0,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="140" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Grid.Column="1" Text="Local" Style="{StaticResource ColumnHead}" />
+        <TextBlock Grid.Row="0" Grid.Column="2" Text="Remote" Style="{StaticResource ColumnHead}" />
+
+        <TextBlock Grid.Row="1" Grid.Column="0" Text="Resolution" VerticalAlignment="Center"
+                   Style="{StaticResource RowLabel}" />
+
+        <ComboBox Grid.Row="1" Grid.Column="1" x:Name="Ps4LocalResolutionCombo" Margin="4"
+                  SelectedIndex="{Binding Ps4LocalResolutionIndex}"
+                  Visibility="{Binding Ps4Visible, Converter={StaticResource BoolToVisibility}}" />
+        <ComboBox Grid.Row="1" Grid.Column="1" x:Name="Ps5LocalResolutionCombo" Margin="4"
+                  SelectedIndex="{Binding Ps5LocalResolutionIndex}"
+                  Visibility="{Binding Ps5Visible, Converter={StaticResource BoolToVisibility}}" />
+        <ComboBox Grid.Row="1" Grid.Column="2" x:Name="Ps4RemoteResolutionCombo" Margin="4"
+                  SelectedIndex="{Binding Ps4RemoteResolutionIndex}"
+                  Visibility="{Binding Ps4Visible, Converter={StaticResource BoolToVisibility}}" />
+        <ComboBox Grid.Row="1" Grid.Column="2" x:Name="Ps5RemoteResolutionCombo" Margin="4"
+                  SelectedIndex="{Binding Ps5RemoteResolutionIndex}"
+                  Visibility="{Binding Ps5Visible, Converter={StaticResource BoolToVisibility}}" />
+
+        <TextBlock Grid.Row="2" Grid.Column="0" Text="Frame rate" VerticalAlignment="Center"
+                   Style="{StaticResource RowLabel}" />
+
+        <ComboBox Grid.Row="2" Grid.Column="1" x:Name="Ps4LocalFpsCombo" Margin="4"
+                  SelectedIndex="{Binding Ps4LocalFpsIndex}"
+                  Visibility="{Binding Ps4Visible, Converter={StaticResource BoolToVisibility}}" />
+        <ComboBox Grid.Row="2" Grid.Column="1" x:Name="Ps5LocalFpsCombo" Margin="4"
+                  SelectedIndex="{Binding Ps5LocalFpsIndex}"
+                  Visibility="{Binding Ps5Visible, Converter={StaticResource BoolToVisibility}}" />
+        <ComboBox Grid.Row="2" Grid.Column="2" x:Name="Ps4RemoteFpsCombo" Margin="4"
+                  SelectedIndex="{Binding Ps4RemoteFpsIndex}"
+                  Visibility="{Binding Ps4Visible, Converter={StaticResource BoolToVisibility}}" />
+        <ComboBox Grid.Row="2" Grid.Column="2" x:Name="Ps5RemoteFpsCombo" Margin="4"
+                  SelectedIndex="{Binding Ps5RemoteFpsIndex}"
+                  Visibility="{Binding Ps5Visible, Converter={StaticResource BoolToVisibility}}" />
+
+        <TextBlock Grid.Row="3" Grid.Column="0" Text="Bitrate" VerticalAlignment="Center"
+                   Style="{StaticResource RowLabel}" />
+
+        <StackPanel Grid.Row="3" Grid.Column="1" Margin="4"
+                    Visibility="{Binding Ps4Visible, Converter={StaticResource BoolToVisibility}}">
+          <Slider x:Name="Ps4LocalBitrateSlider" Value="{Binding Ps4LocalBitrateMbps}" />
+          <TextBlock x:Name="Ps4LocalBitrateCaption" Text="{Binding Ps4LocalBitrateCaption}" Opacity="0.8" />
+        </StackPanel>
+        <StackPanel Grid.Row="3" Grid.Column="1" Margin="4"
+                    Visibility="{Binding Ps5Visible, Converter={StaticResource BoolToVisibility}}">
+          <Slider x:Name="Ps5LocalBitrateSlider" Value="{Binding Ps5LocalBitrateMbps}" />
+          <TextBlock x:Name="Ps5LocalBitrateCaption" Text="{Binding Ps5LocalBitrateCaption}" Opacity="0.8" />
+        </StackPanel>
+        <StackPanel Grid.Row="3" Grid.Column="2" Margin="4"
+                    Visibility="{Binding Ps4Visible, Converter={StaticResource BoolToVisibility}}">
+          <Slider x:Name="Ps4RemoteBitrateSlider" Value="{Binding Ps4RemoteBitrateMbps}" />
+          <TextBlock x:Name="Ps4RemoteBitrateCaption" Text="{Binding Ps4RemoteBitrateCaption}" Opacity="0.8" />
+        </StackPanel>
+        <StackPanel Grid.Row="3" Grid.Column="2" Margin="4"
+                    Visibility="{Binding Ps5Visible, Converter={StaticResource BoolToVisibility}}">
+          <Slider x:Name="Ps5RemoteBitrateSlider" Value="{Binding Ps5RemoteBitrateMbps}" />
+          <TextBlock x:Name="Ps5RemoteBitrateCaption" Text="{Binding Ps5RemoteBitrateCaption}" Opacity="0.8" />
+        </StackPanel>
+      </Grid>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>
