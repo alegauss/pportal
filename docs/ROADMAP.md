@@ -28,7 +28,7 @@
 
 ## Block F — Managed core
 
-- ⏳ **PP23** (deps: —) **the protocol has no specification, so a managed rewrite has no oracle except the C code it replaces** — the rest of the modules, and the captured session replay that makes a comparison repeatable where a console is needed. → §PP23
+- ⏳ **PP23** (deps: —) **the protocol has no specification, so a managed rewrite has no oracle except the C code it replaces** — the curl transfers, 420 call sites of them, and a decoder the frame path has no equivalent for yet. → §PP23
 - 📋 **PP26** (deps: PP23 ⏳, PP24 ✅) **3242 lines of crypto over OpenSSL sit between a registration and a session** — This is where a translation error is silent: a wrong byte does not throw, it produces a key that fails to open a session with no clue which of eight steps was wrong. → §PP26
 - 📋 **PP27** (deps: PP23 ⏳, PP25 ✅, PP44 ✅) **takion, the transport the whole stream rides on, is 1845 lines of C over raw sockets and timers** — It is the layer where a managed rewrite is judged on latency rather than on output, because every millisecond it adds is one the picture is late by. → §PP27
 - 📋 **PP28** (deps: PP23 ⏳, PP27) **session, ctrl and streamconnection are 3947 lines of state machine with no diagram** — This is the largest single translation in the core and the one where behaviour lives in the ordering of events rather than in any function worth reading alone. → §PP28
