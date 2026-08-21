@@ -1,4 +1,4 @@
-﻿using ChiakiNg.Native;
+using ChiakiNg.Native;
 using ChiakiNg.Session;
 using Xunit;
 
