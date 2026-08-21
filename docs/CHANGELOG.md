@@ -94,6 +94,7 @@
 - ✅ **PP166** **the Config tab reads its profile from the default store and turns verbose on by clearing one bit** — the ninth tab, the profile from the other store, and a mask that subtracts.
 - ✅ **PP17 (the colour mapping tables)** **the renderer tuning and colour mapping screens are 2132 lines of QML over libplacebo options** — a second store, and four labels no rule turns into their words.
 - ✅ **PP168** **the colour mapping sliders repeat each row's condition, and one option is named for the function that hides it** — twenty-two rows in one table, and the three things repeating them hid.
+- ✅ **PP169** **the renderer presets are three names for one choice, and the store's word for Custom is the empty string** — seven preset lists, five of them hiding a section behind an empty string.
 
 ## Block E — Windows-only build
 

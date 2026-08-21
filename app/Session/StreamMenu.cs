@@ -75,7 +75,12 @@ public sealed class StreamMenuViewModel : DialogViewModel
     private double measuredBitrate;
     private double packetLoss;
     private StreamVideoMode videoMode = StreamVideoMode.Normal;
-    private StreamVideoPreset videoPreset = StreamVideoPreset.Default;
+
+    // HighQuality and NOT Default, though one of the six is literally named Default. PP17 read the
+    // store: `placebo_preset_default` is PlaceboPreset::HighQuality, so a fresh install starts on
+    // the third entry. Starting on the one called Default would have this menu light a different
+    // button from the one the Qt client lights, on the same settings file.
+    private StreamVideoPreset videoPreset = StreamVideoPreset.HighQuality;
 
     protected override string ButtonProperty => nameof(CloseGoesToTheMainView);
 
