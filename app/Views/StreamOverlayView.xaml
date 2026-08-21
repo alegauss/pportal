@@ -1,0 +1,89 @@
+<UserControl x:Class="ChiakiNg.Views.StreamOverlayView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    PP10: the stream overlay, and the whole of what PP9 decided about it.
+
+    The task was filed as undecidable: a renderer on a child HWND cannot have XAML over it, and
+    everything here would have had to be drawn into the frame instead. PP9 landed on D3DImage, so
+    the video is an ImageSource like any other and this is a Grid - the video first, the overlay
+    after it. Later children draw on top in WPF, which is the entire mechanism.
+
+    Nothing here decides WHEN anything is shown. Every visibility below is the view model's,
+    including the two error labels, which are shown by their own text alone and by nothing else.
+  -->
+  <UserControl.Resources>
+    <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+  </UserControl.Resources>
+
+  <Grid Background="Black">
+    <!-- The video. Bound rather than assigned: the D3DImage is the renderer's and this screen
+         only shows it, which is what makes the overlay a screen rather than a compositor. -->
+    <Image x:Name="Video" Source="{Binding Video}" Stretch="Uniform" />
+
+    <!-- The black panel, up for three different reasons - loading, failed, and video switched off
+         in settings. The third is not a transient and stays for the whole session. -->
+    <Grid x:Name="LoadingPanel" Background="Black"
+          Visibility="{Binding LoadingVisible, Converter={StaticResource BoolToVisibility}}">
+      <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+        <TextBlock x:Name="DisabledTitle" FontSize="24" HorizontalAlignment="Center"
+                   Text="{Binding DisabledTitle}"
+                   Visibility="{Binding DisabledNoticeVisible, Converter={StaticResource BoolToVisibility}}" />
+
+        <TextBlock x:Name="ErrorTitle" FontSize="24" HorizontalAlignment="Center"
+                   Text="{Binding ErrorTitle}"
+                   Visibility="{Binding ErrorTitleVisible, Converter={StaticResource BoolToVisibility}}" />
+
+        <TextBlock x:Name="ErrorText" FontSize="20" Margin="0,10,0,0" TextAlignment="Center"
+                   TextWrapping="Wrap" Text="{Binding ErrorText}"
+                   Visibility="{Binding ErrorTextVisible, Converter={StaticResource BoolToVisibility}}" />
+
+        <ProgressBar x:Name="Spinner" IsIndeterminate="True" Width="70" Height="6" Margin="0,20,0,0"
+                     Visibility="{Binding SpinnerVisible, Converter={StaticResource BoolToVisibility}}" />
+
+        <TextBlock x:Name="LoadingHint" Margin="0,30,0,0" TextAlignment="Center" TextWrapping="Wrap"
+                   Text="{Binding LoadingHint}"
+                   Visibility="{Binding SpinnerVisible, Converter={StaticResource BoolToVisibility}}" />
+      </StackPanel>
+    </Grid>
+
+    <!-- The console refusing to show a screen. Not a failure, and it needs a picture to cover. -->
+    <StackPanel x:Name="CantDisplay" VerticalAlignment="Center" HorizontalAlignment="Center"
+                Visibility="{Binding CantDisplayVisible, Converter={StaticResource BoolToVisibility}}">
+      <TextBlock TextAlignment="Center" TextWrapping="Wrap"
+                 Text="The screen contains content that can't be displayed using Remote Play." />
+      <Button x:Name="GoToHomeButton" Content="Go to Home Screen" Margin="0,30,0,0"
+              HorizontalAlignment="Center" Padding="20,4" />
+    </StackPanel>
+
+    <!-- The readouts, right-hand side, vertically centred as the QML has them. -->
+    <StackPanel x:Name="Stats" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,5,0"
+                Visibility="{Binding StatsVisible, Converter={StaticResource BoolToVisibility}}">
+      <TextBlock x:Name="BitrateValue" FontSize="28" FontWeight="Bold" TextAlignment="Right"
+                 Text="{Binding Bitrate}" />
+      <TextBlock Text="Mbps" FontSize="18" TextAlignment="Right" />
+      <TextBlock x:Name="QueueDepthValue" FontSize="18" FontWeight="Bold" TextAlignment="Right"
+                 Foreground="#90CAF9" Text="{Binding QueueDepth}" />
+      <TextBlock Text="queue depth avg" FontSize="15" TextAlignment="Right" />
+      <TextBlock x:Name="FrameAgeValue" FontSize="18" FontWeight="Bold" TextAlignment="Right"
+                 Foreground="#90CAF9" Text="{Binding PendingFrameAge}" />
+      <TextBlock Text="pending frame age" FontSize="15" TextAlignment="Right" />
+      <TextBlock x:Name="PacketLossValue" FontSize="18" FontWeight="Bold" TextAlignment="Right"
+                 Foreground="#EF9A9A" Text="{Binding PacketLossText}" />
+      <TextBlock Text="packet loss" FontSize="15" TextAlignment="Right" />
+      <TextBlock x:Name="DroppedFramesValue" FontSize="18" FontWeight="Bold" TextAlignment="Right"
+                 Foreground="#EF9A9A" Text="{Binding DroppedFrames}" />
+      <TextBlock Text="dropped frames" FontSize="15" TextAlignment="Right" />
+      <TextBlock x:Name="LostFramesValue" FontSize="18" FontWeight="Bold" TextAlignment="Right"
+                 Foreground="#EF9A9A" Text="{Binding LostFrames}" />
+      <TextBlock Text="lost frames" FontSize="15" TextAlignment="Right" />
+    </StackPanel>
+
+    <!-- The dropped-network icon, which is a threshold on a fraction against a setting in percent. -->
+    <Border x:Name="NetworkIndicator" HorizontalAlignment="Left" VerticalAlignment="Top"
+            Margin="20" Padding="10" Opacity="0.7" CornerRadius="4" Background="#607D8B"
+            Visibility="{Binding NetworkIndicatorVisible, Converter={StaticResource BoolToVisibility}}">
+      <TextBlock Text="network" />
+    </Border>
+  </Grid>
+</UserControl>

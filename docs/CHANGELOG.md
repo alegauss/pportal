@@ -61,6 +61,7 @@
 - ✅ **PP133** **nothing says libplacebo can render into the shared texture, only that the texture exists** — the shared texture wraps renderable and sampleable, which is what pl_renderer uses and all it uses.
 - ✅ **PP134** **pl_render_image itself has never run, only the texture it would render into** — pl_render_image runs into the shared texture with a hand-built target, and there is no swapchain.
 - ✅ **PP135** **nothing has asked WPF whether it will take the shared surface, only Direct3D** — a D3DImage reports a front buffer available at 1920x1080 for the shared surface.
+- ✅ **PP10 (the HUD)** **the stream HUD and the in-stream menu are QML drawn over the video and disappear with the renderer** — XAML over the video, with its units.
 
 ## Block D — Screens
 
