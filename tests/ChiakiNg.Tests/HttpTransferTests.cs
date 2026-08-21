@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http;
 using System.Text;
 using ChiakiNg.Protocol;
 using Xunit;
@@ -24,6 +25,8 @@ public class HttpTransferTests : IDisposable
     private string body = "ok";
     private TimeSpan delay = TimeSpan.Zero;
     private readonly List<string> seenHeaders = [];
+    private string? seenBody;
+    private string? seenMethod;
 
     public HttpTransferTests()
     {
@@ -69,6 +72,11 @@ public class HttpTransferTests : IDisposable
                 if (name is not null)
                     seenHeaders.Add($"{name}: {context.Request.Headers[name]}");
             }
+
+            seenMethod = context.Request.HttpMethod;
+
+            using (var reader = new StreamReader(context.Request.InputStream, Encoding.UTF8))
+                seenBody = await reader.ReadToEndAsync().ConfigureAwait(false);
 
             if (delay > TimeSpan.Zero)
                 await Task.Delay(delay, CancellationToken.None).ConfigureAwait(false);
@@ -200,6 +208,72 @@ public class HttpTransferTests : IDisposable
             () => HttpTransfer.GetAsync(prefix, TimeSpan.FromSeconds(30), null, caller.Token));
 
         delay = TimeSpan.Zero;
+    }
+
+    /// <summary>
+    /// The four POSTFIELDS sites carry JSON, and the content type reaches the server WITH its
+    /// charset - which is the string the server has been answering.
+    ///
+    /// It also matters more than politeness: CURLOPT_POSTFIELDS makes curl announce
+    /// application/x-www-form-urlencoded unless told otherwise, so the explicit header is what
+    /// stops six JSON bodies being sent as form data.
+    /// </summary>
+    [Fact]
+    public async Task APostCarriesJsonWithItsCharset()
+    {
+        status = 200;
+        body = "{}";
+        seenHeaders.Clear();
+        seenBody = null;
+
+        TransferResult result = await HttpTransfer.PostJsonAsync(
+            prefix, """{"a":1}""", TimeSpan.FromSeconds(10));
+
+        Assert.True(result.Ok, result.Failure);
+        Assert.Equal("""{"a":1}""", seenBody);
+
+        Assert.Contains(
+            seenHeaders,
+            h => h.StartsWith("Content-Type: " + HttpTransfer.JsonContentType, StringComparison.OrdinalIgnoreCase));
+
+        // Not the form encoding curl would have chosen for a POSTFIELDS body on its own.
+        Assert.DoesNotContain(
+            seenHeaders,
+            h => h.Contains("x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>FAILONERROR applies to a POST as well - it is set on the same handles.</summary>
+    [Fact]
+    public async Task APostAlsoFailsAtFourHundred()
+    {
+        status = 400;
+        body = "a body nobody should read";
+
+        TransferResult result = await HttpTransfer.PostJsonAsync(
+            prefix, "{}", TimeSpan.FromSeconds(10));
+
+        Assert.False(result.Ok);
+        Assert.Null(result.Body);
+    }
+
+    /// <summary>
+    /// The one CUSTOMREQUEST site is a DELETE with no body, which is what curl's option does:
+    /// change the method and nothing else.
+    /// </summary>
+    [Fact]
+    public async Task TheCustomMethodIsADeleteWithNoBody()
+    {
+        status = 200;
+        body = "";
+        seenMethod = null;
+        seenBody = null;
+
+        TransferResult result = await HttpTransfer.SendAsync(
+            HttpMethod.Delete, prefix, TimeSpan.FromSeconds(10));
+
+        Assert.True(result.Ok, result.Failure);
+        Assert.Equal("DELETE", seenMethod);
+        Assert.True(string.IsNullOrEmpty(seenBody), $"a bodyless method sent: {seenBody}");
     }
 
     /// <summary>

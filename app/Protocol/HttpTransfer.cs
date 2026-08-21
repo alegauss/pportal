@@ -105,6 +105,88 @@ public static class HttpTransfer
     }
 
     /// <summary>
+    /// The content type every body-carrying transfer in the core sets, WITH the charset.
+    ///
+    /// It is set as an explicit header on all six of them, and that is load-bearing rather than
+    /// polite: CURLOPT_POSTFIELDS makes curl send Content-Type: application/x-www-form-urlencoded
+    /// unless told otherwise, so the header is what stops six JSON bodies being announced as form
+    /// data. The charset parameter is part of the string the server has been answering, and a port
+    /// reaching for JsonContent would send "application/json" without it.
+    /// </summary>
+    public const string JsonContentType = "application/json; charset=utf-8";
+
+    /// <summary>
+    /// A transfer with a body, or with a method curl set through CURLOPT_CUSTOMREQUEST.
+    ///
+    /// One door for both because that is what the core has: four sites set POSTFIELDS and one sets
+    /// CUSTOMREQUEST to DELETE, and every one of them then behaves like the GET above - same
+    /// FAILONERROR, same shared client, same whole-transfer bound.
+    /// </summary>
+    /// <param name="method">POST for the four, DELETE for the one.</param>
+    /// <param name="body">The JSON, or null for a bodyless method.</param>
+    public static async Task<TransferResult> SendAsync(
+        HttpMethod method,
+        string url,
+        TimeSpan timeout,
+        string? body = null,
+        IReadOnlyList<(string Name, string Value)>? headers = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(method);
+        ArgumentNullException.ThrowIfNull(url);
+
+        using var bounded = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        bounded.CancelAfter(timeout);
+
+        try
+        {
+            using var request = new HttpRequestMessage(method, url);
+
+            foreach ((string name, string value) in headers ?? [])
+                request.Headers.TryAddWithoutValidation(name, value);
+
+            if (body is not null)
+            {
+                // The type is set on the CONTENT and not through the header list above: a
+                // Content-Type in request.Headers is refused by HttpClient, which puts it on the
+                // content - so a call site copying the core's header list wholesale would throw.
+                request.Content = new StringContent(body, System.Text.Encoding.UTF8);
+                request.Content.Headers.ContentType =
+                    MediaTypeHeaderValue.Parse(JsonContentType);
+            }
+
+            using HttpResponseMessage response =
+                await Shared.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, bounded.Token)
+                    .ConfigureAwait(false);
+
+            int status = (int)response.StatusCode;
+
+            if (CurlSemantics.WouldFailTransfer(status))
+                return new TransferResult(status, null, $"HTTP {status}");
+
+            byte[] received = await response.Content.ReadAsByteArrayAsync(bounded.Token).ConfigureAwait(false);
+            return new TransferResult(status, received, null);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            return new TransferResult(0, null, "timed out after " + timeout);
+        }
+        catch (HttpRequestException ex)
+        {
+            return new TransferResult(0, null, ex.Message);
+        }
+    }
+
+    /// <summary>The four POSTFIELDS sites, which all carry JSON.</summary>
+    public static Task<TransferResult> PostJsonAsync(
+        string url,
+        string json,
+        TimeSpan timeout,
+        IReadOnlyList<(string Name, string Value)>? headers = null,
+        CancellationToken cancellationToken = default)
+        => SendAsync(HttpMethod.Post, url, timeout, json, headers, cancellationToken);
+
+    /// <summary>
     /// The header list a call site builds, in the order curl's slist keeps them.
     ///
     /// Here so that a site translating CURLOPT_HTTPHEADER has somewhere to put its pairs without

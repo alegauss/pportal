@@ -149,6 +149,7 @@
 - ✅ **PP186** **PP33 is sized at 420 call sites, which is the wrong number to plan a translation from and the only one anybody has** — ten behaviours behind four hundred sites, and the three that are the work.
 - ✅ **PP187** **the three curl behaviours HttpClient lacks were a plan, so each call site would still decide what curl was doing** — a transfer that fails the way curl fails, driven against a real server.
 - ✅ **PP188** **the one call site that is a WebSocket sends its subprotocol as a header and disables the timeout every other one sets** — the push socket, its fixed strings, and the transfer with no timeout.
+- ✅ **PP189** **the bodies the core posts are JSON only because a header overrides what POSTFIELDS would announce them as** — four posts and a delete, with the header that stops JSON being form data.
 
 ## Block G — Test discipline
 
