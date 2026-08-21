@@ -88,6 +88,14 @@
     <Protobuf Include="..\lib\protobuf\takion.proto" ProtoRoot="..\lib\protobuf" GrpcServices="None" />
   </ItemGroup>
 
+  <!-- PP7: the browser the PSN login needs, and the largest thing this port DELETES.
+       The Qt client bundles QtWebEngine - a whole Chromium - for one screen. This package is not
+       a second copy of one: it is the wrapper around the Edge WebView2 runtime, which is part of
+       Windows 11 already, so what ships here is a loader and not a browser. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4129.50" />
+  </ItemGroup>
+
   <!-- The assertion for "the version as a single source of truth" (PP1). app.manifest carries
        its own assemblyIdentity version, and nothing in the SDK relates the two: they are set
        in different files, in different syntaxes, and a release with two different numbers in

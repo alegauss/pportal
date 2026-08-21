@@ -1,12 +1,14 @@
 <UserControl x:Class="ChiakiNg.Views.PsnLoginView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:ChiakiNg.Views">
   <!--
     PP7: the PSN login, showing whichever of its three paths the view model is on.
 
-    Only one of the three needs a browser, and it is the only thing here that is still a hole:
-    BrowserHost is where the WebView2 control goes, and until it does this screen falls back to
-    the paste form exactly as the Qt client does when Qt.createQmlObject throws.
+    Only one of the three needs a browser, and BrowserHost is where it is: a PsnBrowserPanel, which
+    is WebView2 and therefore the Edge already on the machine rather than a Chromium in the
+    installer. When there is no usable runtime the panel says so and this screen falls back to the
+    paste form, exactly as the Qt client does when Qt.createQmlObject throws.
 
     Every visibility on this screen is the view model's, and so is the button - the mode decides
     what is shown and CanSubmit decides whether it can be pressed. The markup states neither rule,
@@ -23,9 +25,12 @@
   </UserControl.Resources>
 
   <StackPanel Margin="16">
-    <!-- The embedded browser's slot. Empty, and named so the residue of PP7 has somewhere to land. -->
+    <!-- The embedded browser. Constructed with the screen and started by whoever opens the dialog:
+         a WebView2 that has not been given a URL costs a control and no browser process. -->
     <Border x:Name="BrowserHost" MinHeight="240" BorderThickness="1" BorderBrush="#40808080"
-            Visibility="{Binding BrowserVisible, Converter={StaticResource BoolToVisibility}}" />
+            Visibility="{Binding BrowserVisible, Converter={StaticResource BoolToVisibility}}">
+      <views:PsnBrowserPanel x:Name="Browser" />
+    </Border>
 
     <StackPanel x:Name="RedirectGroup"
                 Visibility="{Binding RedirectVisible, Converter={StaticResource BoolToVisibility}}">

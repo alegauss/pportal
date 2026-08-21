@@ -4,18 +4,6 @@
 
 ## Block B — Native interop
 
-### §PP7 The browser the login needs
-
-PSNLoginDialog.qml imports QtWebEngine and hosts a WebEngineView because the login is
-Sony's page, not this application's: what the flow needs is to watch for a redirect and
-read the code out of it. QtWebEngine is also the single largest thing in the build - a
-Chromium - for one screen.
-
-WebView2 is the Windows answer and is part of the OS on Windows 11. It exposes the same
-navigation event, so the flow is unchanged; what changes is that the installer stops
-carrying a browser. jsonrequester.cpp and psntoken.cpp then become HttpClient calls,
-which is the smallest part of this task and the part with no decision in it.
-
 ### §PP93 Three answers to one question
 
 This client carries three different touchpad extents. streamsession.cpp picks per

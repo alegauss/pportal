@@ -8,7 +8,7 @@ public enum PsnLoginMode
 {
     /// <summary>
     /// The embedded browser. Nothing is typed and there is no button - the screen is waiting for a
-    /// navigation, which is the one thing this port cannot yet produce.
+    /// navigation, which <see cref="PsnBrowser"/> reads and stops.
     /// </summary>
     Browser,
 

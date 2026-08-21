@@ -9,7 +9,6 @@
 
 ## Block B — Native interop
 
-- ⏳ **PP7** (deps: PP4 ✅) **PSN OAuth login runs in a QtWebEngine view, a bundled browser the WPF host has no equivalent for** — the WebView2 control itself, which needs a browser and a PSN account to drive; the exchange landed in PP144. → §PP7
 - ⏳ **PP93** (deps: —) **the dpad touch path uses a third pair of touchpad bounds, matching neither console's pad** — the SDL touchpad path in controllermanager.cpp still scales by the fixed macros, having no session to ask which console is connected. → §PP93
 
 ## Block C — Video and input path
@@ -20,7 +19,7 @@
 
 ## Block D — Screens
 
-- 📋 **PP15** (deps: PP7 ⏳, PP12 ✅) **the PSN login and token dialogs are 882 lines of QML wrapped around the embedded browser** — The account link is what remote play outside the local network depends on, and these are the only screens whose content is a third party page. → §PP15
+- 📋 **PP15** (deps: PP7 ✅, PP12 ✅) **the PSN login and token dialogs are 882 lines of QML wrapped around the embedded browser** — The account link is what remote play outside the local network depends on, and these are the only screens whose content is a third party page. → §PP15
 - ⏳ **PP16** (deps: PP2 ✅, PP12 ✅) **the settings screen is 2984 lines of QML against 149 properties exposed from C++** — the other eight tabs, which is the rest of the 149-property binding surface. → §PP16
 - 📋 **PP17** (deps: PP9 ⏳, PP12 ✅) **the renderer tuning and colour mapping screens are 2132 lines of QML over libplacebo options** — Every control on them writes an option that only exists while libplacebo does, so they can only be drawn once the renderer decision has been taken. → §PP17
 - ⏳ **PP18** (deps: PP8 ✅, PP12 ✅) **the controller mapping screen is QML bound to the live SDL mapping strings** — A mapping screen is unusable without input arriving from the device being mapped, so it lands with the input path rather than with the other dialogs. → §PP18

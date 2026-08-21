@@ -5,10 +5,11 @@ using ChiakiNg.Native;
 namespace ChiakiNg.Session;
 
 /// <summary>
-/// PP7: the PSN login, minus the browser.
+/// PP7: the PSN login, everywhere except inside the browser.
 ///
 /// The Qt client runs the OAuth flow inside a QtWebEngine view - a whole bundled Chromium - and
-/// WebView2 replaces the view. What it does NOT replace is everything around it: the authorize URL,
+/// WebView2 replaces the view (<see cref="PsnBrowser"/>). What it does NOT replace is everything
+/// around it: the authorize URL,
 /// the redirect that has to be recognised, the code pulled out of it, and the token request made
 /// with it. That is all string work, it is all in this file, and it is where a port breaks
 /// silently: a scope spelled differently or a redirect matched slightly wrong is a login that never
@@ -113,6 +114,34 @@ public static class PsnAuth
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// What <c>initPsnAuth</c> says about a URL that is not the redirect at all - the paste path's
+    /// error, and the only one of the two a user can act on.
+    /// </summary>
+    public const string InvalidUrlMessage =
+        "[E] Invalid URL: Please make sure you have copy and pasted the URL correctly.";
+
+    /// <summary>
+    /// What it says about the redirect with no code on it, which is a login backed out of rather
+    /// than a URL typed wrong. Two messages and not one, because they are two different mistakes.
+    /// </summary>
+    public const string InvalidCodeMessage = "[E] Invalid code from redirect url.";
+
+    /// <summary>
+    /// The error one redirect URL produces, or null when it carries a code. The order is the
+    /// backend's: not-the-redirect is decided before the code is looked for, so a pasted address
+    /// bar full of nothing gets the message about pasting rather than the one about codes.
+    /// </summary>
+    public static string? RedirectError(string url)
+    {
+        ArgumentNullException.ThrowIfNull(url);
+
+        if (!IsRedirect(url))
+            return InvalidUrlMessage;
+
+        return CodeFrom(url) is null ? InvalidCodeMessage : null;
     }
 
     /// <summary>The form body that exchanges a code for a token.</summary>
