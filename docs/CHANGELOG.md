@@ -139,6 +139,7 @@
 - ✅ **PP124** **nothing the port sends upstream is checked, and the congestion report is recorded twice** — the fifteen bytes match before and after the MAC, and every field is asserted to change them.
 - ✅ **PP125** **takion's send buffer decides what gets retransmitted and the port drove none of it** — six properties across the seam, the serial-order wrap included, and the double free on a refused push is gone.
 - ✅ **PP37** **a screen ported into code-behind can only be exercised by opening a window** — the first view model is the registration dialog, nineteen assertions and not one window.
+- ✅ **PP162** **the view tests race through WPF's static initialisation and the whole suite reports a hang, intermittently** — one runner config, and the assertion that it still reaches the runner.
 
 ## Block H — Performance and telemetry
 

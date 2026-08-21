@@ -36,4 +36,20 @@
     <ProjectReference Include="..\..\app\ChiakiNg.csproj" />
   </ItemGroup>
 
+  <!-- PP162: the runner config, and it is load-bearing rather than tidy.
+       xunit.runner.json turns collection parallelism OFF. Every view test opens a WPF element on
+       its own STA thread, and two of those threads racing through WPF's first-touch static
+       initialisation deadlock: the whole suite then reports "the STA thread did not finish" for
+       every view test at once, 30 seconds apiece, while each of them passes alone. It is
+       intermittent by scheduling, which is worse than broken - the suite was green twice and red
+       three times on the same source.
+       It costs nothing. Serial, the 1034 tests run in about a second; the parallel runs that did
+       not deadlock were not measurably faster.
+       Copied to the output directory explicitly. The runner reads it from beside the assembly, so
+       a config that is not copied is a config that silently does not apply - which is this defect
+       coming back with the file still in the tree to say it should not have. -->
+  <ItemGroup>
+    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
