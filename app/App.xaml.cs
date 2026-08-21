@@ -180,9 +180,14 @@ public partial class App : Application
         sdl.Invoke(
             () =>
             {
-                pad = Gamepads.Pads().FirstOrDefault();
-                if (pad is SdlPad found)
-                    handle = Gamepads.OpenController(found.Index);
+                // PP228: the count answers absence; FirstOrDefault over a struct answers with a
+                // zero value that is not null, and this report would then name a pad with no name.
+                IReadOnlyList<SdlPad> pads = Gamepads.Pads();
+                if (pads.Count == 0)
+                    return;
+
+                pad = pads[0];
+                handle = Gamepads.OpenController(pads[0].Index);
             },
             TimeSpan.FromSeconds(10));
 
@@ -334,14 +339,19 @@ public partial class App : Application
             return;
         }
 
-        SdlPad? found = null;
-        mappingSdl.Invoke(() => found = Gamepads.Pads().FirstOrDefault(), TimeSpan.FromSeconds(10));
+        // PP228: the COUNT, because FirstOrDefault over a struct answers with its zero value and
+        // that value is not null - so an `is not SdlPad` beneath it can only pass, and what
+        // reaches the parser is a default whose Mapping is null.
+        IReadOnlyList<SdlPad> pads = [];
+        mappingSdl.Invoke(() => pads = Gamepads.Pads(), TimeSpan.FromSeconds(10));
 
-        if (found is not SdlPad pad)
+        if (pads.Count == 0)
         {
             window.ShowMessage("no pad SDL can map - plug one in and start again");
             return;
         }
+
+        SdlPad pad = pads[0];
 
         // The pad's own mapping string IS the document, and its name is the fallback for the `*`
         // a DualSense actually sends where a name would be.

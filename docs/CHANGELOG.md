@@ -113,6 +113,7 @@
 - ✅ **PP223** **the mapping screen has never been on screen, and its row buttons are markup that answers no click** — the mapping screen shown against a real pad, with the click resolved as a plain method and the device opened last.
 - ✅ **PP224** **the mapping screen never appears and nothing says why, because the window it looks for does not exist yet** — the window opened by the method that fills it, and every reason for not filling it said in the window.
 - ✅ **PP225** **setting StartupUri to null throws, so the run dies inside OnStartup and no window appears at all** — the startup work queued behind the window instead of clearing a property that refuses to be cleared.
+- ✅ **PP228** **with no pad attached the mapping screen dies on a null mapping instead of saying there is no pad** — absence asked of the count, because a struct's zero value is not nothing and the guard beneath it could only pass.
 
 ## Block E — Windows-only build
 
