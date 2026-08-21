@@ -206,6 +206,7 @@
 - ✅ **PP245** **the candidate wait loop is unported, and one of its errors says the opposite of what happened** — the wait is ported with both timeout shapes intact, and the branch claiming no socket had data now carries the assertion that one did.
 - ✅ **PP246** **reading a candidate response is unported, and the address it allocates leaks on the common path** — the intake is ported with the release accounting written down per exit, and the index bound stated as the guard it actually depends on.
 - ✅ **PP247** **response validation is unported, and a derived candidate is exempt from every check that aborts** — the checks are ported with the derived exemption as a parameter rather than a special case, and the two aborts' error placement asserted apart.
+- ✅ **PP248** **every private-address test in the punch compares one byte too many, so none of them can match** — the classification is ported over a faithful strncmp, so the tests produce the failure from the counts the core passes instead of describing it.
 
 ## Block G — Test discipline
 
