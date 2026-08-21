@@ -83,6 +83,29 @@ public static class PlaceboScalers
 }
 
 /// <summary>
+/// PP17: the deinterlace algorithm, which is the only combo on either screen whose four labels ARE
+/// their words.
+///
+/// Weave, Bob, Yadif and Bwdif lower-case exactly into "weave", "bob", "yadif" and "bwdif". It is
+/// worth a type of its own precisely because it is the exception: everything else on these screens
+/// has at least one pairing no rule produces, so a port that met this combo first would take the
+/// wrong lesson from it.
+///
+/// Its default is Yadif, the third entry. And its combo carries BOTH <c>enabled</c> and
+/// <c>visible</c> bound to the same condition - the section's switch - where every other control
+/// in the file binds only visibility.
+/// </summary>
+public static class PlaceboDeinterlaceChoice
+{
+    /// <summary>The four, whose labels and words differ only in case.</summary>
+    public static StoredChoice Algorithm { get; } = new(
+        PlaceboStore.Key("deinterlace_algo"),
+        new[] { "Weave", "Bob", "Yadif", "Bwdif" },
+        new[] { "weave", "bob", "yadif", "bwdif" },
+        defaultIndex: 2);
+}
+
+/// <summary>
 /// PP17: the eleven switches on these two screens, every one of them a WORD in the store.
 ///
 /// settings.cpp writes "yes" or "no" and compares the string, so none of them is a bool in the
@@ -180,5 +203,16 @@ public static class PlaceboScalerSource
     {
         ArgumentNullException.ThrowIfNull(cpp);
         return cpp.Contains($"== \"{PlaceboFlags.On}\"", StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Whether the deinterlace combo still binds both enabled and visible to one condition, which
+    /// is the only control on the screen that does.
+    /// </summary>
+    public static bool TheDeinterlaceComboStillBindsBoth(string qml)
+    {
+        ArgumentNullException.ThrowIfNull(qml);
+        return qml.Contains("enabled: Chiaki.settings.placeboDeinterlaceEnabled", StringComparison.Ordinal)
+            && qml.Contains("visible: Chiaki.settings.placeboDeinterlaceEnabled", StringComparison.Ordinal);
     }
 }

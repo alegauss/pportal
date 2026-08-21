@@ -18,7 +18,7 @@
 
 ## Block D — Screens
 
-- ⏳ **PP17** (deps: PP9 ✅, PP12 ✅) **the renderer tuning and colour mapping screens are 2132 lines of QML over libplacebo options** — the renderer tuning screen, and the sliders both screens hang off these three combos. → §PP17
+- ⏳ **PP17** (deps: PP9 ✅, PP12 ✅) **the renderer tuning and colour mapping screens are 2132 lines of QML over libplacebo options** — the two screens' markup and the forty labels only the QML states, every rule behind them now tabled. → §PP17
 - ⏳ **PP18** (deps: PP8 ✅, PP12 ✅) **the controller mapping screen is QML bound to the live SDL mapping strings** — A mapping screen is unusable without input arriving from the device being mapped, so it lands with the input path rather than with the other dialogs. → §PP18
 - 📋 **PP167** (deps: —) **the settings screen's nine tabs each exist and nothing composes them into one dialog** — PP16 built every tab's rules and screen; the tab host, its order and its focus chain are a screen of their own. → §PP167
 

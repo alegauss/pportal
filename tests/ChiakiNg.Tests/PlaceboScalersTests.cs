@@ -134,6 +134,27 @@ public class PlaceboScalersTests
             Assert.StartsWith(PlaceboStore.Prefix, key, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// The deinterlace combo is the exception: its four labels ARE their words, lower-cased. It is
+    /// asserted as the exception rather than left unasserted, because a port that met this one
+    /// first would take the wrong lesson from everything around it.
+    /// </summary>
+    [Fact]
+    public void TheDeinterlaceComboIsTheOneThatDerives()
+    {
+        StoredChoice algo = PlaceboDeinterlaceChoice.Algorithm;
+
+        for (int i = 0; i < algo.Labels.Count; i++)
+        {
+            Assert.True(
+                PlaceboColorMapping.LabelWouldDeriveItsWord(algo.Labels[i], algo.StoredFor(i)),
+                algo.Labels[i]);
+        }
+
+        Assert.Equal(2, algo.DefaultIndex);
+        Assert.Equal("yadif", algo.StoredFor(algo.DefaultIndex));
+    }
+
     /// <summary>Every rule above, still stated the same way in the store and the screen.</summary>
     [Fact]
     public void TheScalerRulesAreStillTheQtClients()
@@ -151,5 +172,8 @@ public class PlaceboScalersTests
             PlaceboScalerSource.TheSharpestLabelStillLosesItsFour(cpp, File.ReadAllText(qmlPath)),
             "the missing 4");
         Assert.True(PlaceboScalerSource.TheSwitchesAreStillComparedToYes(cpp), "compared to yes");
+        Assert.True(
+            PlaceboScalerSource.TheDeinterlaceComboStillBindsBoth(File.ReadAllText(qmlPath)),
+            "enabled and visible on one condition");
     }
 }
