@@ -91,6 +91,7 @@
 - ✅ **PP15** **the PSN login and token dialogs are 882 lines of QML wrapped around the embedded browser** — the token screen, its log, and the ask that decides what the browser clears.
 - ✅ **PP164** **the Controllers tab stores a rumble word whose capital letter is not the label's, and an increment in hundredths** — the tab, the word a derived label loses, and the band shared with the audio path.
 - ✅ **PP165** **the Remote tab decides its one button from four credentials, and its two sliders default differently** — the tab, the four values one login is, and a clamp with a floor and no ceiling.
+- ✅ **PP166** **the Config tab reads its profile from the default store and turns verbose on by clearing one bit** — the ninth tab, the profile from the other store, and a mask that subtracts.
 
 ## Block E — Windows-only build
 

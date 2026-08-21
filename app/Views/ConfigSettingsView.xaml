@@ -1,0 +1,36 @@
+<UserControl x:Class="ChiakiNg.Views.ConfigSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    PP16: the settings screen's Config tab, the ninth and last.
+
+    The two checkboxes carry their DEFAULT INSIDE their own text - "Sanitize Logs (checked)" - where
+    every other tab puts that hint in a separate label beside the control. Reproduced rather than
+    harmonised: it is upstream's layout, and making the nine tabs agree here would change what a
+    user of both clients sees for no reason either of them could name.
+  -->
+  <UserControl.Resources>
+    <Style TargetType="Button">
+      <Setter Property="Margin" Value="0,8,0,0" />
+      <Setter Property="Padding" Value="20,4" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+  </UserControl.Resources>
+
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="16">
+      <TextBlock x:Name="ProfileCaption" HorizontalAlignment="Center" Text="{Binding ProfileCaption}" />
+
+      <Button x:Name="ManageProfilesButton" Content="Manage Profiles" />
+      <Button x:Name="ExportButton" Content="Export settings to file" />
+      <Button x:Name="ImportButton" Content="Import settings from file" />
+      <Button x:Name="AboutButton" Content="About Chiaki-ng" />
+
+      <CheckBox x:Name="SanitizeBox" Margin="0,16,0,0"
+                Content="Sanitize Logs (checked)" IsChecked="{Binding SanitizeLogs}" />
+
+      <CheckBox x:Name="VerboseBox" Margin="0,8,0,0"
+                Content="Verbose Logging (unchecked)" IsChecked="{Binding VerboseLogs}" />
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>
