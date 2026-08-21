@@ -174,9 +174,18 @@ static void chiaki_render_share_release(chiaki_render_share *self)
 CHIAKI_RENDER_API void *chiaki_render_share_to_d3d9(
 		void *d3d11, int32_t width, int32_t height, int32_t *out_stage)
 {
+	return chiaki_render_share_to_d3d9_format(
+			d3d11, width, height, CHIAKI_RENDER_SHARE_BGRA8, out_stage);
+}
+
+CHIAKI_RENDER_API void *chiaki_render_share_to_d3d9_format(
+		void *d3d11, int32_t width, int32_t height, int32_t format, int32_t *out_stage)
+{
 #ifdef PL_HAVE_D3D11
 	chiaki_render_share *self;
 	chiaki_render_d3d11 *placebo = (chiaki_render_d3d11 *)d3d11;
+	DXGI_FORMAT dxgi_format;
+	D3DFORMAT d3d9_format;
 	D3D11_TEXTURE2D_DESC desc;
 	IDXGIResource *resource = NULL;
 	D3DPRESENT_PARAMETERS present;
@@ -187,6 +196,24 @@ CHIAKI_RENDER_API void *chiaki_render_share_to_d3d9(
 	if(!placebo || !placebo->d3d11 || !placebo->d3d11->device || width <= 0 || height <= 0)
 		return NULL;
 
+	switch(format)
+	{
+		case CHIAKI_RENDER_SHARE_RGB10A2:
+			// A2B10G10R10 and NOT A2R10G10B10. DXGI puts red in the low bits here, and the D3D9
+			// name whose letters run the other way is the one that matches it.
+			dxgi_format = DXGI_FORMAT_R10G10B10A2_UNORM;
+			d3d9_format = D3DFMT_A2B10G10R10;
+			break;
+		case CHIAKI_RENDER_SHARE_BGRA8:
+			// B8G8R8A8 and not R8G8B8A8: this is the one 8-bit layout D3D9Ex and D3D11 agree on,
+			// and D3DFMT_A8R8G8B8 is the same bytes under the older name.
+			dxgi_format = DXGI_FORMAT_B8G8R8A8_UNORM;
+			d3d9_format = D3DFMT_A8R8G8B8;
+			break;
+		default:
+			return NULL;
+	}
+
 	self = (chiaki_render_share *)calloc(1, sizeof(chiaki_render_share));
 	if(!self)
 		return NULL;
@@ -196,9 +223,7 @@ CHIAKI_RENDER_API void *chiaki_render_share_to_d3d9(
 	desc.Height = (UINT)height;
 	desc.MipLevels = 1;
 	desc.ArraySize = 1;
-	// B8G8R8A8 and not R8G8B8A8: this is the one colour layout D3D9Ex and D3D11 agree on, and
-	// D3DFMT_A8R8G8B8 below is the same bytes under the older name.
-	desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+	desc.Format = dxgi_format;
 	desc.SampleDesc.Count = 1;
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
@@ -255,7 +280,7 @@ CHIAKI_RENDER_API void *chiaki_render_share_to_d3d9(
 	// The same handle, opened on the other API. D3DUSAGE_RENDERTARGET and D3DPOOL_DEFAULT are
 	// required for a shared surface; anything else is E_INVALIDARG here.
 	hr = IDirect3DDevice9Ex_CreateTexture(self->device9, (UINT)width, (UINT)height, 1,
-			D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &self->texture9, &self->shared);
+			D3DUSAGE_RENDERTARGET, d3d9_format, D3DPOOL_DEFAULT, &self->texture9, &self->shared);
 	if(FAILED(hr) || !self->texture9)
 		goto fail;
 
@@ -273,7 +298,7 @@ fail:
 	chiaki_render_share_release(self);
 	return NULL;
 #else
-	(void)d3d11; (void)width; (void)height;
+	(void)d3d11; (void)width; (void)height; (void)format;
 	if(out_stage)
 		*out_stage = CHIAKI_RENDER_SHARE_NO_DEVICE;
 	return NULL;

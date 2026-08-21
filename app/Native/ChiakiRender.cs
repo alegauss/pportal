@@ -21,7 +21,7 @@ public static class ChiakiRender
     internal const string Library = "chiaki-render";
 
     /// <summary>Must equal CHIAKI_RENDER_ABI in shim/chiaki_render.h. Independent of the shim's.</summary>
-    public const uint ExpectedAbi = 5;
+    public const uint ExpectedAbi = 6;
 
     [DllImport(Library, EntryPoint = "chiaki_render_abi_version", CallingConvention = CallingConvention.Cdecl)]
     public static extern uint AbiVersion();
@@ -96,6 +96,22 @@ public enum RenderStage
     Download,
 }
 
+/// <summary>
+/// PP11: what a shared surface is made of.
+///
+/// Two pairings, each a DXGI format and the D3D9 name with the same bytes in the same order. The
+/// ten-bit one is the question HDR asks of PP9's decision, and the pairing is the trap inside it:
+/// DXGI's R10G10B10A2 matches D3DFMT_A2B10G10R10, whose letters read backwards.
+/// </summary>
+public enum ShareFormat
+{
+    /// <summary>The eight-bit share PP131 built and PP135 handed to WPF.</summary>
+    Bgra8 = 0,
+
+    /// <summary>Ten bits per channel, which is the floor for an HDR picture.</summary>
+    Rgb10A2 = 1,
+}
+
 /// <summary>Which step of the D3D11-to-D3D9Ex share failed, or Ok.</summary>
 public enum ShareStage
 {
@@ -131,10 +147,21 @@ public sealed class SharedSurface : IDisposable
     /// exists to improve on.
     /// </summary>
     public static SharedSurface? Create(RenderDevice device, int width, int height, out ShareStage stage)
+        => Create(device, width, height, ShareFormat.Bgra8, out stage);
+
+    /// <summary>
+    /// PP11: the same share in a chosen format, which is how the HDR question is asked.
+    ///
+    /// <see cref="ShareFormat.Rgb10A2"/> is the one HDR would need. Whether it survives the whole
+    /// chain - D3D11, the shared handle, D3D9Ex, and then WPF - is a measurement rather than a
+    /// reading, and the stage says where it stopped if it does not.
+    /// </summary>
+    public static SharedSurface? Create(
+        RenderDevice device, int width, int height, ShareFormat format, out ShareStage stage)
     {
         ArgumentNullException.ThrowIfNull(device);
 
-        IntPtr handle = ShareToD3d9(device.Raw, width, height, out int raw);
+        IntPtr handle = ShareToD3d9Format(device.Raw, width, height, (int)format, out int raw);
         stage = (ShareStage)raw;
         return handle == IntPtr.Zero ? null : new SharedSurface(handle);
     }
@@ -154,9 +181,10 @@ public sealed class SharedSurface : IDisposable
         _handle = IntPtr.Zero;
     }
 
-    [DllImport(ChiakiRender.Library, EntryPoint = "chiaki_render_share_to_d3d9",
+    [DllImport(ChiakiRender.Library, EntryPoint = "chiaki_render_share_to_d3d9_format",
         CallingConvention = CallingConvention.Cdecl)]
-    private static extern IntPtr ShareToD3d9(IntPtr d3d11, int width, int height, out int stage);
+    private static extern IntPtr ShareToD3d9Format(
+        IntPtr d3d11, int width, int height, int format, out int stage);
 
     [DllImport(ChiakiRender.Library, EntryPoint = "chiaki_render_share_surface",
         CallingConvention = CallingConvention.Cdecl)]

@@ -36,7 +36,7 @@ extern "C" {
 #endif
 
 /** Bumped whenever an exported signature here changes meaning. Independent of CHIAKI_SHIM_ABI. */
-#define CHIAKI_RENDER_ABI 5
+#define CHIAKI_RENDER_ABI 6
 
 CHIAKI_RENDER_API uint32_t chiaki_render_abi_version(void);
 
@@ -117,6 +117,30 @@ typedef enum chiaki_render_share_stage
  */
 CHIAKI_RENDER_API void *chiaki_render_share_to_d3d9(
 		void *d3d11, int32_t width, int32_t height, int32_t *out_stage);
+
+/**
+ * PP11: the same share, in a chosen format - which is how the HDR question gets an answer.
+ *
+ * PP9 picked D3DImage, and D3DImage is D3D9Ex. HDR needs more than eight bits per channel, and
+ * nothing in that decision established that the path can carry ten. The formats are the whole
+ * experiment: B8G8R8A8 is the one PP131 measured and 10-bit is the one HDR would need.
+ *
+ * The D3D9 side of each pairing is not a translation but a LAYOUT MATCH, and the two ten-bit
+ * spellings are not interchangeable: DXGI_FORMAT_R10G10B10A2_UNORM puts red in the low bits, which
+ * is D3DFMT_A2B10G10R10 and not D3DFMT_A2R10G10B10. Getting that backwards fails at the open with
+ * E_INVALIDARG, and looks exactly like the format being unsupported.
+ */
+typedef enum chiaki_render_share_format
+{
+	/** The 8-bit pairing PP131 built: DXGI_FORMAT_B8G8R8A8_UNORM and D3DFMT_A8R8G8B8. */
+	CHIAKI_RENDER_SHARE_BGRA8 = 0,
+
+	/** The 10-bit one HDR would need: DXGI_FORMAT_R10G10B10A2_UNORM and D3DFMT_A2B10G10R10. */
+	CHIAKI_RENDER_SHARE_RGB10A2 = 1,
+} chiaki_render_share_format;
+
+CHIAKI_RENDER_API void *chiaki_render_share_to_d3d9_format(
+		void *d3d11, int32_t width, int32_t height, int32_t format, int32_t *out_stage);
 
 /** The IDirect3DSurface9 the share produced, or NULL. Owned by the share; do not release. */
 CHIAKI_RENDER_API void *chiaki_render_share_surface(void *share);

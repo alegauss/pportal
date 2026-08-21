@@ -264,6 +264,69 @@ public class RenderProbeTests
     }
 
     /// <summary>
+    /// PP163: the ten-bit surface HDR would need EXISTS, all the way to a D3D9Ex surface pointer.
+    ///
+    /// This half is the surprise. Every step PP131 measured for eight bits works for ten as well:
+    /// D3D11 creates the texture, DXGI shares the handle, and D3D9Ex opens it - so nothing in the
+    /// graphics stack is what stops HDR.
+    ///
+    /// The pairing is the trap and it is asserted by working rather than by inspection: DXGI has
+    /// no B-first ten-bit format at all, so DXGI_FORMAT_R10G10B10A2_UNORM against
+    /// D3DFMT_A2B10G10R10 is not a choice between two spellings - it is the only ten-bit share
+    /// that can be made. Get it backwards and the open fails with E_INVALIDARG, which reads
+    /// exactly like the format being unsupported when it is not.
+    /// </summary>
+    [Fact]
+    public void ATenBitSurfaceReachesD3d9Ex()
+    {
+        using RenderDevice? device = ChiakiRender.CreateD3d11(forceSoftware: false);
+        if (device is null)
+            return;
+
+        using SharedSurface? shared =
+            SharedSurface.Create(device, 1920, 1080, ShareFormat.Rgb10A2, out ShareStage stage);
+
+        Assert.True(shared is not null, $"the ten-bit share failed at {stage}");
+        Assert.NotEqual(IntPtr.Zero, shared.Surface);
+        Assert.True(shared.HasSharedHandle);
+    }
+
+    /// <summary>
+    /// PP163: and WPF REFUSES IT. This is the measurement PP11's HDR half turned on, and it is a
+    /// wall rather than a difficulty.
+    ///
+    /// D3DImage.SetBackBuffer throws NotSupportedException - "unsupported pixel format" - for the
+    /// only ten-bit surface that can be built. So the composition path PP9 chose carries eight
+    /// bits per channel and nothing wider, and an HDR picture cannot reach the display through it
+    /// at all. Not a tuning problem, not a metadata problem: the buffer itself is refused.
+    ///
+    /// Asserted as a REFUSAL, deliberately. If a later Windows or a later WPF ever accepts this
+    /// surface, this test goes red - and that is exactly the day the decision below it should be
+    /// re-read rather than a day nobody notices.
+    /// </summary>
+    [Fact]
+    public void WpfRefusesTheTenBitSurface()
+    {
+        using RenderDevice? device = ChiakiRender.CreateD3d11(forceSoftware: false);
+        if (device is null)
+            return;
+
+        using SharedSurface? shared =
+            SharedSurface.Create(device, 1920, 1080, ShareFormat.Rgb10A2, out _);
+        if (shared is null)
+            return;
+
+        SurfacePresenter.Result result =
+            SurfacePresenter.Offer(shared.Surface, TimeSpan.FromSeconds(10), out string detail);
+
+        Assert.Equal(SurfacePresenter.Result.Refused, result);
+
+        // The reason, pinned: a refusal for some other cause - a lost device, a timeout - would
+        // otherwise pass for this finding and leave the design resting on the wrong evidence.
+        Assert.Contains("NotSupportedException", detail, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// PP135: WPF taking the shared surface, which is the one link nothing in the graphics stack
     /// can answer.
     ///
