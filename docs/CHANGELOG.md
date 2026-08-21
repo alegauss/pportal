@@ -112,6 +112,7 @@
 - ✅ **PP222** **with the analog opt-in off the triggers vanish from the log too, so pressing one produces no sign it was seen** — a trigger pull as one line, shown while the sticks stay out, because only the sticks flood.
 - ✅ **PP223** **the mapping screen has never been on screen, and its row buttons are markup that answers no click** — the mapping screen shown against a real pad, with the click resolved as a plain method and the device opened last.
 - ✅ **PP224** **the mapping screen never appears and nothing says why, because the window it looks for does not exist yet** — the window opened by the method that fills it, and every reason for not filling it said in the window.
+- ✅ **PP225** **setting StartupUri to null throws, so the run dies inside OnStartup and no window appears at all** — the startup work queued behind the window instead of clearing a property that refuses to be cleared.
 
 ## Block E — Windows-only build
 

@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Threading;
 using ChiakiNg.Session;
 
 namespace ChiakiNg;
@@ -272,16 +273,21 @@ public partial class App : Application
     /// it is a test's inline call, here it is the thread the bindings live on, and the session does
     /// not know the difference.
     /// </summary>
-    private void StartMappingScreen()
+    /// <summary>The fallback window, for the case where there is somehow no window to fill.</summary>
+    private MainWindow OpenedByHand()
     {
-        // PP224: the window is opened HERE rather than found.
-        //
-        // StartupUri creates it after OnStartup returns, so Application.MainWindow is still null
-        // inside this call - and the first version of this method took that for "no window" and
-        // left without a word. Cleared and opened by hand, there is one window and this owns it.
         var window = new MainWindow();
         MainWindow = window;
         window.Show();
+        return window;
+    }
+
+    private void StartMappingScreen()
+    {
+        // PP224: the window StartupUri opened, which by now exists - this runs queued behind it.
+        // If it somehow does not, one is opened rather than leaving without a word, which is the
+        // failure this whole task is about.
+        MainWindow window = this.MainWindow as MainWindow ?? OpenedByHand();
 
         // The session does not exist yet and the thread needs its callback now, so the callback
         // reads a variable rather than closing over a value. Nothing can arrive through it before
@@ -371,16 +377,15 @@ public partial class App : Application
             Environment.Exit(CaptureController(TimeSpan.FromSeconds(20), analog));
         }
 
+        base.OnStartup(e);
+
         if (e.Args.Any(a => string.Equals(a, "--map-controller", StringComparison.OrdinalIgnoreCase)))
         {
-            // StartupUri would open a SECOND window once this returns, so it is cleared and the
-            // one window is opened by StartMappingScreen, which is also what puts a screen in it.
-            StartupUri = null;
-            base.OnStartup(e);
-            StartMappingScreen();
-            return;
+            // QUEUED rather than called. StartupUri creates MainWindow after this method returns,
+            // so running here would find no window - which is exactly what the first version did,
+            // silently. Clearing StartupUri instead is not an option: the property refuses null
+            // and the process dies before anything is drawn at all.
+            Dispatcher.BeginInvoke(StartMappingScreen, DispatcherPriority.ApplicationIdle);
         }
-
-        base.OnStartup(e);
     }
 }
