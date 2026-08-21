@@ -157,6 +157,7 @@
 - ✅ **PP194** **a malformed route MAC in a connection request becomes six zeros with no error, and one base64 field sizes by input** — six fields, a MAC that silently zeroes, and a decode not copied.
 - ✅ **PP195** **the candidate reader defaults three fields the core requires, and reads the struct's key rather than the wire's** — all five fields required, mappedAddr by its wire name, one bad candidate failing the message.
 - ✅ **PP196** **the message writer cannot use a JSON library, because one field must be written broken for the console to accept it** — written with format strings, broken where the console needs it, and read back whole.
+- ✅ **PP197** **the candidate race is settled by the first datagram to answer, not by which candidate is better** — the decision the sockets feed, ported so it can be tested without opening one.
 
 ## Block G — Test discipline
 
