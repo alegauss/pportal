@@ -152,6 +152,7 @@
 - ✅ **PP189** **the bodies the core posts are JSON only because a header overrides what POSTFIELDS would announce them as** — four posts and a delete, with the header that stops JSON being form data.
 - ✅ **PP190** **the push notification types are a mask a caller waits on, and six of them are namespaced strings no rule derives** — six identifiers, powers of two, and a zero that wakes nobody.
 - ✅ **PP191** **PSN sends a session message field with no value at all, and the action flags skip a bit a port would fill** — the payload three layers down, and the field PSN sends broken.
+- ✅ **PP192** **customData1 is base64 twice, so one decode yields printable bytes of a plausible length that are not the payload** — base64 twice, and a band that tolerates four bytes it discards.
 
 ## Block G — Test discipline
 
