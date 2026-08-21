@@ -210,6 +210,7 @@
 - ✅ **PP249** **the punch's two cleanups are unported, and one path reaches success holding a timeout** — the two endings are ported apart with their three differences named, and the path where the held code and the returned one disagree is asserted.
 - ✅ **PP250** **the session message writer's SIZING is unported - the buffer comes from a different format string than the text** — the sizing half is ported with the two format lengths measured off the source, and the reported length separated from the one actually produced.
 - ✅ **PP251** **the offer's candidate layout is unported, and what it hands forward as the mapped port can be a guess** — the five layouts are ported as one function of the path taken, and slot zero's port is separated from its address so the comment's half-truth is visible.
+- ✅ **PP252** **the offer's address discovery is unported, and a failed local lookup is advertised as an empty address** — the discovery is ported as one function of gateway status, with what the local lookup knew kept apart from what is advertised.
 
 ## Block G — Test discipline
 
