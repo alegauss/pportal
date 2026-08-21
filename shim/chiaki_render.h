@@ -36,7 +36,7 @@ extern "C" {
 #endif
 
 /** Bumped whenever an exported signature here changes meaning. Independent of CHIAKI_SHIM_ABI. */
-#define CHIAKI_RENDER_ABI 4
+#define CHIAKI_RENDER_ABI 5
 
 CHIAKI_RENDER_API uint32_t chiaki_render_abi_version(void);
 
@@ -158,6 +158,59 @@ CHIAKI_RENDER_API bool chiaki_render_share_clear_and_read(
  * exercises the renderer, the target frame and the wrapped texture without needing a decoder.
  */
 CHIAKI_RENDER_API bool chiaki_render_share_render(void *d3d11, void *share);
+
+/**
+ * PP9's last unanswered link: a DECODED FRAME through pl_render_image.
+ *
+ * Everything before this rendered nothing. PP133 calls pl_render_image with a NULL image, which
+ * exercises the renderer and the target and says nothing at all about the half that carries the
+ * picture: an NV12 texture, wrapped as two planes, converted out of limited-range BT.709 and
+ * landing in the target as RGB.
+ *
+ * That half is where a port is wrong silently. Three things have to be right together and none of
+ * them returns an error when it is not:
+ *
+ * 1. THE PLANES. NV12 is one D3D11 texture and two pl_texs. pl_d3d11_wrap picks the plane from the
+ *    `fmt` it is given - R8_UNORM is the luma at full size, R8G8_UNORM is the chroma at half - and
+ *    a wrap that asked for the wrong one produces a texture, not an error.
+ *
+ * 2. THE ARRAY SLICE. A d3d11va decoder does not hand over a texture; it hands over a texture
+ *    ARRAY and an index into it. So the texture here is an array of two, with a different picture
+ *    in each, and the slice that is NOT the default is the one wrapped. Ignoring array_slice reads
+ *    every frame of a session out of slice 0 and looks like a decoder that stopped producing.
+ *
+ * 3. THE RANGE. The console sends limited-range BT.709: 16 is black and 235 is white. A port that
+ *    left pl_color_repr zeroed gets PL_COLOR_LEVELS_UNKNOWN, and the picture is washed out rather
+ *    than broken - which nobody files a bug about and everybody sees.
+ *
+ * So this renders one flat NV12 frame and reads the pixel back. The target is NOT the shared
+ * texture: sharing rules out CPU access (PP132 measured that), so a texture that can be read is a
+ * texture that cannot be shown. The two are asserted separately for that reason - PP133 says the
+ * render reaches the shared texture, and this says what the render produces.
+ *
+ * `out_rgba` receives four bytes at the origin, R,G,B,A - libplacebo's own order for the target
+ * format, which is not the B,G,R,A the shared texture reads back in.
+ */
+typedef enum chiaki_render_frame_stage
+{
+	CHIAKI_RENDER_FRAME_OK = 0,
+	CHIAKI_RENDER_FRAME_NO_DEVICE,
+	CHIAKI_RENDER_FRAME_TEXTURE,    /**< CreateTexture2D of the NV12 array */
+	CHIAKI_RENDER_FRAME_LUMA,       /**< pl_d3d11_wrap for the R8 view */
+	CHIAKI_RENDER_FRAME_CHROMA,     /**< pl_d3d11_wrap for the R8G8 view */
+	CHIAKI_RENDER_FRAME_TARGET,     /**< pl_tex_create for the readable target */
+	CHIAKI_RENDER_FRAME_RENDERER,   /**< pl_renderer_create */
+	CHIAKI_RENDER_FRAME_RENDER,     /**< pl_render_image */
+	CHIAKI_RENDER_FRAME_DOWNLOAD,   /**< pl_tex_download */
+} chiaki_render_frame_stage;
+
+/**
+ * Renders one flat NV12 frame of `luma`/`cb`/`cr` and reads back the pixel it produced.
+ *
+ * The values are the console's own encoding, not RGB: 16/128/128 is black, 235/128/128 is white.
+ */
+CHIAKI_RENDER_API bool chiaki_render_frame_nv12(
+		void *d3d11, uint8_t luma, uint8_t cb, uint8_t cr, uint8_t *out_rgba, int32_t *out_stage);
 
 #ifdef __cplusplus
 }

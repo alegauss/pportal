@@ -29,32 +29,6 @@ three, so it is the moment when the duplication is visible.
 
 ## Block C — Video and input path
 
-### §PP9 Vulkan under a D3D9 compositor
-
-qmlmainwindow.cpp is 7538 lines, the largest file in the GUI, and almost all of it is
-one job: take a decoded frame, run it through libplacebo on Vulkan, and present it in
-the same window QML is drawing into. WPF cannot be that window. Its composition target
-is D3D9Ex, and there is no path that hands it a Vulkan swapchain.
-
-Three shapes were filed - a Vulkan child HWND, which nothing can be drawn over; a Vulkan
-image shared into D3D11; or dropping libplacebo and its shaders. All three assume
-libplacebo means Vulkan, and it does not: this tree's build reports PL_HAVE_D3D11.
-
-Decided: the fourth shape, libplacebo ON D3D11, presented through D3DImage. Measured
-rather than argued. The window names 13 backend-specific calls; 5 have exact D3D11
-counterparts, and all 8 that do not - hold, release, the timeline semaphore, unwrap -
-exist to hand the image to QtQuick's own Vulkan renderer so QML can draw over the video.
-There is no QtQuick in the port and no such handover; WPF composites instead. The 15
-renderer calls above pl_gpu do not move at all, which is the shader work option C
-discarded.
-
-It also moves the free decoder. PP77 prefers vulkan as "the one decoder whose frame the
-renderer can take without a copy"; pl_d3d11_wrap adopts NV12 and P010 directly, so that
-is d3d11va - PP51's non-NVIDIA floor.
-
-Unbuilt and unrun. The costs are the D3D11-to-D3D9Ex hop D3DImage requires, its format
-restriction, and a backend less exercised upstream than Vulkan.
-
 ### §PP10 The overlay is the renderer decision, spelled out
 
 StreamView.qml is 1305 lines and StreamMenuWindow.qml another 435: the connection state,

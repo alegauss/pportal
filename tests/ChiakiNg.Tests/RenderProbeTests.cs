@@ -1,4 +1,4 @@
-using ChiakiNg.Native;
+﻿using ChiakiNg.Native;
 using ChiakiNg.Session;
 using Xunit;
 
@@ -14,6 +14,20 @@ namespace ChiakiNg.Tests;
 /// </summary>
 public class RenderProbeTests
 {
+    /// <summary>
+    /// This machine's adapter, or WARP.
+    ///
+    /// Used only by the frame checks below, and deliberately NOT skippable. The share checks have
+    /// to skip without hardware because a shared handle is adapter-bound; rendering a frame is
+    /// not, so there is no reason for those assertions to go quiet on a runner - and an assertion
+    /// that skips where it could have run is an assertion nobody notices stopped meaning anything.
+    ///
+    /// WARP was checked against all three, not assumed: it wraps an NV12 array, honours the slice
+    /// and converts the range exactly as this machine's adapter does.
+    /// </summary>
+    private static RenderDevice? AnyDevice()
+        => ChiakiRender.CreateD3d11(forceSoftware: false) ?? ChiakiRender.CreateD3d11(forceSoftware: true);
+
     [Fact]
     public void TheRenderDllLoadsAndMatchesItsAbi()
     {
@@ -186,6 +200,70 @@ public class RenderProbeTests
     }
 
     /// <summary>
+    /// PP9's last link: a decoded frame really going through pl_render_image.
+    ///
+    /// Everything above rendered nothing. The NULL-image call exercises the renderer and the
+    /// target and says nothing about the half that carries the picture, so this sends one flat
+    /// NV12 frame at limited-range white and asks what came out.
+    ///
+    /// White is the value that makes the assertion mean something: with no image at all the
+    /// target is black, so a render that silently dropped the frame answers black here.
+    /// </summary>
+    [Fact]
+    public void ADecodedFrameReachesTheTargetAsWhite()
+    {
+        using RenderDevice? device = AnyDevice();
+        Assert.NotNull(device);
+
+        // 235/128/128: the console's white, which is not 255 - that is the whole of limited range.
+        byte[]? pixel = device.RenderNv12(235, 128, 128, out RenderStage stage);
+
+        Assert.True(pixel is not null, $"the frame stopped at {stage}");
+        Assert.Equal(RenderStage.Ok, stage);
+
+        Assert.True(pixel[0] > 240 && pixel[1] > 240 && pixel[2] > 240,
+            $"limited-range white came out as {pixel[0]},{pixel[1]},{pixel[2]}");
+    }
+
+    /// <summary>
+    /// And the console's black is black. Together with the white above this is the range being
+    /// honoured rather than assumed: a frame read as full-range would put 16 at about 6% grey and
+    /// 235 short of white, which is the washed-out picture that gets reported as "looks fine".
+    /// </summary>
+    [Fact]
+    public void TheConsolesLimitedRangeBlackIsBlack()
+    {
+        using RenderDevice? device = AnyDevice();
+        Assert.NotNull(device);
+
+        byte[]? pixel = device.RenderNv12(16, 128, 128, out RenderStage stage);
+
+        Assert.True(pixel is not null, $"the frame stopped at {stage}");
+        Assert.True(pixel[0] < 12 && pixel[1] < 12 && pixel[2] < 12,
+            $"limited-range black came out as {pixel[0]},{pixel[1]},{pixel[2]}");
+    }
+
+    /// <summary>
+    /// A colour, so that the two chroma planes are not interchangeable.
+    ///
+    /// 63/102/240 is BT.709 limited red. A port that mapped Cb and Cr the wrong way round gets
+    /// blue here, and both channels are asserted rather than only the one expected to be high -
+    /// which is the difference between "red came out" and "something bright came out".
+    /// </summary>
+    [Fact]
+    public void ChromaIsNotInterchangeable()
+    {
+        using RenderDevice? device = AnyDevice();
+        Assert.NotNull(device);
+
+        byte[]? pixel = device.RenderNv12(63, 102, 240, out RenderStage stage);
+
+        Assert.True(pixel is not null, $"the frame stopped at {stage}");
+        Assert.True(pixel[0] > 200, $"red channel was {pixel[0]}");
+        Assert.True(pixel[2] < 60, $"blue channel was {pixel[2]}, so Cb and Cr are swapped");
+    }
+
+    /// <summary>
     /// PP135: WPF taking the shared surface, which is the one link nothing in the graphics stack
     /// can answer.
     ///
@@ -214,3 +292,4 @@ public class RenderProbeTests
         Assert.Equal(SurfacePresenter.Result.Available, result);
     }
 }
+

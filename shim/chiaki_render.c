@@ -423,3 +423,218 @@ CHIAKI_RENDER_API bool chiaki_render_share_render(void *d3d11, void *share)
 	return false;
 #endif
 }
+
+// ---- PP9: a decoded frame through pl_render_image ------------------------------------------
+
+#ifdef PL_HAVE_D3D11
+
+// 64x64, and even in both directions because NV12 has no way to be otherwise: the chroma plane is
+// half the luma in each axis, so an odd dimension is a plane with half a pixel in it.
+#define CHIAKI_RENDER_FRAME_W 64
+#define CHIAKI_RENDER_FRAME_H 64
+
+// Two slices, and the SECOND is the one rendered. A d3d11va decoder hands over a texture array
+// and an index; wrapping slice 0 by accident works on every frame a decoder happens to put there
+// and on no other, so slice 0 is filled with black here and never read.
+#define CHIAKI_RENDER_FRAME_SLICES 2
+#define CHIAKI_RENDER_FRAME_SLICE 1
+
+// Y for the whole plane, then interleaved Cb,Cr for the half-sized one.
+#define CHIAKI_RENDER_FRAME_BYTES \
+	(CHIAKI_RENDER_FRAME_W * CHIAKI_RENDER_FRAME_H * 3 / 2)
+
+static void chiaki_render_frame_fill(uint8_t *plane, uint8_t luma, uint8_t cb, uint8_t cr)
+{
+	int i;
+	const int luma_bytes = CHIAKI_RENDER_FRAME_W * CHIAKI_RENDER_FRAME_H;
+
+	memset(plane, luma, (size_t)luma_bytes);
+	for(i = luma_bytes; i < CHIAKI_RENDER_FRAME_BYTES; i += 2)
+	{
+		plane[i] = cb;
+		plane[i + 1] = cr;
+	}
+}
+
+#endif
+
+CHIAKI_RENDER_API bool chiaki_render_frame_nv12(
+		void *d3d11, uint8_t luma, uint8_t cb, uint8_t cr, uint8_t *out_rgba, int32_t *out_stage)
+{
+#ifdef PL_HAVE_D3D11
+	chiaki_render_d3d11 *placebo = (chiaki_render_d3d11 *)d3d11;
+	uint8_t planes[CHIAKI_RENDER_FRAME_SLICES][CHIAKI_RENDER_FRAME_BYTES];
+	D3D11_SUBRESOURCE_DATA initial[CHIAKI_RENDER_FRAME_SLICES];
+	D3D11_TEXTURE2D_DESC desc;
+	ID3D11Texture2D *texture = NULL;
+	struct pl_d3d11_wrap_params wrap;
+	struct pl_tex_transfer_params xfer;
+	struct pl_frame image, target;
+	pl_renderer renderer = NULL;
+	pl_tex source[2] = { NULL, NULL };
+	pl_tex rendered = NULL;
+	pl_fmt fmt;
+	bool ok = false;
+	int i;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_FRAME_NO_DEVICE;
+	if(!placebo || !placebo->d3d11 || !placebo->d3d11->gpu || !out_rgba)
+		return false;
+
+	// Slice 0 is black and slice 1 is the picture asked for, so a wrap that ignored array_slice
+	// comes back black rather than coming back right.
+	chiaki_render_frame_fill(planes[0], 16, 128, 128);
+	chiaki_render_frame_fill(planes[CHIAKI_RENDER_FRAME_SLICE], luma, cb, cr);
+
+	for(i = 0; i < CHIAKI_RENDER_FRAME_SLICES; i++)
+	{
+		memset(&initial[i], 0, sizeof(initial[i]));
+		initial[i].pSysMem = planes[i];
+		// The pitch is the LUMA row. The chroma plane that follows it has the same pitch - two
+		// bytes per chroma pair, half as many pairs - which is why one number covers both.
+		initial[i].SysMemPitch = CHIAKI_RENDER_FRAME_W;
+	}
+
+	memset(&desc, 0, sizeof(desc));
+	desc.Width = CHIAKI_RENDER_FRAME_W;
+	desc.Height = CHIAKI_RENDER_FRAME_H;
+	desc.MipLevels = 1;
+	desc.ArraySize = CHIAKI_RENDER_FRAME_SLICES;
+	desc.Format = DXGI_FORMAT_NV12;
+	desc.SampleDesc.Count = 1;
+	// DEFAULT because pl_d3d11_wrap requires it, and SHADER_RESOURCE because the renderer samples
+	// the planes. Not a render target: nothing draws into a decoded frame.
+	desc.Usage = D3D11_USAGE_DEFAULT;
+	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_FRAME_TEXTURE;
+	if(FAILED(ID3D11Device_CreateTexture2D(placebo->d3d11->device, &desc, initial, &texture)))
+		return false;
+
+	// The luma plane: the full-sized R8 view of an NV12 texture.
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_FRAME_LUMA;
+	memset(&wrap, 0, sizeof(wrap));
+	wrap.tex = (ID3D11Resource *)texture;
+	wrap.array_slice = CHIAKI_RENDER_FRAME_SLICE;
+	wrap.fmt = DXGI_FORMAT_R8_UNORM;
+	wrap.w = CHIAKI_RENDER_FRAME_W;
+	wrap.h = CHIAKI_RENDER_FRAME_H;
+	source[0] = pl_d3d11_wrap(placebo->d3d11->gpu, &wrap);
+	if(!source[0])
+		goto done;
+
+	// And the chroma plane: R8G8, half in each axis, out of the same texture and the same slice.
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_FRAME_CHROMA;
+	wrap.fmt = DXGI_FORMAT_R8G8_UNORM;
+	wrap.w = CHIAKI_RENDER_FRAME_W / 2;
+	wrap.h = CHIAKI_RENDER_FRAME_H / 2;
+	source[1] = pl_d3d11_wrap(placebo->d3d11->gpu, &wrap);
+	if(!source[1])
+		goto done;
+
+	// The target is libplacebo's own texture and not the shared one. A shared texture cannot be
+	// host_readable - PP132 measured exactly that - so the texture that can be shown and the
+	// texture that can be checked are two different textures, and this is the second.
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_FRAME_TARGET;
+	fmt = pl_find_fmt(placebo->d3d11->gpu, PL_FMT_UNORM, 4, 8, 8,
+			PL_FMT_CAP_RENDERABLE | PL_FMT_CAP_HOST_READABLE);
+	if(!fmt)
+		goto done;
+
+	rendered = pl_tex_create(placebo->d3d11->gpu, pl_tex_params(
+			.w = CHIAKI_RENDER_FRAME_W,
+			.h = CHIAKI_RENDER_FRAME_H,
+			.format = fmt,
+			.renderable = true,
+			.host_readable = true));
+	if(!rendered)
+		goto done;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_FRAME_RENDERER;
+	renderer = pl_renderer_create(placebo->log, placebo->d3d11->gpu);
+	if(!renderer)
+		goto done;
+
+	memset(&image, 0, sizeof(image));
+	image.num_planes = 2;
+	image.planes[0].texture = source[0];
+	image.planes[0].components = 1;
+	image.planes[0].component_mapping[0] = PL_CHANNEL_Y;
+	image.planes[1].texture = source[1];
+	image.planes[1].components = 2;
+	image.planes[1].component_mapping[0] = PL_CHANNEL_CB;
+	image.planes[1].component_mapping[1] = PL_CHANNEL_CR;
+	image.crop.x0 = 0;
+	image.crop.y0 = 0;
+	image.crop.x1 = (float)CHIAKI_RENDER_FRAME_W;
+	image.crop.y1 = (float)CHIAKI_RENDER_FRAME_H;
+	// The console's encoding, stated rather than left zeroed. LEVELS_UNKNOWN is the washed-out
+	// picture nobody reports; BT.709 limited with an 8-bit depth is what arrives.
+	image.repr.sys = PL_COLOR_SYSTEM_BT_709;
+	image.repr.levels = PL_COLOR_LEVELS_LIMITED;
+	image.repr.alpha = PL_ALPHA_UNKNOWN;
+	image.repr.bits.sample_depth = 8;
+	image.repr.bits.color_depth = 8;
+	image.color = pl_color_space_bt709;
+
+	memset(&target, 0, sizeof(target));
+	target.num_planes = 1;
+	target.planes[0].texture = rendered;
+	target.planes[0].components = 3;
+	target.planes[0].component_mapping[0] = PL_CHANNEL_R;
+	target.planes[0].component_mapping[1] = PL_CHANNEL_G;
+	target.planes[0].component_mapping[2] = PL_CHANNEL_B;
+	target.crop.x0 = 0;
+	target.crop.y0 = 0;
+	target.crop.x1 = (float)CHIAKI_RENDER_FRAME_W;
+	target.crop.y1 = (float)CHIAKI_RENDER_FRAME_H;
+	target.repr = pl_color_repr_rgb;
+	target.color = pl_color_space_srgb;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_FRAME_RENDER;
+	if(!pl_render_image(renderer, &image, &target, &pl_render_default_params))
+		goto done;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_FRAME_DOWNLOAD;
+	memset(&xfer, 0, sizeof(xfer));
+	xfer.tex = rendered;
+	xfer.ptr = out_rgba;
+	// One pixel. The frame is flat, so every pixel carries the same claim and a full download
+	// would spend a frame's bandwidth restating it.
+	xfer.rc.x0 = 0;
+	xfer.rc.y0 = 0;
+	xfer.rc.x1 = 1;
+	xfer.rc.y1 = 1;
+
+	ok = pl_tex_download(placebo->d3d11->gpu, &xfer);
+	if(ok && out_stage)
+		*out_stage = CHIAKI_RENDER_FRAME_OK;
+
+done:
+	if(renderer)
+		pl_renderer_destroy(&renderer);
+	if(rendered)
+		pl_tex_destroy(placebo->d3d11->gpu, &rendered);
+	if(source[1])
+		pl_tex_destroy(placebo->d3d11->gpu, &source[1]);
+	if(source[0])
+		pl_tex_destroy(placebo->d3d11->gpu, &source[0]);
+	if(texture)
+		ID3D11Texture2D_Release(texture);
+
+	return ok;
+#else
+	(void)d3d11; (void)luma; (void)cb; (void)cr; (void)out_rgba;
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_FRAME_NO_DEVICE;
+	return false;
+#endif
+}

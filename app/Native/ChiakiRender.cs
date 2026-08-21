@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 
 namespace ChiakiNg.Native;
 
@@ -21,7 +21,7 @@ public static class ChiakiRender
     internal const string Library = "chiaki-render";
 
     /// <summary>Must equal CHIAKI_RENDER_ABI in shim/chiaki_render.h. Independent of the shim's.</summary>
-    public const uint ExpectedAbi = 4;
+    public const uint ExpectedAbi = 5;
 
     [DllImport(Library, EntryPoint = "chiaki_render_abi_version", CallingConvention = CallingConvention.Cdecl)]
     public static extern uint AbiVersion();
@@ -74,6 +74,26 @@ public enum ShareCaps
     Wrapped = 4,
     Renderable = 8,
     Sampleable = 16,
+}
+
+/// <summary>Which step of a frame's journey through the renderer failed, or Ok.</summary>
+public enum RenderStage
+{
+    Ok = 0,
+    NoDevice,
+    /// <summary>CreateTexture2D of the NV12 array.</summary>
+    Texture,
+    /// <summary>pl_d3d11_wrap for the luma plane's R8 view.</summary>
+    Luma,
+    /// <summary>pl_d3d11_wrap for the chroma plane's R8G8 view.</summary>
+    Chroma,
+    /// <summary>pl_tex_create for the readable target.</summary>
+    Target,
+    Renderer,
+    /// <summary>pl_render_image itself.</summary>
+    Render,
+    /// <summary>pl_tex_download of the pixel produced.</summary>
+    Download,
 }
 
 /// <summary>Which step of the D3D11-to-D3D9Ex share failed, or Ok.</summary>
@@ -221,6 +241,32 @@ public sealed class RenderDevice : IDisposable
     public string Description => Marshal.PtrToStringUTF8(D3d11Description(Handle)) ?? "";
 
     /// <summary>
+    /// PP9: one decoded frame through pl_render_image, and the pixel it produced.
+    ///
+    /// The arguments are the console's own encoding rather than RGB - 16/128/128 is black and
+    /// 235/128/128 is white - because that is what a decoder hands over, and converting it is the
+    /// half of the renderer nothing before this exercised.
+    ///
+    /// The frame is an NV12 texture ARRAY and the slice read is not the first, which is the shape
+    /// a d3d11va decoder actually produces. Slice 0 holds black, so a renderer that ignored the
+    /// index would answer black to every question asked here.
+    /// </summary>
+    /// <returns>Four bytes at the origin as R,G,B,A, or null with <paramref name="stage"/> saying where it stopped.</returns>
+    public byte[]? RenderNv12(byte luma, byte cb, byte cr, out RenderStage stage)
+    {
+        var pixel = new byte[4];
+        bool ok = FrameNv12(Handle, luma, cb, cr, pixel, out int raw);
+        stage = (RenderStage)raw;
+        return ok ? pixel : null;
+    }
+
+    [DllImport(ChiakiRender.Library, EntryPoint = "chiaki_render_frame_nv12",
+        CallingConvention = CallingConvention.Cdecl)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    private static extern bool FrameNv12(
+        IntPtr d3d11, byte luma, byte cb, byte cr, byte[] rgba, out int stage);
+
+    /// <summary>
     /// The limits a stream is judged against. A maximum 2D texture below 3840 refuses a 4K
     /// stream, and finding that out at the first frame is finding it out from a user.
     /// </summary>
@@ -254,3 +300,4 @@ public sealed class RenderDevice : IDisposable
         CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr D3d11Description(IntPtr d3d11);
 }
+
