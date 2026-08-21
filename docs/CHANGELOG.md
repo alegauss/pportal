@@ -147,6 +147,7 @@
 - ✅ **PP184** **the two HTTP parsers have one signature and were compared nowhere, so a divergence would surface as a reply misread** — a corpus through both parsers, and nothing between them.
 - ✅ **PP185** **which of the C suite's files the port answers for was an audit run by hand, right on the day it was run** — the audit as a check, and a new C case that arrives red.
 - ✅ **PP186** **PP33 is sized at 420 call sites, which is the wrong number to plan a translation from and the only one anybody has** — ten behaviours behind four hundred sites, and the three that are the work.
+- ✅ **PP187** **the three curl behaviours HttpClient lacks were a plan, so each call site would still decide what curl was doing** — a transfer that fails the way curl fails, driven against a real server.
 
 ## Block G — Test discipline
 
