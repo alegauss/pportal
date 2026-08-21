@@ -90,6 +90,7 @@
 - ✅ **PP161** **the Keys tab derives each binding's settings key from a translatable label, and two labels contradict their enum** — the tab, its raw lookup beside PP2's declared table, and the two inverted labels named.
 - ✅ **PP15** **the PSN login and token dialogs are 882 lines of QML wrapped around the embedded browser** — the token screen, its log, and the ask that decides what the browser clears.
 - ✅ **PP164** **the Controllers tab stores a rumble word whose capital letter is not the label's, and an increment in hundredths** — the tab, the word a derived label loses, and the band shared with the audio path.
+- ✅ **PP165** **the Remote tab decides its one button from four credentials, and its two sliders default differently** — the tab, the four values one login is, and a clamp with a floor and no ceiling.
 
 ## Block E — Windows-only build
 
