@@ -93,6 +93,7 @@
 - ✅ **PP165** **the Remote tab decides its one button from four credentials, and its two sliders default differently** — the tab, the four values one login is, and a clamp with a floor and no ceiling.
 - ✅ **PP166** **the Config tab reads its profile from the default store and turns verbose on by clearing one bit** — the ninth tab, the profile from the other store, and a mask that subtracts.
 - ✅ **PP17 (the colour mapping tables)** **the renderer tuning and colour mapping screens are 2132 lines of QML over libplacebo options** — a second store, and four labels no rule turns into their words.
+- ✅ **PP168** **the colour mapping sliders repeat each row's condition, and one option is named for the function that hides it** — twenty-two rows in one table, and the three things repeating them hid.
 
 ## Block E — Windows-only build
 

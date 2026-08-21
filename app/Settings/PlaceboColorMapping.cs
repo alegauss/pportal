@@ -178,6 +178,40 @@ public static class PlaceboColorMappingSource
                 StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Whether Linear Knee is still shown for the two functions it is not named after.
+    /// </summary>
+    public static bool LinearKneeIsStillShownForMobiusAndGamma(string qml)
+    {
+        ArgumentNullException.ThrowIfNull(qml);
+        return qml.Contains(
+            "visible: Chiaki.settings.placeboToneMappingFunction == "
+            + "PlaceboColorMappingDialog.ToneMappingFunction.Mobius "
+            + "|| Chiaki.settings.placeboToneMappingFunction == "
+            + "PlaceboColorMappingDialog.ToneMappingFunction.Gamma",
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>Whether the two knee bounds still meet at a half rather than overlapping.</summary>
+    public static bool TheTwoKneeBoundsStillMeetAtAHalf(string qml)
+    {
+        ArgumentNullException.ThrowIfNull(qml);
+        return qml.Contains("to: 0.50", StringComparison.Ordinal)
+            && qml.Contains("from: 0.50", StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Whether the three LUT keys are still cased inconsistently. The claim is the inconsistency
+    /// itself, so all three are pinned - a store that tidied them would be a change to look at.
+    /// </summary>
+    public static bool TheThreeLutKeysAreStillCasedThisWay(string cpp)
+    {
+        ArgumentNullException.ThrowIfNull(cpp);
+        return cpp.Contains($"\"{Lut3dKeys.SizeI}\"", StringComparison.Ordinal)
+            && cpp.Contains($"\"{Lut3dKeys.SizeC}\"", StringComparison.Ordinal)
+            && cpp.Contains($"\"{Lut3dKeys.SizeH}\"", StringComparison.Ordinal);
+    }
+
     /// <summary>Whether the inverse switch is still a word rather than a bool.</summary>
     public static bool TheInverseSwitchIsStillAWord(string cpp)
     {
