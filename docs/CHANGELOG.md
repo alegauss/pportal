@@ -169,6 +169,7 @@
 - ✅ **PP206** **the wake-up URL is built in a buffer too small for most online ids, and asks for a PS4 the device list refuses** — the whole URL built here, with the clipping measured rather than counted.
 - ✅ **PP207** **eight of the session's nineteen states are never entered, and one of them is what the already-started guard tests** — the machine as a history, with the dead branches counted from the source.
 - ✅ **PP208** **the session uuid is drawn from rand reseeded by the clock, so two sessions in one second share an identifier** — the shape reproduced, the collision demonstrated rather than shipped.
+- ✅ **PP209** **an account with no consoles is reported as out of memory, on the one error path that returns without cleaning up** — the console list, with the empty case told apart from the failing one.
 
 ## Block G — Test discipline
 
