@@ -1,0 +1,44 @@
+<UserControl x:Class="ChiakiNg.Views.PlaceboTuningView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:ChiakiNg.Views">
+  <!--
+    PP17: the renderer tuning screen.
+
+    Four scaler combos over two lists, five sections with a switch and a preset each, and eighteen
+    rows drawn from the table. The switches and presets are wired in code-behind rather than bound
+    one by one, because a section's rows turn on the PAIR - and the pair is one call on the view
+    model, where in the QML it is a condition repeated on every element of every row.
+  -->
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="16">
+      <TextBlock Text="Upscaler:" Margin="0,8,0,2" Opacity="0.7" />
+      <ComboBox x:Name="UpscalerCombo" Width="400" HorizontalAlignment="Left"
+                SelectedIndex="{Binding Upscaler}" />
+
+      <TextBlock Text="Plane Upscaler:" Margin="0,8,0,2" Opacity="0.7" />
+      <ComboBox x:Name="PlaneUpscalerCombo" Width="400" HorizontalAlignment="Left"
+                SelectedIndex="{Binding PlaneUpscaler}" />
+
+      <TextBlock Text="Downscaler:" Margin="0,8,0,2" Opacity="0.7" />
+      <ComboBox x:Name="DownscalerCombo" Width="400" HorizontalAlignment="Left"
+                SelectedIndex="{Binding Downscaler}" />
+
+      <TextBlock Text="Plane Downscaler:" Margin="0,8,0,2" Opacity="0.7" />
+      <ComboBox x:Name="PlaneDownscalerCombo" Width="400" HorizontalAlignment="Left"
+                SelectedIndex="{Binding PlaneDownscaler}" />
+
+      <TextBlock Text="Algorithm:" Margin="0,8,0,2" Opacity="0.7" />
+      <ComboBox x:Name="DeinterlaceCombo" Width="400" HorizontalAlignment="Left"
+                SelectedIndex="{Binding DeinterlaceAlgorithm}" />
+
+      <ItemsControl x:Name="Rows" ItemsSource="{Binding Rows}" Margin="0,16,0,0">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <views:PlaceboSliderRowView />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

@@ -92,7 +92,7 @@
 - ✅ **PP164** **the Controllers tab stores a rumble word whose capital letter is not the label's, and an increment in hundredths** — the tab, the word a derived label loses, and the band shared with the audio path.
 - ✅ **PP165** **the Remote tab decides its one button from four credentials, and its two sliders default differently** — the tab, the four values one login is, and a clamp with a floor and no ceiling.
 - ✅ **PP166** **the Config tab reads its profile from the default store and turns verbose on by clearing one bit** — the ninth tab, the profile from the other store, and a mask that subtracts.
-- ✅ **PP17 (the colour mapping tables)** **the renderer tuning and colour mapping screens are 2132 lines of QML over libplacebo options** — a second store, and four labels no rule turns into their words.
+- ✅ **PP17** **the renderer tuning and colour mapping screens are 2132 lines of QML over libplacebo options** — both screens, their forty labels, and the one rule these two turned out to follow.
 - ✅ **PP168** **the colour mapping sliders repeat each row's condition, and one option is named for the function that hides it** — twenty-two rows in one table, and the three things repeating them hid.
 - ✅ **PP169** **the renderer presets are three names for one choice, and the store's word for Custom is the empty string** — seven preset lists, five of them hiding a section behind an empty string.
 - ✅ **PP170** **the tuning screen's hue slider is radians cut short at 6.28, and temperature carries bounds that are round in no unit** — eighteen rows in one table, with the four numbers rounding would lose.

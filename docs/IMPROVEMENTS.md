@@ -68,18 +68,6 @@ that decision has, now measured, with the call that stops it named.
 
 ## Block D — Screens
 
-### §PP17 The screens that belong to the renderer
-
-PlaceboSettingsDialog.qml is 1192 lines and PlaceboColorMappingDialog.qml 940:
-upscalers, dithering, deband, tone mapping curves, gamut mapping, and the presets over
-them. Every one of these is a libplacebo option, named the way libplacebo names it.
-
-Which is why they hang off the renderer decision and not off the settings screen. If the
-renderer keeps libplacebo, this is a large but mechanical port of a form. If it does
-not, most of these controls have nothing to write to and the honest outcome is a much
-smaller screen - a decision that belongs to whoever takes PP9, recorded there rather
-than discovered here.
-
 ### §PP18 Mapping needs the device in the room
 
 ControllerMappingDialog.qml is 350 lines: it shows the pad, lights up whatever the user
