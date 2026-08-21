@@ -200,6 +200,7 @@
 - ✅ **PP239** **the PS4 wakeup is unported: a discovery hop whose answer is copied into a fixed stack buffer** — the wakeup's discovery hop, with the shadowed url given two names and the buffer the network fills.
 - ✅ **PP240** **the call that opens a hole is unported: two preconditions, an offer, and an ordering that decides who answers next** — the two preconditions, and the flag set before the answer so a second offer has an owner.
 - ✅ **PP241** **two calls in the punch path have their answers thrown away, and one of them cannot always report failure** — the offer and the check whose answers are discarded, and the ids that look reused and are not.
+- ✅ **PP242** **the accept wait is unported, and its failure names a wider wait than the one that was made** — the wait asking one action is ported and the branch reporting two is asserted as still saying so, with the acknowledgement now built by the one function that serves all three sites.
 
 ## Block G — Test discipline
 
