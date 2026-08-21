@@ -203,6 +203,7 @@
 - ✅ **PP242** **the accept wait is unported, and its failure names a wider wait than the one that was made** — the wait asking one action is ported and the branch reporting two is asserted as still saying so, with the acknowledgement now built by the one function that serves all three sites.
 - ✅ **PP243** **the candidate probe is unported, and its arrays are sized by a count the other end chose** — the probe is ported against the same constants the reply uses, and the count the console chooses now has a measured stack size beside it rather than an adjective.
 - ✅ **PP244** **the probe send loop is unported, and the flag saying it worked only means one address resolved** — the send loop is ported with sending and clearing the flag as separate answers, and the unreachable clause kept rather than simplified away.
+- ✅ **PP245** **the candidate wait loop is unported, and one of its errors says the opposite of what happened** — the wait is ported with both timeout shapes intact, and the branch claiming no socket had data now carries the assertion that one did.
 
 ## Block G — Test discipline
 
