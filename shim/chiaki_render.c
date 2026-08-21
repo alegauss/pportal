@@ -449,6 +449,135 @@ CHIAKI_RENDER_API bool chiaki_render_share_render(void *d3d11, void *share)
 #endif
 }
 
+// ---- PP163: what a composition swapchain will accept ----------------------------------------
+//
+// dxgi1_4.h for IDXGISwapChain3, which is where CheckColorSpaceSupport lives. The 1.2 factory is
+// what CreateSwapChainForComposition needs, and both are present on every Windows this port
+// targets - PP22's floor is Windows 10.
+
+#include <dxgi1_4.h>
+
+CHIAKI_RENDER_API bool chiaki_render_swapchain_probe(
+		void *d3d11, int32_t format, bool *out_hdr10, bool *out_srgb, bool *out_scrgb, int32_t *out_stage)
+{
+#ifdef PL_HAVE_D3D11
+	chiaki_render_d3d11 *placebo = (chiaki_render_d3d11 *)d3d11;
+	IDXGIDevice *dxgi_device = NULL;
+	IDXGIAdapter *adapter = NULL;
+	IDXGIFactory2 *factory = NULL;
+	IDXGISwapChain1 *swapchain = NULL;
+	IDXGISwapChain3 *swapchain3 = NULL;
+	DXGI_SWAP_CHAIN_DESC1 desc;
+	UINT support = 0;
+	bool ok = false;
+
+	if(out_hdr10)
+		*out_hdr10 = false;
+	if(out_srgb)
+		*out_srgb = false;
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_SWAPCHAIN_NO_DEVICE;
+
+	if(!placebo || !placebo->d3d11 || !placebo->d3d11->device)
+		return false;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_SWAPCHAIN_DXGI_DEVICE;
+	if(FAILED(ID3D11Device_QueryInterface(placebo->d3d11->device, &IID_IDXGIDevice, (void **)&dxgi_device)))
+		goto done;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_SWAPCHAIN_ADAPTER;
+	if(FAILED(IDXGIDevice_GetAdapter(dxgi_device, &adapter)))
+		goto done;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_SWAPCHAIN_FACTORY;
+	if(FAILED(IDXGIAdapter_GetParent(adapter, &IID_IDXGIFactory2, (void **)&factory)))
+		goto done;
+
+	memset(&desc, 0, sizeof(desc));
+	desc.Width = 1920;
+	desc.Height = 1080;
+	desc.Format = (DXGI_FORMAT)format;
+	desc.SampleDesc.Count = 1;
+	desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+	// Two buffers and a FLIP model, which is what a composition swapchain requires - the older
+	// BitBlt models are refused outright here rather than merely discouraged.
+	desc.BufferCount = 2;
+	desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
+	desc.AlphaMode = DXGI_ALPHA_MODE_PREMULTIPLIED;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_SWAPCHAIN_CREATE;
+	if(FAILED(IDXGIFactory2_CreateSwapChainForComposition(
+			factory, (IUnknown *)placebo->d3d11->device, &desc, NULL, &swapchain)))
+		goto done;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_SWAPCHAIN_QUERY3;
+	if(FAILED(IDXGISwapChain1_QueryInterface(swapchain, &IID_IDXGISwapChain3, (void **)&swapchain3)))
+		goto done;
+
+	// The question that matters. A wide buffer is not an HDR one: the signal stays SDR until DXGI
+	// accepts G2084 - the ST.2084 transfer - with BT.2020 primaries.
+	if(out_hdr10
+			&& SUCCEEDED(IDXGISwapChain3_CheckColorSpaceSupport(
+					swapchain3, DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020, &support)))
+	{
+		*out_hdr10 = (support & DXGI_SWAP_CHAIN_COLOR_SPACE_SUPPORT_FLAG_PRESENT) != 0;
+	}
+
+	// And the ordinary one, so a false answer above can be told from a check that says no to
+	// everything. G22 with BT.709 primaries is plain SDR; G10 with the same primaries is scRGB,
+	// which is the OTHER way to carry HDR and the one a float buffer is for. Both are asked
+	// because a format that answers no to the first two is not necessarily incapable - it may be
+	// capable of a space this function did not name.
+	support = 0;
+	if(out_srgb
+			&& SUCCEEDED(IDXGISwapChain3_CheckColorSpaceSupport(
+					swapchain3, DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709, &support)))
+	{
+		*out_srgb = (support & DXGI_SWAP_CHAIN_COLOR_SPACE_SUPPORT_FLAG_PRESENT) != 0;
+	}
+
+	support = 0;
+	if(out_scrgb
+			&& SUCCEEDED(IDXGISwapChain3_CheckColorSpaceSupport(
+					swapchain3, DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709, &support)))
+	{
+		*out_scrgb = (support & DXGI_SWAP_CHAIN_COLOR_SPACE_SUPPORT_FLAG_PRESENT) != 0;
+	}
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_SWAPCHAIN_OK;
+	ok = true;
+
+done:
+	if(swapchain3)
+		IDXGISwapChain3_Release(swapchain3);
+	if(swapchain)
+		IDXGISwapChain1_Release(swapchain);
+	if(factory)
+		IDXGIFactory2_Release(factory);
+	if(adapter)
+		IDXGIAdapter_Release(adapter);
+	if(dxgi_device)
+		IDXGIDevice_Release(dxgi_device);
+
+	return ok;
+#else
+	(void)d3d11; (void)format;
+	if(out_hdr10)
+		*out_hdr10 = false;
+	if(out_srgb)
+		*out_srgb = false;
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_SWAPCHAIN_NO_DEVICE;
+	return false;
+#endif
+}
+
 // ---- PP9: a decoded frame through pl_render_image ------------------------------------------
 
 #ifdef PL_HAVE_D3D11

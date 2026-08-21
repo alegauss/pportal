@@ -64,6 +64,7 @@
 - ✅ **PP135** **nothing has asked WPF whether it will take the shared surface, only Direct3D** — a D3DImage reports a front buffer available at 1920x1080 for the shared surface.
 - ✅ **PP10** **the stream HUD and the in-stream menu are QML drawn over the video and disappear with the renderer** — the menu's two inversions, the mode that is not stored, and the preset that starts at one.
 - ✅ **PP11 (fullscreen)** **fullscreen, HDR handoff and refresh-rate switching are handled by the Qt window** — fullscreen as a state machine, guards included.
+- ✅ **PP175** **PP163 named two ways out of the eight-bit ceiling and priced neither, so the HDR decision has no measurement** — the other path carries HDR10 at ten bits, and the obvious test for it is not one.
 
 ## Block D — Screens
 

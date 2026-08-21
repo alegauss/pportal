@@ -21,7 +21,7 @@ public static class ChiakiRender
     internal const string Library = "chiaki-render";
 
     /// <summary>Must equal CHIAKI_RENDER_ABI in shim/chiaki_render.h. Independent of the shim's.</summary>
-    public const uint ExpectedAbi = 6;
+    public const uint ExpectedAbi = 7;
 
     [DllImport(Library, EntryPoint = "chiaki_render_abi_version", CallingConvention = CallingConvention.Cdecl)]
     public static extern uint AbiVersion();
@@ -75,6 +75,46 @@ public enum ShareCaps
     Renderable = 8,
     Sampleable = 16,
 }
+
+/// <summary>
+/// PP163: what a composition swapchain was asked to be, in DXGI's own numbers.
+///
+/// The two the question turns on. Passed as the DXGI value rather than as a name of this port's,
+/// because the answer comes back from DXGI about that exact format.
+/// </summary>
+public enum SwapchainFormat
+{
+    /// <summary>DXGI_FORMAT_B8G8R8A8_UNORM - the eight bits D3DImage stops at.</summary>
+    Bgra8 = 87,
+
+    /// <summary>DXGI_FORMAT_R10G10B10A2_UNORM - the ten HDR needs.</summary>
+    Rgb10A2 = 24,
+
+    /// <summary>DXGI_FORMAT_R16G16B16A16_FLOAT - the wide one scRGB uses.</summary>
+    Rgba16Float = 10,
+}
+
+/// <summary>Which step of building a composition swapchain failed, or Ok.</summary>
+public enum SwapchainStage
+{
+    Ok = 0,
+    NoDevice,
+    DxgiDevice,
+    Adapter,
+    Factory,
+    /// <summary>CreateSwapChainForComposition itself, which is where a refused format fails.</summary>
+    Create,
+    Query3,
+}
+
+/// <summary>What DXGI says a swapchain will present.</summary>
+/// <param name="Created">Whether the swapchain exists at all.</param>
+/// <param name="Hdr10">Whether it accepts ST.2084 with BT.2020 primaries - the HDR10 signal.</param>
+/// <param name="Srgb">Whether it accepts the ordinary SDR one, so a false above means something.</param>
+/// <param name="ScRgb">Whether it accepts the linear space a float buffer carries HDR in.</param>
+/// <param name="Stage">Where it stopped, when it did.</param>
+public readonly record struct SwapchainSupport(
+    bool Created, bool Hdr10, bool Srgb, bool ScRgb, SwapchainStage Stage);
 
 /// <summary>Which step of a frame's journey through the renderer failed, or Ok.</summary>
 public enum RenderStage
@@ -267,6 +307,31 @@ public sealed class RenderDevice : IDisposable
 
     /// <summary>What libplacebo says it is, for a log line that names a version rather than a guess.</summary>
     public string Description => Marshal.PtrToStringUTF8(D3d11Description(Handle)) ?? "";
+
+    /// <summary>
+    /// PP163: what a composition swapchain in this format will present.
+    ///
+    /// The path D3DImage is not. HDR asks two things of it and they are asked separately: whether
+    /// the ten-bit buffer can exist, and whether DXGI will carry an ST.2084 signal in it. A port
+    /// that stopped at the first would have a deeper buffer showing the same SDR picture.
+    /// </summary>
+    public SwapchainSupport ProbeSwapchain(SwapchainFormat format)
+    {
+        bool created = SwapchainProbe(
+            Handle, (int)format, out bool hdr10, out bool srgb, out bool scrgb, out int stage);
+
+        return new SwapchainSupport(created, hdr10, srgb, scrgb, (SwapchainStage)stage);
+    }
+
+    [DllImport(ChiakiRender.Library, EntryPoint = "chiaki_render_swapchain_probe",
+        CallingConvention = CallingConvention.Cdecl)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    private static extern bool SwapchainProbe(
+        IntPtr d3d11, int format,
+        [MarshalAs(UnmanagedType.I1)] out bool hdr10,
+        [MarshalAs(UnmanagedType.I1)] out bool srgb,
+        [MarshalAs(UnmanagedType.I1)] out bool scrgb,
+        out int stage);
 
     /// <summary>
     /// PP9: one decoded frame through pl_render_image, and the pixel it produced.

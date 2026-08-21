@@ -36,7 +36,7 @@ extern "C" {
 #endif
 
 /** Bumped whenever an exported signature here changes meaning. Independent of CHIAKI_SHIM_ABI. */
-#define CHIAKI_RENDER_ABI 6
+#define CHIAKI_RENDER_ABI 7
 
 CHIAKI_RENDER_API uint32_t chiaki_render_abi_version(void);
 
@@ -182,6 +182,48 @@ CHIAKI_RENDER_API bool chiaki_render_share_clear_and_read(
  * exercises the renderer, the target frame and the wrapped texture without needing a decoder.
  */
 CHIAKI_RENDER_API bool chiaki_render_share_render(void *d3d11, void *share);
+
+/**
+ * PP163: whether the OTHER presentation path can carry HDR, measured rather than argued.
+ *
+ * PP11's HDR half stopped at a wall: D3DImage refuses any surface wider than eight bits, so the
+ * composition path PP9 chose cannot show an HDR picture. The design named two ways out and said a
+ * DirectComposition visual is the only one that leaves PP10's overlay standing. Neither was
+ * priced.
+ *
+ * This prices the half that is a fact rather than a judgement. A composition swapchain is what
+ * DirectComposition presents, and HDR needs two things of it that are asked separately:
+ *
+ *   the FORMAT. Ten bits per channel, which is where D3DImage stopped.
+ *
+ *   the COLOUR SPACE. A ten-bit swapchain is not an HDR one - the buffer is wide and the signal is
+ *   still SDR until DXGI accepts G2084 with BT.2020 primaries, which is the ST.2084 transfer HDR10
+ *   is. CheckColorSpaceSupport answers it per adapter and per output, and a port that stopped at
+ *   the format would have a deeper buffer showing the same picture.
+ *
+ * Headless: a composition swapchain has no window, which is exactly why it is the one that can be
+ * asked this without a display.
+ */
+typedef enum chiaki_render_swapchain_stage
+{
+	CHIAKI_RENDER_SWAPCHAIN_OK = 0,
+	CHIAKI_RENDER_SWAPCHAIN_NO_DEVICE,
+	CHIAKI_RENDER_SWAPCHAIN_DXGI_DEVICE,   /**< QueryInterface for IDXGIDevice */
+	CHIAKI_RENDER_SWAPCHAIN_ADAPTER,       /**< IDXGIDevice::GetAdapter */
+	CHIAKI_RENDER_SWAPCHAIN_FACTORY,       /**< IDXGIAdapter::GetParent for IDXGIFactory2 */
+	CHIAKI_RENDER_SWAPCHAIN_CREATE,        /**< CreateSwapChainForComposition */
+	CHIAKI_RENDER_SWAPCHAIN_QUERY3,        /**< QueryInterface for IDXGISwapChain3 */
+} chiaki_render_swapchain_stage;
+
+/**
+ * Creates a composition swapchain in `format` and reports what it will accept.
+ *
+ * `out_hdr10` receives whether DXGI says this swapchain supports the HDR10 colour space, and
+ * `out_srgb` whether it supports the ordinary SDR one - the second so that a false first answer can
+ * be told apart from a check that answers false to everything.
+ */
+CHIAKI_RENDER_API bool chiaki_render_swapchain_probe(
+		void *d3d11, int32_t format, bool *out_hdr10, bool *out_srgb, bool *out_scrgb, int32_t *out_stage);
 
 /**
  * PP9's last unanswered link: a DECODED FRAME through pl_render_image.

@@ -44,7 +44,13 @@ add_library(chiaki-render SHARED chiaki_render.c chiaki_render.h)
 target_include_directories(chiaki-render PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 # d3d11/d3d9/dxgi for the D3DImage share (PP131). Named here rather than assumed present in
 # libplacebo's own link line, which does not export them.
-target_link_libraries(chiaki-render PkgConfig::LIBPLACEBO d3d11 d3d9 dxgi)
+#
+# dxguid is PP163's, and it is a separate library rather than an oversight: the import libs carry
+# the interface THUNKS, and the interface GUIDs live in their own static archive. IID_IDXGIDevice
+# and IID_IDXGIResource happen to resolve without it, so the gap only appears the first time a
+# newer interface is asked for - IID_IDXGISwapChain3 here - and it appears at link time as an
+# undefined reference rather than anywhere a reader would look.
+target_link_libraries(chiaki-render PkgConfig::LIBPLACEBO d3d11 d3d9 dxgi dxguid)
 set_target_properties(chiaki-render PROPERTIES PREFIX "" OUTPUT_NAME "chiaki-render")
 
 if(MINGW)

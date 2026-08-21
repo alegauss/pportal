@@ -264,6 +264,84 @@ public class RenderProbeTests
     }
 
     /// <summary>
+    /// PP163: the OTHER path carries HDR10, which is the answer PP163's decision was waiting for.
+    ///
+    /// A composition swapchain - what a DirectComposition visual presents - takes ten bits per
+    /// channel AND accepts the ST.2084 signal in BT.2020 primaries. So the wall PP11 hit is WPF's
+    /// D3DImage specifically, not the graphics stack: an HDR picture can reach this display, just
+    /// not through the surface PP9 chose.
+    ///
+    /// Headless, because a composition swapchain has no window - which is exactly why it is the
+    /// candidate that can be priced without one.
+    /// </summary>
+    [Fact]
+    public void ACompositionSwapchainCarriesHdr10()
+    {
+        using RenderDevice? device = AnyDevice();
+        Assert.NotNull(device);
+
+        SwapchainSupport ten = device.ProbeSwapchain(SwapchainFormat.Rgb10A2);
+
+        Assert.True(ten.Created, $"a ten-bit composition swapchain stopped at {ten.Stage}");
+        Assert.True(ten.Hdr10, "DXGI refuses ST.2084 on a ten-bit composition swapchain");
+    }
+
+    /// <summary>
+    /// PP163: and the obvious HDR test is not one. An EIGHT-bit swapchain reports HDR10 support
+    /// too, because CheckColorSpaceSupport answers about the colour space and not about whether
+    /// the buffer has the bits to carry it.
+    ///
+    /// So the format and the colour space are two independent questions and a port has to ask
+    /// both. Asking only the second gets a yes on eight bits and an ST.2084 signal quantised into
+    /// them, which bands in exactly the dark gradients HDR was wanted for.
+    ///
+    /// Asserted as the SURPRISE it is: if a future adapter or Windows starts refusing HDR10 on an
+    /// eight-bit swapchain, this goes red and the reasoning above should be re-read rather than
+    /// inherited.
+    /// </summary>
+    [Fact]
+    public void TheColourSpaceCheckIsNotAnHdrTest()
+    {
+        using RenderDevice? device = AnyDevice();
+        Assert.NotNull(device);
+
+        SwapchainSupport eight = device.ProbeSwapchain(SwapchainFormat.Bgra8);
+
+        Assert.True(eight.Created);
+        Assert.True(eight.Hdr10, "eight bits reported no HDR10 - the finding this pins has changed");
+    }
+
+    /// <summary>
+    /// PP163: each buffer carries exactly one family of colour spaces, so choosing the format IS
+    /// choosing the flavour of HDR.
+    ///
+    /// The integer formats take the two gamma-encoded spaces - SDR and HDR10 - and refuse scRGB.
+    /// The float format takes scRGB and refuses both of the others. There is no format that offers
+    /// both, so "support HDR" is not one decision here but a fork taken at the swapchain.
+    /// </summary>
+    [Fact]
+    public void EachBufferCarriesOneFamilyOfColourSpaces()
+    {
+        using RenderDevice? device = AnyDevice();
+        Assert.NotNull(device);
+
+        SwapchainSupport ten = device.ProbeSwapchain(SwapchainFormat.Rgb10A2);
+        SwapchainSupport wide = device.ProbeSwapchain(SwapchainFormat.Rgba16Float);
+
+        Assert.True(wide.Created, $"a float composition swapchain stopped at {wide.Stage}");
+
+        // The integer one: the two gamma spaces, and not the linear one.
+        Assert.True(ten.Srgb);
+        Assert.True(ten.Hdr10);
+        Assert.False(ten.ScRgb);
+
+        // And the float one, the other way round entirely.
+        Assert.True(wide.ScRgb);
+        Assert.False(wide.Hdr10);
+        Assert.False(wide.Srgb);
+    }
+
+    /// <summary>
     /// PP163: the ten-bit surface HDR would need EXISTS, all the way to a D3D9Ex surface pointer.
     ///
     /// This half is the surprise. Every step PP131 measured for eight bits works for ten as well:
