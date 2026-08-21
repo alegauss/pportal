@@ -14,7 +14,19 @@ macro(tri_option name desc default)
 endmacro()
 
 option(CHIAKI_ENABLE_TESTS "Enable tests for Chiaki" ON)
-option(CHIAKI_ENABLE_GUI "Enable Qt GUI" ON)
+# PP21: OFF, which is what "the port is finished" means in the one place a machine can read it.
+#
+# Eight Qt modules hung off this, WebEngineQuick among them - a whole Chromium for one login
+# screen. While it defaulted ON a screen could be left behind and nobody would notice, because the
+# tree still built; with it OFF the toolchain is the thing that says so.
+#
+# What this does NOT do is delete gui/. Thirty-two files under app/ read that source to assert the
+# port still matches what it was ported from - the QML a screen came from, the switch a capture
+# reads, the format strings a mapping is written with - and every one of those checks reports
+# "could not run" rather than failing when the file is absent. Dropping the BUILD dependency is
+# this task; deleting the corpus those checks read would silence them, which is the opposite of
+# what this line is for. `-DCHIAKI_ENABLE_GUI=ON` still builds the Qt client from it.
+option(CHIAKI_ENABLE_GUI "Enable Qt GUI" OFF)
 option(CHIAKI_LIB_ENABLE_OPUS "Use Opus as part of Chiaki Lib" ON)
 tri_option(CHIAKI_ENABLE_SPEEX "Use speex for echo cancelling mic playback" AUTO)
 tri_option(CHIAKI_ENABLE_RUDP "Enable Remote Play over Internet" AUTO)
@@ -60,10 +72,17 @@ if(CHIAKI_USE_SYSTEM_JERASURE)
 	endif()
 endif()
 
-if(CHIAKI_ENABLE_GUI)
-	find_package(PkgConfig REQUIRED)
-	pkg_check_modules(LIBPLACEBO REQUIRED libplacebo>=7.349.0 IMPORTED_TARGET)
-endif()
+# PP21: libplacebo is the PORT's, not the Qt client's, and it was found inside the client's branch.
+#
+# chiaki-render (PP9) links PkgConfig::LIBPLACEBO and is built unconditionally beside the shim, for
+# the reason PP4 gives: it is the half with no Qt in it. But its dependency was discovered under
+# CHIAKI_ENABLE_GUI, so the first build with the GUI genuinely off failed at
+# shim/CMakeLists.txt:53 - a target that has nothing to do with Qt, broken by removing Qt.
+#
+# That is the tail this task was filed for, arriving somewhere nobody predicted: not QString in a
+# file nobody thought of as UI, but a find_package riding along in the block being deleted.
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(LIBPLACEBO REQUIRED libplacebo>=7.349.0 IMPORTED_TARGET)
 
 if(CHIAKI_USE_SYSTEM_CURL)
 	if (CHIAKI_USE_SYSTEM_CURL STREQUAL AUTO)

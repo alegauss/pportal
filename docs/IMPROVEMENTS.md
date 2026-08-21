@@ -70,18 +70,6 @@ that decision has, now measured, with the call that stops it named.
 
 ## Block E — Windows-only build
 
-### §PP21 The dependency that says it is over
-
-Eight Qt modules are named in gui/CMakeLists.txt, WebEngineQuick among them - a whole
-Chromium for one login screen. As long as the find_package line stays, a screen can
-still be left behind and nobody notices, because it still builds.
-
-Removing it is a one-line edit and a long tail: QString and QList in files nobody
-thought of as UI, QSettings under the settings store, QNetworkAccessManager under the
-PSN calls, the resource system behind the icons. That tail is the real content of this
-task, and it is also the honest completion criterion for the whole port - the day Qt is
-not a dependency is the day the QML is actually gone, rather than merely unused.
-
 ### §PP22 Getting it onto a machine
 
 The AppImage, Flatpak, macOS and Switch workflows went with the platforms they built

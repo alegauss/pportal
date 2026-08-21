@@ -50,7 +50,19 @@ if [[ $do_clean -eq 1 ]]; then
     rm -rf "$BUILD_DIR"
 fi
 
-cmake -S . -B "$BUILD_DIR" -G Ninja -DCMAKE_BUILD_TYPE="$BUILD_TYPE"
+# PP21: -DCHIAKI_ENABLE_GUI passed EXPLICITLY, not left to the default in CMakeLists.txt.
+#
+# option() does not override a value already in the cache. Changing that default to OFF and
+# running configure reported "CONFIGURE OK" on this machine while CHIAKI_ENABLE_GUI:BOOL=ON sat in
+# CMakeCache.txt from the first configure ever run here - so the Qt client went on being built,
+# and the only way that was noticed was deleting chiaki.exe and watching ninja link it again.
+#
+# A default is therefore correct for a fresh clone and inert everywhere else, which is the worst
+# of both: the edit reads as done, the tree reports success, and every existing checkout keeps the
+# dependency. Passed on the command line it overrides the cache on every configure, so what the
+# build does is what this line says rather than what some earlier run decided.
+cmake -S . -B "$BUILD_DIR" -G Ninja -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
+    -DCHIAKI_ENABLE_GUI="${CHIAKI_ENABLE_GUI:-OFF}"
 
 if [[ $do_build -eq 0 ]]; then
     echo "configure ok: every path the build graph names resolves"
@@ -79,7 +91,20 @@ fi
 # builds what it is asked for. Left out, the managed side would load whichever
 # chiaki-render.dll the last hand-run of ninja happened to leave, which is PP56 again with a
 # renderer on the far side.
-targets=(chiaki chiaki-shim chiaki-render)
+# PP21: `chiaki` is the QT CLIENT and is asked for only when it exists.
+#
+# Read from the cache the configure above just wrote, the same way chiaki-unit is below and for
+# the same reason: ninja hard-errors on a target that is not in the graph, so a build with the GUI
+# off would fail on the request rather than on anything real. The shim and the renderer stay
+# unconditional - PP4 built them outside CHIAKI_ENABLE_GUI precisely because they are the half of
+# the port with no Qt in it.
+targets=(chiaki-shim chiaki-render)
+if grep -qx 'CHIAKI_ENABLE_GUI:BOOL=ON' "$BUILD_DIR/CMakeCache.txt" 2>/dev/null; then
+    targets+=(chiaki)
+    gui_built=1
+else
+    gui_built=0
+fi
 if [[ $do_tests -eq 1 ]]; then
     # Absent when the tree was configured with -DCHIAKI_ENABLE_TESTS=OFF, and asking ninja
     # for a target that does not exist is a hard error. Read from the cache the configure
@@ -96,6 +121,17 @@ cmake --build "$BUILD_DIR" --target "${targets[@]}"
 
 if [[ $do_tests -eq 0 ]]; then
     echo "note: chiaki-unit was not built (notests), so ctest in $BUILD_DIR reports on an older binary" >&2
+fi
+
+# PP21: nothing to deploy when the client was not built, and saying so beats shipping a stale one.
+#
+# Measured: with the GUI off but the deploy left alone, windeployqt happily packaged the
+# chiaki.exe a PREVIOUS build had left in the tree, printed its thirty-four Qt DLLs, and compile
+# then pointed at it as "run this one". A build that reports success while deploying a binary it
+# did not make is the same defect as PP56 with a whole application on the far side.
+if [[ $do_deploy -eq 1 && $gui_built -eq 0 ]]; then
+    echo "note: the Qt client is not built (CHIAKI_ENABLE_GUI is off), so there is nothing to deploy" >&2
+    do_deploy=0
 fi
 
 if [[ $do_deploy -eq 1 ]]; then

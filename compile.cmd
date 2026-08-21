@@ -212,11 +212,23 @@ echo [compile] that resolves is not yet a target that links.
 exit /b 0
 
 :ok_deploy
+rem PP21: the Qt client is off by default, so what this points at is what was actually built.
+rem Naming a path that no longer exists is the same failure as deploying a stale binary - it reads
+rem as success and sends whoever ran it to a file that is not there.
+if not exist "%~dp0%BUILD_DIR%\gui\chiaki.exe" goto ok_deploy_managed
 echo [compile] OK - run this one:
 echo [compile]   %~dp0%DEPLOY_DISP%\chiaki.exe
 echo.
 echo [compile] ^(%~dp0%BUILD_DIR%\gui\chiaki.exe also exists, but it needs the
 echo [compile]  MSYS2 MinGW64 shell - double-clicking it fails on missing DLLs.^)
+exit /b 0
+
+:ok_deploy_managed
+echo [compile] OK - run this one:
+echo [compile]   %~dp0app\bin\Debug\net10.0-windows\win-x64\ChiakiNg.exe
+echo.
+echo [compile] ^(the Qt client is off - CHIAKI_ENABLE_GUI. Its source stays in gui\ because
+echo [compile]  the port's drift checks read it; -DCHIAKI_ENABLE_GUI=ON builds it again.^)
 exit /b 0
 
 rem ---------------------------------------------------------------------------
