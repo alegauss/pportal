@@ -103,6 +103,7 @@
 - ✅ **PP173** **the mapping grid draws a row one button wide or two, and nothing yet draws the capture the pad drives** — the grid, the capture modal, and the slot that is drawn only when it binds something.
 - ✅ **PP167** **the settings screen's nine tabs each exist and nothing composes them into one dialog** — the strip, the order two switches dispatch on, and the one tab that computes its own focus.
 - ✅ **PP211** **the mapping grid navigates by Left, Right and three-row jumps, none of which the ported focus chain answers** — the mapping grid's four directions as arithmetic over three columns whose first cell is the checkbox, that checkbox's unguarded Down reproduced.
+- 🗑 **PP216** **the mapping capture is unported, so a press on the pad reaches nothing and the screen has no bindings to show** — abandoned: PP126 shipped this already - the three token formats, the analog gate, the button-up rule and the one-shot disarm - and this line was filed without reading it.
 
 ## Block E — Windows-only build
 

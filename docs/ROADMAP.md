@@ -2,6 +2,7 @@
 
 ## Priority
 
+- PP18
 - Block H
 - Block I
 
@@ -16,9 +17,11 @@
 
 ## Block D — Screens
 
+- ⏳ **PP18** (deps: PP8 ✅, PP12 ✅) **the controller mapping screen is QML bound to the live SDL mapping strings** — the pad in the room, which the design says is the whole point and which no test here can stand in for. → §PP18
+
 ## Block E — Windows-only build
 
-- 📋 **PP21** (deps: Block D ⏸) **Qt6 is still required to build: Core, Gui, Quick, Qml, Svg, Widgets, Concurrent and WebEngineQuick** — The port is only finished when the toolchain says so, and dropping Qt is the check that no screen or service quietly still depends on it. → §PP21
+- 📋 **PP21** (deps: Block D) **Qt6 is still required to build: Core, Gui, Quick, Qml, Svg, Widgets, Concurrent and WebEngineQuick** — The port is only finished when the toolchain says so, and dropping Qt is the check that no screen or service quietly still depends on it. → §PP21
 - ⏳ **PP22** (deps: PP1 ✅) **every CI workflow was deleted, so nothing builds, signs or packages the application** — the native side through vcpkg, and the installer; the publish and its selftest gate landed. → §PP22
 - 📋 **PP63** (deps: PP62 ✅) **nothing in the tree can configure a Qt build carrying WebEngine, so PP46's before cannot be produced at all** — MSYS2 has no qt6-webengine and no published Windows release carries Chromium, so an MSVC configure built once is the only reference the port can measure against. → §PP63
 

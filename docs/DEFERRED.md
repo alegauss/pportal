@@ -10,8 +10,6 @@
 
 ## Block D — Screens
 
-- ⏸ **PP18** (deps: PP8 ✅, PP12 ✅) **the controller mapping screen is QML bound to the live SDL mapping strings** — set aside (a DualSense on the desk, which no test here stands in for.): the pad in the room, which the design says is the whole point and which no test here can stand in for. → §PP18
-
 ## Block E — Windows-only build
 
 ## Block F — Managed core
