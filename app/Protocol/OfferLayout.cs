@@ -102,10 +102,26 @@ public static class OfferLayout
     /// <summary>
     /// Whether slot zero carries the port STUN actually reported.
     ///
-    /// Only when nothing was guessed. The guessing writes its first candidate AFTER stepping the
-    /// port forward, so the real allocation is skipped rather than kept as the first entry.
+    /// CORRECTED BY PP253. This first read "only when nothing was guessed", taken off the sequential
+    /// path alone. There are two generators and PP33 had already ported both: the SEQUENTIAL one
+    /// steps before it writes and so leaves the reported port out, while the SPREAD opens at delta
+    /// zero and puts that port first. The answer is produced by asking them rather than restated
+    /// here, so this cannot drift from <see cref="PortGuessing"/> again.
     /// </summary>
-    public static bool SlotZeroHoldsTheStunPort(OfferShape shape) => !Guesses(shape);
+    public static bool SlotZeroHoldsTheStunPort(OfferShape shape)
+    {
+        const ushort reported = 40000;
+
+        return shape switch
+        {
+            OfferShape.Plain or OfferShape.NoStun => true,
+
+            OfferShape.GuessedEight =>
+                PortGuessing.Sequential(reported, increment: 1, count: 1)[0] == reported,
+
+            _ => PortGuessing.Spread(reported, count: 1)[0] == reported,
+        };
+    }
 
     /// <summary>
     /// And whether it carries the STUN address, which it does on every path that had one.
@@ -115,27 +131,8 @@ public static class OfferLayout
     /// <summary>What the comment beside that copy claims slot zero is.</summary>
     public const string WhatTheCommentClaims = "either STUN candidate if it exists, else STATIC candidate";
 
-    /// <summary>
-    /// The port the first guess carries, from the reported one and the step between guesses.
-    ///
-    /// The step is applied BEFORE the write, so the reported port is never one of the guesses.
-    /// </summary>
-    public static int FirstGuessedPort(int reportedPort, int increment)
-    {
-        ArgumentOutOfRangeException.ThrowIfNegative(reportedPort);
-
-        int stepped = reportedPort + increment;
-
-        // Well-known ports are stepped over unless the allocation is already among them, which
-        // implies the router uses them.
-        if (stepped < 1024 && reportedPort > 1024)
-            return ushort.MaxValue - (1024 - stepped);
-
-        if (stepped < 1)
-            return stepped + ushort.MaxValue;
-
-        return stepped > ushort.MaxValue ? stepped - ushort.MaxValue + 1024 : stepped;
-    }
+    // PP251 also grew a FirstGuessedPort here, which was PortGuessing.Sequential written a second
+    // time and one arrangement short. PP253 deleted it; callers use the generator.
 }
 
 /// <summary>

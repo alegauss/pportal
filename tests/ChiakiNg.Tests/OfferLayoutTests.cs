@@ -44,56 +44,45 @@ public class OfferLayoutTests
     }
 
     /// <summary>
-    /// THE FINDING. The session keeps slot zero, and slot zero holds the reported port only when
-    /// nothing was guessed.
+    /// The session keeps slot zero, and what sits there depends on which distribution ran.
+    ///
+    /// CORRECTED BY PP253. This first asserted that every guessing shape put a guessed port there.
+    /// Only the sequential one does - the two symmetric ones open at the reported port. The rule
+    /// now lives in <see cref="PortGuessing.FirstGuessIsTheReportedPort"/> and this defers to it.
     /// </summary>
     [Fact]
-    public void SlotZeroCarriesAGuessWheneverGuessingRan()
+    public void WhatSitsInSlotZeroDependsOnTheDistribution()
     {
         Assert.Equal(0, OfferLayout.HeldByTheSession.FromSlot);
 
         Assert.True(OfferLayout.SlotZeroHoldsTheStunPort(OfferShape.Plain));
         Assert.True(OfferLayout.SlotZeroHoldsTheStunPort(OfferShape.NoStun));
 
-        foreach (OfferShape shape in Enum.GetValues<OfferShape>().Where(OfferLayout.Guesses))
-        {
-            Assert.False(
-                OfferLayout.SlotZeroHoldsTheStunPort(shape), $"{shape} should carry a guessed port");
+        // The sequential path steps past it.
+        Assert.False(OfferLayout.SlotZeroHoldsTheStunPort(OfferShape.GuessedEight));
 
-            // The address survives on all of them, which is why the comment reads as true.
+        // The symmetric ones do not.
+        Assert.True(OfferLayout.SlotZeroHoldsTheStunPort(OfferShape.GuessedForced));
+        Assert.True(OfferLayout.SlotZeroHoldsTheStunPort(OfferShape.GuessedMeasured));
+
+        // The address survives on every path that had one, which is why the comment reads as true.
+        foreach (OfferShape shape in Enum.GetValues<OfferShape>().Where(OfferLayout.Guesses))
             Assert.True(OfferLayout.SlotZeroHoldsTheStunAddress(shape));
-        }
     }
 
     /// <summary>
-    /// And the first guess is not the reported port - the step is applied before the write, so the
-    /// real allocation is the one port the array never carries.
+    /// The two generators, asked directly - which is what PP251 should have done instead of writing
+    /// a third one. PP33's own test already named this difference.
     /// </summary>
     [Fact]
-    public void TheReportedPortIsNeverOneOfTheGuesses()
+    public void TheSequentialPathStepsPastItAndTheSpreadDoesNot()
     {
-        const int reported = 40000;
-
-        Assert.NotEqual(reported, OfferLayout.FirstGuessedPort(reported, increment: 1));
-        Assert.Equal(40001, OfferLayout.FirstGuessedPort(reported, increment: 1));
-        Assert.Equal(39999, OfferLayout.FirstGuessedPort(reported, increment: -1));
+        Assert.DoesNotContain<ushort>(40000, PortGuessing.Sequential(40000, increment: 1));
+        Assert.Equal(40000, PortGuessing.Spread(40000, count: 1)[0]);
     }
 
-    /// <summary>The wrapping keeps a guess inside a port, and steps over the well-known range.</summary>
-    [Fact]
-    public void TheGuessesWrapWithoutLandingBelowTheWellKnownRange()
-    {
-        // Stepping down out of the range from above wraps to the top instead.
-        int wrapped = OfferLayout.FirstGuessedPort(1030, increment: -20);
-        Assert.True(wrapped > 1024, $"a guess landed at {wrapped}");
-
-        // Stepping past the top comes back above the well-known range, not to zero.
-        int over = OfferLayout.FirstGuessedPort(65530, increment: 20);
-        Assert.InRange(over, 1024, ushort.MaxValue);
-
-        // Unless the allocation was already down there, which is left alone.
-        Assert.Equal(500, OfferLayout.FirstGuessedPort(499, increment: 1));
-    }
+    // The wrapping and the two underflow rules were tested here too, which was PP33's
+    // PortGuessingTests written a second time. PP253 deleted them; that file has them.
 
     /// <summary>Every rule above, still written the same way in the core it was read from.</summary>
     [Fact]
