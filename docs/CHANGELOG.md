@@ -208,6 +208,7 @@
 - ✅ **PP37** **a screen ported into code-behind can only be exercised by opening a window** — the first view model is the registration dialog, nineteen assertions and not one window.
 - ✅ **PP162** **the view tests race through WPF's static initialisation and the whole suite reports a hang, intermittently** — one runner config, and the assertion that it still reaches the runner.
 - ✅ **PP226** **nothing in this port has ever looked at what a screen draws, so a screen that never appeared kept the suite green** — the screen rendered off-screen to a PNG, and the background without which it is unreadable.
+- ✅ **PP227** **no test raises a real click, so the handler that turns one into a row is the one thing nothing exercises** — the real window driven through UI Automation, invoked rather than clicked so it needs no foreground.
 
 ## Block H — Performance and telemetry
 

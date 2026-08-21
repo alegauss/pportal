@@ -49,8 +49,20 @@ set "CHERE_INVOKING=1"
 
 set "NO_APP="
 set "FILTERED="
+set "INTERACTION="
 for %%a in (%*) do (
-    if /I "%%~a"=="noapp" (set "NO_APP=1") else (set "FILTERED=1")
+    if /I "%%~a"=="noapp" (set "NO_APP=1") else if /I "%%~a"=="interaction" (set "INTERACTION=1") else (set "FILTERED=1")
+)
+
+rem PP227: the interaction tests, and ONLY them.
+rem They open the real application and drive its window, so they are neither part of the gate above
+rem nor a C test name - the word is recognised here rather than passed down, which is what stops
+rem `test.cmd interaction` being read as "run the C test called interaction" and reporting that no
+rem such test exists.
+if defined INTERACTION (
+    echo [test] interaction - the real window, through UI Automation
+    dotnet test "%~dp0ChiakiNg.slnx" --nologo -v normal --filter "Category=Interaction"
+    exit /b %errorlevel%
 )
 
 "%BASH%" -l "%REPO%/scripts/test-windows.sh" %*
@@ -96,9 +108,14 @@ rem Both, and not one instead of the other. The selftest above runs inside the s
 rem which is what PP22's CI runs against the published single file; this runs against the
 rem assemblies with one case per recorded vector, so a failure names which vector. They share
 rem their oracle - the readers that parse test/*.c - so neither is a second copy of the other.
+rem PP227: the interaction tests are EXCLUDED here and run by `test.cmd interaction`.
+rem They launch the real application, drive its window through UI Automation and - for the mapping
+rem screen - need a controller plugged in. None of that belongs in the gate a build machine runs:
+rem a suite that opens windows is a suite that fails for reasons about the desk it ran on. What
+rem they are not is optional, which is why they are one word away rather than behind a comment.
 echo.
 echo [test] xUnit vectors
-dotnet test "%~dp0ChiakiNg.slnx" --nologo -v quiet
+dotnet test "%~dp0ChiakiNg.slnx" --nologo -v quiet --filter "Category!=Interaction"
 if errorlevel 1 set "CRC=1"
 
 :after_app

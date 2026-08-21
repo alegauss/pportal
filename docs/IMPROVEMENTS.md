@@ -382,29 +382,6 @@ this task: a test has to be able to name the line it holds, whether by conventio
 test name or by an attribute the count can read. Without that join, the number is a
 guess and a gate on a guess is worse than no gate.
 
-### §PP227 What a picture cannot see
-
-A picture proves layout and cannot prove that a click arrives. claude-tray states the
-case from its own history: its WPF windows accepted no keyboard input at all from the
-day the first one shipped, while every screenshot ever taken of them looked perfect -
-because mouse input travels WndProc and keyboard input travels ComponentDispatcher, and
-a bitmap sees neither.
-
-This port has the same gap. PP223's row buttons reach a routed handler that resolves a
-clicked Button to a row; its tests call the plain method underneath and never raise a
-real click, which is the split PP37 asked for and leaves one thing unchecked - whether a
-click reaches that method at all. The same holds for the modal's Close and for Update.
-
-So the second loop drives the real window through UI Automation, the way that project
-does it with a PowerShell script per case. Launch the application with a pad attached,
-find a row's button in the accessibility tree, invoke it, and assert the capture modal
-opened and says the pad's name. Then close it and assert it went away.
-
-It needs a controller, which puts it outside the suite that has to pass on a build
-machine - the same place PP18 has always been. What it is not is a substitute for the
-picture: one answers whether the thing is there and the other whether it does anything,
-and this port has shipped a defect of each kind in a single day.
-
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed

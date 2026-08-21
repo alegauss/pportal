@@ -26,6 +26,17 @@
     <Using Include="System.IO" />
   </ItemGroup>
 
+  <!-- PP227: UI Automation, which drives the real window.
+       Part of the Windows Desktop framework this project already targets rather than a package -
+       the same two assemblies PowerShell loads with Add-Type - so the interaction loop costs no
+       dependency at all. That matters here beyond taste: this port exists partly to DELETE
+       dependencies (PP33 is two of them leaving), and a test harness that added one would be
+       arguing against the thing it tests. -->
+  <ItemGroup>
+    <Reference Include="UIAutomationClient" />
+    <Reference Include="UIAutomationTypes" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
