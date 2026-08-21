@@ -88,6 +88,7 @@
 - ✅ **PP159** **PP158 shipped the Audio tab's rules with no screen to draw them on, and its device lists are the only dynamic ones** — the screen, and the one list on any tab that has to be refilled rather than assigned.
 - ✅ **PP160** **the Consoles tab deletes by index and unhides by MAC, and streamer mode hides the address rather than the name** — the tab, its two captions, the radio group over one setting and the two ways a row is named.
 - ✅ **PP161** **the Keys tab derives each binding's settings key from a translatable label, and two labels contradict their enum** — the tab, its raw lookup beside PP2's declared table, and the two inverted labels named.
+- ✅ **PP15** **the PSN login and token dialogs are 882 lines of QML wrapped around the embedded browser** — the token screen, its log, and the ask that decides what the browser clears.
 
 ## Block E — Windows-only build
 

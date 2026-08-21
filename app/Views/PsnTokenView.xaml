@@ -1,0 +1,65 @@
+<UserControl x:Class="ChiakiNg.Views.PsnTokenView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:ChiakiNg.Views">
+  <!--
+    PP15: the token dialog, which is the login screen's shape with a log where its result would be.
+
+    Two things here are the view model's and are worth not restating: the Setup button has NO
+    submission guard - the login screen's identical-looking button does, and the difference is
+    upstream's - and the log's only sign that it has finished is its BUTTON changing from Cancel to
+    Close, which is also what decides whether Return does anything.
+  -->
+  <UserControl.Resources>
+    <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+
+    <Style TargetType="TextBlock" x:Key="FieldLabel">
+      <Setter Property="Margin" Value="0,8,0,2" />
+      <Setter Property="Opacity" Value="0.7" />
+    </Style>
+  </UserControl.Resources>
+
+  <Grid>
+    <StackPanel Margin="16">
+      <TextBlock x:Name="Title" FontSize="20" Text="{Binding Title}" />
+
+      <!-- The same browser the login screen hosts, from PP7. One control, two screens. -->
+      <Border x:Name="BrowserHost" MinHeight="200" Margin="0,12,0,0"
+              BorderThickness="1" BorderBrush="#40808080">
+        <views:PsnBrowserPanel x:Name="Browser" />
+      </Border>
+
+      <TextBlock Text="Open Web Browser with copied URL" Style="{StaticResource FieldLabel}"
+                 Visibility="{Binding CopyVisible, Converter={StaticResource BoolToVisibility}}" />
+      <Button x:Name="CopyUrlButton" Content="Click to Re-Copy URL" HorizontalAlignment="Left"
+              Padding="12,4"
+              Visibility="{Binding CopyVisible, Converter={StaticResource BoolToVisibility}}" />
+
+      <TextBlock Text="Redirect URL from Web Browser" Style="{StaticResource FieldLabel}" />
+      <TextBox x:Name="RedirectField" Text="{Binding RedirectUrl, UpdateSourceTrigger=PropertyChanged}" />
+
+      <Button x:Name="SetupButton" Content="Setup" HorizontalAlignment="Right" Margin="0,16,0,0"
+              Padding="20,4" IsEnabled="{Binding CanSubmit}" />
+    </StackPanel>
+
+    <!-- The log. Modal in the Qt client and drawn over this screen here, which is the same thing
+         once PP19's dialog host owns the dismissal. It cannot be clicked away in either. -->
+    <Grid x:Name="LogOverlay" Background="#C0000000"
+          Visibility="{Binding LogOpen, Converter={StaticResource BoolToVisibility}}">
+      <Border Background="#202020" BorderBrush="#40808080" BorderThickness="1"
+              Width="600" MaxHeight="400" VerticalAlignment="Center" HorizontalAlignment="Center">
+        <DockPanel Margin="16">
+          <TextBlock DockPanel.Dock="Top" FontSize="18"
+                     Text="Create PSN Automatic Remote Connection Token" />
+
+          <Button x:Name="LogButton" DockPanel.Dock="Bottom" HorizontalAlignment="Right"
+                  Margin="0,12,0,0" Padding="20,4" Content="{Binding LogButtonText}" />
+
+          <ScrollViewer VerticalScrollBarVisibility="Visible" Margin="0,12,0,0">
+            <TextBlock x:Name="LogArea" TextWrapping="Wrap" Text="{Binding LogText}" />
+          </ScrollViewer>
+        </DockPanel>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>

@@ -68,17 +68,6 @@ that decision has, now measured, with the call that stops it named.
 
 ## Block D — Screens
 
-### §PP15 The two screens this application does not own
-
-PSNLoginDialog.qml is 455 lines and PSNTokenDialog.qml 427. Between them they host
-Sony's login page, catch the redirect, take the code, and offer the manual path for the
-user whose browser flow failed - paste the redirect URL by hand.
-
-They are the screens where a port most easily loses behaviour, because most of what they
-do is react to a page nobody here controls: a login that changes its markup, a redirect
-that arrives with a different query, a token that expires mid-flow. The manual fallback
-exists for exactly that reason and has to survive the port intact.
-
 ### §PP16 The screen the port is sized by
 
 SettingsDialog.qml is 2984 lines - larger than the next two screens together - and it is
