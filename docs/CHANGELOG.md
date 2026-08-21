@@ -110,6 +110,7 @@
 - ✅ **PP220** **the capture diagnostic asks for analog and a resting stick drowns it, so the presses that matter cannot be found** — the analog opt-in off unless asked for, and the axis range printed either way, which is what tells noise from a stick off centre.
 - ✅ **PP221** **the axis report waits for movement, so a stick resting off centre and still reads the same as a centred one** — the axis position read instead of waited for, against the header's own band for what counts as centred.
 - ✅ **PP222** **with the analog opt-in off the triggers vanish from the log too, so pressing one produces no sign it was seen** — a trigger pull as one line, shown while the sticks stay out, because only the sticks flood.
+- ✅ **PP223** **the mapping screen has never been on screen, and its row buttons are markup that answers no click** — the mapping screen shown against a real pad, with the click resolved as a plain method and the device opened last.
 
 ## Block E — Windows-only build
 

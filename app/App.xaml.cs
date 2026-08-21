@@ -255,6 +255,88 @@ public partial class App : Application
         return 0;
     }
 
+    /// <summary>The SDL thread the mapping screen runs on, held for the application's lifetime.</summary>
+    private SdlThread? mappingSdl;
+
+    /// <summary>The open pad, closed on the way out.</summary>
+    private IntPtr mappingPad;
+
+    /// <summary>
+    /// PP223: `--map-controller`, the mapping screen against a real pad.
+    ///
+    /// The first screen this host has ever shown, and it is behind a flag rather than in the
+    /// window's ordinary path: PP13's console list is what MainWindow is filed to open with, and
+    /// putting this there instead would be a navigation decision taken by a diagnostic.
+    ///
+    /// The marshal is the dispatcher, which is the whole reason PP217 made it a parameter: there
+    /// it is a test's inline call, here it is the thread the bindings live on, and the session does
+    /// not know the difference.
+    /// </summary>
+    private void StartMappingScreen()
+    {
+        if (MainWindow is not MainWindow window)
+            return;
+
+        // The session does not exist yet and the thread needs its callback now, so the callback
+        // reads a variable rather than closing over a value. Nothing can arrive through it before
+        // the pad is opened, which is the last thing this method does.
+        ControllerMappingSession? session = null;
+
+        mappingSdl = new SdlThread(ev => session?.OnSdlEvent(ev));
+        if (mappingSdl.Start(TimeSpan.FromSeconds(10)) != SdlStart.Started)
+        {
+            Console.Error.WriteLine($"SDL did not start: {mappingSdl.Error}");
+            return;
+        }
+
+        SdlPad? found = null;
+        mappingSdl.Invoke(() => found = Gamepads.Pads().FirstOrDefault(), TimeSpan.FromSeconds(10));
+
+        if (found is not SdlPad pad)
+        {
+            Console.Error.WriteLine("no pad SDL can map");
+            return;
+        }
+
+        // The pad's own mapping string IS the document, and its name is the fallback for the `*`
+        // a DualSense actually sends where a name would be.
+        ControllerMappingDocument? document = ControllerMappingDocument.Parse(pad.Mapping, pad.Name);
+        if (document is null)
+        {
+            Console.Error.WriteLine($"could not parse the mapping: {pad.Mapping}");
+            return;
+        }
+
+        session = new ControllerMappingSession(document, work => Dispatcher.BeginInvoke(work));
+
+        var view = new Views.ControllerMappingView { DataContext = session.Screen };
+        view.CaptureRequested += session.OpenCapture;
+        view.CloseCaptureRequested += session.CloseCapture;
+        view.ApplyRequested += session.Apply;
+
+        window.ShowScreen(view);
+
+        // Opened LAST, which is PP219's rule used as a switch: until this call the pad delivers
+        // nothing, so the screen is up and wired before the first event can reach it.
+        mappingSdl.Invoke(
+            () => mappingPad = Gamepads.OpenController(pad.Index), TimeSpan.FromSeconds(10));
+
+        if (mappingPad == IntPtr.Zero)
+            Console.Error.WriteLine("the pad enumerated and would not open");
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        if (mappingSdl is not null)
+        {
+            mappingSdl.Invoke(() => Gamepads.CloseController(mappingPad), TimeSpan.FromSeconds(5));
+            mappingSdl.Stop(TimeSpan.FromSeconds(5));
+            mappingSdl.Dispose();
+        }
+
+        base.OnExit(e);
+    }
+
     protected override void OnStartup(StartupEventArgs e)
     {
         if (e.Args.Any(a => string.Equals(a, "--selftest", StringComparison.OrdinalIgnoreCase)))
@@ -284,5 +366,13 @@ public partial class App : Application
         }
 
         base.OnStartup(e);
+
+        // AFTER base, because StartupUri is what opens MainWindow and this needs the window it
+        // opened. The other three flags exit before ever getting one.
+        if (e.Args.Any(a => string.Equals(a, "--map-controller", StringComparison.OrdinalIgnoreCase)))
+        {
+            ReopenStdOut();
+            StartMappingScreen();
+        }
     }
 }

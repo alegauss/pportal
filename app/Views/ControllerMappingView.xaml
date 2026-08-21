@@ -32,9 +32,14 @@
                 <TextBlock Text="{Binding Name}" Width="160" TextAlignment="Right"
                            VerticalAlignment="Center" Margin="0,0,10,0" />
 
-                <Button Content="{Binding First}" Width="140" Height="52" Margin="0,0,10,0" />
+                <!-- PP223: Tag carries the SLOT, because a row's two buttons are the same button
+                     twice and only their position tells them apart. The row itself comes from the
+                     DataContext and its index from the collection, so nothing here has to know
+                     where in the list it sits. -->
+                <Button Content="{Binding First}" Tag="0"
+                        Width="140" Height="52" Margin="0,0,10,0" />
 
-                <Button Content="{Binding Second}" Width="140" Height="52"
+                <Button Content="{Binding Second}" Tag="1" Width="140" Height="52"
                         Visibility="{Binding HasSecond, Converter={StaticResource BoolToVisibility}}" />
               </StackPanel>
             </DataTemplate>

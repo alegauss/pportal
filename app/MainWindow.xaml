@@ -4,13 +4,16 @@
         Title="chiaki-ng"
         Width="1280" Height="720"
         WindowStartupLocation="CenterScreen">
-  <!-- Deliberately empty. PP1 is the host, not a screen: the console list is PP13, and it is
-       filed against this window already existing. What is here is the size a 720p stream wants
-       and the title an installer and a taskbar will show, both of which a screen would
-       otherwise have to invent while also being reviewed as a screen. -->
+  <!-- Opens empty, as PP1 filed it: the size a 720p stream wants and the title an installer and a
+       taskbar will show. What PP223 added is the ContentControl, and its emptiness is the point -
+       PP37's note on this window asked that the first thing in here be a BINDING TO A VIEW MODEL
+       rather than an event handler, and a content host is that with nothing assumed about which
+       screen goes in it. The placeholder is what shows while nothing has. -->
   <Grid>
-    <TextBlock Text="chiaki-ng"
+    <TextBlock x:Name="Placeholder" Text="chiaki-ng"
                HorizontalAlignment="Center" VerticalAlignment="Center"
                FontSize="24" Opacity="0.5" />
+
+    <ContentControl x:Name="Screen" />
   </Grid>
 </Window>
