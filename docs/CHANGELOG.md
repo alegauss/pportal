@@ -165,6 +165,7 @@
 - ✅ **PP202** **giving up on one RUDP packet acknowledges every older one, and the loop's rewind skips as many as the ack removed** — sixteen packets, twenty-five tries, and what one timeout takes with it.
 - ✅ **PP203** **the RUDP exchange recognises what it asked for by one byte, and unwraps a wrong message instead of dropping it** — the wait matched a byte at a time, and what a short answer costs.
 - ✅ **PP204** **the two port guessers wrap the same overflow to places far apart, and disagree on offering the port that answered** — both generators ported, with the wraps that do not match each other.
+- ✅ **PP205** **the probe packet leaves thirty-five of its eighty-eight bytes empty, and its reply masks the console address with sids** — what the candidate race actually puts on the wire.
 
 ## Block G — Test discipline
 
