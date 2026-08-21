@@ -274,8 +274,14 @@ public partial class App : Application
     /// </summary>
     private void StartMappingScreen()
     {
-        if (MainWindow is not MainWindow window)
-            return;
+        // PP224: the window is opened HERE rather than found.
+        //
+        // StartupUri creates it after OnStartup returns, so Application.MainWindow is still null
+        // inside this call - and the first version of this method took that for "no window" and
+        // left without a word. Cleared and opened by hand, there is one window and this owns it.
+        var window = new MainWindow();
+        MainWindow = window;
+        window.Show();
 
         // The session does not exist yet and the thread needs its callback now, so the callback
         // reads a variable rather than closing over a value. Nothing can arrive through it before
@@ -285,7 +291,7 @@ public partial class App : Application
         mappingSdl = new SdlThread(ev => session?.OnSdlEvent(ev));
         if (mappingSdl.Start(TimeSpan.FromSeconds(10)) != SdlStart.Started)
         {
-            Console.Error.WriteLine($"SDL did not start: {mappingSdl.Error}");
+            window.ShowMessage($"SDL did not start: {mappingSdl.Error}");
             return;
         }
 
@@ -294,7 +300,7 @@ public partial class App : Application
 
         if (found is not SdlPad pad)
         {
-            Console.Error.WriteLine("no pad SDL can map");
+            window.ShowMessage("no pad SDL can map - plug one in and start again");
             return;
         }
 
@@ -303,7 +309,7 @@ public partial class App : Application
         ControllerMappingDocument? document = ControllerMappingDocument.Parse(pad.Mapping, pad.Name);
         if (document is null)
         {
-            Console.Error.WriteLine($"could not parse the mapping: {pad.Mapping}");
+            window.ShowMessage($"could not parse the mapping: {pad.Mapping}");
             return;
         }
 
@@ -322,7 +328,7 @@ public partial class App : Application
             () => mappingPad = Gamepads.OpenController(pad.Index), TimeSpan.FromSeconds(10));
 
         if (mappingPad == IntPtr.Zero)
-            Console.Error.WriteLine("the pad enumerated and would not open");
+            window.ShowMessage($"{pad.Name} enumerated and would not open");
     }
 
     protected override void OnExit(ExitEventArgs e)
@@ -365,14 +371,16 @@ public partial class App : Application
             Environment.Exit(CaptureController(TimeSpan.FromSeconds(20), analog));
         }
 
-        base.OnStartup(e);
-
-        // AFTER base, because StartupUri is what opens MainWindow and this needs the window it
-        // opened. The other three flags exit before ever getting one.
         if (e.Args.Any(a => string.Equals(a, "--map-controller", StringComparison.OrdinalIgnoreCase)))
         {
-            ReopenStdOut();
+            // StartupUri would open a SECOND window once this returns, so it is cleared and the
+            // one window is opened by StartMappingScreen, which is also what puts a screen in it.
+            StartupUri = null;
+            base.OnStartup(e);
             StartMappingScreen();
+            return;
         }
+
+        base.OnStartup(e);
     }
 }

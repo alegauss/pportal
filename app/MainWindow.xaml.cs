@@ -33,4 +33,22 @@ public partial class MainWindow : System.Windows.Window
 
     /// <summary>Whether anything has been put in it. False is how this window starts.</summary>
     public bool HasScreen => Screen.Content is not null;
+
+    /// <summary>
+    /// PP224: says why there is no screen, WHERE THE PERSON IS LOOKING.
+    ///
+    /// A WinExe started from a shortcut has no console, and the one place a failure was written -
+    /// Console.Error - is bound to standard output by this application's own redirect, so a run
+    /// that found no pad printed its reason somewhere nobody was. The window is where somebody is.
+    /// </summary>
+    public void ShowMessage(string message)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+
+        Placeholder.Text = message;
+        Placeholder.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>What the window is currently saying, which is its title until told otherwise.</summary>
+    public string Message => Placeholder.Text;
 }

@@ -135,4 +135,24 @@ public class MappingScreenClickTests
 
         Assert.True(window.HasScreen);
     });
+
+    /// <summary>
+    /// PP224: and it can say why there is no screen, where the person is looking.
+    ///
+    /// The reason this exists: a windowed run has no console, and the one place the reasons were
+    /// written is bound to standard output by this application's own redirect. Three different
+    /// failures showed the same blank window.
+    /// </summary>
+    [Fact]
+    public void TheWindowCanSayWhyThereIsNoScreen() => OnSta(() =>
+    {
+        var window = new MainWindow();
+
+        Assert.Equal("chiaki-ng", window.Message);
+
+        window.ShowMessage("no pad SDL can map - plug one in and start again");
+
+        Assert.Contains("no pad", window.Message, StringComparison.Ordinal);
+        Assert.False(window.HasScreen);
+    });
 }
