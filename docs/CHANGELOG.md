@@ -172,6 +172,7 @@
 - ✅ **PP208** **the session uuid is drawn from rand reseeded by the clock, so two sessions in one second share an identifier** — the shape reproduced, the collision demonstrated rather than shipped.
 - ✅ **PP209** **an account with no consoles is reported as out of memory, on the one error path that returns without cleaning up** — the console list, with the empty case told apart from the failing one.
 - ✅ **PP210** **the session create body sends the same word for three identity fields, and the account id is an int in one payload** — the four bodies a session is set up with, and what they call things.
+- ✅ **PP212** **nothing in the port holds the websocket notifications, so every holepunch wait has no queue to walk** — the notification queue as a walk with a cursor that removes nothing, and a timeout that bounds silence rather than the call.
 
 ## Block G — Test discipline
 
