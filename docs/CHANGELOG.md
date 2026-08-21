@@ -96,6 +96,7 @@
 - ✅ **PP168** **the colour mapping sliders repeat each row's condition, and one option is named for the function that hides it** — twenty-two rows in one table, and the three things repeating them hid.
 - ✅ **PP169** **the renderer presets are three names for one choice, and the store's word for Custom is the empty string** — seven preset lists, five of them hiding a section behind an empty string.
 - ✅ **PP170** **the tuning screen's hue slider is radians cut short at 6.28, and temperature carries bounds that are round in no unit** — eighteen rows in one table, with the four numbers rounding would lose.
+- ✅ **PP171** **four scaler combos share two lists and take four different defaults, and eleven switches are stored as words** — two lists behind four combos, and eleven switches spelt yes or no.
 
 ## Block E — Windows-only build
 

@@ -109,20 +109,20 @@ public static class InverseToneMapping
 {
     public const string Key = PlaceboStore.Prefix + "inverse_tone_mapping";
 
-    /// <summary>What the file holds for on.</summary>
-    public const string On = "yes";
+    /// <summary>What the file holds for on. One spelling, shared with the other ten switches.</summary>
+    public const string On = PlaceboFlags.On;
 
     /// <summary>And for off, which is also the default.</summary>
-    public const string Off = "no";
+    public const string Off = PlaceboFlags.Off;
 
     /// <summary>The word for a state.</summary>
-    public static string Store(bool enabled) => enabled ? On : Off;
+    public static string Store(bool enabled) => PlaceboFlags.Store(enabled);
 
     /// <summary>
     /// And the state for a word. Anything that is not "yes" is off, which is settings.cpp's own
     /// comparison rather than a parse - so a file holding "true" reads as off.
     /// </summary>
-    public static bool Read(string? word) => string.Equals(word, On, StringComparison.Ordinal);
+    public static bool Read(string? word) => PlaceboFlags.Read(word);
 }
 
 /// <summary>
