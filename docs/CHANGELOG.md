@@ -204,6 +204,7 @@
 - ✅ **PP243** **the candidate probe is unported, and its arrays are sized by a count the other end chose** — the probe is ported against the same constants the reply uses, and the count the console chooses now has a measured stack size beside it rather than an adjective.
 - ✅ **PP244** **the probe send loop is unported, and the flag saying it worked only means one address resolved** — the send loop is ported with sending and clearing the flag as separate answers, and the unreachable clause kept rather than simplified away.
 - ✅ **PP245** **the candidate wait loop is unported, and one of its errors says the opposite of what happened** — the wait is ported with both timeout shapes intact, and the branch claiming no socket had data now carries the assertion that one did.
+- ✅ **PP246** **reading a candidate response is unported, and the address it allocates leaks on the common path** — the intake is ported with the release accounting written down per exit, and the index bound stated as the guard it actually depends on.
 
 ## Block G — Test discipline
 
