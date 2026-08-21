@@ -166,6 +166,7 @@
 - ✅ **PP203** **the RUDP exchange recognises what it asked for by one byte, and unwraps a wrong message instead of dropping it** — the wait matched a byte at a time, and what a short answer costs.
 - ✅ **PP204** **the two port guessers wrap the same overflow to places far apart, and disagree on offering the port that answered** — both generators ported, with the wraps that do not match each other.
 - ✅ **PP205** **the probe packet leaves thirty-five of its eighty-eight bytes empty, and its reply masks the console address with sids** — what the candidate race actually puts on the wire.
+- ✅ **PP206** **the wake-up URL is built in a buffer too small for most online ids, and asks for a PS4 the device list refuses** — the whole URL built here, with the clipping measured rather than counted.
 
 ## Block G — Test discipline
 
