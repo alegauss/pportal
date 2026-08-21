@@ -1,0 +1,81 @@
+<UserControl x:Class="ChiakiNg.Views.StreamMenuView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    PP10: the in-stream menu, the half the HUD did not cover.
+
+    In the Qt client this is a frameless Qt.Tool WINDOW that slides in over the stream. Here it is
+    a control, for the same reason the HUD is: PP9 put the video in the visual tree, so a second
+    window is a way of drawing over something that is already drawable. The slide is a transform on
+    this element rather than a window position, and nothing about the controls changes with it.
+
+    Every state below is the view model's - and two of them are inversions, which is exactly why
+    none of them is spelled here: the mic button is lit when the microphone is NOT muted, and the
+    close button means two different things depending on whether a session exists.
+  -->
+  <UserControl.Resources>
+    <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+  </UserControl.Resources>
+
+  <Grid Background="#2B2B2B">
+    <StackPanel x:Name="Controls" Orientation="Horizontal" VerticalAlignment="Bottom"
+                HorizontalAlignment="Left" Margin="30,0,0,40">
+      <Button x:Name="CloseButton" Content="&#215;" FontSize="50" Padding="10" Margin="0,0,20,0" />
+
+      <StackPanel Margin="0,0,20,0">
+        <Slider x:Name="VolumeSlider" Orientation="Vertical" Minimum="0" Maximum="128"
+                Height="100" SmallChange="1" Value="{Binding Volume}" />
+        <TextBlock x:Name="VolumeCaption" Text="{Binding VolumeCaption}" HorizontalAlignment="Center" />
+      </StackPanel>
+
+      <!-- OneWay, deliberately. IsChecked binds two-way by default and MicOn is a rule rather than
+           a field - the press goes through ToggleMic, which flips `muted` the way onToggled does,
+           and the lit state follows from that rather than being the thing that was set. -->
+      <ToggleButton x:Name="MicButton" Content="Mic" Padding="10" Margin="0,0,20,0"
+                    IsChecked="{Binding MicOn, Mode=OneWay}" IsEnabled="{Binding MicEnabled}" />
+
+      <ToggleButton x:Name="ZoomButton" Content="Zoom" Padding="10" />
+
+      <StackPanel x:Name="ZoomFactorGroup"
+                  Visibility="{Binding ZoomFactorVisible, Converter={StaticResource BoolToVisibility}}">
+        <Slider x:Name="ZoomFactorSlider" Orientation="Vertical" Minimum="-1" Maximum="4"
+                Height="100" SmallChange="0.01" Value="{Binding ZoomFactor}" />
+        <TextBlock x:Name="ZoomCaption" Text="{Binding ZoomCaption}" HorizontalAlignment="Center" />
+      </StackPanel>
+
+      <ToggleButton x:Name="StretchButton" Content="Stretch" Padding="10" Margin="0,0,50,0" />
+
+      <ToggleButton x:Name="DefaultButton" Content="Default" Padding="10" />
+      <ToggleButton x:Name="HighQualityButton" Content="High Quality" Padding="10" />
+      <ToggleButton x:Name="SpatialButton" Content="HQ + Spatial" Padding="10" />
+      <ToggleButton x:Name="AdvancedSpatialButton" Content="HQ + Adv Spatial" Padding="10" />
+      <ToggleButton x:Name="CustomButton" Content="Custom" Padding="10" Margin="0,0,40,0" />
+
+      <Button x:Name="DisplaySettingsButton" Content="Display" Padding="10" />
+      <Button x:Name="PlaceboSettingsButton" Content="Placebo" Padding="10"
+              Visibility="{Binding PlaceboVisible, Converter={StaticResource BoolToVisibility}}" />
+    </StackPanel>
+
+    <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,30,0">
+      <TextBlock x:Name="BitrateValue" FontSize="28" FontWeight="Bold" TextAlignment="Right"
+                 Text="{Binding Bitrate}" />
+      <TextBlock Text="Mbps" FontSize="18" TextAlignment="Right" />
+
+      <TextBlock x:Name="ConsoleCaption" Margin="0,12,0,0" TextAlignment="Right"
+                 Text="{Binding ConsoleCaption}" />
+
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+        <TextBlock x:Name="PacketLossValue" FontSize="18" FontWeight="Bold" Foreground="#EF9A9A"
+                   Text="{Binding PacketLossText}" Margin="0,0,5,0" />
+        <TextBlock Text="packet loss" FontSize="15" Margin="0,0,12,0" />
+
+        <StackPanel x:Name="DroppedFramesGroup" Orientation="Horizontal"
+                    Visibility="{Binding DroppedFramesVisible, Converter={StaticResource BoolToVisibility}}">
+          <TextBlock x:Name="DroppedFramesValue" FontSize="18" FontWeight="Bold" Foreground="#EF9A9A"
+                     Text="{Binding DroppedFramesText}" Margin="0,0,5,0" />
+          <TextBlock Text="dropped frames" FontSize="15" />
+        </StackPanel>
+      </StackPanel>
+    </StackPanel>
+  </Grid>
+</UserControl>

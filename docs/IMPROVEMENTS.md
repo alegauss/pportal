@@ -29,21 +29,6 @@ three, so it is the moment when the duplication is visible.
 
 ## Block C — Video and input path
 
-### §PP10 The overlay is the renderer decision, spelled out
-
-StreamView.qml is 1305 lines and StreamMenuWindow.qml another 435: the connection state,
-the latency and bitrate readouts, the loading and reconnect states, the touchpad hints,
-and the menu a user opens without leaving the stream.
-
-They are filed apart from the other screens because they are not a screen problem. If
-PP9 lands on a child HWND, none of this can be XAML above the video and it has to be
-drawn into the frame or into a layered window over it. If PP9 lands on D3DImage, all of
-it is ordinary XAML and this task is the easiest one in Block D wearing a different
-label.
-
-That is the whole reason it is a dependent line and not a note inside PP9: the cost of
-this one is not known until that one is decided.
-
 ### §PP11 What the window owns
 
 Beyond presenting frames, the Qt window decides how the session meets the display:
