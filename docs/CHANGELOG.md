@@ -159,6 +159,7 @@
 - ✅ **PP196** **the message writer cannot use a JSON library, because one field must be written broken for the console to accept it** — written with format strings, broken where the console needs it, and read back whole.
 - ✅ **PP197** **the candidate race is settled by the first datagram to answer, not by which candidate is better** — the decision the sockets feed, ported so it can be tested without opening one.
 - ✅ **PP198** **the STUN server shuffle looks like Fisher-Yates but excludes the index it is shuffling, so the last can never stay last** — the bias reproduced and pinned, so a correction announces itself.
+- ✅ **PP199** **the port allocation tree looks further ahead the less it knows, and one leaf subtracts the wrong way round** — a shrinking look-ahead, a backwards leaf, an unsigned one, and PP198's check covering half its header.
 
 ## Block G — Test discipline
 
