@@ -62,6 +62,7 @@
 - ✅ **PP134** **pl_render_image itself has never run, only the texture it would render into** — pl_render_image runs into the shared texture with a hand-built target, and there is no swapchain.
 - ✅ **PP135** **nothing has asked WPF whether it will take the shared surface, only Direct3D** — a D3DImage reports a front buffer available at 1920x1080 for the shared surface.
 - ✅ **PP10** **the stream HUD and the in-stream menu are QML drawn over the video and disappear with the renderer** — the menu's two inversions, the mode that is not stored, and the preset that starts at one.
+- ✅ **PP11 (fullscreen)** **fullscreen, HDR handoff and refresh-rate switching are handled by the Qt window** — fullscreen as a state machine, guards included.
 
 ## Block D — Screens
 
