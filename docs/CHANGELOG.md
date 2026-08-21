@@ -213,6 +213,7 @@
 - ✅ **PP252** **the offer's address discovery is unported, and a failed local lookup is advertised as an empty address** — the discovery is ported as one function of gateway status, with what the local lookup knew kept apart from what is advertised.
 - ✅ **PP253** **the NAT diagnosis that writes back into the session is unported, and PP251 stated a rule the repo already contradicted** — the write-back is ported as a verdict separate from its values, and PP251's restated rule is replaced by asking the generators that already existed.
 - ✅ **PP254** **the websocket fqdn lookup is unported, and its tokener failure reports success with no address written** — the lookup is ported with whether it failed kept apart from whether it wrote, and the two allocation failures asserted as answering differently.
+- ✅ **PP255** **the upnp discovery thread is unported, and its timeout writes the status outside the lock** — the discovery is ported with holding the lock and having company as separate questions, so the one writer that is neither can be named.
 
 ## Block G — Test discipline
 
