@@ -167,6 +167,7 @@
 - ✅ **PP204** **the two port guessers wrap the same overflow to places far apart, and disagree on offering the port that answered** — both generators ported, with the wraps that do not match each other.
 - ✅ **PP205** **the probe packet leaves thirty-five of its eighty-eight bytes empty, and its reply masks the console address with sids** — what the candidate race actually puts on the wire.
 - ✅ **PP206** **the wake-up URL is built in a buffer too small for most online ids, and asks for a PS4 the device list refuses** — the whole URL built here, with the clipping measured rather than counted.
+- ✅ **PP207** **eight of the session's nineteen states are never entered, and one of them is what the already-started guard tests** — the machine as a history, with the dead branches counted from the source.
 
 ## Block G — Test discipline
 
