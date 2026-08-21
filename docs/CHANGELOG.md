@@ -192,6 +192,7 @@
 - ✅ **PP231** **the websocket thread's auto-ACK of offers is unported, and its parse failure drops the notification entirely** — the offer acknowledged with its own request id, and the parse failure that drops the notification instead.
 - ✅ **PP232** **the fetched STUN lists are unported: two files from a third-party repository, parsed by two different rules** — the two fetched lists, cut on a colon and on a bracket, with the IPv6 failure that names the IPv4 file.
 - ✅ **PP233** **the session check is unported: one call, two endpoints, and a response parsed only to be thrown away** — the session check as two endpoints and four outcomes, one of which is a failure answered with success.
+- ✅ **PP234** **the local address pick is unported, and its rule prefers wireless over ethernet by where the walk stops** — the local address pick, where wireless wins by ending the walk, and the length nothing reads.
 
 ## Block G — Test discipline
 
