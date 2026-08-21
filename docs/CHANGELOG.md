@@ -140,6 +140,7 @@
 - ✅ **PP177** **the baseline seam exposes only the average, which is the number its own header warns overstates and understates at once** — the percentile the average hides, reachable and asserted on the C's own numbers.
 - ✅ **PP178** **the ledger the two clients share replaces dangerous characters rather than escaping, and nothing held the port to it** — hostile text through the seam, and one parseable row out of it.
 - ✅ **PP179** **nothing holds the managed ledger row to carrying every field and no hostname, and it is the file users attach to reports** — every field carried, nothing identifying, and a check proved able to catch a leak.
+- ✅ **PP180** **the five frame stages are carried in the ledger and nothing could fill them, so the port wrote zeros regardless** — the five stages fillable, separate from each other and from the handoff.
 
 ## Block G — Test discipline
 

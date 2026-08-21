@@ -6,6 +6,24 @@ using ChiakiNg.Settings;
 namespace ChiakiNg.Session;
 
 /// <summary>
+/// PP23: the four stages before the handoff, plus the decode.
+///
+/// Five and not six. The present stage is the handoff, which the baseline keeps separately - it is
+/// in the latency estimate, and a stage counted there as well would inflate a number a session is
+/// judged by. Named <c>FrameStageTimer</c> rather than FrameStage because
+/// <see cref="ChiakiNg.Protocol.FrameStage"/> already means the frame processor's two, and the two
+/// sets are not the same thing.
+/// </summary>
+public enum FrameStageTimer
+{
+    Receive = 0,
+    Reorder = 1,
+    Reassemble = 2,
+    Correct = 3,
+    Decode = 4,
+}
+
+/// <summary>
 /// PP23: one baseline statistic, and the number the average hides.
 ///
 /// <see cref="SessionBaseline"/> exposes an average and nothing else, and sessionbaseline.h itself
@@ -178,6 +196,26 @@ public sealed class SessionBaseline : IDisposable
 
     public void PushHandoff(ulong handoffUs) => BaselinePushHandoff(Handle, handoffUs);
 
+    /// <summary>
+    /// PP23: one sample into one frame stage.
+    ///
+    /// The five were carried in the line and unfillable from here until now, so a session wrote
+    /// five zeros whatever it did. That is worse than writing them wrongly: the C's fixture pushes
+    /// a distinguishable value per stage because a stage filed under another stage's name is the
+    /// defect it exists to catch, and zeros cannot be caught by it.
+    /// </summary>
+    public void PushStage(FrameStageTimer stage, ulong sampleUs)
+        => BaselinePushStage(Handle, (int)stage, sampleUs);
+
+    /// <summary>How many samples one stage holds, which is what makes "separate" assertable.</summary>
+    public ulong StageSamples(FrameStageTimer stage) => BaselineStageSamples(Handle, (int)stage);
+
+    /// <summary>
+    /// And the handoff's, which is the PRESENT stage and not a sixth accumulator - a caller that
+    /// pushed it as a stage would count it twice, once there and once in the latency estimate.
+    /// </summary>
+    public ulong HandoffSamples => BaselineHandoffSamples(Handle);
+
     public void PushInputToWire(ulong inputUs) => BaselinePushInputToWire(Handle, inputUs);
 
     public ulong HandoffAverageUs => BaselineHandoffAvgUs(Handle);
@@ -267,6 +305,18 @@ public sealed class SessionBaseline : IDisposable
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_baseline_push_handoff",
         CallingConvention = CallingConvention.Cdecl)]
     private static extern void BaselinePushHandoff(IntPtr baseline, ulong handoffUs);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_baseline_push_stage",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern void BaselinePushStage(IntPtr baseline, int stage, ulong sampleUs);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_baseline_stage_samples",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern ulong BaselineStageSamples(IntPtr baseline, int stage);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_baseline_handoff_samples",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern ulong BaselineHandoffSamples(IntPtr baseline);
 
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_baseline_push_input_to_wire",
         CallingConvention = CallingConvention.Cdecl)]

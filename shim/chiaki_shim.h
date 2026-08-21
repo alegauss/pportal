@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 33
+#define CHIAKI_SHIM_ABI 34
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -505,6 +505,40 @@ CHIAKI_SHIM_API uint64_t chiaki_shim_baseline_stat_p99_us(void *stat);
 
 /** Any percentile, so the two named ones above cannot drift from the general one. */
 CHIAKI_SHIM_API uint64_t chiaki_shim_baseline_stat_percentile_us(void *stat, uint32_t percent);
+
+/**
+ * PP23: the five frame stages, which the baseline carries and nothing could fill.
+ *
+ * lib pushes these through the struct - `chiaki_session_baseline_stat_push(&b->stages.reorder, us)`
+ * - so there is no function to bind and the port wrote five zeros whatever a session did. That is
+ * worse than getting them wrong: test/sessionbaseline.c pushes one distinguishable value per stage
+ * because "a stage filed under another stage's name" is the defect it exists to catch, and a row of
+ * zeros cannot be caught by it.
+ *
+ * A selector rather than five entry points, because the five are one array in everything but C
+ * syntax and five names here would be five places to bind the wrong member.
+ *
+ * There is NO sixth. The present stage is the handoff, which has its own push above - and a caller
+ * that added it here would be counting it twice, once as a stage and once in the latency estimate.
+ */
+typedef enum chiaki_shim_baseline_stage
+{
+	CHIAKI_SHIM_BASELINE_STAGE_RECEIVE = 0,
+	CHIAKI_SHIM_BASELINE_STAGE_REORDER = 1,
+	CHIAKI_SHIM_BASELINE_STAGE_REASSEMBLE = 2,
+	CHIAKI_SHIM_BASELINE_STAGE_CORRECT = 3,
+	CHIAKI_SHIM_BASELINE_STAGE_DECODE = 4,
+} chiaki_shim_baseline_stage;
+
+/** One sample into one stage. Out-of-range selectors are ignored rather than folded into a stage. */
+CHIAKI_SHIM_API void chiaki_shim_baseline_push_stage(
+		void *baseline, int32_t stage, uint64_t sample_us);
+
+/** How many samples one stage holds, so "separate" is assertable rather than assumed. */
+CHIAKI_SHIM_API uint64_t chiaki_shim_baseline_stage_samples(void *baseline, int32_t stage);
+
+/** And the same for the handoff, which is the present stage and not a sixth accumulator. */
+CHIAKI_SHIM_API uint64_t chiaki_shim_baseline_handoff_samples(void *baseline);
 
 /**
  * PP6: discovery, which is what fills the console list.

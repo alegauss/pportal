@@ -713,6 +713,49 @@ CHIAKI_SHIM_API uint64_t chiaki_shim_baseline_latency_estimate_us(void *baseline
 			: 0;
 }
 
+// ---- PP23: the five frame stages ------------------------------------------------------------
+
+/** The selector resolved to the member it names, or NULL - there is deliberately no sixth. */
+static ChiakiSessionBaselineStat *chiaki_shim_baseline_stage_of(void *baseline, int32_t stage)
+{
+	ChiakiSessionBaseline *self = (ChiakiSessionBaseline *)baseline;
+
+	if(!self)
+		return NULL;
+
+	switch(stage)
+	{
+		case CHIAKI_SHIM_BASELINE_STAGE_RECEIVE: return &self->stages.receive;
+		case CHIAKI_SHIM_BASELINE_STAGE_REORDER: return &self->stages.reorder;
+		case CHIAKI_SHIM_BASELINE_STAGE_REASSEMBLE: return &self->stages.reassemble;
+		case CHIAKI_SHIM_BASELINE_STAGE_CORRECT: return &self->stages.correct;
+		case CHIAKI_SHIM_BASELINE_STAGE_DECODE: return &self->stages.decode;
+		default: return NULL;
+	}
+}
+
+CHIAKI_SHIM_API void chiaki_shim_baseline_push_stage(
+		void *baseline, int32_t stage, uint64_t sample_us)
+{
+	ChiakiSessionBaselineStat *target = chiaki_shim_baseline_stage_of(baseline, stage);
+
+	// Ignored and not folded into a neighbour: a selector nobody meant is a sample that belongs
+	// nowhere, and putting it in the first stage is exactly the mislabelling this exists to stop.
+	if(target)
+		chiaki_session_baseline_stat_push(target, sample_us);
+}
+
+CHIAKI_SHIM_API uint64_t chiaki_shim_baseline_stage_samples(void *baseline, int32_t stage)
+{
+	const ChiakiSessionBaselineStat *target = chiaki_shim_baseline_stage_of(baseline, stage);
+	return target ? target->samples : 0;
+}
+
+CHIAKI_SHIM_API uint64_t chiaki_shim_baseline_handoff_samples(void *baseline)
+{
+	return baseline ? ((const ChiakiSessionBaseline *)baseline)->handoff.samples : 0;
+}
+
 // ---- PP23: one statistic on its own, so the percentile is reachable ------------------------
 
 CHIAKI_SHIM_API void *chiaki_shim_baseline_stat_create(void)
