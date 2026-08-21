@@ -208,6 +208,7 @@
 - ✅ **PP247** **response validation is unported, and a derived candidate is exempt from every check that aborts** — the checks are ported with the derived exemption as a parameter rather than a special case, and the two aborts' error placement asserted apart.
 - ✅ **PP248** **every private-address test in the punch compares one byte too many, so none of them can match** — the classification is ported over a faithful strncmp, so the tests produce the failure from the counts the core passes instead of describing it.
 - ✅ **PP249** **the punch's two cleanups are unported, and one path reaches success holding a timeout** — the two endings are ported apart with their three differences named, and the path where the held code and the returned one disagree is asserted.
+- ✅ **PP250** **the session message writer's SIZING is unported - the buffer comes from a different format string than the text** — the sizing half is ported with the two format lengths measured off the source, and the reported length separated from the one actually produced.
 
 ## Block G — Test discipline
 
