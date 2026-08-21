@@ -154,6 +154,7 @@
 - ✅ **PP191** **PSN sends a session message field with no value at all, and the action flags skip a bit a port would fill** — the payload three layers down, and the field PSN sends broken.
 - ✅ **PP192** **customData1 is base64 twice, so one decode yields printable bytes of a plausible length that are not the payload** — base64 twice, and a band that tolerates four bytes it discards.
 - ✅ **PP193** **the candidate reader names three type words and the writer produces four, so the fourth is a fallback** — three words read, four written, and the fourth is the fallback.
+- ✅ **PP194** **a malformed route MAC in a connection request becomes six zeros with no error, and one base64 field sizes by input** — six fields, a MAC that silently zeroes, and a decode not copied.
 
 ## Block G — Test discipline
 
