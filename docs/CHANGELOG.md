@@ -138,6 +138,7 @@
 - ✅ **PP154** **the one function that edits the bitstream is positioned by the reader, and nothing compares where a managed one writes** — the rewriter transcribed and compared byte for byte at every prefix, guard included.
 - ✅ **PP176** **the C suite's allocation budget is the one case the port never carried, and it is what a managed rewrite loses first** — zero bytes per packet on the managed side, and a counter proved able to fail.
 - ✅ **PP177** **the baseline seam exposes only the average, which is the number its own header warns overstates and understates at once** — the percentile the average hides, reachable and asserted on the C's own numbers.
+- ✅ **PP178** **the ledger the two clients share replaces dangerous characters rather than escaping, and nothing held the port to it** — hostile text through the seam, and one parseable row out of it.
 
 ## Block G — Test discipline
 

@@ -74,7 +74,7 @@ public class PlaceboTuningOptionsTests
         Assert.True(antiringing.VisibleFor(sectionEnabled: true, presetIndex: 0));
 
         // And it is the only one on this screen.
-        Assert.Single(PlaceboTuningOptions.All.Where(o => o.Section == PlaceboSection.Always));
+        Assert.Single(PlaceboTuningOptions.All, o => o.Section == PlaceboSection.Always);
     }
 
     /// <summary>Every other row needs its switch and its preset together.</summary>
