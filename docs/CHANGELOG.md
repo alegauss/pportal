@@ -160,6 +160,7 @@
 - ✅ **PP197** **the candidate race is settled by the first datagram to answer, not by which candidate is better** — the decision the sockets feed, ported so it can be tested without opening one.
 - ✅ **PP198** **the STUN server shuffle looks like Fisher-Yates but excludes the index it is shuffling, so the last can never stay last** — the bias reproduced and pinned, so a correction announces itself.
 - ✅ **PP199** **the port allocation tree looks further ahead the less it knows, and one leaf subtracts the wrong way round** — a shrinking look-ahead, a backwards leaf, an unsigned one, and PP198's check covering half its header.
+- ✅ **PP200** **the STUN reader believes the first mapped address it meets, and skips attributes without their padding** — twenty bytes out, an address back, and one check this port refuses to lose.
 
 ## Block G — Test discipline
 
