@@ -121,10 +121,15 @@ public partial class App : Application
     /// thread, because the handle belongs to whichever thread called SDL_Init - the same rule as
     /// everything else in <see cref="Gamepads"/>.
     /// </summary>
-    private static int CaptureController(TimeSpan window)
+    private static int CaptureController(TimeSpan window, bool analog)
     {
-        var arm = new MappingCapture { AllowAnalogStick = true };
+        // OFF unless asked for, which is the opposite of what a diagnostic usually does. Measured
+        // on a DualSense: twenty seconds with it on produced 1684 tokens, one unbroken run of 798
+        // being the left stick's Y axis alone, and the eight deliberate presses could not be found
+        // by eye. Showing everything here shows nothing.
+        var arm = new MappingCapture { AllowAnalogStick = analog };
         var taken = new List<string>();
+        var ranges = new AxisRanges();
         object gate = new();
 
         // The SDL thread ENQUEUES and the main thread prints. SdlThread's own note says the
@@ -142,6 +147,11 @@ public partial class App : Application
                 // Re-armed, so one run records a sequence. The screen does not do this.
                 if (token is not null)
                     arm.Arm();
+
+                // The RANGE is kept whatever the capture did with it, because the question it
+                // answers - is this stick resting off centre, or merely not still - is about the
+                // values and not about the bindings.
+                ranges.Observe(ev);
             }
 
             if (token is not null)
@@ -194,6 +204,20 @@ public partial class App : Application
 
         Console.Write(CaptureReport.Summary(taken, window));
 
+        // The axis ranges last, and whether or not the capture was allowed to bind one: a stick
+        // that never became a token still says here where it was resting.
+        IReadOnlyList<(string Axis, short Low, short High, int Samples)> seen;
+        lock (gate)
+            seen = ranges.Seen();
+
+        if (seen.Count > 0)
+        {
+            Console.WriteLine();
+            Console.WriteLine("axes seen:");
+            foreach ((string axis, short low, short high, int samples) in seen)
+                Console.WriteLine(CaptureReport.AxisRange(axis, low, high, samples));
+        }
+
         sdl.Invoke(() => Gamepads.CloseController(handle), TimeSpan.FromSeconds(10));
         sdl.Stop(TimeSpan.FromSeconds(10));
         return 0;
@@ -219,7 +243,12 @@ public partial class App : Application
         if (e.Args.Any(a => string.Equals(a, "--capture-controller", StringComparison.OrdinalIgnoreCase)))
         {
             ReopenStdOut();
-            Environment.Exit(CaptureController(TimeSpan.FromSeconds(20)));
+
+            // --analog is opt-in: see the note on CaptureController for the measurement that made
+            // it so. The axis RANGES are printed either way, because a stick that never became a
+            // token still says where it was resting.
+            bool analog = e.Args.Any(a => string.Equals(a, "--analog", StringComparison.OrdinalIgnoreCase));
+            Environment.Exit(CaptureController(TimeSpan.FromSeconds(20), analog));
         }
 
         base.OnStartup(e);

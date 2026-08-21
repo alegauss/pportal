@@ -107,6 +107,7 @@
 - ✅ **PP217** **nothing joins the SDL thread, the capture and the mapping screen, so every piece of PP18 is a component with no consumer** — the mapping screen joined to the pad by draining its own request log, with the cross-thread arm the port's dedicated poll created.
 - ✅ **PP218** **nothing in the port lists SDL's devices, names one or reads its mapping string, so the screen has no pad to show** — SDL's device list read through the thread that owns it, and a --controllers report carrying the mapping string whole.
 - ✅ **PP219** **the port never opens the device, so a pad that enumerates correctly delivers no button, axis or hat event at all** — the device opened, without which no press arrives at all, and a live capture diagnostic that says which silence it is.
+- ✅ **PP220** **the capture diagnostic asks for analog and a resting stick drowns it, so the presses that matter cannot be found** — the analog opt-in off unless asked for, and the axis range printed either way, which is what tells noise from a stick off centre.
 
 ## Block E — Windows-only build
 

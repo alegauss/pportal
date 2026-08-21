@@ -28,7 +28,18 @@ namespace ChiakiNg.Session;
 /// The hat's position, at offset 13 - the one field that is not shared: a button event has its
 /// state there and an axis event a padding byte. Meaningful only for SDL_JOYHATMOTION.
 /// </param>
-public readonly record struct SdlEvent(uint Type, uint Timestamp, int Which, byte Index, byte Value);
+/// <param name="AxisValue">
+/// PP220: SDL_JoyAxisEvent.value, at offset 16 and sixteen bits SIGNED, across the full
+/// -32768..32767 the header names. Meaningful only for SDL_JOYAXISMOTION.
+///
+/// Not read by the capture, which binds an axis on any motion whatever its value - so this exists
+/// for the one question that cannot be answered without it: SDL raises an axis event whenever the
+/// value CHANGES, including by one, so a stream of them says the stick is not still and says
+/// nothing at all about whether it is off centre. Noise and drift look identical until something
+/// prints the number.
+/// </param>
+public readonly record struct SdlEvent(
+    uint Type, uint Timestamp, int Which, byte Index, byte Value, short AxisValue = 0);
 
 /// <summary>
 /// PP218: one attached pad, as much of it as the mapping screen needs.
@@ -229,7 +240,7 @@ public static class Gamepads
             return false;
         }
 
-        ev = new SdlEvent(raw.Type, raw.Timestamp, raw.Which, raw.Index, raw.Value);
+        ev = new SdlEvent(raw.Type, raw.Timestamp, raw.Which, raw.Index, raw.Value, raw.AxisValue);
         return true;
     }
 
@@ -307,6 +318,11 @@ public static class Gamepads
         // padding, so only SDL_JOYHATMOTION may read it.
         [FieldOffset(12)] public byte Index;
         [FieldOffset(13)] public byte Value;
+
+        // PP220. SDL_JoyAxisEvent.value, and the header is explicit that it is Sint16 over
+        // -32768..32767 - so it is read signed. Unsigned here would turn every leftward or
+        // downward reading into a number near 65535 and make a centred stick look pinned.
+        [FieldOffset(16)] public short AxisValue;
     }
 
     [DllImport(ChiakiNative.Sdl, EntryPoint = "SDL_PollEvent", CallingConvention = CallingConvention.Cdecl)]

@@ -64,6 +64,27 @@ public static class CaptureReport
     }
 
     /// <summary>
+    /// PP220: what an axis actually read, over a run.
+    ///
+    /// The question a token cannot answer. SDL raises an axis event whenever the value CHANGES, by
+    /// one or by twenty thousand, so a stream of them proves the stick is not still and proves
+    /// nothing about where it is resting. Noise around centre and a stick pinned off centre produce
+    /// the same flood; only the range tells them apart.
+    /// </summary>
+    /// <param name="token">The axis's token, e.g. <c>a1</c>.</param>
+    /// <param name="low">The lowest value seen.</param>
+    /// <param name="high">The highest.</param>
+    /// <param name="samples">How many events it took.</param>
+    public static string AxisRange(string token, short low, short high, int samples)
+    {
+        ArgumentNullException.ThrowIfNull(token);
+
+        return string.Create(
+            CultureInfo.InvariantCulture,
+            $"  {token}  {low}..{high}  ({AxisRanges.Extent(low, high):P1} of full scale, {samples} sample(s))");
+    }
+
+    /// <summary>
     /// The tail: how many arrived, and the sequence with runs collapsed.
     ///
     /// Collapsed because an analog axis sends its whole travel - one trigger pull was measured at
@@ -116,6 +137,58 @@ public static class CaptureReport
 
         return runs;
     }
+}
+
+/// <summary>
+/// PP220: where each axis rested, gathered as the events go past.
+///
+/// Separate from the capture because it answers a different question. The capture asks "what should
+/// this press be called" and binds on any motion at all; this asks "where is this stick actually
+/// sitting", which is the only thing that tells ordinary noise from a stick resting off centre.
+/// Both watch the same stream and neither needs the other.
+/// </summary>
+public sealed class AxisRanges
+{
+    private readonly Dictionary<string, (short Low, short High, int Samples)> seen =
+        new(StringComparer.Ordinal);
+
+    /// <summary>Full scale, as SDL_JoyAxisEvent.value's own type gives it.</summary>
+    public const double FullScale = 32768.0;
+
+    /// <summary>
+    /// Offers one event. Anything that is not axis motion is ignored, so a caller can hand it the
+    /// whole stream.
+    /// </summary>
+    public void Observe(SdlEvent ev)
+    {
+        if (ev.Type != Gamepads.EventType.JoyAxisMotion)
+            return;
+
+        string axis = "a" + ev.Index;
+
+        (short low, short high, int samples) = seen.TryGetValue(axis, out var already)
+            ? already
+            : (short.MaxValue, short.MinValue, 0);
+
+        seen[axis] = (Math.Min(low, ev.AxisValue), Math.Max(high, ev.AxisValue), samples + 1);
+    }
+
+    /// <summary>Every axis that moved, by token, in token order.</summary>
+    public IReadOnlyList<(string Axis, short Low, short High, int Samples)> Seen()
+        => [.. seen
+            .OrderBy(entry => entry.Key, StringComparer.Ordinal)
+            .Select(entry => (entry.Key, entry.Value.Low, entry.Value.High, entry.Value.Samples))];
+
+    /// <summary>
+    /// The furthest from centre an axis got, as a fraction of full scale.
+    ///
+    /// The number the question turns on, and deliberately not a verdict: this port does not decide
+    /// what counts as a worn stick. A few tenths of a percent is the noise every analog axis has;
+    /// a reading that stays in the tens of percent with nobody touching it is a different thing,
+    /// and the person holding the pad is better placed to say which they are looking at.
+    /// </summary>
+    public static double Extent(short low, short high)
+        => Math.Max(Math.Abs((double)low), Math.Abs((double)high)) / FullScale;
 }
 
 /// <summary>

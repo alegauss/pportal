@@ -64,7 +64,7 @@ public class ControllerMappingSessionTests
         session.OnSdlEvent(ButtonDown(7));
 
         Assert.False(session.Screen.Altered);
-        Assert.Empty(session.Screen.Requests.Where(r => r.Action == MappingAction.UpdateButton));
+        Assert.DoesNotContain(session.Screen.Requests, r => r.Action == MappingAction.UpdateButton);
     }
 
     /// <summary>Clicking a row's button arms the pad for exactly one press.</summary>
