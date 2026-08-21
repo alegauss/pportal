@@ -142,6 +142,7 @@
 - ✅ **PP179** **nothing holds the managed ledger row to carrying every field and no hostname, and it is the file users attach to reports** — every field carried, nothing identifying, and a check proved able to catch a leak.
 - ✅ **PP180** **the five frame stages are carried in the ledger and nothing could fill them, so the port wrote zeros regardless** — the five stages fillable, separate from each other and from the handoff.
 - ✅ **PP181** **the seam skipped the two setters whose defaults are the ledger's never-empty rule, so a row could carry two blanks** — the two never-empty fields, which the seam could leave blank.
+- ✅ **PP182** **nothing held the managed side to appending the ledger rather than truncating it, or to reporting a write it could not do** — two rows where two sessions ran, and a failed write that says so.
 
 ## Block G — Test discipline
 
