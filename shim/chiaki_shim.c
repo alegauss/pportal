@@ -2002,6 +2002,45 @@ CHIAKI_SHIM_API bool chiaki_shim_json_bool(void *node)
 	return json_object_get_boolean((json_object *)node) ? true : false;
 }
 
+/* PP215: the tokener as an object rather than as one call.
+ *
+ * chiaki_shim_json_parse above is json_tokener_parse, which makes a tokener, uses it once and
+ * throws it away - which is what every json-c call site in holepunch.c does except one. The
+ * websocket loop keeps a single tokener for the life of the socket and feeds it every frame, so
+ * what a REUSED tokener does after a document it could not parse is a question about json-c that
+ * cannot be answered by the call above. These five let it be measured. */
+
+CHIAKI_SHIM_API void *chiaki_shim_json_tokener_new(void)
+{
+	return json_tokener_new();
+}
+
+CHIAKI_SHIM_API void *chiaki_shim_json_tokener_parse(void *tok, const char *text, int32_t len)
+{
+	if(!tok || !text || len < 0)
+		return NULL;
+	return json_tokener_parse_ex((json_tokener *)tok, text, len);
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_json_tokener_error(void *tok)
+{
+	if(!tok)
+		return -1;
+	return (int32_t)json_tokener_get_error((json_tokener *)tok);
+}
+
+CHIAKI_SHIM_API void chiaki_shim_json_tokener_reset(void *tok)
+{
+	if(tok)
+		json_tokener_reset((json_tokener *)tok);
+}
+
+CHIAKI_SHIM_API void chiaki_shim_json_tokener_free(void *tok)
+{
+	if(tok)
+		json_tokener_free((json_tokener *)tok);
+}
+
 CHIAKI_SHIM_API void *chiaki_shim_bitstream_create(int32_t codec)
 {
 	ChiakiBitstream *self = (ChiakiBitstream *)calloc(1, sizeof(ChiakiBitstream));

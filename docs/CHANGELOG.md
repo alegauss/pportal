@@ -175,6 +175,7 @@
 - ✅ **PP212** **nothing in the port holds the websocket notifications, so every holepunch wait has no queue to walk** — the notification queue as a walk with a cursor that removes nothing, and a timeout that bounds silence rather than the call.
 - ✅ **PP213** **the two session-message waits are unported, and an ack for the wrong request id has nothing that ends it** — the two session-message waits as dispositions, terminate asked before the mask, and the ack path that clears nothing.
 - ✅ **PP214** **nothing in the port drives the push socket's frames, so the ping cadence and what each frame kind means are unstated** — the frame loop's keepalive and dispatch, where the pong deadline and the ping cadence are one subtraction asked twice.
+- ✅ **PP215** **the websocket loop feeds every frame to one json-c tokener, and reads a frame that yields nothing as a bad frame** — json-c's tokener measured through the shim: unfinished input is permanent, so the port parses each frame with no state between them.
 
 ## Block G — Test discipline
 

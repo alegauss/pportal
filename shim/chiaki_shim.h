@@ -1098,6 +1098,25 @@ CHIAKI_SHIM_API int64_t chiaki_shim_json_int64(void *node);
 CHIAKI_SHIM_API bool chiaki_shim_json_bool(void *node);
 
 /**
+ * PP215: json-c's tokener, kept rather than made and thrown away.
+ *
+ * chiaki_shim_json_parse is one call over a fresh tokener, which is every json-c call site in
+ * holepunch.c except the websocket loop - that one keeps a single tokener for the life of the
+ * socket and feeds it every frame. Whether a tokener that has already refused a document can
+ * still parse the next one is therefore a question the single call cannot ask.
+ *
+ * The handle from chiaki_shim_json_tokener_new is freed with chiaki_shim_json_tokener_free. A
+ * document returned by chiaki_shim_json_tokener_parse is an OWNED reference like the one from
+ * chiaki_shim_json_parse, and goes to chiaki_shim_json_free; NULL means the tokener did not
+ * produce one, and chiaki_shim_json_tokener_error says why in json_tokener_error's own numbering.
+ */
+CHIAKI_SHIM_API void *chiaki_shim_json_tokener_new(void);
+CHIAKI_SHIM_API void *chiaki_shim_json_tokener_parse(void *tok, const char *text, int32_t len);
+CHIAKI_SHIM_API int32_t chiaki_shim_json_tokener_error(void *tok);
+CHIAKI_SHIM_API void chiaki_shim_json_tokener_reset(void *tok);
+CHIAKI_SHIM_API void chiaki_shim_json_tokener_free(void *tok);
+
+/**
  * PP23: the bitstream parser, which is what tells the client what kind of frame just arrived.
  *
  * It reads H.264 and H.265 slice headers far enough to answer two questions: is this an I frame,

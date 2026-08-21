@@ -138,4 +138,79 @@ public sealed class NativeJson : IDisposable
         CallingConvention = CallingConvention.Cdecl)]
     [return: MarshalAs(UnmanagedType.I1)]
     private static extern bool JsonBool(IntPtr node);
+
+    /// <summary>Takes ownership of a root handle produced elsewhere, so it is freed once.</summary>
+    internal static NativeJson Own(IntPtr handle) => new(handle);
+}
+
+/// <summary>
+/// PP215: json-c's tokener, KEPT rather than made and thrown away.
+///
+/// <see cref="NativeJson.Parse"/> is json_tokener_parse - a fresh tokener per document, which is
+/// what every json-c call site in holepunch.c does except one. The websocket loop makes a single
+/// tokener before its frame loop and feeds it every frame for the life of the socket. Whether such
+/// a tokener still works after a frame it could not parse is a question about json-c, and this port
+/// answers questions about json-c by MEASURING them rather than by reading the documentation - the
+/// same rule <see cref="JsonC"/> was built under.
+/// </summary>
+public sealed class NativeJsonTokener : IDisposable
+{
+    private IntPtr tokener;
+
+    /// <summary>A new tokener, or null where json-c would not make one.</summary>
+    public static NativeJsonTokener? Create()
+    {
+        IntPtr handle = TokenerNew();
+        return handle == IntPtr.Zero ? null : new NativeJsonTokener { tokener = handle };
+    }
+
+    /// <summary>
+    /// Feeds one document, the way the frame loop feeds one frame: the bytes and their length,
+    /// with no NUL terminator, into the tokener this object holds.
+    /// </summary>
+    /// <returns>The document, or null where the tokener produced none.</returns>
+    public NativeJson? Parse(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+
+        byte[] utf8 = Encoding.UTF8.GetBytes(text);
+        IntPtr handle = TokenerParse(tokener, utf8, utf8.Length);
+
+        return handle == IntPtr.Zero ? null : NativeJson.Own(handle);
+    }
+
+    /// <summary>json_tokener_get_error, in json-c's own numbering. Zero is success.</summary>
+    public int Error => TokenerError(tokener);
+
+    /// <summary>json_tokener_reset - which holepunch.c never calls on the tokener it reuses.</summary>
+    public void Reset() => TokenerReset(tokener);
+
+    public void Dispose()
+    {
+        if (tokener == IntPtr.Zero)
+            return;
+
+        TokenerFree(tokener);
+        tokener = IntPtr.Zero;
+    }
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_json_tokener_new",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr TokenerNew();
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_json_tokener_parse",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr TokenerParse(IntPtr tokener, byte[] text, int length);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_json_tokener_error",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern int TokenerError(IntPtr tokener);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_json_tokener_reset",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern void TokenerReset(IntPtr tokener);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_json_tokener_free",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern void TokenerFree(IntPtr tokener);
 }
