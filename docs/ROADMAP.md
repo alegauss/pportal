@@ -18,7 +18,7 @@
 
 ## Block D — Screens
 
-- ⏳ **PP18** (deps: PP8 ✅, PP12 ✅) **the controller mapping screen is QML bound to the live SDL mapping strings** — the screen's markup, and the pad in the room the design says is the whole point of it. → §PP18
+- ⏳ **PP18** (deps: PP8 ✅, PP12 ✅) **the controller mapping screen is QML bound to the live SDL mapping strings** — the pad in the room, which the design says is the whole point and which no test here can stand in for. → §PP18
 - 📋 **PP167** (deps: —) **the settings screen's nine tabs each exist and nothing composes them into one dialog** — PP16 built every tab's rules and screen; the tab host, its order and its focus chain are a screen of their own. → §PP167
 
 ## Block E — Windows-only build

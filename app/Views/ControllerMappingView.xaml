@@ -1,0 +1,66 @@
+<UserControl x:Class="ChiakiNg.Views.ControllerMappingView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    PP18: the controller mapping screen.
+
+    What this markup CANNOT show is the half the task is about: the screen lights up whatever the
+    user presses, and there is no pad here. Everything drawn below is the grid and the capture
+    modal; the sequence a press drives is the view model's, and is asserted without a device.
+
+    A row is one button wide or two. The second slot is bound to its own visibility because a
+    chiaki button may have one physical binding or two, and a slot drawn over nothing captures into
+    nothing.
+  -->
+  <UserControl.Resources>
+    <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+  </UserControl.Resources>
+
+  <Grid>
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+      <StackPanel Margin="16">
+        <TextBlock x:Name="Title" FontSize="20" Text="{Binding Title}" />
+
+        <CheckBox x:Name="AnalogBox" Margin="0,12,0,0"
+                  Content="Allow mapping analog sticks and L2/R2"
+                  IsChecked="{Binding EnableAnalogStickMapping}" />
+
+        <ItemsControl x:Name="RowsList" ItemsSource="{Binding Rows}" Margin="0,16,0,0">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                <TextBlock Text="{Binding Name}" Width="160" TextAlignment="Right"
+                           VerticalAlignment="Center" Margin="0,0,10,0" />
+
+                <Button Content="{Binding First}" Width="140" Height="52" Margin="0,0,10,0" />
+
+                <Button Content="{Binding Second}" Width="140" Height="52"
+                        Visibility="{Binding HasSecond, Converter={StaticResource BoolToVisibility}}" />
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <Button x:Name="UpdateButton" Content="Update Controller Mapping"
+                HorizontalAlignment="Right" Margin="0,16,0,0" Padding="20,4"
+                IsEnabled="{Binding CanApply}" />
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- The capture modal. Its prompt carries the pad's own name in the middle of the sentence,
+         which is the one string on this screen that changes with the device. -->
+    <Grid x:Name="CaptureOverlay" Background="#C0000000"
+          Visibility="{Binding CaptureOpen, Converter={StaticResource BoolToVisibility}}">
+      <Border Background="#202020" BorderBrush="#40808080" BorderThickness="1"
+              Width="440" VerticalAlignment="Center" HorizontalAlignment="Center">
+        <StackPanel Margin="16">
+          <TextBlock FontSize="18" Text="Button Capture" />
+          <TextBlock x:Name="CapturePrompt" Margin="0,12,0,0" TextWrapping="Wrap"
+                     Text="{Binding CapturePrompt}" />
+          <Button x:Name="CaptureCloseButton" Content="Close" HorizontalAlignment="Right"
+                  Margin="0,12,0,0" Padding="20,4" />
+        </StackPanel>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>

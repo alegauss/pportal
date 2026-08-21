@@ -1,3 +1,5 @@
+using System.Collections.ObjectModel;
+
 namespace ChiakiNg.Session;
 
 /// <summary>What the mapping screen asked the input subsystem to do, in order.</summary>
@@ -29,6 +31,24 @@ public readonly record struct MappingRequest(
     int ButtonValue = 0,
     string PressedButton = "",
     int ButtonIndex = 0);
+
+/// <summary>
+/// PP18: one row of the mapping grid, as the screen draws it.
+///
+/// A chiaki button, and up to TWO physical buttons bound to it. The second slot is drawn only when
+/// there is a second binding - the QML tests <c>physicalButton.length &gt; 1</c> - so a row is one
+/// button wide or two, and a port that always drew two would offer a slot that captures into
+/// nothing.
+/// </summary>
+/// <param name="Value">The chiaki button's value, which is what a capture is opened for.</param>
+/// <param name="Name">Its name, as the row's label.</param>
+/// <param name="First">The first physical binding, or the empty string.</param>
+/// <param name="Second">The second, or the empty string.</param>
+public readonly record struct MappingRowView(int Value, string Name, string First, string Second)
+{
+    /// <summary>Whether the second slot is drawn at all.</summary>
+    public bool HasSecond => Second.Length > 0;
+}
 
 /// <summary>
 /// PP18: the controller mapping screen, which is a state machine over a live event stream.
@@ -78,6 +98,31 @@ public sealed class ControllerMappingViewModel : DialogViewModel
 
     /// <summary>Everything the screen has asked for, in order. The assertion surface.</summary>
     public IReadOnlyList<MappingRequest> Requests => requests;
+
+    /// <summary>The grid's rows, refilled in place for PP159's reason.</summary>
+    public ObservableCollection<MappingRowView> Rows { get; } = [];
+
+    /// <summary>
+    /// Fills the grid from a parsed mapping. Refilled rather than reassigned, and the document is
+    /// passed in rather than owned: the screen shows a mapping, it does not parse one.
+    /// </summary>
+    public void Show(ControllerMappingDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+
+        ControllerType = document.ControllerType;
+        Altered = document.Altered;
+
+        Rows.Clear();
+        foreach (MappingRow row in document.Rows())
+        {
+            Rows.Add(new MappingRowView(
+                row.Value,
+                row.Name,
+                row.Physical.Count > 0 ? row.Physical[0] : "",
+                row.Physical.Count > 1 ? row.Physical[1] : ""));
+        }
+    }
 
     /// <summary>The pad's own name, which is this screen's title and its prompt's middle.</summary>
     public string ControllerType
