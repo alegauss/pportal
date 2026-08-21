@@ -192,6 +192,54 @@ public sealed class AxisRanges
 }
 
 /// <summary>
+/// PP222: a trigger PULL, as one line rather than five hundred.
+///
+/// L2 and R2 are axes on the joystick layer, so with the analog opt-in off they never become a
+/// token and pressing one produces no sign it was seen at all - measured the embarrassing way, by
+/// somebody pressing R2 harder because nothing appeared.
+///
+/// They can be shown without the sticks, and the reason is an asymmetry the Qt client has no need
+/// to notice: a trigger at rest sits at one END of its travel and emits nothing, while a stick in
+/// a hand never stops moving. So the flood the opt-in was turned off for is the sticks' alone.
+///
+/// One pull is one line. Not one event - a single pull of R2 was measured at 509 of them, the axis
+/// reporting every step of its travel - so what earns a line is the CROSSING from released to
+/// pressed, and released is the axis MINIMUM rather than zero, because this is the joystick layer's
+/// range and not the controller layer's.
+/// </summary>
+public sealed class TriggerPulls
+{
+    private readonly Dictionary<byte, bool> pressed = [];
+
+    /// <summary>
+    /// Half travel, which on the joystick layer is zero: a trigger runs from the signed minimum
+    /// released to the maximum fully pressed, so the midpoint is the middle of the type.
+    /// </summary>
+    public const short HalfTravel = 0;
+
+    /// <summary>The two axes a DualSense reports its triggers on, as its own mapping string names them.</summary>
+    public static bool IsTriggerAxis(byte index)
+        => index == Gamepads.ControllerAxis.TriggerLeft || index == Gamepads.ControllerAxis.TriggerRight;
+
+    /// <summary>
+    /// Offers one event, and answers with the token where this is a trigger being pulled past half
+    /// travel having been released. Null for everything else, including the whole rest of the pull
+    /// and the release afterwards.
+    /// </summary>
+    public string? Pull(SdlEvent ev)
+    {
+        if (ev.Type != Gamepads.EventType.JoyAxisMotion || !IsTriggerAxis(ev.Index))
+            return null;
+
+        bool nowPressed = ev.AxisValue > HalfTravel;
+        bool wasPressed = pressed.GetValueOrDefault(ev.Index);
+        pressed[ev.Index] = nowPressed;
+
+        return nowPressed && !wasPressed ? "a" + ev.Index : null;
+    }
+}
+
+/// <summary>
 /// PP221: where each axis is RESTING, read rather than waited for.
 ///
 /// The other half of <see cref="AxisRanges"/>, and the half that answers the question people

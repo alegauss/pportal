@@ -130,6 +130,11 @@ public partial class App : Application
         var arm = new MappingCapture { AllowAnalogStick = analog };
         var taken = new List<string>();
         var ranges = new AxisRanges();
+
+        // PP222. The triggers are axes, so with the opt-in off the capture never names one - and a
+        // person pressing R2 gets no sign it was seen. They are shown separately because they can
+        // be: a trigger at rest emits nothing, so it is the sticks alone that flood.
+        var pulls = analog ? null : new TriggerPulls();
         object gate = new();
 
         // The SDL thread ENQUEUES and the main thread prints. SdlThread's own note says the
@@ -147,6 +152,9 @@ public partial class App : Application
                 // Re-armed, so one run records a sequence. The screen does not do this.
                 if (token is not null)
                     arm.Arm();
+
+                // A trigger the capture was not allowed to name still gets one line per PULL.
+                token ??= pulls?.Pull(ev);
 
                 // The RANGE is kept whatever the capture did with it, because the question it
                 // answers - is this stick resting off centre, or merely not still - is about the

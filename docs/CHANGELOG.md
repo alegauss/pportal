@@ -109,6 +109,7 @@
 - ✅ **PP219** **the port never opens the device, so a pad that enumerates correctly delivers no button, axis or hat event at all** — the device opened, without which no press arrives at all, and a live capture diagnostic that says which silence it is.
 - ✅ **PP220** **the capture diagnostic asks for analog and a resting stick drowns it, so the presses that matter cannot be found** — the analog opt-in off unless asked for, and the axis range printed either way, which is what tells noise from a stick off centre.
 - ✅ **PP221** **the axis report waits for movement, so a stick resting off centre and still reads the same as a centred one** — the axis position read instead of waited for, against the header's own band for what counts as centred.
+- ✅ **PP222** **with the analog opt-in off the triggers vanish from the log too, so pressing one produces no sign it was seen** — a trigger pull as one line, shown while the sticks stay out, because only the sticks flood.
 
 ## Block E — Windows-only build
 
