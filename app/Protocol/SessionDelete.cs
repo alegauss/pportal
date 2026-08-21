@@ -89,18 +89,24 @@ public static class MisnamedLogs
             "http_send_session_message: Sending holepunch session message failed",
             "another function entirely, by name"),
 
-        // PP237: the pair. Both reply senders report their own failure as check_candidates, which
-        // is the function that calls them rather than either of them.
-        new(
-            "send_response_ps",
-            "check_candidates: Sending confirmation failed for %s:%d with error: \" CHIAKI_SOCKET_ERROR_FMT",
-            "the caller, in the function it calls"),
-
-        new(
-            "send_responseto_ps",
-            "check_candidates: Sending confirmation failed for %s:%d with error: %s\"",
-            "the caller again - and through a format that reads an int as an address"),
     ];
+
+    /// <summary>
+    /// PP238: what this list does NOT count, and why.
+    ///
+    /// PP237 put both reply senders here because they log as check_candidates rather than as
+    /// themselves. PP238 found the same prefix on all three messages in the loop that calls them -
+    /// and every one of those functions is a HELPER of check_candidates. The prefix names the
+    /// operation the reader is following, not the function the line sits in, and across a call tree
+    /// that is defensible: a log that changed name three times inside one exchange would be worse.
+    ///
+    /// That is a different thing from <see cref="All"/>, where a message names a DIFFERENT
+    /// operation - a create that is a check, a send that is a delete, an IPv4 URL for an IPv6
+    /// fetch. Grouping the two flattened a real distinction, so the correction is here rather than
+    /// as a quietly shorter list.
+    /// </summary>
+    public static IReadOnlyList<string> NamesTheOperationNotTheFunction { get; } =
+        ["send_response_ps", "send_responseto_ps", "receive_request_send_response_ps"];
 
     /// <summary>The file, or null outside a checkout.</summary>
     public static string? Locate() => PushNotificationSource.Locate();

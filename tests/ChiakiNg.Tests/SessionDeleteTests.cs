@@ -42,21 +42,32 @@ public class SessionDeleteTests(ITestOutputHelper output)
         Assert.Contains("Bearer t", headers[0], StringComparison.Ordinal);
     }
 
-    /// <summary>Five, and each names something the function it sits in does not do.</summary>
+    /// <summary>Three, and each names a different OPERATION rather than a different function.</summary>
     [Fact]
     public void EveryOneOfThemNamesTheWrongCall()
     {
-        Assert.Equal(5, MisnamedLogs.All.Count);
+        Assert.Equal(3, MisnamedLogs.All.Count);
 
         Assert.Equal(
-            [
-                "deleteSession",
-                "get_stun_servers",
-                "http_check_session",
-                "send_response_ps",
-                "send_responseto_ps",
-            ],
+            ["deleteSession", "get_stun_servers", "http_check_session"],
             MisnamedLogs.All.Select(m => m.Function).OrderBy(f => f, StringComparer.Ordinal));
+    }
+
+    /// <summary>
+    /// PP238's correction to PP237. Three functions log as check_candidates and every one of them
+    /// is a helper OF check_candidates - so the prefix names the operation being followed, not the
+    /// function the line is in, and that is defensible across a call tree. They are named here so
+    /// the distinction is visible rather than the count quietly shrinking.
+    /// </summary>
+    [Fact]
+    public void NamingTheOperationIsNotTheSameAsNamingTheWrongOne()
+    {
+        Assert.Equal(3, MisnamedLogs.NamesTheOperationNotTheFunction.Count);
+
+        // And the two lists do not overlap, which is what makes them two lists.
+        Assert.Empty(MisnamedLogs.All
+            .Select(m => m.Function)
+            .Intersect(MisnamedLogs.NamesTheOperationNotTheFunction));
     }
 
     /// <summary>

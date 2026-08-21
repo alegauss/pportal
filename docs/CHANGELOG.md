@@ -196,6 +196,7 @@
 - ✅ **PP235** **deleting a session is unported, and both its failure messages name a different function entirely** — the delete as a custom request, and the three log messages that name the wrong call counted together.
 - ✅ **PP236** **the hole punching reply is unported: twenty-byte ids in thirty-two-byte slots, and an address xored over the session ids** — the hole punching reply built byte by byte, with the gap the ids leave and the key they double as.
 - ✅ **PP237** **the other reply sender is the same function twice, and its failure logs an int through a string format** — the two senders asserted identical so one builder serves both, and the copy that logs an int as a string.
+- ✅ **PP238** **the loop answering punch requests is unported, and it reports success only by the traffic stopping** — the answering loop whose only success is a silence, and PP237's log count corrected to three.
 
 ## Block G — Test discipline
 
