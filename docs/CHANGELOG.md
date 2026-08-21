@@ -170,6 +170,7 @@
 - ✅ **PP207** **eight of the session's nineteen states are never entered, and one of them is what the already-started guard tests** — the machine as a history, with the dead branches counted from the source.
 - ✅ **PP208** **the session uuid is drawn from rand reseeded by the clock, so two sessions in one second share an identifier** — the shape reproduced, the collision demonstrated rather than shipped.
 - ✅ **PP209** **an account with no consoles is reported as out of memory, on the one error path that returns without cleaning up** — the console list, with the empty case told apart from the failing one.
+- ✅ **PP210** **the session create body sends the same word for three identity fields, and the account id is an int in one payload** — the four bodies a session is set up with, and what they call things.
 
 ## Block G — Test discipline
 
