@@ -6,6 +6,110 @@ using ChiakiNg.Settings;
 namespace ChiakiNg.Session;
 
 /// <summary>
+/// PP23: one baseline statistic, and the number the average hides.
+///
+/// <see cref="SessionBaseline"/> exposes an average and nothing else, and sessionbaseline.h itself
+/// says what that costs: ten stalls in a thousand frames drag the mean to 1990us while ninety-nine
+/// percent of frames were at 1000. The mean overstates the typical frame by two and understates the
+/// worst by fifty, in one number - which is why the statistic keeps a histogram rather than a
+/// running total, and why a port that could only read the mean could only report the misleading
+/// half.
+///
+/// The percentile is a BOUND and says so. The buckets are eight to the octave, so the answer is
+/// the upper edge of the bucket the true value falls in: never below it, and within 12.5% above.
+/// Past the last bucket it is clamped to the observed maximum, which is why a five-second stall
+/// reads as five seconds rather than as the top of the histogram.
+/// </summary>
+public sealed class BaselineStat : IDisposable
+{
+    private IntPtr handle;
+
+    /// <summary>An empty statistic, which answers zero to everything until something is pushed.</summary>
+    public BaselineStat()
+    {
+        handle = StatCreate();
+        if (handle == IntPtr.Zero)
+            throw new InvalidOperationException("chiaki_shim_baseline_stat_create returned null.");
+    }
+
+    private IntPtr Handle
+        => handle != IntPtr.Zero ? handle : throw new ObjectDisposedException(nameof(BaselineStat));
+
+    /// <summary>One sample, folded into the histogram as it arrives.</summary>
+    public void Push(ulong sampleUs) => StatPush(Handle, sampleUs);
+
+    /// <summary>How many samples have been folded in.</summary>
+    public ulong Samples => StatSamples(Handle);
+
+    /// <summary>The fastest sample seen, or zero when none has been.</summary>
+    public ulong MinimumUs => StatMin(Handle);
+
+    /// <summary>And the slowest, which is what the percentile is clamped to.</summary>
+    public ulong MaximumUs => StatMax(Handle);
+
+    /// <summary>The mean. Kept, and not to be read on its own - see the class note.</summary>
+    public ulong AverageUs => StatAvg(Handle);
+
+    /// <summary>The median, as a bucket bound.</summary>
+    public ulong P50Us => StatP50(Handle);
+
+    /// <summary>The ninety-ninth percentile, which is the number a stream is judged by.</summary>
+    public ulong P99Us => StatP99(Handle);
+
+    /// <summary>Any percentile, so the two named ones cannot drift from the general one.</summary>
+    public ulong PercentileUs(uint percent) => StatPercentile(Handle, percent);
+
+    public void Dispose()
+    {
+        if (handle == IntPtr.Zero)
+            return;
+
+        StatFree(handle);
+        handle = IntPtr.Zero;
+    }
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_baseline_stat_create",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr StatCreate();
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_baseline_stat_free",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern void StatFree(IntPtr stat);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_baseline_stat_push",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern void StatPush(IntPtr stat, ulong sampleUs);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_baseline_stat_samples",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern ulong StatSamples(IntPtr stat);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_baseline_stat_min_us",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern ulong StatMin(IntPtr stat);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_baseline_stat_max_us",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern ulong StatMax(IntPtr stat);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_baseline_stat_avg",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern ulong StatAvg(IntPtr stat);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_baseline_stat_p50_us",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern ulong StatP50(IntPtr stat);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_baseline_stat_p99_us",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern ulong StatP99(IntPtr stat);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_baseline_stat_percentile_us",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern ulong StatPercentile(IntPtr stat, uint percent);
+}
+
+/// <summary>
 /// PP5: StreamSession::FillBaseline, without the QElapsedTimer around it.
 ///
 /// This is the ledger the two clients are compared with, so the one thing this side must not do is

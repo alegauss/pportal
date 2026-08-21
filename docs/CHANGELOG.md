@@ -137,6 +137,7 @@
 - ✅ **PP153** **the slice-header parsers decide every loss response, and a failed header parse silently zeroes the SPS they need** — both parsers transcribed and agreeing on the recorded NALs and every prefix of them.
 - ✅ **PP154** **the one function that edits the bitstream is positioned by the reader, and nothing compares where a managed one writes** — the rewriter transcribed and compared byte for byte at every prefix, guard included.
 - ✅ **PP176** **the C suite's allocation budget is the one case the port never carried, and it is what a managed rewrite loses first** — zero bytes per packet on the managed side, and a counter proved able to fail.
+- ✅ **PP177** **the baseline seam exposes only the average, which is the number its own header warns overstates and understates at once** — the percentile the average hides, reachable and asserted on the C's own numbers.
 
 ## Block G — Test discipline
 

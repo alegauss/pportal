@@ -713,6 +713,65 @@ CHIAKI_SHIM_API uint64_t chiaki_shim_baseline_latency_estimate_us(void *baseline
 			: 0;
 }
 
+// ---- PP23: one statistic on its own, so the percentile is reachable ------------------------
+
+CHIAKI_SHIM_API void *chiaki_shim_baseline_stat_create(void)
+{
+	// calloc and not malloc: the C's own cases start from a memset(0) stat and every field of it
+	// is read before anything is pushed, so an uninitialised histogram answers with whatever was
+	// on the heap rather than with the zero the first assertion expects.
+	return calloc(1, sizeof(ChiakiSessionBaselineStat));
+}
+
+CHIAKI_SHIM_API void chiaki_shim_baseline_stat_free(void *stat)
+{
+	free(stat);
+}
+
+CHIAKI_SHIM_API void chiaki_shim_baseline_stat_push(void *stat, uint64_t sample_us)
+{
+	if(stat)
+		chiaki_session_baseline_stat_push((ChiakiSessionBaselineStat *)stat, sample_us);
+}
+
+CHIAKI_SHIM_API uint64_t chiaki_shim_baseline_stat_samples(void *stat)
+{
+	return stat ? ((const ChiakiSessionBaselineStat *)stat)->samples : 0;
+}
+
+CHIAKI_SHIM_API uint64_t chiaki_shim_baseline_stat_min_us(void *stat)
+{
+	return stat ? ((const ChiakiSessionBaselineStat *)stat)->min_us : 0;
+}
+
+CHIAKI_SHIM_API uint64_t chiaki_shim_baseline_stat_max_us(void *stat)
+{
+	return stat ? ((const ChiakiSessionBaselineStat *)stat)->max_us : 0;
+}
+
+CHIAKI_SHIM_API uint64_t chiaki_shim_baseline_stat_avg(void *stat)
+{
+	return stat ? chiaki_session_baseline_stat_avg((const ChiakiSessionBaselineStat *)stat) : 0;
+}
+
+CHIAKI_SHIM_API uint64_t chiaki_shim_baseline_stat_p50_us(void *stat)
+{
+	return stat ? chiaki_session_baseline_stat_p50_us((const ChiakiSessionBaselineStat *)stat) : 0;
+}
+
+CHIAKI_SHIM_API uint64_t chiaki_shim_baseline_stat_p99_us(void *stat)
+{
+	return stat ? chiaki_session_baseline_stat_p99_us((const ChiakiSessionBaselineStat *)stat) : 0;
+}
+
+CHIAKI_SHIM_API uint64_t chiaki_shim_baseline_stat_percentile_us(void *stat, uint32_t percent)
+{
+	return stat
+			? chiaki_session_baseline_stat_percentile_us(
+					(const ChiakiSessionBaselineStat *)stat, (unsigned int)percent)
+			: 0;
+}
+
 CHIAKI_SHIM_API int32_t chiaki_shim_baseline_format(
 		void *baseline, char *buf, int32_t buf_size, int32_t *written)
 {

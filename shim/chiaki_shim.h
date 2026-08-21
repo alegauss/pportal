@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 32
+#define CHIAKI_SHIM_ABI 33
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -471,6 +471,40 @@ CHIAKI_SHIM_API int32_t chiaki_shim_baseline_format(
 
 /** Appends the line to the ledger at `path`, creating it if it is not there. */
 CHIAKI_SHIM_API int32_t chiaki_shim_baseline_append(void *baseline, const char *path);
+
+/**
+ * PP23: one baseline statistic on its own, so the managed side can reach the PERCENTILE.
+ *
+ * The baseline handle above exposes an average and nothing else, and the average is the number
+ * sessionbaseline.h itself warns about: ten stalls in a thousand frames drag the mean to 1990us
+ * while ninety-nine percent of frames were at 1000. Reading it overstates the typical frame by two
+ * and understates the worst by fifty, in one number - which is the whole reason the statistic keeps
+ * a distribution rather than a running total.
+ *
+ * ChiakiSessionBaselineStat is a COMPLETE type in the public header, so a port could mirror its
+ * layout and P/Invoke the library directly. It is behind a handle here for the reason every other
+ * struct in this file is: a layout the managed side copies is a layout that goes wrong silently the
+ * first time the C reorders a field, and nothing about a histogram makes it the exception.
+ *
+ * The bound is not the exact percentile and does not claim to be. The buckets are eight to the
+ * octave, so the answer is the upper edge of the bucket the true value falls in - never below it,
+ * and within 12.5%. Past the last bucket it is clamped to the observed maximum, which is why a
+ * five-second stall reads as five seconds rather than as the top of the histogram.
+ */
+CHIAKI_SHIM_API void *chiaki_shim_baseline_stat_create(void);
+CHIAKI_SHIM_API void chiaki_shim_baseline_stat_free(void *stat);
+
+CHIAKI_SHIM_API void chiaki_shim_baseline_stat_push(void *stat, uint64_t sample_us);
+
+CHIAKI_SHIM_API uint64_t chiaki_shim_baseline_stat_samples(void *stat);
+CHIAKI_SHIM_API uint64_t chiaki_shim_baseline_stat_min_us(void *stat);
+CHIAKI_SHIM_API uint64_t chiaki_shim_baseline_stat_max_us(void *stat);
+CHIAKI_SHIM_API uint64_t chiaki_shim_baseline_stat_avg(void *stat);
+CHIAKI_SHIM_API uint64_t chiaki_shim_baseline_stat_p50_us(void *stat);
+CHIAKI_SHIM_API uint64_t chiaki_shim_baseline_stat_p99_us(void *stat);
+
+/** Any percentile, so the two named ones above cannot drift from the general one. */
+CHIAKI_SHIM_API uint64_t chiaki_shim_baseline_stat_percentile_us(void *stat, uint32_t percent);
 
 /**
  * PP6: discovery, which is what fills the console list.
