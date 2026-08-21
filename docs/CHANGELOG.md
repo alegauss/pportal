@@ -144,6 +144,7 @@
 - ✅ **PP181** **the seam skipped the two setters whose defaults are the ledger's never-empty rule, so a row could carry two blanks** — the two never-empty fields, which the seam could leave blank.
 - ✅ **PP182** **nothing held the managed side to appending the ledger rather than truncating it, or to reporting a write it could not do** — two rows where two sessions ran, and a failed write that says so.
 - ✅ **PP183** **json-c cannot tell a null value from a missing key and the port could, so it would read a field the other client skips** — one corpus through both, and the null json-c calls nothing.
+- ✅ **PP184** **the two HTTP parsers have one signature and were compared nowhere, so a divergence would surface as a reply misread** — a corpus through both parsers, and nothing between them.
 
 ## Block G — Test discipline
 
