@@ -122,6 +122,28 @@ public static class Gamepads
     public static bool IsGameController(int index) => SdlIsGameController(index) != 0;
 
     /// <summary>
+    /// PP219: opens the device, WITHOUT WHICH NO BUTTON EVER ARRIVES.
+    ///
+    /// Measured, on a DualSense over USB: with the pump running and the device enumerable, pressing
+    /// buttons for twenty seconds produced nothing at all. SDL queues the arrival of a device
+    /// whether or not anyone opened it, and queues that device's INPUT only once somebody has - so
+    /// a port with the thread, the pump and the device list still has a pad that does nothing, and
+    /// no error anywhere saying why. controllermanager.cpp opens on construction, which is why the
+    /// Qt client never meets this.
+    ///
+    /// The handle is kept for as long as the events are wanted: closing it stops them again.
+    /// </summary>
+    /// <returns>The controller handle, or <see cref="IntPtr.Zero"/> where SDL refused.</returns>
+    public static IntPtr OpenController(int index) => SdlControllerOpen(index);
+
+    /// <summary>Closes a handle from <see cref="OpenController"/>, and with it the event flow.</summary>
+    public static void CloseController(IntPtr controller)
+    {
+        if (controller != IntPtr.Zero)
+            SdlControllerClose(controller);
+    }
+
+    /// <summary>
     /// What the device calls itself, or the empty string.
     ///
     /// SDL OWNS this pointer - the header says <c>const char *</c> - so it is read and left alone.
@@ -330,6 +352,14 @@ public static class Gamepads
 
     [DllImport(ChiakiNative.Sdl, EntryPoint = "SDL_IsGameController", CallingConvention = CallingConvention.Cdecl)]
     private static extern int SdlIsGameController(int index);
+
+    [DllImport(ChiakiNative.Sdl, EntryPoint = "SDL_GameControllerOpen",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr SdlControllerOpen(int index);
+
+    [DllImport(ChiakiNative.Sdl, EntryPoint = "SDL_GameControllerClose",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern void SdlControllerClose(IntPtr controller);
 
     [DllImport(ChiakiNative.Sdl, EntryPoint = "SDL_GameControllerNameForIndex",
         CallingConvention = CallingConvention.Cdecl)]

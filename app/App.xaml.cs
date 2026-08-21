@@ -113,6 +113,92 @@ public partial class App : Application
         return 0;
     }
 
+    /// <summary>
+    /// PP219: `--capture-controller`, which opens the first mappable pad and prints what pressing
+    /// it produces.
+    ///
+    /// The tool that found the defect PP219 files. Opening and closing both happen on the SDL
+    /// thread, because the handle belongs to whichever thread called SDL_Init - the same rule as
+    /// everything else in <see cref="Gamepads"/>.
+    /// </summary>
+    private static int CaptureController(TimeSpan window)
+    {
+        var arm = new MappingCapture { AllowAnalogStick = true };
+        var taken = new List<string>();
+        object gate = new();
+
+        // The SDL thread ENQUEUES and the main thread prints. SdlThread's own note says the
+        // callback runs between two polls and must not block, and writing to a console is I/O -
+        // so the token crosses a queue rather than reaching stdout on the thread that owns SDL.
+        var pending = new System.Collections.Concurrent.ConcurrentQueue<string>();
+
+        using var sdl = new SdlThread(ev =>
+        {
+            string? token;
+            lock (gate)
+            {
+                token = arm.Offer(ev);
+
+                // Re-armed, so one run records a sequence. The screen does not do this.
+                if (token is not null)
+                    arm.Arm();
+            }
+
+            if (token is not null)
+                pending.Enqueue(token);
+        });
+
+        SdlStart start = sdl.Start(TimeSpan.FromSeconds(10));
+        if (start != SdlStart.Started)
+        {
+            Console.Error.WriteLine($"SDL did not start ({start}): {sdl.Error}");
+            return 1;
+        }
+
+        SdlPad? pad = null;
+        IntPtr handle = IntPtr.Zero;
+
+        sdl.Invoke(
+            () =>
+            {
+                pad = Gamepads.Pads().FirstOrDefault();
+                if (pad is SdlPad found)
+                    handle = Gamepads.OpenController(found.Index);
+            },
+            TimeSpan.FromSeconds(10));
+
+        lock (gate)
+            arm.Arm();
+
+        // Before the listening, not after it: a window whose start nobody can see is one where a
+        // silent result cannot be told from a mistimed press.
+        Console.Write(CaptureReport.Opening(pad, handle != IntPtr.Zero));
+        Console.WriteLine($"listening for {window.TotalSeconds:0}s - press the pad");
+        Console.Out.Flush();
+
+        DateTime until = DateTime.UtcNow + window;
+        while (DateTime.UtcNow < until)
+        {
+            while (pending.TryDequeue(out string? token))
+            {
+                taken.Add(token);
+                Console.WriteLine(CaptureReport.Live(token));
+                Console.Out.Flush();
+            }
+
+            Thread.Sleep(20);
+        }
+
+        while (pending.TryDequeue(out string? last))
+            taken.Add(last);
+
+        Console.Write(CaptureReport.Summary(taken, window));
+
+        sdl.Invoke(() => Gamepads.CloseController(handle), TimeSpan.FromSeconds(10));
+        sdl.Stop(TimeSpan.FromSeconds(10));
+        return 0;
+    }
+
     protected override void OnStartup(StartupEventArgs e)
     {
         if (e.Args.Any(a => string.Equals(a, "--selftest", StringComparison.OrdinalIgnoreCase)))
@@ -128,6 +214,12 @@ public partial class App : Application
         {
             ReopenStdOut();
             Environment.Exit(Controllers());
+        }
+
+        if (e.Args.Any(a => string.Equals(a, "--capture-controller", StringComparison.OrdinalIgnoreCase)))
+        {
+            ReopenStdOut();
+            Environment.Exit(CaptureController(TimeSpan.FromSeconds(20)));
         }
 
         base.OnStartup(e);
