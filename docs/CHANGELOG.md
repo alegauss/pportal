@@ -150,6 +150,7 @@
 - ✅ **PP187** **the three curl behaviours HttpClient lacks were a plan, so each call site would still decide what curl was doing** — a transfer that fails the way curl fails, driven against a real server.
 - ✅ **PP188** **the one call site that is a WebSocket sends its subprotocol as a header and disables the timeout every other one sets** — the push socket, its fixed strings, and the transfer with no timeout.
 - ✅ **PP189** **the bodies the core posts are JSON only because a header overrides what POSTFIELDS would announce them as** — four posts and a delete, with the header that stops JSON being form data.
+- ✅ **PP190** **the push notification types are a mask a caller waits on, and six of them are namespaced strings no rule derives** — six identifiers, powers of two, and a zero that wakes nobody.
 
 ## Block G — Test discipline
 
