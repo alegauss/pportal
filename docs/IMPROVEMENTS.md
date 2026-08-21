@@ -306,20 +306,22 @@ http.c is 232 lines around curl, and json-c parses what comes back. Both are ven
 fetched, both exist to do something the .NET base class library does without a
 reference, and neither is on the latency path.
 
-The line count is the wrong measure of it, though, and this is the line that shows why.
-What has to be replaced is the API surface: `remaining PP33` counts 420 call sites
-across lib/src on 2026-08-16, most of them in the hole-punching code rather than in
-http.c. HttpClient and System.Text.Json replace the libraries, but they do not replace
-those calls one for one.
+The line count is the wrong measure of it, and so is the one below. `remaining PP33`
+counts 420 curl and json-c call sites across lib/src, most of them in the hole-punching
+code rather than in http.c - and porting INTO app/ removes none of them. That number
+reads 420 until libchiaki stops fetching both libraries, and then it reads zero. It is
+an end state and not a progress bar; the `## Done when` list is what says how far along
+this is, and it is there because reading this query as a burndown made four shipped
+tasks look like none.
 
 ```roadkeep-remaining
 lib/src/**/*.c :: curl_easy_|json_object|json_tokener
 ```
 
-There is no design decision here and that is why it is worth filing separately: it is
-the cheapest visible progress in the block, it deletes two dependencies from the build,
-and it can be taken by whoever wants to see the shape of a translated file before
-starting one that matters. The 420 is what stops "cheapest" being read as "small".
+There is no design decision here and that is why it is worth filing separately: it
+deletes two dependencies from the build, and it can be taken by whoever wants to see the
+shape of a translated file before starting one that matters. The 420 is what stops
+"cheapest" being read as "small".
 
 ### §PP107 The two nobody called
 

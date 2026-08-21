@@ -9,8 +9,6 @@
 
 ## Block B — Native interop
 
-- ⏳ **PP93** (deps: —) **the dpad touch path uses a third pair of touchpad bounds, matching neither console's pad** — whether the third pair costs anything, which needs a PS4 and a PS5 in the room to measure. → §PP93
-
 ## Block C — Video and input path
 
 - ⏳ **PP11** (deps: PP9 ✅, PP163) **fullscreen, HDR handoff and refresh-rate switching are handled by the Qt window** — the refresh-rate switching, and the HDR half that PP163 has now shown needs a different presentation path. → §PP11
@@ -18,11 +16,9 @@
 
 ## Block D — Screens
 
-- ⏳ **PP18** (deps: PP8 ✅, PP12 ✅) **the controller mapping screen is QML bound to the live SDL mapping strings** — the pad in the room, which the design says is the whole point and which no test here can stand in for. → §PP18
-
 ## Block E — Windows-only build
 
-- 📋 **PP21** (deps: Block D) **Qt6 is still required to build: Core, Gui, Quick, Qml, Svg, Widgets, Concurrent and WebEngineQuick** — The port is only finished when the toolchain says so, and dropping Qt is the check that no screen or service quietly still depends on it. → §PP21
+- 📋 **PP21** (deps: Block D ⏸) **Qt6 is still required to build: Core, Gui, Quick, Qml, Svg, Widgets, Concurrent and WebEngineQuick** — The port is only finished when the toolchain says so, and dropping Qt is the check that no screen or service quietly still depends on it. → §PP21
 - ⏳ **PP22** (deps: PP1 ✅) **every CI workflow was deleted, so nothing builds, signs or packages the application** — the native side through vcpkg, and the installer; the publish and its selftest gate landed. → §PP22
 - 📋 **PP63** (deps: PP62 ✅) **nothing in the tree can configure a Qt build carrying WebEngine, so PP46's before cannot be produced at all** — MSYS2 has no qt6-webengine and no published Windows release carries Chromium, so an MSVC configure built once is the only reference the port can measure against. → §PP63
 
@@ -52,6 +48,29 @@
 - 📋 **PP49** (deps: PP11 ⏳, PP47 ✅) **the console sends SDR on most titles and an HDR display shows it flat, with nothing in the client trying** — RTX Video HDR does this conversion on the presented frame, and it is the one vendor feature whose benefit is visible in a still image, not argued from a graph. → §PP49
 - 📋 **PP52** (deps: PP32) **the microphone path runs speex echo cancellation on the CPU, and speexdsp has no managed replacement** — NVIDIA ships GPU noise and echo removal for exactly this, so one task can both improve the voice sent to the console and delete a dependency the port has no answer for. → §PP52
 - 📋 **PP53** (deps: PP11 ⏳, PP41 ✅) **frames arrive with network jitter and are presented against a fixed refresh, so each waits for a vblank it missed** — A variable refresh display can show a frame when it arrives rather than when the panel next allows it, which is latency removed and not an image improved. → §PP53
+
+## Done when — PP33
+
+- **Every curl and json-c call site in holepunch.c has a named counterpart** The
+  `remaining` query below finds them; each area answered by a class in app/Protocol
+  whose source assertions read the same file. What is not yet answered is named in the
+  criteria under this one, rather than left for the count to imply.
+- **The websocket thread's auto-ACK of offers is stated** The rule is a state mask -
+  auto-ACK while a control offer is received and not yet established, or once a data
+  offer is - and the `continue` on a parse failure skips the enqueue, losing the
+  notification. Both stated, both asserted against the file.
+- **The session HTTP calls run through HttpClient rather than curl** The four session
+  calls and the wakeup reach PSN through HttpClient, with the response codes and the
+  failure paths the curl setup encodes - CURLOPT_FAILONERROR among them, which turns an
+  HTTP error into a transfer error and is not the default anywhere else.
+- **libchiaki builds with neither curl nor json-c** The build configures and links
+  without either, which is the first moment the deletion is real rather than planned:
+  until then both are still fetched, still built, and still shipped beside a managed
+  replacement that duplicates them.
+- **The remaining query reads zero** And not before. The query counts C that porting
+  does not remove, so it reads its full count until the criterion above is met and then
+  reads zero. It is an end state, not a progress bar, and reading it as one is what made
+  four shipped tasks look like none.
 
 ## Non-goals
 

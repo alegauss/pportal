@@ -78,3 +78,11 @@ held = 60
 # instead of reproduced — so they are refused at input like every other line, rather than being
 # the one part of the roadmap no schema reaches. The limits are left at their defaults.
 [non_goals]
+
+# Declared because this port's largest lines cannot be finished and cannot show progress, and
+# those are two different problems. PP33's own measure is a `remaining` query counting curl and
+# json-c call sites in lib/src — 420 of them, and it will read 420 until libchiaki's C is
+# deleted, because porting INTO app/ removes no line of C. Four tasks of real work moved it by
+# nothing. A number that only leaves zero at the finish cannot tell half done from not started,
+# which is the failure this list exists to answer. The limits are left at their defaults.
+[criteria]
