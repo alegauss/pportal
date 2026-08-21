@@ -31,6 +31,21 @@ namespace ChiakiNg.Session;
 public readonly record struct SdlEvent(uint Type, uint Timestamp, int Which, byte Index, byte Value);
 
 /// <summary>
+/// PP218: one attached pad, as much of it as the mapping screen needs.
+/// </summary>
+/// <param name="Index">
+/// SDL's device INDEX, which is a position in a list that shifts when anything is unplugged. Good
+/// for opening the device now and worthless for remembering it - PP128's roster keys on the
+/// instance id for that reason, and this record is not a roster.
+/// </param>
+/// <param name="Name">What the pad calls itself. The screen's title, and the middle of its prompt.</param>
+/// <param name="Mapping">
+/// The SDL mapping string. Not a description of the document the screen edits - it IS that
+/// document, the same text <see cref="ControllerMappingDocument.Parse"/> takes.
+/// </param>
+public readonly record struct SdlPad(int Index, string Name, string Mapping);
+
+/// <summary>
 /// PP8: SDL's game controller subsystem, driven from managed code.
 ///
 /// SDL is not Qt and does not have to move - so it does not, and the port calls it directly rather
@@ -102,6 +117,73 @@ public static class Gamepads
 
     /// <summary>How many joysticks SDL can see. Zero is an ordinary answer on a machine with none.</summary>
     public static int NumJoysticks() => SdlNumJoysticks();
+
+    /// <summary>Whether SDL has a game controller mapping for the device at this index.</summary>
+    public static bool IsGameController(int index) => SdlIsGameController(index) != 0;
+
+    /// <summary>
+    /// What the device calls itself, or the empty string.
+    ///
+    /// SDL OWNS this pointer - the header says <c>const char *</c> - so it is read and left alone.
+    /// See <see cref="MappingForDeviceIndex"/>, which is the call beside it and the opposite.
+    /// </summary>
+    public static string NameForIndex(int index)
+        => Marshal.PtrToStringUTF8(SdlNameForIndex(index)) ?? "";
+
+    /// <summary>
+    /// The device's SDL mapping string - which IS the document the mapping screen edits - or null
+    /// where SDL has none for it.
+    ///
+    /// THE CALLER OWNS THIS ONE. Its own line in SDL_gamecontroller.h says "Must be freed with
+    /// SDL_free()", where the name beside it must not be. From managed code the two are
+    /// indistinguishable - both are an IntPtr through PtrToStringUTF8 - so the free is here, in a
+    /// finally, rather than at whichever call site remembers.
+    /// </summary>
+    public static string? MappingForDeviceIndex(int index)
+    {
+        IntPtr owned = SdlMappingForDeviceIndex(index);
+        if (owned == IntPtr.Zero)
+            return null;
+
+        try
+        {
+            return Marshal.PtrToStringUTF8(owned);
+        }
+        finally
+        {
+            SdlFree(owned);
+        }
+    }
+
+    /// <summary>
+    /// Every attached device SDL can map, with what the mapping screen needs of it.
+    ///
+    /// ON THE SDL THREAD, like everything else here: the device tables belong to whichever thread
+    /// called SDL_Init, which is the same reason <see cref="Start"/> says so. <see cref="SdlThread"/>
+    /// .Invoke is the path from anywhere else.
+    ///
+    /// A device SDL cannot map is skipped rather than reported without a mapping: the screen has
+    /// nothing to draw for one, and an empty list on a machine with no pad is an ordinary answer.
+    /// </summary>
+    public static IReadOnlyList<SdlPad> Pads()
+    {
+        var pads = new List<SdlPad>();
+
+        int count = NumJoysticks();
+        for (int index = 0; index < count; index++)
+        {
+            if (!IsGameController(index))
+                continue;
+
+            string? mapping = MappingForDeviceIndex(index);
+            if (mapping is null)
+                continue;
+
+            pads.Add(new SdlPad(index, NameForIndex(index), mapping));
+        }
+
+        return pads;
+    }
 
     /// <summary>SDL's own version, so a hint that only exists past a version can be judged.</summary>
     public static Version LinkedVersion()
@@ -245,6 +327,21 @@ public static class Gamepads
 
     [DllImport(ChiakiNative.Sdl, EntryPoint = "SDL_GetVersion", CallingConvention = CallingConvention.Cdecl)]
     private static extern void SdlGetVersion(out SdlVersion version);
+
+    [DllImport(ChiakiNative.Sdl, EntryPoint = "SDL_IsGameController", CallingConvention = CallingConvention.Cdecl)]
+    private static extern int SdlIsGameController(int index);
+
+    [DllImport(ChiakiNative.Sdl, EntryPoint = "SDL_GameControllerNameForIndex",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr SdlNameForIndex(int index);
+
+    [DllImport(ChiakiNative.Sdl, EntryPoint = "SDL_GameControllerMappingForDeviceIndex",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr SdlMappingForDeviceIndex(int index);
+
+    /// <summary>SDL's own free, which is the only one that may release the mapping string above.</summary>
+    [DllImport(ChiakiNative.Sdl, EntryPoint = "SDL_free", CallingConvention = CallingConvention.Cdecl)]
+    private static extern void SdlFree(IntPtr memory);
 
     [DllImport(ChiakiNative.Sdl, EntryPoint = "SDL_GetError", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr SdlGetError();

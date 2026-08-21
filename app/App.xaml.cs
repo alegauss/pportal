@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Windows;
+using ChiakiNg.Session;
 
 namespace ChiakiNg;
 
@@ -76,6 +77,42 @@ public partial class App : Application
         }
     }
 
+    /// <summary>
+    /// PP218: `--controllers`, which prints what SDL sees and exits.
+    ///
+    /// Its own flag rather than a corner of the selftest, because the selftest is a gate that must
+    /// pass on a build machine with no pad, and this is the opposite - a thing you run BECAUSE a
+    /// pad is plugged in, whose whole output is the device it found.
+    ///
+    /// The enumeration goes through the thread rather than beside it: SDL's device tables belong to
+    /// whichever thread called SDL_Init, which is what <see cref="SdlThread"/> exists to own.
+    /// </summary>
+    private static int Controllers()
+    {
+        using var sdl = new SdlThread();
+
+        SdlStart start = sdl.Start(TimeSpan.FromSeconds(10));
+        if (start != SdlStart.Started)
+        {
+            Console.Error.WriteLine($"SDL did not start ({start}): {sdl.Error}");
+            return 1;
+        }
+
+        string report = "";
+        if (!sdl.Invoke(
+                () => report = PadReport.Format(
+                    Gamepads.NumJoysticks(), Gamepads.Pads(), Gamepads.LinkedVersion()),
+                TimeSpan.FromSeconds(10)))
+        {
+            Console.Error.WriteLine("the SDL thread did not answer");
+            return 1;
+        }
+
+        Console.Write(report);
+        sdl.Stop(TimeSpan.FromSeconds(10));
+        return 0;
+    }
+
     protected override void OnStartup(StartupEventArgs e)
     {
         if (e.Args.Any(a => string.Equals(a, "--selftest", StringComparison.OrdinalIgnoreCase)))
@@ -85,6 +122,12 @@ public partial class App : Application
             // not opened MainWindow, and there is no message loop to unwind. Returning instead
             // would open the window behind the test output.
             Environment.Exit(SelfTest.Run());
+        }
+
+        if (e.Args.Any(a => string.Equals(a, "--controllers", StringComparison.OrdinalIgnoreCase)))
+        {
+            ReopenStdOut();
+            Environment.Exit(Controllers());
         }
 
         base.OnStartup(e);
