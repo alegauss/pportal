@@ -155,6 +155,57 @@ public static class Gamepads
     }
 
     /// <summary>
+    /// PP221: where an axis is NOW, with nothing having to move first.
+    ///
+    /// The question no event can answer. SDL raises an axis event when the value CHANGES, so a
+    /// stick resting off centre and still emits once on arrival and then nothing at all - and a
+    /// port watching the stream cannot tell that from a stick sitting dead centre. This asks.
+    ///
+    /// TWO RANGES, and the header is explicit about it. A thumbstick reads across the full signed
+    /// span and is documented as centred "within ~8000 of zero" - a quarter of full scale - with
+    /// the dead zone left to the application, so a resting stick is not expected to read zero. A
+    /// TRIGGER read through here runs 0 to maximum instead, which is NOT the range the joystick
+    /// layer reports for the same trigger, and the joystick layer is the one
+    /// <see cref="SdlEvent.AxisValue"/> carries. The same trigger has two numbers depending on
+    /// which call asked.
+    /// </summary>
+    /// <param name="controller">A handle from <see cref="OpenController"/>.</param>
+    /// <param name="axis">One of <see cref="ControllerAxis"/>'s values.</param>
+    public static short AxisNow(IntPtr controller, int axis)
+        => controller == IntPtr.Zero ? (short)0 : SdlControllerGetAxis(controller, axis);
+
+    /// <summary>
+    /// PP221: the axes SDL_GameControllerGetAxis takes, as SDL_gamecontroller.h orders them.
+    ///
+    /// Spelled out because the enum starts at INVALID = -1 and the six that follow take their
+    /// values from that: a port that numbered them from zero as written would read every axis one
+    /// place along and report the left stick's Y where its X was asked for.
+    /// </summary>
+    public static class ControllerAxis
+    {
+        public const int LeftX = 0;
+        public const int LeftY = 1;
+        public const int RightX = 2;
+        public const int RightY = 3;
+        public const int TriggerLeft = 4;
+        public const int TriggerRight = 5;
+
+        /// <summary>Every axis, with the name the header gives it.</summary>
+        public static IReadOnlyList<(int Axis, string Name)> All { get; } =
+        [
+            (LeftX, "left stick X"),
+            (LeftY, "left stick Y"),
+            (RightX, "right stick X"),
+            (RightY, "right stick Y"),
+            (TriggerLeft, "L2"),
+            (TriggerRight, "R2"),
+        ];
+
+        /// <summary>Whether an axis is a TRIGGER, whose range through this call starts at zero.</summary>
+        public static bool IsTrigger(int axis) => axis is TriggerLeft or TriggerRight;
+    }
+
+    /// <summary>
     /// What the device calls itself, or the empty string.
     ///
     /// SDL OWNS this pointer - the header says <c>const char *</c> - so it is read and left alone.
@@ -376,6 +427,10 @@ public static class Gamepads
     [DllImport(ChiakiNative.Sdl, EntryPoint = "SDL_GameControllerClose",
         CallingConvention = CallingConvention.Cdecl)]
     private static extern void SdlControllerClose(IntPtr controller);
+
+    [DllImport(ChiakiNative.Sdl, EntryPoint = "SDL_GameControllerGetAxis",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern short SdlControllerGetAxis(IntPtr controller, int axis);
 
     [DllImport(ChiakiNative.Sdl, EntryPoint = "SDL_GameControllerNameForIndex",
         CallingConvention = CallingConvention.Cdecl)]

@@ -192,6 +192,55 @@ public sealed class AxisRanges
 }
 
 /// <summary>
+/// PP221: where each axis is RESTING, read rather than waited for.
+///
+/// The other half of <see cref="AxisRanges"/>, and the half that answers the question people
+/// actually ask. A range says how far an axis travelled while it was being watched; this says
+/// where it is sitting, which for a stick nobody is touching is the whole of it.
+/// </summary>
+public static class RestingAxes
+{
+    /// <summary>
+    /// How far from zero a centred thumbstick is documented as sitting - SDL_gamecontroller.h's
+    /// own "~8000", not a threshold chosen here.
+    ///
+    /// It is a QUARTER of full scale, and it is the number that stops this report being alarming:
+    /// a resting stick is not expected to read zero, the dead zone is left to the application, and
+    /// a port treating any non-zero reading as a fault would condemn every controller made.
+    /// </summary>
+    public const short CentredWithin = 8000;
+
+    /// <summary>Whether a thumbstick reading is inside what the header calls centred.</summary>
+    public static bool IsCentred(short value) => Math.Abs((int)value) <= CentredWithin;
+
+    /// <summary>
+    /// One axis's resting line.
+    /// </summary>
+    /// <param name="name">The axis, as the header names it.</param>
+    /// <param name="value">Where it is now.</param>
+    /// <param name="trigger">
+    /// Whether it is a trigger. Read through the CONTROLLER call a trigger runs 0 to maximum and a
+    /// stick runs the full signed span, so "centred" is a question only one of them has.
+    /// </param>
+    public static string Line(string name, short value, bool trigger)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+
+        if (trigger)
+        {
+            return string.Create(
+                CultureInfo.InvariantCulture, $"  {name,-14} {value,7}  (0 is released)");
+        }
+
+        string verdict = IsCentred(value)
+            ? $"within the ~{CentredWithin} SDL calls centred"
+            : $"OUTSIDE the ~{CentredWithin} SDL calls centred";
+
+        return string.Create(CultureInfo.InvariantCulture, $"  {name,-14} {value,7}  ({verdict})");
+    }
+}
+
+/// <summary>
 /// PP219: where the Qt client opens the device, which is why it never meets this.
 /// </summary>
 public static class PadOpenSource

@@ -213,9 +213,33 @@ public partial class App : Application
         if (seen.Count > 0)
         {
             Console.WriteLine();
-            Console.WriteLine("axes seen:");
+            Console.WriteLine("axes that moved:");
             foreach ((string axis, short low, short high, int samples) in seen)
                 Console.WriteLine(CaptureReport.AxisRange(axis, low, high, samples));
+        }
+
+        // And where they are NOW, which no event can say: SDL raises one when the value CHANGES,
+        // so a stick resting off centre and still is invisible to everything above this line.
+        if (handle != IntPtr.Zero)
+        {
+            var resting = new List<string>();
+            sdl.Invoke(
+                () =>
+                {
+                    foreach ((int axis, string name) in Gamepads.ControllerAxis.All)
+                    {
+                        resting.Add(RestingAxes.Line(
+                            name,
+                            Gamepads.AxisNow(handle, axis),
+                            Gamepads.ControllerAxis.IsTrigger(axis)));
+                    }
+                },
+                TimeSpan.FromSeconds(10));
+
+            Console.WriteLine();
+            Console.WriteLine("resting now:");
+            foreach (string line in resting)
+                Console.WriteLine(line);
         }
 
         sdl.Invoke(() => Gamepads.CloseController(handle), TimeSpan.FromSeconds(10));

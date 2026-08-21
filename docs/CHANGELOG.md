@@ -108,6 +108,7 @@
 - ✅ **PP218** **nothing in the port lists SDL's devices, names one or reads its mapping string, so the screen has no pad to show** — SDL's device list read through the thread that owns it, and a --controllers report carrying the mapping string whole.
 - ✅ **PP219** **the port never opens the device, so a pad that enumerates correctly delivers no button, axis or hat event at all** — the device opened, without which no press arrives at all, and a live capture diagnostic that says which silence it is.
 - ✅ **PP220** **the capture diagnostic asks for analog and a resting stick drowns it, so the presses that matter cannot be found** — the analog opt-in off unless asked for, and the axis range printed either way, which is what tells noise from a stick off centre.
+- ✅ **PP221** **the axis report waits for movement, so a stick resting off centre and still reads the same as a centred one** — the axis position read instead of waited for, against the header's own band for what counts as centred.
 
 ## Block E — Windows-only build
 
