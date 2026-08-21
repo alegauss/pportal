@@ -117,7 +117,7 @@ public static class ConnectionRequestReader
             return null;
 
         JsonElement? nat = JsonC.Get(json, "natType");
-        if (nat is not { ValueKind: JsonValueKind.Number })
+        if (JsonC.TypeOf(nat) != JsonCType.Int)
             return null;
 
         byte[]? skey = ReadFixedBase64(JsonC.String(JsonC.Get(json, "skey")), SkeyLength);
@@ -133,13 +133,19 @@ public static class ConnectionRequestReader
         if (mac is not { ValueKind: JsonValueKind.String })
             return null;
 
+        // ONE BAD CANDIDATE FAILS THE WHOLE REQUEST. The core's per-field guards jump to
+        // invalid_schema, which is the exit for the entire message and not for the candidate being
+        // read - so there is no salvaging the good ones, and PP195 stopped this reader from
+        // pretending otherwise.
         var candidates = new List<Candidate>();
         JsonElement? list = JsonC.Get(json, "candidate");
         for (int i = 0; i < JsonC.ArrayLength(list); i++)
         {
             Candidate? candidate = CandidateReader.Read(JsonC.ArrayAt(list, i));
-            if (candidate is not null)
-                candidates.Add(candidate.Value);
+            if (candidate is null)
+                return null;
+
+            candidates.Add(candidate.Value);
         }
 
         return new ConnectionRequest(

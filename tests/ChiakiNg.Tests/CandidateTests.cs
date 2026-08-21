@@ -16,6 +16,26 @@ public class CandidateTests
         return CandidateReader.Read(document.RootElement);
     }
 
+    /// <summary>A whole candidate, with one field replaced by whatever is being tested.</summary>
+    private static string Candidate(string key, string value)
+    {
+        var fields = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["type"] = "\"LOCAL\"",
+            ["addr"] = "\"10.0.0.4\"",
+            ["mappedAddr"] = "\"203.0.113.9\"",
+            ["port"] = "9295",
+            ["mappedPort"] = "41234",
+        };
+
+        if (value.Length == 0)
+            fields.Remove(key);
+        else
+            fields[key] = value;
+
+        return "{" + string.Join(",", fields.Select(f => $"\"{f.Key}\":{f.Value}")) + "}";
+    }
+
     /// <summary>The three the reader names.</summary>
     [Theory]
     [InlineData("LOCAL", CandidateType.Local)]
@@ -71,8 +91,7 @@ public class CandidateTests
     [Fact]
     public void ACandidateCarriesBothAddresses()
     {
-        Candidate? candidate = Read(
-            """{"type":"STUN","addr":"10.0.0.4","addrMapped":"203.0.113.9","port":9295,"mappedPort":41234}""");
+        Candidate? candidate = Read(Candidate("type", "\"STUN\""));
 
         Assert.NotNull(candidate);
         Assert.Equal(CandidateType.Stun, candidate.Value.Type);
@@ -90,16 +109,56 @@ public class CandidateTests
     /// reads a missing dataType as Unknown and carries on (PP190). Both are reproduced.
     /// </summary>
     [Theory]
-    [InlineData("""{"addr":"10.0.0.4"}""")]
-    [InlineData("""{"type":42,"addr":"10.0.0.4"}""")]
-    [InlineData("""{"type":null,"addr":"10.0.0.4"}""")]
-    public void AMissingOrNonStringTypeInvalidatesTheCandidate(string json)
-        => Assert.Null(Read(json));
+    [InlineData("")]
+    [InlineData("42")]
+    [InlineData("null")]
+    public void AMissingOrNonStringTypeInvalidatesTheCandidate(string value)
+        => Assert.Null(Read(Candidate("type", value)));
 
-    /// <summary>And a missing address does too, since a candidate without one addresses nothing.</summary>
+    /// <summary>
+    /// EVERY FIELD IS REQUIRED - PP195. Each of the five jumps to invalid_schema when it is
+    /// missing, and there is no default anywhere in the reader.
+    ///
+    /// The version this file shipped with defaulted the last three, so it accepted candidates the
+    /// Qt client refuses. That direction is the quiet one: a half-filled offer would connect here
+    /// and fail there, and nothing in a round trip through this port's own writer would show it.
+    /// </summary>
+    [Theory]
+    [InlineData("type")]
+    [InlineData("addr")]
+    [InlineData("mappedAddr")]
+    [InlineData("port")]
+    [InlineData("mappedPort")]
+    public void EveryMissingFieldInvalidatesTheCandidate(string key)
+        => Assert.Null(Read(Candidate(key, "")));
+
+    /// <summary>
+    /// THE KEY IS mappedAddr. addrMapped is what the C STRUCT MEMBER is called, and what this
+    /// reader first looked for - a name that a fixture written beside it agrees with, so only
+    /// reading the core's key back out finds the mistake.
+    /// </summary>
     [Fact]
-    public void AMissingAddressInvalidatesItAsWell()
-        => Assert.Null(Read("""{"type":"LOCAL"}"""));
+    public void TheMappedAddressIsKeyedForTheWireAndNotForTheStruct()
+    {
+        Assert.Equal("mappedAddr", CandidateReader.MappedAddressField);
+
+        Candidate? candidate = Read(
+            """{"type":"LOCAL","addr":"10.0.0.4","addrMapped":"203.0.113.9","port":1,"mappedPort":2}""");
+
+        Assert.Null(candidate);
+    }
+
+    /// <summary>
+    /// Both ports must be json_type_int, so a port sent as text or as a double invalidates the
+    /// candidate rather than being coerced - the rule natType is held to (PP194), one file over.
+    /// </summary>
+    [Theory]
+    [InlineData("port", "\"9295\"")]
+    [InlineData("port", "9295.0")]
+    [InlineData("mappedPort", "\"41234\"")]
+    [InlineData("mappedPort", "41234.5")]
+    public void APortThatIsNotAnIntInvalidatesTheCandidate(string key, string value)
+        => Assert.Null(Read(Candidate(key, value)));
 
     /// <summary>
     /// A candidate whose type is present but unknown is still a candidate - which is the whole
@@ -108,7 +167,7 @@ public class CandidateTests
     [Fact]
     public void AnUnknownButPresentTypeStillReads()
     {
-        Candidate? candidate = Read("""{"type":"MOONBEAM","addr":"10.0.0.4"}""");
+        Candidate? candidate = Read(Candidate("type", "\"MOONBEAM\""));
 
         Assert.NotNull(candidate);
         Assert.Equal(CandidateType.Static, candidate.Value.Type);
@@ -129,5 +188,22 @@ public class CandidateTests
         Assert.True(CandidateSource.TheWriterStillProducesFour(core), "four written");
         Assert.True(CandidateSource.TheTypesAreStillNotFlags(core), "values, not a mask");
         Assert.True(CandidateSource.AMissingTypeIsStillInvalid(core), "a missing type is invalid");
+        Assert.True(CandidateSource.EveryFieldIsStillGuarded(core), "all five guarded, by name and type");
+        Assert.True(
+            CandidateSource.OneBadCandidateStillFailsTheMessage(core),
+            "one bad candidate still fails the message");
+    }
+
+    /// <summary>
+    /// And the five the port reads are the five the core reads - so a field PSN adds, or one that
+    /// stops being required, turns this red rather than being silently unread.
+    /// </summary>
+    [Fact]
+    public void TheFiveFieldsAreNamedOnceAndCheckedAgainstTheCore()
+    {
+        Assert.Equal(5, CandidateSource.Fields.Count);
+        Assert.Equal(
+            ["type", "addr", "mappedAddr", "port", "mappedPort"],
+            CandidateSource.Fields.Select(f => f.Key));
     }
 }

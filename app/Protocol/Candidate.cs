@@ -50,6 +50,18 @@ public readonly record struct Candidate(
 /// dataType as Unknown and carries on. Two parsers, two files apart, two answers to the same
 /// question - and both are reproduced, because the difference is what each caller was written
 /// against.
+///
+/// EVERY FIELD IS MANDATORY, and that is the correction PP195 made to this file. All five - type,
+/// addr, mappedAddr, port and mappedPort - jump to invalid_schema when missing or of the wrong
+/// type, and there are no defaults anywhere in the reader. The lenient version this file shipped
+/// with accepted candidates the Qt client refuses, which is the direction that does not announce
+/// itself: an offer with half a candidate in it would connect here and fail there.
+///
+/// The mapped address is spelled <c>mappedAddr</c> - not addrMapped, which is what the C STRUCT
+/// MEMBER is called (addr_mapped) and what this file first read. A wrong key is invisible to a
+/// round trip through this port's own writer and to a test whose fixture was written beside it;
+/// only reading the core's key back out finds it, which is why <see cref="MappedAddressField"/>
+/// is now pinned by name.
 /// </summary>
 public static class CandidateReader
 {
@@ -83,11 +95,20 @@ public static class CandidateReader
     }
 
     /// <summary>
+    /// The mapped address's key. Spelled for the WIRE and not for the C struct member beside it,
+    /// which is addr_mapped - see the class note.
+    /// </summary>
+    public const string MappedAddressField = "mappedAddr";
+
+    /// <summary>
     /// One candidate, or null when the JSON is not one.
     ///
-    /// A missing or non-string type invalidates the whole candidate rather than defaulting - the
-    /// fallback above is for a type that is PRESENT and unrecognised, and the two are not the same
-    /// thing.
+    /// EVERY field is required. A missing or wrongly-typed one invalidates the whole candidate
+    /// rather than defaulting - the fallback above is for a type that is PRESENT and unrecognised,
+    /// and the two are not the same thing.
+    ///
+    /// Both ports must be json_type_int, so a port sent as "9295" or as 9295.0 invalidates the
+    /// candidate rather than being coerced - the same rule natType is held to (PP194).
     /// </summary>
     public static Candidate? Read(JsonElement? json)
     {
@@ -99,12 +120,21 @@ public static class CandidateReader
         if (address is not { ValueKind: JsonValueKind.String })
             return null;
 
+        JsonElement? mapped = JsonC.Get(json, MappedAddressField);
+        if (mapped is not { ValueKind: JsonValueKind.String })
+            return null;
+
+        JsonElement? port = JsonC.Get(json, "port");
+        JsonElement? mappedPort = JsonC.Get(json, "mappedPort");
+        if (JsonC.TypeOf(port) != JsonCType.Int || JsonC.TypeOf(mappedPort) != JsonCType.Int)
+            return null;
+
         return new Candidate(
             TypeOf(typeField.Value.GetString() ?? ""),
             address.Value.GetString() ?? "",
-            JsonC.String(JsonC.Get(json, "addrMapped")) ?? "",
-            (ushort)JsonC.Int(JsonC.Get(json, "port")),
-            (ushort)JsonC.Int(JsonC.Get(json, "mappedPort")));
+            mapped.Value.GetString() ?? "",
+            (ushort)JsonC.Int(port),
+            (ushort)JsonC.Int(mappedPort));
     }
 }
 
@@ -163,5 +193,60 @@ public static class CandidateSource
         ArgumentNullException.ThrowIfNull(core);
         return core.Contains("Coudln't parse type field from candidate json.", StringComparison.Ordinal)
             && core.Contains("goto invalid_schema;", StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The five reads a candidate is made of, each with the type its guard demands - PP195.
+    /// </summary>
+    public static IReadOnlyList<(string Key, string Type)> Fields { get; } =
+    [
+        ("type", "json_type_string"),
+        ("addr", "json_type_string"),
+        (CandidateReader.MappedAddressField, "json_type_string"),
+        ("port", "json_type_int"),
+        ("mappedPort", "json_type_int"),
+    ];
+
+    /// <summary>
+    /// Whether every field is still read under a guard of its declared type - which is also what
+    /// pins the mapped address's KEY, the one a round trip through this port could not catch.
+    /// </summary>
+    public static bool EveryFieldIsStillGuarded(string core)
+    {
+        ArgumentNullException.ThrowIfNull(core);
+
+        foreach ((string key, string type) in Fields)
+        {
+            int at = core.IndexOf(
+                $"json_object_object_get_ex(candidate_json, \"{key}\", &jobj);", StringComparison.Ordinal);
+            if (at < 0)
+                return false;
+
+            // The guard is what stands between this read and the NEXT one - bounded that way rather
+            // than by a character count, so a guard growing a line does not quietly stop being read
+            // and a neighbour's guard is never mistaken for this one's.
+            int next = core.IndexOf("json_object_object_get_ex(", at + 1, StringComparison.Ordinal);
+            string guard = next < 0 ? core[at..] : core[at..next];
+            if (!guard.Contains($"!json_object_is_type(jobj, {type})", StringComparison.Ordinal)
+                || !guard.Contains("goto invalid_schema;", StringComparison.Ordinal))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Whether one unreadable candidate still invalidates the whole MESSAGE. The loop's exit is the
+    /// same invalid_schema the fields jump to, so there is no per-candidate recovery to port.
+    /// </summary>
+    public static bool OneBadCandidateStillFailsTheMessage(string core)
+    {
+        ArgumentNullException.ThrowIfNull(core);
+        return core.Contains("*out = msg;", StringComparison.Ordinal)
+            && core.Contains(
+                "session_message_parse: Unexpected JSON schema for holepunch session message.",
+                StringComparison.Ordinal);
     }
 }

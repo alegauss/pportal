@@ -24,7 +24,7 @@ public class ConnectionRequestTests
           "natType": {{natType}},
           "defaultRouteMacAddr": "{{mac}}",
           "localHashedId": "{{hashedId ?? Base64Of(20)}}",
-          "candidate": [{"type":"LOCAL","addr":"10.0.0.4","port":9295}]
+          "candidate": [{"type":"LOCAL","addr":"10.0.0.4","mappedAddr":"203.0.113.9","port":9295,"mappedPort":41234}]
         }
         """;
 
@@ -115,20 +115,40 @@ public class ConnectionRequestTests
     public void AKeyThatIsNotBase64IsRefused()
         => Assert.Null(Read(Request(skey: "!!!!")));
 
-    /// <summary>A candidate that does not read is dropped, and the rest of the request stands.</summary>
-    [Fact]
-    public void AnUnreadableCandidateIsDroppedAndTheRequestStands()
-    {
-        string json = Request().Replace(
-            """[{"type":"LOCAL","addr":"10.0.0.4","port":9295}]""",
-            """[{"type":"LOCAL","addr":"10.0.0.4"},{"addr":"no type here"}]""",
-            StringComparison.Ordinal);
+    private const string OneCandidate =
+        """{"type":"LOCAL","addr":"10.0.0.4","mappedAddr":"203.0.113.9","port":9295,"mappedPort":41234}""";
 
-        ConnectionRequest? request = Read(json);
+    /// <summary>
+    /// ONE BAD CANDIDATE FAILS THE WHOLE REQUEST - PP195. The core's per-field guards jump to
+    /// invalid_schema, which is the exit for the entire message rather than for the candidate being
+    /// read, so there are no good ones left to salvage.
+    ///
+    /// This reader first dropped the bad one and kept the rest, which would have the port negotiate
+    /// against a candidate list the Qt client never assembled.
+    /// </summary>
+    [Fact]
+    public void AnUnreadableCandidateInvalidatesTheWholeRequest()
+        => Assert.Null(Read(Request().Replace(
+            OneCandidate, OneCandidate + ",{\"addr\":\"no type here\"}", StringComparison.Ordinal)));
+
+    /// <summary>An empty candidate list is a request with nowhere to go, but still a request.</summary>
+    [Fact]
+    public void AnEmptyCandidateListStillReads()
+    {
+        ConnectionRequest? request = Read(
+            Request().Replace(OneCandidate, "", StringComparison.Ordinal));
 
         Assert.NotNull(request);
-        Assert.Single(request.Value.Candidates);
+        Assert.Empty(request.Value.Candidates);
     }
+
+    /// <summary>
+    /// natType is held to json_type_int and not merely to "a number", so a whole number written as
+    /// a double is refused as well - the rule both ports are held to one file over (PP195).
+    /// </summary>
+    [Fact]
+    public void ANatTypeSentAsADoubleInvalidatesTheRequestToo()
+        => Assert.Null(Read(Request(natType: "2.0")));
 
     /// <summary>Every rule above, still stated the same way in the core.</summary>
     [Fact]
