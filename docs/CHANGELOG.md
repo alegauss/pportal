@@ -191,6 +191,7 @@
 - ✅ **PP215** **the websocket loop feeds every frame to one json-c tokener, and reads a frame that yields nothing as a bad frame** — json-c's tokener measured through the shim: unfinished input is permanent, so the port parses each frame with no state between them.
 - ✅ **PP231** **the websocket thread's auto-ACK of offers is unported, and its parse failure drops the notification entirely** — the offer acknowledged with its own request id, and the parse failure that drops the notification instead.
 - ✅ **PP232** **the fetched STUN lists are unported: two files from a third-party repository, parsed by two different rules** — the two fetched lists, cut on a colon and on a bracket, with the IPv6 failure that names the IPv4 file.
+- ✅ **PP233** **the session check is unported: one call, two endpoints, and a response parsed only to be thrown away** — the session check as two endpoints and four outcomes, one of which is a failure answered with success.
 
 ## Block G — Test discipline
 
