@@ -25,8 +25,71 @@ internal sealed record Summary(
     long WorkingSetMedianBytes,
     string WindowTitle);
 
+/// <summary>
+/// PP61: what the machine's file cache was doing when the numbers were taken.
+///
+/// The harness calls run 1 the cold start and it is one only on a machine that has not launched
+/// this executable before. The OS file cache outlives the process, so after one launch the loader,
+/// the plugins and the QML cache are resident and run 1 of the NEXT invocation is a warm start
+/// wearing the cold label - 3771ms against 1218ms on the same build, with nothing in the report
+/// saying which was which.
+///
+/// A figure that moves threefold with invisible machine state is not a measurement. Controlling the
+/// variable means dropping the standby list, which needs elevation and is a decision rather than a
+/// default; recording it costs nothing and is what this is. Two reports taken in different states
+/// are then visibly incomparable instead of silently so.
+///
+/// A CLOSED set, because the value exists to be compared: free text would let two runs disagree
+/// about what "cold" means and read as agreeing.
+/// </summary>
+internal enum CacheState
+{
+    /// <summary>Nobody said. The honest default, and the one a reader must not compare across.</summary>
+    Unknown,
+
+    /// <summary>The machine was rebooted and this is the first launch since.</summary>
+    ColdBoot,
+
+    /// <summary>The standby list was dropped before the first run, which needs elevation.</summary>
+    Dropped,
+
+    /// <summary>This executable has been launched before on this boot. Run 1 is warm.</summary>
+    Warm,
+}
+
 internal static class Report
 {
+    /// <summary>The name a state is written under, and parsed back from.</summary>
+    public static string Name(CacheState state) => state switch
+    {
+        CacheState.ColdBoot => "cold-boot",
+        CacheState.Dropped => "dropped",
+        CacheState.Warm => "warm",
+        _ => "unknown",
+    };
+
+    /// <summary>
+    /// A name back to a state. Anything unrecognised is <see cref="CacheState.Unknown"/> rather
+    /// than an error: a caller that misspells it gets a report that refuses comparison, which is
+    /// the same outcome as saying nothing and is better than no report at all.
+    /// </summary>
+    public static CacheState ParseCacheState(string? name) => name switch
+    {
+        "cold-boot" => CacheState.ColdBoot,
+        "dropped" => CacheState.Dropped,
+        "warm" => CacheState.Warm,
+        _ => CacheState.Unknown,
+    };
+
+    /// <summary>
+    /// Whether two reports were taken under conditions that can be compared at all.
+    ///
+    /// Unknown never compares - not even with another unknown, because two reports that both
+    /// declined to say are not thereby in the same state. That is the whole point of the field.
+    /// </summary>
+    public static bool Comparable(CacheState a, CacheState b)
+        => a != CacheState.Unknown && a == b;
+
     /// <summary>
     /// Run 1 is the cold one and the rest are warm. That split is <see cref="Program"/>'s reason for
     /// not taking a median over everything, and it is applied here by <i>position</i>, never by
@@ -82,7 +145,8 @@ internal static class Report
     /// it, because <c>0.0</c> in a numeric field is a value and a reader — or a script — has no way to
     /// tell it from a startup that really took no time.
     /// </summary>
-    public static string Json(string exe, string tree, TreeSize size, Summary s, string os)
+    public static string Json(
+        string exe, string tree, TreeSize size, Summary s, string os, CacheState cache)
     {
         var c = CultureInfo.InvariantCulture;
         var sb = new StringBuilder();
@@ -106,6 +170,12 @@ internal static class Report
         sb.Append($",\"working_set_bytes_median\":{(s.RunsMeasured > 0 ? s.WorkingSetMedianBytes.ToString(c) : "null")}");
         sb.Append($",\"window_title\":\"{Esc(s.WindowTitle)}\"");
         sb.Append($",\"os\":\"{Esc(os)}\"");
+
+        // PP61: always written, including when it is "unknown". A field that appeared only when
+        // somebody set it would let an old report and an unstated one look alike, and the whole
+        // reason this exists is that they are not.
+        sb.Append($",\"cache_state\":\"{Name(cache)}\"");
+        sb.Append($",\"cold_is_comparable\":{Bool(cache != CacheState.Unknown)}");
         sb.Append('}');
         sb.Append('\n');
         return sb.ToString();

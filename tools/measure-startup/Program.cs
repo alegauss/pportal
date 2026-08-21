@@ -25,7 +25,7 @@ internal static class Program
         var a = Args.Parse(argv);
         if (a is null)
         {
-            Console.Error.WriteLine("usage: measure-startup --exe <path> [--tree <dir>] [--runs N] [--timeout-ms N] [--settle-ms N] [--out FILE]");
+            Console.Error.WriteLine("usage: measure-startup --exe <path> [--tree <dir>] [--runs N] [--timeout-ms N] [--settle-ms N] [--out FILE] [--cache-state S]");
             Console.Error.WriteLine("       measure-startup --self-test");
             return 1;
         }
@@ -76,17 +76,23 @@ internal static class Program
         }
 
         Console.WriteLine(s.ColdMeasured
-            ? $"cold    : responsive {s.ColdToResponsiveMs:F0} ms   (first run, nothing in the file cache)"
+            ? $"cold    : responsive {s.ColdToResponsiveMs:F0} ms   (first run, cache {Report.Name(a.Cache)})"
             : $"cold    : NOT MEASURED - {s.ColdFailure}");
         Console.WriteLine(s.WarmRuns > 0
             ? $"warm    : responsive {s.WarmMedianMs:F0} ms   median of {s.WarmRuns} later run(s)"
             : $"warm    : not measured ({(a.Runs > 1 ? "every later run failed" : "single run")})");
+        // PP61: said out loud rather than left to whoever reads the JSON. A cold number taken in
+        // an unstated cache state moves threefold between invocations, and the person most likely
+        // to quote it is the one running this now.
+        if (a.Cache == CacheState.Unknown)
+            Console.WriteLine("warning : cache state not stated - this cold figure compares with nothing");
+
         Console.WriteLine($"idle    : working set {s.WorkingSetMedianBytes / 1024.0 / 1024.0:F1} MB   median of {s.RunsMeasured} run(s)");
 
         if (a.Out is not null)
         {
             File.WriteAllText(a.Out, Report.Json(Path.GetFullPath(a.Exe), tree, size, s,
-                Environment.OSVersion.VersionString));
+                Environment.OSVersion.VersionString, a.Cache));
             Console.WriteLine($"report  : {Path.GetFullPath(a.Out)}");
         }
 
@@ -102,11 +108,13 @@ internal static class Program
     }
 }
 
-internal sealed record Args(string Exe, string? Tree, int Runs, int TimeoutMs, int SettleMs, string? Out)
+internal sealed record Args(
+    string Exe, string? Tree, int Runs, int TimeoutMs, int SettleMs, string? Out,
+    CacheState Cache)
 {
     public static Args? Parse(string[] a)
     {
-        string exe = "", tree = "", outFile = "";
+        string exe = "", tree = "", outFile = "", cache = "";
         int runs = 3, timeout = 60000, settle = 3000;
         for (int i = 0; i < a.Length - 1; i++)
         {
@@ -118,11 +126,13 @@ internal sealed record Args(string Exe, string? Tree, int Runs, int TimeoutMs, i
                 case "--timeout-ms": timeout = int.Parse(a[++i], CultureInfo.InvariantCulture); break;
                 case "--settle-ms": settle = int.Parse(a[++i], CultureInfo.InvariantCulture); break;
                 case "--out": outFile = a[++i]; break;
+                // PP61: the one condition the harness cannot observe for itself.
+                case "--cache-state": cache = a[++i]; break;
             }
         }
         return exe.Length == 0
             ? null
             : new Args(exe, tree.Length == 0 ? null : tree, runs, timeout, settle,
-                outFile.Length == 0 ? null : outFile);
+                outFile.Length == 0 ? null : outFile, Report.ParseCacheState(cache));
     }
 }

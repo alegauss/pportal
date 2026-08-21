@@ -2,6 +2,7 @@
 
 ```
 measure-startup --exe <path-to-exe> [--tree <dir>] [--runs 3] [--out report.json]
+                [--cache-state cold-boot|dropped|warm]
 measure-startup --self-test
 ```
 
@@ -13,6 +14,24 @@ startup, whichever build it came from.
 These are the numbers most likely to be quoted in a release note, which is why they are the ones
 most likely to be quoted without being measured. One command produces all three, so the before and
 the after are taken the same way.
+
+## `--cache-state`, and why the cold number needs it (PP61)
+
+Run 1 is called the cold start and it is one only on a machine that has not launched this
+executable before. The OS file cache outlives the process: after one launch the loader, the Qt
+plugins and the QML cache are resident, so run 1 of the *next* invocation is a warm start wearing
+the cold label. The same build measured 3771 ms and then 1218 ms, and nothing in the report said
+which was which.
+
+The harness cannot observe this for itself, so the caller states it:
+
+- `cold-boot` — the machine was rebooted and this is the first launch since.
+- `dropped` — the standby list was dropped before run 1. Needs elevation; a decision, not a default.
+- `warm` — this executable has run before on this boot. Run 1 is not cold.
+
+Left unset it is written as `unknown`, the report says `"cold_is_comparable": false`, and the
+command prints a warning. **Unknown compares with nothing — not even with another unknown**, since
+two reports that both declined to say are not thereby in the same state.
 
 ## The state of this task
 

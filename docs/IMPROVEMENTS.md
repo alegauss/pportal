@@ -415,30 +415,6 @@ Reflex-capable monitor, so no number can be taken today. Taken later against a c
 tree, it measures the port instead of the client - the same window that closes on PP39
 closes on this.
 
-### §PP61 A cold start that is only cold once
-
-measure-startup reports its first run apart from the rest and calls it cold, which is
-right within one invocation and wrong across them. Measured in the same session: 3771 ms
-on the first run after the build, then 1218 ms as the "cold" run of every later
-invocation. A 3.1x spread, and the tool reports the second figure with the same label as
-the first.
-
-The cause is that the OS file cache outlives the process. After one launch the loader,
-the Qt plugins and the QML cache are resident, so run 1 of invocation 2 is a warm start
-wearing the cold label. Nothing in the report says which state the machine was in, so
-two cold-start numbers from two sessions are not comparable and nobody reading them can
-tell.
-
-This matters because cold start is the number PP46 exists to produce and the one most
-likely to reach a release note. A figure that moves 3x with invisible machine state is
-not a measurement, and the harness currently makes it look like one.
-
-The fix is to control the variable or record it. Controlling it means dropping the
-standby list before the first run, which needs elevation and is worth deciding rather
-than assuming. Recording it means stamping something honest into the report - a
-cache_state the caller sets - so a reader can refuse to compare numbers taken under
-different conditions, the way compare-baselines already refuses mismatched settings.
-
 ## Block I — NVIDIA path
 
 ### §PP47 The right NVIDIA feature, waiting on a switch

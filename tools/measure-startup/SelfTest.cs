@@ -85,7 +85,7 @@ internal static class SelfTest
             StartupResult.Failed(why), Ok(1169.4, 454_819_840), Ok(1117.4, 455_000_000),
         };
         Summary s = Report.Summarise(coldFailed);
-        string json = Report.Json("x.exe", "tree", tree, s, "test-os");
+        string json = Report.Json("x.exe", "tree", tree, s, "test-os", CacheState.Warm);
 
         failures += Expect(!s.ColdMeasured, "a failed run 1 must leave the cold start unmeasured");
         failures += Expect(json.Contains("\"cold_to_responsive_ms\":null"),
@@ -115,14 +115,59 @@ internal static class SelfTest
         failures += Expect(all.WarmRuns == 2, $"the two later runs are warm, got {all.WarmRuns}");
         failures += Expect(Report.ExitCode(all, webEnginePresent: true) == 0, "a complete before must exit 0");
         failures += Expect(Report.ExitCode(all, webEnginePresent: false) == 2, "a complete non-before must exit 2");
-        failures += Expect(Report.Json("x.exe", "tree", tree, all, "test-os").Contains("\"cold_measured\":true"),
+        failures += Expect(Report.Json("x.exe", "tree", tree, all, "test-os", CacheState.Warm).Contains("\"cold_measured\":true"),
             "a measured cold start must be stamped as measured");
 
         // Nothing measured at all: still no zeros, and still exit 1.
         Summary none = Report.Summarise([StartupResult.Failed(why)]);
         failures += Expect(Report.ExitCode(none, webEnginePresent: true) == 1, "no measurement must exit 1");
-        failures += Expect(Report.Json("x.exe", "tree", tree, none, "test-os").Contains("\"working_set_bytes_median\":null"),
+        failures += Expect(Report.Json("x.exe", "tree", tree, none, "test-os", CacheState.Warm).Contains("\"working_set_bytes_median\":null"),
             "an unmeasured working set must be null, not 0 bytes");
+
+        failures += CacheStateChecks(tree, all);
+
+        return failures;
+    }
+
+    /// <summary>
+    /// PP61: the cache state is stamped, always, and an unstated one never compares.
+    ///
+    /// The field exists because a cold figure taken with the file cache already warm is three times
+    /// the one taken without, and nothing in the old report said which. These check the two things
+    /// that make the field worth having: it is ALWAYS written, so an old report and an unstated one
+    /// do not look alike, and unknown compares with nothing - not even with another unknown, since
+    /// two reports that both declined to say are not thereby in the same state.
+    /// </summary>
+    private static int CacheStateChecks(TreeSize tree, Summary all)
+    {
+        int failures = 0;
+
+        string unstated = Report.Json("x.exe", "tree", tree, all, "test-os", CacheState.Unknown);
+        failures += Expect(unstated.Contains("\"cache_state\":\"unknown\""),
+            $"an unstated cache state must still be written, got: {unstated}");
+        failures += Expect(unstated.Contains("\"cold_is_comparable\":false"),
+            "an unstated cache state must mark the cold figure incomparable");
+
+        string dropped = Report.Json("x.exe", "tree", tree, all, "test-os", CacheState.Dropped);
+        failures += Expect(dropped.Contains("\"cache_state\":\"dropped\""),
+            $"a stated cache state must be written as its own name, got: {dropped}");
+        failures += Expect(dropped.Contains("\"cold_is_comparable\":true"),
+            "a stated cache state must mark the cold figure comparable");
+
+        // Unknown never compares, including with itself - that is the whole point of the field.
+        failures += Expect(!Report.Comparable(CacheState.Unknown, CacheState.Unknown),
+            "two unstated reports must not be treated as taken in the same state");
+        failures += Expect(Report.Comparable(CacheState.Dropped, CacheState.Dropped),
+            "two reports in the same stated state must compare");
+        failures += Expect(!Report.Comparable(CacheState.Dropped, CacheState.Warm),
+            "a dropped-cache run must not compare with a warm one");
+
+        // A name nobody recognises is unknown rather than an error: a misspelling produces a report
+        // that refuses comparison, which beats producing none.
+        failures += Expect(Report.ParseCacheState("clod-boot") == CacheState.Unknown,
+            "an unrecognised cache state must read as unknown");
+        failures += Expect(Report.ParseCacheState("cold-boot") == CacheState.ColdBoot,
+            "a recognised one must read as itself");
 
         return failures;
     }
