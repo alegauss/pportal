@@ -273,6 +273,39 @@ public partial class App : Application
     /// it is a test's inline call, here it is the thread the bindings live on, and the session does
     /// not know the difference.
     /// </summary>
+    /// <summary>
+    /// PP226: `--capture-mapping [path]`, the mapping screen as a PNG with no window shown.
+    ///
+    /// Rendered from a FIXTURE rather than from whatever is plugged in, so the picture is the same
+    /// on every machine and needs no pad - the fixture being a real DualSense's mapping string,
+    /// captured through <see cref="Gamepads.Pads"/> rather than invented.
+    /// </summary>
+    private static int CaptureMapping(string path)
+    {
+        ControllerMappingDocument? document =
+            ControllerMappingDocument.Parse(ScreenCapture.SampleDualSense, ScreenCapture.SampleName);
+
+        if (document is null)
+        {
+            Console.Error.WriteLine("the sample mapping would not parse");
+            return 1;
+        }
+
+        var screen = new ControllerMappingViewModel();
+        screen.Show(document);
+
+        var view = new Views.ControllerMappingView { DataContext = screen };
+
+        // 23 rows at 52 pixels plus the chrome: tall enough that the picture is the whole screen
+        // rather than the top of it, which is what a window would have scrolled.
+        byte[] png = ScreenCapture.Png(view, 900, 1500);
+        File.WriteAllBytes(path, png);
+
+        Console.WriteLine($"{png.Length} bytes -> {path}");
+        Console.WriteLine($"  background from {ScreenCapture.BackgroundSource}");
+        return 0;
+    }
+
     /// <summary>The fallback window, for the case where there is somehow no window to fill.</summary>
     private MainWindow OpenedByHand()
     {
@@ -375,6 +408,17 @@ public partial class App : Application
             // token still says where it was resting.
             bool analog = e.Args.Any(a => string.Equals(a, "--analog", StringComparison.OrdinalIgnoreCase));
             Environment.Exit(CaptureController(TimeSpan.FromSeconds(20), analog));
+        }
+
+        int capture = Array.FindIndex(
+            e.Args, a => string.Equals(a, "--capture-mapping", StringComparison.OrdinalIgnoreCase));
+
+        if (capture >= 0)
+        {
+            ReopenStdOut();
+
+            string path = capture + 1 < e.Args.Length ? e.Args[capture + 1] : "mapping.png";
+            Environment.Exit(CaptureMapping(path));
         }
 
         base.OnStartup(e);
