@@ -161,6 +161,7 @@
 - ✅ **PP198** **the STUN server shuffle looks like Fisher-Yates but excludes the index it is shuffling, so the last can never stay last** — the bias reproduced and pinned, so a correction announces itself.
 - ✅ **PP199** **the port allocation tree looks further ahead the less it knows, and one leaf subtracts the wrong way round** — a shrinking look-ahead, a backwards leaf, an unsigned one, and PP198's check covering half its header.
 - ✅ **PP200** **the STUN reader believes the first mapped address it meets, and skips attributes without their padding** — twenty bytes out, an address back, and one check this port refuses to lose.
+- ✅ **PP201** **the RUDP size field is read twice and answers differently, and four packet types pass as one control message** — the frame under the hole punching, with its marker nibble and its recursive tail.
 
 ## Block G — Test discipline
 
