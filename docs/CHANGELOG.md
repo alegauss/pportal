@@ -198,6 +198,7 @@
 - ✅ **PP237** **the other reply sender is the same function twice, and its failure logs an int through a string format** — the two senders asserted identical so one builder serves both, and the copy that logs an int as a string.
 - ✅ **PP238** **the loop answering punch requests is unported, and it reports success only by the traffic stopping** — the answering loop whose only success is a silence, and PP237's log count corrected to three.
 - ✅ **PP239** **the PS4 wakeup is unported: a discovery hop whose answer is copied into a fixed stack buffer** — the wakeup's discovery hop, with the shadowed url given two names and the buffer the network fills.
+- ✅ **PP240** **the call that opens a hole is unported: two preconditions, an offer, and an ordering that decides who answers next** — the two preconditions, and the flag set before the answer so a second offer has an owner.
 
 ## Block G — Test discipline
 
