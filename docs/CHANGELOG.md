@@ -194,6 +194,7 @@
 - ✅ **PP233** **the session check is unported: one call, two endpoints, and a response parsed only to be thrown away** — the session check as two endpoints and four outcomes, one of which is a failure answered with success.
 - ✅ **PP234** **the local address pick is unported, and its rule prefers wireless over ethernet by where the walk stops** — the local address pick, where wireless wins by ending the walk, and the length nothing reads.
 - ✅ **PP235** **deleting a session is unported, and both its failure messages name a different function entirely** — the delete as a custom request, and the three log messages that name the wrong call counted together.
+- ✅ **PP236** **the hole punching reply is unported: twenty-byte ids in thirty-two-byte slots, and an address xored over the session ids** — the hole punching reply built byte by byte, with the gap the ids leave and the key they double as.
 
 ## Block G — Test discipline
 
