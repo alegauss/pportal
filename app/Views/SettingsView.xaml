@@ -1,0 +1,46 @@
+<UserControl x:Class="ChiakiNg.Views.SettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:ChiakiNg.Views">
+  <!--
+    PP167: the dialog the nine tabs did not add up to.
+
+    The ORDER of these nine is load-bearing rather than layout: two switches in the QML dispatch on
+    the tab's index, one for the control that takes focus and one for the scroll area the arrow
+    keys drive. Drawing them in a plausible order would be a working screen that disagrees with the
+    other client about where every control is - and no test written per tab would notice, because
+    each tab would still pass its own.
+
+    Page Up and Page Down move between tabs and are the only keys that do. They stop at the ends
+    rather than wrapping, which is what the view model's two methods say.
+  -->
+  <TabControl x:Name="Tabs" SelectedIndex="{Binding CurrentIndex}">
+    <TabItem Header="General">
+      <views:GeneralSettingsView />
+    </TabItem>
+    <TabItem Header="Video">
+      <views:VideoSettingsView />
+    </TabItem>
+    <TabItem Header="Stream">
+      <views:StreamSettingsView />
+    </TabItem>
+    <TabItem Header="Audio/Wifi">
+      <views:AudioSettingsView />
+    </TabItem>
+    <TabItem Header="Consoles">
+      <views:ConsoleSettingsView />
+    </TabItem>
+    <TabItem Header="Keys">
+      <views:KeySettingsView />
+    </TabItem>
+    <TabItem Header="Controllers">
+      <views:ControllerSettingsView />
+    </TabItem>
+    <TabItem Header="Remote">
+      <views:RemoteSettingsView />
+    </TabItem>
+    <TabItem Header="Config">
+      <views:ConfigSettingsView />
+    </TabItem>
+  </TabControl>
+</UserControl>

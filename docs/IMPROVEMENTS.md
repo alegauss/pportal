@@ -90,26 +90,6 @@ not fixed.
 What is left is the screen: the pad drawing, the row a press lands on, and the live
 event stream that is the reason this waited for PP8.
 
-### §PP167 The dialog the nine tabs do not add up to
-
-PP16 is shipped and every tab exists: nine view models with the rules their stores
-spell, and nine screens bound to them. What does not exist is the dialog. Nothing in
-this port opens a settings screen, chooses a tab, or decides which one it opens on.
-
-That is a screen and not a leftover. SettingsDialog.qml's own shell carries three things
-none of the nine tabs do. The tab strip is a fixed order with an icon per tab, and the
-order is the order the port's ids were assigned in only by accident - the QML's is
-General, Video, Stream, Audio/Wifi, Consoles, Keys, Controllers, Remote, Config. The
-focus chain crosses tabs: each tab declares a first and last item, and the shell moves
-between them and the strip. And a numbered switch maps an index to the item that takes
-focus when a tab is entered, which is the one place the tabs are addressed by number
-rather than by name.
-
-The cost is small and the risk is that it looks like nothing. A host that drew nine tabs
-in a plausible order, with WPF's default tab navigation, would be a working screen that
-disagrees with the other client about where every control is - and no test written per
-tab would notice, because each tab would still pass its own.
-
 ## Block E — Windows-only build
 
 ### §PP21 The dependency that says it is over

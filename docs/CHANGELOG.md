@@ -99,6 +99,7 @@
 - ✅ **PP171** **four scaler combos share two lists and take four different defaults, and eleven switches are stored as words** — two lists behind four combos, and eleven switches spelt yes or no.
 - ✅ **PP172** **the mapping screen suppresses one quit per capture with a flag that puts itself back, and closes twice without a guard** — the screen's call sequence, and the two one-shots it turns on.
 - ✅ **PP173** **the mapping grid draws a row one button wide or two, and nothing yet draws the capture the pad drives** — the grid, the capture modal, and the slot that is drawn only when it binds something.
+- ✅ **PP167** **the settings screen's nine tabs each exist and nothing composes them into one dialog** — the strip, the order two switches dispatch on, and the one tab that computes its own focus.
 
 ## Block E — Windows-only build
 
