@@ -599,8 +599,19 @@ CHIAKI_SHIM_API int32_t chiaki_shim_baseline_line_max(void)
 CHIAKI_SHIM_API void *chiaki_shim_baseline_create(void)
 {
 	ChiakiSessionBaseline *self = (ChiakiSessionBaseline *)calloc(1, sizeof(ChiakiSessionBaseline));
-	if(self)
-		chiaki_session_baseline_init(self);
+	if(!self)
+		return NULL;
+
+	chiaki_session_baseline_init(self);
+
+	// The two fields whose "never empty" rule lives in their SETTERS rather than in the struct:
+	// init is a memset, so both are empty strings until something calls them. The Qt client always
+	// does; a managed caller that formats a baseline it never configured would write the two ""
+	// rows test/sessionbaseline.c says must not exist. Called with NULL so the library applies its
+	// own words - "software" and "unknown" - rather than this file naming them a second time.
+	chiaki_session_baseline_set_hw_decoder(self, NULL);
+	chiaki_session_baseline_set_renderer(self, NULL);
+
 	return self;
 }
 
@@ -658,10 +669,13 @@ CHIAKI_SHIM_API void chiaki_shim_baseline_set_config(
 	if(!self)
 		return;
 
-	if(hw_decoder)
-		chiaki_session_baseline_set_hw_decoder(self, hw_decoder);
-	if(renderer)
-		chiaki_session_baseline_set_renderer(self, renderer);
+	// UNCONDITIONAL, and that is a fix rather than a tidy-up. Both setters substitute a word for
+	// a null or empty name - "software" for a decoder, "unknown" for a renderer - because
+	// chiaki_session_baseline_init is a memset and the fields are EMPTY STRINGS until a setter
+	// runs. Guarding the call on a non-null pointer skipped the substitution and left the "" that
+	// test/sessionbaseline.c says a row must never contain.
+	chiaki_session_baseline_set_hw_decoder(self, hw_decoder);
+	chiaki_session_baseline_set_renderer(self, renderer);
 	self->packet_loss_max = packet_loss_max;
 	self->idr_on_fec_failure = idr_on_fec_failure;
 }
