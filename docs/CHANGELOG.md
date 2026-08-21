@@ -143,6 +143,7 @@
 - ✅ **PP180** **the five frame stages are carried in the ledger and nothing could fill them, so the port wrote zeros regardless** — the five stages fillable, separate from each other and from the handoff.
 - ✅ **PP181** **the seam skipped the two setters whose defaults are the ledger's never-empty rule, so a row could carry two blanks** — the two never-empty fields, which the seam could leave blank.
 - ✅ **PP182** **nothing held the managed side to appending the ledger rather than truncating it, or to reporting a write it could not do** — two rows where two sessions ran, and a failed write that says so.
+- ✅ **PP183** **json-c cannot tell a null value from a missing key and the port could, so it would read a field the other client skips** — one corpus through both, and the null json-c calls nothing.
 
 ## Block G — Test discipline
 

@@ -63,6 +63,14 @@ public static class JsonC
 
         try
         {
+            // NOT lenient, and that is a decision rather than an omission - see
+            // JsonCTests.JsonCsLexerIsLenientWhereThisIsNot. json-c's tokener accepts a trailing
+            // comma and reads 0x1f as 0; matching it means writing a parser to be bug-compatible
+            // with one, for inputs Sony's endpoints do not send.
+            //
+            // PP33's differential re-found the trailing comma and this comment is why it stays:
+            // the line is drawn at the LEXER. Accessor semantics are matched exactly, because
+            // those decide what a document the two clients both accepted MEANS.
             var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes(text));
             JsonDocument document = JsonDocument.ParseValue(ref reader);
 
@@ -102,10 +110,66 @@ public static class JsonC
                 found = property.Value;
         }
 
-        return found;
+        return AsJsonC(found);
     }
 
+    /// <summary>
+    /// PP33: a JSON null answered the way json-c answers it - as NOTHING.
+    ///
+    /// json-c represents a null VALUE as a C null pointer, the same pointer a missing key returns.
+    /// So <c>json_object_object_get(o, "k")</c> cannot tell <c>{"k":null}</c> from <c>{}</c>, and
+    /// every caller that checks "was the key there" is really checking "was there a value".
+    ///
+    /// That is not a nicety. A reply carrying <c>"error":null</c> means no error to the console's
+    /// own client and means an error field to a port that kept the distinction - and the port would
+    /// be reading a field it should have skipped. Found by running both over the same document,
+    /// which is the only way this shows: each library is self-consistent.
+    /// </summary>
+    private static JsonElement? AsJsonC(JsonElement? node)
+        => node is { ValueKind: JsonValueKind.Null } ? null : node;
+
     /// <summary>json_object_array_length, or -1 where the node is not an array.</summary>
+    /// <summary>
+    /// PP33: json_object_get_type, which is the accessor the other five are chosen with.
+    ///
+    /// json-c has no separate kind for true and false - both are <c>json_type_boolean</c> - and no
+    /// kind for a number that happens to be whole: an integer and a double are
+    /// <c>json_type_int</c> and <c>json_type_double</c>, decided by how the text was WRITTEN and
+    /// not by the value. System.Text.Json splits the first and merges the second, so neither
+    /// mapping is the identity and this is where they are reconciled.
+    /// </summary>
+    public static JsonCType TypeOf(JsonElement? node)
+    {
+        if (node is not JsonElement element)
+            return JsonCType.Null;
+
+        return element.ValueKind switch
+        {
+            JsonValueKind.Object => JsonCType.Object,
+            JsonValueKind.Array => JsonCType.Array,
+            JsonValueKind.String => JsonCType.String,
+
+            // Both, because json-c has one kind for the pair and the distinction is the value.
+            JsonValueKind.True or JsonValueKind.False => JsonCType.Boolean,
+
+            // A number's kind follows its TEXT: 1 is an int and 1.0 is a double, in json-c as in
+            // the document. TryGetInt64 answers about the value, so the raw text decides instead.
+            JsonValueKind.Number => NumberKind(element),
+
+            _ => JsonCType.Null,
+        };
+    }
+
+    private static JsonCType NumberKind(JsonElement element)
+    {
+        string raw = element.GetRawText();
+
+        return raw.Contains('.', StringComparison.Ordinal)
+            || raw.Contains('e', StringComparison.OrdinalIgnoreCase)
+                ? JsonCType.Double
+                : JsonCType.Int;
+    }
+
     public static int ArrayLength(JsonElement? node)
         => node is { ValueKind: JsonValueKind.Array } array ? array.GetArrayLength() : -1;
 
@@ -115,7 +179,9 @@ public static class JsonC
         if (node is not { ValueKind: JsonValueKind.Array } array || index < 0)
             return null;
 
-        return index >= array.GetArrayLength() ? null : array[index];
+        // AsJsonC for the same reason Get has it: a null ELEMENT of an array is a null pointer to
+        // json-c, indistinguishable from an index past the end.
+        return index >= array.GetArrayLength() ? null : AsJsonC(array[index]);
     }
 
     /// <summary>
