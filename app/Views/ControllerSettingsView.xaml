@@ -1,0 +1,77 @@
+<UserControl x:Class="ChiakiNg.Views.ControllerSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    PP16: the settings screen's Controllers tab, the seventh of the nine.
+
+    The five rows under Dpad Touchpad Emulation are hidden together when it is off - four combos and
+    a slider on one boolean. That grouping is the only structural thing here; everything else is a
+    row with a control and a default hint beside it, as the other tabs have.
+
+    What the markup does not know: that the rumble combo's stored word is not its label, that the
+    increment is hundredths of a millimetre, and that the haptic slider's middle is a band rather
+    than a value. All three are the view model's.
+  -->
+  <UserControl.Resources>
+    <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+
+    <Style TargetType="TextBlock" x:Key="RowLabel">
+      <Setter Property="Margin" Value="0,10,8,2" />
+      <Setter Property="Opacity" Value="0.7" />
+    </Style>
+  </UserControl.Resources>
+
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="16">
+      <Button x:Name="ChangeMappingButton" Content="Change Controller Mapping"
+              HorizontalAlignment="Center" Padding="20,4" />
+      <Button x:Name="ResetMappingButton" Content="Reset Controller Mapping"
+              HorizontalAlignment="Center" Padding="20,4" Margin="0,8,0,0" />
+
+      <CheckBox x:Name="BackgroundEventsBox" Margin="0,16,0,0"
+                Content="Process controller input when application is in background"
+                IsChecked="{Binding BackgroundEvents}" />
+
+      <CheckBox x:Name="DpadTouchBox" Margin="0,8,0,0"
+                Content="Dpad Touchpad Emulation" IsChecked="{Binding DpadTouchEnabled}" />
+
+      <!-- The five rows, together. -->
+      <StackPanel x:Name="DpadTouchRows"
+                  Visibility="{Binding DpadTouchRowsVisible, Converter={StaticResource BoolToVisibility}}">
+        <TextBlock Text="Dpad Touch Increment:" Style="{StaticResource RowLabel}" />
+        <StackPanel Orientation="Horizontal">
+          <Slider x:Name="IncrementSlider" Width="250" Minimum="1" Maximum="1079"
+                  SmallChange="1" Value="{Binding DpadTouchIncrement}" />
+          <TextBlock x:Name="IncrementCaption" Margin="10,0,0,0" VerticalAlignment="Center"
+                     Text="{Binding DpadTouchIncrementCaption}" />
+          <TextBlock Text="(0.3 mm)" Margin="20,0,0,0" VerticalAlignment="Center" Opacity="0.6" />
+        </StackPanel>
+
+        <TextBlock Text="Dpad Regular/Touch Combo:" Style="{StaticResource RowLabel}" />
+        <StackPanel Orientation="Horizontal">
+          <ComboBox x:Name="Shortcut1" Width="140" Margin="0,0,8,0" />
+          <ComboBox x:Name="Shortcut2" Width="140" Margin="0,0,8,0" />
+          <ComboBox x:Name="Shortcut3" Width="140" Margin="0,0,8,0" />
+          <ComboBox x:Name="Shortcut4" Width="140" />
+          <TextBlock Text="(L1+R1+dpad Up)" Margin="20,0,0,0" VerticalAlignment="Center" Opacity="0.6" />
+        </StackPanel>
+      </StackPanel>
+
+      <CheckBox x:Name="ButtonsByPositionBox" Margin="0,16,0,0"
+                Content="Use buttons by position instead of by label"
+                IsChecked="{Binding ButtonsByPosition}" />
+
+      <TextBlock Text="Rumble Haptics:" Style="{StaticResource RowLabel}" />
+      <ComboBox x:Name="RumbleCombo" Width="400" HorizontalAlignment="Left"
+                SelectedIndex="{Binding RumbleIndex}" />
+
+      <TextBlock Text="True Haptics Intensity:" Style="{StaticResource RowLabel}" />
+      <StackPanel Orientation="Horizontal">
+        <Slider x:Name="HapticSlider" Width="250" Minimum="0" Maximum="2" SmallChange="0.1"
+                Value="{Binding HapticOverride}" />
+        <TextBlock x:Name="HapticCaption" Margin="10,0,0,0" VerticalAlignment="Center"
+                   Text="{Binding HapticOverrideCaption}" />
+      </StackPanel>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>
