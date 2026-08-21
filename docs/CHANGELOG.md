@@ -195,6 +195,7 @@
 - ✅ **PP234** **the local address pick is unported, and its rule prefers wireless over ethernet by where the walk stops** — the local address pick, where wireless wins by ending the walk, and the length nothing reads.
 - ✅ **PP235** **deleting a session is unported, and both its failure messages name a different function entirely** — the delete as a custom request, and the three log messages that name the wrong call counted together.
 - ✅ **PP236** **the hole punching reply is unported: twenty-byte ids in thirty-two-byte slots, and an address xored over the session ids** — the hole punching reply built byte by byte, with the gap the ids leave and the key they double as.
+- ✅ **PP237** **the other reply sender is the same function twice, and its failure logs an int through a string format** — the two senders asserted identical so one builder serves both, and the copy that logs an int as a string.
 
 ## Block G — Test discipline
 

@@ -136,6 +136,43 @@ public class PunchResponseTests
             Request(), LocalId, ConsoleId, 1, 2, "::ffff:1.2.3.4", 9295));
     }
 
+    /// <summary>
+    /// PP237: the two senders build the SAME packet, which is why this port has one builder.
+    ///
+    /// Forty identical lines differing in send against sendto. Asserted rather than assumed,
+    /// because a second copy that drifted would give a console a packet it accepts on one path and
+    /// refuses on the other - and nothing in either function would look wrong on its own.
+    /// </summary>
+    [Fact]
+    public void BothSendersBuildTheSamePacket()
+    {
+        string? file = PunchResponseSource.Locate();
+        if (file is null)
+            return;
+
+        Assert.True(
+            PunchResponseSource.BothSendersStillBuildTheSamePacket(File.ReadAllText(file)),
+            "the two reply senders no longer build the same packet, so one builder is not enough");
+    }
+
+    /// <summary>
+    /// PP237: and the copy cannot log its own failure. Its sibling formats the socket error through
+    /// the macro that expands to "%d"; this one writes a literal "%s" and hands it an int, so the
+    /// logger reads an error code as the address of a string - on the one path where the log is
+    /// all anybody has. Reproduced, not fixed.
+    /// </summary>
+    [Fact]
+    public void TheCopyLogsAnIntThroughAStringFormat()
+    {
+        string? file = PunchResponseSource.Locate();
+        if (file is null)
+            return;
+
+        Assert.True(
+            PunchResponseSource.TheOtherOneStillLogsAnIntAsAString(File.ReadAllText(file)),
+            "one of the two reply senders no longer differs from the other in its error format");
+    }
+
     /// <summary>Every rule above, still written the same way in the core it was read from.</summary>
     [Fact]
     public void TheReplyIsStillTheCores()

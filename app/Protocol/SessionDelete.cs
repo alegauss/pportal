@@ -88,6 +88,18 @@ public static class MisnamedLogs
             "deleteSession",
             "http_send_session_message: Sending holepunch session message failed",
             "another function entirely, by name"),
+
+        // PP237: the pair. Both reply senders report their own failure as check_candidates, which
+        // is the function that calls them rather than either of them.
+        new(
+            "send_response_ps",
+            "check_candidates: Sending confirmation failed for %s:%d with error: \" CHIAKI_SOCKET_ERROR_FMT",
+            "the caller, in the function it calls"),
+
+        new(
+            "send_responseto_ps",
+            "check_candidates: Sending confirmation failed for %s:%d with error: %s\"",
+            "the caller again - and through a format that reads an int as an address"),
     ];
 
     /// <summary>The file, or null outside a checkout.</summary>

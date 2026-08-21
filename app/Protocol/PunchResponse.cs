@@ -189,6 +189,55 @@ public static class PunchResponseSource
     public static bool TheFamilyIsStillChosenByADot(string core)
         => Body(core).Contains("strchr(candidate->addr, '.')", StringComparison.Ordinal);
 
+    /// <summary>
+    /// PP237: whether the two senders still build the SAME packet.
+    ///
+    /// They are the same function twice - forty identical lines - differing only in send against
+    /// sendto. That is why this port has one builder, and this is what keeps it honest: a second
+    /// copy in the core that drifted from the first would show up here rather than as a packet the
+    /// console refuses on one path and accepts on the other.
+    /// </summary>
+    public static bool BothSendersStillBuildTheSamePacket(string core)
+    {
+        string one = Normalised(Body(core));
+        string other = Normalised(BodyTo(core));
+
+        return one.Length > 0 && one == other;
+    }
+
+    /// <summary>
+    /// PP237: whether the second one still logs an int through a string format.
+    ///
+    /// True means the defect is present. Its sibling uses the macro that exists for this and
+    /// expands to "%d"; this one writes a literal "%s" and hands it WSAGetLastError.
+    /// </summary>
+    public static bool TheOtherOneStillLogsAnIntAsAString(string core)
+    {
+        string body = BodyTo(core);
+
+        return body.Contains(
+                "failed for %s:%d with error: %s\", candidate->addr, candidate->port, CHIAKI_SOCKET_ERROR_VALUE",
+                StringComparison.Ordinal)
+            && Body(core).Contains("CHIAKI_SOCKET_ERROR_FMT", StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The two bodies with everything that differs BY DESIGN removed - the name, the send call and
+    /// the log line - so what is left is the packet each of them builds.
+    /// </summary>
+    private static string Normalised(string body)
+    {
+        int builds = body.IndexOf("uint8_t confirm_buf[88]", StringComparison.Ordinal);
+        if (builds < 0)
+            return "";
+
+        int sends = body.IndexOf("if (send", StringComparison.Ordinal);
+        if (sends <= builds)
+            return "";
+
+        return string.Concat(body[builds..sends].Where(c => !char.IsWhiteSpace(c)));
+    }
+
     /// <summary>send_response_ps's body, cut at the two lines that bound it.</summary>
     private static string Body(string core)
     {
@@ -202,6 +251,22 @@ public static class PunchResponseSource
 
         int end = core.IndexOf(
             "static ChiakiErrorCode send_responseto_ps(", start, StringComparison.Ordinal);
+
+        return end < 0 ? core[start..] : core[start..end];
+    }
+
+    /// <summary>And send_responseto_ps's, which is the same one with a different call at the end.</summary>
+    private static string BodyTo(string core)
+    {
+        ArgumentNullException.ThrowIfNull(core);
+
+        int start = core.LastIndexOf(
+            "static ChiakiErrorCode send_responseto_ps(Session *session", StringComparison.Ordinal);
+        if (start < 0)
+            return "";
+
+        int end = core.IndexOf(
+            "static ChiakiErrorCode receive_request_send_response_ps(", start, StringComparison.Ordinal);
 
         return end < 0 ? core[start..] : core[start..end];
     }

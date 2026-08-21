@@ -42,14 +42,20 @@ public class SessionDeleteTests(ITestOutputHelper output)
         Assert.Contains("Bearer t", headers[0], StringComparison.Ordinal);
     }
 
-    /// <summary>Three, and each names something the function it sits in does not do.</summary>
+    /// <summary>Five, and each names something the function it sits in does not do.</summary>
     [Fact]
-    public void ThreeMessagesNameTheWrongCall()
+    public void EveryOneOfThemNamesTheWrongCall()
     {
-        Assert.Equal(3, MisnamedLogs.All.Count);
+        Assert.Equal(5, MisnamedLogs.All.Count);
 
         Assert.Equal(
-            ["deleteSession", "get_stun_servers", "http_check_session"],
+            [
+                "deleteSession",
+                "get_stun_servers",
+                "http_check_session",
+                "send_response_ps",
+                "send_responseto_ps",
+            ],
             MisnamedLogs.All.Select(m => m.Function).OrderBy(f => f, StringComparer.Ordinal));
     }
 
