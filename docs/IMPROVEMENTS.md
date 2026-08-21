@@ -68,28 +68,6 @@ that decision has, now measured, with the call that stops it named.
 
 ## Block D — Screens
 
-### §PP18 Mapping needs the device in the room
-
-ControllerMappingDialog.qml is 350 lines: it shows the pad, lights up whatever the user
-presses, and writes an SDL mapping string out the other end.
-
-Every other dialog can be drawn against a mock. This one cannot - the screen IS the live
-event stream, and a port that renders it correctly with no device attached has proved
-nothing. It is also the cheapest place to find out whether the input path from PP8
-delivers events to the UI thread promptly enough, which is why it is worth doing before
-the small dialogs rather than after.
-
-The document under the screen is separable and is shipped: parse, bind, rebuild. Reading
-it for the rules turned up one the Qt client did not intend. controllerMappingApply
-decides the user has restored the defaults by comparing its rebuilt string against the
-stored original - but the rebuild starts with the controller name and the original
-starts with the GUID, so they are never equal and that branch never runs. Undo every
-change by hand and an override identical to the default is written anyway. Reproduced,
-not fixed.
-
-What is left is the screen: the pad drawing, the row a press lands on, and the live
-event stream that is the reason this waited for PP8.
-
 ## Block E — Windows-only build
 
 ### §PP21 The dependency that says it is over
