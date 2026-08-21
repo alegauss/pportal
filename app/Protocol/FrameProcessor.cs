@@ -1,5 +1,8 @@
+using System.Globalization;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using ChiakiNg.Native;
+using ChiakiNg.Session;
 
 namespace ChiakiNg.Protocol;
 
@@ -21,6 +24,45 @@ public enum FrameFlushResult
 
 /// <summary>Which timed stage, as the baseline row names them.</summary>
 public enum FrameStage { Reassemble = 0, Correct = 1 }
+
+/// <summary>
+/// PP23: the allocation budget the C suite declares, read rather than remembered.
+///
+/// test/allocbudget.c states its two limits as macros so that relaxing them is a visible edit. The
+/// managed side asserts the same numbers, and reads them from there for the same reason a drift
+/// check exists anywhere in this port: a suite that raised its budget must not leave the other one
+/// quietly asserting the older, stricter figure.
+/// </summary>
+public static partial class AllocBudgetSource
+{
+    /// <summary>Where the two macros are.</summary>
+    public const string RelativePath = @"test\allocbudget.c";
+
+    /// <summary>The file, or null outside a checkout.</summary>
+    public static string? Locate() => SanitizerSource.LocateRelative(RelativePath);
+
+    /// <summary>CHIAKI_ALLOC_BUDGET_BYTES_PER_PACKET, or -1 where it is not declared.</summary>
+    public static long BytesPerPacket(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        Match m = BytesRegex().Match(text);
+        return m.Success ? long.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture) : -1;
+    }
+
+    /// <summary>And its sibling for the call count.</summary>
+    public static long CallsPerPacket(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        Match m = CallsRegex().Match(text);
+        return m.Success ? long.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture) : -1;
+    }
+
+    [GeneratedRegex(@"#define\s+CHIAKI_ALLOC_BUDGET_BYTES_PER_PACKET\s+(\d+)")]
+    private static partial Regex BytesRegex();
+
+    [GeneratedRegex(@"#define\s+CHIAKI_ALLOC_BUDGET_CALLS_PER_PACKET\s+(\d+)")]
+    private static partial Regex CallsRegex();
+}
 
 /// <summary>
 /// PP23: the frame processor, where units become a frame and FEC gets driven.
@@ -63,6 +105,27 @@ public sealed class FrameProcessor : IDisposable
     public ChiakiError PutUnit(ushort frameIndex, ushort unitIndex, ushort total, ushort fec, byte[] data)
         => (ChiakiError)ProcessorPutUnit(Handle, true, frameIndex, unitIndex, unitIndex, total, fec,
             data, data.Length);
+
+    /// <summary>
+    /// Allocating the frame from a span, which is the same reason <see cref="PutUnit"/> has one.
+    ///
+    /// PP23: the C's allocation budget charges the WHOLE replay - alloc, put and flush - and the
+    /// managed side can only meet it if every step of that loop has a span door. A budget test
+    /// forced through the byte[] overload measures the test's own array and not the seam.
+    /// </summary>
+    public ChiakiError AllocFrameUnits(
+        ushort frameIndex, ushort unitIndex, ushort total, ushort fec,
+        ReadOnlySpan<byte> data)
+    {
+        unsafe
+        {
+            fixed (byte* p = data)
+            {
+                return (ChiakiError)ProcessorAllocFramePtr(Handle, true, frameIndex, unitIndex,
+                    unitIndex, total, fec, (IntPtr)p, data.Length);
+            }
+        }
+    }
 
     /// <summary>
     /// The same, and the same for <see cref="FlushInto"/>: written so that a steady-state packet
@@ -177,6 +240,13 @@ public sealed class FrameProcessor : IDisposable
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_frame_processor_put_unit",
         CallingConvention = CallingConvention.Cdecl)]
     private static extern int ProcessorPutUnitPtr(
+        IntPtr processor, [MarshalAs(UnmanagedType.I1)] bool isVideo,
+        ushort frameIndex, ushort packetIndex, ushort unitIndex,
+        ushort total, ushort fec, IntPtr data, int dataSize);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_frame_processor_alloc_frame",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern int ProcessorAllocFramePtr(
         IntPtr processor, [MarshalAs(UnmanagedType.I1)] bool isVideo,
         ushort frameIndex, ushort packetIndex, ushort unitIndex,
         ushort total, ushort fec, IntPtr data, int dataSize);
