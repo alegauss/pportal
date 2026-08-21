@@ -9,7 +9,7 @@
 
 ## Block B — Native interop
 
-- ⏳ **PP93** (deps: —) **the dpad touch path uses a third pair of touchpad bounds, matching neither console's pad** — the SDL touchpad path in controllermanager.cpp still scales by the fixed macros, having no session to ask which console is connected. → §PP93
+- ⏳ **PP93** (deps: —) **the dpad touch path uses a third pair of touchpad bounds, matching neither console's pad** — whether the third pair costs anything, which needs a PS4 and a PS5 in the room to measure. → §PP93
 
 ## Block C — Video and input path
 
