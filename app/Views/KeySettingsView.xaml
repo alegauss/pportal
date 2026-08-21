@@ -1,0 +1,57 @@
+<UserControl x:Class="ChiakiNg.Views.KeySettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    PP16: the settings screen's Keys tab, the sixth of the nine.
+
+    A grid of bindings, a Clear button and two checkboxes. The grid binds a collection the view model
+    refills IN PLACE - PP159's rule - so nothing here ever assigns an ItemsSource.
+
+    Three columns, because the QML's key navigation is written against three (`index % 3`). That is
+    the one piece of layout here that is load-bearing.
+
+    What the markup does not know: that the row order is the button's numeric value rather than a
+    chosen order, that the settings key is derived from the label beside each button, and that two of
+    those labels contradict the enum they come from. All three are the view model's.
+  -->
+  <UserControl.Resources>
+    <Style TargetType="TextBlock" x:Key="RowLabel">
+      <Setter Property="Margin" Value="0,8,0,2" />
+      <Setter Property="Opacity" Value="0.7" />
+    </Style>
+  </UserControl.Resources>
+
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="16">
+      <Button x:Name="ClearButton" Content="Clear Key Mapping"
+              HorizontalAlignment="Center" Padding="20,4" />
+
+      <CheckBox x:Name="KeyboardEnabledBox" Margin="0,16,0,0"
+                Content="Keyboard as controller" IsChecked="{Binding KeyboardEnabled}" />
+
+      <CheckBox x:Name="MouseTouchEnabledBox" Margin="0,8,0,0"
+                Content="Enable Mouse Touchpad" IsChecked="{Binding MouseTouchEnabled}" />
+
+      <TextBlock Text="Key Bindings" Style="{StaticResource RowLabel}" />
+      <ItemsControl x:Name="BindingsGrid" ItemsSource="{Binding Bindings}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <UniformGrid Columns="3" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <StackPanel Orientation="Horizontal" Margin="4">
+              <TextBlock Text="{Binding ButtonName}" Width="140" VerticalAlignment="Center"
+                         TextAlignment="Right" Margin="0,0,10,0"
+                         TextTrimming="CharacterEllipsis" />
+              <Button Content="{Binding KeyName}" Width="110" Padding="8,4"
+                      Tag="{Binding ButtonValue}" />
+            </StackPanel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>
