@@ -124,6 +124,7 @@
 - ✅ **PP230** **the vcpkg manifest does not carry a package the build now requires unconditionally, so CI cannot configure** — the manifest holding what the build cannot start without, compared against cmake instead of remembered.
 - ✅ **PP273** **nothing assembles what an installer would ship, so the native libraries the host loads beside itself are never packaged** — package.cmd walks the payload from the resolver's own table and proves it under TEMP, where no checkout can answer for a DLL it missed.
 - ✅ **PP275** **.gitignore ignores scripts/chiaki-ng.iss, which this port maintains by hand rather than generates** — the inherited rule deleted; git add -A stages the script's removal with no message, and two assertions now read the root's ignore list.
+- ✅ **PP274** **the Inno Setup script packages ..\chiaki-ng-Win\chiaki.exe, a path no build creates and a client that is off** — the script points at PP273's payload, ISCC compiles it to a 92 MB installer at 1.10.0 read off the exe, and three assertions hold the spellings.
 
 ## Block F — Managed core
 

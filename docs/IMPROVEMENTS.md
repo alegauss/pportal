@@ -113,30 +113,6 @@ task: it stays outside compile.cmd's preflight and gates no commit.
 The assertion is measure-startup's exit code - 0 rather than 2, which it returns only
 where it found Chromium in the tree it measured.
 
-### §PP274 The installer's other half
-
-PP273 answers what an installer ships: build\chiaki-ng-package holds the published host,
-the three native libraries the resolver loads and the closure of what they import, and
-package.cmd proves the set by running it under TEMP where no walk up into a checkout can
-rescue a file it missed.
-
-What still names the old world is scripts\chiaki-ng.iss. It is upstream's, and it
-defines MyAppPath as ..\chiaki-ng-Win and MyAppExeName as chiaki.exe - a directory that
-resolves to the repository root rather than to build\, and an executable PP21 turned off
-by default. Its [Files] section then copies that directory whole, which would carry 34
-Qt DLLs, a chiaki.exe and windeployqt's plugin trees into an installer for an
-application that loads none of them.
-
-The version mechanism is the part worth keeping: GetVersionComponents reads x.y.z off
-the packaged exe, and the csproj already keeps its informational version free of a
-commit suffix so that an installer can reuse it verbatim. Pointed at the staged
-ChiakiNg.exe it reads 1.10.0, which is what CMakeLists sets for the Qt client - one
-version for the two executables, without a second place to update.
-
-Filed apart from PP273 rather than with it because Inno Setup is not on this machine,
-and a script whose compiler has never run on it is a guess. The payload it would package
-is not.
-
 ## Block F — Managed core
 
 ### §PP23 The oracle this block cannot be written without

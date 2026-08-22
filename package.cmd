@@ -20,10 +20,12 @@ rem
 rem What it produces:
 rem   build\chiaki-ng-package\   the payload - the published host, the three
 rem                              native libraries it loads, and their imports
+rem   build\chiaki-ng-windows-installer.exe   the installer over that payload
 rem
 rem Usage:
-rem   package.cmd                publish, stage, prove
+rem   package.cmd                publish, stage, prove, compile the installer
 rem   package.cmd nopublish      stage and prove what is already published
+rem   package.cmd nosetup        stop after the proof - no installer
 rem
 rem Environment overrides:
 rem   MSYS2_ROOT    MSYS2 install dir              (default C:\msys64)
@@ -39,13 +41,14 @@ if not defined NATIVE_DIR set "NATIVE_DIR=%BUILD_DIR%\chiaki-ng-Win"
 if not defined PACKAGE_DIR set "PACKAGE_DIR=%BUILD_DIR%\chiaki-ng-package"
 
 set "DO_PUBLISH=1"
+set "NO_SETUP="
 set "BAD_ARG="
 for %%a in (%*) do (
-    if /I "%%~a"=="nopublish" (set "DO_PUBLISH=") else (set "BAD_ARG=%%~a")
+    if /I "%%~a"=="nopublish" (set "DO_PUBLISH=") else if /I "%%~a"=="nosetup" (set "NO_SETUP=1") else (set "BAD_ARG=%%~a")
 )
 if defined BAD_ARG (
     echo [package] unknown argument: %BAD_ARG%
-    echo [package] usage: package.cmd [nopublish]
+    echo [package] usage: package.cmd [nopublish] [nosetup]
     exit /b 2
 )
 
@@ -159,8 +162,51 @@ if errorlevel 1 (
 rd /s /q "%PROOF%" 2>nul
 
 echo.
-echo [package] OK - the payload runs with no checkout beneath it:
+echo [package] the payload runs with no checkout beneath it:
 echo [package]   %~dp0%PACKAGE_DIR%
+
+rem ---- the installer (PP274) ---------------------------------------------
+rem Last, and only over a payload that has just been proved. ISCC reads the payload
+rem directory twice at COMPILE time - once for the version off ChiakiNg.exe and once
+rem for the file list - so compiling it against a stale or absent one produces an
+rem installer carrying nothing, with a version of 0.0.0, and exit code 0. The script
+rem has an #error guard for the absent case; running it here, after the proof, is
+rem what covers the stale one.
+if defined NO_SETUP (
+    echo.
+    echo [package] installer: SKIPPED ^(nosetup^) - the payload above is not packaged
+    exit /b 0
+)
+
+rem Four places, and the order is the lesson. Inno Setup 6 installs per-user by
+rem default, into %LOCALAPPDATA%\Programs - looking under Program Files alone reports
+rem "not installed" on a machine that has it, which is exactly what happened when this
+rem was first written by hand.
+set "ISCC="
+for %%p in (iscc.exe) do if not defined ISCC if exist "%%~$PATH:p" set "ISCC=%%~$PATH:p"
+call :find_iscc "%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe"
+call :find_iscc "%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe"
+call :find_iscc "%ProgramFiles%\Inno Setup 6\ISCC.exe"
+if not defined ISCC (
+    echo.
+    echo [package] No Inno Setup compiler found, and the installer is what this produces.
+    echo [package] Install it with:  winget install --id JRSoftware.InnoSetup -e
+    echo [package] or run package.cmd nosetup for the proved payload alone.
+    exit /b 1
+)
+
+echo.
+echo [package] compiling the installer ...
+"%ISCC%" /Q "%~dp0scripts\chiaki-ng.iss"
+if errorlevel 1 (
+    echo.
+    echo [package] FAILED - the payload is good and the installer script is not.
+    exit /b 1
+)
+
+echo.
+echo [package] OK:
+echo [package]   %~dp0%BUILD_DIR%\chiaki-ng-windows-installer.exe
 exit /b 0
 
 rem ---------------------------------------------------------------------------
@@ -169,4 +215,9 @@ if exist "%~dp0%~1" exit /b 0
 echo [package] MISSING  %~1
 echo [package]          %~2
 set "MISSING=1"
+exit /b 0
+
+:find_iscc
+if defined ISCC exit /b 0
+if exist "%~1" set "ISCC=%~1"
 exit /b 0

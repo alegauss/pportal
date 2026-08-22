@@ -108,6 +108,21 @@ public static class SelfTest
                 == Convert.ToDouble(cpp, System.Globalization.CultureInfo.InvariantCulture);
         }
 
+        // PP274: a repository file read from the ROOT, rather than by walking up from the running
+        // assembly until something matches. PP276 is the general case; package.cmd is the immediate
+        // one, being a single-segment name that a walk could satisfy anywhere above the exe.
+        //
+        // Nothing to read yields the empty string rather than a throw or a skip, so a caller
+        // comparing against it FAILS - the direction PP272 settled for every reader here.
+        static string ReadFromRoot(string? root, string relative)
+        {
+            if (root is null)
+                return "";
+
+            string path = Path.Combine(root, relative);
+            return File.Exists(path) ? File.ReadAllText(path) : "";
+        }
+
         // PP22, and it runs first because everything below it can be skipped without failing.
         //
         // Fifteen blocks in this suite read a C or C++ source and compare the port against it, and
@@ -224,6 +239,48 @@ public static class SelfTest
             ];
             Check("and names no packaging file this port maintains by hand",
                 ignored.Length == 0, string.Join(", ", ignored));
+        }
+
+        // PP274: the installer, which is three files that have to agree about one payload and none
+        // of which can read the others. The .iss names a directory and an executable, package.cmd
+        // decides where that directory is written, and the csproj decides what executable lands in
+        // it. Upstream's script disagreed with all three and nothing said so - an Inno Setup script
+        // is read only by ISCC, and ISCC had never been run against this tree.
+        //
+        // Read from the repository ROOT and not by walking up (PP276): package.cmd is a
+        // single-segment name, which is precisely the shape that resolves to the wrong file.
+        string? installerScript = repositoryRoot is null
+            ? null
+            : Path.Combine(repositoryRoot, InstallerScript.RelativePath);
+        if (installerScript is null || !File.Exists(installerScript))
+        {
+            Console.WriteLine(@"  --    the installer's payload  (no scripts\chiaki-ng.iss here)");
+        }
+        else
+        {
+            string iss = File.ReadAllText(installerScript);
+            string project = ReadFromRoot(repositoryRoot, InstallerScript.ProjectRelativePath);
+            string command = ReadFromRoot(repositoryRoot, InstallerScript.CommandRelativePath);
+
+            string packaged = InstallerScript.PackagedExecutable(iss);
+            string expected = InstallerScript.AssemblyName(project) + ".exe";
+            Check("the installer packages the executable the project builds",
+                packaged.Length > 0 && packaged.Equals(expected, StringComparison.Ordinal),
+                $"installer: {packaged}  project: {expected}");
+
+            string compressed = InstallerScript.FromRepositoryRoot(
+                InstallerScript.PackagedDirectory(iss));
+            string written = InstallerScript.PayloadDirectory(command);
+            Check("and compresses the directory package.cmd writes",
+                compressed.Length > 0
+                && compressed.Equals(written, StringComparison.OrdinalIgnoreCase),
+                $"installer: {compressed}  package.cmd: {written}");
+
+            // Not a literal, because the csproj already keeps its informational version free of a
+            // commit suffix so that this file can reuse it verbatim. Two places would be one too
+            // many, and the one that goes stale is always the installer.
+            Check("and takes its version off the payload rather than a literal",
+                InstallerScript.VersionComesFromThePayload(iss));
         }
 
         Console.WriteLine();
