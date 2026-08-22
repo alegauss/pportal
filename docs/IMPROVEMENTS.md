@@ -199,6 +199,29 @@ What is open is whether a gate needing full history on every CI run is worth 75 
 against an id join that is free, works offline, and is wrong in the direction that only
 ever asks for more tests.
 
+### §PP311 Where the join reads something that is not a claim
+
+The join is "this id appears somewhere in an assertion file", and an assertion file is
+not only its claims. It is also its fixtures, its expected values and its prose - and an
+id written in any of those pays a real task's debt without anybody deciding to.
+
+Three times in one commit, all in the ratchet's own tests. A sample ledger written with
+two real ids marked both covered. A two-digit id as the expected value of a
+DoesNotContain covered the task it names, by asserting that it did not. And the comment
+written to explain that mistake covered it again, a paragraph after the fix.
+
+None of those was gaming and that is what makes it worth a task. Nobody was trying to
+move the number; the number moved because test data is text and the join reads text.
+Working around it by keeping every fixture above 9000 is what this commit did, and it
+holds only while everybody remembers.
+
+What would close it: read ids for the join OUTSIDE string literals. A claim that a test
+holds a task is written in a summary or a name, never in a quoted string - the id in a
+string is data. That is a lexer over C# and C rather than a regex, which is the cost.
+
+Cheaper and weaker: ignore ids above the highest ever minted, so a fixture cannot spell
+a real task by accident. It does not stop the comment case.
+
 ## Block F — Managed core
 
 ### §PP23 The oracle this block cannot be written without
