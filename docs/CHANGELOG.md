@@ -65,6 +65,7 @@
 - ✅ **PP10** **the stream HUD and the in-stream menu are QML drawn over the video and disappear with the renderer** — the menu's two inversions, the mode that is not stored, and the preset that starts at one.
 - ✅ **PP11 (fullscreen)** **fullscreen, HDR handoff and refresh-rate switching are handled by the Qt window** — fullscreen as a state machine, guards included.
 - ✅ **PP175** **PP163 named two ways out of the eight-bit ceiling and priced neither, so the HDR decision has no measurement** — the other path carries HDR10 at ten bits, and the obvious test for it is not one.
+- ✅ **PP281** **PP163 names DirectComposition the only way out that keeps PP10's overlay, and never built the path to see if it holds** — the path is built to Commit and it succeeds on a ten-bit composition swapchain, and mingw's dcomp.h forced the shim's one C++ file.
 
 ## Block D — Screens
 

@@ -287,6 +287,58 @@ public class RenderProbeTests
     }
 
     /// <summary>
+    /// PP281: and DirectComposition takes that swapchain, all the way to Commit.
+    ///
+    /// This is the sentence PP163 wrote and did not measure. Its whole decision turns on it - a
+    /// DirectComposition visual is named the only way out that leaves PP10's overlay standing, and
+    /// the child-HWND path is rejected on the strength of it - so the path is built here rather
+    /// than argued: device, target on a real window, visual, the swapchain as its content, root,
+    /// and Commit.
+    ///
+    /// Commit is the assertion and the stages before it are the diagnosis. Anything up to Swapchain
+    /// is a failure the probe above would have caught too; Content or later is news about
+    /// DirectComposition, and Window says the runner has no window station rather than that the
+    /// path is wrong.
+    ///
+    /// TEN BITS, not eight. Asking this of an SDR buffer would prove the path and not the point.
+    /// </summary>
+    [Fact]
+    public void DirectCompositionTakesTheTenBitSwapchain()
+    {
+        using RenderDevice? device = AnyDevice();
+        Assert.NotNull(device);
+
+        DcompStage stage = device.ProbeDirectComposition(SwapchainFormat.Rgb10A2);
+
+        Assert.True(
+            stage == DcompStage.Ok,
+            $"the DirectComposition path stopped at {stage}, so PP163's remaining option does not "
+                + "hold and the decision it feeds has to be re-opened");
+    }
+
+    /// <summary>
+    /// PP281: and the stage it reports is real, not decorative.
+    ///
+    /// The test above passes, which is the answer wanted and also the reason to check this: a probe
+    /// that returned true unconditionally would look identical, and so would one whose out_stage
+    /// was never written. Handed a format DXGI has no such thing as, it must fail AND say it failed
+    /// at the swapchain - the step that consumes the format - rather than at any of the four after
+    /// it that never ran.
+    /// </summary>
+    [Fact]
+    public void AnImpossibleFormatStopsAtTheSwapchainAndSaysSo()
+    {
+        using RenderDevice? device = AnyDevice();
+        Assert.NotNull(device);
+
+        // Not a DXGI_FORMAT. The enum stops far below this, and CreateSwapChainForComposition is
+        // the first call that looks at it.
+        DcompStage stage = device.ProbeDirectComposition((SwapchainFormat)0x7000);
+
+        Assert.Equal(DcompStage.Swapchain, stage);
+    }
+
+    /// <summary>
     /// PP163: and the obvious HDR test is not one. An EIGHT-bit swapchain reports HDR10 support
     /// too, because CheckColorSpaceSupport answers about the colour space and not about whether
     /// the buffer has the bits to carry it.

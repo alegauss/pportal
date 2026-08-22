@@ -137,6 +137,29 @@ CHIAKI_RENDER_API const char *chiaki_render_d3d11_description(void *d3d11)
 	return self ? self->description : "";
 }
 
+/**
+ * PP281: the ID3D11Device inside, for chiaki_render_dcomp.cpp.
+ *
+ * Not exported and not in the header - it exists only so the one C++ translation unit in this
+ * library can reach the device without including libplacebo's C headers through a C++ compiler for
+ * a single pointer. chiaki_render_d3d11 is defined here and nowhere else, which is why the
+ * accessor has to be here rather than the struct being shared.
+ */
+ID3D11Device *chiaki_render_d3d11_device(void *d3d11);
+
+ID3D11Device *chiaki_render_d3d11_device(void *d3d11)
+{
+#ifdef PL_HAVE_D3D11
+	chiaki_render_d3d11 *self = (chiaki_render_d3d11 *)d3d11;
+	if(!self || !self->d3d11)
+		return NULL;
+	return self->d3d11->device;
+#else
+	(void)d3d11;
+	return NULL;
+#endif
+}
+
 // ---- PP131: the D3D11 -> D3D9Ex share D3DImage requires ------------------------------------
 //
 // The COM headers themselves are pulled in at the top of this file, ahead of libplacebo's - see

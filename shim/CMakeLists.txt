@@ -40,7 +40,10 @@ endif()
 # different reasons - the protocol seam when libchiaki's surface moves, this when PP9's renderer
 # decision does - so one ABI covering both would make every renderer experiment an ABI bump for
 # the protocol.
-add_library(chiaki-render SHARED chiaki_render.c chiaki_render.h)
+# chiaki_render_dcomp.cpp is C++ and the rest is C, which is measured rather than preferred:
+# mingw-w64's dcomp.h does not compile in C at all (PP281 has the four-line reproduction). CMake
+# enables both languages from project(chiaki), so the mixed target needs nothing declared here.
+add_library(chiaki-render SHARED chiaki_render.c chiaki_render_dcomp.cpp chiaki_render.h)
 target_include_directories(chiaki-render PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 # d3d11/d3d9/dxgi for the D3DImage share (PP131). Named here rather than assumed present in
 # libplacebo's own link line, which does not export them.
@@ -50,7 +53,11 @@ target_include_directories(chiaki-render PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 # and IID_IDXGIResource happen to resolve without it, so the gap only appears the first time a
 # newer interface is asked for - IID_IDXGISwapChain3 here - and it appears at link time as an
 # undefined reference rather than anywhere a reader would look.
-target_link_libraries(chiaki-render PkgConfig::LIBPLACEBO d3d11 d3d9 dxgi dxguid)
+#
+# dcomp is PP281's: DCompositionCreateDevice lives in dcomp.dll and nothing above pulls it in.
+# IID_IDCompositionDevice comes out of dxguid, already here for the same reason IID_IDXGISwapChain3
+# needed it - the GUIDs are a separate archive from the thunks.
+target_link_libraries(chiaki-render PkgConfig::LIBPLACEBO d3d11 d3d9 dxgi dxguid dcomp)
 set_target_properties(chiaki-render PROPERTIES PREFIX "" OUTPUT_NAME "chiaki-render")
 
 if(MINGW)

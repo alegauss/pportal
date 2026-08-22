@@ -226,6 +226,50 @@ CHIAKI_RENDER_API bool chiaki_render_swapchain_probe(
 		void *d3d11, int32_t format, bool *out_hdr10, bool *out_srgb, bool *out_scrgb, int32_t *out_stage);
 
 /**
+ * PP281: and whether DirectComposition will actually take that swapchain as a visual's content.
+ *
+ * PP163 priced half the path and asserted the rest. It measured that a composition swapchain carries
+ * ten bits and an ST.2084 signal, and then said - without measuring - that "a DirectComposition
+ * visual composes a swapchain with WPF content above it". That sentence is what the whole decision
+ * rests on: it is the reason DirectComposition is named the only way out that leaves PP10's overlay
+ * standing, and the reason the child-HWND path is rejected.
+ *
+ * The claim has two halves and only the second needs WPF. This is the first: that DComp accepts the
+ * device, binds to a window, takes the swapchain as content and commits. A failure here would end
+ * the argument before WPF is even asked, and nothing in the tree would have noticed.
+ *
+ * A WINDOW IS REQUIRED, unlike the swapchain probe. CreateTargetForHwnd wants a real top-level HWND,
+ * so this creates a hidden one, uses it and destroys it. That is the honest cost of the question:
+ * the composition swapchain could be priced headless precisely because it has no window, and the
+ * visual that presents it cannot be.
+ */
+typedef enum chiaki_render_dcomp_stage
+{
+	CHIAKI_RENDER_DCOMP_OK = 0,
+	CHIAKI_RENDER_DCOMP_NO_DEVICE,
+	CHIAKI_RENDER_DCOMP_DXGI_DEVICE,   /**< QueryInterface for IDXGIDevice */
+	CHIAKI_RENDER_DCOMP_ADAPTER,       /**< IDXGIDevice::GetAdapter */
+	CHIAKI_RENDER_DCOMP_FACTORY,       /**< IDXGIAdapter::GetParent for IDXGIFactory2 */
+	CHIAKI_RENDER_DCOMP_SWAPCHAIN,     /**< CreateSwapChainForComposition */
+	CHIAKI_RENDER_DCOMP_WINDOW,        /**< RegisterClass / CreateWindowEx for the hidden target */
+	CHIAKI_RENDER_DCOMP_DEVICE,        /**< DCompositionCreateDevice */
+	CHIAKI_RENDER_DCOMP_TARGET,        /**< IDCompositionDevice::CreateTargetForHwnd */
+	CHIAKI_RENDER_DCOMP_VISUAL,        /**< IDCompositionDevice::CreateVisual */
+	CHIAKI_RENDER_DCOMP_CONTENT,       /**< IDCompositionVisual::SetContent with the swapchain */
+	CHIAKI_RENDER_DCOMP_ROOT,          /**< IDCompositionTarget::SetRoot */
+	CHIAKI_RENDER_DCOMP_COMMIT,        /**< IDCompositionDevice::Commit */
+} chiaki_render_dcomp_stage;
+
+/**
+ * Builds the whole DirectComposition path over a swapchain in `format` and reports where it stopped.
+ *
+ * Returns true only when Commit succeeded, which is the point at which the compositor has actually
+ * accepted the tree rather than merely handed out interfaces.
+ */
+CHIAKI_RENDER_API bool chiaki_render_dcomp_probe(
+		void *d3d11, int32_t format, int32_t *out_stage);
+
+/**
  * PP9's last unanswered link: a DECODED FRAME through pl_render_image.
  *
  * Everything before this rendered nothing. PP133 calls pl_render_image with a NULL image, which

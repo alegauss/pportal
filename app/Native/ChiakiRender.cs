@@ -116,6 +116,33 @@ public enum SwapchainStage
 public readonly record struct SwapchainSupport(
     bool Created, bool Hdr10, bool Srgb, bool ScRgb, SwapchainStage Stage);
 
+/// <summary>
+/// PP281: which step of the DirectComposition path failed, or Ok.
+///
+/// Longer than the swapchain's because the path is longer, and the order is the reading: anything
+/// up to and including <see cref="Swapchain"/> is a failure the swapchain probe would have caught
+/// too, and only <see cref="Content"/> onwards is news about DirectComposition itself.
+/// </summary>
+public enum DcompStage
+{
+    Ok = 0,
+    NoDevice,
+    DxgiDevice,
+    Adapter,
+    Factory,
+    Swapchain,
+    /// <summary>The hidden top-level window - CreateTargetForHwnd refuses a message-only one.</summary>
+    Window,
+    Device,
+    Target,
+    Visual,
+    /// <summary>SetContent with the swapchain, which is the claim PP163 made without measuring.</summary>
+    Content,
+    Root,
+    /// <summary>Commit, where the compositor accepts the tree rather than handing out interfaces.</summary>
+    Commit,
+}
+
 /// <summary>Which step of a frame's journey through the renderer failed, or Ok.</summary>
 public enum RenderStage
 {
@@ -332,6 +359,29 @@ public sealed class RenderDevice : IDisposable
         [MarshalAs(UnmanagedType.I1)] out bool srgb,
         [MarshalAs(UnmanagedType.I1)] out bool scrgb,
         out int stage);
+
+    /// <summary>
+    /// PP281: and whether DirectComposition takes that swapchain as a visual's content.
+    ///
+    /// PP163 priced the buffer and asserted the rest. It measured that a composition swapchain
+    /// carries ten bits and an ST.2084 signal, then said - without measuring - that a
+    /// DirectComposition visual composes a swapchain with WPF content above it. That sentence is
+    /// what the whole decision rests on, and it is the reason the child-HWND path is rejected.
+    ///
+    /// This is the half that does not need WPF: device, target, visual, content, root, commit. A
+    /// failure here would end the argument before WPF is even asked.
+    /// </summary>
+    /// <returns>The stage it reached, which is <see cref="DcompStage.Ok"/> only after Commit.</returns>
+    public DcompStage ProbeDirectComposition(SwapchainFormat format)
+    {
+        bool committed = DcompProbe(Handle, (int)format, out int stage);
+        return committed ? DcompStage.Ok : (DcompStage)stage;
+    }
+
+    [DllImport(ChiakiRender.Library, EntryPoint = "chiaki_render_dcomp_probe",
+        CallingConvention = CallingConvention.Cdecl)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    private static extern bool DcompProbe(IntPtr d3d11, int format, out int stage);
 
     /// <summary>
     /// PP9: one decoded frame through pl_render_image, and the pixel it produced.
