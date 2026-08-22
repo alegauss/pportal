@@ -183,7 +183,7 @@ that the session never opens.
 
 ### §PP27 The transport, and the only place GC is a real question
 
-takion.c is 1845 lines plus takionsendbuffer.c at 267 and reorderqueue.c at 200: the
+takion.c is 1868 lines plus takionsendbuffer.c at 267 and reorderqueue.c at 200: the
 sequencing, the retransmission, the send window and the reordering that a video stream
 over UDP needs.
 
@@ -199,7 +199,7 @@ bytes.
 
 ### §PP28 The state machines
 
-session.c is 1182 lines, ctrl.c 1469 and streamconnection.c 1296. Together they are the
+session.c is 1182 lines, ctrl.c 1469 and streamconnection.c 1326. Together they are the
 connection: what is sent in which order, what is waited for, what a timeout means at
 each point, and how a session comes apart when the console stops answering.
 
@@ -208,7 +208,7 @@ flow that was written to match observed behaviour, not designed - and the honest
 expectation is that some of it looks wrong and is not.
 
 Two consequences for how this is taken. It should be split when it is started rather
-than now, along the three files, because a single review of 3947 translated lines is not
+than now, along the three files, because a single review of 3977 translated lines is not
 a review. And it is the task that most benefits from the oracle running a full captured
 session end to end, since almost nothing here has a fixed input and a fixed output the
 way the crypto does.
@@ -255,7 +255,7 @@ buffers rather than with state.
 
 ### §PP31 The line managed code should not cross
 
-ffmpegdecoder.c is 354 lines and bitstream.c 406, and behind them is FFmpeg doing
+ffmpegdecoder.c is 376 lines and bitstream.c 450, and behind them is FFmpeg doing
 hardware accelerated H.264 and HEVC decode. Nothing in .NET replaces that. A pure
 managed decoder is possible in the sense that it can be written and impossible in the
 sense that it would not hold the frame rate, and it would ignore the GPU that is already
