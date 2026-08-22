@@ -265,9 +265,16 @@ typedef enum chiaki_render_dcomp_stage
  *
  * Returns true only when Commit succeeded, which is the point at which the compositor has actually
  * accepted the tree rather than merely handed out interfaces.
+ *
+ * `topmost` is CreateTargetForHwnd's second argument and it is the whole point of the question, not
+ * a detail (PP282). TRUE puts the visual tree ON TOP of the window's own content; FALSE puts it
+ * BEHIND. PP163 wants the video behind and PP10's overlay above it, so FALSE is the arrangement the
+ * design rests on - and PP281 measured TRUE, which is the one that hides the overlay it was trying
+ * to keep. Both are worth building, because a path that only works in the useless direction is a
+ * different answer from one that works in neither.
  */
 CHIAKI_RENDER_API bool chiaki_render_dcomp_probe(
-		void *d3d11, int32_t format, int32_t *out_stage);
+		void *d3d11, int32_t format, bool topmost, int32_t *out_stage);
 
 /**
  * PP9's last unanswered link: a DECODED FRAME through pl_render_image.

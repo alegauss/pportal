@@ -41,7 +41,7 @@
 extern "C" ID3D11Device *chiaki_render_d3d11_device(void *d3d11);
 
 extern "C" CHIAKI_RENDER_API bool chiaki_render_dcomp_probe(
-		void *d3d11, int32_t format, int32_t *out_stage)
+		void *d3d11, int32_t format, bool topmost, int32_t *out_stage)
 {
 	ID3D11Device *device = nullptr;
 	IDXGIDevice *dxgi_device = nullptr;
@@ -126,9 +126,12 @@ extern "C" CHIAKI_RENDER_API bool chiaki_render_dcomp_probe(
 			dxgi_device, __uuidof(IDCompositionDevice), reinterpret_cast<void **>(&dcomp))))
 		goto done;
 
+	// PP282: the arrangement, and it is the question rather than a parameter. FALSE puts this visual
+	// tree BEHIND the window's own content, which is where a video plane has to sit for PP10's XAML
+	// overlay to be seen over it. PP281 hard-coded TRUE and so measured the opposite.
 	if(out_stage)
 		*out_stage = CHIAKI_RENDER_DCOMP_TARGET;
-	if(FAILED(dcomp->CreateTargetForHwnd(hwnd, TRUE, &target)))
+	if(FAILED(dcomp->CreateTargetForHwnd(hwnd, topmost ? TRUE : FALSE, &target)))
 		goto done;
 
 	if(out_stage)

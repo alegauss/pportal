@@ -302,18 +302,30 @@ public class RenderProbeTests
     ///
     /// TEN BITS, not eight. Asking this of an SDR buffer would prove the path and not the point.
     /// </summary>
-    [Fact]
-    public void DirectCompositionTakesTheTenBitSwapchain()
+    /// <param name="topmost">
+    /// PP282: FALSE is the case that matters and it is listed first. The visual tree goes BEHIND
+    /// the window's content, which is where a video plane must sit for PP10's overlay to be seen
+    /// over it. PP281 asserted only TRUE - the arrangement that puts video over the overlay - so it
+    /// proved the path in the direction the design has no use for.
+    ///
+    /// Both are asked because they are different answers. A path that builds only topmost would
+    /// mean HDR costs the overlay after all, which is the conclusion PP163 rejected the child-HWND
+    /// option to avoid.
+    /// </param>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DirectCompositionTakesTheTenBitSwapchain(bool topmost)
     {
         using RenderDevice? device = AnyDevice();
         Assert.NotNull(device);
 
-        DcompStage stage = device.ProbeDirectComposition(SwapchainFormat.Rgb10A2);
+        DcompStage stage = device.ProbeDirectComposition(SwapchainFormat.Rgb10A2, topmost);
 
         Assert.True(
             stage == DcompStage.Ok,
-            $"the DirectComposition path stopped at {stage}, so PP163's remaining option does not "
-                + "hold and the decision it feeds has to be re-opened");
+            $"the DirectComposition path stopped at {stage} with topmost={topmost}, so PP163's "
+                + "remaining option does not hold and the decision it feeds has to be re-opened");
     }
 
     /// <summary>
@@ -333,7 +345,7 @@ public class RenderProbeTests
 
         // Not a DXGI_FORMAT. The enum stops far below this, and CreateSwapChainForComposition is
         // the first call that looks at it.
-        DcompStage stage = device.ProbeDirectComposition((SwapchainFormat)0x7000);
+        DcompStage stage = device.ProbeDirectComposition((SwapchainFormat)0x7000, topmost: false);
 
         Assert.Equal(DcompStage.Swapchain, stage);
     }

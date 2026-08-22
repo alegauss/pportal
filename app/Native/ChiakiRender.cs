@@ -371,17 +371,25 @@ public sealed class RenderDevice : IDisposable
     /// This is the half that does not need WPF: device, target, visual, content, root, commit. A
     /// failure here would end the argument before WPF is even asked.
     /// </summary>
+    /// <param name="format">The swapchain's format. Ten bits is the one HDR needs.</param>
+    /// <param name="topmost">
+    /// PP282: whether the visual tree sits ON TOP of the window's own content (true) or BEHIND it
+    /// (false). False is the arrangement PP163's design rests on - the video plane below, PP10's
+    /// XAML overlay above it - and true is the one that hides that overlay. PP281 measured only
+    /// true, which answered a question the design does not ask.
+    /// </param>
     /// <returns>The stage it reached, which is <see cref="DcompStage.Ok"/> only after Commit.</returns>
-    public DcompStage ProbeDirectComposition(SwapchainFormat format)
+    public DcompStage ProbeDirectComposition(SwapchainFormat format, bool topmost)
     {
-        bool committed = DcompProbe(Handle, (int)format, out int stage);
+        bool committed = DcompProbe(Handle, (int)format, topmost, out int stage);
         return committed ? DcompStage.Ok : (DcompStage)stage;
     }
 
     [DllImport(ChiakiRender.Library, EntryPoint = "chiaki_render_dcomp_probe",
         CallingConvention = CallingConvention.Cdecl)]
     [return: MarshalAs(UnmanagedType.I1)]
-    private static extern bool DcompProbe(IntPtr d3d11, int format, out int stage);
+    private static extern bool DcompProbe(
+        IntPtr d3d11, int format, [MarshalAs(UnmanagedType.I1)] bool topmost, out int stage);
 
     /// <summary>
     /// PP9: one decoded frame through pl_render_image, and the pixel it produced.
