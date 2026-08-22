@@ -225,6 +225,7 @@
 - ✅ **PP264** **the public accessors are unported, and one copies forty-six bytes into a buffer whose size it never states** — the surface is ported with what is written kept apart from what is documented, and the guard count measured across all six.
 - ✅ **PP265** **the port guessing settings are unported, and a refused value is indistinguishable from an accepted one** — the settings are ported with the outcome of a change kept apart from the value, and the pair a caller cannot set named.
 - ✅ **PP266** **the five session calls have a transport, shapes and outcomes, and no function that performs one** — the five call sites are built on the transport and shapes already ported, and a bodyless request now carries the content type the core sends.
+- ✅ **PP267** **the push socket is described and never opened, so nothing turns a frame into a notification** — the push channel is opened and read from the pieces already ported, with both places a managed socket cannot reproduce the core written down.
 
 ## Block G — Test discipline
 
