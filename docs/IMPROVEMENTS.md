@@ -137,28 +137,6 @@ Filed apart from PP273 rather than with it because Inno Setup is not on this mac
 and a script whose compiler has never run on it is a guess. The payload it would package
 is not.
 
-### §PP275 An ignore rule inherited from a generator
-
-Line 24 of .gitignore is scripts/chiaki-ng.iss, and it arrived with the file. Upstream
-generated the Inno Setup script from a wizard as part of a release job, so ignoring it
-was correct there: it was output, not source.
-
-Here it is neither generated nor generated-from-anything. It is a tracked file that
-PP274 is about to edit by hand, and it will keep being edited by hand every time the
-payload's shape changes. Git honours the rule only for untracked paths, which is why the
-file is in the repository at all and why nothing has gone wrong yet.
-
-What the rule costs is one specific move: a checkout where the file is removed and
-written again - a revert, a bad merge resolved by deleting and restoring, a fresh copy
-from another branch - has an untracked scripts/chiaki-ng.iss that git add silently
-declines to stage. The commit lands without it, and the next clone has no installer
-script. There is no error at any step, because declining to stage an ignored path is
-what the rule asks for.
-
-The fix is deleting the line. What is worth keeping is scripts/Output beside it: that
-one really is ISCC's default output directory, and a hand-run compile that does not pass
-OutputDir still lands there.
-
 ## Block F — Managed core
 
 ### §PP23 The oracle this block cannot be written without

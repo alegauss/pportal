@@ -130,7 +130,11 @@ public static class SelfTest
             @"test\regist.c", @"test\takion.c", PayloadScript.RelativePath,
         ];
 
-        bool inCheckout = SanitizerSource.LocateRelative("roadkeep.toml") is not null;
+        // Kept as the path and not just as a yes/no: a check that needs the repository ROOT rather
+        // than the nearest match walking up has nowhere else to get it. PP275 is the first one that
+        // does, and .gitignore is exactly the file that shows why the distinction matters.
+        string? projectFile = SanitizerSource.LocateRelative("roadkeep.toml");
+        bool inCheckout = projectFile is not null;
         string[] unfindable = inCheckout
             ? driftSources.Where(p => SanitizerSource.LocateRelative(p) is null).ToArray()
             : [];
@@ -164,6 +168,62 @@ public static class SelfTest
             Check("the payload script walks from every library the resolver loads",
                 scripted.Order(StringComparer.Ordinal).SequenceEqual(resolved, StringComparer.Ordinal),
                 $"script: [{string.Join(", ", scripted)}]  resolver: [{string.Join(", ", resolved)}]");
+        }
+
+        // PP275: the packaging path is four files this port writes by hand, and one of them arrived
+        // from upstream with a .gitignore rule attached - the Inno Setup script, which a wizard
+        // generated there and which is edited here. Git honours an ignore rule only for untracked
+        // paths, so a tracked file carries on as though the rule were not there, and it was not.
+        //
+        // The move it breaks is delete-and-restore - a revert, a merge resolved by removing the
+        // file, a copy taken from another branch - which leaves the path untracked and the rule
+        // suddenly live. Naming it, `git add scripts/chiaki-ng.iss` at least refuses out loud. What
+        // run-commit.cmd runs is `git add -A`, and measured against this tree that stages the
+        // DELETION of the installer script and prints nothing whatsoever. The commit removes the
+        // file, the next clone has no installer, and no step in that sequence reported an error.
+        //
+        // Matched line for line and NOT with gitignore's own semantics, which are a pattern language
+        // this has no business reimplementing. What it catches is the shape that actually occurs:
+        // a rule naming one of these paths outright, inherited from a tree that generated it.
+        //
+        // Found beside roadkeep.toml rather than by LocateRelative, which walks up from the running
+        // assembly and stops at the FIRST match - and .gitignore is not a unique name in this tree.
+        // app\.gitignore is three rules about bin, obj and the WPF SDK's temp project, and it sits
+        // between the host's output directory and the root, so the walk never reaches the file this
+        // check is about. Written the other way it read those three rules, reported that the ignore
+        // list does not mention build, and was green on the question it was asked. PP271 is the same
+        // lesson for a locator that found nothing; this is the version where it finds the wrong one.
+        string? repositoryRoot = Path.GetDirectoryName(projectFile);
+        string? ignoreList = repositoryRoot is null ? null : Path.Combine(repositoryRoot, ".gitignore");
+        if (ignoreList is null || !File.Exists(ignoreList))
+        {
+            Console.WriteLine("  --    the packaging files' ignore rules  (no .gitignore here)");
+        }
+        else
+        {
+            string[] rules =
+            [
+                .. File.ReadAllLines(ignoreList)
+                    .Select(line => line.Trim())
+                    .Where(line => line.Length > 0 && line[0] != '#'),
+            ];
+
+            // PP272's floor, and it is why this reads a rule it expects to find rather than only
+            // rules it expects to miss. An absent or emptied .gitignore ignores nothing, so the
+            // check below would pass over it - agreement with a file that says nothing at all.
+            Check("the ignore list is readable and still ignores the build tree",
+                rules.Contains("build", StringComparer.Ordinal), $"{rules.Length} rule(s)");
+
+            string[] handWritten =
+                ["scripts/chiaki-ng.iss", "scripts/package-windows.sh", "package.cmd", "compile.cmd"];
+            string[] ignored =
+            [
+                .. handWritten.Where(path =>
+                    rules.Contains(path, StringComparer.OrdinalIgnoreCase)
+                    || rules.Contains("/" + path, StringComparer.OrdinalIgnoreCase)),
+            ];
+            Check("and names no packaging file this port maintains by hand",
+                ignored.Length == 0, string.Join(", ", ignored));
         }
 
         Console.WriteLine();

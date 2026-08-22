@@ -21,7 +21,14 @@ appdir
 /sdl2-*
 /protoc*
 /openssl*
-scripts/chiaki-ng.iss
+# PP275: scripts/chiaki-ng.iss used to be ignored here, and it arrived with the file.
+# Upstream generated the Inno Setup script from a wizard, so ignoring its output was
+# right there. This port edits it by hand instead, which makes it source. The rule was
+# inert only because git honours it for untracked paths and the file is tracked - the
+# move it breaks is deleting and restoring it, where `git add` declines without a word.
+#
+# scripts/Output stays: that one really is ISCC's default output directory, and a
+# hand-run compile that passes no OutputDir still lands there.
 scripts/Output
 .vs
 CMakeSettings.json
