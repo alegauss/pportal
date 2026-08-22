@@ -24,10 +24,10 @@ public partial class RpCryptTablesTests(ITestOutputHelper output)
         return File.ReadAllText(impl);
     }
 
-    private static byte[] FromC(string core, string name)
+    private static byte[] FromC(string core, string name, string dimension)
     {
         Match declaration = Regex.Match(
-            core, Regex.Escape($"static const uint8_t {name}[0x70 * 0x20] = {{") + "(.*?)};",
+            core, Regex.Escape($"static const uint8_t {name}[{dimension}] = {{") + "(.*?)};",
             RegexOptions.Singleline);
 
         Assert.True(declaration.Success, $"{name} is not in rpcrypt.c");
@@ -38,7 +38,15 @@ public partial class RpCryptTablesTests(ITestOutputHelper output)
         ];
     }
 
-    public static TheoryData<string> Names() => ["keys_a_ps4", "keys_a_ps5", "keys_b_ps4", "keys_b_ps5"];
+    public static TheoryData<string, string, int> Names() => new()
+    {
+        { "keys_a_ps4", "0x70 * 0x20", 3584 },
+        { "keys_a_ps5", "0x70 * 0x20", 3584 },
+        { "keys_b_ps4", "0x70 * 0x20", 3584 },
+        { "keys_b_ps5", "0x70 * 0x20", 3584 },
+        { "ps4_keys_0", "512", 512 },
+        { "ps5_keys_0", "512", 512 },
+    };
 
     private static ReadOnlySpan<byte> Carried(string name) => name switch
     {
@@ -46,18 +54,20 @@ public partial class RpCryptTablesTests(ITestOutputHelper output)
         "keys_a_ps5" => RpCryptTables.KeysAPs5,
         "keys_b_ps4" => RpCryptTables.KeysBPs4,
         "keys_b_ps5" => RpCryptTables.KeysBPs5,
+        "ps4_keys_0" => RpCryptTables.Ps4Keys0,
+        "ps5_keys_0" => RpCryptTables.Ps5Keys0,
         _ => default,
     };
 
     /// <summary>THE ASSERTION. Every byte, and the index of the first that is not.</summary>
     [Theory]
     [MemberData(nameof(Names))]
-    public void TheCarriedTableIsTheCs(string name)
+    public void TheCarriedTableIsTheCs(string name, string dimension, int size)
     {
-        byte[] fromC = FromC(Core(), name);
+        byte[] fromC = FromC(Core(), name, dimension);
         ReadOnlySpan<byte> carried = Carried(name);
 
-        Assert.Equal(RpCryptKeySchedule.TableSize, fromC.Length);
+        Assert.Equal(size, fromC.Length);
         Assert.Equal(fromC.Length, carried.Length);
 
         for (int i = 0; i < fromC.Length; i++)

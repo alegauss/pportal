@@ -1,17 +1,18 @@
 namespace ChiakiNg.Protocol;
 
 /// <summary>
-/// PP26: the four key tables rpcrypt.c holds, carried rather than read.
+/// PP26: the six key tables rpcrypt.c holds, carried rather than read.
 ///
-/// <see cref="RpCryptKeySchedule"/> was written taking these as arguments so the algorithm could be
-/// agreed with the C before anything was transcribed - a wrong constant is a bug in a line somebody
-/// wrote, and a wrong table byte is a bug in a paste nobody will read. This is the transcription,
-/// and RpCryptTablesTests compares every byte of it against rpcrypt.c.
+/// <see cref="RpCryptKeySchedule"/> and <see cref="RpCryptRegist"/> were written taking these as
+/// arguments so the algorithms could be agreed with the C before anything was transcribed - a wrong
+/// constant is a bug in a line somebody wrote, and a wrong table byte is a bug in a paste nobody
+/// will read. This is the transcription, and RpCryptTablesTests compares every byte against
+/// rpcrypt.c.
 ///
 /// Base64 rather than hex literals
 /// -------------------------------
-/// 14336 bytes. As 0x00 literals that is about 86KB of source for four arrays nobody reads by eye;
-/// as base64 it is 19KB, and neither form is legible so the smaller one wins. What makes either
+/// 15360 bytes. As 0x00 literals that is about 92KB of source for six arrays nobody reads by eye;
+/// as base64 it is 21KB, and neither form is legible so the smaller one wins. What makes either
 /// trustworthy is the comparison against the C, not the shape of the characters.
 ///
 /// GENERATED from lib/src/rpcrypt.c. Do not hand-edit - regenerate, and let the test say whether
@@ -224,4 +225,24 @@ public static class RpCryptTables
         + "zOYYyASvwFsdpadMvnnHUc67/S9lPjRp7Y3GCWIzEljyT5aOspP4v/jrg0w7wSZMRR9uBOPPEzs0tDZIStI9itZXmHQXuhQ6WJlo"
         + "rSuBb1djUhk2/h3Lc6E1svHxJp4r8xvNENeSKWUeAo0ITmjTcPeH5VMEpEPFMHRMXuH2qNhVlchC2Pw9Lo2PCiB203r7B7rYB+8p"
         + "Oj2BkK8ME5ZytjwOV5Y+UZHbsC3fMTkhKbsXCiNr5NxpJ8QgmP00ynpmIFjSNn8rp9Hebza08jsgXQI=");
+
+    /// <summary>ps4_keys_0 from rpcrypt.c, 512 bytes.</summary>
+    public static ReadOnlySpan<byte> Ps4Keys0 => Decode(
+        "vs5d8MF9tdDLMBNdqlYj+8S88Y84V/vU1D8mOLXO7WohvDjQHmjMe0XRvkIaCKoW/bDA9No16RL9IQdINMH8n4y2y12ynITgGvqg"
+        + "x+s6k7Oz8RWvE70hq+pbgFBrMR18HUC6PFYO55Q6W6FAgHQKrSjPR99CpmnpXrvAwA6yxYruCAPShOWRAB1GBlUJnTmf2Of9rZ6T"
+        + "l8Xq56MQp/Kik38HBLTuu7+II5xup2KxS2ceuDsfZJNameza/Qxqt/7kEnYyZbhBI9EXCZwkLVydEnneoc5prKS8OS9XOIRhLSro"
+        + "BPjVnQv/flYM7IcKHqvfk4ET7s8yAlq/sBe3urV/8AF74cs5fmBtpHVuKZJFpk90AIZ4c779PuDRDGwLSQmDbIWKHcsWzoF8Scks"
+        + "Y2He4j+YsnPwmux7fPHJ4X+lGYtL6DikNH30KP4NTRFXDJXxr9c0gPTrm1Dmal3qzgyFTsVbk0TEJJiA/PdynDEL7olns6JpT7N5"
+        + "WhQCcO1QE3UAavPGBRoAMzT1rJ4E28IAsBvE85edf764I42Z58t0N0xX7NJpSUZ1dK9RQKQRe7MvUdri7zNzEhglOQMJykncjvGU"
+        + "14AXnodGwQR40eU9JYjscjooQWgUbhDkyVd1kP4iGmOO9LiNGjb9tstywpdSn5FyG3VXkDv9WpOM2/yjA98=");
+
+    /// <summary>ps5_keys_0 from rpcrypt.c, 512 bytes.</summary>
+    public static ReadOnlySpan<byte> Ps5Keys0 => Decode(
+        "JNjCaUxneHHuMb0rg7IdYcmnju2a02prXMg1eack4hcGYC7f9NsnEFXZ6hZOkAy/QG9UpTFwLV0eJ983QLqdXf/hBXCA1LfCln8v"
+        + "QutaCN7BtVIV9rXy2Wmlx8R/RmSk/UaYp+Eqjm+vZUIoucJvPuPkTuRbnWAQuFqwfQQMTCR4vbi624/joHVtKMIzWzKD3VGwpY0J"
+        + "ZuRcuHAL5oIUttKwwuBV84StnTr4d/Wdmql98UUbm1Ul2MH/A6VICxsZDL3gzUjzLJkZ1ri71jVDb3Hj7z6XuOlAqEfg4AEWnafl"
+        + "lEsd0oCif/KYEDgNuFbDektMhewvI4mv1bqarbBhnFG0bQJJJqQ0hCA1MCMKRxQyGpYO6A+WltS6aDpnFXTg1mBMaFBzFC8RWazI"
+        + "MtHbTIqUdTNh0dT9qmphaNiuMU+4B3snD/kLsMJks3Lqi4dACbSCtK12+TYFYInIIOul8VELJ6fwdoSW67EuwoUovEg01AGNWyVU"
+        + "4MRPoPqZjW16ZLGpXaT59SLrmvSoenhLf+KLBFBDfSYtGZg4ak8tMBUuT825zp6NEsn+M4uEzltA439ybWyKap5U8eNkXW5/rBrn"
+        + "9/oAIu0rI/pYxetEkl3MqoKfI/umyWUq4HkSZSw0xSMWycwFMPOWC5BnGqdpTD5DJJ1OaL2LdW6dB28aaro=");
 }
