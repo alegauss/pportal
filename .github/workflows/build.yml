@@ -1,0 +1,85 @@
+# PP22: the build that is not on one machine.
+#
+# The AppImage, Flatpak, macOS and Switch workflows went with the platforms they built for and
+# nothing replaced them, so for the whole port so far "it builds" has meant "it builds here". That
+# is how an undocumented step gets in: MSYS2 at C:\msys64, a package installed once by hand, a
+# submodule someone happened to have. A runner starts with none of it.
+#
+# THE NATIVE SIDE COMES THROUGH VCPKG, and that is the difference from compile.cmd. Locally the C
+# is built through MSYS2 MinGW64 because that is what this machine has; here it is MSVC with the
+# vcpkg toolchain, because a runner has no MSYS2 and installing one to reproduce a developer's
+# desk would only move the undocumented step. vcpkg.json is what the two have in common, and the
+# manifest is held against CMakeLists.txt on every commit (PP230) for exactly this step's sake.
+#
+# The Qt client stays OFF (PP21). Nothing here builds it, and that is the point: what CI proves is
+# the port - libchiaki, the shim, the renderer, chiaki-unit and the .NET host - not the client
+# being replaced.
+name: build
+
+on: [push, pull_request]
+
+jobs:
+  windows:
+    name: windows x64
+    # Pinned rather than windows-latest: the generator below names Visual Studio 17 2022, and a
+    # label that moves would eventually name a toolset that is not there.
+    runs-on: windows-2022
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # nanopb, jerasure, gf-complete and curl are submodules the configure asks for by
+          # default. Without this the configure fails in third-party/ and reads as a build break.
+          submodules: recursive
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      # Keyed on vcpkg.json, because that is the file whose change invalidates the answer. The
+      # binary cache is what turns a from-source libplacebo build into a download; without it this
+      # job spends most of its wall clock rebuilding dependencies that did not change.
+      - name: cache the vcpkg binaries
+        uses: actions/cache@v4
+        with:
+          path: ~/AppData/Local/vcpkg/archives
+          key: vcpkg-x64-windows-${{ hashFiles('vcpkg.json') }}
+          restore-keys: vcpkg-x64-windows-
+
+      # Manifest mode: the toolchain file reads vcpkg.json and installs what it names before the
+      # first find_package runs, so there is no separate install step to keep in step with it.
+      - name: configure
+        run: >
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+          -DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake
+          -DVCPKG_TARGET_TRIPLET=x64-windows
+          -DCHIAKI_ENABLE_GUI=OFF
+
+      - name: build the native side
+        run: cmake --build build --config Release
+
+      # The C suite. test.cmd is the local launcher for this and cannot be used here - it exists to
+      # put the MinGW runtime beside the binary, which an MSVC build does not need.
+      - name: chiaki-unit
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      # The SOLUTION, as compile.cmd does (PP24), and Debug for the reason the csproj gives: Release
+      # turns SelfContained on for a plain build too and lays the whole runtime down before anything
+      # has been tested.
+      - name: build the solution
+        run: dotnet build ChiakiNg.slnx -c Debug --nologo
+
+      - name: the managed suite
+        run: dotnet test tests/ChiakiNg.Tests/ChiakiNg.Tests.csproj -c Debug --no-build --nologo
+
+      # The single-file host PP22's first half shipped. Publishing it here is what keeps that half
+      # honest: the analyzer errors on IL3000 are compile-time, and a publish nobody runs is a
+      # release-day discovery.
+      - name: publish the host
+        run: dotnet publish app/ChiakiNg.csproj -c Release --nologo
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chiaki-ng-host
+          path: app/bin/Release/net10.0-windows/win-x64/publish/ChiakiNg.exe
+          if-no-files-found: error

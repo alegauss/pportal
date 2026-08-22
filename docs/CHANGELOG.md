@@ -123,7 +123,7 @@
 
 - ✅ **PP62** **the tree's only build cannot include QtWebEngine, so the login screen the port replaces is compiled out** — The reference build is an MSVC configure built once for the purpose, filed as PP63: MSYS2 has no qt6-webengine and the published Windows releases carry no Chromium, measured.
 - 🗑 **PP20** **171 platform conditionals remain in gui, 33 of them macOS and 17 Linux, after those trees were deleted** — abandoned: 5f09bef3 deleted them before this line was filed: gui carries no Q_OS_MAC, Q_OS_LINUX or __APPLE__ today, and no CMakeLists carries a platform branch either.
-- ✅ **PP22 (the single-file publish)** **every CI workflow was deleted, so nothing builds, signs or packages the application** — the published host found neither its shim nor any drift source: Assembly.Location is empty inside a single-file exe.
+- ✅ **PP22** **every CI workflow was deleted, so nothing builds, signs or packages the application** — MSVC and vcpkg on a runner, with every path the workflow names asserted.
 - ✅ **PP21** **Qt6 is still required to build: Core, Gui, Quick, Qml, Svg, Widgets, Concurrent and WebEngineQuick** — Qt off in the build, the port's own libplacebo moved out of its branch, and the source the drift checks read now guarded.
 - ✅ **PP230** **the vcpkg manifest does not carry a package the build now requires unconditionally, so CI cannot configure** — the manifest holding what the build cannot start without, compared against cmake instead of remembered.
 - ✅ **PP273** **nothing assembles what an installer would ship, so the native libraries the host loads beside itself are never packaged** — package.cmd walks the payload from the resolver's own table and proves it under TEMP, where no checkout can answer for a DLL it missed.

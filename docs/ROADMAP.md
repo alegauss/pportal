@@ -21,7 +21,6 @@
 
 ## Block E — Windows-only build
 
-- ⏳ **PP22** (deps: PP1 ✅) **every CI workflow was deleted, so nothing builds, signs or packages the application** — the native side through vcpkg, in CI; the publish landed, and PP273 and PP274 leave a proved payload and an installer over it. → §PP22
 - 📋 **PP63** (deps: PP62 ✅) **nothing in the tree can configure a Qt build carrying WebEngine, so PP46's before cannot be produced at all** — MSYS2 has no qt6-webengine and no published Windows release carries Chromium, so an MSVC configure built once is the only reference the port can measure against. → §PP63
 - 📋 **PP277** (deps: —) **the installer keeps upstream's AppId, so it upgrades an installed chiaki-ng in place rather than sitting beside it** — The payloads share no file name but chiaki.exe and 34 Qt DLLs are not in the new file list, so they survive the upgrade in {app}. → §PP277
 
@@ -42,7 +41,7 @@
 
 ## Block G — Test discipline
 
-- 📋 **PP36** (deps: PP22 ⏳, PP24 ✅) **the only CI job is the roadkeep lint gate, so no test result can turn a branch red** — A suite nobody runs on a push goes red quietly, and Test Explorer is a local convenience rather than a gate that holds a policy in place. → §PP36
+- 📋 **PP36** (deps: PP22 ✅, PP24 ✅) **the only CI job is the roadkeep lint gate, so no test result can turn a branch red** — A suite nobody runs on a push goes red quietly, and Test Explorer is a local convenience rather than a gate that holds a policy in place. → §PP36
 - 📋 **PP38** (deps: PP36) **nothing counts the shipped lines that carry no assertion, so the rule is a sentence rather than a gate** — A count that may only go down is what survives a busy week, and without it the discipline lasts exactly as long as the person remembering it. → §PP38
 
 ## Block H — Performance and telemetry

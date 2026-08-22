@@ -150,22 +150,6 @@ port to replace the file is the open question.
 
 ## Block E — Windows-only build
 
-### §PP22 Getting it onto a machine
-
-The AppImage, Flatpak, macOS and Switch workflows went with the platforms they built
-for, and nothing replaced them. What a Windows-only build needs is narrow: compile the
-native side, publish the .NET host as a single self-contained win-x64 file, and produce
-an installer.
-
-claude-tray answers each of these already - PublishSingleFile with SelfContained, an
-Inno Setup script that reads its version from the built exe, a build script that sweeps
-the SDK's temp projects. The parts that do not carry over are the native ones:
-libchiaki, FFmpeg, SDL and whatever survives of libplacebo still have to be built or
-fetched, and the current tree does that through vcpkg.
-
-Filed early because a build that only exists on one machine is how a port acquires an
-undocumented step, and late enough that there is a host worth publishing.
-
 ### §PP63 One configure that exists only to be measured
 
 PP62 measured why. MSYS2 MinGW64 ships no qt6-webengine, and the published Windows
