@@ -248,6 +248,7 @@
 - ✅ **PP290** **thirteen exported C functions are referenced nowhere in the tree, and nothing names them as deletable** — a test names the thirteen exports nothing references, asserts the set exactly, and reports movement in either direction.
 - ✅ **PP291** **videoreceiver.c is the next link above the ported frame processor and no task owns it, so the chain stops there** — a managed receiver assembles the ported decisions behind a four-method seam, and matches the C frame for frame where the C can be driven.
 - ✅ **PP293 (the version, the response and the waits)** **session.c is 1182 lines and owns the session lifetime, and PP28 sizes it together with two files it does not resemble** — the version table, the response headers with PP296's case mixture, and the five wait predicates with the two that end them all.
+- ✅ **PP297 (the format and the recorder)** **no session exchange has ever been captured, so the four modules with no test cannot be ported against anything** — a recording is one redacted line per entry with offsets from the first, and secrets are redacted before an entry is stored rather than when it is written.
 
 ## Block G — Test discipline
 
