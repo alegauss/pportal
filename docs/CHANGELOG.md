@@ -214,6 +214,7 @@
 - ✅ **PP253** **the NAT diagnosis that writes back into the session is unported, and PP251 stated a rule the repo already contradicted** — the write-back is ported as a verdict separate from its values, and PP251's restated rule is replaced by asking the generators that already existed.
 - ✅ **PP254** **the websocket fqdn lookup is unported, and its tokener failure reports success with no address written** — the lookup is ported with whether it failed kept apart from whether it wrote, and the two allocation failures asserted as answering differently.
 - ✅ **PP255** **the upnp discovery thread is unported, and its timeout writes the status outside the lock** — the discovery is ported with holding the lock and having company as separate questions, so the one writer that is neither can be named.
+- ✅ **PP256** **the followup receive loop is unported, and a socket error spins it with no way out** — the loop is ported with leaving and continuing as separate answers, so the one failure that only ever continues can be named.
 
 ## Block G — Test discipline
 

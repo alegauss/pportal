@@ -89,6 +89,12 @@ public static class MisnamedLogs
             "http_send_session_message: Sending holepunch session message failed",
             "another function entirely, by name"),
 
+        // PP256 tried to add receive_request_send_response_ps here and was wrong to: PP238 had
+        // already placed it in NamesTheOperationNotTheFunction, where it belongs. Its lines say
+        // check_candidates because they are check_candidates' operation, which that correction
+        // decided is defensible across a call tree. This comment is the reason the list did not
+        // grow.
+
     ];
 
     /// <summary>
