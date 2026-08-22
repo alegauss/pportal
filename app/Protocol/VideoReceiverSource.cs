@@ -79,4 +79,51 @@ public static class VideoReceiverSource
         return core.Contains(
             "!(frame_index == 1 && video_receiver->frame_index_cur < 0)", StringComparison.Ordinal);
     }
+
+    /// <summary>Whether the reference ring still shifts down once slot 0 is occupied.</summary>
+    public static bool TheRingStillShiftsFromSlotZero(string core)
+    {
+        ArgumentNullException.ThrowIfNull(core);
+
+        return core.Contains("video_receiver->reference_frames[0] != -1", StringComparison.Ordinal)
+            && core.Contains(
+                "memmove(&video_receiver->reference_frames[1], &video_receiver->reference_frames[0]",
+                StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// And whether it still backfills from the END before that.
+    ///
+    /// The loop runs from 15 downward, so the first frame of a session lands in the LAST slot. A
+    /// port that filled forwards is indistinguishable for sixteen frames and then holds a different
+    /// set, because the shift only begins once slot 0 is taken.
+    /// </summary>
+    public static bool TheRingStillBackfillsFromTheEnd(string core)
+    {
+        ArgumentNullException.ThrowIfNull(core);
+
+        return core.Contains("for(int i=15; i>=0; i--)", StringComparison.Ordinal)
+            && core.Contains("video_receiver->reference_frames[i] == -1", StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Whether a substitute is still searched for FORWARDS from the asked-for index.
+    ///
+    /// Forwards means further back in time, which is the only direction that can help: a nearer
+    /// reference has not been decoded yet.
+    /// </summary>
+    public static bool TheSubstituteIsStillSearchedForwards(string core)
+    {
+        ArgumentNullException.ThrowIfNull(core);
+
+        return core.Contains("for(unsigned i=slice.reference_frame+1; i<16; i++)", StringComparison.Ordinal);
+    }
+
+    /// <summary>And whether a slice naming no reference is still excepted from that search.</summary>
+    public static bool NoReferenceIsStillSkipped(string core)
+    {
+        ArgumentNullException.ThrowIfNull(core);
+
+        return core.Contains("slice.reference_frame != 0xff", StringComparison.Ordinal);
+    }
 }
