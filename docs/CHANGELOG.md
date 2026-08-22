@@ -121,6 +121,7 @@
 - ✅ **PP224** **the mapping screen never appears and nothing says why, because the window it looks for does not exist yet** — the window opened by the method that fills it, and every reason for not filling it said in the window.
 - ✅ **PP225** **setting StartupUri to null throws, so the run dies inside OnStartup and no window appears at all** — the startup work queued behind the window instead of clearing a property that refuses to be cleared.
 - ✅ **PP228** **with no pad attached the mapping screen dies on a null mapping instead of saying there is no pad** — absence asked of the count, because a struct's zero value is not nothing and the guard beneath it could only pass.
+- ✅ **PP309** **PP225 is the one code change in the port that shipped with nothing asserting it, and it is still unasserted** — the two silent halves of PP225 read out of the source, and the ratchet down to 95.
 
 ## Block E — Windows-only build
 

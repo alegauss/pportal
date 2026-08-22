@@ -40,4 +40,7 @@
 # loophole: no reason, no exemption, and every line of it is read in the diff that adds it.
 #
 # exempt PP307 - a pass over a list; its whole output is the split written above.
-96
+#
+# 95 is where PP309 left it, having written the assertions PP225 shipped without - the one
+# code change in the port of which that was true, and the whole of what the split above found.
+95

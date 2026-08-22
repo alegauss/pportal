@@ -70,33 +70,6 @@ the same fact.
 
 ## Block D — Screens
 
-### §PP309 The one that was really untested
-
-PP307 read all ninety-six of the ratchet's uncovered tasks against the git history,
-asking of each whether the commit that shipped it also touched an assertion file.
-Seventy-five did. Twelve did not, and eleven of those twelve could not have: four
-changed the gates themselves and seven are measurements, where a test is not the
-instrument.
-
-PP225 is the twelfth. It is the only CODE change in the port that shipped with nothing
-asserting it, which makes it the entire honest size of what the non-goal was written to
-prevent - one, not ninety-six.
-
-What it fixed: StartupUri cannot be cleared. Setting it to null throws inside OnStartup,
-the run dies before anything is drawn, and no window appears at all - so the mapping
-screen is queued behind the window instead, at ApplicationIdle, and the property is left
-alone.
-
-Both halves are assertable without opening a window, by the drift-reader idiom every
-other check here uses. That OnStartup does not assign null to StartupUri is one read of
-the source. That the mapping screen is queued rather than called is another, and it is
-the half that matters: called directly it finds no window, silently, which is what the
-first version did.
-
-Filed rather than paid inside PP307 because PP307 was a pass over a list and this is a
-test somebody has to write. Small, and worth its own line for what it says about the
-ratchet: the number that looked like ninety-six of debt was one.
-
 ## Block E — Windows-only build
 
 ### §PP63 One configure that exists only to be measured

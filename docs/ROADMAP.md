@@ -16,8 +16,6 @@
 
 ## Block D — Screens
 
-- 📋 **PP309** (deps: PP307 ✅) **PP225 is the one code change in the port that shipped with nothing asserting it, and it is still unasserted** — PP307's pass found eleven of the other twelve were gates or measurements, so this is the whole of what the non-goal was protecting against. → §PP309
-
 ## Block E — Windows-only build
 
 - 📋 **PP63** (deps: PP62 ✅) **nothing in the tree can configure a Qt build carrying WebEngine, so PP46's before cannot be produced at all** — MSYS2 has no qt6-webengine and no published Windows release carries Chromium, so an MSVC configure built once is the only reference the port can measure against. → §PP63
