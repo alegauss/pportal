@@ -28,6 +28,29 @@ public static class Fec
     /// distinguish a real repair from a decoder that returned the buffer untouched.
     /// </param>
     public static bool Recovers(FecCase recorded, uint[]? declaredErasures = null)
+        => Recovers(recorded, managed: false, declaredErasures);
+
+    /// <summary>
+    /// PP287: the same case, through either implementation.
+    /// </summary>
+    /// <param name="managed">
+    /// Which decoder runs. The recorded bytes are the same oracle either way, which is the entire
+    /// point: the port is judged by what the C was judged by, on inputs a real stream produced.
+    /// </param>
+    public static bool Recovers(FecCase recorded, bool managed, uint[]? declaredErasures = null)
+        => Decode(recorded, managed, declaredErasures) is not null;
+
+    /// <summary>
+    /// PP287: the same run, handing back the whole frame rather than a verdict.
+    ///
+    /// <see cref="Recovers"/> answers whether the data units came back, which is what the recorded
+    /// cases assert. It is not enough to compare two implementations: a decoder that repairs
+    /// nothing and reports success agrees with a correct one on every case, because the bytes it
+    /// was asked about are the ones already in the buffer. Measured, not supposed - neutering the
+    /// managed decoder left exactly the sixty-four verdict comparisons green.
+    /// </summary>
+    /// <returns>The decoded frame at stride, or null where the decoder refused.</returns>
+    public static byte[]? Decode(FecCase recorded, bool managed, uint[]? declaredErasures = null)
     {
         int stride = FecVectors.StrideFor(recorded.UnitSize);
         uint units = recorded.K + recorded.M;
@@ -45,10 +68,20 @@ public static class Fec
             frame.AsSpan((int)e * stride, recorded.UnitSize).Fill(0x42);
 
         uint[] declared = declaredErasures ?? recorded.Erasures;
-        int err = FecDecode(frame, recorded.UnitSize, stride, recorded.K, recorded.M,
-            declared, declared.Length);
-        if (err != (int)ChiakiError.Success)
-            return false;
+
+        if (managed)
+        {
+            if (!FecCodec.Decode(
+                    frame, recorded.UnitSize, stride, (int)recorded.K, (int)recorded.M, declared))
+                return null;
+        }
+        else
+        {
+            int err = FecDecode(frame, recorded.UnitSize, stride, recorded.K, recorded.M,
+                declared, declared.Length);
+            if (err != (int)ChiakiError.Success)
+                return null;
+        }
 
         // Only the k data units are checked. The parity units are the decoder's working space and
         // the stream never reads them back, which is why the recorded cases do not assert them.
@@ -56,10 +89,10 @@ public static class Fec
         {
             if (!frame.AsSpan(i * stride, recorded.UnitSize)
                     .SequenceEqual(recorded.FrameBuffer.AsSpan(i * recorded.UnitSize, recorded.UnitSize)))
-                return false;
+                return null;
         }
 
-        return true;
+        return frame;
     }
 
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_fec_decode",
