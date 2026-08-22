@@ -280,7 +280,10 @@ public static partial class PromptDialogSource
     public static bool TheLatchIsNeverCleared(string qml)
     {
         ArgumentNullException.ThrowIfNull(qml);
-        return !qml.Contains("newDialogOpen = false", StringComparison.Ordinal);
+
+        // PP272: the latch has to exist before "never cleared" is a statement about it.
+        return qml.Contains("newDialogOpen", StringComparison.Ordinal)
+            && !qml.Contains("newDialogOpen = false", StringComparison.Ordinal);
     }
 
     /// <summary>Whether reject still restores focus only when a reject callback was supplied.</summary>

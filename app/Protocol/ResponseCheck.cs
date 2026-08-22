@@ -193,13 +193,17 @@ public static class ResponseCheckSource
         int sizeError = body.IndexOf("err = CHIAKI_ERR_NETWORK;", StringComparison.Ordinal);
 
         int typeError = body.IndexOf("err = CHIAKI_ERR_UNKNOWN;", StringComparison.Ordinal);
+
+        // PP272: answered rather than thrown. Searching from a position of minus one raises, and a
+        // check that raises on an empty file is telling a reader about the check rather than about
+        // the file.
+        if (sizeEscape < 0 || sizeError <= sizeEscape || typeError <= sizeError)
+            return false;
+
         int typeEscape = body.IndexOf(
             "if(candidate->type == CANDIDATE_TYPE_DERIVED)", typeError, StringComparison.Ordinal);
 
-        return sizeEscape >= 0
-            && sizeError > sizeEscape
-            && typeError > sizeError
-            && typeEscape > typeError;
+        return typeEscape > typeError;
     }
 
     /// <summary>Whether the wrong-id branch still records nothing.</summary>

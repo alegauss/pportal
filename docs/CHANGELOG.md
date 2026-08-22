@@ -230,6 +230,7 @@
 - ✅ **PP269** **every managed test since PP21 loads a shim the build did not make, the deploy that refreshes it being off** — the deploy refreshes the shim with the Qt client off, and PP261's reading of the encoder is now produced by calling it.
 - ✅ **PP270** **nothing fails when the shim the managed suite loaded is older than the sources it is built from** — a stale native library now fails the managed suite by name, and the check was proved by backdating the one this run loads.
 - ✅ **PP271** **ninety drift locators can each answer null, and the test using one then passes without reading anything** — every locator in the assembly must find its file, and the sweep named one that never had - unblocking three checks that had asserted nothing.
+- ✅ **PP272** **a drift check whose anchor moved extracts nothing, and its negative assertions then pass** — every drift predicate must answer no to an empty file, and the sweep named seven that answered yes.
 
 ## Block G — Test discipline
 

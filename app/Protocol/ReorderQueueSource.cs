@@ -113,7 +113,10 @@ public static partial class ReorderQueueSource
     public static bool DropLeavesTheEntrySet(string body)
     {
         ArgumentNullException.ThrowIfNull(body);
-        return !SetClearedRegex().IsMatch(body);
+
+        // PP272: the entry has to be in what was handed over before "leaves it set" describes drop.
+        return body.Contains("set", StringComparison.Ordinal)
+            && !SetClearedRegex().IsMatch(body);
     }
 
     /// <summary>

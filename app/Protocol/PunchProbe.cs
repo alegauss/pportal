@@ -165,7 +165,10 @@ public static class PunchProbeSource
     {
         string body = Body(core);
 
-        return !body.Contains("request_buf[i][0x50]", StringComparison.Ordinal)
+        // PP272: the probe has to have been FOUND before the absence of a key in it is a fact about
+        // the probe. An anchor that moved leaves this empty, and nothing contains nothing.
+        return body.Contains("request_buf[i][0x04]", StringComparison.Ordinal)
+            && !body.Contains("request_buf[i][0x50]", StringComparison.Ordinal)
             && !body.Contains("request_buf[i][0x54]", StringComparison.Ordinal);
     }
 

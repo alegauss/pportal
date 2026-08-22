@@ -74,7 +74,10 @@ public static class FrameParsingSource
     public static bool TheTokenerIsStillNeverReset(string core)
     {
         ArgumentNullException.ThrowIfNull(core);
-        return !core.Contains("json_tokener_reset", StringComparison.Ordinal);
+
+        // PP272: there has to be a tokener before "never reset" says anything about one.
+        return core.Contains("json_tokener_new", StringComparison.Ordinal)
+            && !core.Contains("json_tokener_reset", StringComparison.Ordinal);
     }
 
     /// <summary>

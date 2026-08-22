@@ -545,6 +545,12 @@ public static class AudioSettingsSource
     public static bool TheWifiThresholdIsNotScaled(string qmlSettingsCpp)
     {
         ArgumentNullException.ThrowIfNull(qmlSettingsCpp);
+
+        // PP272: the getter has to BE there before the absence of scaling around it says anything.
+        // An empty file has no scaling in it either, and would otherwise answer yes.
+        if (!qmlSettingsCpp.Contains("GetWifiDroppedNotif", StringComparison.Ordinal))
+            return false;
+
         return qmlSettingsCpp.Contains(
                 "return settings->GetWifiDroppedNotif();", StringComparison.Ordinal)
             || !qmlSettingsCpp.Contains("GetWifiDroppedNotif() * 100", StringComparison.Ordinal);

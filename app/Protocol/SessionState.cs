@@ -192,7 +192,10 @@ public static class SessionStateSource
     public static bool NothingIsEverUnset(string core)
     {
         ArgumentNullException.ThrowIfNull(core);
-        return !core.Contains("state &= ~", StringComparison.Ordinal)
+
+        // PP272: something has to SET a flag before "nothing unsets one" is about this file.
+        return core.Contains("state |=", StringComparison.Ordinal)
+            && !core.Contains("state &= ~", StringComparison.Ordinal)
             && !core.Contains("state &=~", StringComparison.Ordinal);
     }
 

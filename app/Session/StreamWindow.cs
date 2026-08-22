@@ -260,7 +260,10 @@ public static class StreamWindowSource
     public static bool AdjustableResolutionIsStillUnhandled(string cpp)
     {
         ArgumentNullException.ThrowIfNull(cpp);
-        return !cpp.Contains("case WindowType::AdjustableResolution:", StringComparison.Ordinal);
+
+        // PP272: the switch has to be there before a missing arm of it means anything.
+        return cpp.Contains("case WindowType::", StringComparison.Ordinal)
+            && !cpp.Contains("case WindowType::AdjustableResolution:", StringComparison.Ordinal);
     }
 
     /// <summary>Whether the session constructor still goes fullscreen for any of its three flags.</summary>
