@@ -14,6 +14,7 @@
 - ⏳ **PP11** (deps: PP9 ✅, PP163) **fullscreen, HDR handoff and refresh-rate switching are handled by the Qt window** — the refresh-rate switching, and the HDR half that PP163 has now shown needs a different presentation path. → §PP11
 - 📋 **PP163** (deps: PP9 ✅) **an HDR picture cannot reach the display through D3DImage, which refuses any surface wider than eight bits** — one question left, and it needs a screenshot: PP283 has the compositor taking the tree on a real WPF window, but not what WPF draws over it. → §PP163
 - 📋 **PP292** (deps: —) **the frames-lost count subtracts a wrapped sequence number as a plain int, so a loss across the wrap counts -65528** — int32 minus a promoted ChiakiSeqNum16 does not wrap, so frames_lost and frames_lost_total go hugely negative about every eighteen minutes at 60fps. → §PP292
+- 📋 **PP296** (deps: —) **RP-Nonce is matched case-sensitively though HTTP header names are not, so a console spelling it otherwise fails** — session.c uses strcasecmp for RP-Version and strcmp for the other two, which reads as an oversight rather than a rule, and the nonce is what the crypto needs. → §PP296
 
 ## Block D — Screens
 
