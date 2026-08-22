@@ -204,18 +204,16 @@ the decoder - plus 3081 lines of recorded FEC cases in fec_test_cases.inl. Where
 exist, the expected output is already agreed with real hardware and the rewrite is
 checked against a fixture rather than against a running console.
 
-Both totals say how they are counted, which the numbers they replace did not. PP285 has
-the reason: the old ones were 16935 and 5512, matched no reading of the tree, and a
-sentence that does not name its rule cannot be rechecked by anything.
+Where they do not exist is the whole of what is left. Counted: every module this port
+has ported has a test/ counterpart - fec, frameprocessor, videoreceiver, bitstream,
+reorderqueue, rpcrypt, gkcrypt, takion, regist. Four have none at all: session.c,
+ctrl.c, streamconnection.c and senkusha.c. Those are PP28's three files and the one
+beneath them, which is to say the entire remaining translation.
 
-What this task adds is the rest: run both implementations against the same input and
-compare. The same registration exchange, the same key derivation from the same seed, the
-same takion frames in and the same feedback out - and where a console is needed, a
-captured session replayed against both.
-
-The alternative is what a rewrite of a protocol usually looks like: it works against one
-console on one firmware, and every report afterwards is a guess about which translated
-line was wrong.
+So the port has advanced exactly as far as the oracle reaches, and that is not a
+coincidence. What this task adds is the rest: a captured exchange replayed against both
+implementations, because a state machine cannot be compared by running it twice the way
+a buffer function can.
 
 ### §PP26 Crypto is where a rewrite dies quietly
 
@@ -468,6 +466,30 @@ sends.
 
 Deleting is the deliverable, not just porting. The C video receiver leaving the build is
 what makes the five ports beneath it real.
+
+### §PP297 The recording that has never been made
+
+Eleven modules of this port have been translated and every one of them had a test/
+counterpart to be judged by. Four do not: session.c, ctrl.c, streamconnection.c and
+senkusha.c. They are PP28's three files and the one beneath them, and between them they
+are what is left.
+
+The comparison the other eleven used does not transfer. fec, frameprocessor and
+videoreceiver were checked by running the managed side and the C side over the same
+buffers and diffing the output, which works because a buffer function is a function -
+hand it the same bytes twice and it answers twice. A session is a state machine over a
+socket: there is no second run, the console is not in the room, and the C cannot be
+driven without one either.
+
+So the oracle has to be a recording. A captured exchange - the session request and its
+answer, the control channel's messages in order with their timings, the switch to the
+stream - replayed against both implementations, which is the only form of this that is
+repeatable at all.
+
+Making it needs a console and a session that reaches the stream, which is a thing to do
+rather than a thing to write. Sanitising it needs care too: a real exchange carries the
+account id, the registration key and the nonce, and PP88's redaction rules already name
+what a log may not keep.
 
 ## Block G — Test discipline
 
