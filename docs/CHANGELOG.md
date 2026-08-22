@@ -253,6 +253,7 @@
 - ✅ **PP26** **3242 lines of crypto over OpenSSL sit between a registration and a session** — rpcrypt and gkcrypt both run on the base class library and a hand-written GHASH, agreeing with the C on every vector and every path.
 - ✅ **PP298** **the GMAC needs a 16-byte nonce and a 4-byte tag, and .NET's AesGcm accepts neither, so PP26 cannot finish on the BCL** — GHASH and the GCM tag by hand, agreeing with the runtime's GCM where it answers and with chiaki's where it will not.
 - ✅ **PP29 (the response parser)** **registration and discovery are 1775 lines that decide whether a console can be found and paired at all** — The registration reply is the only time a console hands over its keys, and three of its header names change with the family.
+- ✅ **PP300** **discovery's protocol half is wrapped rather than ported, so its parser and classifier are still C** — Discovery's packets, classifier and reply parser are now managed code, each answer compared with the C's on the same bytes.
 
 ## Block G — Test discipline
 
