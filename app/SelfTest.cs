@@ -280,6 +280,30 @@ public static class SelfTest
             // many, and the one that goes stale is always the installer.
             Check("and takes its version off the payload rather than a literal",
                 InstallerScript.VersionComesFromThePayload(iss));
+
+            // PP277: the identity, which is the one field in this file whose damage is done to a
+            // machine rather than to a build. Carrying upstream's AppId, this installer is an
+            // UPGRADE of an installed chiaki-ng: Inno Setup lays 29 files over that one's 34 Qt
+            // DLLs and rewrites the uninstall log, leaving one Programs and Features entry
+            // covering two applications and only one of them removable. Nothing in compiling or
+            // running the installer says so - the first report is a user's machine.
+            string appId = InstallerScript.AppId(iss);
+            Check("the installer claims an identity of its own",
+                appId.Length > 0
+                && !appId.Equals(InstallerScript.UpstreamAppId, StringComparison.OrdinalIgnoreCase),
+                $"AppId: {appId}");
+
+            // And the other half of it. {app} and the Start Menu group are both built from
+            // MyAppName, so two applications with different AppIds still collide on one directory
+            // unless the names differ too. Held against the ASSEMBLY name rather than a literal,
+            // for the same reason the version is read off the payload: the tree already says what
+            // this executable is called, and a second spelling here is the one that goes stale.
+            string installedName = InstallerScript.InstalledName(iss);
+            string assembly = InstallerScript.AssemblyName(project);
+            Check("and installs under the name the project builds",
+                installedName.Length > 0
+                && installedName.Equals(assembly, StringComparison.Ordinal),
+                $"installer: {installedName}  project: {assembly}");
         }
 
         Console.WriteLine();

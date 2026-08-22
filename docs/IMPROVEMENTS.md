@@ -177,30 +177,6 @@ task: it stays outside compile.cmd's preflight and gates no commit.
 The assertion is measure-startup's exit code - 0 rather than 2, which it returns only
 where it found Chromium in the tree it measured.
 
-### §PP277 One AppId, two applications
-
-AppId is what Inno Setup uses to decide whether a machine already has this application.
-PP274 kept upstream's - {A329DCDE-074D-4C82-959A-3CFAC9A26B1F} - because the port is
-chiaki-ng and ships the version CMakeLists sets, so claiming a second identity looked
-like the larger change.
-
-The consequence is worth stating before a release rather than after one. A machine
-carrying upstream's 1.10.0 has chiaki.exe, 34 Qt DLLs and windeployqt's plugin trees in
-{app}. Inno Setup does not clean a directory on upgrade; it lays the new file list down
-over the old one and rewrites the uninstall log. The new list is 29 files sharing no
-name with the Qt client, so everything upstream installed stays, the Start Menu shortcut
-is repointed at ChiakiNg.exe, and the user has one entry in Programs and Features
-covering two applications - of which only one is uninstallable, because the log no
-longer lists the other's files.
-
-Three answers, and choosing is the task. A new AppId makes them separate installs that
-coexist, at the cost of two entries. Keeping this one and adding an InstallDelete for
-the Qt payload makes it a real upgrade. Keeping it untouched is defensible only while
-nothing has shipped, which is now.
-
-What decides it is whether this port intends to replace upstream on a user's machine or
-to be installed next to it, and that is not a packaging question.
-
 ## Block F — Managed core
 
 ### §PP23 The oracle this block cannot be written without

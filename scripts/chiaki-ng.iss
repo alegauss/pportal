@@ -16,7 +16,14 @@
 ; Compiled by package.cmd, which publishes and stages first. Compiling it by hand against a
 ; stale or absent payload is what the #error guards.
 
-#define MyAppName "chiaki-ng"
+; PP277: the name this port INSTALLS under, and it is deliberately not upstream's.
+;
+; It is spelled the way the assembly is - ChiakiNg, as in ChiakiNg.exe, ChiakiNg.slnx and the
+; AssemblyName the csproj sets - so the selftest can hold it against that project rather than
+; against a literal here. It is also what {app} and the Start Menu group are built from, which is
+; the half of PP277 the AppId below does not cover: two installers with different identities
+; writing into one {autopf}\chiaki-ng would collide on the directory anyway.
+#define MyAppName "ChiakiNg"
 #define MyAppPublisher "Street Pea"
 #define MyAppURL "https://streetpea.github.io/chiaki-ng/"
 #define MyAppExeName "ChiakiNg.exe"
@@ -39,8 +46,21 @@
   Str(Local[0]) + "." + Str(Local[1]) + "." + Str(Local[2])
 
 [Setup]
-; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
-AppId={{A329DCDE-074D-4C82-959A-3CFAC9A26B1F}
+; PP277: this port's own AppId, and the change is the task rather than a tidy-up.
+;
+; Upstream's - {A329DCDE-074D-4C82-959A-3CFAC9A26B1F} - was kept by PP274 because the port carries
+; the same name and version, so claiming a second identity looked like the larger change. It is
+; the smaller one. AppId is the whole of what Inno Setup uses to decide a machine already has this
+; application, and Inno Setup does not clean a directory on upgrade: it lays the new file list
+; down over the old and rewrites the uninstall log. The new list is 29 files sharing no name with
+; the Qt client, so an upstream 1.10.0 would have kept its chiaki.exe, its 34 Qt DLLs and
+; windeployqt's plugin trees, under one Programs and Features entry covering two applications - of
+; which only this one could then be uninstalled.
+;
+; The decision behind it is not a packaging one and was not taken here: this port is a new
+; application rather than the next version of that one, so it neither replaces an installed
+; chiaki-ng nor inherits anything from it. Nothing is deleted from a machine that has one.
+AppId={{68DF7098-C6C6-4186-9099-44C66A60793A}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}

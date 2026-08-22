@@ -40,10 +40,37 @@ public static partial class InstallerScript
     public const string IgnoreListRelativePath = ".gitignore";
 
     /// <summary>
+    /// The AppId upstream's wizard generated, which this port must not install under.
+    ///
+    /// Written down rather than only replaced, because the failure is silent in both directions: an
+    /// installer carrying it upgrades a chiaki-ng that is on the machine, and nothing about
+    /// compiling or running it says which application was just half-replaced. A revert, a merge, or
+    /// a copy of this file taken from upstream puts it back in one line.
+    /// </summary>
+    public const string UpstreamAppId = "{A329DCDE-074D-4C82-959A-3CFAC9A26B1F}";
+
+    /// <summary>
     /// The executable the installer makes its shortcuts and its [Run] entry point at.
     /// </summary>
     public static string PackagedExecutable(string script)
         => Group(ExeNameRegex(), script);
+
+    /// <summary>
+    /// The identity Inno Setup decides "already installed" by, with the doubled leading brace its
+    /// syntax requires stripped back off - <c>AppId={{GUID}</c> is one literal <c>{</c>.
+    /// </summary>
+    public static string AppId(string script)
+    {
+        string declared = Group(AppIdRegex(), script);
+        return declared.StartsWith("{{", StringComparison.Ordinal) ? declared[1..] : declared;
+    }
+
+    /// <summary>
+    /// The name the installer puts in Programs and Features, and out of which <c>{app}</c> and the
+    /// Start Menu group are built.
+    /// </summary>
+    public static string InstalledName(string script)
+        => Group(AppNameRegex(), script);
 
     /// <summary>
     /// The directory the installer compresses, as the script spells it - relative to
@@ -107,6 +134,13 @@ public static partial class InstallerScript
 
     [GeneratedRegex(@"#define\s+MyAppExeName\s+""([^""]*)""")]
     private static partial Regex ExeNameRegex();
+
+    [GeneratedRegex(@"#define\s+MyAppName\s+""([^""]*)""")]
+    private static partial Regex AppNameRegex();
+
+    // Anchored, because the value is quoted in prose above it as the one that must not be here.
+    [GeneratedRegex(@"^AppId=(\S+)", RegexOptions.Multiline)]
+    private static partial Regex AppIdRegex();
 
     [GeneratedRegex(@"#define\s+MyAppPath\s+""([^""]*)""")]
     private static partial Regex AppPathRegex();
