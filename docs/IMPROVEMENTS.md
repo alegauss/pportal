@@ -147,6 +147,29 @@ Filed so the gap is written down rather than remembered. The workflow signs noth
 today and says nothing about it, which is the state where a release goes out unsigned
 because every part of it was green.
 
+### §PP307 Splitting the debt before paying it
+
+PP38 froze the debt and said plainly that paying it was not its job. PP305 made it
+payable and paid one. Ninety-six are left with no owner, and a number that only ever
+stops growing is a number that is still ninety-six in a year.
+
+They are not one population, which is the whole of what makes this schedulable. Some are
+PP300's case: the assertions exist and were written under the id the work continued, so
+paying is reading a file and adding an id, and the gain is honest because nothing was
+untested. The rest have no assertion at all, and paying one means writing the test that
+should have shipped with it.
+
+`--ratchet` cannot tell them apart and should not try: it prints each id with the
+ledger's own sentence, and a person reading "the session uuid is drawn from rand
+reseeded by the clock" knows in a second whether something checks that. What it cannot
+do is sort ninety-six of them for you.
+
+So this is a pass, not a fix: read the list once and split it. The first half is one
+commit lowering the ceiling by however many it turns out to be. The second half is a
+count of tasks that shipped untested - worth having as a number before any of it is
+paid, because it is the honest size of what the non-goal was protecting against and
+nobody has seen it.
+
 ## Block F — Managed core
 
 ### §PP23 The oracle this block cannot be written without
