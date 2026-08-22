@@ -75,8 +75,19 @@ public static partial class CurlSemanticsSource
     /// <summary>Where the transfers are set up. Every one of them is under lib/src.</summary>
     public const string CoreGlob = @"lib\src";
 
+    /// <summary>
+    /// A FILE in that directory, used to find it.
+    ///
+    /// PP271: this locator used to hand <see cref="CoreGlob"/> straight to the resolver, which
+    /// tests File.Exists - so a directory answered null on every run, and the three tests below it
+    /// returned early and asserted nothing at all. Found by the sweep that asks every locator in
+    /// the assembly whether it can find its file, on its first run.
+    /// </summary>
+    public const string CoreAnchor = @"lib\src\base64.c";
+
     /// <summary>The directory, or null outside a checkout.</summary>
-    public static string? Locate() => SanitizerSource.LocateRelative(CoreGlob);
+    public static string? Locate()
+        => Path.GetDirectoryName(SanitizerSource.LocateRelative(CoreAnchor));
 
     /// <summary>
     /// Every CURLOPT_ the core sets, with how many times. Read rather than remembered - the whole

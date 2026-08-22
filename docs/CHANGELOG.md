@@ -229,6 +229,7 @@
 - ✅ **PP268** **the candidate probe is built and judged and never sent, so the layout has not been across a socket** — one probe exchange runs over a real socket, so the packet layout and the judgements are exercised rather than agreed upon.
 - ✅ **PP269** **every managed test since PP21 loads a shim the build did not make, the deploy that refreshes it being off** — the deploy refreshes the shim with the Qt client off, and PP261's reading of the encoder is now produced by calling it.
 - ✅ **PP270** **nothing fails when the shim the managed suite loaded is older than the sources it is built from** — a stale native library now fails the managed suite by name, and the check was proved by backdating the one this run loads.
+- ✅ **PP271** **ninety drift locators can each answer null, and the test using one then passes without reading anything** — every locator in the assembly must find its file, and the sweep named one that never had - unblocking three checks that had asserted nothing.
 
 ## Block G — Test discipline
 
