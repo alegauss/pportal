@@ -252,6 +252,7 @@
 - ✅ **PP27 (the send buffer)** **takion, the transport the whole stream rides on, is 1868 lines of C over raw sockets and timers** — takion's send buffer is managed - push, the at-or-before ack and the multi-gap compaction - agreeing with the C across the 32-bit wrap.
 - ✅ **PP26** **3242 lines of crypto over OpenSSL sit between a registration and a session** — rpcrypt and gkcrypt both run on the base class library and a hand-written GHASH, agreeing with the C on every vector and every path.
 - ✅ **PP298** **the GMAC needs a 16-byte nonce and a 4-byte tag, and .NET's AesGcm accepts neither, so PP26 cannot finish on the BCL** — GHASH and the GCM tag by hand, agreeing with the runtime's GCM where it answers and with chiaki's where it will not.
+- ✅ **PP29 (the response parser)** **registration and discovery are 1775 lines that decide whether a console can be found and paired at all** — The registration reply is the only time a console hands over its keys, and three of its header names change with the family.
 
 ## Block G — Test discipline
 
