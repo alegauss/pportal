@@ -223,6 +223,7 @@
 - ✅ **PP262** **the queue's ownership is unported, and its link invariant lives in the constructor not the enqueue** — the queue's ownership is ported apart from its behaviour, and the removal PP239 rests on is stated as one match per call.
 - ✅ **PP263** **the event glue is unported, and the callback keeps only the last socket to fire** — the glue is ported with watching separated from succeeding, and the round's last socket stated as what the wait actually reports.
 - ✅ **PP264** **the public accessors are unported, and one copies forty-six bytes into a buffer whose size it never states** — the surface is ported with what is written kept apart from what is documented, and the guard count measured across all six.
+- ✅ **PP265** **the port guessing settings are unported, and a refused value is indistinguishable from an accepted one** — the settings are ported with the outcome of a change kept apart from the value, and the pair a caller cannot set named.
 
 ## Block G — Test discipline
 
