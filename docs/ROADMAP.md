@@ -13,7 +13,6 @@
 
 - ⏳ **PP11** (deps: PP9 ✅, PP163) **fullscreen, HDR handoff and refresh-rate switching are handled by the Qt window** — the refresh-rate switching, and the HDR half that PP163 has now shown needs a different presentation path. → §PP11
 - 📋 **PP163** (deps: PP9 ✅) **an HDR picture cannot reach the display through D3DImage, which refuses any surface wider than eight bits** — one question left, and it needs a screenshot: PP283 has the compositor taking the tree on a real WPF window, but not what WPF draws over it. → §PP163
-- 📋 **PP296** (deps: —) **RP-Nonce is matched case-sensitively though HTTP header names are not, so a console spelling it otherwise fails** — session.c uses strcasecmp for RP-Version and strcmp for the other two, which reads as an oversight rather than a rule, and the nonce is what the crypto needs. → §PP296
 
 ## Block D — Screens
 
@@ -33,7 +32,7 @@
 - 📋 **PP31** (deps: PP28) **the video decoder is where 100% managed stops being achievable, and no task above says so** — There is no managed H.264 or HEVC decoder that holds 1080p60 at remote play latency, so this boundary is chosen deliberately or discovered late. → §PP31
 - 📋 **PP32** (deps: PP28) **audio decode and resampling are Opus and speexdsp, both native and both on the latency path** — Managed Opus exists and speexdsp has no equivalent, so the two halves of the audio path have different answers and only one of them is a choice. → §PP32
 - ⏳ **PP33** (deps: PP24 ✅) **HTTP and JSON in the core are curl and json-c, two vendored dependencies for what the runtime already does** — the deletion, now that PP231 and PP266 closed the two named behaviours: holepunch.c is the last unit needing either library and session.c still calls it. → §PP33
-- ⏳ **PP293** (deps: PP297 ⏳) **session.c is 1182 lines and owns the session lifetime, and PP28 sizes it together with two files it does not resemble** — the thread itself: init, start, the connect sequence, stop and join, and the event queue a client reads. → §PP293
+- ⏳ **PP293** (deps: PP297 ⏳) **session.c is 1192 lines and owns the session lifetime, and PP28 sizes it together with two files it does not resemble** — the thread itself: init, start, the connect sequence, stop and join, and the event queue a client reads. → §PP293
 - 📋 **PP294** (deps: PP297 ⏳) **ctrl.c is 1469 lines of control channel and PP28 sizes it together with two files it does not resemble** — It is the longest of the three and the one with the most message types, and none of them are on the frame path so latency is not the measure. → §PP294
 - 📋 **PP295** (deps: PP27 ⏳, PP297 ⏳) **streamconnection.c is 1326 lines and is the last C caller of the video receiver, so every deletion below waits on it** — PP286 to PP291 ported the frame path bottom-up and none of it removed C, because this is what still calls the native receiver. → §PP295
 - ⏳ **PP297** (deps: —) **no session exchange has ever been captured, so the four modules with no test cannot be ported against anything** — the capture itself, which needs a console reaching the stream: the machinery on both sides of it is written and checked. → §PP297

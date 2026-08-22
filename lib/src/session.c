@@ -733,11 +733,21 @@ static void parse_session_response(SessionResponse *response, ChiakiHttpResponse
 
 	for(ChiakiHttpHeader *header=http_response->headers; header; header=header->next)
 	{
-		if(strcmp(header->key, "RP-Nonce") == 0)
+		// PP296: all three case-insensitively, which is what an HTTP field name is.
+		//
+		// RP-Version was already strcasecmp and the other two were strcmp, three lines apart, doing
+		// the same thing two ways with nothing saying why. Field names are case-insensitive by
+		// specification, so a console is entitled to answer rp-nonce - and against the old code that
+		// left the nonce null, success false, and no reason code either, because that header was
+		// strcmp too: a connection that did not work with nothing in the log naming a header.
+		//
+		// Whether any firmware actually spells them that way is not known, and is the point. It
+		// costs one word to be right about and a console to find out.
+		if(strcasecmp(header->key, "RP-Nonce") == 0)
 			response->nonce = header->value;
 		else if(strcasecmp(header->key, "RP-Version") == 0)
 			response->rp_version = header->value;
-		else if(strcmp(header->key, "RP-Application-Reason") == 0)
+		else if(strcasecmp(header->key, "RP-Application-Reason") == 0)
 			response->error_code = (uint32_t)strtoul(header->value, NULL, 0x10);
 	}
 

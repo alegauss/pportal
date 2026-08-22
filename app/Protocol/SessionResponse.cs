@@ -19,14 +19,15 @@ public readonly record struct SessionResponseFields(
 /// there is not - comes out of this function, and all three of its subtleties are the kind that a
 /// port normalises away without noticing.
 ///
-/// One header is matched case-insensitively and two are not
-/// --------------------------------------------------------
-/// The C uses strcmp for RP-Nonce and RP-Application-Reason and strcasecmp for RP-Version. That is
-/// almost certainly not a decision anybody made, and it is the behaviour: a console answering
-/// "rp-version" is understood, one answering "rp-nonce" is not and the session fails with no nonce.
-/// Reproduced, because a port that compared all three the same way would differ from the Qt client
-/// on exactly the consoles where it mattered - and PP231 is the precedent for reproducing rather
-/// than repairing something this port did not introduce.
+/// All three headers are matched case-insensitively
+/// ------------------------------------------------
+/// PP296, and the one thing here the port does not reproduce. The C used strcmp for RP-Nonce and
+/// RP-Application-Reason and strcasecmp for RP-Version - three lines apart, doing the same thing two
+/// ways, with nothing saying why. HTTP field names are case-insensitive by specification, so a
+/// console answering "rp-nonce" was entitled to and got a failed session with no nonce and no reason
+/// code, because that header was strcmp too. PP293 reproduced the mixture on this port's standing
+/// rule; PP296 closed it the other way instead, changing session.c in the same commit, so the two
+/// sides still agree. <see cref="TheHeaderMatchingIsStillCaseInsensitive"/> holds it there.
 ///
 /// The reason code is HEXADECIMAL
 /// ------------------------------
@@ -41,10 +42,10 @@ public readonly record struct SessionResponseFields(
 /// </summary>
 public static class SessionResponse
 {
-    /// <summary>RP-Nonce, matched exactly as the C matches it.</summary>
+    /// <summary>RP-Nonce, which the crypto is seeded from.</summary>
     public const string NonceHeader = "RP-Nonce";
 
-    /// <summary>RP-Version, the one matched without regard to case.</summary>
+    /// <summary>RP-Version, the protocol version the console speaks.</summary>
     public const string VersionHeader = "RP-Version";
 
     /// <summary>RP-Application-Reason, whose value is hexadecimal.</summary>
@@ -64,12 +65,13 @@ public static class SessionResponse
 
         foreach (HttpHeader header in headers)
         {
-            // Ordinal for two of them and OrdinalIgnoreCase for one. Not a tidy rule, and the C's.
-            if (string.Equals(header.Key, NonceHeader, StringComparison.Ordinal))
+            // PP296: OrdinalIgnoreCase for all three, which is what an HTTP field name is, and what
+            // session.c does since the same commit.
+            if (string.Equals(header.Key, NonceHeader, StringComparison.OrdinalIgnoreCase))
                 nonce = header.Value;
             else if (string.Equals(header.Key, VersionHeader, StringComparison.OrdinalIgnoreCase))
                 rpVersion = header.Value;
-            else if (string.Equals(header.Key, ReasonHeader, StringComparison.Ordinal))
+            else if (string.Equals(header.Key, ReasonHeader, StringComparison.OrdinalIgnoreCase))
                 errorCode = ParseReason(header.Value);
         }
 
@@ -123,15 +125,20 @@ public static class SessionResponse
     }
 
     /// <summary>
-    /// PP293: whether session.c still matches these three headers the way this reproduces.
+    /// PP296: whether session.c still matches all three headers without regard to case.
+    ///
+    /// The opposite question to the two below it, because this is the line PP296 CHANGED rather than
+    /// reproduced. A merge from upstream is what puts the two strcmps back, and it would not look
+    /// like a conflict - so what has to hold is the presence of three strcasecmps rather than the
+    /// absence of anything.
     /// </summary>
-    public static bool TheHeaderMatchingIsStillMixed(string core)
+    public static bool TheHeaderMatchingIsStillCaseInsensitive(string core)
     {
         ArgumentNullException.ThrowIfNull(core);
 
-        return core.Contains("strcmp(header->key, \"RP-Nonce\") == 0", StringComparison.Ordinal)
+        return core.Contains("strcasecmp(header->key, \"RP-Nonce\") == 0", StringComparison.Ordinal)
             && core.Contains("strcasecmp(header->key, \"RP-Version\") == 0", StringComparison.Ordinal)
-            && core.Contains("strcmp(header->key, \"RP-Application-Reason\") == 0", StringComparison.Ordinal);
+            && core.Contains("strcasecmp(header->key, \"RP-Application-Reason\") == 0", StringComparison.Ordinal);
     }
 
     /// <summary>And whether the reason is still read as hexadecimal.</summary>

@@ -38,25 +38,32 @@ public class SessionResponseTests
     }
 
     /// <summary>
-    /// RP-Version is matched without regard to case and the other two are not.
+    /// PP296: all three headers are matched without regard to case, as HTTP field names are.
     ///
-    /// Almost certainly not a decision anybody made, and it is the behaviour. A console answering
-    /// "rp-nonce" gets no session; one answering "rp-version" is understood.
+    /// Before it, RP-Version was strcasecmp and the other two were strcmp, so this exact response
+    /// produced the version and nothing else: no nonce, no session, and no reason code to say why -
+    /// a connection that did not work with nothing in the log naming a header.
     /// </summary>
     [Fact]
-    public void OnlyTheVersionHeaderIsCaseInsensitive()
+    public void EveryHeaderIsMatchedWithoutRegardToCase()
     {
         SessionResponseFields lowered = Parse(200,
             ("rp-nonce", "abc123"), ("rp-version", "10.0"), ("rp-application-reason", "1f"));
 
-        // The version came through...
         Assert.Equal("10.0", lowered.RpVersion);
-
-        // ...and the other two did not, so there is no session and no reason for it.
-        Assert.Null(lowered.Nonce);
-        Assert.False(lowered.Success);
-        Assert.Equal(0u, lowered.ErrorCode);
+        Assert.Equal("abc123", lowered.Nonce);
+        Assert.True(lowered.Success);
+        Assert.Equal(0x1fu, lowered.ErrorCode);
     }
+
+    /// <summary>And the spellings a console is likelier to send are the same answer.</summary>
+    [Theory]
+    [InlineData("RP-Nonce")]
+    [InlineData("rp-nonce")]
+    [InlineData("Rp-Nonce")]
+    [InlineData("RP-NONCE")]
+    public void TheNonceIsFoundHoweverItIsSpelled(string spelling)
+        => Assert.Equal("abc123", Parse(200, (spelling, "abc123")).Nonce);
 
     /// <summary>
     /// The reason is hexadecimal, which is the difference between the right sentence on screen and
@@ -106,8 +113,9 @@ public class SessionResponseTests
 
         string core = File.ReadAllText(file);
 
-        Assert.True(SessionResponse.TheHeaderMatchingIsStillMixed(core),
-            "the three headers are no longer matched with two strcmp and one strcasecmp");
+        Assert.True(SessionResponse.TheHeaderMatchingIsStillCaseInsensitive(core),
+            "PP296's strcasecmps are gone from session.c, so the C matches rp-nonce exactly again "
+                + "and only the managed side finds it - the fix was made in both");
         Assert.True(SessionResponse.TheReasonIsStillHex(core),
             "RP-Application-Reason is no longer read with base 0x10");
         Assert.True(SessionResponse.SuccessStillNeedsTheNonce(core),

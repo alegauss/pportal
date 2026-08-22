@@ -68,30 +68,6 @@ One question is left and it needs a screenshot: what WPF DRAWS over that visual.
 window owns a redirection bitmap, so accepting the tree and showing through it are not
 the same fact.
 
-### §PP296 Two comparisons that should be the same one
-
-parse_session_response reads three headers off a session request's answer. RP-Version is
-matched with strcasecmp; RP-Nonce and RP-Application-Reason are matched with strcmp.
-Nothing in the code says why, and the inconsistency reads as an oversight rather than a
-rule - three lines apart, doing the same thing three ways.
-
-HTTP field names are case-insensitive by specification, so a console is entitled to
-answer rp-nonce. If one does, the header is not found, the nonce is null, success is
-false, and the session fails with no reason code either - because that header is strcmp
-too. The user sees a connection that did not work and there is nothing in the log naming
-a header.
-
-Whether any console actually does this is not known and is the point: it costs nothing
-to be right about, and finding out requires the firmware that does it.
-
-PP293 reproduces the mixture rather than repairing it, which is this port's standing
-rule - the same call PP231 makes about a lost notification and PP292 about a counter. A
-managed side that matched all three case-insensitively would connect where the Qt client
-does not, and no comparison between the two would explain why.
-
-What is open is fixing it in both, which is one word in three lines. The port already
-spells the two comparisons separately, so the change is visible where it matters.
-
 ## Block D — Screens
 
 ## Block E — Windows-only build
@@ -176,7 +152,7 @@ because every part of it was green.
 ### §PP23 The oracle this block cannot be written without
 
 chiaki exists because the PlayStation remote play protocol was reverse engineered. There
-is no document to implement against: the 24491 lines of C in lib/src are the
+is no document to implement against: the 24501 lines of C in lib/src are the
 specification, and a managed rewrite that reads them and reproduces them is a
 translation whose only correctness test is behavioural.
 
@@ -215,7 +191,7 @@ bytes.
 
 ### §PP28 The state machines
 
-session.c is 1182 lines, ctrl.c 1469 and streamconnection.c 1326. Together they are the
+session.c is 1192 lines, ctrl.c 1469 and streamconnection.c 1326. Together they are the
 connection: what is sent in which order, what is waited for, what a timeout means at
 each point, and how a session comes apart when the console stops answering.
 
