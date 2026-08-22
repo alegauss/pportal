@@ -142,17 +142,31 @@ public static class HttpTransfer
         {
             using var request = new HttpRequestMessage(method, url);
 
+            // A Content-Type in request.Headers is refused by HttpClient, which keeps it on the
+            // content - so it is taken out of the caller's list here rather than thrown away by the
+            // add below.
+            bool contentTypeAsked = false;
             foreach ((string name, string value) in headers ?? [])
-                request.Headers.TryAddWithoutValidation(name, value);
-
-            if (body is not null)
             {
-                // The type is set on the CONTENT and not through the header list above: a
-                // Content-Type in request.Headers is refused by HttpClient, which puts it on the
-                // content - so a call site copying the core's header list wholesale would throw.
-                request.Content = new StringContent(body, System.Text.Encoding.UTF8);
-                request.Content.Headers.ContentType =
-                    MediaTypeHeaderValue.Parse(JsonContentType);
+                if (name.Equals("Content-Type", StringComparison.OrdinalIgnoreCase))
+                {
+                    contentTypeAsked = true;
+                    continue;
+                }
+
+                request.Headers.TryAddWithoutValidation(name, value);
+            }
+
+            // PP266: a caller can ask for the type WITHOUT a body, and the core does exactly that on
+            // its DELETE. There is no content to hang the header on unless one is made, so an empty
+            // one is - which is what curl sends and what PP235 measured PSN receiving.
+            if (body is not null || contentTypeAsked)
+            {
+                request.Content = body is null
+                    ? new ByteArrayContent([])
+                    : new StringContent(body, System.Text.Encoding.UTF8);
+
+                request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse(JsonContentType);
             }
 
             using HttpResponseMessage response =
