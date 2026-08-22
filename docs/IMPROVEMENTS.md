@@ -340,6 +340,30 @@ flag, its count loop is guarded by the return above it, peek writes both out-poi
 where pull guards its own, and takion still passes NULL and still drops on a bad MAC.
 Repair any upstream and the port's copy becomes the divergence, on the next run.
 
+### §PP278 A corpus that stops at one directory
+
+DriftCorpusTests reflects over every public const string in the app assembly and keeps
+the ones starting gui\, then asserts each is on disk. The reasoning is PP21's and was
+right for it: Qt had just stopped being a build dependency, so nothing in the toolchain
+would notice gui\ being deleted, and every check reading it would start passing while
+reading nothing.
+
+The filter is now the limit. Drift checks read lib\src\remote\holepunch.c,
+test\takion.c, test\bitstream.c, shim\chiaki_shim.c, scripts\package-windows.sh,
+package.cmd and app\ChiakiNg.csproj, and not one of those is swept - they start with
+something other than gui. What holds them instead is the driftSources array in
+SelfTest.cs, seventeen entries long, which is a list written by hand.
+
+That is the shape both corpus files exist to refuse. PP271 says it outright about its
+own alternative: a list covers what exists the day it is written. Three entries were
+added to this one over PP273, PP274 and PP275, each by remembering to; a fourth added
+without remembering is a check nothing guards.
+
+The likely shape is dropping the prefix filter and letting the sweep take every declared
+path that looks repository-relative, with the array in SelfTest.cs becoming a consumer
+of that corpus rather than a second copy of it. What needs care is the const strings
+that are not paths at all, which is why the filter was there to begin with.
+
 ## Block G — Test discipline
 
 ### §PP36 Where a red test has to stop something
