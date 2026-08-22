@@ -329,6 +329,65 @@ public class RenderProbeTests
     }
 
     /// <summary>
+    /// PP283: and a WPF window's OWN HWND accepts the target, which is where this actually has to
+    /// work.
+    ///
+    /// PP281 and PP282 both built the tree on a window the probe made itself, with
+    /// WS_EX_NOREDIRECTIONBITMAP - per-pixel alpha, no redirection surface, a window shaped for the
+    /// job. WPF hands out nothing of the sort. Its window owns a redirection bitmap that DWM
+    /// composes, which is the reason PP10's overlay works at all and the reason this is a separate
+    /// question rather than the same one asked twice.
+    ///
+    /// EnsureHandle and not Show. The HWND exists as soon as WPF is asked for it, and a test that
+    /// put a window on screen would be one that fails for reasons about the desk it ran on - which
+    /// is why the interaction suite is excluded from the gate and why this does not belong there.
+    ///
+    /// What this does NOT answer is what WPF draws over the visual. That needs a screenshot and two
+    /// pixels, and it is the last thing PP163 is waiting for.
+    /// </summary>
+    [Fact]
+    public void AWpfWindowsHwndAcceptsTheTarget()
+    {
+        DcompStage stage = DcompStage.NoDevice;
+        Exception? failure = null;
+
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                using RenderDevice? device = AnyDevice();
+                if (device is null)
+                    return;
+
+                var window = new System.Windows.Window { Width = 320, Height = 240 };
+                IntPtr hwnd = new System.Windows.Interop.WindowInteropHelper(window).EnsureHandle();
+                Assert.NotEqual(IntPtr.Zero, hwnd);
+
+                // false: the visual BEHIND the window's content, which is the arrangement PP282
+                // established the design needs and the only one worth asking of a WPF window.
+                stage = device.ProbeDirectCompositionOn(hwnd, SwapchainFormat.Rgb10A2, topmost: false);
+                window.Close();
+            }
+            catch (Exception ex)
+            {
+                failure = ex;
+            }
+        })
+        { IsBackground = true };
+
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread did not finish");
+        if (failure is not null)
+            throw new Xunit.Sdk.XunitException(failure.ToString());
+
+        Assert.True(
+            stage == DcompStage.Ok,
+            $"DirectComposition stopped at {stage} on a WPF window's HWND, so PP163's remaining "
+                + "option does not survive contact with the window it would actually run in");
+    }
+
+    /// <summary>
     /// PP281: and the stage it reports is real, not decorative.
     ///
     /// The test above passes, which is the answer wanted and also the reason to check this: a probe

@@ -40,8 +40,11 @@
 // ID3D11Device directly. chiaki_render_d3d11_device() is that accessor.
 extern "C" ID3D11Device *chiaki_render_d3d11_device(void *d3d11);
 
-extern "C" CHIAKI_RENDER_API bool chiaki_render_dcomp_probe(
-		void *d3d11, int32_t format, bool topmost, int32_t *out_stage)
+// The path itself, over a window the CALLER owns. PP283: split out so a WPF window's own HWND can
+// be handed in, which is the arrangement the design actually runs in - PP281 and PP282 both built
+// the tree on a bare window this file created, and a bare window is not what WPF hands out.
+static bool chiaki_render_dcomp_build(
+		void *d3d11, int32_t format, bool topmost, HWND hwnd, int32_t *out_stage)
 {
 	ID3D11Device *device = nullptr;
 	IDXGIDevice *dxgi_device = nullptr;
@@ -51,9 +54,6 @@ extern "C" CHIAKI_RENDER_API bool chiaki_render_dcomp_probe(
 	IDCompositionDevice *dcomp = nullptr;
 	IDCompositionTarget *target = nullptr;
 	IDCompositionVisual *visual = nullptr;
-	HWND hwnd = nullptr;
-	HINSTANCE instance = GetModuleHandleW(nullptr);
-	static const wchar_t *class_name = L"ChiakiNgDCompProbe";
 	bool ok = false;
 
 	if(out_stage)
@@ -97,27 +97,6 @@ extern "C" CHIAKI_RENDER_API bool chiaki_render_dcomp_probe(
 		if(FAILED(factory->CreateSwapChainForComposition(device, &desc, nullptr, &swapchain)))
 			goto done;
 
-		// A REAL top-level window, hidden. CreateTargetForHwnd refuses a message-only window, so
-		// there is no way to ask this question without one - which is the difference between this
-		// probe and the swapchain one, and worth knowing before a build machine runs it.
-		if(out_stage)
-			*out_stage = CHIAKI_RENDER_DCOMP_WINDOW;
-
-		WNDCLASSEXW cls = {};
-		cls.cbSize = sizeof(cls);
-		cls.lpfnWndProc = DefWindowProcW;
-		cls.hInstance = instance;
-		cls.lpszClassName = class_name;
-		// A class that is already registered is not an error: this runs more than once per process
-		// and RegisterClassExW fails the second time with ERROR_CLASS_ALREADY_EXISTS.
-		if(!RegisterClassExW(&cls) && GetLastError() != ERROR_CLASS_ALREADY_EXISTS)
-			goto done;
-
-		hwnd = CreateWindowExW(
-				WS_EX_NOREDIRECTIONBITMAP, class_name, L"", WS_POPUP,
-				0, 0, 16, 16, nullptr, nullptr, instance, nullptr);
-		if(!hwnd)
-			goto done;
 	}
 
 	if(out_stage)
@@ -170,8 +149,6 @@ done:
 		target->Release();
 	if(dcomp)
 		dcomp->Release();
-	if(hwnd)
-		DestroyWindow(hwnd);
 	if(swapchain)
 		swapchain->Release();
 	if(factory)
@@ -182,4 +159,53 @@ done:
 		dxgi_device->Release();
 
 	return ok;
+}
+
+extern "C" CHIAKI_RENDER_API bool chiaki_render_dcomp_probe(
+		void *d3d11, int32_t format, bool topmost, int32_t *out_stage)
+{
+	// A REAL top-level window, hidden. CreateTargetForHwnd refuses a message-only window, so there
+	// is no way to ask this without one - which is the difference between this probe and the
+	// swapchain one, and worth knowing before a build machine runs it.
+	HINSTANCE instance = GetModuleHandleW(nullptr);
+	static const wchar_t *class_name = L"ChiakiNgDCompProbe";
+	WNDCLASSEXW cls = {};
+	HWND hwnd = nullptr;
+	bool ok;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_DCOMP_WINDOW;
+
+	cls.cbSize = sizeof(cls);
+	cls.lpfnWndProc = DefWindowProcW;
+	cls.hInstance = instance;
+	cls.lpszClassName = class_name;
+	// A class that is already registered is not an error: this runs more than once per process and
+	// RegisterClassExW fails the second time with ERROR_CLASS_ALREADY_EXISTS.
+	if(!RegisterClassExW(&cls) && GetLastError() != ERROR_CLASS_ALREADY_EXISTS)
+		return false;
+
+	hwnd = CreateWindowExW(
+			WS_EX_NOREDIRECTIONBITMAP, class_name, L"", WS_POPUP,
+			0, 0, 16, 16, nullptr, nullptr, instance, nullptr);
+	if(!hwnd)
+		return false;
+
+	ok = chiaki_render_dcomp_build(d3d11, format, topmost, hwnd, out_stage);
+	DestroyWindow(hwnd);
+	return ok;
+}
+
+extern "C" CHIAKI_RENDER_API bool chiaki_render_dcomp_probe_hwnd(
+		void *d3d11, int32_t format, bool topmost, void *hwnd, int32_t *out_stage)
+{
+	// PP283: the same path over a window somebody else owns, which is the only way to ask it of a
+	// WPF window. The caller keeps the window - destroying one WPF is still using would answer a
+	// different question and crash on the way to it.
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_DCOMP_WINDOW;
+	if(!hwnd || !IsWindow(static_cast<HWND>(hwnd)))
+		return false;
+
+	return chiaki_render_dcomp_build(d3d11, format, topmost, static_cast<HWND>(hwnd), out_stage);
 }

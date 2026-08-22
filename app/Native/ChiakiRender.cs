@@ -385,11 +385,37 @@ public sealed class RenderDevice : IDisposable
         return committed ? DcompStage.Ok : (DcompStage)stage;
     }
 
+    /// <summary>
+    /// PP283: the same path over a window the caller owns, which is the only way to ask it of WPF.
+    ///
+    /// <see cref="ProbeDirectComposition"/> builds its own window with WS_EX_NOREDIRECTIONBITMAP -
+    /// per-pixel alpha and no redirection surface, exactly what a composed visual wants. A WPF
+    /// window is not that window: it owns a redirection bitmap DWM composes, which is the reason
+    /// PP10's overlay works at all. Whether DirectComposition binds a target to one is a different
+    /// question from whether it binds to a window built to suit it.
+    ///
+    /// This is the narrow half of what PP163 has left - not what WPF DRAWS over the visual, which
+    /// needs a screenshot, but whether the compositor takes the tree on that HWND at all.
+    /// </summary>
+    /// <param name="hwnd">The window's handle. It is not destroyed; the caller still owns it.</param>
+    public DcompStage ProbeDirectCompositionOn(IntPtr hwnd, SwapchainFormat format, bool topmost)
+    {
+        bool committed = DcompProbeHwnd(Handle, (int)format, topmost, hwnd, out int stage);
+        return committed ? DcompStage.Ok : (DcompStage)stage;
+    }
+
     [DllImport(ChiakiRender.Library, EntryPoint = "chiaki_render_dcomp_probe",
         CallingConvention = CallingConvention.Cdecl)]
     [return: MarshalAs(UnmanagedType.I1)]
     private static extern bool DcompProbe(
         IntPtr d3d11, int format, [MarshalAs(UnmanagedType.I1)] bool topmost, out int stage);
+
+    [DllImport(ChiakiRender.Library, EntryPoint = "chiaki_render_dcomp_probe_hwnd",
+        CallingConvention = CallingConvention.Cdecl)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    private static extern bool DcompProbeHwnd(
+        IntPtr d3d11, int format, [MarshalAs(UnmanagedType.I1)] bool topmost,
+        IntPtr hwnd, out int stage);
 
     /// <summary>
     /// PP9: one decoded frame through pl_render_image, and the pixel it produced.

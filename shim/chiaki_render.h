@@ -277,6 +277,24 @@ CHIAKI_RENDER_API bool chiaki_render_dcomp_probe(
 		void *d3d11, int32_t format, bool topmost, int32_t *out_stage);
 
 /**
+ * PP283: the same path over a window the CALLER owns, which is the only way to ask it of WPF.
+ *
+ * The probe above builds its own window with WS_EX_NOREDIRECTIONBITMAP - per-pixel alpha, no
+ * redirection surface, exactly what a composed visual wants. A WPF window is not that window. It
+ * owns a redirection bitmap that DWM composes, which is the whole reason PP163's overlay works at
+ * all, and whether DirectComposition will bind a target to one is a different question from whether
+ * it will bind to a window built to suit it.
+ *
+ * So this answers the narrow half of what is left: not what WPF DRAWS over the visual, which needs
+ * eyes or a screenshot, but whether the compositor accepts the tree on that HWND in the first
+ * place. A failure here would end PP163's remaining option without any of the harder work.
+ *
+ * The window is not destroyed - it belongs to the caller.
+ */
+CHIAKI_RENDER_API bool chiaki_render_dcomp_probe_hwnd(
+		void *d3d11, int32_t format, bool topmost, void *hwnd, int32_t *out_stage);
+
+/**
  * PP9's last unanswered link: a DECODED FRAME through pl_render_image.
  *
  * Everything before this rendered nothing. PP133 calls pl_render_image with a NULL image, which
