@@ -143,8 +143,8 @@ public static partial class AssertionRatchet
     }
 
     /// <summary>
-    /// The shipped tasks no assertion mentions, newest first - which is the order that matters,
-    /// because the ones a rise is about are the ones shipped since the ceiling was last set.
+    /// The shipped tasks no assertion mentions and no exemption excuses, newest first - which is
+    /// the order that matters, because a rise is about what shipped since the ceiling was set.
     /// </summary>
     public static IReadOnlyList<string> Uncovered(string root)
     {
@@ -160,8 +160,62 @@ public static partial class AssertionRatchet
         foreach (string file in AssertionFiles(root))
             named.UnionWith(Named(File.ReadAllText(file)));
 
-        return [.. shipped.Where(id => !named.Contains(id)).OrderByDescending(NumberOf)];
+        IReadOnlyDictionary<string, string> exempt = Exemptions(root);
+
+        return
+        [
+            .. shipped
+                .Where(id => !named.Contains(id) && !exempt.ContainsKey(id))
+                .OrderByDescending(NumberOf),
+        ];
     }
+
+    /// <summary>
+    /// PP310: the tasks no assertion can cover, each with the reason, read from the ceiling file.
+    ///
+    /// The door that is not raising the ceiling. A task whose output is prose - a pass over a list,
+    /// a measurement, a change to the gates themselves - has nothing to assert, so under PP38 as
+    /// shipped it could not be shipped at all: the count rose and the ceiling may not. PP307 hit
+    /// that one commit after PP38, and eleven of the twelve tasks its own pass examined are the
+    /// same shape, so this is the ordinary case rather than an edge.
+    ///
+    /// Raising the ceiling would have been the wrong door. Its whole value is that the number
+    /// cannot go up, and a project that raises it once for a good reason raises it later for a
+    /// worse one, in a commit about something else. An exemption is not silent: it is a line a
+    /// person wrote, beside the number, read in every diff that touches the file.
+    /// </summary>
+    public static IReadOnlyDictionary<string, string> Exemptions(string root)
+    {
+        ArgumentNullException.ThrowIfNull(root);
+
+        string path = Path.Combine(root, CeilingRelativePath);
+        return File.Exists(path) ? ExemptionsIn(File.ReadAllText(path)) : ReadOnlyEmpty;
+    }
+
+    /// <summary>
+    /// The exemptions in a ceiling file: <c>exempt PP307 - the reason</c>, one per line.
+    ///
+    /// A line with no reason after the id is NOT an exemption and is not read as one. That is the
+    /// difference between a record and a loophole: a bare list of ids is something somebody appends
+    /// to in a hurry, and a list of sentences is something a reviewer reads.
+    /// </summary>
+    public static IReadOnlyDictionary<string, string> ExemptionsIn(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+
+        var exempt = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        foreach (Match line in ExemptionRegex().Matches(text))
+        {
+            string reason = line.Groups["reason"].Value.Trim(' ', '\t', '\r', '-', '—');
+            if (reason.Length > 0)
+                exempt.TryAdd(line.Groups["id"].Value, reason);
+        }
+
+        return exempt;
+    }
+
+    private static readonly Dictionary<string, string> ReadOnlyEmpty = [];
 
     /// <summary>The ceiling on disk, or -1 where there is none to read.</summary>
     public static int Ceiling(string root)
@@ -235,6 +289,16 @@ public static partial class AssertionRatchet
     // PP292, and not PP2 inside it.
     [GeneratedRegex(@"\bPP[0-9]+\b")]
     private static partial Regex IdRegex();
+
+    // # exempt PP307 - a pass over a list, whose whole output is the prose above.
+    //
+    // The comment marker is optional and the reason is not. Every other line in that file is a
+    // comment, so requiring one here would be a trap, and allowing a bare id would make this the
+    // loophole it exists instead of.
+    [GeneratedRegex(
+        @"^\s*#?\s*exempt\s+(?<id>[A-Za-z]+[0-9]+)(?<reason>[^\r\n]*)$",
+        RegexOptions.Multiline | RegexOptions.IgnoreCase)]
+    private static partial Regex ExemptionRegex();
 
     [GeneratedRegex(@"[0-9]+")]
     private static partial Regex NumberRegex();

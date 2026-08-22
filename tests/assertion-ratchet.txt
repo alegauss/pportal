@@ -33,4 +33,11 @@
 # So the honest size of what the non-goal was protecting against is ONE, not ninety-six. The
 # number below is still 96 because that is what the id join counts, and the id join is what
 # the gate can check without reading git. PP308 is whether it should.
+#
+# PP310: the other door. A task whose output is prose has nothing to assert, so it raises the
+# count and the count may not rise - PP307 could not ship at all. An `exempt` line below takes
+# one such task out of the count, and the REASON is what makes it a record rather than a
+# loophole: no reason, no exemption, and every line of it is read in the diff that adds it.
+#
+# exempt PP307 - a pass over a list; its whole output is the split written above.
 96

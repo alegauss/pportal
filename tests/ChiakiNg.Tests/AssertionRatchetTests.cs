@@ -17,13 +17,22 @@ namespace ChiakiNg.Tests;
 /// </summary>
 public class AssertionRatchetTests(ITestOutputHelper output)
 {
-    /// <summary>A ledger in the shapes the real one carries.</summary>
+    /// <summary>
+    /// A ledger in the shapes the real one carries, with ids that will never exist.
+    ///
+    /// FOUR DIGITS, deliberately, and it cost a red run to learn. The join is "this id is named
+    /// somewhere in an assertion file", and a fixture IS an assertion file - so the first version
+    /// of this sample, written with two real ids in it, marked both as covered and the debt fell by
+    /// two for nothing. That is the failure the previous task warned about, arriving from the one
+    /// direction nobody watches: not somebody gaming the number, but test data that happened to
+    /// spell a real task. Nothing above 9000 will ever be one.
+    /// </summary>
     private const string Ledger = """
         ## Block E — Windows-only build
 
-        - ✅ **PP22 (the single-file publish)** **symptom here** — outcome here.
-        - 🗑 **PP20** **abandoned** — deleted before this line was filed.
-        - ✅ **PP277** **symptom here** — outcome here.
+        - ✅ **PP9001 (the first half)** **symptom here** — outcome here.
+        - 🗑 **PP9002** **abandoned** — deleted before this line was filed.
+        - ✅ **PP9003** **symptom here** — outcome here.
         """;
 
     /// <summary>Only the shipped marker, and a partial is its id.</summary>
@@ -32,19 +41,19 @@ public class AssertionRatchetTests(ITestOutputHelper output)
     {
         IReadOnlySet<string> shipped = AssertionRatchet.Shipped(Ledger);
 
-        Assert.Contains("PP22", shipped);
-        Assert.Contains("PP277", shipped);
+        Assert.Contains("PP9001", shipped);
+        Assert.Contains("PP9003", shipped);
 
         // Retired is work nobody built. Demanding a test for it would make the debt grow by not
         // doing things, which is the one way a ratchet can be actively harmful.
-        Assert.DoesNotContain("PP20", shipped);
+        Assert.DoesNotContain("PP9002", shipped);
     }
 
     /// <summary>
     /// PP305: the ledger's own sentence for each id, which is what makes the debt payable.
     ///
-    /// A partial's qualifier lives inside the id's own asterisks - "PP22 (the single-file publish)"
-    /// - so the symptom is the SECOND bold run and not the first. Read greedily, the id and the
+    /// A partial's qualifier lives inside the id's own asterisks - "**PP9001 (the first half)**" -
+    /// so the symptom is the SECOND bold run and not the first. Read greedily, the id and the
     /// sentence come back as one string and every line of the list says the same useless thing.
     /// </summary>
     [Fact]
@@ -52,20 +61,81 @@ public class AssertionRatchetTests(ITestOutputHelper output)
     {
         IReadOnlyDictionary<string, string> symptoms = AssertionRatchet.ShippedWithSymptom(Ledger);
 
-        Assert.Equal("symptom here", symptoms["PP22"]);
-        Assert.Equal("symptom here", symptoms["PP277"]);
-        Assert.False(symptoms.ContainsKey("PP20"));
+        Assert.Equal("symptom here", symptoms["PP9001"]);
+        Assert.Equal("symptom here", symptoms["PP9003"]);
+        Assert.False(symptoms.ContainsKey("PP9002"));
     }
 
-    /// <summary>An id is a whole id: PP2 is not found inside PP292.</summary>
+    /// <summary>
+    /// PP310: an exemption is a record, so the reason is what makes it one.
+    ///
+    /// A bare id would be something appended in a hurry; a sentence is something a reviewer reads.
+    /// So a line naming an id and nothing else is not an exemption and does not count as one - the
+    /// ratchet stays red, which is the right direction for a rule about not loosening rules.
+    /// </summary>
+    [Fact]
+    public void AnExemptionWithNoReasonIsNotOne()
+    {
+        IReadOnlyDictionary<string, string> exempt = AssertionRatchet.ExemptionsIn("""
+            # exempt PP9001 - a pass over a list; its whole output is prose.
+            exempt PP9003 - a measurement; its result is the number, not a behaviour.
+            # exempt PP9004
+            # exempt PP9005 -
+            96
+            """);
+
+        Assert.Equal(2, exempt.Count);
+        Assert.Equal("a pass over a list; its whole output is prose.", exempt["PP9001"]);
+        Assert.Contains("PP9003", exempt);
+
+        // Named and not excused.
+        Assert.DoesNotContain("PP9004", exempt);
+        Assert.DoesNotContain("PP9005", exempt);
+    }
+
+    /// <summary>And an exempt task is out of the count rather than counted and forgiven.</summary>
+    [Fact]
+    public void WhatIsExemptIsNotInTheDebt()
+    {
+        string? root = SanitizerSource.RepositoryRoot();
+        Assert.True(root is not null, "not running out of a checkout");
+
+        IReadOnlyDictionary<string, string> exempt = AssertionRatchet.Exemptions(root);
+        Assert.NotEmpty(exempt);
+
+        IReadOnlyList<string> uncovered = AssertionRatchet.Uncovered(root);
+        Assert.All(exempt.Keys, id => Assert.DoesNotContain(id, uncovered));
+
+        // An exemption for something that never shipped is a line about nothing, and the likeliest
+        // way to get one is a typo in an id.
+        string? ledgerPath = AssertionRatchet.LocateLedger();
+        Assert.True(ledgerPath is not null, "no ledger to check the exemptions against");
+
+        IReadOnlySet<string> shipped = AssertionRatchet.Shipped(File.ReadAllText(ledgerPath));
+        string[] unknown = [.. exempt.Keys.Where(id => !shipped.Contains(id))];
+
+        Assert.True(unknown.Length == 0,
+            "these are excused and never shipped, so they excuse nothing: " + string.Join(", ", unknown));
+    }
+
+    /// <summary>
+    /// An id is a whole id: the prefix of one is not found inside it.
+    ///
+    /// Every id here is above 900 for the reason the fixture above gives, and the NEGATIVE case is
+    /// the one that catches people out. Written the obvious way - a two-digit id as the expected
+    /// value of a DoesNotContain - it named a real shipped task in an assertion file, and paid that
+    /// task's debt off by asserting that it had not been paid. The prose explaining this fell into
+    /// it too, one paragraph after fixing it, which is how firmly the join and the file are the
+    /// same thing: anything written here is a claim about coverage, comments included.
+    /// </summary>
     [Fact]
     public void AnIdIsNotAPrefixOfAnother()
     {
-        IReadOnlySet<string> named = AssertionRatchet.Named("/// PP292: the wrap, and PP29 beside it.");
+        IReadOnlySet<string> named = AssertionRatchet.Named("/// PP9001: the wrap, and PP9000 beside it.");
 
-        Assert.Contains("PP292", named);
-        Assert.Contains("PP29", named);
-        Assert.DoesNotContain("PP2", named);
+        Assert.Contains("PP9001", named);
+        Assert.Contains("PP9000", named);
+        Assert.DoesNotContain("PP900", named);
     }
 
     /// <summary>The ceiling file explains itself, so the number is read past the comments.</summary>
