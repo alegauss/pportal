@@ -101,10 +101,13 @@ public static class DriftCorpus
     /// <summary>
     /// Whether a constant names a file or directory in this repository.
     ///
-    /// Two segments or more: the first must be a directory at the root. One segment: it must carry
-    /// an extension and be a file at the root, which is the weaker half - a root file that is
-    /// deleted stops being recognised rather than being reported. The count assertion over this
-    /// corpus is what covers that, because a corpus may grow and may not shrink.
+    /// Two segments or more: the first must be a directory at the root, which is a test on the
+    /// SHAPE - a missing file under gui\ is still a candidate, and is then reported missing.
+    ///
+    /// One segment is the weaker half and is not covered. roadkeep.toml, package.cmd, CMakeLists.txt
+    /// and .gitignore are recognised BY existing, so deleting one drops it out of the corpus rather
+    /// than failing it, and the count floor is far enough below the corpus that losing one still
+    /// passes. Filed rather than papered over.
     /// </summary>
     public static bool IsRepositoryPath(string value, string root)
     {

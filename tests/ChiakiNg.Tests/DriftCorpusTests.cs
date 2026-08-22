@@ -44,8 +44,13 @@ public class DriftCorpusTests(ITestOutputHelper output)
     {
         IReadOnlyList<string> declared = Declared();
 
-        output.WriteLine($"{declared.Count} file(s) under gui\\ are read by drift checks");
-        Assert.True(declared.Count >= 10, $"only {declared.Count} paths found - the sweep is not working");
+        output.WriteLine($"{declared.Count} repository path(s) are read by drift checks");
+
+        // A ratchet, and it catches one thing: a predicate that stopped matching. The corpus is 58
+        // today and the floor is 50, which is deliberately loose - it does NOT catch losing a single
+        // -segment path like roadkeep.toml or package.cmd, which DriftCorpus recognises by existing.
+        // Raise it when the corpus grows; never lower it.
+        Assert.True(declared.Count >= 50, $"only {declared.Count} paths found - the sweep is not working");
     }
 
     /// <summary>
