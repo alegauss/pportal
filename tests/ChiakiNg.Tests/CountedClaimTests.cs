@@ -66,6 +66,90 @@ public partial class CountedClaimTests(ITestOutputHelper output)
         return claims;
     }
 
+    /// <summary>One "&lt;n&gt; lines of C in &lt;dir&gt;" claim, and where it was written.</summary>
+    public readonly record struct TreeClaim(string Document, int Line, string Directory, int Lines);
+
+    /// <summary>
+    /// PP285: every claim in the backlog that sizes a DIRECTORY rather than a file.
+    ///
+    /// The form is deliberately narrow - "24527 lines of C in lib/src" and nothing looser - because
+    /// the counting method has to be IN the claim. PP23 said "the 16935 lines in lib/src", and no
+    /// reading of the tree produces that number: recursive .c is 24527, non-recursive is 17590,
+    /// .c and .h together are 25958, non-blank is 22017. It was wrong by about 45%, and which of
+    /// those four it was ever meant to be cannot be recovered. A sentence that does not say how it
+    /// counted cannot be checked, so this only matches one that does.
+    /// </summary>
+    public static IReadOnlyList<TreeClaim> TreeClaims(string root)
+    {
+        ArgumentNullException.ThrowIfNull(root);
+
+        var claims = new List<TreeClaim>();
+
+        foreach (string document in Backlog)
+        {
+            string path = Path.Combine(root, document.Replace('/', Path.DirectorySeparatorChar));
+            if (!File.Exists(path))
+                continue;
+
+            string[] lines = File.ReadAllLines(path);
+            for (int i = 0; i < lines.Length; i++)
+            {
+                foreach (Match match in TreeClaimRegex().Matches(lines[i]))
+                {
+                    claims.Add(new TreeClaim(
+                        document, i + 1, match.Groups["dir"].Value,
+                        int.Parse(match.Groups["lines"].Value, System.Globalization.CultureInfo.InvariantCulture)));
+                }
+            }
+        }
+
+        return claims;
+    }
+
+    /// <summary>Every .c line under a directory, which is what "lines of C in" is defined to mean.</summary>
+    public static int LinesOfCIn(string root, string relative)
+    {
+        ArgumentNullException.ThrowIfNull(root);
+        ArgumentNullException.ThrowIfNull(relative);
+
+        string directory = Path.Combine(root, relative.Replace('/', Path.DirectorySeparatorChar));
+        if (!Directory.Exists(directory))
+            return -1;
+
+        return Directory.EnumerateFiles(directory, "*.c", SearchOption.AllDirectories)
+            .Where(p => !p.Contains($"{Path.DirectorySeparatorChar}third-party{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            .Sum(p => File.ReadAllLines(p).Length);
+    }
+
+    /// <summary>
+    /// THE OTHER GUARD. Every directory the backlog sizes still holds that many lines of C.
+    /// </summary>
+    [Fact]
+    public void EveryTreeClaimMatchesTheDirectory()
+    {
+        string? root = SanitizerSource.RepositoryRoot();
+        Assert.NotNull(root);
+
+        IReadOnlyList<TreeClaim> claims = TreeClaims(root);
+        Assert.True(claims.Count >= 1, "no directory-sized claims found - the scan is not working");
+
+        var wrong = new List<string>();
+
+        foreach (TreeClaim claim in claims)
+        {
+            int actual = LinesOfCIn(root, claim.Directory);
+            if (actual < 0)
+                wrong.Add($"{claim.Document}:{claim.Line}  {claim.Directory} is not a directory");
+            else if (actual != claim.Lines)
+                wrong.Add($"{claim.Document}:{claim.Line}  {claim.Directory} says {claim.Lines} lines of C and holds {actual}");
+        }
+
+        Assert.True(
+            wrong.Count == 0,
+            "the backlog sizes unshipped work from these totals, and they are not the tree's:\n  "
+                + string.Join("\n  ", wrong));
+    }
+
     /// <summary>
     /// THE GUARD. Every file the backlog gives a line count for still has that many lines.
     /// </summary>
@@ -125,4 +209,10 @@ public partial class CountedClaimTests(ITestOutputHelper output)
     // between them, which is most of a sentence.
     [GeneratedRegex(@"(?<file>[A-Za-z0-9_.-]+\.(?:c|h|cpp|cs|qml))\s+(?:is\s+)?(?<lines>\d{2,5})\b(?=\s*(?:lines|and|,|:|\.|$))")]
     private static partial Regex ClaimRegex();
+
+    // "24527 lines of C in lib/src". The "of C in" is required and is the point: it names the
+    // counting rule, which is what PP23's "the 16935 lines in lib/src" did not. A directory total
+    // stated any other way is not matched here and is not checkable anywhere.
+    [GeneratedRegex(@"(?<lines>\d{3,6})\s+lines of C in\s+(?<dir>[A-Za-z0-9_./-]+)")]
+    private static partial Regex TreeClaimRegex();
 }

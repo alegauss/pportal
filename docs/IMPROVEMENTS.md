@@ -144,26 +144,28 @@ to be installed next to it, and that is not a packaging question.
 ### §PP23 The oracle this block cannot be written without
 
 chiaki exists because the PlayStation remote play protocol was reverse engineered. There
-is no document to implement against: the 16935 lines in lib/src are the specification,
-and a managed rewrite that reads them and reproduces them is a translation whose only
-correctness test is behavioural.
+is no document to implement against: the 24529 lines of C in lib/src are the
+specification, and a managed rewrite that reads them and reproduces them is a
+translation whose only correctness test is behavioural.
 
-That is true of the protocol as a whole and NOT true everywhere, which is a correction
-worth carrying here rather than leaving as a pleasant surprise. test/ holds 5512 lines -
-munit cases over gkcrypt, rpcrypt, takion, bitstream, the reorder queue and the decoder,
-plus 3081 lines of recorded FEC cases and a captured video packet. Where those exist,
-the expected output is already agreed with real hardware and the rewrite is checked
-against a fixture rather than against a running console.
+That is true of the protocol as a whole and NOT true everywhere. There are 6544 lines of
+C in test - munit cases over gkcrypt, rpcrypt, takion, bitstream, the reorder queue and
+the decoder - plus 3081 lines of recorded FEC cases in fec_test_cases.inl. Where those
+exist, the expected output is already agreed with real hardware and the rewrite is
+checked against a fixture rather than against a running console.
+
+Both totals say how they are counted, which the numbers they replace did not. PP285 has
+the reason: the old ones were 16935 and 5512, matched no reading of the tree, and a
+sentence that does not name its rule cannot be rechecked by anything.
 
 What this task adds is the rest: run both implementations against the same input and
 compare. The same registration exchange, the same key derivation from the same seed, the
 same takion frames in and the same feedback out - and where a console is needed, a
-captured session replayed against both, which is what makes the comparison repeatable at
-all.
+captured session replayed against both.
 
 The alternative is what a rewrite of a protocol usually looks like: it works against one
-console on one firmware, and every report afterwards is a guess about which of 16935
-translated lines was wrong.
+console on one firmware, and every report afterwards is a guess about which translated
+line was wrong.
 
 ### §PP26 Crypto is where a rewrite dies quietly
 
