@@ -340,6 +340,31 @@ flag, its count loop is guarded by the return above it, peek writes both out-poi
 where pull guards its own, and takion still passes NULL and still drops on a bad MAC.
 Repair any upstream and the port's copy becomes the divergence, on the next run.
 
+### §PP279 The half of the corpus that cannot be tested on shape
+
+DriftCorpus decides whether a constant names a repository file by testing its value
+against the checkout. For two segments or more the test is on shape - the first segment
+must be a directory at the root - so gui/src/gone.cpp is a candidate whether or not it
+exists, and is then reported missing. That is the direction a guard has to break in.
+
+One segment cannot be tested that way. There is no first directory to check, and the
+only thing separating roadkeep.toml from an arbitrary constant carrying a dot is whether
+a file of that name sits at the root. So the predicate asks exactly the question the
+assertion was supposed to answer, and a deleted root file stops being recognised instead
+of being reported.
+
+Four paths are in that position today: roadkeep.toml, package.cmd, CMakeLists.txt and
+.gitignore, plus vcpkg.json. Losing one is not hypothetical - PP275 was about
+.gitignore, and PP273 and PP274 added package.cmd.
+
+The count floor does not close it. The corpus is 58 and the floor is 50, so losing one
+path still passes; tightening the floor to an exact count means every legitimate
+addition is a failing test, which is how a ratchet gets deleted.
+
+The likely shape is naming those few explicitly - a five-line list of root files is far
+more stable than the seventeen-entry list of every drift source PP278 removed, and it is
+asserted rather than inferred.
+
 ## Block G — Test discipline
 
 ### §PP36 Where a red test has to stop something
