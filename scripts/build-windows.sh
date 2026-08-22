@@ -130,8 +130,26 @@ fi
 # then pointed at it as "run this one". A build that reports success while deploying a binary it
 # did not make is the same defect as PP56 with a whole application on the far side.
 if [[ $do_deploy -eq 1 && $gui_built -eq 0 ]]; then
-    echo "note: the Qt client is not built (CHIAKI_ENABLE_GUI is off), so there is nothing to deploy" >&2
+    echo "note: the Qt client is not built (CHIAKI_ENABLE_GUI is off), so the Qt deploy is skipped" >&2
     do_deploy=0
+    deploy_native_only=1
+fi
+
+# PP269: the Qt deploy is also what refreshes the native DLLs in the portable tree, and the .NET
+# resolver looks THERE before it looks at the build directory. Turning the whole deploy off left
+# every managed run loading whatever shim happened to be in that tree - measured at four hours
+# stale, with an entry point the build had just added missing from it. The client's absence is a
+# reason not to package Qt, not a reason to stop refreshing the two libraries the host loads.
+if [[ ${deploy_native_only:-0} -eq 1 ]]; then
+    mkdir -p "$DEPLOY_DIR"
+    # Both come out of the shim directory - the render target is built beside it, not under a
+    # directory of its own.
+    for dll in shim/chiaki-shim.dll shim/chiaki-render.dll; do
+        if [[ -f "$BUILD_DIR/$dll" ]]; then
+            cp -f "$BUILD_DIR/$dll" "$DEPLOY_DIR/"
+            echo "note: refreshed $(basename "$dll") in $DEPLOY_DIR" >&2
+        fi
+    done
 fi
 
 if [[ $do_deploy -eq 1 ]]; then

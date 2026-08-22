@@ -1437,6 +1437,26 @@ CHIAKI_SHIM_API int32_t chiaki_shim_regist_request_payload(
 		uint8_t *buf,
 		int32_t *buf_size);
 
+/**
+ * PP269: the library's own base64 encoder, so a claim about it can be run rather than read.
+ *
+ * PP261 established by READING that a conversion which does not fit returns its error without
+ * writing a terminator, leaving the destination partly written. That is the difference this entry
+ * exists to measure: the caller fills @p out first, and what comes back tells what the encoder
+ * wrote from what it left.
+ *
+ * @param in Bytes to encode.
+ * @param in_size How many.
+ * @param out Destination, which the caller may fill beforehand.
+ * @param out_size Its size, INCLUDING the terminator the encoder writes when it fits.
+ * @return The library's error code, zero being success.
+ */
+CHIAKI_SHIM_API int32_t chiaki_shim_base64_encode(
+		const uint8_t *in,
+		int32_t in_size,
+		char *out,
+		int32_t out_size);
+
 #ifdef __cplusplus
 }
 #endif

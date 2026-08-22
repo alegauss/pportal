@@ -2,6 +2,7 @@
 
 #include "chiaki_shim.h"
 
+#include <chiaki/base64.h>
 #include <chiaki/common.h>
 #include <chiaki/decoderchoice.h>
 #include <chiaki/bitstream.h>
@@ -2934,4 +2935,18 @@ CHIAKI_SHIM_API void chiaki_shim_session_free(void *session)
 CHIAKI_SHIM_API const char *chiaki_shim_quit_reason_string(int32_t reason)
 {
 	return chiaki_quit_reason_string((ChiakiQuitReason)reason);
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_base64_encode(
+		const uint8_t *in,
+		int32_t in_size,
+		char *out,
+		int32_t out_size)
+{
+	if(!in || !out || in_size < 0 || out_size <= 0)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+
+	/* Straight through: what this exists to show is what the encoder does to `out`, so nothing
+	   here touches it before or after. */
+	return (int32_t)chiaki_base64_encode(in, (size_t)in_size, out, (size_t)out_size);
 }
