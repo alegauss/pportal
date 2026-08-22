@@ -491,6 +491,31 @@ rather than a thing to write. Sanitising it needs care too: a real exchange carr
 account id, the registration key and the nonce, and PP88's redaction rules already name
 what a log may not keep.
 
+### §PP298 The one primitive the runtime will not lend
+
+Every other piece of chiaki's crypto came off System.Security.Cryptography without
+argument. HMACSHA256 for the IVs and the key derivation, SHA256 for the GMAC key, AES in
+ECB as the block function under a hand-written CFB and a hand-written CTR. The GMAC is
+where that stops.
+
+chiaki_gkcrypt_gmac is AES-128 GCM over the packet as ADDITIONAL DATA with no plaintext,
+under a 16-byte IV, and it keeps four bytes of the tag. .NET's AesGcm refuses both ends
+of that, measured rather than assumed: NonceByteSizes reports 12 to 12 and TagByteSizes
+12 to 16. A 16-byte nonce is not a size it declines to optimise for, it is outside the
+type's contract, and a four-byte tag likewise.
+
+Neither is exotic. GCM defines J0 for any IV length - 96 bits is the fast path and
+anything else is GHASH over the IV - and truncating the tag is what the specification
+calls a shorter authentication tag. The runtime simply exposes the safe subset.
+
+So the managed GMAC needs GHASH by hand: multiplication in GF(2^128), which is the same
+shape of work PP286 did for GF(2^8) and about as much of it. AES-ECB for the hash subkey
+and the counter blocks is already available.
+
+Until then PP26 stops one function short. What is ported is the key that GMAC would use,
+the IV it would use and which window a packet belongs to - everything except the sixteen
+bytes of arithmetic in the middle.
+
 ## Block G — Test discipline
 
 ### §PP36 Where a red test has to stop something

@@ -27,7 +27,7 @@
 ## Block F — Managed core
 
 - ⏳ **PP23** (deps: —) **the protocol has no specification, so a managed rewrite has no oracle except the C code it replaces** — the four modules with no test at all: session, ctrl, streamconnection and senkusha, which are PP28's three files plus the one below them. → §PP23
-- ⏳ **PP26** (deps: PP23 ⏳, PP24 ✅) **3242 lines of crypto over OpenSSL sit between a registration and a session** — the GMAC itself: AES-GCM over a packet under the key PP26 already derives, and the key-position bookkeeping around it. → §PP26
+- ⏳ **PP26** (deps: PP298) **3242 lines of crypto over OpenSSL sit between a registration and a session** — the GMAC itself, which PP298 says needs GHASH by hand: the key, the IV and the window it uses are all ported. → §PP26
 - ⏳ **PP27** (deps: PP23 ⏳, PP25 ✅, PP44 ✅) **takion, the transport the whole stream rides on, is 1868 lines of C over raw sockets and timers** — the transport itself: the socket, the threads, the timers and the resend loop, which is where the runtime is the risk. → §PP27
 - 📋 **PP28** (deps: PP293 ⏳, PP294, PP295, PP23 ⏳) **session, ctrl and streamconnection are 3977 lines of state machine with no diagram** — the three together, once PP293, PP294 and PP295 have each landed: what is left here is the ordering between them. → §PP28
 - 📋 **PP29** (deps: PP23 ⏳, PP26 ⏳) **registration and discovery are 1775 lines that decide whether a console can be found and paired at all** — They are the first thing a fresh install runs and the smallest end-to-end proof that a managed core can talk to real hardware. → §PP29
@@ -39,6 +39,7 @@
 - 📋 **PP294** (deps: PP297 ⏳) **ctrl.c is 1469 lines of control channel and PP28 sizes it together with two files it does not resemble** — It is the longest of the three and the one with the most message types, and none of them are on the frame path so latency is not the measure. → §PP294
 - 📋 **PP295** (deps: PP27 ⏳, PP297 ⏳) **streamconnection.c is 1326 lines and is the last C caller of the video receiver, so every deletion below waits on it** — PP286 to PP291 ported the frame path bottom-up and none of it removed C, because this is what still calls the native receiver. → §PP295
 - ⏳ **PP297** (deps: —) **no session exchange has ever been captured, so the four modules with no test cannot be ported against anything** — the capture itself, which needs a console reaching the stream: the machinery on both sides of it is written and checked. → §PP297
+- 📋 **PP298** (deps: —) **the GMAC needs a 16-byte nonce and a 4-byte tag, and .NET's AesGcm accepts neither, so PP26 cannot finish on the BCL** — Measured: NonceByteSizes is 12 to 12 and TagByteSizes is 12 to 16, while chiaki passes a 16-byte IV and truncates the tag to four. → §PP298
 
 ## Block G — Test discipline
 
