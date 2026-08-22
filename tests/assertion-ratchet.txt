@@ -16,4 +16,21 @@
 # 97 was the debt on 2026-08-22, when the count was first taken: 283 tasks had shipped and
 # 186 were named by something that runs. It is not a target and not an allowance. 96 is where
 # PP305 left it, having found PP300's assertions already written under PP29.
+#
+# PP307 read all 96 against the git history and they are not one debt. Asking, for each id,
+# whether the commit that shipped it also touched an assertion file:
+#
+#   75  shipped WITH a test, in the same commit, named under another id. PP208's assertions
+#       are HolepunchIdentifiersTests and PP204's are PortGuessingTests - written while the
+#       work was another task's, exactly as PP300's were. Paying one is naming both ids.
+#   12  shipped with no test, and eleven of them could not have had one: PP56, PP67, PP74 and
+#       PP75 changed the gates themselves, and PP47, PP48, PP61, PP62, PP65, PP66 and PP71
+#       are measurements. PP225 is the single CODE change in this whole list that shipped
+#       with nothing asserting it.
+#    9  shipped under a commit scope that is not the task id - feat(spike), docs(roadmap) -
+#       so no history join can see them. PP39 to PP46, which is the telemetry baseline.
+#
+# So the honest size of what the non-goal was protecting against is ONE, not ninety-six. The
+# number below is still 96 because that is what the id join counts, and the id join is what
+# the gate can check without reading git. PP308 is whether it should.
 96

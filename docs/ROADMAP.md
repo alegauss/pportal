@@ -16,12 +16,14 @@
 
 ## Block D — Screens
 
+- 📋 **PP309** (deps: PP307 ✅) **PP225 is the one code change in the port that shipped with nothing asserting it, and it is still unasserted** — PP307's pass found eleven of the other twelve were gates or measurements, so this is the whole of what the non-goal was protecting against. → §PP309
+
 ## Block E — Windows-only build
 
 - 📋 **PP63** (deps: PP62 ✅) **nothing in the tree can configure a Qt build carrying WebEngine, so PP46's before cannot be produced at all** — MSYS2 has no qt6-webengine and no published Windows release carries Chromium, so an MSVC configure built once is the only reference the port can measure against. → §PP63
 - 📋 **PP301** (deps: —) **no MSVC toolchain has ever compiled this tree, so the CI workflow's first push is the first time it is tried** — PP22 configures a runner the only way a runner can be, and everything built here so far came through MSYS2 MinGW64. → §PP301
 - 📋 **PP302** (deps: —) **nothing signs the host or the installer, so SmartScreen warns on the first run of every release** — PP22 shipped the builds and the packages of its own sentence and not the signs, because that one starts with buying a certificate. → §PP302
-- 💭 **PP307** (deps: PP305 ✅) **the ratchet holds 96 tasks with no assertion naming them and nothing schedules paying any of them** — Two populations sit in one list: assertions written under a neighbouring id, and tasks that shipped with no test at all. → §PP307
+- 💭 **PP308** (deps: PP307 ✅) **the ratchet's id join misses 75 tasks whose test shipped in the same commit, and only git can see that** — It is the non-goal restated and a comment cannot satisfy it, but it needs full history on a runner that fetches depth one. → §PP308
 
 ## Block F — Managed core
 

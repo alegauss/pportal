@@ -135,6 +135,7 @@
 - ✅ **PP277** **the installer keeps upstream's AppId, so it upgrades an installed chiaki-ng in place rather than sitting beside it** — an AppId and an install name of this port's own, held against the assembly rather than a literal.
 - ✅ **PP306** **the host has seven command-line flags, nothing lists them, and a mistyped one opens the window instead of refusing** — --help lists every flag, an unknown one is refused, and the list is held against the dispatch.
 - ✅ **PP305** **the ratchet's join is one id per task, so work asserted under the id it continued reads as untested** — --ratchet lists the debt beside the ledger's sentences, and PP300's own assertions now name it.
+- ✅ **PP307** **the ratchet holds 96 tasks with no assertion naming them and nothing schedules paying any of them** — the 96 read against git: 75 have a test in their own commit, 11 could not, and 1 is real.
 
 ## Block F — Managed core
 

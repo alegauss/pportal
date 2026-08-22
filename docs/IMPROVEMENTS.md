@@ -70,6 +70,33 @@ the same fact.
 
 ## Block D — Screens
 
+### §PP309 The one that was really untested
+
+PP307 read all ninety-six of the ratchet's uncovered tasks against the git history,
+asking of each whether the commit that shipped it also touched an assertion file.
+Seventy-five did. Twelve did not, and eleven of those twelve could not have: four
+changed the gates themselves and seven are measurements, where a test is not the
+instrument.
+
+PP225 is the twelfth. It is the only CODE change in the port that shipped with nothing
+asserting it, which makes it the entire honest size of what the non-goal was written to
+prevent - one, not ninety-six.
+
+What it fixed: StartupUri cannot be cleared. Setting it to null throws inside OnStartup,
+the run dies before anything is drawn, and no window appears at all - so the mapping
+screen is queued behind the window instead, at ApplicationIdle, and the property is left
+alone.
+
+Both halves are assertable without opening a window, by the drift-reader idiom every
+other check here uses. That OnStartup does not assign null to StartupUri is one read of
+the source. That the mapping screen is queued rather than called is another, and it is
+the half that matters: called directly it finds no window, silently, which is what the
+first version did.
+
+Filed rather than paid inside PP307 because PP307 was a pass over a list and this is a
+test somebody has to write. Small, and worth its own line for what it says about the
+ratchet: the number that looked like ninety-six of debt was one.
+
 ## Block E — Windows-only build
 
 ### §PP63 One configure that exists only to be measured
@@ -147,28 +174,30 @@ Filed so the gap is written down rather than remembered. The workflow signs noth
 today and says nothing about it, which is the state where a release goes out unsigned
 because every part of it was green.
 
-### §PP307 Splitting the debt before paying it
+### §PP308 Whether the ratchet should read git
 
-PP38 froze the debt and said plainly that paying it was not its job. PP305 made it
-payable and paid one. Ninety-six are left with no owner, and a number that only ever
-stops growing is a number that is still ninety-six in a year.
+PP307's pass asked one question of every uncovered id - did the commit that shipped this
+also touch an assertion file - and answered 75 of 96 where the id join answered none. It
+is a better join because it is the non-goal restated: the rule says a test lands in the
+same commit as the line it holds, which is a fact about a commit and not about prose. It
+is also the one join a comment cannot satisfy.
 
-They are not one population, which is the whole of what makes this schedulable. Some are
-PP300's case: the assertions exist and were written under the id the work continued, so
-paying is reading a file and adding an id, and the gain is honest because nothing was
-untested. The rest have no assertion at all, and paying one means writing the test that
-should have shipped with it.
+Three costs, none small enough to skip.
 
-`--ratchet` cannot tell them apart and should not try: it prints each id with the
-ledger's own sentence, and a person reading "the session uuid is drawn from rand
-reseeded by the clock" knows in a second whether something checks that. What it cannot
-do is sort ninety-six of them for you.
+The gate would read git, so the test shells out. One `git log` over the history builds
+the map in one process rather than ninety-six, but it is a dependency a unit test does
+not have.
 
-So this is a pass, not a fix: read the list once and split it. The first half is one
-commit lowering the ceiling by however many it turns out to be. The second half is a
-count of tasks that shipped untested - worth having as a number before any of it is
-paid, because it is the honest size of what the non-goal was protecting against and
-nobody has seen it.
+Shallow clones see nothing. actions/checkout takes depth 1, so on a runner every task reads
+as uncovered and the ratchet is red on every push until the workflow asks for fetch-depth: 0
+- a full history download per job.
+
+And it has a floor: nine ids shipped under a scope that is not the task id, so no depth
+of history finds them. Those need the id join anyway, which means keeping both.
+
+What is open is whether a gate needing full history on every CI run is worth 75 of 96,
+against an id join that is free, works offline, and is wrong in the direction that only
+ever asks for more tests.
 
 ## Block F — Managed core
 
