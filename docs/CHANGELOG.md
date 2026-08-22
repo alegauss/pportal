@@ -219,6 +219,7 @@
 - ✅ **PP258** **creating a session is unported, and a websocket that fails to connect blocks the caller forever** — the create is ported with bounded and cancellable as separate questions, so the wait that is neither is named rather than looking like the others.
 - ✅ **PP259** **the stun lookup is unported, and its first call uses the ipv4 servers whatever family it was asked for** — the lookup is ported with which call ran kept apart from what was asked, and the commented-out fetcher measured rather than described.
 - ✅ **PP260** **the upnp mappings are unported, and they are added with a lease that never expires** — the mappings are ported with what removes them stated as a value, and the address buffer's width carried so the family limit is visible.
+- ✅ **PP261** **the diagnostic printers are unported, and a failed encode is handled then printed anyway** — the printers are ported with the encoding arithmetic computed rather than trusted, so the unreachable branch is kept and its reason stated.
 
 ## Block G — Test discipline
 
