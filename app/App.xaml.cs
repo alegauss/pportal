@@ -458,6 +458,29 @@ public partial class App : Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        // PP306: the list, and the refusal, before anything dispatches.
+        //
+        // Both first, and the refusal is the half that matters. Every match below is an `Any` that
+        // falls through when it misses, so --self-test used to reach StartupUri and open the
+        // application - on a machine with no console, that was the entire report. An argument
+        // spelled like a flag and answered by nothing is now an exit code and the list.
+        if (HostCommandLine.IsHelp(e.Args))
+        {
+            ReopenStdOut();
+            Console.Write(HostCommandLine.Usage());
+            Environment.Exit(0);
+        }
+
+        IReadOnlyList<string> unknown = HostCommandLine.Unrecognised(e.Args);
+        if (unknown.Count > 0)
+        {
+            ReopenStdOut();
+            Console.Error.WriteLine($"ChiakiNg: no such flag: {string.Join(", ", unknown)}");
+            Console.Error.WriteLine();
+            Console.Error.Write(HostCommandLine.Usage());
+            Environment.Exit(2);
+        }
+
         if (e.Args.Any(a => string.Equals(a, "--selftest", StringComparison.OrdinalIgnoreCase)))
         {
             ReopenStdOut();

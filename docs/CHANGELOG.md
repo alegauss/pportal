@@ -133,6 +133,7 @@
 - ✅ **PP275** **.gitignore ignores scripts/chiaki-ng.iss, which this port maintains by hand rather than generates** — the inherited rule deleted; git add -A stages the script's removal with no message, and two assertions now read the root's ignore list.
 - ✅ **PP274** **the Inno Setup script packages ..\chiaki-ng-Win\chiaki.exe, a path no build creates and a client that is off** — the script points at PP273's payload, ISCC compiles it to a 92 MB installer at 1.10.0 read off the exe, and three assertions hold the spellings.
 - ✅ **PP277** **the installer keeps upstream's AppId, so it upgrades an installed chiaki-ng in place rather than sitting beside it** — an AppId and an install name of this port's own, held against the assembly rather than a literal.
+- ✅ **PP306** **the host has seven command-line flags, nothing lists them, and a mistyped one opens the window instead of refusing** — --help lists every flag, an unknown one is refused, and the list is held against the dispatch.
 
 ## Block F — Managed core
 

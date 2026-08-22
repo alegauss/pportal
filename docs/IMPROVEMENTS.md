@@ -172,30 +172,6 @@ infers.
 
 Filed now because the ceiling is 97 and the first payments will decide which.
 
-### §PP306 A command line nothing describes
-
-The host has grown a command line and nothing lists it. Six flags today: --selftest,
---controllers, --dcomp-demo, --capture-controller with --analog, --capture-mapping, and
---recount. Each was added where it was needed, each is documented in the summary of the
-method that runs it, and none of them is discoverable from the executable.
-
-What that costs is not knowing the flags. It is not knowing which of them is the one for
-the job in front of you: --recount answers a question test.cmd also answers, but before
-the work rather than after it, and a person who does not know it exists pays PP304's tax
-anyway. The same holds for --capture-controller against --capture-mapping.
-
-An unrecognised flag is worse than absent. OnStartup matches each one in turn and falls
-through to opening MainWindow, so a typo - --self-test, --recounts - launches the
-application, and on a machine with no console that is the whole of the feedback.
-
-What this needs: --help printing the flags with one line each, and an unrecognised flag
-starting with -- refused with the same list and a non-zero exit rather than a window.
-Both in OnStartup, beside the matches they describe, so a flag added without a line here
-is visible in the diff that adds it.
-
-Small, and filed rather than done inside PP304 because a flag list that is written once
-and not held against the flags is the drift this port files tasks about.
-
 ## Block F — Managed core
 
 ### §PP23 The oracle this block cannot be written without
