@@ -60,8 +60,12 @@ jobs:
 
       # The C suite. test.cmd is the local launcher for this and cannot be used here - it exists to
       # put the MinGW runtime beside the binary, which an MSVC build does not need.
+      #
+      # PP36: --output-junit as well as --output-on-failure. The second puts a failure in the log,
+      # which is readable by opening the log; the first writes a file the step below keeps, so a
+      # red push can be read as a list of test names rather than scrolled for.
       - name: chiaki-unit
-        run: ctest --test-dir build -C Release --output-on-failure
+        run: ctest --test-dir build -C Release --output-on-failure --output-junit junit-unit.xml
 
       # The SOLUTION, as compile.cmd does (PP24), and Debug for the reason the csproj gives: Release
       # turns SelfContained on for a plain build too and lays the whole runtime down before anything
@@ -70,7 +74,25 @@ jobs:
         run: dotnet build ChiakiNg.slnx -c Debug --nologo
 
       - name: the managed suite
-        run: dotnet test tests/ChiakiNg.Tests/ChiakiNg.Tests.csproj -c Debug --no-build --nologo
+        run: >
+          dotnet test tests/ChiakiNg.Tests/ChiakiNg.Tests.csproj -c Debug --no-build --nologo
+          --logger "trx;LogFileName=managed.trx"
+
+      # PP36: always, and that is the whole of this step.
+      #
+      # A results file uploaded only on success is a results file nobody ever needs. The run this
+      # exists for is the red one, and a step with no condition is skipped the moment anything
+      # above it fails - so both suites' results would be exactly as unreachable as they were
+      # before, with a file written and thrown away.
+      - name: the test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            build/junit-unit.xml
+            tests/ChiakiNg.Tests/TestResults/managed.trx
+          if-no-files-found: ignore
 
       # The single-file host PP22's first half shipped. Publishing it here is what keeps that half
       # honest: the analyzer errors on IL3000 are compile-time, and a publish nobody runs is a

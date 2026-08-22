@@ -433,21 +433,6 @@ what a log may not keep.
 
 ## Block G — Test discipline
 
-### §PP36 Where a red test has to stop something
-
-After the chiaki-ng workflows were removed, .github/workflows holds one file and it
-lints the roadmap. Nothing compiles, nothing runs a test, and nothing on a push can fail
-for a reason that is about the code.
-
-What this needs is small and specific: dotnet test in the same workflow that builds,
-failing the job on a red assertion, with the results readable without opening a machine.
-Visual Studio's Test Explorer answers the inner loop and answers nothing about a branch
-somebody else pushed.
-
-It is filed early in this block because the two tasks after it are both worthless
-without it - a suite and a ratchet that only run when someone remembers are a suite and
-a ratchet that report on the day they were written.
-
 ### §PP38 The ratchet
 
 The non-goal says no line ships without an assertion that fails without it. Stated and

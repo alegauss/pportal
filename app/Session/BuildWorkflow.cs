@@ -149,6 +149,39 @@ public static partial class BuildWorkflow
             || workflow.Contains(@"buildsystems\vcpkg.cmake", StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// PP36: whether both suites run in the workflow that builds.
+    ///
+    /// The C one and the managed one, because they are two suites and a workflow that runs one is a
+    /// branch half of whose assertions cannot turn red. Named by the commands rather than by step
+    /// titles: a step can be renamed and still be the thing, and a title cannot fail a job.
+    /// </summary>
+    public static bool RunsBothSuites(string workflow)
+    {
+        ArgumentNullException.ThrowIfNull(workflow);
+
+        return workflow.Contains("ctest ", StringComparison.Ordinal)
+            && workflow.Contains("dotnet test ", StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// And whether their results are kept from the run that needs them.
+    ///
+    /// Both halves, and the second is the one that is easy to lose. A results file is only ever
+    /// wanted after a red push, and a step with no condition is skipped as soon as anything above
+    /// it fails - so an upload without `if: always()` writes the files and throws them away on
+    /// exactly the runs they exist for.
+    /// </summary>
+    public static bool PublishesTestResults(string workflow)
+    {
+        ArgumentNullException.ThrowIfNull(workflow);
+
+        return workflow.Contains("upload-artifact", StringComparison.Ordinal)
+            && workflow.Contains("if: always()", StringComparison.Ordinal)
+            && (workflow.Contains("--output-junit", StringComparison.Ordinal)
+                || workflow.Contains(".trx", StringComparison.Ordinal));
+    }
+
     // A path-shaped token: a segment, then at least one separator, or a bare name with an
     // extension. Quotes and YAML punctuation end it; `$` is kept so the exclusion above can see it.
     [GeneratedRegex(@"[A-Za-z0-9_$.\-]+(?:[/\\][A-Za-z0-9_$.\-]+)*\.[A-Za-z0-9]+")]

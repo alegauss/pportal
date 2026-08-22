@@ -39,8 +39,7 @@
 
 ## Block G — Test discipline
 
-- 📋 **PP36** (deps: PP22 ✅, PP24 ✅) **the only CI job is the roadkeep lint gate, so no test result can turn a branch red** — A suite nobody runs on a push goes red quietly, and Test Explorer is a local convenience rather than a gate that holds a policy in place. → §PP36
-- 📋 **PP38** (deps: PP36) **nothing counts the shipped lines that carry no assertion, so the rule is a sentence rather than a gate** — A count that may only go down is what survives a busy week, and without it the discipline lasts exactly as long as the person remembering it. → §PP38
+- 📋 **PP38** (deps: PP36 ✅) **nothing counts the shipped lines that carry no assertion, so the rule is a sentence rather than a gate** — A count that may only go down is what survives a busy week, and without it the discipline lasts exactly as long as the person remembering it. → §PP38
 
 ## Block H — Performance and telemetry
 

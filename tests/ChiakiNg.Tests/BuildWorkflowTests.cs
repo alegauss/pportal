@@ -165,6 +165,58 @@ public class BuildWorkflowTests(ITestOutputHelper output)
     }
 
     /// <summary>
+    /// PP36: a red assertion has somewhere to stop something, and the result can be read.
+    ///
+    /// Before it, .github/workflows held one file and it linted the roadmap: nothing on a push
+    /// could fail for a reason about the code. PP22 put both suites in the job, which answers the
+    /// first half; this holds the second, which is that a red run leaves a list of test names
+    /// behind rather than a log to scroll.
+    /// </summary>
+    [Fact]
+    public void BothSuitesRunAndTheirResultsSurviveARedRun()
+    {
+        string? workflowPath = BuildWorkflow.Locate();
+        Assert.True(workflowPath is not null, "not running out of a checkout");
+
+        string workflow = File.ReadAllText(workflowPath);
+
+        Assert.True(BuildWorkflow.RunsBothSuites(workflow),
+            "the workflow no longer runs both suites, so half this port's assertions cannot turn a "
+                + "branch red");
+        Assert.True(BuildWorkflow.PublishesTestResults(workflow),
+            "the test results are not kept, or are kept only when the job succeeds - which is the "
+                + "one run they are wanted on");
+    }
+
+    /// <summary>The two halves of the results check are separable, and the second is the fragile one.</summary>
+    [Fact]
+    public void AnUploadThatSkipsOnFailureIsNotPublishing()
+    {
+        const string always = """
+            - run: ctest --output-junit junit-unit.xml
+            - run: dotnet test x.csproj
+            - if: always()
+              uses: actions/upload-artifact@v4
+            """;
+
+        Assert.True(BuildWorkflow.RunsBothSuites(always));
+        Assert.True(BuildWorkflow.PublishesTestResults(always));
+
+        // The same steps with the condition dropped: written, uploaded on green, gone on red.
+        const string onlyOnGreen = """
+            - run: ctest --output-junit junit-unit.xml
+            - run: dotnet test x.csproj
+            - uses: actions/upload-artifact@v4
+            """;
+
+        Assert.True(BuildWorkflow.RunsBothSuites(onlyOnGreen));
+        Assert.False(BuildWorkflow.PublishesTestResults(onlyOnGreen));
+
+        // And one suite alone is not both.
+        Assert.False(BuildWorkflow.RunsBothSuites("- run: ctest --output-on-failure\n"));
+    }
+
+    /// <summary>
     /// And the configure goes through vcpkg, which is what gives PP230's manifest check a reader.
     /// </summary>
     [Fact]

@@ -284,6 +284,7 @@
 - ✅ **PP280** **a line-count premise is prose, so nothing rechecks it and two of seven no longer match the tree** — every line count the backlog states about a file is now checked against the file, and the four that had drifted are corrected.
 - ✅ **PP285** **PP23 sizes the oracle from 16935 lines in lib/src and 5512 in test, and no reading of the tree produces either** — a directory total is checked where it names its counting rule, and PP23's two are restated from the tree instead of from memory.
 - ✅ **PP304** **every counted claim a commit invalidates is restated by hand, from a list a red test produces after the work is done** — ChiakiNg.exe --recount prints each stale size with the governed call that fixes it, anchor resolved.
+- ✅ **PP36** **the only CI job is the roadkeep lint gate, so no test result can turn a branch red** — both suites fail the job that builds, and their results are kept from the run that goes red.
 
 ## Block H — Performance and telemetry
 
