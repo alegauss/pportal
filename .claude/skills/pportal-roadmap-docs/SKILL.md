@@ -61,7 +61,14 @@ the binary, which is the stale green PP56 fixed showing up a second way.
 A configure that passes is not a target that links. Run the full build before the
 commit, not before the decision.
 
-**Name the task id in the assertion you write.** `AssertionRatchetTests` (PP38) counts
+**Name EVERY task id an assertion holds, not just the one you are working.** A test
+written under one id often ends up holding the task that finished the work — PP300's
+assertions were all in a file whose summary said PP29 — and naming both is four
+characters, while the alternative is a second test file written to move a number.
+`ChiakiNg.exe --ratchet` (PP305) lists what is owed with each ledger sentence, which is
+how to tell the two cases apart.
+
+`AssertionRatchetTests` (PP38) counts
 shipped tasks that no assertion mentions, against the ceiling in
 [`tests/assertion-ratchet.txt`](../../../tests/assertion-ratchet.txt), and the count may
 fall but may not rise — so a task shipped with no test naming its id turns the suite red

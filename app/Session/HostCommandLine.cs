@@ -46,6 +46,7 @@ public static partial class HostCommandLine
     [
         new("--selftest", "", "run the host's own assertions and exit with the verdict"),
         new("--recount", "", "check the sizes the backlog states, and print what corrects each"),
+        new("--ratchet", "", "list the shipped tasks no assertion names, each with its symptom"),
         new("--controllers", "", "print what SDL sees, for a pad that is plugged in now"),
         new("--capture-controller", "", "log presses for twenty seconds; add --analog for the sticks"),
         new("--analog", "", "with --capture-controller: include the axes, which flood the log"),

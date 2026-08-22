@@ -40,6 +40,23 @@ public class AssertionRatchetTests(ITestOutputHelper output)
         Assert.DoesNotContain("PP20", shipped);
     }
 
+    /// <summary>
+    /// PP305: the ledger's own sentence for each id, which is what makes the debt payable.
+    ///
+    /// A partial's qualifier lives inside the id's own asterisks - "PP22 (the single-file publish)"
+    /// - so the symptom is the SECOND bold run and not the first. Read greedily, the id and the
+    /// sentence come back as one string and every line of the list says the same useless thing.
+    /// </summary>
+    [Fact]
+    public void EachShippedTaskCarriesTheSentenceTheLedgerGivesIt()
+    {
+        IReadOnlyDictionary<string, string> symptoms = AssertionRatchet.ShippedWithSymptom(Ledger);
+
+        Assert.Equal("symptom here", symptoms["PP22"]);
+        Assert.Equal("symptom here", symptoms["PP277"]);
+        Assert.False(symptoms.ContainsKey("PP20"));
+    }
+
     /// <summary>An id is a whole id: PP2 is not found inside PP292.</summary>
     [Fact]
     public void AnIdIsNotAPrefixOfAnother()

@@ -152,6 +152,54 @@ public partial class App : Application
         return 1;
     }
 
+    /// <summary>
+    /// PP305: `--ratchet`, which prints the debt PP38 counts in the form it can be paid in.
+    ///
+    /// The count alone is a gate and not a task list. Ninety-seven bare ids say nothing about where
+    /// an assertion for one would go, or whether one already exists under a neighbouring id - and
+    /// that second case is common enough to be the rule: PP300 finished a port whose assertions
+    /// were all written under PP29, so it reads as untested while being among the better-checked
+    /// things in the tree. Each id is printed with the ledger's own sentence for it, which is what
+    /// makes that visible without opening the ledger.
+    ///
+    /// Exits 0 whatever it finds. It is a list, not the gate - the gate is
+    /// <c>AssertionRatchetTests</c>, and having two things fail for one reason only ever teaches
+    /// people to read one of them.
+    /// </summary>
+    private static int Ratchet()
+    {
+        string? root = SanitizerSource.RepositoryRoot();
+        if (root is null)
+        {
+            Console.WriteLine("[ratchet] not running out of a checkout - there is no ledger to read.");
+            return 2;
+        }
+
+        string? ledgerPath = AssertionRatchet.LocateLedger();
+        if (ledgerPath is null)
+        {
+            Console.WriteLine($"[ratchet] no {AssertionRatchet.LedgerRelativePath} here.");
+            return 2;
+        }
+
+        IReadOnlyDictionary<string, string> symptoms =
+            AssertionRatchet.ShippedWithSymptom(File.ReadAllText(ledgerPath));
+        IReadOnlyList<string> uncovered = AssertionRatchet.Uncovered(root);
+        int ceiling = AssertionRatchet.Ceiling(root);
+
+        Console.WriteLine($"[ratchet] {uncovered.Count} shipped task(s) named by no assertion, ceiling {ceiling}");
+        Console.WriteLine("[ratchet] newest first - an assertion that already holds one of these only needs to say so");
+        Console.WriteLine();
+
+        foreach (string id in uncovered)
+        {
+            string symptom = symptoms.TryGetValue(id, out string? text) ? text : "(no sentence in the ledger)";
+            Console.WriteLine($"  {id,-7} {symptom}");
+        }
+
+        return 0;
+    }
+
     private static int Controllers()
     {
         using var sdl = new SdlThread();
@@ -501,6 +549,13 @@ public partial class App : Application
         {
             ReopenStdOut();
             Environment.Exit(Recount());
+        }
+
+        // PP305: the debt PP38 counts, in the form it can be paid in.
+        if (e.Args.Any(a => string.Equals(a, "--ratchet", StringComparison.OrdinalIgnoreCase)))
+        {
+            ReopenStdOut();
+            Environment.Exit(Ratchet());
         }
 
         // PP284: the window PP163's last question is answered by looking at. Here rather than after

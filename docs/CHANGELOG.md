@@ -134,6 +134,7 @@
 - ✅ **PP274** **the Inno Setup script packages ..\chiaki-ng-Win\chiaki.exe, a path no build creates and a client that is off** — the script points at PP273's payload, ISCC compiles it to a 92 MB installer at 1.10.0 read off the exe, and three assertions hold the spellings.
 - ✅ **PP277** **the installer keeps upstream's AppId, so it upgrades an installed chiaki-ng in place rather than sitting beside it** — an AppId and an install name of this port's own, held against the assembly rather than a literal.
 - ✅ **PP306** **the host has seven command-line flags, nothing lists them, and a mistyped one opens the window instead of refusing** — --help lists every flag, an unknown one is refused, and the list is held against the dispatch.
+- ✅ **PP305** **the ratchet's join is one id per task, so work asserted under the id it continued reads as untested** — --ratchet lists the debt beside the ledger's sentences, and PP300's own assertions now name it.
 
 ## Block F — Managed core
 

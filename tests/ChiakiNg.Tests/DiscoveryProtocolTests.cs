@@ -8,11 +8,17 @@ using Xunit.Abstractions;
 namespace ChiakiNg.Tests;
 
 /// <summary>
-/// PP29: the managed discovery protocol against the C, on the same bytes.
+/// PP29 and PP300: the managed discovery protocol against the C, on the same bytes.
 ///
 /// PP6 wrapped every one of these rather than porting them, on the grounds that a second reply
 /// parser was the one piece of discovery a console would have to be present to disprove. It does
 /// not: the wrapper is the oracle, and this file is the disproof it was waiting for.
+///
+/// PP305: BOTH ids, and that is the point of naming them. PP300 is the task that finished the port
+/// - the packets, the classifier and the reply parser off the shim - and every assertion holding it
+/// is here, written while the work was still PP29's. Named under one id, PP38's ratchet counted
+/// PP300 as shipped with nothing testing it, which was false and would have been paid by writing a
+/// second file rather than by adding four characters to this line.
 /// </summary>
 public class DiscoveryProtocolTests(ITestOutputHelper output)
 {

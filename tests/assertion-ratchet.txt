@@ -9,7 +9,11 @@
 #   below it - the debt was paid, so lower this line in the same commit, or the ratchet
 #             quietly loosens by exactly what was just gained
 #
-# 97 is the debt on 2026-08-22, when the count was first taken. It is not a target and it is
-# not an allowance: 283 tasks had shipped, 186 of them are named by something that runs, and
-# the 97 below are what the port owes. Paying it is not this task - stopping it growing is.
-97
+# `ChiakiNg.exe --ratchet` (PP305) lists what is owed, each id beside the ledger's own
+# sentence for it - which is how to tell a task with no test from one whose tests were
+# written under the id it continued. The second kind is paid by naming both ids.
+#
+# 97 was the debt on 2026-08-22, when the count was first taken: 283 tasks had shipped and
+# 186 were named by something that runs. It is not a target and not an allowance. 96 is where
+# PP305 left it, having found PP300's assertions already written under PP29.
+96

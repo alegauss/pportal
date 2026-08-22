@@ -76,6 +76,31 @@ public static partial class AssertionRatchet
         return ids;
     }
 
+    /// <summary>
+    /// PP305: each shipped task with the sentence the ledger gives it.
+    ///
+    /// A list of uncovered ids cannot be paid down. Ninety-seven bare ids say nothing about where an
+    /// assertion for one would go, or whether one already exists under a neighbouring id - which is
+    /// the case this is for. PP300's parser, ladder and packets are all checked, in a file whose
+    /// summary names PP29 because that is the task it was written under. Beside its symptom that is
+    /// obvious in a second; as the string "PP300" it is a morning.
+    /// </summary>
+    public static IReadOnlyDictionary<string, string> ShippedWithSymptom(string ledger)
+    {
+        ArgumentNullException.ThrowIfNull(ledger);
+
+        var entries = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (Match entry in ShippedRegex().Matches(ledger))
+        {
+            // First wins. A partial and its completion are two entries for one task, and the first
+            // is the one stating the problem rather than the half that landed.
+            string id = entry.Groups["id"].Value;
+            entries.TryAdd(id, entry.Groups["symptom"].Value.Trim());
+        }
+
+        return entries;
+    }
+
     /// <summary>Every task id named anywhere in a body of assertion text.</summary>
     public static IReadOnlySet<string> Named(string assertions)
     {
@@ -200,7 +225,11 @@ public static partial class AssertionRatchet
     }
 
     // - ✅ **PP22 (the single-file publish)** **symptom** — outcome.
-    [GeneratedRegex(@"^-\s+✅\s+\*\*(?<id>[A-Za-z]+[0-9]+)", RegexOptions.Multiline)]
+    //
+    // The symptom is the SECOND bold run, which is why the first is matched lazily up to its close:
+    // a partial's id carries a qualifier inside the same asterisks, and taking the greedy reading
+    // would swallow the sentence this exists to keep.
+    [GeneratedRegex(@"^-\s+✅\s+\*\*(?<id>[A-Za-z]+[0-9]+)[^*]*\*\*\s+\*\*(?<symptom>.+?)\*\*", RegexOptions.Multiline)]
     private static partial Regex ShippedRegex();
 
     // PP292, and not PP2 inside it.
