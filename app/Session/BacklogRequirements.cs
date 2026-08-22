@@ -47,10 +47,34 @@ public static partial class BacklogRequirements
         if (!array.Success)
             return names;
 
-        foreach (Match name in QuotedRegex().Matches(array.Groups["items"].Value))
+        foreach (Match name in QuotedRegex().Matches(WithoutComments(array.Groups["items"].Value)))
             names.Add(name.Groups["name"].Value);
 
         return names;
+    }
+
+    /// <summary>
+    /// The array's text with its TOML comments removed, which the quotes have to be counted after.
+    ///
+    /// Each entry in this project's table carries a paragraph above it saying why the thing is
+    /// absent, and one of those paragraphs quotes a sentence. An unpaired quote inside a comment
+    /// desynchronises every pair after it, so the first read of the real file found one name that
+    /// was a fragment of a comment and none of the four that were declared - which is this reader's
+    /// own subject, arriving from the direction its summary had just ruled out.
+    ///
+    /// A `#` inside a requirement NAME would be eaten with the comment. Requirement names are
+    /// identifiers and carry none, and a name that did would be unspellable in a task line's
+    /// `(requires: …)` annotation anyway.
+    /// </summary>
+    public static string WithoutComments(string toml)
+    {
+        ArgumentNullException.ThrowIfNull(toml);
+
+        return string.Join('\n', toml
+            .Split('\n')
+            .Select(line => line.IndexOf('#', StringComparison.Ordinal) is int at && at >= 0
+                ? line[..at]
+                : line));
     }
 
     /// <summary>Every requirement a roadmap line says it waits on.</summary>

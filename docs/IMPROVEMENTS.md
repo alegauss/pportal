@@ -64,9 +64,9 @@ tasks took it apart: PP281 built the tree to Commit, PP282 asked it with the vis
 BEHIND the window's content where a video plane must sit, and PP283 asked that of a real
 WPF window's HWND. All three hold.
 
-One question is left and it needs a screenshot: what WPF DRAWS over that visual. Its
-window owns a redirection bitmap, so accepting the tree and showing through it are not
-the same fact.
+One question is left and it needs a person: what WPF DRAWS over that visual. Its window
+owns a redirection bitmap, so accepting the tree and showing through it are not the same
+fact.
 
 ## Block D — Screens
 

@@ -14,25 +14,40 @@ namespace ChiakiNg.Tests;
 /// </summary>
 public class BacklogRequirementsTests(ITestOutputHelper output)
 {
-    /// <summary>A config in the shape this project's carries, comments included.</summary>
+    /// <summary>
+    /// A config in the shape this project's carries, comments included - and one of those comments
+    /// QUOTES a sentence, which is the shape that broke the first version of the reader.
+    ///
+    /// Each entry in the real table has a paragraph above it saying why the thing is absent, and
+    /// one of them quotes PP284. An unpaired quote inside a comment desynchronises every pair after
+    /// it: the first run against the real file found one name that was a fragment of prose and none
+    /// of the four declared.
+    /// </summary>
     private const string Config = """
         [requirements]
         declared = [
             # a PS5 on the LAN, reachable
             "console",
+            # somebody looking, because the window says so - "a
+            # person answers in one glance" - and a capture does not
+            "a-person-looking",
             "runner",
         ]
         """;
 
-    /// <summary>The array is the declaration; the prose explaining it is not.</summary>
+    /// <summary>The array is the declaration; the prose explaining it is not, quotes and all.</summary>
     [Fact]
     public void OnlyTheArrayDeclares()
     {
         IReadOnlySet<string> declared = BacklogRequirements.Declared(Config);
 
-        Assert.Equal(2, declared.Count);
+        Assert.Equal(3, declared.Count);
         Assert.Contains("console", declared);
+        Assert.Contains("a-person-looking", declared);
         Assert.Contains("runner", declared);
+
+        // And nothing from inside the comment, which is where the fragment came from.
+        Assert.DoesNotContain(declared, name => name.Contains("glance", StringComparison.Ordinal));
 
         // Every name is also written in the comment above it in the real file, and a comment is
         // not a declaration - so a config with only prose declares nothing.
