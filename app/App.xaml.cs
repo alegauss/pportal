@@ -409,6 +409,15 @@ public partial class App : Application
             Environment.Exit(Controllers());
         }
 
+        // PP284: the window PP163's last question is answered by looking at. Here rather than after
+        // base.OnStartup for the same reason --selftest is: StartupUri would open MainWindow behind
+        // it, and this demo is about what one window composes.
+        if (e.Args.Any(a => string.Equals(a, "--dcomp-demo", StringComparison.OrdinalIgnoreCase)))
+        {
+            ReopenStdOut();
+            Environment.Exit(Views.DcompDemo.Run());
+        }
+
         if (e.Args.Any(a => string.Equals(a, "--capture-controller", StringComparison.OrdinalIgnoreCase)))
         {
             ReopenStdOut();

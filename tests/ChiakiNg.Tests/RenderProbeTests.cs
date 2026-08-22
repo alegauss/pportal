@@ -388,6 +388,67 @@ public class RenderProbeTests
     }
 
     /// <summary>
+    /// PP284: the tree can be ATTACHED to a WPF window and torn down again.
+    ///
+    /// The probes build the same path and release it before returning, which is right for a
+    /// question and useless for a window somebody is meant to look at. What --dcomp-demo needs is a
+    /// tree that outlives the call, and the two failure modes it adds are both invisible here
+    /// unless something exercises them: an attach that reports success while handing back nothing,
+    /// and a detach that releases in the wrong order or twice.
+    ///
+    /// It does NOT show the window, so this stays in the gate. What the demo is for - what WPF
+    /// draws over the visual - is the part no assertion here can reach.
+    /// </summary>
+    [Fact]
+    public void TheTreeAttachesToAWpfWindowAndDetaches()
+    {
+        DcompStage stage = DcompStage.NoDevice;
+        bool attached = false;
+        Exception? failure = null;
+
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                using RenderDevice? device = AnyDevice();
+                if (device is null)
+                    return;
+
+                var window = new System.Windows.Window { Width = 320, Height = 240 };
+                IntPtr hwnd = new System.Windows.Interop.WindowInteropHelper(window).EnsureHandle();
+
+                DcompAttachment? session = device.AttachDirectComposition(
+                    hwnd, SwapchainFormat.Rgb10A2, topmost: false,
+                    ChiakiNg.Views.DcompDemo.FillRed,
+                    ChiakiNg.Views.DcompDemo.FillGreen,
+                    ChiakiNg.Views.DcompDemo.FillBlue,
+                    out stage);
+
+                attached = session is not null;
+                session?.Dispose();
+
+                // Twice, because a window closing can race a dispose and the second call is the one
+                // that would free an already-freed tree.
+                session?.Dispose();
+                window.Close();
+            }
+            catch (Exception ex)
+            {
+                failure = ex;
+            }
+        })
+        { IsBackground = true };
+
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread did not finish");
+        if (failure is not null)
+            throw new Xunit.Sdk.XunitException(failure.ToString());
+
+        Assert.True(attached, $"the tree did not attach: {stage}");
+    }
+
+    /// <summary>
     /// PP281: and the stage it reports is real, not decorative.
     ///
     /// The test above passes, which is the answer wanted and also the reason to check this: a probe

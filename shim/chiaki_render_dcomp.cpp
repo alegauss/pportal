@@ -24,6 +24,8 @@
 #include <dxgi1_2.h>
 #include <dcomp.h>
 
+#include <new>
+
 #include "chiaki_render.h"
 
 // Windows 8's, and this mingw's winuser.h only declares it above a _WIN32_WINNT the rest of the
@@ -40,11 +42,23 @@
 // ID3D11Device directly. chiaki_render_d3d11_device() is that accessor.
 extern "C" ID3D11Device *chiaki_render_d3d11_device(void *d3d11);
 
+// PP284: what an attached tree owns, so it can outlive the call that made it. The probes release
+// everything before returning, which is right for a question and useless for a window somebody is
+// meant to look at.
+struct chiaki_render_dcomp_session
+{
+	IDXGISwapChain1 *swapchain;
+	IDCompositionDevice *dcomp;
+	IDCompositionTarget *target;
+	IDCompositionVisual *visual;
+};
+
 // The path itself, over a window the CALLER owns. PP283: split out so a WPF window's own HWND can
 // be handed in, which is the arrangement the design actually runs in - PP281 and PP282 both built
 // the tree on a bare window this file created, and a bare window is not what WPF hands out.
 static bool chiaki_render_dcomp_build(
-		void *d3d11, int32_t format, bool topmost, HWND hwnd, int32_t *out_stage)
+		void *d3d11, int32_t format, bool topmost, HWND hwnd, int32_t *out_stage,
+		chiaki_render_dcomp_session *keep)
 {
 	ID3D11Device *device = nullptr;
 	IDXGIDevice *dxgi_device = nullptr;
@@ -142,6 +156,20 @@ static bool chiaki_render_dcomp_build(
 		*out_stage = CHIAKI_RENDER_DCOMP_OK;
 	ok = true;
 
+	// Ownership moves to the caller and the cleanup below is skipped for these four. Nulling them
+	// is what does the skipping - a second exit path would be a second place to get it wrong.
+	if(keep)
+	{
+		keep->swapchain = swapchain;
+		keep->dcomp = dcomp;
+		keep->target = target;
+		keep->visual = visual;
+		swapchain = nullptr;
+		dcomp = nullptr;
+		target = nullptr;
+		visual = nullptr;
+	}
+
 done:
 	if(visual)
 		visual->Release();
@@ -191,7 +219,7 @@ extern "C" CHIAKI_RENDER_API bool chiaki_render_dcomp_probe(
 	if(!hwnd)
 		return false;
 
-	ok = chiaki_render_dcomp_build(d3d11, format, topmost, hwnd, out_stage);
+	ok = chiaki_render_dcomp_build(d3d11, format, topmost, hwnd, out_stage, nullptr);
 	DestroyWindow(hwnd);
 	return ok;
 }
@@ -207,5 +235,95 @@ extern "C" CHIAKI_RENDER_API bool chiaki_render_dcomp_probe_hwnd(
 	if(!hwnd || !IsWindow(static_cast<HWND>(hwnd)))
 		return false;
 
-	return chiaki_render_dcomp_build(d3d11, format, topmost, static_cast<HWND>(hwnd), out_stage);
+	return chiaki_render_dcomp_build(d3d11, format, topmost, static_cast<HWND>(hwnd), out_stage, nullptr);
+}
+
+extern "C" CHIAKI_RENDER_API void *chiaki_render_dcomp_attach(
+		void *d3d11, int32_t format, bool topmost, void *hwnd,
+		float r, float g, float b, int32_t *out_stage)
+{
+	// PP284: the same tree as the probes, kept, with the buffer filled so there is something to
+	// look at. PP163's last question is what WPF DRAWS over this visual, and no screen capture of a
+	// composed window answers it reliably - so the honest apparatus is a window a person can look
+	// at, not a screenshot a test pretends to read.
+	chiaki_render_dcomp_session *self = nullptr;
+	ID3D11Device *device = nullptr;
+	ID3D11DeviceContext *context = nullptr;
+	ID3D11Texture2D *back = nullptr;
+	ID3D11RenderTargetView *rtv = nullptr;
+	const float colour[4] = { r, g, b, 1.0f };
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_DCOMP_WINDOW;
+	if(!hwnd || !IsWindow(static_cast<HWND>(hwnd)))
+		return nullptr;
+
+	device = chiaki_render_d3d11_device(d3d11);
+	if(!device)
+	{
+		if(out_stage)
+			*out_stage = CHIAKI_RENDER_DCOMP_NO_DEVICE;
+		return nullptr;
+	}
+
+	self = new (std::nothrow) chiaki_render_dcomp_session{};
+	if(!self)
+		return nullptr;
+
+	if(!chiaki_render_dcomp_build(
+			d3d11, format, topmost, static_cast<HWND>(hwnd), out_stage, self))
+	{
+		delete self;
+		return nullptr;
+	}
+
+	// The fill, and it is the whole point of the colour arguments: an EMPTY swapchain composes as
+	// nothing at all, so a window showing the desktop through it would be indistinguishable from a
+	// visual that never arrived. A solid colour tells those two apart at a glance.
+	//
+	// Failing here does not fail the attach. The tree is up and a caller can still see whether WPF
+	// covers it; a black plane is a worse answer than a red one and it is not no answer.
+	if(SUCCEEDED(self->swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void **>(&back))))
+	{
+		if(SUCCEEDED(device->CreateRenderTargetView(back, nullptr, &rtv)))
+		{
+			device->GetImmediateContext(&context);
+			if(context)
+			{
+				context->ClearRenderTargetView(rtv, colour);
+				self->swapchain->Present(0, 0);
+				context->Release();
+			}
+			rtv->Release();
+		}
+		back->Release();
+	}
+
+	return self;
+}
+
+extern "C" CHIAKI_RENDER_API void chiaki_render_dcomp_detach(void *session)
+{
+	chiaki_render_dcomp_session *self = static_cast<chiaki_render_dcomp_session *>(session);
+	if(!self)
+		return;
+
+	// Root first. Releasing the visual while the target still points at it leaves the compositor
+	// holding a tree whose contents are going away, and the window keeps showing the last frame
+	// until something else repaints it - which reads as the visual having survived detach.
+	if(self->target)
+		self->target->SetRoot(nullptr);
+	if(self->dcomp)
+		self->dcomp->Commit();
+
+	if(self->visual)
+		self->visual->Release();
+	if(self->target)
+		self->target->Release();
+	if(self->dcomp)
+		self->dcomp->Release();
+	if(self->swapchain)
+		self->swapchain->Release();
+
+	delete self;
 }

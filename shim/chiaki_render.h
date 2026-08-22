@@ -295,6 +295,28 @@ CHIAKI_RENDER_API bool chiaki_render_dcomp_probe_hwnd(
 		void *d3d11, int32_t format, bool topmost, void *hwnd, int32_t *out_stage);
 
 /**
+ * PP284: the same tree, KEPT, with the buffer filled - so a person can look at the answer.
+ *
+ * PP281 through PP283 measured everything the compositor can be asked and all of it holds. What is
+ * left of PP163 is what WPF DRAWS over the visual, and that is a fact about pixels: a composed
+ * window does not screenshot reliably, so a test claiming to read one would be reporting its own
+ * capture stack. This builds the apparatus instead and leaves the reading to eyes.
+ *
+ * The colour is why the fill exists. An empty swapchain composes as nothing, so a window showing
+ * the desktop through it looks exactly like one where the visual never arrived; a solid colour
+ * tells those apart at a glance.
+ *
+ * The window belongs to the caller and is not destroyed. The returned handle owns the swapchain,
+ * the device, the target and the visual, and must be given to chiaki_render_dcomp_detach.
+ */
+CHIAKI_RENDER_API void *chiaki_render_dcomp_attach(
+		void *d3d11, int32_t format, bool topmost, void *hwnd,
+		float r, float g, float b, int32_t *out_stage);
+
+/** Tears the tree down and frees the handle. Null is accepted and does nothing. */
+CHIAKI_RENDER_API void chiaki_render_dcomp_detach(void *session);
+
+/**
  * PP9's last unanswered link: a DECODED FRAME through pl_render_image.
  *
  * Everything before this rendered nothing. PP133 calls pl_render_image with a NULL image, which

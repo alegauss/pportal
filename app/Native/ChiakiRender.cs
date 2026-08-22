@@ -143,6 +143,33 @@ public enum DcompStage
     Commit,
 }
 
+/// <summary>
+/// PP284: a live DirectComposition tree on somebody else's window.
+///
+/// Disposable because it outlives the call that made it, which is the entire difference between
+/// this and the probes. The window is NOT owned - detaching leaves it standing, because the caller
+/// is WPF and it is still using it.
+/// </summary>
+public sealed class DcompAttachment(IntPtr session) : IDisposable
+{
+    private IntPtr session = session;
+
+    /// <summary>Tears the tree down. Idempotent, because a window closing may race a dispose.</summary>
+    public void Dispose()
+    {
+        if (session == IntPtr.Zero)
+            return;
+
+        IntPtr going = session;
+        session = IntPtr.Zero;
+        Detach(going);
+    }
+
+    [DllImport(ChiakiRender.Library, EntryPoint = "chiaki_render_dcomp_detach",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern void Detach(IntPtr session);
+}
+
 /// <summary>Which step of a frame's journey through the renderer failed, or Ok.</summary>
 public enum RenderStage
 {
@@ -416,6 +443,32 @@ public sealed class RenderDevice : IDisposable
     private static extern bool DcompProbeHwnd(
         IntPtr d3d11, int format, [MarshalAs(UnmanagedType.I1)] bool topmost,
         IntPtr hwnd, out int stage);
+
+    /// <summary>
+    /// PP284: the same tree, kept, with the buffer filled - so a person can look at the answer.
+    ///
+    /// What is left of PP163 is what WPF DRAWS over the visual, and that is a fact about pixels. A
+    /// composed window does not screenshot reliably, so a test claiming to read one would be
+    /// reporting on its own capture stack rather than on the compositor. This builds the apparatus
+    /// and leaves the reading to eyes.
+    /// </summary>
+    /// <returns>A live tree to dispose, or null with <paramref name="stage"/> saying where it stopped.</returns>
+    public DcompAttachment? AttachDirectComposition(
+        IntPtr hwnd, SwapchainFormat format, bool topmost,
+        double red, double green, double blue, out DcompStage stage)
+    {
+        IntPtr session = DcompAttach(
+            Handle, (int)format, topmost, hwnd, (float)red, (float)green, (float)blue, out int raw);
+
+        stage = session == IntPtr.Zero ? (DcompStage)raw : DcompStage.Ok;
+        return session == IntPtr.Zero ? null : new DcompAttachment(session);
+    }
+
+    [DllImport(ChiakiRender.Library, EntryPoint = "chiaki_render_dcomp_attach",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr DcompAttach(
+        IntPtr d3d11, int format, [MarshalAs(UnmanagedType.I1)] bool topmost, IntPtr hwnd,
+        float r, float g, float b, out int stage);
 
     /// <summary>
     /// PP9: one decoded frame through pl_render_image, and the pixel it produced.
