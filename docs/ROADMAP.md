@@ -18,14 +18,14 @@
 
 ## Block E — Windows-only build
 
-- 📋 **PP63** (deps: PP62 ✅) **nothing in the tree can configure a Qt build carrying WebEngine, so PP46's before cannot be produced at all** — MSYS2 has no qt6-webengine and no published Windows release carries Chromium, so an MSVC configure built once is the only reference the port can measure against. → §PP63
-- 📋 **PP301** (deps: —) **no MSVC toolchain has ever compiled this tree, so the CI workflow's first push is the first time it is tried** — PP22 configures a runner the only way a runner can be, and everything built here so far came through MSYS2 MinGW64. → §PP301
-- 📋 **PP302** (deps: —) **nothing signs the host or the installer, so SmartScreen warns on the first run of every release** — PP22 shipped the builds and the packages of its own sentence and not the signs, because that one starts with buying a certificate. → §PP302
+- 📋 **PP63** (deps: PP62 ✅) (requires: msvc-qt-webengine) **nothing in the tree can configure a Qt build carrying WebEngine, so PP46's before cannot be produced at all** — MSYS2 has no qt6-webengine and no Windows release carries Chromium, so the reference is built once with MSVC. → §PP63
+- 📋 **PP301** (deps: —) (requires: runner) **no MSVC toolchain has ever compiled this tree, so the CI workflow's first push is the first time it is tried** — PP22 configures a runner the only way a runner can be, and everything built here so far came through MSYS2 MinGW64. → §PP301
+- 📋 **PP302** (deps: —) (requires: signing-certificate) **nothing signs the host or the installer, so SmartScreen warns on the first run of every release** — PP22 shipped the builds and the packages of its own sentence and not the signs, because that one starts with buying a certificate. → §PP302
 - 💭 **PP308** (deps: PP307 ✅) **the ratchet's id join misses 75 tasks whose test shipped in the same commit, and only git can see that** — It is the non-goal restated and a comment cannot satisfy it, but it needs full history on a runner that fetches depth one. → §PP308
 
 ## Block F — Managed core
 
-- ⏳ **PP23** (deps: —) **the protocol has no specification, so a managed rewrite has no oracle except the C code it replaces** — the four modules with no test at all: session, ctrl, streamconnection and senkusha, which are PP28's three files plus the one below them. → §PP23
+- ⏳ **PP23** (deps: —) (requires: console) **the protocol has no specification, so a managed rewrite has no oracle except the C code it replaces** — the four modules with no test at all: session, ctrl, streamconnection and senkusha, which are PP28's three files plus the one below them. → §PP23
 - ⏳ **PP27** (deps: PP23 ⏳, PP25 ✅, PP44 ✅) **takion, the transport the whole stream rides on, is 1868 lines of C over raw sockets and timers** — the transport itself: the socket, the threads, the timers and the resend loop, which is where the runtime is the risk. → §PP27
 - 📋 **PP28** (deps: PP293 ⏳, PP294, PP295, PP23 ⏳) **session, ctrl and streamconnection are 3977 lines of state machine with no diagram** — the three together, once PP293, PP294 and PP295 have each landed: what is left here is the ordering between them. → §PP28
 - ⏳ **PP29** (deps: PP23 ⏳, PP26 ✅) **registration and discovery are 1775 lines that decide whether a console can be found and paired at all** — The broadcast, the discovery reply, the wake packet and the PIN exchange are still C. → §PP29
@@ -36,7 +36,7 @@
 - ⏳ **PP293** (deps: PP297 ⏳) **session.c is 1192 lines and owns the session lifetime, and PP28 sizes it together with two files it does not resemble** — the thread itself: init, start, the connect sequence, stop and join, and the event queue a client reads. → §PP293
 - 📋 **PP294** (deps: PP297 ⏳) **ctrl.c is 1469 lines of control channel and PP28 sizes it together with two files it does not resemble** — It is the longest of the three and the one with the most message types, and none of them are on the frame path so latency is not the measure. → §PP294
 - 📋 **PP295** (deps: PP27 ⏳, PP297 ⏳) **streamconnection.c is 1326 lines and is the last C caller of the video receiver, so every deletion below waits on it** — PP286 to PP291 ported the frame path bottom-up and none of it removed C, because this is what still calls the native receiver. → §PP295
-- ⏳ **PP297** (deps: —) **no session exchange has ever been captured, so the four modules with no test cannot be ported against anything** — the capture itself, which needs a console reaching the stream: the machinery on both sides of it is written and checked. → §PP297
+- ⏳ **PP297** (deps: —) (requires: console) **no session exchange has ever been captured, so the four modules with no test cannot be ported against anything** — the capture itself, which needs a console reaching the stream: the machinery on both sides of it is written and checked. → §PP297
 
 ## Block G — Test discipline
 

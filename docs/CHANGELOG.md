@@ -292,6 +292,7 @@
 - ✅ **PP304** **every counted claim a commit invalidates is restated by hand, from a list a red test produces after the work is done** — ChiakiNg.exe --recount prints each stale size with the governed call that fixes it, anchor resolved.
 - ✅ **PP36** **the only CI job is the roadkeep lint gate, so no test result can turn a branch red** — both suites fail the job that builds, and their results are kept from the run that goes red.
 - ✅ **PP38** **nothing counts the shipped lines that carry no assertion, so the rule is a sentence rather than a gate** — the shipped tasks no assertion names, counted against a ceiling that may fall and not rise.
+- ✅ **PP312** **brief has offered the same unstartable task four sessions running, because what blocks it is a console and not a dep** — five lines say what they wait on, and the names are held against the config that declares them.
 
 ## Block H — Performance and telemetry
 

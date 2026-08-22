@@ -73,6 +73,34 @@ retired = "🗑"
 # minutes a claim on a line reads as held, before a later caller steps over it
 held = 60
 
+# PP312: what blocks a line that is not another line.
+#
+# `brief` answered PP23 on four consecutive sessions and PP23 could not be started on any of
+# them: its remaining half needs PP297's captured exchange, which needs a console reaching the
+# stream. Deps could not say so, correctly — PP23's are satisfied and PP297's are empty, and
+# both ARE ready in the only sense a dep graph means it. What was missing is that starting
+# either one needs a thing this machine does not have, and a queue that cannot express that
+# offers the same unstartable line every time it is asked.
+#
+# Five lines are in that state and each names a different absent thing. A requirement is not a
+# dep and does not become one: nothing here will ever satisfy `console` by shipping a task.
+[requirements]
+declared = [
+    # A PS5 on the LAN, reachable and able to reach the stream. PP297's recording is a thing to
+    # do rather than a thing to write, and PP23's remaining half is what the recording is for.
+    "console",
+    # Visual Studio Build Tools with the C++ workload AND Qt for msvc2022_64 carrying
+    # QtWebEngine, from an installer wanting an account. Two multi-gigabyte installs, and
+    # PP63 itself argues the second toolchain has to be kept away from ordinary work.
+    "msvc-qt-webengine",
+    # A CI run: a push and a wait, not a step. Nothing in a checkout answers whether the
+    # workflow goes green, which is the honest boundary PP22's assertions stop at.
+    "runner",
+    # A code-signing certificate, which is a purchase and an identity check against a legal
+    # entity rather than anything a commit can produce.
+    "signing-certificate",
+]
+
 # Declared at all means governed. This port's constraints are the load-bearing part of it —
 # "Windows-only" and "no redesign while porting" are what keep a screen from being re-invented
 # instead of reproduced — so they are refused at input like every other line, rather than being
