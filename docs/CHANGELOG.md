@@ -234,6 +234,7 @@
 - ✅ **PP270** **nothing fails when the shim the managed suite loaded is older than the sources it is built from** — a stale native library now fails the managed suite by name, and the check was proved by backdating the one this run loads.
 - ✅ **PP271** **ninety drift locators can each answer null, and the test using one then passes without reading anything** — every locator in the assembly must find its file, and the sweep named one that never had - unblocking three checks that had asserted nothing.
 - ✅ **PP272** **a drift check whose anchor moved extracts nothing, and its negative assertions then pass** — every drift predicate must answer no to an empty file, and the sweep named seven that answered yes.
+- ✅ **PP276** **a drift locator returns the first match walking up, so a name that also exists under app\ resolves to the wrong file** — one walk finds the root and every repository path is built from it, proved on a tree with a decoy nearer the caller than the real file.
 
 ## Block G — Test discipline
 

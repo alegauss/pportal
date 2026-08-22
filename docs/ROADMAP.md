@@ -33,7 +33,6 @@
 - 📋 **PP31** (deps: PP28) **the video decoder is where 100% managed stops being achievable, and no task above says so** — There is no managed H.264 or HEVC decoder that holds 1080p60 at remote play latency, so this boundary is chosen deliberately or discovered late. → §PP31
 - 📋 **PP32** (deps: PP28) **audio decode and resampling are Opus and speexdsp, both native and both on the latency path** — Managed Opus exists and speexdsp has no equivalent, so the two halves of the audio path have different answers and only one of them is a choice. → §PP32
 - ⏳ **PP33** (deps: PP24 ✅) **HTTP and JSON in the core are curl and json-c, two vendored dependencies for what the runtime already does** — the call sites themselves, which are the hole-punching flow this port has not built - the primitives they need now exist. → §PP33
-- 📋 **PP276** (deps: —) **a drift locator returns the first match walking up, so a name that also exists under app\ resolves to the wrong file** — PP271 made every locator find something; .gitignore showed one can find the wrong something, and the check was green on three rules about bin and obj. → §PP276
 
 ## Block G — Test discipline
 

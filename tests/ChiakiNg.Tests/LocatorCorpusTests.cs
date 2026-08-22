@@ -124,4 +124,70 @@ public class LocatorCorpusTests(ITestOutputHelper output)
         Assert.Null(SanitizerSource.LocateRelative(
             Path.Combine("no-such-directory", "no-such-file.c")));
     }
+
+    /// <summary>
+    /// PP276: the other half of PP271. That one made a locator finding NOTHING a failure; this one
+    /// is about a locator finding the WRONG thing, which is worse because it is indistinguishable
+    /// from success unless you already know which file was meant.
+    ///
+    /// Built rather than found. The ambiguity that exposed this is real - .gitignore exists at the
+    /// root and again in app\, and app\ sits between the host's output directory and the root - but
+    /// it cannot be reproduced from HERE, because this assembly runs out of tests\ and the walk
+    /// from there never passes through app\. A test that only asserts from wherever the runner sits
+    /// is a test that would have been green on the day the bug was written.
+    /// </summary>
+    [Fact]
+    public void TheRootCopyWinsOverTheNearerOne()
+    {
+        string tree = Path.Combine(Path.GetTempPath(), "pp276-" + Guid.NewGuid().ToString("N"));
+        string nested = Path.Combine(tree, "app", "bin", "Debug");
+        try
+        {
+            Directory.CreateDirectory(nested);
+            File.WriteAllText(Path.Combine(tree, SanitizerSource.RootAnchor), "");
+            File.WriteAllText(Path.Combine(tree, ".gitignore"), "the root's");
+            File.WriteAllText(Path.Combine(tree, "app", ".gitignore"), "the decoy");
+
+            Assert.Equal(tree, SanitizerSource.RepositoryRootFrom(nested));
+
+            // The whole assertion. Walking up from nested, app\.gitignore is the first match and
+            // the root's is the right one.
+            Assert.Equal(
+                Path.Combine(tree, ".gitignore"),
+                SanitizerSource.LocateRelative(".gitignore", nested));
+
+            // ...and a name the root does not carry is still absent, rather than being satisfied by
+            // a copy lying nearer. Anchoring must not turn into "find it anywhere".
+            File.WriteAllText(Path.Combine(tree, "app", "decoy-only.txt"), "");
+            Assert.Null(SanitizerSource.LocateRelative("decoy-only.txt", nested));
+        }
+        finally
+        {
+            if (Directory.Exists(tree))
+                Directory.Delete(tree, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// And outside a checkout there is no root, so every locator answers null and every drift check
+    /// says it could not run - which is what a published host depends on.
+    /// </summary>
+    [Fact]
+    public void NoAnchorMeansNoRootAndNoAnswers()
+    {
+        string tree = Path.Combine(Path.GetTempPath(), "pp276-bare-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            Directory.CreateDirectory(tree);
+            File.WriteAllText(Path.Combine(tree, ".gitignore"), "beside it, and still not found");
+
+            Assert.Null(SanitizerSource.RepositoryRootFrom(tree));
+            Assert.Null(SanitizerSource.LocateRelative(".gitignore", tree));
+        }
+        finally
+        {
+            if (Directory.Exists(tree))
+                Directory.Delete(tree, recursive: true);
+        }
+    }
 }

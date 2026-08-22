@@ -108,20 +108,12 @@ public static class SelfTest
                 == Convert.ToDouble(cpp, System.Globalization.CultureInfo.InvariantCulture);
         }
 
-        // PP274: a repository file read from the ROOT, rather than by walking up from the running
-        // assembly until something matches. PP276 is the general case; package.cmd is the immediate
-        // one, being a single-segment name that a walk could satisfy anywhere above the exe.
-        //
-        // Nothing to read yields the empty string rather than a throw or a skip, so a caller
-        // comparing against it FAILS - the direction PP272 settled for every reader here.
-        static string ReadFromRoot(string? root, string relative)
-        {
-            if (root is null)
-                return "";
-
-            string path = Path.Combine(root, relative);
-            return File.Exists(path) ? File.ReadAllText(path) : "";
-        }
+        // PP274: a repository file, read whole. Nothing to read yields the empty string rather than
+        // a throw or a skip, so a caller comparing against it FAILS - the direction PP272 settled
+        // for every reader here. PP276 moved the resolution itself into SanitizerSource, so this is
+        // now only the "and read it" half.
+        static string ReadResolved(string relative)
+            => SanitizerSource.LocateRelative(relative) is string path ? File.ReadAllText(path) : "";
 
         // PP22, and it runs first because everything below it can be skipped without failing.
         //
@@ -145,11 +137,11 @@ public static class SelfTest
             @"test\regist.c", @"test\takion.c", PayloadScript.RelativePath,
         ];
 
-        // Kept as the path and not just as a yes/no: a check that needs the repository ROOT rather
-        // than the nearest match walking up has nowhere else to get it. PP275 is the first one that
-        // does, and .gitignore is exactly the file that shows why the distinction matters.
-        string? projectFile = SanitizerSource.LocateRelative("roadkeep.toml");
-        bool inCheckout = projectFile is not null;
+        // PP276: the root, asked for by name. PP274 and PP275 each derived it here by hand, from
+        // the directory holding roadkeep.toml, because the resolver could not be asked for it. It
+        // can now, and the resolver builds every path below from the same answer.
+        string? repositoryRoot = SanitizerSource.RepositoryRoot();
+        bool inCheckout = repositoryRoot is not null;
         string[] unfindable = inCheckout
             ? driftSources.Where(p => SanitizerSource.LocateRelative(p) is null).ToArray()
             : [];
@@ -201,16 +193,13 @@ public static class SelfTest
         // this has no business reimplementing. What it catches is the shape that actually occurs:
         // a rule naming one of these paths outright, inherited from a tree that generated it.
         //
-        // Found beside roadkeep.toml rather than by LocateRelative, which walks up from the running
-        // assembly and stops at the FIRST match - and .gitignore is not a unique name in this tree.
-        // app\.gitignore is three rules about bin, obj and the WPF SDK's temp project, and it sits
-        // between the host's output directory and the root, so the walk never reaches the file this
-        // check is about. Written the other way it read those three rules, reported that the ignore
-        // list does not mention build, and was green on the question it was asked. PP271 is the same
-        // lesson for a locator that found nothing; this is the version where it finds the wrong one.
-        string? repositoryRoot = Path.GetDirectoryName(projectFile);
-        string? ignoreList = repositoryRoot is null ? null : Path.Combine(repositoryRoot, ".gitignore");
-        if (ignoreList is null || !File.Exists(ignoreList))
+        // .gitignore is why PP276 exists. The resolver used to stop at the first match walking up,
+        // and app\.gitignore - three rules about bin, obj and the WPF SDK's temp project - sits
+        // between the host's output directory and the root, so this check read those three, found
+        // no rule naming build, and was green on a file it had never opened. It resolves from the
+        // root now, which is what makes the plain call below the right one.
+        string? ignoreList = SanitizerSource.LocateRelative(".gitignore");
+        if (ignoreList is null)
         {
             Console.WriteLine("  --    the packaging files' ignore rules  (no .gitignore here)");
         }
@@ -247,20 +236,18 @@ public static class SelfTest
         // it. Upstream's script disagreed with all three and nothing said so - an Inno Setup script
         // is read only by ISCC, and ISCC had never been run against this tree.
         //
-        // Read from the repository ROOT and not by walking up (PP276): package.cmd is a
-        // single-segment name, which is precisely the shape that resolves to the wrong file.
-        string? installerScript = repositoryRoot is null
-            ? null
-            : Path.Combine(repositoryRoot, InstallerScript.RelativePath);
-        if (installerScript is null || !File.Exists(installerScript))
+        // package.cmd among them, which is a single-segment name and so exactly the shape PP276 was
+        // about. The resolver anchors to the root now, so asking for it plainly is safe.
+        string? installerScript = SanitizerSource.LocateRelative(InstallerScript.RelativePath);
+        if (installerScript is null)
         {
             Console.WriteLine(@"  --    the installer's payload  (no scripts\chiaki-ng.iss here)");
         }
         else
         {
             string iss = File.ReadAllText(installerScript);
-            string project = ReadFromRoot(repositoryRoot, InstallerScript.ProjectRelativePath);
-            string command = ReadFromRoot(repositoryRoot, InstallerScript.CommandRelativePath);
+            string project = ReadResolved(InstallerScript.ProjectRelativePath);
+            string command = ReadResolved(InstallerScript.CommandRelativePath);
 
             string packaged = InstallerScript.PackagedExecutable(iss);
             string expected = InstallerScript.AssemblyName(project) + ".exe";

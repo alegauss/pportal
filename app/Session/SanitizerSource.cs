@@ -25,29 +25,73 @@ public static partial class SanitizerSource
     public static string? Locate() => LocateRelative(RelativePath);
 
     /// <summary>
-    /// Any repository file, found by walking up from the executable. Upwards rather than a fixed
-    /// depth: the host builds into app\bin\&lt;config&gt;\&lt;tfm&gt;\&lt;rid&gt;, and a count of ".." is the
-    /// kind of thing that survives exactly one layout change.
+    /// The file that marks the top of this checkout. Chosen because roadkeep owns it, so it is
+    /// present in every clone and absent from every directory below the root.
+    /// </summary>
+    public const string RootAnchor = "roadkeep.toml";
+
+    /// <summary>
+    /// The repository root, or null when this is not running out of a checkout.
+    ///
+    /// The walk is upward rather than a fixed depth: the host builds into
+    /// app\bin\&lt;config&gt;\&lt;tfm&gt;\&lt;rid&gt;, and a count of ".." is the kind of thing that
+    /// survives exactly one layout change.
     ///
     /// PP22: from AppContext.BaseDirectory, not Assembly.Location, which is the empty string once
     /// the assembly is embedded in a single-file publish. Every drift check in this port starts
     /// here, so what that returned was not one broken check but all of them at once - and quietly,
     /// because a source file that cannot be found is reported as "could not run" by design.
     /// </summary>
-    public static string? LocateRelative(string relativePath)
-    {
-        ArgumentNullException.ThrowIfNull(relativePath);
+    public static string? RepositoryRoot() => RepositoryRootFrom(AppContext.BaseDirectory);
 
-        string? dir = AppContext.BaseDirectory;
-        while (dir is not null)
+    /// <summary>
+    /// The same walk from a directory named by the caller, which is what makes it testable: a test
+    /// cannot move AppContext.BaseDirectory, so a resolver that only ever reads it can be asserted
+    /// about only from wherever the runner happens to sit.
+    /// </summary>
+    public static string? RepositoryRootFrom(string startDirectory)
+    {
+        ArgumentNullException.ThrowIfNull(startDirectory);
+
+        for (string? dir = startDirectory; dir is not null; dir = Path.GetDirectoryName(dir))
         {
-            string candidate = Path.Combine(dir, relativePath);
-            if (File.Exists(candidate))
-                return candidate;
-            dir = Path.GetDirectoryName(dir);
+            if (File.Exists(Path.Combine(dir, RootAnchor)))
+                return dir;
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Any repository file, resolved from the root above.
+    ///
+    /// PP276: from the ROOT, and not from the first directory going up that happens to hold a
+    /// matching name. Those are the same answer for every multi-segment path this port asks for -
+    /// gui\src\sessionlog.cpp cannot exist twice above the executable - and a different answer the
+    /// moment a name is short. PP275 asked for .gitignore, and app\.gitignore sits between the
+    /// host's output directory and the root, so the walk returned three rules about bin and obj and
+    /// the check was green on a file it had never opened.
+    ///
+    /// One walk finds the root; everything else is a path built from it. A name that is not there
+    /// answers null exactly as before, which is what a published host relies on.
+    /// </summary>
+    public static string? LocateRelative(string relativePath)
+        => LocateRelative(relativePath, AppContext.BaseDirectory);
+
+    /// <summary>
+    /// The same resolution from a directory named by the caller. See
+    /// <see cref="RepositoryRootFrom"/> for why the overload exists.
+    /// </summary>
+    public static string? LocateRelative(string relativePath, string startDirectory)
+    {
+        ArgumentNullException.ThrowIfNull(relativePath);
+
+        string? root = RepositoryRootFrom(startDirectory);
+        if (root is null)
+            return null;
+
+        string candidate = Path.Combine(root, relativePath);
+        return File.Exists(candidate) ? candidate : null;
     }
 
     /// <summary>
