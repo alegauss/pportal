@@ -1,0 +1,15 @@
+﻿# PP38: the ratchet.
+#
+# How many SHIPPED tasks no assertion mentions. The non-goal says no line ships without an
+# assertion that fails without it; this is what makes that a gate rather than a sentence.
+#
+# The number below may FALL and may not RISE. AssertionRatchetTests fails either way:
+#   above it - a task shipped with nothing testing it, and the commit that did it is the
+#             cheapest place to fix that
+#   below it - the debt was paid, so lower this line in the same commit, or the ratchet
+#             quietly loosens by exactly what was just gained
+#
+# 97 is the debt on 2026-08-22, when the count was first taken. It is not a target and it is
+# not an allowance: 283 tasks had shipped, 186 of them are named by something that runs, and
+# the 97 below are what the port owes. Paying it is not this task - stopping it growing is.
+97

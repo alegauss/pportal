@@ -39,8 +39,6 @@
 
 ## Block G — Test discipline
 
-- 📋 **PP38** (deps: PP36 ✅) **nothing counts the shipped lines that carry no assertion, so the rule is a sentence rather than a gate** — A count that may only go down is what survives a busy week, and without it the discipline lasts exactly as long as the person remembering it. → §PP38
-
 ## Block H — Performance and telemetry
 
 - ⏳ **PP46** (deps: PP42 ✅, PP63) **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — A Chromium leaving the build should be visible in cold start and in megabytes, and stating it without measuring is how a port collects folklore. → §PP46

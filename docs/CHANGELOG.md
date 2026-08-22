@@ -285,6 +285,7 @@
 - ✅ **PP285** **PP23 sizes the oracle from 16935 lines in lib/src and 5512 in test, and no reading of the tree produces either** — a directory total is checked where it names its counting rule, and PP23's two are restated from the tree instead of from memory.
 - ✅ **PP304** **every counted claim a commit invalidates is restated by hand, from a list a red test produces after the work is done** — ChiakiNg.exe --recount prints each stale size with the governed call that fixes it, anchor resolved.
 - ✅ **PP36** **the only CI job is the roadkeep lint gate, so no test result can turn a branch red** — both suites fail the job that builds, and their results are kept from the run that goes red.
+- ✅ **PP38** **nothing counts the shipped lines that carry no assertion, so the rule is a sentence rather than a gate** — the shipped tasks no assertion names, counted against a ceiling that may fall and not rise.
 
 ## Block H — Performance and telemetry
 

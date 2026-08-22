@@ -61,6 +61,14 @@ the binary, which is the stale green PP56 fixed showing up a second way.
 A configure that passes is not a target that links. Run the full build before the
 commit, not before the decision.
 
+**Name the task id in the assertion you write.** `AssertionRatchetTests` (PP38) counts
+shipped tasks that no assertion mentions, against the ceiling in
+[`tests/assertion-ratchet.txt`](../../../tests/assertion-ratchet.txt), and the count may
+fall but may not rise — so a task shipped with no test naming its id turns the suite red
+in the commit that ships it. The join is the id in the test's own summary, which is how
+this tree has always been written. If the count FALLS, lower the ceiling in the same
+commit: the test says so, and a ratchet left loose has given the gain away.
+
 `ChiakiNg.exe --recount` (PP304) is the one worth running BEFORE the gate. Every
 comment added to a `.c` file changes a line count that `docs/ROADMAP.md` or
 `docs/IMPROVEMENTS.md` states, and `test.cmd` reports those only as a red

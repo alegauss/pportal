@@ -433,21 +433,6 @@ what a log may not keep.
 
 ## Block G — Test discipline
 
-### §PP38 The ratchet
-
-The non-goal says no line ships without an assertion that fails without it. Stated and
-unmeasured, that is a sentence in a file, and the first week under pressure is when it
-stops being true.
-
-What makes it hold is a count in CI: how many shipped lines have no test naming them,
-allowed to fall and never to rise. It does not demand that the debt be paid at once,
-which is what makes it survivable - it demands only that it stop growing.
-
-It needs the ledger and the suite to be joinable, which is the one piece of design in
-this task: a test has to be able to name the line it holds, whether by convention in the
-test name or by an attribute the count can read. Without that join, the number is a
-guess and a gate on a guess is worse than no gate.
-
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed
