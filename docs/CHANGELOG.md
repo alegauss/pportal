@@ -221,6 +221,7 @@
 - ✅ **PP260** **the upnp mappings are unported, and they are added with a lease that never expires** — the mappings are ported with what removes them stated as a value, and the address buffer's width carried so the family limit is visible.
 - ✅ **PP261** **the diagnostic printers are unported, and a failed encode is handled then printed anyway** — the printers are ported with the encoding arithmetic computed rather than trusted, so the unreachable branch is kept and its reason stated.
 - ✅ **PP262** **the queue's ownership is unported, and its link invariant lives in the constructor not the enqueue** — the queue's ownership is ported apart from its behaviour, and the removal PP239 rests on is stated as one match per call.
+- ✅ **PP263** **the event glue is unported, and the callback keeps only the last socket to fire** — the glue is ported with watching separated from succeeding, and the round's last socket stated as what the wait actually reports.
 
 ## Block G — Test discipline
 
