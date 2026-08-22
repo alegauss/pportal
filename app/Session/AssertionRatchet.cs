@@ -101,6 +101,41 @@ public static partial class AssertionRatchet
         return entries;
     }
 
+    /// <summary>
+    /// PP311: which assertion files name an id, and on which line.
+    ///
+    /// The join cannot be repaired by parsing - measured, and the reason is that this tree writes
+    /// some of its coverage claims AS data: SuiteCoverageTests is a table of which class covers
+    /// which C file, so the ids in its string literals are claims and the ids in a fixture next
+    /// door are not. Nothing about the syntax tells them apart.
+    ///
+    /// So the answer is not prevention but audit. Three times in one commit an id written as test
+    /// data paid a real task's debt, and each time the only symptom was the count falling by one
+    /// more than expected - which is a question this answers in one command instead of a grep.
+    /// </summary>
+    public static IReadOnlyList<string> WhereNamed(string root, string id)
+    {
+        ArgumentNullException.ThrowIfNull(root);
+        ArgumentNullException.ThrowIfNull(id);
+
+        var found = new List<string>();
+
+        foreach (string file in AssertionFiles(root))
+        {
+            string[] lines = File.ReadAllLines(file);
+            for (int i = 0; i < lines.Length; i++)
+            {
+                if (!Named(lines[i]).Contains(id))
+                    continue;
+
+                string relative = Path.GetRelativePath(root, file).Replace('\\', '/');
+                found.Add($"{relative}:{i + 1}  {lines[i].Trim()}");
+            }
+        }
+
+        return found;
+    }
+
     /// <summary>Every task id named anywhere in a body of assertion text.</summary>
     public static IReadOnlySet<string> Named(string assertions)
     {

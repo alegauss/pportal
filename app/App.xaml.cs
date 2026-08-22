@@ -200,6 +200,48 @@ public partial class App : Application
         return 0;
     }
 
+    /// <summary>
+    /// PP311: where one id is named, which is how a payment on the ratchet is audited.
+    ///
+    /// The join cannot tell a claim from data by syntax - SuiteCoverageTests writes its coverage
+    /// claims as a table of strings, deliberately, so an id in a literal there IS a claim while the
+    /// same shape in a fixture next door is not. Three times in one commit an id written as test
+    /// data paid a real task's debt, and every time the only symptom was the count falling by one
+    /// more than expected.
+    ///
+    /// This is the question that was asked by grep each of those times. A line of output that reads
+    /// like a fixture is a payment nobody made.
+    /// </summary>
+    private static int RatchetFor(string id)
+    {
+        string? root = SanitizerSource.RepositoryRoot();
+        if (root is null)
+        {
+            Console.WriteLine("[ratchet] not running out of a checkout.");
+            return 2;
+        }
+
+        IReadOnlyList<string> where = AssertionRatchet.WhereNamed(root, id);
+
+        if (where.Count == 0)
+        {
+            Console.WriteLine($"[ratchet] {id} is named by no assertion.");
+
+            IReadOnlyDictionary<string, string> exempt = AssertionRatchet.Exemptions(root);
+            if (exempt.TryGetValue(id, out string? reason))
+                Console.WriteLine($"[ratchet] and is exempt: {reason}");
+
+            return 0;
+        }
+
+        Console.WriteLine($"[ratchet] {id} is named in {where.Count} place(s):");
+        Console.WriteLine();
+        foreach (string line in where)
+            Console.WriteLine("  " + line);
+
+        return 0;
+    }
+
     private static int Controllers()
     {
         using var sdl = new SdlThread();
@@ -551,11 +593,17 @@ public partial class App : Application
             Environment.Exit(Recount());
         }
 
-        // PP305: the debt PP38 counts, in the form it can be paid in.
-        if (e.Args.Any(a => string.Equals(a, "--ratchet", StringComparison.OrdinalIgnoreCase)))
+        // PP305: the debt PP38 counts, in the form it can be paid in. PP311: with an id after it,
+        // where that id is named instead - which is how a payment is audited.
+        int ratchet = Array.FindIndex(
+            e.Args, a => string.Equals(a, "--ratchet", StringComparison.OrdinalIgnoreCase));
+
+        if (ratchet >= 0)
         {
             ReopenStdOut();
-            Environment.Exit(Ratchet());
+
+            string? id = ratchet + 1 < e.Args.Length ? e.Args[ratchet + 1] : null;
+            Environment.Exit(id is null ? Ratchet() : RatchetFor(id));
         }
 
         // PP284: the window PP163's last question is answered by looking at. Here rather than after

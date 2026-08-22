@@ -1,3 +1,4 @@
+using System.Globalization;
 using ChiakiNg.Session;
 using Xunit;
 using Xunit.Abstractions;
@@ -116,6 +117,38 @@ public class AssertionRatchetTests(ITestOutputHelper output)
 
         Assert.True(unknown.Length == 0,
             "these are excused and never shipped, so they excuse nothing: " + string.Join(", ", unknown));
+    }
+
+    /// <summary>
+    /// PP311: where an id is named, which is the question a surprising count asks.
+    ///
+    /// The join cannot be repaired by parsing - this tree writes some coverage claims as data, so
+    /// an id inside a string literal is a claim in one file and a fixture in the next. What is left
+    /// is audit, and this is it: a payment nobody made shows up as a line that reads like test data.
+    /// </summary>
+    [Fact]
+    public void WhereAnIdIsNamedIsAnswerable()
+    {
+        string? root = SanitizerSource.RepositoryRoot();
+        Assert.True(root is not null, "not running out of a checkout");
+
+        // This file names it, in the summary above.
+        IReadOnlyList<string> here = AssertionRatchet.WhereNamed(root, "PP311");
+        Assert.NotEmpty(here);
+        Assert.Contains(here, line => line.Contains("AssertionRatchetTests.cs", StringComparison.Ordinal));
+
+        // Every line carries the file, the line number and the text, because the text is the half
+        // that says whether the claim is real.
+        Assert.All(here, line => Assert.Contains(":", line, StringComparison.Ordinal));
+
+        // And something no assertion mentions answers nothing rather than throwing.
+        //
+        // BUILT rather than written, and it is the fourth time this trap has been stepped in. An id
+        // spelled here is an id named in an assertion file, so the obvious form of this line -
+        // asking where a made-up id is named - finds itself and fails. Concatenated, the file
+        // carries no such token at all, which is the only way to ask about an absent one.
+        string absent = "PP" + 9999.ToString(CultureInfo.InvariantCulture);
+        Assert.Empty(AssertionRatchet.WhereNamed(root, absent));
     }
 
     /// <summary>

@@ -138,6 +138,7 @@
 - ✅ **PP305** **the ratchet's join is one id per task, so work asserted under the id it continued reads as untested** — --ratchet lists the debt beside the ledger's sentences, and PP300's own assertions now name it.
 - ✅ **PP307** **the ratchet holds 96 tasks with no assertion naming them and nothing schedules paying any of them** — the 96 read against git: 75 have a test in their own commit, 11 could not, and 1 is real.
 - ✅ **PP310** **a task whose output is prose cannot ship: nothing asserts it, so the debt rises past a ceiling that may not rise** — an exempt line in the ceiling file, refused unless it carries the reason it is exempt.
+- ✅ **PP311** **an id written in a fixture or an expected value pays a real task's debt, because the join reads the whole file** — the join cannot be parsed apart, so every payment is auditable: --ratchet <id> says where.
 
 ## Block F — Managed core
 

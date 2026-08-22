@@ -22,7 +22,6 @@
 - 📋 **PP301** (deps: —) **no MSVC toolchain has ever compiled this tree, so the CI workflow's first push is the first time it is tried** — PP22 configures a runner the only way a runner can be, and everything built here so far came through MSYS2 MinGW64. → §PP301
 - 📋 **PP302** (deps: —) **nothing signs the host or the installer, so SmartScreen warns on the first run of every release** — PP22 shipped the builds and the packages of its own sentence and not the signs, because that one starts with buying a certificate. → §PP302
 - 💭 **PP308** (deps: PP307 ✅) **the ratchet's id join misses 75 tasks whose test shipped in the same commit, and only git can see that** — It is the non-goal restated and a comment cannot satisfy it, but it needs full history on a runner that fetches depth one. → §PP308
-- 📋 **PP311** (deps: PP38 ✅) **an id written in a fixture or an expected value pays a real task's debt, because the join reads the whole file** — Three times in one commit and none of them deliberate: sample data is text and text is where the join looks. → §PP311
 
 ## Block F — Managed core
 
