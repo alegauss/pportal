@@ -61,6 +61,14 @@ the binary, which is the stale green PP56 fixed showing up a second way.
 A configure that passes is not a target that links. Run the full build before the
 commit, not before the decision.
 
+`ChiakiNg.exe --recount` (PP304) is the one worth running BEFORE the gate. Every
+comment added to a `.c` file changes a line count that `docs/ROADMAP.md` or
+`docs/IMPROVEMENTS.md` states, and `test.cmd` reports those only as a red
+`CountedClaimTests` after the work is done. `--recount` answers the same question and
+prints the `roadkeep` call that corrects each — with the section anchor resolved, which
+is the part that is easy to get wrong: a claim about `session.c` lives in `§PP28` and
+not in the `§PP293` its pointer suggests. It writes nothing; run what it prints.
+
 ## ⛔ READ SECOND — the three files are owned by `roadkeep`
 
 [`roadkeep.toml`](../../../roadkeep.toml) declares this project's format (prefix `PP`,

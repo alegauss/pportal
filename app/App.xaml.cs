@@ -88,6 +88,70 @@ public partial class App : Application
     /// The enumeration goes through the thread rather than beside it: SDL's device tables belong to
     /// whichever thread called SDL_Init, which is what <see cref="SdlThread"/> exists to own.
     /// </summary>
+    /// <summary>
+    /// PP304: `--recount`, which prints every size the backlog states that the tree disagrees with,
+    /// and the roadkeep call that corrects each.
+    ///
+    /// It does not write. The three governed files are roadkeep's, a hook denies a hand edit to
+    /// them, and going around that would solve the transcription by removing the gate. What it
+    /// removes instead is the part a person does badly: knowing that a claim about session.c on
+    /// IMPROVEMENTS.md:216 belongs to §PP28 and not to §PP293, and that a claim in a roadmap line's
+    /// symptom takes `restate` while one in its why takes `amend`.
+    ///
+    /// Exits 1 where anything is stale, so it answers the same question the test does and can be
+    /// run before the work rather than after it.
+    /// </summary>
+    private static int Recount()
+    {
+        string? root = SanitizerSource.RepositoryRoot();
+        if (root is null)
+        {
+            Console.WriteLine("[recount] not running out of a checkout - there is no backlog to read.");
+            return 2;
+        }
+
+        IReadOnlyList<CountedClaim> claims = CountedClaims.All(root);
+        Console.WriteLine($"[recount] {claims.Count} counted claim(s) in the backlog");
+
+        var stale = 0;
+        var unresolved = 0;
+
+        foreach (CountedClaim claim in claims)
+        {
+            int actual = CountedClaims.Actual(root, claim);
+
+            if (actual < 0)
+            {
+                unresolved++;
+                Console.WriteLine();
+                Console.WriteLine($"  {claim.Document}:{claim.Line}  {claim.Subject} does not resolve to one thing, so the claim cannot be checked");
+                continue;
+            }
+
+            if (actual == claim.Stated)
+                continue;
+
+            stale++;
+            Console.WriteLine();
+            Console.WriteLine($"  {claim.Document}:{claim.Line}  {claim.Subject} says {claim.Stated} and is {actual}");
+
+            string? remedy = CountedClaims.Remedy(root, claim, actual);
+            Console.WriteLine(remedy is null
+                ? "    (no remedy: this line is not a shape --recount knows how to address)"
+                : "    " + remedy);
+        }
+
+        Console.WriteLine();
+        if (stale == 0 && unresolved == 0)
+        {
+            Console.WriteLine("[recount] every claim holds.");
+            return 0;
+        }
+
+        Console.WriteLine($"[recount] {stale} stale, {unresolved} unresolvable.");
+        return 1;
+    }
+
     private static int Controllers()
     {
         using var sdl = new SdlThread();
@@ -407,6 +471,13 @@ public partial class App : Application
         {
             ReopenStdOut();
             Environment.Exit(Controllers());
+        }
+
+        // PP304: the sizes the backlog states, and the command that corrects each stale one.
+        if (e.Args.Any(a => string.Equals(a, "--recount", StringComparison.OrdinalIgnoreCase)))
+        {
+            ReopenStdOut();
+            Environment.Exit(Recount());
         }
 
         // PP284: the window PP163's last question is answered by looking at. Here rather than after

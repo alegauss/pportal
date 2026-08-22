@@ -463,29 +463,6 @@ this task: a test has to be able to name the line it holds, whether by conventio
 test name or by an attribute the count can read. Without that join, the number is a
 guess and a gate on a guess is worse than no gate.
 
-### §PP304 Recounting what the check already counted
-
-PP285's check is right and is not the thing to change. Numbers in prose went stale -
-PP23 sized the oracle from totals no reading of the tree produced - and a check that
-reads the tree is what stopped that.
-
-What it costs is paid per commit rather than per claim. Measured on 2026-08-22: PP292
-added a nine-line comment to videoreceiver.c and cost one restatement; PP299 added
-eleven lines to discovery.c and cost two; PP296 added ten to session.c and cost three,
-one of them a task line rather than a section. Nine of those thirty lines were comments
-explaining the fix, which is what this port asks every fix to carry. So the tax lands
-hardest on exactly the commits that document themselves best.
-
-Each restatement is its own `roadkeep section amend --replace` with the old number
-spelled exactly, and the list of them arrives from a red test after the work is done
-rather than from anything before it. One of the three failed first time because the
-claim was in a section other than the one the pointer suggested.
-
-What would close it is one command that reads the same claims the check reads, recounts
-them, and writes each through the same governed path a person would - printing what it
-moved. The check stays the authority on whether a number is right; this only removes the
-part where a person transcribes three numbers a test has already computed.
-
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed
