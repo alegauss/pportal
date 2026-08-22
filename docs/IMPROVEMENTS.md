@@ -348,6 +348,33 @@ flag, its count loop is guarded by the return above it, peek writes both out-poi
 where pull guards its own, and takion still passes NULL and still drops on a bad MAC.
 Repair any upstream and the port's copy becomes the divergence, on the next run.
 
+### §PP291 The chain above the frame processor
+
+PP289 ported frameprocessor.c and PP290 recorded what the port could delete. Neither
+moved the deletion any closer, because C leaves this build top-down while the managed
+side is being built bottom-up: streamconnection.c calls videoreceiver.c calls
+frameprocessor.c calls fec.c calls jerasure, and the bottom cannot go until the top
+does.
+
+videoreceiver.c is the next link. Its coupling to the session looked like the obstacle
+and is not: measured, it is six settings - the log, the codec, the IDR-on-FEC-failure
+flag - and four outbound actions - the sample callback, corrupt-frame, IDR request and
+session event. Settings are constructor arguments and actions are delegates, which is a
+shape a managed port takes cleanly.
+
+What it holds beyond that is its own: three frame indices, sixteen reference frames, the
+IDR wait flag, and a bitstream this port already has.
+
+The ordering decision is done and the rest is not. That half is four comparisons over
+16-bit sequence numbers, and it has no bytes in it - so unlike PP287 and PP289 there is
+nothing to diff against the native receiver, because the decision is not observable
+through the shim. It is held by a case table and by a reader that asserts the C still
+spells those four conditions, which is the port's usual answer when a behaviour cannot
+be driven from outside.
+
+The frame-1 exception is the one to keep: without it a session opens by asking the
+console to resend a frame that was never sent.
+
 ## Block G — Test discipline
 
 ### §PP36 Where a red test has to stop something
