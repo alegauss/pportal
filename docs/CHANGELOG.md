@@ -222,6 +222,7 @@
 - ✅ **PP261** **the diagnostic printers are unported, and a failed encode is handled then printed anyway** — the printers are ported with the encoding arithmetic computed rather than trusted, so the unreachable branch is kept and its reason stated.
 - ✅ **PP262** **the queue's ownership is unported, and its link invariant lives in the constructor not the enqueue** — the queue's ownership is ported apart from its behaviour, and the removal PP239 rests on is stated as one match per call.
 - ✅ **PP263** **the event glue is unported, and the callback keeps only the last socket to fire** — the glue is ported with watching separated from succeeding, and the round's last socket stated as what the wait actually reports.
+- ✅ **PP264** **the public accessors are unported, and one copies forty-six bytes into a buffer whose size it never states** — the surface is ported with what is written kept apart from what is documented, and the guard count measured across all six.
 
 ## Block G — Test discipline
 
