@@ -456,6 +456,30 @@ rather than a thing to write. Sanitising it needs care too: a real exchange carr
 account id, the registration key and the nonce, and PP88's redaction rules already name
 what a log may not keep.
 
+### §PP313 The second door out of PP33
+
+PP33's first three criteria are met. Every curl and json-c area in holepunch.c has a
+named counterpart in app/Protocol, the websocket thread's auto-ACK is stated, and PP266
+made the five session calls real HttpClient transfers rather than descriptions.
+
+The fourth cannot be met the same way, and measuring it says why: holepunch.c is the
+only translation unit in lib/src that names either library, and session.c is its only
+caller. So the libraries leave when holepunch.c leaves the build, and holepunch.c leaves
+when the managed session takes over - PP293, behind PP297's capture, behind a console.
+That is now a dep rather than a surprise.
+
+There is a second door and it is worth stating before somebody finds it in a hurry. The
+remote path is already a tri_option; built OFF, libchiaki configures and links with
+neither library, and neither is fetched, built or shipped. The criterion's own words -
+"until then both are still fetched, still built, and still shipped beside a managed
+replacement that duplicates them" - would be satisfied.
+
+What that costs is a feature, and the honest question is whether it costs anything
+TODAY. The Qt client is off by default, the managed host does not stream yet, and
+nothing here reaches a console over the internet. So probably not - and "probably" is
+why this is an idea rather than a task. Turning a capability off to make a count reach
+zero should be decided rather than discovered.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry
