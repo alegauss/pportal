@@ -245,6 +245,7 @@
 - ✅ **PP287** **fec.c's encode and decode are jerasure calls with no managed counterpart, so PP30's 14 sites cannot go** — a managed decode produces byte-identical frames to jerasure on all 64 recorded cases, and nothing in the suite survives a decoder that does nothing.
 - ✅ **PP288** **chiaki_fec_encode has no caller anywhere in the tree, and it is the half of fec.c that pulls in jerasure_matrix_encode** — the dead encode and its jerasure call are gone, PP30 reads 13, and PP285's guard caught the lib/src total the deletion moved.
 - ✅ **PP289** **frameprocessor.c is the only caller of the FEC decode and no task owns porting it, so PP30 cannot finish** — a managed assembler produces the same frame and verdict as the C on six loss patterns, and the two agree on a second flush being destructive.
+- ✅ **PP290** **thirteen exported C functions are referenced nowhere in the tree, and nothing names them as deletable** — a test names the thirteen exports nothing references, asserts the set exactly, and reports movement in either direction.
 
 ## Block G — Test discipline
 
