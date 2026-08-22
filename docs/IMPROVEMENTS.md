@@ -292,26 +292,30 @@ host would use regardless of this block.
 
 ### §PP33 Two dependencies that simply leave
 
-http.c is 232 lines around curl, and json-c parses what comes back. Both are vendored or
-fetched, both exist to do something the .NET base class library does without a
-reference, and neither is on the latency path.
-
-The line count is the wrong measure of it, and so is the one below. `remaining PP33`
-counts 420 curl and json-c call sites across lib/src, most of them in the hole-punching
-code rather than in http.c - and porting INTO app/ removes none of them. That number
-reads 420 until libchiaki stops fetching both libraries, and then it reads zero. It is
-an end state and not a progress bar; the `## Done when` list is what says how far along
-this is, and it is there because reading this query as a burndown made four shipped
-tasks look like none.
+holepunch.c is 5786 lines and is the only translation unit in this tree that still needs
+either library: 234 curl_easy calls, 4 curl_ws, 158 json_object and 34 json_tokener, all
+420 of them in that one file. http.c is not among them. It is 262 lines over rudp and
+winsock and carries no curl symbol at all, which is not what the first version of this
+section said it was built around.
 
 ```roadkeep-remaining
 lib/src/**/*.c :: curl_easy_|json_object|json_tokener
 ```
 
-There is no design decision here and that is why it is worth filing separately: it
-deletes two dependencies from the build, and it can be taken by whoever wants to see the
-shape of a translated file before starting one that matters. The 420 is what stops
-"cheapest" being read as "small".
+What the count does not say is that it is one file with four callers. session.c makes
+three holepunch calls, the shim one, qmlbackend.cpp three and holepunch-test.c twelve,
+so the deletion is gated on the managed side owning the flow and session.c no longer
+asking for it - not on translating four hundred separate sites.
+
+The behaviours themselves are largely ported. PP231 stated the websocket auto-ACK, PP266
+performs the five session calls over a real HttpClient, and the shim exposes json-c's
+accessors deliberately: an oracle the managed parser is held against (PP215), not a
+dependency waiting to be removed.
+
+So what remains is the end state rather than the translation. chiaki-lib stops compiling
+holepunch.c, the two link lines in lib/CMakeLists.txt go, and the query reads zero
+because there is no file left for it to count in. Reading it as a burndown is what made
+four shipped tasks look like none.
 
 ### §PP107 The two nobody called
 
