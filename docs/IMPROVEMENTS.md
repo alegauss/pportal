@@ -57,15 +57,16 @@ WPF does. SetBackBuffer throws NotSupportedException - unsupported pixel format 
 that surface. The composition path carries eight bits per channel and nothing wider, and
 the buffer is refused before any question of metadata or tone mapping arises.
 
-So HDR needs a presentation path that is not D3DImage. A DXGI swapchain in a child HWND
-is the one PP9 rejected, because nothing can be drawn over an HWND, and PP10 has since
-built the overlay as XAML over a D3DImage. The other is a DirectComposition visual, and
-PP281 built it through to Commit. PP282 then asked it in the arrangement the design
-needs - the visual BEHIND the window's content, where a video plane must sit for the
-overlay to be seen over it. Both hold.
+So HDR needs a path that is not D3DImage. A DXGI swapchain in a child HWND is the one
+PP9 rejected, because nothing can be drawn over an HWND, and PP10 has since built the
+overlay as XAML over a D3DImage. The other is a DirectComposition visual, and three
+tasks took it apart: PP281 built the tree to Commit, PP282 asked it with the visual
+BEHIND the window's content where a video plane must sit, and PP283 asked that of a real
+WPF window's HWND. All three hold.
 
-What is left needs WPF in the room: whether WPF content composes above that visual. The
-compositor accepts the tree; nothing yet says what WPF draws over it.
+One question is left and it needs a screenshot: what WPF DRAWS over that visual. Its
+window owns a redirection bitmap, so accepting the tree and showing through it are not
+the same fact.
 
 ## Block D — Screens
 
