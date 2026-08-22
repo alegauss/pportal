@@ -177,6 +177,54 @@ task: it stays outside compile.cmd's preflight and gates no commit.
 The assertion is measure-startup's exit code - 0 rather than 2, which it returns only
 where it found Chromium in the tree it measured.
 
+### §PP301 The first green run
+
+PP22 put the native build on a runner and configured it the only way a runner can be
+configured - MSVC with the vcpkg toolchain - and that toolchain has never compiled a
+line of this tree. Everything anyone here has ever built came through MSYS2 MinGW64, so
+the workflow's first push is also the first test of it.
+
+What is likely to be found there, named rather than discovered one red push at a time:
+lib/ and third-party/ carry GCC's picky warning set and `-Werror-implicit-function-
+declaration`, which cl.exe does not accept; the vendored curl configures itself off the
+compiler it detects; nanopb's generator wants a Python 3 that vcpkg does not install;
+and libplacebo is found through pkgconf, which vcpkg lays down as a tool rather than on
+PATH.
+
+The assertions PP22 shipped cover the file - every path it names, the framework it
+installs, the toolchain it configures through - and cover nothing about whether the
+build succeeds. That is the honest boundary: only a runner answers that, and pretending
+otherwise would put a second build system in a test.
+
+So this is the first green run, and what it costs is whatever the four above turn out to
+be. It is filed apart from PP22 because the workflow is worth having while it is red -
+the alternative was leaving CI unwritten until someone had a runner to iterate against,
+which is how a port keeps building on exactly one machine.
+
+### §PP302 The third verb in PP22's sentence
+
+PP22's line named three things CI had stopped doing - builds, signs, packages - and
+shipped two of them. The third is here because it is not the same kind of work: the
+other two were files to write, and this one starts with buying something.
+
+What an unsigned Windows application costs its user is concrete rather than theoretical.
+SmartScreen shows "Windows protected your PC" on first run of an executable with no
+reputation, and the button that runs it anyway is behind "More info". Browsers warn on
+the download. The installer PP274 compiles carries the same absence, so the warning is
+the first thing a new user sees and the last thing they see before deciding this is not
+worth it.
+
+The certificate is the decision. An OV certificate is issued to a name and can be used
+from a runner with the key in a secret; an EV one carries reputation from the day it is
+issued and lives on hardware, which a hosted runner cannot reach without a signing
+service. Azure Trusted Signing sits between the two and is a subscription. All three are
+a purchase and an identity check against a legal entity, and none of them is a step this
+port can take on its own.
+
+Filed so the gap is written down rather than remembered. The workflow signs nothing
+today and says nothing about it, which is the state where a release goes out unsigned
+because every part of it was green.
+
 ## Block F — Managed core
 
 ### §PP23 The oracle this block cannot be written without
@@ -527,6 +575,31 @@ The hardware is what blocks it: the development machine has an NVIDIA card but n
 Reflex-capable monitor, so no number can be taken today. Taken later against a converted
 tree, it measures the port instead of the client - the same window that closes on PP39
 closes on this.
+
+### §PP303 Whether PP46 still earns PP63
+
+PP46 was filed when this port read as chiaki-ng continued by other means: same name,
+same version, the next thing a user of it would install. Under that reading, "dropping
+the bundled browser makes startup and the installer smaller" is a claim about an
+upgrade, and measuring it against the build being replaced is the only honest way to
+state it.
+
+That reading was settled against on 2026-08-22, in PP277: this is a new application
+rather than upstream's next version, it inherits nothing from an installed one, and its
+installer now says so with an identity of its own. A delta measured against a Qt build
+is then a comparison between two products, which is a different sentence and a weaker
+one.
+
+What it costs to keep is not small. PP63 is what produces the before, and PP63 is two
+multi-gigabyte installs - Build Tools with the C++ workload, and Qt for msvc2022_64
+carrying QtWebEngine from an account-gated installer - plus a second toolchain that the
+task itself argues has to be kept away from ordinary work.
+
+So the question is whether PP46 still earns PP63, and there are three answers. Keep
+both. Re-base PP46 on this application alone - cold start and installer size as a budget
+with a ceiling, needing no Qt at all. Or retire both, and let the browser this port does
+not bundle be a fact rather than a measurement. What a number is for is the author's
+call.
 
 ## Block I — NVIDIA path
 
