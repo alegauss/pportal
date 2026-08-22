@@ -964,6 +964,21 @@ CHIAKI_SHIM_API int32_t chiaki_shim_gkcrypt_decrypt(
 CHIAKI_SHIM_API int32_t chiaki_shim_gkcrypt_block_size(void);
 
 /**
+ * PP26: the key and IV a gkcrypt derived, so a managed key stream can be held against its own.
+ *
+ * chiaki_gkcrypt_gen_key_stream is AES-128 ECB over a counter, and the counter is the IV plus the
+ * block index. Both live inside ChiakiGKCrypt, which the public header leaves incomplete - so a
+ * managed port of the STREAM cannot be compared with the C's without them, and comparing the
+ * derivation instead would be testing two things at once.
+ *
+ * Writes CHIAKI_GKCRYPT_BLOCK_SIZE bytes to each. Returns false where the handle is null or a
+ * buffer is too small.
+ */
+CHIAKI_SHIM_API bool chiaki_shim_gkcrypt_key_and_iv(
+		void *gkcrypt, uint8_t *out_key_base, uint8_t *out_iv, int32_t capacity);
+
+
+/**
  * PP35: the GMAC that authenticates every takion packet, and its four recorded vectors.
  *
  * This is the other half of gkcrypt and the port had none of it. PP105 is where it matters: the

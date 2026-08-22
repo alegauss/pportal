@@ -1651,6 +1651,19 @@ CHIAKI_SHIM_API int32_t chiaki_shim_gkcrypt_decrypt(
 }
 
 /** The block size a caller has to add to a packet's key_pos before decrypting its payload. */
+/* PP26: the key and IV inside, for the managed key stream to be compared against. */
+CHIAKI_SHIM_API bool chiaki_shim_gkcrypt_key_and_iv(
+		void *gkcrypt, uint8_t *out_key_base, uint8_t *out_iv, int32_t capacity)
+{
+	ChiakiGKCrypt *self = (ChiakiGKCrypt *)gkcrypt;
+	if(!self || !out_key_base || !out_iv || capacity < CHIAKI_GKCRYPT_BLOCK_SIZE)
+		return false;
+
+	memcpy(out_key_base, self->key_base, CHIAKI_GKCRYPT_BLOCK_SIZE);
+	memcpy(out_iv, self->iv, CHIAKI_GKCRYPT_BLOCK_SIZE);
+	return true;
+}
+
 CHIAKI_SHIM_API int32_t chiaki_shim_gkcrypt_block_size(void)
 {
 	return (int32_t)CHIAKI_GKCRYPT_BLOCK_SIZE;

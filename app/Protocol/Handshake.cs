@@ -174,6 +174,30 @@ public sealed class GkCrypt : IDisposable
     }
 
     /// <summary>The key stream at a position, generated rather than looked up.</summary>
+    /// <summary>
+    /// PP26: the key and IV this gkcrypt derived, which the public header keeps to itself.
+    ///
+    /// Needed so a managed key stream can be compared with this one's on the same inputs.
+    /// Comparing the derivation instead would be testing two things at once, and the derivation is
+    /// gkcrypt's other half.
+    /// </summary>
+    public (byte[] KeyBase, byte[] Iv) KeyAndIv()
+    {
+        var keyBase = new byte[BlockSize];
+        var iv = new byte[BlockSize];
+
+        if (!GkCryptKeyAndIv(Handle, keyBase, iv, BlockSize))
+            throw new InvalidOperationException("chiaki_shim_gkcrypt_key_and_iv refused");
+
+        return (keyBase, iv);
+    }
+
+    [System.Runtime.InteropServices.DllImport(ChiakiNg.Native.ChiakiNative.Library,
+        EntryPoint = "chiaki_shim_gkcrypt_key_and_iv",
+        CallingConvention = System.Runtime.InteropServices.CallingConvention.Cdecl)]
+    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.I1)]
+    private static extern bool GkCryptKeyAndIv(IntPtr gkcrypt, byte[] keyBase, byte[] iv, int capacity);
+
     public byte[] KeyStream(ulong keyPos, int length)
     {
         ObjectDisposedException.ThrowIf(_handle == IntPtr.Zero, this);
