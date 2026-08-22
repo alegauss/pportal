@@ -374,6 +374,77 @@ flag, its count loop is guarded by the return above it, peek writes both out-poi
 where pull guards its own, and takion still passes NULL and still drops on a bad MAC.
 Repair any upstream and the port's copy becomes the divergence, on the next run.
 
+### §PP293 The session lifetime, on its own
+
+PP28 named three files and 3977 lines as one task, and its own text said the split
+should happen when the work is started rather than now. It is being started, so this is
+the first of the three.
+
+session.c is the outermost of them: the login, the wakeup packet, the connect sequence
+and the teardown, plus the event queue a client reads. It is the one whose failures a
+user describes in words - it did not connect, it hung on the login - rather than as a
+picture problem.
+
+It also has the friendliest oracle of the three. Registration and discovery already have
+recorded vectors, and a connect exchange is a sequence of messages that can be replayed
+against both implementations offline; nothing in it needs a console answering in real
+time the way takion's timing does.
+
+What it shares with the other two is the shape of the risk. There is no diagram and the
+code is the diagram, and the ordering was written to match observed behaviour rather
+than designed - so the honest expectation is that some of it looks wrong and is not, and
+a port that tidies it is a port that has changed it.
+
+Ported behind a seam like PP291's, not against a session pointer: the six settings and
+four messages that measurement found there is the pattern, and this file is where most
+of both live.
+
+### §PP294 The control channel, on its own
+
+The second of PP28's three. ctrl.c is the longest at 1469 lines and carries the most
+message types - the control connection a session opens alongside the stream, over which
+the console reports state changes, accepts requests and answers keepalives.
+
+None of it is on the frame path, which is the useful thing about it. PP27 is judged on
+latency because every millisecond takion adds is one the picture is late by; this is
+judged on whether the right message was sent in the right state, and a millisecond here
+costs nothing. So the measurement that matters is a recorded exchange compared message
+for message, not a timing histogram.
+
+The message types are the work rather than the line count. A control channel is a switch
+over a wire format, and the risk is a type handled in the wrong state rather than an
+algorithm translated wrongly - which means the oracle has to drive states as well as
+messages, and a table of message-in, message-out pairs would pass while missing the
+ordering entirely.
+
+It is also the file most likely to hold behaviour nobody has exercised. A control
+message that arrives once in a thousand sessions is one nobody has watched, and the C is
+the only record of what it does.
+
+### §PP295 The file every deletion is waiting on
+
+The third of PP28's three, and the one that decides when C starts leaving this build.
+
+PP286 through PP291 ported the frame path from the bottom up: the Galois field, the
+Cauchy matrix, the Reed-Solomon codec, the frame processor, the video receiver. None of
+it removed a single line of C, and the reason is one call. streamconnection.c:1262 hands
+packets to chiaki_video_receiver_av_packet, so videoreceiver.c stays, so
+frameprocessor.c stays, so fec.c stays, and jerasure and gf-complete stay with them.
+PP30 has read 13 sites through five ports for exactly that reason.
+
+Which makes this the highest-leverage of the three and the hardest. It rides takion -
+hence the dependency - and it is the file where the ordering of events IS the behaviour,
+so a port that reproduces every function and not their sequence would pass a
+message-level comparison and fail a session.
+
+The managed pieces are waiting for it. ManagedVideoReceiver takes a four-method outbound
+seam precisely so that whatever drives it does not need to be a session pointer, and
+corrupt-frame and IDR requests are two of those four - both of them messages this file
+sends.
+
+Deleting is the deliverable, not just porting. The C video receiver leaving the build is
+what makes the five ports beneath it real.
+
 ## Block G — Test discipline
 
 ### §PP36 Where a red test has to stop something
