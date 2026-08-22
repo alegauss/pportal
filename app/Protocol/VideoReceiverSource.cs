@@ -126,4 +126,33 @@ public static class VideoReceiverSource
 
         return core.Contains("slice.reference_frame != 0xff", StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// PP292: whether the frames-lost count is still a flat subtraction over a wrapped index.
+    ///
+    /// True means the defect is still there and the port is right to reproduce it. This going FALSE
+    /// is the good outcome and still a failure here, deliberately: it means somebody fixed the C
+    /// and the managed side is now the only one counting -65528.
+    /// </summary>
+    public static bool TheLostCountIsStillAFlatSubtraction(string core)
+    {
+        ArgumentNullException.ThrowIfNull(core);
+
+        return core.Contains(
+            "int32_t lost = video_receiver->frame_index_cur - next_frame_expected + 1",
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// And whether the event's idr_request_sent is still seeded from the wait rather than the send.
+    ///
+    /// The two are different questions with almost the same name: on a second failure the flag is
+    /// true because a request is outstanding, not because one just went out.
+    /// </summary>
+    public static bool TheIdrSentFlagIsStillSeededFromTheWait(string core)
+    {
+        ArgumentNullException.ThrowIfNull(core);
+
+        return core.Contains("bool idr_request_sent = waiting_for_idr;", StringComparison.Ordinal);
+    }
 }

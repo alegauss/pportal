@@ -68,6 +68,32 @@ One question is left and it needs a screenshot: what WPF DRAWS over that visual.
 window owns a redirection bitmap, so accepting the tree and showing through it are not
 the same fact.
 
+### §PP292 A counter that turns over backwards
+
+videoreceiver.c charges frames to a loss counter when FEC cannot rebuild a frame:
+
+int32_t lost = video_receiver->frame_index_cur - next_frame_expected + 1;
+
+next_frame_expected is a ChiakiSeqNum16 and has already wrapped; frame_index_cur is an
+int32_t holding the same range but not reduced against it. C promotes the uint16 to int,
+so this is plain subtraction between a small number and a large one whenever the counter
+has just turned over. At prev_complete 65530 and cur 2 it answers -65528 where 8 was
+meant, and -65528 is added to both frames_lost and frames_lost_total.
+
+Reachable roughly every eighteen minutes of streaming at 60fps, and only when FEC fails
+in the window - so it is rare enough to have survived and common enough to matter over a
+long session. frames_lost is handed to the video sample callback as the count since the
+last delivered frame, and frames_lost_total is what a session reports at the end.
+
+PP291 reproduces it rather than fixing it, which is this port's standing rule for a
+defect it did not introduce - the same call PP231 makes about a lost notification. A
+managed side that quietly counted correctly would disagree with the Qt client for
+reasons no comparison between the two could explain, which is worse than agreeing on a
+wrong number.
+
+What is open is whether to fix it in both. The wrapped form is one cast and is already
+written beside the reproduction, unused, with tests naming both answers.
+
 ## Block D — Screens
 
 ## Block E — Windows-only build

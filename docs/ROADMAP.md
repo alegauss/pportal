@@ -13,6 +13,7 @@
 
 - ⏳ **PP11** (deps: PP9 ✅, PP163) **fullscreen, HDR handoff and refresh-rate switching are handled by the Qt window** — the refresh-rate switching, and the HDR half that PP163 has now shown needs a different presentation path. → §PP11
 - 📋 **PP163** (deps: PP9 ✅) **an HDR picture cannot reach the display through D3DImage, which refuses any surface wider than eight bits** — one question left, and it needs a screenshot: PP283 has the compositor taking the tree on a real WPF window, but not what WPF draws over it. → §PP163
+- 📋 **PP292** (deps: —) **the frames-lost count subtracts a wrapped sequence number as a plain int, so a loss across the wrap counts -65528** — int32 minus a promoted ChiakiSeqNum16 does not wrap, so frames_lost and frames_lost_total go hugely negative about every eighteen minutes at 60fps. → §PP292
 
 ## Block D — Screens
 
@@ -33,7 +34,7 @@
 - 📋 **PP31** (deps: PP28) **the video decoder is where 100% managed stops being achievable, and no task above says so** — There is no managed H.264 or HEVC decoder that holds 1080p60 at remote play latency, so this boundary is chosen deliberately or discovered late. → §PP31
 - 📋 **PP32** (deps: PP28) **audio decode and resampling are Opus and speexdsp, both native and both on the latency path** — Managed Opus exists and speexdsp has no equivalent, so the two halves of the audio path have different answers and only one of them is a choice. → §PP32
 - ⏳ **PP33** (deps: PP24 ✅) **HTTP and JSON in the core are curl and json-c, two vendored dependencies for what the runtime already does** — the deletion, now that PP231 and PP266 closed the two named behaviours: holepunch.c is the last unit needing either library and session.c still calls it. → §PP33
-- ⏳ **PP291** (deps: —) **videoreceiver.c is the next link above the ported frame processor and no task owns it, so the chain stops there** — the bytes and the outbound half: profile switching, the flush, the FEC-failure path with its corrupt-frame and IDR requests. → §PP291
+- ⏳ **PP291** (deps: —) **videoreceiver.c is the next link above the ported frame processor and no task owns it, so the chain stops there** — the bytes and the acting half: profile switching, the flush itself, and the delegates that send what the decisions ask for. → §PP291
 
 ## Block G — Test discipline
 
