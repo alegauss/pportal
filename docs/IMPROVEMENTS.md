@@ -57,14 +57,15 @@ WPF does. SetBackBuffer throws NotSupportedException - unsupported pixel format 
 that surface. The composition path carries eight bits per channel and nothing wider, and
 the buffer is refused before any question of metadata or tone mapping arises.
 
-So HDR needs a presentation path that is not D3DImage. Two shapes are worth pricing. A
-DXGI swapchain in a child HWND is the one PP9 rejected, because nothing can be drawn
-over an HWND - and PP10 has since built the overlay as XAML over a D3DImage, so taking
-it now costs that screen. A DirectComposition visual composes a swapchain with WPF
-content above it, which is the only path that leaves PP10 standing.
+So HDR needs a presentation path that is not D3DImage. A DXGI swapchain in a child HWND
+is the one PP9 rejected, because nothing can be drawn over an HWND - and PP10 has since
+built the overlay as XAML over a D3DImage, so taking it now costs that screen. The other
+is a DirectComposition visual, and PP281 has since built it: device, target, visual, the
+ten-bit composition swapchain as its content, root, Commit. It holds.
 
-Not a defect in PP9. Eight-bit SDR works and that is most sessions; this is the ceiling
-that decision has, now measured, with the call that stops it named.
+What is left is the half that needs WPF in the room - whether WPF content composes ABOVE
+that visual. Until it is asked, the path that keeps PP10 standing is measured up to the
+compositor and asserted past it.
 
 ## Block D — Screens
 
