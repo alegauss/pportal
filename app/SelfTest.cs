@@ -126,25 +126,23 @@ public static class SelfTest
         // upward started nowhere, and the published host skipped every drift check and failed to
         // load the shim - while every build out of the tree stayed green. So the rule is now
         // stated rather than assumed: inside a checkout, nothing may skip.
-        string[] driftSources =
-        [
-            SanitizerSource.RelativePath, SessionSource.RelativePath, CryptoVectors.RelativePath,
-            FecVectors.RelativePath, LibSource.RelativePath, LibSource.ShimRelativePath,
-            ReorderQueueSource.RelativePath, BangReachability.TakionRelativePath,
-            BangReachability.StreamConnectionRelativePath,
-            @"gui\src\controllermanager.cpp", @"gui\include\psnaccountid.h",
-            @"lib\src\remote\holepunch.c", @"test\bitstream.c", @"test\gkcrypt.c",
-            @"test\regist.c", @"test\takion.c", PayloadScript.RelativePath,
-        ];
+        // PP278: found, not listed. This was seventeen entries written by hand - nine of them
+        // constants and eight raw literals that no sweep could ever see - and three were added to
+        // it over PP273, PP274 and PP275 by remembering to. DriftCorpus reflects over the assembly
+        // instead, so a path added anywhere is in the corpus by being declared at all.
+        string[] driftSources = [.. DriftCorpus.Declared()];
 
         // PP276: the root, asked for by name. PP274 and PP275 each derived it here by hand, from
         // the directory holding roadkeep.toml, because the resolver could not be asked for it. It
         // can now, and the resolver builds every path below from the same answer.
         string? repositoryRoot = SanitizerSource.RepositoryRoot();
         bool inCheckout = repositoryRoot is not null;
-        string[] unfindable = inCheckout
-            ? driftSources.Where(p => SanitizerSource.LocateRelative(p) is null).ToArray()
-            : [];
+
+        // Asked of the corpus rather than resolved here, because a declared path may be a DIRECTORY
+        // - CurlSemanticsSource.CoreGlob is lib\src - and LocateRelative tests File.Exists. Written
+        // the other way this reported the glob missing on every run, which is PP271's finding about
+        // that same constant arriving from the opposite direction.
+        string[] unfindable = [.. DriftCorpus.Missing()];
 
         Console.WriteLine(inCheckout
             ? $"Sources - {driftSources.Length} drift checks, in a checkout"
@@ -153,6 +151,12 @@ public static class SelfTest
         Check("every source a drift check reads is findable, or this is not a checkout",
             unfindable.Length == 0,
             unfindable.Length == 0 ? "" : string.Join(", ", unfindable));
+
+        // PP278: and the corpus is not empty, which is the same reflection sweep's other failure
+        // mode. A predicate that stopped matching anything would make the check above pass over
+        // nothing at all - greener than ever, measuring the empty set.
+        Check("and the corpus a sweep found is not empty",
+            !inCheckout || driftSources.Length >= 50, $"{driftSources.Length} path(s)");
 
         // PP22, and it belongs beside the check above rather than with the seam tests further down:
         // this is the OTHER half of the same failure. That one is about a host that cannot find its
@@ -198,7 +202,7 @@ public static class SelfTest
         // between the host's output directory and the root, so this check read those three, found
         // no rule naming build, and was green on a file it had never opened. It resolves from the
         // root now, which is what makes the plain call below the right one.
-        string? ignoreList = SanitizerSource.LocateRelative(".gitignore");
+        string? ignoreList = SanitizerSource.LocateRelative(InstallerScript.IgnoreListRelativePath);
         if (ignoreList is null)
         {
             Console.WriteLine("  --    the packaging files' ignore rules  (no .gitignore here)");
@@ -2234,7 +2238,7 @@ public static class SelfTest
             // The half this code cannot exercise: that the Qt client sets the same four. A pad
             // that behaves differently between the two clients is not something a user would
             // report as a port defect.
-            string? cmSource = SanitizerSource.LocateRelative(@"gui\src\controllermanager.cpp");
+            string? cmSource = SanitizerSource.LocateRelative(TouchpadExtentsSource.ControllerCppRelativePath);
             if (cmSource is null)
             {
                 Console.WriteLine(@"  --    the Qt client's SDL hints  (no gui\src\controllermanager.cpp here)");
@@ -2310,7 +2314,7 @@ public static class SelfTest
             // And the half this code cannot exercise: the Qt client's own copy of these strings.
             // Two clients that log in differently is not a thing anyone would report as a port
             // defect, so the constants are held against the header they came from.
-            string? psnHeader = SanitizerSource.LocateRelative(@"gui\include\psnaccountid.h");
+            string? psnHeader = SanitizerSource.LocateRelative(PsnTokenSource.AccountHeader);
             if (psnHeader is null)
             {
                 Console.WriteLine(@"  --    the Qt client's PSN constants  (no gui\include\psnaccountid.h here)");
@@ -2516,7 +2520,7 @@ public static class SelfTest
                     RegistRequestSource.GuardsUseThePayloadSize(rc));
             }
 
-            string? registFile = SanitizerSource.LocateRelative(@"test\regist.c");
+            string? registFile = SanitizerSource.LocateRelative(DriftCorpus.RegistRelativePath);
             if (registFile is null)
             {
                 Console.WriteLine(@"  --    the recorded registration payload  (no test\regist.c here)");
@@ -2581,8 +2585,8 @@ public static class SelfTest
             // "allocate little" but "allocate nothing", because that is what the code being
             // replaced does - and a transport that allocates per packet turns thousands of small
             // packets a second into a collection whose cost is the worst frame of a minute.
-            string? takionFileForBudget = SanitizerSource.LocateRelative(@"test\takion.c");
-            string? bsFileForBudget = SanitizerSource.LocateRelative(@"test\bitstream.c");
+            string? takionFileForBudget = SanitizerSource.LocateRelative(DriftCorpus.TakionTestRelativePath);
+            string? bsFileForBudget = SanitizerSource.LocateRelative(DriftCorpus.BitstreamRelativePath);
 
             using (var budgetLog = new ChiakiLog(ChiakiLogLevel.Error, (_, _) => { }))
             using (var fp = new FrameProcessor(budgetLog))
@@ -2710,7 +2714,7 @@ public static class SelfTest
             Console.WriteLine();
             Console.WriteLine("VideoReceiver - who owns the buffer a frame arrives in");
 
-            string? bsFileForVideo = SanitizerSource.LocateRelative(@"test\bitstream.c");
+            string? bsFileForVideo = SanitizerSource.LocateRelative(DriftCorpus.BitstreamRelativePath);
             if (bsFileForVideo is null)
             {
                 Console.WriteLine(@"  --    the video sample callback  (no test\bitstream.c here)");
@@ -2922,7 +2926,7 @@ public static class SelfTest
                     keys.RequestPos(0x1337, commit: false).ToString("x"));
             }
 
-            string? takionFile = SanitizerSource.LocateRelative(@"test\takion.c");
+            string? takionFile = SanitizerSource.LocateRelative(DriftCorpus.TakionTestRelativePath);
             if (takionFile is null)
             {
                 Console.WriteLine(@"  --    the recorded AV packet  (no test\takion.c here)");
@@ -2951,7 +2955,7 @@ public static class SelfTest
             Console.WriteLine();
             Console.WriteLine("Bitstream - what kind of frame just arrived");
 
-            string? bsFile = SanitizerSource.LocateRelative(@"test\bitstream.c");
+            string? bsFile = SanitizerSource.LocateRelative(DriftCorpus.BitstreamRelativePath);
             if (bsFile is null)
             {
                 Console.WriteLine(@"  --    the recorded slice headers  (no test\bitstream.c here)");
@@ -3298,7 +3302,7 @@ public static class SelfTest
 
             Check("the secret size comes from the shim", Ecdh.SecretSize == 32, Ecdh.SecretSize.ToString());
 
-            string? gkFile = SanitizerSource.LocateRelative(@"test\gkcrypt.c");
+            string? gkFile = SanitizerSource.LocateRelative(DriftCorpus.GkCryptRelativePath);
             if (gkFile is null)
             {
                 Console.WriteLine(@"  --    the recorded key agreement  (no test\gkcrypt.c here)");
@@ -3356,7 +3360,7 @@ public static class SelfTest
                 // stops being true out loud if the code moves underneath it.
                 string? tkFile = BangReachability.LocateTakion();
                 string? scFile = BangReachability.LocateStreamConnection();
-                string? hpFile = SanitizerSource.LocateRelative(@"lib\src\remote\holepunch.c");
+                string? hpFile = SanitizerSource.LocateRelative(PortGuessingSource.RelativePath);
                 if (tkFile is null || scFile is null || hpFile is null)
                 {
                     Console.WriteLine(@"  --    what a forged bang would have to beat  (no lib\src here)");

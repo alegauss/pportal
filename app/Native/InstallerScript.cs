@@ -33,6 +33,13 @@ public static partial class InstallerScript
     public const string CommandRelativePath = "package.cmd";
 
     /// <summary>
+    /// The ignore list PP275 is about, which the packaging files must not appear in. Named rather
+    /// than written at the call site so PP278's sweep can see it - it was the last literal in the
+    /// tree, and the scan that forbids them found it.
+    /// </summary>
+    public const string IgnoreListRelativePath = ".gitignore";
+
+    /// <summary>
     /// The executable the installer makes its shortcuts and its [Run] entry point at.
     /// </summary>
     public static string PackagedExecutable(string script)

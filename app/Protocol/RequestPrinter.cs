@@ -167,9 +167,12 @@ public static class RequestPrinterSource
             && !text[guard..gives].Contains("= '\\0'", StringComparison.Ordinal);
     }
 
+    /// <summary>Where the encoder lives. Named, so PP278's sweep can see it.</summary>
+    public const string EncoderRelativePath = @"lib\src\base64.c";
+
     /// <summary>Where the encoder lives, so the check above has something to read.</summary>
     public static string? LocateEncoder()
-        => ChiakiNg.Session.SanitizerSource.LocateRelative(@"lib\src\base64.c");
+        => ChiakiNg.Session.SanitizerSource.LocateRelative(EncoderRelativePath);
 
     /// <summary>Whether the source sizes are still the ones that make the branch unreachable.</summary>
     public static bool TheSizesStillMakeItUnreachable(string core)

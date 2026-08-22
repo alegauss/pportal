@@ -86,9 +86,12 @@ public static class HolepunchAccessorsSource
     /// <summary>The implementation file, or null outside a checkout.</summary>
     public static string? Locate() => PortGuessingSource.Locate();
 
+    /// <summary>The header that documents it. Named, so PP278's sweep can see it.</summary>
+    public const string HeaderRelativePath = @"lib\include\chiaki\remote\holepunch.h";
+
     /// <summary>And the header that documents it.</summary>
     public static string? LocateHeader()
-        => ChiakiNg.Session.SanitizerSource.LocateRelative(@"lib\include\chiaki\remote\holepunch.h");
+        => ChiakiNg.Session.SanitizerSource.LocateRelative(HeaderRelativePath);
 
     /// <summary>Whether the address getter still copies the source's whole field.</summary>
     public static bool TheGetterStillCopiesTheWholeField(string core)

@@ -1,4 +1,4 @@
-using ChiakiNg.Native;
+﻿using ChiakiNg.Native;
 using ChiakiNg.Session;
 
 namespace ChiakiNg.Settings;
@@ -141,9 +141,12 @@ public static class ConfigSettingsSource
     /// <summary>The settings screen.</summary>
     public static string? LocateQml() => GeneralSettingsSource.LocateQml();
 
+    /// <summary>Where the two defaults are declared. Named, so PP278's sweep can see it.</summary>
+    public const string SettingsHeaderRelativePath = @"gui\include\settings.h";
+
     /// <summary>Where the two defaults are declared.</summary>
     public static string? LocateSettingsHeader()
-        => SanitizerSource.LocateRelative(@"gui\include\settings.h");
+        => SanitizerSource.LocateRelative(SettingsHeaderRelativePath);
 
     /// <summary>Where the profile is read from the other store, and the mask is built.</summary>
     public static string? LocateSettingsCpp()

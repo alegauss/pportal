@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using ChiakiNg.Session;
 
 namespace ChiakiNg.Settings;
@@ -273,9 +273,12 @@ public static class ControllerSettingsSource
     public static string? LocateSettingsCpp()
         => GeneralSettingsSource.Locate(GeneralSettingsSource.SettingsCpp);
 
+    /// <summary>Where the haptic band is applied. Named, so PP278's sweep can see it.</summary>
+    public const string StreamSessionRelativePath = @"gui\src\streamsession.cpp";
+
     /// <summary>Where the haptic band is applied rather than printed.</summary>
     public static string? LocateStreamSession()
-        => SanitizerSource.LocateRelative(@"gui\src\streamsession.cpp");
+        => SanitizerSource.LocateRelative(StreamSessionRelativePath);
 
     /// <summary>Whether the rumble intensity is still stored as a word rather than an index.</summary>
     public static bool TheRumbleIntensityIsStoredAsAWord(string cpp)

@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using ChiakiNg.Native;
 
 namespace ChiakiNg.Protocol;
@@ -65,9 +65,12 @@ public static class NativeBase64
 /// </summary>
 public static class NativeBase64Source
 {
+    /// <summary>Where the declaration lives. Named, so PP278's sweep can see it.</summary>
+    public const string HeaderRelativePath = @"lib\include\chiaki\common.h";
+
     /// <summary>The header, or null outside a checkout.</summary>
     public static string? Locate()
-        => ChiakiNg.Session.SanitizerSource.LocateRelative(@"lib\include\chiaki\common.h");
+        => ChiakiNg.Session.SanitizerSource.LocateRelative(HeaderRelativePath);
 
     /// <summary>
     /// Whether the error is still the thirteenth member, counted rather than read off a comment.
