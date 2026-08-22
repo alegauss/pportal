@@ -38,7 +38,7 @@
 - ⏳ **PP293** (deps: PP297 ⏳) **session.c is 1182 lines and owns the session lifetime, and PP28 sizes it together with two files it does not resemble** — the thread itself: init, start, the connect sequence, stop and join, and the event queue a client reads. → §PP293
 - 📋 **PP294** (deps: PP297 ⏳) **ctrl.c is 1469 lines of control channel and PP28 sizes it together with two files it does not resemble** — It is the longest of the three and the one with the most message types, and none of them are on the frame path so latency is not the measure. → §PP294
 - 📋 **PP295** (deps: PP27, PP297 ⏳) **streamconnection.c is 1326 lines and is the last C caller of the video receiver, so every deletion below waits on it** — PP286 to PP291 ported the frame path bottom-up and none of it removed C, because this is what still calls the native receiver. → §PP295
-- ⏳ **PP297** (deps: —) **no session exchange has ever been captured, so the four modules with no test cannot be ported against anything** — the capture itself, which needs a console reaching the stream, and the replay that drives both implementations from it. → §PP297
+- ⏳ **PP297** (deps: —) **no session exchange has ever been captured, so the four modules with no test cannot be ported against anything** — the capture itself, which needs a console reaching the stream: the machinery on both sides of it is written and checked. → §PP297
 
 ## Block G — Test discipline
 
