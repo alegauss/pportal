@@ -27,7 +27,7 @@
 ## Block F — Managed core
 
 - ⏳ **PP23** (deps: —) **the protocol has no specification, so a managed rewrite has no oracle except the C code it replaces** — the four modules with no test at all: session, ctrl, streamconnection and senkusha, which are PP28's three files plus the one below them. → §PP23
-- ⏳ **PP26** (deps: PP23 ⏳, PP24 ✅) **3242 lines of crypto over OpenSSL sit between a registration and a session** — the key derivations and the AES itself: bright, ambassador, aeropause and the three registration inits. → §PP26
+- ⏳ **PP26** (deps: PP23 ⏳, PP24 ✅) **3242 lines of crypto over OpenSSL sit between a registration and a session** — the AES half: bright and ambassador for PS4 10 and PS5, the aeropause over their key tables, and the registration inits. → §PP26
 - ⏳ **PP27** (deps: PP23 ⏳, PP25 ✅, PP44 ✅) **takion, the transport the whole stream rides on, is 1868 lines of C over raw sockets and timers** — the transport itself: the socket, the threads, the timers and the resend loop, which is where the runtime is the risk. → §PP27
 - 📋 **PP28** (deps: PP293 ⏳, PP294, PP295, PP23 ⏳) **session, ctrl and streamconnection are 3977 lines of state machine with no diagram** — the three together, once PP293, PP294 and PP295 have each landed: what is left here is the ordering between them. → §PP28
 - 📋 **PP29** (deps: PP23 ⏳, PP26 ⏳) **registration and discovery are 1775 lines that decide whether a console can be found and paired at all** — They are the first thing a fresh install runs and the smallest end-to-end proof that a managed core can talk to real hardware. → §PP29

@@ -250,7 +250,7 @@
 - ✅ **PP293 (the version, the response and the waits)** **session.c is 1182 lines and owns the session lifetime, and PP28 sizes it together with two files it does not resemble** — the version table, the response headers with PP296's case mixture, and the five wait predicates with the two that end them all.
 - ✅ **PP297 (the format and the replay)** **no session exchange has ever been captured, so the four modules with no test cannot be ported against anything** — a redacted recording format and a replay that stops at the first thing an implementation says differently, including saying too much.
 - ✅ **PP27 (the send buffer)** **takion, the transport the whole stream rides on, is 1868 lines of C over raw sockets and timers** — takion's send buffer is managed - push, the at-or-before ack and the multi-gap compaction - agreeing with the C across the 32-bit wrap.
-- ✅ **PP26 (the IV derivation)** **3242 lines of crypto over OpenSSL sit between a registration and a session** — the IV every block is encrypted under is HMACSHA256 from the base class library, agreeing with the C on four targets and ten counters.
+- ✅ **PP26 (the IV and the pre-10 derivations)** **3242 lines of crypto over OpenSSL sit between a registration and a session** — the IV off the base class library, and the three PS4-before-10 loops whose constants differ by four - all agreeing with the C.
 
 ## Block G — Test discipline
 
