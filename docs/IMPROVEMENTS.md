@@ -348,30 +348,6 @@ flag, its count loop is guarded by the return above it, peek writes both out-poi
 where pull guards its own, and takion still passes NULL and still drops on a bad MAC.
 Repair any upstream and the port's copy becomes the divergence, on the next run.
 
-### §PP289 The file between the managed FEC and the deletion
-
-PP286 and PP287 leave a managed Reed-Solomon that produces byte-identical frames to
-jerasure on all 64 recorded cases. PP288 deleted the encode nothing called. What remains
-of PP30 is 13 sites, and they cannot go by porting more arithmetic: chiaki_fec_decode
-has exactly one caller in the whole tree, frameprocessor.c line 241, and jerasure stays
-in the build for as long as that line does.
-
-Three ways out, and two are worse than they look. Reimplementing fec.c in C without
-jerasure deletes the vendored libraries and leaves the port with three implementations
-of the same arithmetic - the vendored one gone, a new C one, and the managed one that is
-meant to be the future. Keeping the C for this piece is what §PP30 already calls a
-legitimate outcome, and it is, but it is not the same as finishing.
-
-The third is porting frameprocessor.c, and it is smaller than its position suggests: 338
-lines of buffer arithmetic, no sockets, no threads, no state beyond the frame being
-assembled. The unit slots, the duplicate and bounds rejections, the erasure list built
-from empty slots, and the padding restore that reads a big-endian length back out of
-each recovered unit.
-
-The oracle is already there. The shim exposes the native processor and the managed side
-wraps it today, so the same packet sequence can be pushed through both and compared -
-which is how PP287 was judged.
-
 ## Block G — Test discipline
 
 ### §PP36 Where a red test has to stop something

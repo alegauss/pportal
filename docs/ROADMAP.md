@@ -33,7 +33,6 @@
 - 📋 **PP31** (deps: PP28) **the video decoder is where 100% managed stops being achievable, and no task above says so** — There is no managed H.264 or HEVC decoder that holds 1080p60 at remote play latency, so this boundary is chosen deliberately or discovered late. → §PP31
 - 📋 **PP32** (deps: PP28) **audio decode and resampling are Opus and speexdsp, both native and both on the latency path** — Managed Opus exists and speexdsp has no equivalent, so the two halves of the audio path have different answers and only one of them is a choice. → §PP32
 - ⏳ **PP33** (deps: PP24 ✅) **HTTP and JSON in the core are curl and json-c, two vendored dependencies for what the runtime already does** — the deletion, now that PP231 and PP266 closed the two named behaviours: holepunch.c is the last unit needing either library and session.c still calls it. → §PP33
-- 📋 **PP289** (deps: —) **frameprocessor.c is the only caller of the FEC decode and no task owns porting it, so PP30 cannot finish** — It is 338 lines of buffer work with no OS surface, the shim already wraps it, and until it moves jerasure and gf-complete stay in the build. → §PP289
 
 ## Block G — Test discipline
 
