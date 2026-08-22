@@ -340,6 +340,31 @@ flag, its count loop is guarded by the return above it, peek writes both out-poi
 where pull guards its own, and takion still passes NULL and still drops on a bad MAC.
 Repair any upstream and the port's copy becomes the divergence, on the next run.
 
+### §PP276 The locator that finds the wrong file
+
+SanitizerSource.LocateRelative walks up from AppContext.BaseDirectory and returns the
+first path that exists. Walking up is deliberate and PP22 argued for it: a publish sits
+one directory deeper than a build, so counting '..' is the kind of thing that survives
+exactly one layout change.
+
+What it also does is stop at the first hit, which is only correct where the relative
+path is unique above the running assembly. Every drift source named today is
+multi-segment and rooted at the repository - gui/src/sessionlog.cpp, test/takion.c - so
+none has collided. PP275 asked for .gitignore and collided immediately: the
+app/.gitignore beside the csproj is three rules about bin, obj and the WPF SDK's temp
+project, and it sits between app/bin/Debug/... and the root. The check read those three,
+found no rule naming build, and reported green on a question about a file it never
+opened.
+
+PP271 swept for locators that answer null and made finding nothing a failure. This is
+the other half of that sweep and it is harder, because finding the wrong file is
+indistinguishable from finding the right one without knowing which was meant.
+
+The likely shape is an anchored lookup - the repository root is the directory holding
+roadkeep.toml, and a path meant to be repository-relative should resolve from there
+rather than from wherever the walk first succeeds. PP275 does this by hand at one call
+site, which is the pattern rather than the fix.
+
 ## Block G — Test discipline
 
 ### §PP36 Where a red test has to stop something
