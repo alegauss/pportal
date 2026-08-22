@@ -61,25 +61,24 @@ public static class VideoFlushDecision
     }
 
     /// <summary>
-    /// The C's own arithmetic, wrap defect included. PP292 is the defect; this is the reproduction.
+    /// How many frames the failure charges, reduced against the sequence wrap.
     ///
-    /// <c>int32_t lost = frame_index_cur - next_frame_expected + 1;</c> - and next_frame_expected is
-    /// a ChiakiSeqNum16 that has already wrapped, while frame_index_cur has not been reduced. Plain
-    /// integer subtraction between them is correct until the counter turns over and then is not: at
-    /// prev_complete 65530 and cur 2 the answer is -65528 where 8 was meant.
+    /// PP292, and the one thing in this file the port does NOT reproduce. What upstream ships is
+    /// <c>int32_t lost = frame_index_cur - next_frame_expected + 1;</c> - next_frame_expected is a
+    /// ChiakiSeqNum16 that has already turned over, frame_index_cur is an int32 holding the same
+    /// range and not reduced against it, and C's promotion makes that a plain subtraction of a
+    /// large number from a small one. Correct until the counter wraps and then not: at
+    /// prev_complete 65530 and cur 2 it answers -65528 where 8 was meant, into frames_lost and
+    /// frames_lost_total both, about every eighteen minutes of 60fps streaming.
     ///
-    /// Reproduced rather than corrected, which is this port's standing rule for a defect it did not
-    /// introduce - see PP231, where the same choice is made about a lost notification. Fixing it
-    /// here would make the managed baseline record disagree with the Qt client's for reasons no
-    /// comparison between them could explain.
+    /// PP291 reproduced it, on this port's standing rule for a defect it did not introduce: a
+    /// managed side quietly counting differently would disagree with the C for reasons no
+    /// comparison between them could explain. PP292 closes that the other way instead - the C was
+    /// fixed in the same commit, so the two still agree and what they agree on is right.
+    /// <see cref="VideoReceiverSource.TheLostCountIsStillReducedAgainstTheWrap"/> holds it there,
+    /// and turns red if lib/src/videoreceiver.c ever goes back.
     /// </summary>
     public static int FramesLost(int frameIndexCur, int frameIndexPrevComplete)
-        => frameIndexCur - (ushort)(frameIndexPrevComplete + 1) + 1;
-
-    /// <summary>
-    /// The wrap-free count, for whoever decides PP292. Not used by <see cref="Failed"/>.
-    /// </summary>
-    public static int FramesLostWrapped(int frameIndexCur, int frameIndexPrevComplete)
         => (ushort)(frameIndexCur - (ushort)(frameIndexPrevComplete + 1) + 1);
 
     /// <summary>

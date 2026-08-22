@@ -229,7 +229,16 @@ static ChiakiErrorCode chiaki_video_receiver_flush_frame(ChiakiVideoReceiver *vi
 				event.video_fec_failure.idr_request_sent = idr_request_sent;
 				chiaki_session_send_event(video_receiver->session, &event);
 			}
-		int32_t lost = video_receiver->frame_index_cur - next_frame_expected + 1;
+		// PP292: reduced against the wrap, because next_frame_expected already is.
+		//
+		// next_frame_expected is a ChiakiSeqNum16 built from frame_index_prev_complete + 1, so it
+		// has turned over; frame_index_cur is an int32_t holding the same range and has not been
+		// reduced against it. C promotes the uint16 to int, so without the cast this is a plain
+		// subtraction of a large number from a small one across the turnover: at prev_complete
+		// 65530 and cur 2 it answers -65528 where 8 was meant, and that goes into both counters.
+		// Reachable about every eighteen minutes of 60fps streaming, whenever FEC fails in the
+		// window.
+		int32_t lost = (ChiakiSeqNum16)(video_receiver->frame_index_cur - next_frame_expected + 1);
 		chiaki_mutex_lock(&video_receiver->frames_lost_mutex);
 		video_receiver->frames_lost += lost;
 		video_receiver->frames_lost_total += lost;

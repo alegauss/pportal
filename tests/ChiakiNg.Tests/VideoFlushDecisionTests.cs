@@ -73,29 +73,43 @@ public class VideoFlushDecisionTests
     }
 
     /// <summary>
-    /// PP292, asserted as the defect rather than fixed.
+    /// PP292, now fixed on both sides rather than reproduced on one.
     ///
-    /// This is the C's arithmetic and it goes hugely negative across the sequence wrap. It is
-    /// pinned here so the reproduction is deliberate and so that whoever decides PP292 has a test
-    /// that turns red when they change it - the wrong direction for a guard, and the right one for
-    /// a defect somebody is going to argue about.
+    /// The ordinary case and the turnover case were never in doubt - what the defect cost was the
+    /// third row, and it is the reason the count is charged through a cast on both sides now.
     /// </summary>
     [Theory]
     [InlineData(8, 5, 3)]              // ordinary
-    [InlineData(3, 65535, 4)]          // exactly at the turnover, which happens to work
-    [InlineData(2, 65530, -65528)]     // across it: 8 was meant
-    public void TheFramesLostCountReproducesTheWrapDefect(int cur, int prevComplete, int expected)
+    [InlineData(3, 65535, 4)]          // exactly at the turnover, which worked even before
+    [InlineData(2, 65530, 8)]          // across it, where the flat subtraction answered -65528
+    public void TheFramesLostCountIsReducedAgainstTheWrap(int cur, int prevComplete, int expected)
         => Assert.Equal(expected, VideoFlushDecision.FramesLost(cur, prevComplete));
 
-    /// <summary>And the count PP292 would produce instead, which nothing uses yet.</summary>
-    [Theory]
-    [InlineData(8, 5, 3)]
-    [InlineData(3, 65535, 4)]
-    [InlineData(2, 65530, 8)]
-    public void TheWrappedCountIsWhatWasMeant(int cur, int prevComplete, int expected)
-        => Assert.Equal(expected, VideoFlushDecision.FramesLostWrapped(cur, prevComplete));
+    /// <summary>
+    /// The regression, named rather than left to a row in a table.
+    ///
+    /// -65528 is what both implementations charged before PP292, to frames_lost and to
+    /// frames_lost_total, roughly every eighteen minutes of 60fps streaming whenever FEC failed in
+    /// the window. A count that may go negative at all is the shape of the defect, so that is what
+    /// this asserts against rather than the one value.
+    /// </summary>
+    [Fact]
+    public void ALossAcrossTheTurnoverIsNotNegative()
+    {
+        int lost = VideoFlushDecision.FramesLost(2, 65530);
 
-    /// <summary>THE DRIFT CHECK. The C still charges only a FEC failure, and still subtracts flat.</summary>
+        Assert.True(lost > 0, $"a loss across the sequence wrap counted {lost}");
+        Assert.NotEqual(-65528, lost);
+    }
+
+    /// <summary>
+    /// THE DRIFT CHECK, and PP292 turns half of it around.
+    ///
+    /// The C still charges only a FEC failure and still seeds idr_request_sent from the wait, which
+    /// this port reproduces. The frames-lost arithmetic it no longer reproduces: that line was
+    /// fixed in lib/src/videoreceiver.c in the same commit as the managed side, so what has to hold
+    /// is that the cast is still there - a merge from upstream is what would take it back out.
+    /// </summary>
     [Fact]
     public void TheCStillDoesThis()
     {
@@ -104,8 +118,9 @@ public class VideoFlushDecisionTests
 
         string core = File.ReadAllText(file);
 
-        Assert.True(VideoReceiverSource.TheLostCountIsStillAFlatSubtraction(core),
-            "the frames-lost arithmetic changed - PP292 may have been fixed, and this file still reproduces it");
+        Assert.True(VideoReceiverSource.TheLostCountIsStillReducedAgainstTheWrap(core),
+            "the frames-lost cast is gone from videoreceiver.c, so the C counts -65528 across the "
+                + "wrap again and only the managed side is right - PP292 was fixed in both");
         Assert.True(VideoReceiverSource.TheIdrSentFlagIsStillSeededFromTheWait(core),
             "idr_request_sent is no longer seeded from waiting_for_idr");
     }

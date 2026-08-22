@@ -128,18 +128,24 @@ public static class VideoReceiverSource
     }
 
     /// <summary>
-    /// PP292: whether the frames-lost count is still a flat subtraction over a wrapped index.
+    /// PP292: whether the frames-lost count is still reduced against the sequence wrap.
     ///
-    /// True means the defect is still there and the port is right to reproduce it. This going FALSE
-    /// is the good outcome and still a failure here, deliberately: it means somebody fixed the C
-    /// and the managed side is now the only one counting -65528.
+    /// This one asks the opposite question of every other reader in this file, and it is the only
+    /// place the port and the C differ from what upstream ships. The rest hold "the C still does
+    /// what this was translated from"; PP292 CHANGED the C, in the same commit as the managed side,
+    /// so what has to hold is that the cast is still there. Without it the subtraction promotes and
+    /// answers -65528 across the turnover, and the two implementations would disagree again - this
+    /// time with the managed one right, which is no better for a comparison.
+    ///
+    /// The likely way it goes false is a merge from upstream, where the old line comes back
+    /// unremarked because nothing about it looks like a conflict.
     /// </summary>
-    public static bool TheLostCountIsStillAFlatSubtraction(string core)
+    public static bool TheLostCountIsStillReducedAgainstTheWrap(string core)
     {
         ArgumentNullException.ThrowIfNull(core);
 
         return core.Contains(
-            "int32_t lost = video_receiver->frame_index_cur - next_frame_expected + 1",
+            "int32_t lost = (ChiakiSeqNum16)(video_receiver->frame_index_cur - next_frame_expected + 1)",
             StringComparison.Ordinal);
     }
 
