@@ -83,6 +83,41 @@ public class DriftCorpusTests(ITestOutputHelper output)
         => Assert.NotNull(SanitizerSource.Locate());
 
     /// <summary>
+    /// PP279: every root file the corpus names is on disk, and every root file a constant names is
+    /// in the corpus.
+    ///
+    /// Both directions, because each covers what the other cannot. The first is the assertion that
+    /// PP278 could not make - a one-segment path was recognised BY existing, so a deleted
+    /// roadkeep.toml left the corpus quietly instead of failing in it. The second is what stops the
+    /// list going stale: it reads the constants back and reports any naming a root file the list has
+    /// not been told about.
+    /// </summary>
+    [Fact]
+    public void TheRootFilesAreDeclaredAndPresent()
+    {
+        string? root = SanitizerSource.RepositoryRoot();
+        Assert.NotNull(root);
+
+        List<string> gone = [.. DriftCorpus.RootFiles.Where(f => !File.Exists(Path.Combine(root, f)))];
+        Assert.True(gone.Count == 0, "declared root files that are not there: " + string.Join(", ", gone));
+
+        IReadOnlyList<string> undeclared = DriftCorpus.UndeclaredRootFiles();
+        Assert.True(
+            undeclared.Count == 0,
+            "these constants name a file at the repository root that DriftCorpus.RootFiles does not "
+                + "list, so the corpus is not guarding them: " + string.Join(", ", undeclared));
+
+        // ...and every one of them really is in the corpus, which is the join the two halves above
+        // only imply. A RootFiles entry that IsRepositoryPath rejected would satisfy both and guard
+        // nothing.
+        IReadOnlyList<string> declared = DriftCorpus.Declared();
+        List<string> absent = [.. DriftCorpus.RootFiles.Where(f => !declared.Contains(f, StringComparer.OrdinalIgnoreCase))];
+        Assert.True(
+            absent.Count == 0,
+            "declared as root files but not in the corpus, so nothing reads them: " + string.Join(", ", absent));
+    }
+
+    /// <summary>
     /// PP278: and no drift check may hand the resolver a path the sweep cannot see.
     ///
     /// This is the half that makes the rest hold. A reflection sweep finds CONSTANTS, so a path

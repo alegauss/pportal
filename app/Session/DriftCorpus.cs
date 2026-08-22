@@ -44,6 +44,57 @@ public static class DriftCorpus
     public const string TakionTestRelativePath = @"test\takion.c";
 
     /// <summary>
+    /// PP279: the repository files that sit at the root, named because they cannot be recognised
+    /// any other way.
+    ///
+    /// Everything else in the corpus is judged on SHAPE - a path of two segments or more is a
+    /// candidate when its first segment is a directory at the root, so a file that has been deleted
+    /// is still a candidate and is then reported missing. A one-segment path has no first directory
+    /// to test, and nothing separates roadkeep.toml from any other constant carrying a dot except
+    /// whether a file of that name is there. PP278 asked exactly that, which meant the predicate was
+    /// asking the question the assertion existed to answer: a deleted root file stopped being
+    /// recognised instead of being reported, and the count floor was too loose to notice one going.
+    ///
+    /// Five names is a list, and PP278 deleted a list of seventeen. The difference is what the list
+    /// is OF: the root of a repository changes on the order of once a year, where its drift sources
+    /// changed three times in three tasks. And it is not the only guard - a constant naming a root
+    /// file that is missing from here is itself reported, so the list cannot quietly fall behind.
+    /// </summary>
+    public static IReadOnlyList<string> RootFiles { get; } =
+    [
+        ".gitignore", "CMakeLists.txt", "package.cmd", "roadkeep.toml", "vcpkg.json",
+    ];
+
+    /// <summary>
+    /// Constants that name a file at the root which <see cref="RootFiles"/> does not list. Empty is
+    /// the only acceptable answer: each one is a path the corpus is silently not guarding.
+    ///
+    /// This is the half that keeps the list honest, and it is deliberately the weaker direction -
+    /// it can only see a root file that EXISTS, so it catches "declared and forgotten" rather than
+    /// "declared and already gone". The latter fails the declaring type's own check instead.
+    /// </summary>
+    public static IReadOnlyList<string> UndeclaredRootFiles()
+    {
+        string? root = SanitizerSource.RepositoryRoot();
+        if (root is null)
+            return [];
+
+        return
+        [
+            .. Constants()
+                .Where(value =>
+                    !value.Contains('\\', StringComparison.Ordinal)
+                    && !value.Contains('/', StringComparison.Ordinal)
+                    && value.Contains('.', StringComparison.Ordinal)
+                    && !Path.IsPathRooted(value)
+                    && File.Exists(Path.Combine(root, value))
+                    && !RootFiles.Contains(value, StringComparer.OrdinalIgnoreCase))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Order(StringComparer.OrdinalIgnoreCase),
+        ];
+    }
+
+    /// <summary>
     /// Every repository path declared as a constant anywhere in this assembly, deduplicated and
     /// sorted. Empty outside a checkout, where there is no root to test a path against and no
     /// corpus to speak of.
@@ -54,8 +105,16 @@ public static class DriftCorpus
         if (root is null)
             return [];
 
-        var paths = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+        var paths = new SortedSet<string>(
+            Constants().Where(value => IsRepositoryPath(value, root)),
+            StringComparer.OrdinalIgnoreCase);
 
+        return [.. paths];
+    }
+
+    /// <summary>Every public constant string in this assembly, paths and everything else.</summary>
+    private static IEnumerable<string> Constants()
+    {
         foreach (Type type in typeof(SanitizerSource).Assembly.GetTypes())
         {
             foreach (FieldInfo field in type.GetFields(BindingFlags.Public | BindingFlags.Static))
@@ -63,12 +122,10 @@ public static class DriftCorpus
                 if (!field.IsLiteral || field.FieldType != typeof(string))
                     continue;
 
-                if (field.GetRawConstantValue() is string value && IsRepositoryPath(value, root))
-                    paths.Add(value);
+                if (field.GetRawConstantValue() is string value)
+                    yield return value;
             }
         }
-
-        return [.. paths];
     }
 
     /// <summary>
@@ -104,10 +161,10 @@ public static class DriftCorpus
     /// Two segments or more: the first must be a directory at the root, which is a test on the
     /// SHAPE - a missing file under gui\ is still a candidate, and is then reported missing.
     ///
-    /// One segment is the weaker half and is not covered. roadkeep.toml, package.cmd, CMakeLists.txt
-    /// and .gitignore are recognised BY existing, so deleting one drops it out of the corpus rather
-    /// than failing it, and the count floor is far enough below the corpus that losing one still
-    /// passes. Filed rather than papered over.
+    /// One segment: it must be in <see cref="RootFiles"/>. PP279 - this used to ask whether the file
+    /// was there, which is the question the assertion exists to answer, so a deleted root file left
+    /// the corpus rather than failing it. Membership is a shape test like the one above, and the
+    /// list is kept honest by <see cref="UndeclaredRootFiles"/> from the other side.
     /// </summary>
     public static bool IsRepositoryPath(string value, string root)
     {
@@ -128,6 +185,6 @@ public static class DriftCorpus
 
         return segments.Length > 1
             ? Directory.Exists(Path.Combine(root, segments[0]))
-            : value.Contains('.', StringComparison.Ordinal) && File.Exists(Path.Combine(root, value));
+            : RootFiles.Contains(value, StringComparer.OrdinalIgnoreCase);
     }
 }

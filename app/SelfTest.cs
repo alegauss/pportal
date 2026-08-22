@@ -158,6 +158,14 @@ public static class SelfTest
         Check("and the corpus a sweep found is not empty",
             !inCheckout || driftSources.Length >= 50, $"{driftSources.Length} path(s)");
 
+        // PP279: and the root files, which are the half the sweep cannot recognise by shape, are all
+        // declared. A constant naming one that this list has not been told about is a path the
+        // corpus is not guarding - and the failure is silent in exactly the way the check above is
+        // not, because it drops out of the corpus rather than failing inside it.
+        string[] undeclaredRoots = [.. DriftCorpus.UndeclaredRootFiles()];
+        Check("and every root file a constant names is declared as one",
+            undeclaredRoots.Length == 0, string.Join(", ", undeclaredRoots));
+
         // PP22, and it belongs beside the check above rather than with the seam tests further down:
         // this is the OTHER half of the same failure. That one is about a host that cannot find its
         // sources; this is about an installer that does not carry the libraries the host loads.

@@ -33,7 +33,6 @@
 - 📋 **PP31** (deps: PP28) **the video decoder is where 100% managed stops being achievable, and no task above says so** — There is no managed H.264 or HEVC decoder that holds 1080p60 at remote play latency, so this boundary is chosen deliberately or discovered late. → §PP31
 - 📋 **PP32** (deps: PP28) **audio decode and resampling are Opus and speexdsp, both native and both on the latency path** — Managed Opus exists and speexdsp has no equivalent, so the two halves of the audio path have different answers and only one of them is a choice. → §PP32
 - ⏳ **PP33** (deps: PP24 ✅) **HTTP and JSON in the core are curl and json-c, two vendored dependencies for what the runtime already does** — the call sites themselves, which are the hole-punching flow this port has not built - the primitives they need now exist. → §PP33
-- 📋 **PP279** (deps: —) **a one-segment drift path is recognised by existing, so deleting roadkeep.toml or package.cmd leaves the corpus silently** — PP278 tests multi-segment paths on shape and one-segment paths on existence, and the count floor is 50 against a corpus of 58, so losing one still passes. → §PP279
 
 ## Block G — Test discipline
 
