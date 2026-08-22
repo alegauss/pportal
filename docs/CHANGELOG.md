@@ -247,6 +247,7 @@
 - ✅ **PP289** **frameprocessor.c is the only caller of the FEC decode and no task owns porting it, so PP30 cannot finish** — a managed assembler produces the same frame and verdict as the C on six loss patterns, and the two agree on a second flush being destructive.
 - ✅ **PP290** **thirteen exported C functions are referenced nowhere in the tree, and nothing names them as deletable** — a test names the thirteen exports nothing references, asserts the set exactly, and reports movement in either direction.
 - ✅ **PP291** **videoreceiver.c is the next link above the ported frame processor and no task owns it, so the chain stops there** — a managed receiver assembles the ported decisions behind a four-method seam, and matches the C frame for frame where the C can be driven.
+- ✅ **PP293 (the version negotiation)** **session.c is 1182 lines and owns the session lifetime, and PP28 sizes it together with two files it does not resemble** — the RP version table is managed both directions, exhaustively, and a PS5 is still decided by comparison rather than a list.
 
 ## Block G — Test discipline
 
