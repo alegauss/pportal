@@ -772,6 +772,25 @@ CHIAKI_SHIM_API int32_t chiaki_shim_fec_decode(
 		int32_t erasures_count);
 
 /**
+ * PP286: the coding matrix jerasure builds, exposed so a managed one can be held against it.
+ *
+ * fec.c calls cauchy_original_coding_matrix(k, m, 8) and hands the result straight to
+ * jerasure_matrix_encode and _decode. Everything a managed port has to reproduce is in that one
+ * call: the field's primitive polynomial, the log and antilog tables built from it, and the
+ * inverse of every element - because each entry is 1/(i ^ (m + j)) and nothing else.
+ *
+ * So this is the smallest thing worth agreeing on first. A decoder written against a field that
+ * disagrees here fails the recorded cases with no clue which of the two it was, and the recorded
+ * cases are the only oracle the block has.
+ *
+ * Writes k*m entries in row-major order, m rows of k. Returns the count written, or -1 where the
+ * buffer is too small or the matrix could not be built. chiaki_shim_lib_init must have run: the
+ * Galois field tables are built there.
+ */
+CHIAKI_SHIM_API int32_t chiaki_shim_fec_matrix(
+		uint32_t k, uint32_t m, int32_t *out_matrix, int32_t capacity);
+
+/**
  * PP23: the handshake's key agreement and the session key stream it produces.
  *
  * test/gkcrypt.c records a complete exchange - a local key pair, its signature under a handshake

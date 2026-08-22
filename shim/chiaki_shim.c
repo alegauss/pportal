@@ -1184,6 +1184,42 @@ CHIAKI_SHIM_API int32_t chiaki_shim_fec_decode(
 			(const unsigned int *)erasures, (size_t)erasures_count);
 }
 
+/* PP286: fec.c's own matrix builder, which chiaki/fec.h does not declare.
+ *
+ * Declared here rather than including <cauchy.h> so the shim does not grow a build dependency on
+ * jerasure's headers for one call - and reached through chiaki-lib's function rather than the
+ * vendored one beneath it, because create_matrix is what fec.c actually uses and is therefore what
+ * a managed port has to agree with. The buffer is malloc'd by jerasure and freed with free(). */
+extern int *create_matrix(unsigned int k, unsigned int m);
+
+CHIAKI_SHIM_API int32_t chiaki_shim_fec_matrix(
+		uint32_t k, uint32_t m, int32_t *out_matrix, int32_t capacity)
+{
+	int *matrix;
+	size_t count;
+	size_t i;
+
+	if(!out_matrix || k == 0 || m == 0)
+		return -1;
+
+	count = (size_t)k * (size_t)m;
+	if(capacity < 0 || (size_t)capacity < count)
+		return -1;
+
+	matrix = create_matrix(k, m);
+	if(!matrix)
+		return -1;
+
+	/* Copied element by element rather than memcpy'd: jerasure's matrix is int and the seam's is
+	 * int32_t, and on a platform where those differ a memcpy would hand back half a matrix that
+	 * still looked like a matrix. */
+	for(i = 0; i < count; i++)
+		out_matrix[i] = (int32_t)matrix[i];
+
+	free(matrix);
+	return (int32_t)count;
+}
+
 CHIAKI_SHIM_API int32_t chiaki_shim_ecdh_secret_size(void)
 {
 	return (int32_t)CHIAKI_ECDH_SECRET_SIZE;

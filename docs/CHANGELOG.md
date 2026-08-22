@@ -241,6 +241,7 @@
 - ✅ **PP276** **a drift locator returns the first match walking up, so a name that also exists under app\ resolves to the wrong file** — one walk finds the root and every repository path is built from it, proved on a tree with a decoy nearer the caller than the real file.
 - ✅ **PP278** **the corpus guard sweeps only paths starting gui\, so every drift source outside it is held by a hand-written list** — the corpus is reflected against the checkout instead of filtered on a prefix - 17 hand-listed paths became 58 found ones, and a literal is now refused.
 - ✅ **PP279** **a one-segment drift path is recognised by existing, so deleting roadkeep.toml or package.cmd leaves the corpus silently** — the five root files are named and tested on membership, so one going missing fails by name, and a constant naming an undeclared one is reported.
+- ✅ **PP286** **the Galois field and Cauchy matrix jerasure computes have no managed counterpart, so PP30 has nothing to build on** — a managed GF(2^8) and Cauchy matrix agree with jerasure's entry for entry on eight shapes, and a rival polynomial is what proves the comparison bites.
 
 ## Block G — Test discipline
 
