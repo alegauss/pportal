@@ -18,8 +18,9 @@
 
 ## Block E — Windows-only build
 
-- ⏳ **PP22** (deps: PP1 ✅) **every CI workflow was deleted, so nothing builds, signs or packages the application** — the native side through vcpkg, and the installer; the publish and its selftest gate landed. → §PP22
+- ⏳ **PP22** (deps: PP1 ✅) **every CI workflow was deleted, so nothing builds, signs or packages the application** — the native side through vcpkg, in CI; the publish landed, and PP273 and PP274 leave a proved payload and an installer over it. → §PP22
 - 📋 **PP63** (deps: PP62 ✅) **nothing in the tree can configure a Qt build carrying WebEngine, so PP46's before cannot be produced at all** — MSYS2 has no qt6-webengine and no published Windows release carries Chromium, so an MSVC configure built once is the only reference the port can measure against. → §PP63
+- 📋 **PP277** (deps: —) **the installer keeps upstream's AppId, so it upgrades an installed chiaki-ng in place rather than sitting beside it** — The payloads share no file name but chiaki.exe and 34 Qt DLLs are not in the new file list, so they survive the upgrade in {app}. → §PP277
 
 ## Block F — Managed core
 
