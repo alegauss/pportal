@@ -113,6 +113,52 @@ task: it stays outside compile.cmd's preflight and gates no commit.
 The assertion is measure-startup's exit code - 0 rather than 2, which it returns only
 where it found Chromium in the tree it measured.
 
+### §PP274 The installer's other half
+
+PP273 answers what an installer ships: build\chiaki-ng-package holds the published host,
+the three native libraries the resolver loads and the closure of what they import, and
+package.cmd proves the set by running it under TEMP where no walk up into a checkout can
+rescue a file it missed.
+
+What still names the old world is scripts\chiaki-ng.iss. It is upstream's, and it
+defines MyAppPath as ..\chiaki-ng-Win and MyAppExeName as chiaki.exe - a directory that
+resolves to the repository root rather than to build\, and an executable PP21 turned off
+by default. Its [Files] section then copies that directory whole, which would carry 34
+Qt DLLs, a chiaki.exe and windeployqt's plugin trees into an installer for an
+application that loads none of them.
+
+The version mechanism is the part worth keeping: GetVersionComponents reads x.y.z off
+the packaged exe, and the csproj already keeps its informational version free of a
+commit suffix so that an installer can reuse it verbatim. Pointed at the staged
+ChiakiNg.exe it reads 1.10.0, which is what CMakeLists sets for the Qt client - one
+version for the two executables, without a second place to update.
+
+Filed apart from PP273 rather than with it because Inno Setup is not on this machine,
+and a script whose compiler has never run on it is a guess. The payload it would package
+is not.
+
+### §PP275 An ignore rule inherited from a generator
+
+Line 24 of .gitignore is scripts/chiaki-ng.iss, and it arrived with the file. Upstream
+generated the Inno Setup script from a wizard as part of a release job, so ignoring it
+was correct there: it was output, not source.
+
+Here it is neither generated nor generated-from-anything. It is a tracked file that
+PP274 is about to edit by hand, and it will keep being edited by hand every time the
+payload's shape changes. Git honours the rule only for untracked paths, which is why the
+file is in the repository at all and why nothing has gone wrong yet.
+
+What the rule costs is one specific move: a checkout where the file is removed and
+written again - a revert, a bad merge resolved by deleting and restoring, a fresh copy
+from another branch - has an untracked scripts/chiaki-ng.iss that git add silently
+declines to stage. The commit lands without it, and the next clone has no installer
+script. There is no error at any step, because declining to stage an ignored path is
+what the rule asks for.
+
+The fix is deleting the line. What is worth keeping is scripts/Output beside it: that
+one really is ISCC's default output directory, and a hand-run compile that does not pass
+OutputDir still lands there.
+
 ## Block F — Managed core
 
 ### §PP23 The oracle this block cannot be written without

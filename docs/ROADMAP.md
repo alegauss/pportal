@@ -20,6 +20,8 @@
 
 - ⏳ **PP22** (deps: PP1 ✅) **every CI workflow was deleted, so nothing builds, signs or packages the application** — the native side through vcpkg, and the installer; the publish and its selftest gate landed. → §PP22
 - 📋 **PP63** (deps: PP62 ✅) **nothing in the tree can configure a Qt build carrying WebEngine, so PP46's before cannot be produced at all** — MSYS2 has no qt6-webengine and no published Windows release carries Chromium, so an MSVC configure built once is the only reference the port can measure against. → §PP63
+- 📋 **PP274** (deps: —) **the Inno Setup script packages ..\chiaki-ng-Win\chiaki.exe, a path no build creates and a client that is off** — PP273 assembles the payload; the script still names the Qt portable tree, so ISCC lays down the wrong application or none. → §PP274
+- 📋 **PP275** (deps: —) **.gitignore ignores scripts/chiaki-ng.iss, which this port maintains by hand rather than generates** — It is tracked, so git honours it today; a clone that deletes and re-adds it loses the installer script with no error. → §PP275
 
 ## Block F — Managed core
 
