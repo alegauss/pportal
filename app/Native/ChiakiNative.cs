@@ -98,21 +98,30 @@ public static class ChiakiNative
         }
     }
 
-    private static IntPtr Resolve(string name, Assembly assembly, DllImportSearchPath? path)
-    {
-        // The shim and SDL both come out of the portable tree, and for the same reason: whatever
-        // the runtime's own search would find on PATH is not this build's.
-        string dll = name switch
+    /// <summary>
+    /// Every native library this host loads, keyed by the name its DllImports carry.
+    ///
+    /// The shim and SDL both come out of the portable tree, and for the same reason: whatever the
+    /// runtime's own search would find on PATH is not this build's. PP9's renderer DLL is here on
+    /// the same terms - it links libplacebo, which lives in the portable tree beside the rest.
+    ///
+    /// PP22: a table rather than three arms of a switch, because packaging needs the same list.
+    /// An installer ships these three and the closure of what they import, and a payload assembled
+    /// from a list spelled somewhere else is one rename away from an installer that lays down a
+    /// host which cannot start. <c>scripts\package-windows.sh</c> seeds its walk from exactly these
+    /// names, and the selftest holds the two together.
+    /// </summary>
+    public static IReadOnlyDictionary<string, string> NativeLibraries { get; }
+        = new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            Library => "chiaki-shim.dll",
-            Sdl => "SDL2.dll",
-            // PP9: the renderer's own DLL, resolved the same way and for the same reason - it
-            // links libplacebo, which lives in the portable tree beside the rest.
-            ChiakiRender.Library => "chiaki-render.dll",
-            _ => "",
+            [Library] = "chiaki-shim.dll",
+            [Sdl] = "SDL2.dll",
+            [ChiakiRender.Library] = "chiaki-render.dll",
         };
 
-        if (dll.Length == 0)
+    private static IntPtr Resolve(string name, Assembly assembly, DllImportSearchPath? path)
+    {
+        if (!NativeLibraries.TryGetValue(name, out string? dll))
             return IntPtr.Zero;
 
         foreach (string candidate in Candidates(dll))

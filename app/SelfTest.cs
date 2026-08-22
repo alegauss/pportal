@@ -127,7 +127,7 @@ public static class SelfTest
             BangReachability.StreamConnectionRelativePath,
             @"gui\src\controllermanager.cpp", @"gui\include\psnaccountid.h",
             @"lib\src\remote\holepunch.c", @"test\bitstream.c", @"test\gkcrypt.c",
-            @"test\regist.c", @"test\takion.c",
+            @"test\regist.c", @"test\takion.c", PayloadScript.RelativePath,
         ];
 
         bool inCheckout = SanitizerSource.LocateRelative("roadkeep.toml") is not null;
@@ -142,6 +142,29 @@ public static class SelfTest
         Check("every source a drift check reads is findable, or this is not a checkout",
             unfindable.Length == 0,
             unfindable.Length == 0 ? "" : string.Join(", ", unfindable));
+
+        // PP22, and it belongs beside the check above rather than with the seam tests further down:
+        // this is the OTHER half of the same failure. That one is about a host that cannot find its
+        // sources; this is about an installer that does not carry the libraries the host loads.
+        //
+        // package.cmd proves the payload by running it where no checkout can answer for it, which
+        // catches a DLL the walk missed. What it cannot catch is a DLL nobody asked it to walk from
+        // - a fourth native library added to the resolver's table and not to the script's array
+        // would produce a payload that is complete for the three it knows about, runs clean under
+        // %TEMP%, and is missing a file the moment a screen calls into the new one.
+        string? payloadScript = PayloadScript.Locate();
+        if (payloadScript is null)
+        {
+            Console.WriteLine(@"  --    the installer's payload roots  (no scripts\package-windows.sh here)");
+        }
+        else
+        {
+            string[] scripted = [.. PayloadScript.LibrariesIn(payloadScript)];
+            string[] resolved = [.. ChiakiNative.NativeLibraries.Values.Order(StringComparer.Ordinal)];
+            Check("the payload script walks from every library the resolver loads",
+                scripted.Order(StringComparer.Ordinal).SequenceEqual(resolved, StringComparer.Ordinal),
+                $"script: [{string.Join(", ", scripted)}]  resolver: [{string.Join(", ", resolved)}]");
+        }
 
         Console.WriteLine();
         Console.WriteLine("QSettingsValue - the encodings PP2 reads");
