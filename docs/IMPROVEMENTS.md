@@ -58,14 +58,14 @@ that surface. The composition path carries eight bits per channel and nothing wi
 the buffer is refused before any question of metadata or tone mapping arises.
 
 So HDR needs a presentation path that is not D3DImage. A DXGI swapchain in a child HWND
-is the one PP9 rejected, because nothing can be drawn over an HWND - and PP10 has since
-built the overlay as XAML over a D3DImage, so taking it now costs that screen. The other
-is a DirectComposition visual, and PP281 has since built it: device, target, visual, the
-ten-bit composition swapchain as its content, root, Commit. It holds.
+is the one PP9 rejected, because nothing can be drawn over an HWND, and PP10 has since
+built the overlay as XAML over a D3DImage. The other is a DirectComposition visual, and
+PP281 built it through to Commit. PP282 then asked it in the arrangement the design
+needs - the visual BEHIND the window's content, where a video plane must sit for the
+overlay to be seen over it. Both hold.
 
-What is left is the half that needs WPF in the room - whether WPF content composes ABOVE
-that visual. Until it is asked, the path that keeps PP10 standing is measured up to the
-compositor and asserted past it.
+What is left needs WPF in the room: whether WPF content composes above that visual. The
+compositor accepts the tree; nothing yet says what WPF draws over it.
 
 ## Block D — Screens
 
