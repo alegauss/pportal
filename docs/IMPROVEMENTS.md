@@ -92,34 +92,6 @@ does not, and no comparison between the two would explain why.
 What is open is fixing it in both, which is one word in three lines. The port already
 spells the two comparisons separately, so the change is visible where it matters.
 
-### §PP299 The one string discovery does not guard
-
-chiaki_discovery_srch_response_parse memsets the host and then assigns only the headers
-that arrived, so every string field is null when its header was absent.
-gui/src/discoverymanager.cpp knows this: the CONVERT_STRING macro two lines below guards
-each of the eight with if(h->name).
-
-chiaki_discovery_host_system_version_target does not. It calls
-atoi(host->system_version) unguarded, and the GUI calls it on every host in the list, so
-a reply with no system-version header dereferences null while the client is merely
-looking for consoles.
-
-Reaching it needs no console. Anything on the LAN that answers on 987 or 9302 with a
-parseable HTTP response and no system-version header is enough, and discovery broadcasts
-to find exactly such answers.
-
-PP231 says defects in the C are reproduced rather than fixed, and this is where that
-stops: the managed classifier reads null as zero and answers Ps4Unknown, which is the
-answer an empty version already gets. The divergence is deliberate and asserted in
-DiscoveryProtocolTests.
-
-The shim hides it. chiaki_shim_discovery_host_of substitutes " for a null system_version
-before calling in, which is PP6 having stepped around this without recording it, so no
-test through the port can reach the crash.
-
-Fixing the C is one guard in discovery.c. Whether that happens here or waits for the
-port to replace the file is the open question.
-
 ## Block D — Screens
 
 ## Block E — Windows-only build
@@ -204,7 +176,7 @@ because every part of it was green.
 ### §PP23 The oracle this block cannot be written without
 
 chiaki exists because the PlayStation remote play protocol was reverse engineered. There
-is no document to implement against: the 24480 lines of C in lib/src are the
+is no document to implement against: the 24491 lines of C in lib/src are the
 specification, and a managed rewrite that reads them and reproduces them is a
 translation whose only correctness test is behavioural.
 
@@ -259,7 +231,7 @@ way the crypto does.
 
 ### §PP29 The first thing that can be proved against a console
 
-regist.c is 910 lines, discovery.c 481 and discoveryservice.c 384: the broadcast that
+regist.c is 910 lines, discovery.c 492 and discoveryservice.c 384: the broadcast that
 finds a console, the reply that describes it, the wake packet, and the PIN exchange that
 ends with key material stored.
 

@@ -243,6 +243,24 @@ public static class DiscoveryProtocol
         return ps5 >= 0 && ps4 > ps5;
     }
 
+    /// <summary>
+    /// PP299: whether the classifier still guards system_version before handing it to atoi.
+    ///
+    /// This one asks the opposite question of the others here, because PP299 changed the C rather
+    /// than reproducing it. A reply with no system-version header leaves the field null, and the
+    /// ladder used to read it as an address - reachable by anything on the LAN answering on 987 or
+    /// 9302, while the client was only looking for consoles. The guard going missing again is a
+    /// remotely triggerable crash, not a divergence, so it is worth a check of its own.
+    /// </summary>
+    public static bool TheVersionIsStillGuardedBeforeAtoi(string core)
+    {
+        ArgumentNullException.ThrowIfNull(core);
+
+        return core.Contains(
+            "int version = host->system_version ? atoi(host->system_version) : 0;",
+            StringComparison.Ordinal);
+    }
+
     /// <summary>And whether the request port still lets its text choose a base.</summary>
     public static bool TheRequestPortStillAutoDetectsItsBase(string core)
     {

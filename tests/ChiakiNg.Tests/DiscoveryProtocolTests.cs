@@ -276,16 +276,16 @@ public class DiscoveryProtocolTests(ITestOutputHelper output)
     }
 
     /// <summary>
-    /// THE ONE PLACE THIS DOES NOT REPRODUCE THE C, because the C dereferences null.
+    /// PP299: a reply with no system-version header, which used to be a crash.
     ///
-    /// A reply with no system-version header leaves the field null - the parser memsets the host
-    /// and only assigns what arrived - and the classifier reaches it through atoi with no guard,
-    /// two lines above a macro that guards every OTHER string. The managed side reads null as zero
-    /// and answers Ps4Unknown; the C reads it as an address. PP231 says reproduce rather than fix,
-    /// and a null dereference is where that rule stops.
+    /// The parser memsets the host and assigns only the headers that arrived, so the field is null
+    /// whenever that header was absent, and the classifier reached it through atoi with no guard -
+    /// two lines below a macro that guards every OTHER string. Anything on the LAN answering on 987
+    /// or 9302 with a parseable response was enough to reach it, while the client was merely
+    /// looking for consoles.
     ///
-    /// The shim cannot show the difference: it substitutes "" for null before it calls in, which is
-    /// PP6 having stepped around this without writing it down.
+    /// PP231 says reproduce rather than fix; a null dereference is where that rule stops. The C is
+    /// guarded now, so the managed answer and the C's are the same answer rather than a divergence.
     /// </summary>
     [Fact]
     public void AReplyWithNoVersionIsClassifiedRatherThanFatal()
@@ -298,9 +298,27 @@ public class DiscoveryProtocolTests(ITestOutputHelper output)
 
         Assert.Equal(ChiakiTarget.Ps4Unknown,
             DiscoveryProtocol.TargetFor(console.Value.SystemVersion, console.Value.ProtocolVersion));
+    }
 
-        // ...and the empty string the shim substitutes reaches the same answer, which is why the C
-        // has never been seen to do this through the port.
+    /// <summary>
+    /// And the same null, all the way into the library.
+    ///
+    /// This is the assertion PP299 could not have: the shim substituted "" for a null
+    /// system_version before calling in, so the crash was unreachable through the port and the
+    /// managed side's divergence could only be argued rather than shown. The substitution is gone
+    /// with the defect it was working around, and null now travels from here into
+    /// chiaki_discovery_host_system_version_target.
+    ///
+    /// It does not fail if the guard is removed - it takes the test host down with an access
+    /// violation, which is the honest report for what this is.
+    /// </summary>
+    [Fact]
+    public void TheNullReachesTheLibraryAndIsClassifiedThere()
+    {
+        Assert.Equal(ChiakiTarget.Ps4Unknown, Discovery.Target(null, null));
+
+        // The empty string the shim used to substitute lands on the same rung, which is why nothing
+        // that classified before classifies differently now.
         Assert.Equal(ChiakiTarget.Ps4Unknown, Discovery.Target("", null));
     }
 
@@ -315,6 +333,9 @@ public class DiscoveryProtocolTests(ITestOutputHelper output)
 
         Assert.True(DiscoveryProtocol.ThePs5RungsAreStillFirst(core),
             "the PS5 rungs no longer come first, so an early-firmware PS5 classifies differently");
+        Assert.True(DiscoveryProtocol.TheVersionIsStillGuardedBeforeAtoi(core),
+            "PP299's guard is gone from the classifier, so a reply with no system-version header "
+                + "dereferences null again - and any device on the LAN can send one");
         Assert.True(DiscoveryProtocol.TheRequestPortStillAutoDetectsItsBase(core),
             "host-request-port no longer uses base 0, so its octal case has changed meaning");
         Assert.True(DiscoveryProtocol.TheTerminatorIsStillSent(core),

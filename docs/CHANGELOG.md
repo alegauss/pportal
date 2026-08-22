@@ -70,6 +70,7 @@
 - ✅ **PP283** **nothing asks whether a WPF window's own HWND accepts a DirectComposition target, which PP163's design assumes** — a WPF window's own HWND takes the target and the tree Commits, so the compositor half of PP163's option survives the window it would run in.
 - ✅ **PP284** **PP163's last question needs somebody to look at a window, and nothing in the tree opens one to look at** — --dcomp-demo puts the visual and a WPF overlay on screen in the arrangement the design proposes, and says what each colour means.
 - ✅ **PP292** **the frames-lost count subtracts a wrapped sequence number as a plain int, so a loss across the wrap counts -65528** — the count reduced against the wrap on both sides, so the two still agree and the number is right.
+- ✅ **PP299** **a console omitting system-version crashes discovery through an unguarded atoi(NULL) in the classifier** — the guard in discovery.c, and the shim's substitution deleted so a test can reach the null.
 
 ## Block D — Screens
 

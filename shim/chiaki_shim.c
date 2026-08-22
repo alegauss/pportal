@@ -895,12 +895,21 @@ CHIAKI_SHIM_API int32_t chiaki_shim_discovery_packet_fmt(
 	return (int32_t)chiaki_discovery_packet_fmt(buf, (size_t)buf_size, &packet);
 }
 
-/** Fills only the two fields the classification reads, leaving the rest as a reply never had. */
+/**
+ * Fills only the two fields the classification reads, leaving the rest as a reply never had.
+ *
+ * PP299: system_version is passed THROUGH, null included. It used to be substituted with "" here,
+ * which is PP6 having stepped around chiaki_discovery_host_system_version_target's unguarded atoi
+ * without recording it - and the cost of that was not the substitution but the silence: a reply
+ * with no system-version header crashed the Qt client, and no test through this port could reach
+ * it, because this line answered for the case before the library ever saw it. The library guards
+ * it now, so the workaround is what would hide the next regression.
+ */
 static void chiaki_shim_discovery_host_of(
 		ChiakiDiscoveryHost *host, const char *system_version, const char *protocol_version)
 {
 	memset(host, 0, sizeof(*host));
-	host->system_version = system_version ? system_version : "";
+	host->system_version = system_version;
 	host->device_discovery_protocol_version = protocol_version;
 }
 

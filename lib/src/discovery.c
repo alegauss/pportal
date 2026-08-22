@@ -36,7 +36,18 @@ CHIAKI_EXPORT ChiakiTarget chiaki_discovery_host_system_version_target(ChiakiDis
 {
 	// traslate discovered system_version into ChiakiTarget
 
-	int version = atoi(host->system_version);
+	// PP299: guarded, like every other string of a parsed reply.
+	//
+	// chiaki_discovery_srch_response_parse memsets the host and assigns only the headers that
+	// arrived, so system_version is null whenever the reply carried no system-version. This is the
+	// one reader that did not check - chiaki_discovery_host_is_ps5 two functions up guards its own
+	// string, and gui's CONVERT_STRING guards all eight - so a reply with that header missing
+	// dereferenced null while the client was merely looking for consoles. Reaching it needed no
+	// console: anything on the LAN answering on 987 or 9302 with a parseable response was enough.
+	//
+	// Zero is what an empty system_version already resolved to, so nothing that used to classify
+	// classifies differently.
+	int version = host->system_version ? atoi(host->system_version) : 0;
 	bool is_ps5 = chiaki_discovery_host_is_ps5(host);
 
 	if(version >= 8050001 && is_ps5)
