@@ -243,6 +243,7 @@
 - ✅ **PP279** **a one-segment drift path is recognised by existing, so deleting roadkeep.toml or package.cmd leaves the corpus silently** — the five root files are named and tested on membership, so one going missing fails by name, and a constant naming an undeclared one is reported.
 - ✅ **PP286** **the Galois field and Cauchy matrix jerasure computes have no managed counterpart, so PP30 has nothing to build on** — a managed GF(2^8) and Cauchy matrix agree with jerasure's entry for entry on eight shapes, and a rival polynomial is what proves the comparison bites.
 - ✅ **PP287** **fec.c's encode and decode are jerasure calls with no managed counterpart, so PP30's 14 sites cannot go** — a managed decode produces byte-identical frames to jerasure on all 64 recorded cases, and nothing in the suite survives a decoder that does nothing.
+- ✅ **PP288** **chiaki_fec_encode has no caller anywhere in the tree, and it is the half of fec.c that pulls in jerasure_matrix_encode** — the dead encode and its jerasure call are gone, PP30 reads 13, and PP285's guard caught the lib/src total the deletion moved.
 
 ## Block G — Test discipline
 

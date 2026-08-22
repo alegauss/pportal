@@ -144,7 +144,7 @@ to be installed next to it, and that is not a packaging question.
 ### §PP23 The oracle this block cannot be written without
 
 chiaki exists because the PlayStation remote play protocol was reverse engineered. There
-is no document to implement against: the 24529 lines of C in lib/src are the
+is no document to implement against: the 24471 lines of C in lib/src are the
 specification, and a managed rewrite that reads them and reproduces them is a
 translation whose only correctness test is behavioural.
 
