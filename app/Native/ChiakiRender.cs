@@ -530,6 +530,37 @@ public sealed class RenderDevice : IDisposable
     private static extern bool LayersProbe(IntPtr d3d11, int format, int overlayFormat, out int stage);
 
     /// <summary>
+    /// PP322: the same two-layer tree, kept, both planes filled - which is the apparatus the choice
+    /// is read from rather than argued from.
+    ///
+    /// <see cref="ProbeLayers"/> measures that the compositor ACCEPTS the tree, and PP319 chose on
+    /// that. It is the same depth PP281 to PP283 reached one layer down, and PP284 then read a pixel
+    /// none of them had predicted - so the acceptance is not the answer here either.
+    ///
+    /// The overlay is drawn in two halves, one opaque and one at half alpha. The second half is the
+    /// question no return value reports: whether a premultiplied surface blends once or twice over
+    /// the plane below, which is not an error anywhere and looks like a slightly wrong colour.
+    /// </summary>
+    /// <returns>A live tree to dispose, or null with <paramref name="stage"/> saying where it stopped.</returns>
+    public DcompAttachment? AttachLayers(
+        IntPtr hwnd, SwapchainFormat format, SwapchainFormat overlayFormat,
+        double red, double green, double blue, out LayersStage stage)
+    {
+        IntPtr session = LayersAttach(
+            Handle, (int)format, (int)overlayFormat, hwnd,
+            (float)red, (float)green, (float)blue, out int raw);
+
+        stage = session == IntPtr.Zero ? (LayersStage)raw : LayersStage.Ok;
+        return session == IntPtr.Zero ? null : new DcompAttachment(session);
+    }
+
+    [DllImport(ChiakiRender.Library, EntryPoint = "chiaki_render_layers_attach",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr LayersAttach(
+        IntPtr d3d11, int format, int overlayFormat, IntPtr hwnd,
+        float r, float g, float b, out int stage);
+
+    /// <summary>
     /// PP9: one decoded frame through pl_render_image, and the pixel it produced.
     ///
     /// The arguments are the console's own encoding rather than RGB - 16/128/128 is black and

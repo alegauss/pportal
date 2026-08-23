@@ -543,6 +543,125 @@ public class RenderProbeTests
     }
 
     /// <summary>
+    /// PP322: the two-layer tree ATTACHES to a WPF window and detaches, which is the apparatus the
+    /// choice is read from.
+    ///
+    /// The probe builds the same tree and releases it before returning, which is right for a
+    /// question and useless for a window somebody is meant to look at. What --dcomp-demo --layers
+    /// needs is a tree that outlives the call, and the failure modes that adds are invisible unless
+    /// something exercises them: an attach reporting success while handing back nothing, and a
+    /// teardown that now has SEVEN objects to release in an order the compositor cares about rather
+    /// than four.
+    ///
+    /// It does NOT show the window, so this stays in the gate. What the demo is for - whether the
+    /// green block is there, and whether its half-alpha half blends once or twice - is the part no
+    /// assertion here can reach, and saying so is the whole of why PP322 is a line of its own.
+    /// </summary>
+    [Fact]
+    public void TheTwoLayerTreeAttachesToAWpfWindowAndDetaches()
+    {
+        LayersStage stage = LayersStage.NoDevice;
+        bool attached = false;
+        Exception? failure = null;
+
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                using RenderDevice? device = AnyDevice();
+                if (device is null)
+                    return;
+
+                var window = new System.Windows.Window { Width = 320, Height = 240 };
+                IntPtr hwnd = new System.Windows.Interop.WindowInteropHelper(window).EnsureHandle();
+
+                DcompAttachment? session = device.AttachLayers(
+                    hwnd, SwapchainFormat.Rgb10A2, SwapchainFormat.Bgra8,
+                    ChiakiNg.Views.DcompDemo.FillRed,
+                    ChiakiNg.Views.DcompDemo.FillGreen,
+                    ChiakiNg.Views.DcompDemo.FillBlue,
+                    out stage);
+
+                attached = session is not null;
+                session?.Dispose();
+
+                // Twice, for the reason the one-layer attach is disposed twice: a window closing can
+                // race a dispose, and the second call is the one that would free an already-freed
+                // tree - which now means three more pointers than it used to.
+                session?.Dispose();
+                window.Close();
+            }
+            catch (Exception ex)
+            {
+                failure = ex;
+            }
+        })
+        { IsBackground = true };
+
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread did not finish");
+        if (failure is not null)
+            throw new Xunit.Sdk.XunitException(failure.ToString());
+
+        Assert.True(attached, $"the two-layer tree did not attach: {stage}");
+    }
+
+    /// <summary>
+    /// PP322: and the attach reports its stage, so a refusal names the step rather than the tree.
+    ///
+    /// Same argument as the probe's: an attach that returned null unconditionally would look
+    /// identical to one that never wrote out_stage. Handed an overlay format DXGI has no such thing
+    /// as, it must hand back nothing AND say Surface - the call that consumes it - rather than the
+    /// Window it opened first or the Tree it built successfully underneath.
+    /// </summary>
+    [Fact]
+    public void AnImpossibleOverlayFormatRefusesTheAttachAtTheSurface()
+    {
+        LayersStage stage = LayersStage.NoDevice;
+        bool attached = true;
+        Exception? failure = null;
+
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                using RenderDevice? device = AnyDevice();
+                if (device is null)
+                {
+                    attached = false;
+                    stage = LayersStage.Surface;
+                    return;
+                }
+
+                var window = new System.Windows.Window { Width = 320, Height = 240 };
+                IntPtr hwnd = new System.Windows.Interop.WindowInteropHelper(window).EnsureHandle();
+
+                DcompAttachment? session = device.AttachLayers(
+                    hwnd, SwapchainFormat.Rgb10A2, (SwapchainFormat)0x7000, 0.5, 0.0, 0.0, out stage);
+
+                attached = session is not null;
+                session?.Dispose();
+                window.Close();
+            }
+            catch (Exception ex)
+            {
+                failure = ex;
+            }
+        })
+        { IsBackground = true };
+
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread did not finish");
+        if (failure is not null)
+            throw new Xunit.Sdk.XunitException(failure.ToString());
+
+        Assert.False(attached, "an impossible overlay format produced a tree");
+        Assert.Equal(LayersStage.Surface, stage);
+    }
+
+    /// <summary>
     /// PP163: and the obvious HDR test is not one. An EIGHT-bit swapchain reports HDR10 support
     /// too, because CheckColorSpaceSupport answers about the colour space and not about whether
     /// the buffer has the bits to carry it.

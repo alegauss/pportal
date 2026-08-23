@@ -143,6 +143,96 @@ public static class DcompDemo
     }
 
     /// <summary>
+    /// PP322: the same window with the SECOND visual over the plane, which is the arrangement PP319
+    /// chose and the one nobody has looked at.
+    ///
+    /// PP319 measured that the compositor accepts a container carrying a ten-bit swapchain below and
+    /// an eight-bit premultiplied surface above it, and chose on that. That is the same depth PP281
+    /// to PP283 reached one layer down, and PP284 then read a pixel none of them had predicted - so
+    /// this exists for the same reason that window did, and the choice is not final until it is read.
+    ///
+    /// The reading
+    /// -----------
+    /// A GREEN BLOCK inside the red, offset from the corner, is the answer PP319 needs: two visuals
+    /// of different formats compose in the order they were given, so an overlay can live above an
+    /// HDR video plane and PP10's screen has somewhere to be rebuilt.
+    ///
+    /// ALL RED, no green anywhere, means the overlay visual is not composing. PP319's choice falls to
+    /// SDR on purpose, which is then the only remaining option that keeps PP10's screen at all.
+    ///
+    /// GREEN WITH NO RED AROUND IT means the plane below is not composing, which would contradict
+    /// what PP284 read on this same window and points at the fill rather than at the tree.
+    ///
+    /// ANY BLUE means WPF's content got above the tree after all, which would re-open PP319 - and
+    /// the blue block is on the left of the window for exactly that reason, unchanged from PP284.
+    ///
+    /// And the half that is not a yes or a no
+    /// --------------------------------------
+    /// The green block is drawn in two halves: the left one opaque, the right one at HALF alpha,
+    /// premultiplied. The right half should read as a green-over-red blend, visibly green and
+    /// visibly not the left half. If it reads nearly as red as the surround, the alpha is being
+    /// taken twice - which is not an error anywhere, is invisible to every assertion PP319 wrote,
+    /// and means an overlay would have to be drawn straight rather than premultiplied. The choice
+    /// still holds in that case; the drawing changes.
+    /// </summary>
+    /// <returns>0 where the two-layer tree attached, 2 where it did not.</returns>
+    public static int RunLayers()
+    {
+        using RenderDevice? device =
+            ChiakiRender.CreateD3d11(forceSoftware: false) ?? ChiakiRender.CreateD3d11(forceSoftware: true);
+
+        if (device is null)
+        {
+            Console.Error.WriteLine("no D3D11 device, so there is nothing to compose");
+            return 2;
+        }
+
+        var window = new Window
+        {
+            Title = "PP322 - the overlay above the video plane",
+            Width = 900,
+            Height = 520,
+            WindowStartupLocation = WindowStartupLocation.CenterScreen,
+            Background = Brushes.Transparent,
+            Content = Overlay(),
+        };
+
+        IntPtr hwnd = new WindowInteropHelper(window).EnsureHandle();
+
+        if (HwndSource.FromHwnd(hwnd) is HwndSource source && source.CompositionTarget is not null)
+            source.CompositionTarget.BackgroundColor = Colors.Transparent;
+
+        // Ten bits below and eight above, which is the pairing the choice is about. Asking with one
+        // format twice would put a window on screen that demonstrates something easier.
+        DcompAttachment? attached = device.AttachLayers(
+            hwnd, SwapchainFormat.Rgb10A2, SwapchainFormat.Bgra8,
+            FillRed, FillGreen, FillBlue, out LayersStage stage);
+
+        Console.WriteLine($"two-layer tree: {(attached is null ? $"FAILED at {stage}" : "attached")}");
+        Console.WriteLine("Expect a GREEN block inside the RED, offset from the corner.");
+        Console.WriteLine("  green block      -> the overlay composes above the plane; PP319's choice holds");
+        Console.WriteLine("  all red, no green-> the overlay does not compose; the choice falls to SDR on purpose");
+        Console.WriteLine("  green, no red    -> the plane below is not composing, which contradicts PP284");
+        Console.WriteLine("  any blue         -> WPF got above the tree after all, and PP319 re-opens");
+        Console.WriteLine("Its RIGHT half is half-alpha: it should read as green over red, not as red.");
+        Console.WriteLine("  nearly red       -> the alpha is taken twice; the choice holds, the drawing changes");
+
+        if (attached is null)
+            return 2;
+
+        try
+        {
+            window.ShowDialog();
+        }
+        finally
+        {
+            attached.Dispose();
+        }
+
+        return 0;
+    }
+
+    /// <summary>
     /// The overlay: opaque on the left, nothing on the right.
     ///
     /// Two halves rather than a border, because the answer is a comparison. A window that is

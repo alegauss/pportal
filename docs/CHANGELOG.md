@@ -76,6 +76,7 @@
 - ✅ **PP163** **an HDR picture cannot reach the display through D3DImage, which refuses any surface wider than eight bits** — topmost FALSE and TRUE draw the same red over WPF's content, so PP10's overlay is not seen either way (design §PP163 superseded: the compositor accepts the tree and the pixel does not follow).
 - ✅ **PP321** **the buffered pacer's interval comes from the display and nothing states what a rate change mid-stream does to it** — the display's rate paces the present, a rate change gets past an armed pace thread, and a missed deadline catches up in whole intervals.
 - ✅ **PP319** **no presentation path carries HDR: D3DImage refuses ten bits and a DirectComposition visual hides WPF's overlay** — the overlay goes above the video in the compositor's tree, measured to Commit and the only one of three that keeps both (design §PP319 superseded: topmost is about child windows).
+- ✅ **PP322 (the apparatus)** **the two-layer tree commits and nobody has looked at it, which is the mistake PP163 made one layer down** — --dcomp-demo --layers puts the overlay over the plane on a real WPF window, half-alpha half included, with the readings written.
 
 ## Block D — Screens
 

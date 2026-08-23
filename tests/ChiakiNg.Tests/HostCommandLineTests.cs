@@ -100,6 +100,24 @@ public class HostCommandLineTests(ITestOutputHelper output)
     }
 
     /// <summary>
+    /// PP322: and it carries the second window, which is the one PP319's choice is read from.
+    ///
+    /// Named here for the same reason --topmost is. The drift check below stays green if the flag
+    /// and its dispatch are deleted together, and deleting these two together would leave PP319's
+    /// choice standing on an API's acceptance with no way left to look at it - which is the exact
+    /// mistake PP322 exists to stop being made twice.
+    /// </summary>
+    [Fact]
+    public void TheDcompDemoCarriesTheTwoLayerReading()
+    {
+        Assert.Contains(
+            HostCommandLine.Flags,
+            flag => string.Equals(flag.Name, "--layers", StringComparison.Ordinal));
+
+        Assert.Empty(HostCommandLine.Unrecognised(["--dcomp-demo", "--layers"]));
+    }
+
+    /// <summary>
     /// THE DRIFT CHECK. What the list describes is what the dispatch matches, both ways.
     ///
     /// A flag in the source and not in the list is undiscoverable, which is PP306 happening again.

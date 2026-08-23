@@ -54,6 +54,7 @@ public static partial class HostCommandLine
         new("--map-controller", "", "open the mapping screen against a real pad"),
         new("--dcomp-demo", "", "show what one window composes, which PP163 is answered by looking at"),
         new("--topmost", "", "with --dcomp-demo: the control, asking the visual to cover WPF instead"),
+        new("--layers", "", "with --dcomp-demo: the overlay PP319 chose, over the video plane"),
     ];
 
     /// <summary>

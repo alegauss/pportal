@@ -105,6 +105,13 @@ declared = [
     # stood here: what the session could not do was CAPTURE the window, and what closed it was a
     # person taking a screenshot themselves. That is a narrower boundary than "a person looks", and
     # a line needing this again should say which of the two it means.
+    #
+    # PP322 is that line, and it means the narrow one: someone puts the window on a screen and says
+    # what colour is in the middle of it. `--dcomp-demo --layers` builds the tree and writes down
+    # what each possible reading decides; a session can run it and cannot see it, because a composed
+    # window does not screenshot reliably and a test claiming to read one would be reporting on its
+    # own capture stack. Re-declared under the name it had, because it is the same absence.
+    "a-person-looking",
 ]
 
 # Declared at all means governed. This port's constraints are the load-bearing part of it —

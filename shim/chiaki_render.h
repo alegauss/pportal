@@ -371,6 +371,24 @@ CHIAKI_RENDER_API bool chiaki_render_layers_probe(
 		void *d3d11, int32_t format, int32_t overlay_format, int32_t *out_stage);
 
 /**
+ * PP322: the same two-layer tree, KEPT, both planes filled - so the choice can be looked at.
+ *
+ * PP319 measured that the compositor accepts the tree and chose it on that. That is the same depth
+ * PP281 to PP283 reached one layer down, and PP284 then read a pixel none of them had predicted -
+ * so the acceptance is not the answer here either, and this is what turns it into one.
+ *
+ * The video plane is filled with `r`,`g`,`b`. The overlay is drawn in two halves and the second is
+ * the reason there are two: one opaque, one at half alpha. Opaque says whether the overlay composes
+ * at all; half-alpha says whether a premultiplied surface blends once or twice over the plane below,
+ * which no return value anywhere reports and which looks like a slightly wrong colour.
+ *
+ * Torn down by chiaki_render_dcomp_detach, the same call the one-layer attach uses.
+ */
+CHIAKI_RENDER_API void *chiaki_render_layers_attach(
+		void *d3d11, int32_t format, int32_t overlay_format, void *hwnd,
+		float r, float g, float b, int32_t *out_stage);
+
+/**
  * PP9's last unanswered link: a DECODED FRAME through pl_render_image.
  *
  * Everything before this rendered nothing. PP133 calls pl_render_image with a NULL image, which

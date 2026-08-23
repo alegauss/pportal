@@ -11,8 +11,8 @@
 
 ## Block C — Video and input path
 
-- ⏳ **PP11** (deps: PP9 ✅, PP163 ✅, PP322) **fullscreen, HDR handoff and refresh-rate switching are handled by the Qt window** — the HDR half alone: PP319 chose the overlay above the video in the compositor's tree, and PP322 is the reading that has to confirm it. → §PP11
-- 📋 **PP322** (deps: —) **the two-layer tree commits and nobody has looked at it, which is the mistake PP163 made one layer down** — PP319 chose the compositor's overlay on an API's acceptance, and --dcomp-demo still shows one layer, so the pixel that confirms or refuses the choice has not been read. → §PP322
+- ⏳ **PP11** (deps: PP9 ✅, PP163 ✅, PP322 ⏳) **fullscreen, HDR handoff and refresh-rate switching are handled by the Qt window** — the HDR half alone: PP319 chose the overlay above the video in the compositor's tree, and PP322 is the reading that has to confirm it. → §PP11
+- ⏳ **PP322** (deps: —) (requires: a-person-looking) **the two-layer tree commits and nobody has looked at it, which is the mistake PP163 made one layer down** — the reading itself: a person looking once at what --dcomp-demo --layers draws, which no assertion in this tree can reach. → §PP322
 
 ## Block D — Screens
 

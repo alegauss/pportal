@@ -534,6 +534,30 @@ public partial class App : Application
         return 0;
     }
 
+    /// <summary>
+    /// Which composition demo `--dcomp-demo` opens, which is two different questions and one flag.
+    ///
+    /// PP163: --topmost is the CONTROL on the one-layer window, not a mode. That window's own
+    /// arrangement is false - the visual behind the window's content - and the reading taken on
+    /// 2026-08-23 was solid red over the whole client area, which is neither of the outcomes
+    /// DcompDemo predicted for it. Running the same tree with true was what told "the flag is
+    /// ignored on this HWND" apart from "WPF drew nothing"; PP319 then found it is neither, because
+    /// that flag orders the tree against CHILD WINDOWS and a redirection bitmap is not one.
+    ///
+    /// PP322: --layers is the reading PP319's choice still owes. The one-layer window has been read
+    /// and its answer is recorded; this one puts the SECOND visual over the plane, which is the
+    /// arrangement the choice actually names and which nothing has looked at. --topmost does not
+    /// reach it - after PP319 it is a control for nothing.
+    /// </summary>
+    private static int DcompDemo(string[] args)
+    {
+        if (args.Any(a => string.Equals(a, "--layers", StringComparison.OrdinalIgnoreCase)))
+            return Views.DcompDemo.RunLayers();
+
+        bool topmost = args.Any(a => string.Equals(a, "--topmost", StringComparison.OrdinalIgnoreCase));
+        return Views.DcompDemo.Run(topmost);
+    }
+
     /// <summary>The fallback window, for the case where there is somehow no window to fill.</summary>
     private MainWindow OpenedByHand()
     {
@@ -681,14 +705,7 @@ public partial class App : Application
         if (e.Args.Any(a => string.Equals(a, "--dcomp-demo", StringComparison.OrdinalIgnoreCase)))
         {
             ReopenStdOut();
-
-            // PP163: --topmost is the CONTROL, not a mode. The demo's own arrangement is false - the
-            // visual behind the window's content - and the reading taken on 2026-08-23 was solid red
-            // over the whole client area, which is neither of the outcomes DcompDemo predicted for
-            // it. Running the same tree with true is what tells "the flag is ignored on this HWND"
-            // apart from "WPF drew nothing", and those two point at different next tasks.
-            bool topmost = e.Args.Any(a => string.Equals(a, "--topmost", StringComparison.OrdinalIgnoreCase));
-            Environment.Exit(Views.DcompDemo.Run(topmost));
+            Environment.Exit(DcompDemo(e.Args));
         }
 
         if (e.Args.Any(a => string.Equals(a, "--capture-controller", StringComparison.OrdinalIgnoreCase)))
