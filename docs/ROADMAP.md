@@ -40,6 +40,8 @@
 
 ## Block G — Test discipline
 
+- 📋 **PP316** (deps: —) **a test named for the UUID's four dashes asserts one literal against another, and the analyzer says so in every run** — Only IL3000-3002 are WarningsAsErrors, so xUnit2000, xUnit2029 and CS0108 all print and pass, which is PP56's green that proves nothing one level along. → §PP316
+
 ## Block H — Performance and telemetry
 
 - ⏳ **PP46** (deps: PP42 ✅, PP63) **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — A Chromium leaving the build should be visible in cold start and in megabytes, and stating it without measuring is how a port collects folklore. → §PP46
