@@ -27,6 +27,32 @@ Whatever the right pair is, the dpad path and the mouse path should read it from
 same place - and the reason to write that down now is that the port has just copied all
 three, so it is the moment when the duplication is visible.
 
+### §PP320 What a hexdump leaks that a log line does not
+
+PP88 held both clients to one pattern text, character for character, and the patterns
+are the right ones for a log line. A hexdump is not a log line. chiaki_log_hexdump
+writes the bytes space-separated and follows them with an ASCII gutter of every
+printable character, so the same secret appears twice per row in two shapes and the
+sanitiser reads neither.
+
+Measured, not argued. Against the row a session request produces - the offset, sixteen
+bytes as pairs, then "RP-RegistKey: 3e" in the gutter - the long-hex rule needs sixteen
+contiguous hex digits and the pairs are separated, so it never fires. The
+labelled-secret rule names console, host, server, session, account, psn, public, remote
+and duid, and RP-RegistKey is none of them. RP-Nonce is not named either. Three patterns
+tried, none matched.
+
+This is not theoretical for PP297. session.c hexdumps the request at line 955 and the
+response header at line 1019, and that dump is the only place the session exchange's
+bytes reach managed code at all - the ctrl channel logs a type and a size and nothing
+else. So the recording PP297 exists to make is sourced from the one log shape the
+sanitiser does not cover, and ExchangeRecording redacts on the way in precisely so that
+cannot happen.
+
+What is owed is the rules that cover a dump: the field names by their real spellings,
+and hex that is grouped rather than contiguous. Both clients, from one pattern text, the
+way PP88 left it.
+
 ## Block C — Video and input path
 
 ### §PP11 What the window owns
