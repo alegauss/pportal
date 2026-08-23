@@ -298,6 +298,7 @@
 - ✅ **PP312** **brief has offered the same unstartable task four sessions running, because what blocks it is a console and not a dep** — five lines say what they wait on, and the names are held against the config that declares them.
 - ✅ **PP316** **a test named for the UUID's four dashes asserts one literal against another, and the analyzer says so in every run** — TreatWarningsAsErrors on both gated projects, and the four it would have refused are fixed - one of them a property whose rename found a caller no grep for its type could see.
 - ✅ **PP317** **four MSBuild warnings print on every build of the test project, and PP316's policy cannot reach any of them** — The two bare Reference items are gone and the framework reference supplies both assemblies, so the build prints zero warnings where it printed four.
+- ✅ **PP318** **an assertion comparing two constants passes every analyzer, and one grep found one still standing in the suite** — A source sweep over the assertion corpus fails on the shape, and the one Assert.Equal(0, 0) it was written against is deleted.
 
 ## Block H — Performance and telemetry
 

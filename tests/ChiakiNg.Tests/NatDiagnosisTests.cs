@@ -49,8 +49,10 @@ public class NatDiagnosisTests
         Assert.True(written.RandomAllocation);
         Assert.Equal(1, written.Increment);
 
-        // The measurement said zero; what the guessing uses is one.
-        Assert.Equal(0, 0);
+        // The measurement said zero; what the guessing uses is one. PP318: one line and not two -
+        // an Assert.Equal(0, 0) stood here saying "the measurement said zero", which compared two
+        // constants written in this file and would have passed against any measurement at all. The
+        // call below names the zero in its own argument and asserts the one.
         Assert.Equal(1, NatDiagnosis.IncrementUsed(measuredIncrement: 0, verdict));
     }
 

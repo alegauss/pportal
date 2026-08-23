@@ -40,8 +40,6 @@
 
 ## Block G — Test discipline
 
-- 📋 **PP318** (deps: —) **an assertion comparing two constants passes every analyzer, and one grep found one still standing in the suite** — PP316 made warnings errors and xUnit2000 never names Assert.Equal(0, 0), so the shape PP316 was filed for survives the policy it installed. → §PP318
-
 ## Block H — Performance and telemetry
 
 - ⏳ **PP46** (deps: PP42 ✅, PP63) **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — A Chromium leaving the build should be visible in cold start and in megabytes, and stating it without measuring is how a port collects folklore. → §PP46
