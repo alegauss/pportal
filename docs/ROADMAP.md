@@ -12,6 +12,7 @@
 ## Block C — Video and input path
 
 - ⏳ **PP11** (deps: PP9 ✅, PP163 ✅) **fullscreen, HDR handoff and refresh-rate switching are handled by the Qt window** — the refresh-rate switching, and the HDR half that PP163 has now shown needs a different presentation path. → §PP11
+- 📋 **PP319** (deps: —) **no presentation path carries HDR: D3DImage refuses ten bits and a DirectComposition visual hides WPF's overlay** — PP163 measured both and neither leaves PP10's overlay standing, so what is left is a child HWND, an overlay rebuilt above a composed swapchain, or SDR on purpose. → §PP319
 
 ## Block D — Screens
 

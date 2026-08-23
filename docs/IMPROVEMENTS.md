@@ -42,6 +42,31 @@ reaches the issue tracker first. It is a separate line from PP9 because it is Wi
 DXGI work that does not depend on which of the three renderer shapes wins, only on there
 being a window.
 
+### §PP319 The two paths PP163 measured, and the three left
+
+PP163 priced two presentation paths and both are now measured rather than argued.
+D3DImage refuses any surface wider than eight bits, which is a throw from SetBackBuffer
+and not a judgement call. A DirectComposition visual accepts the ten-bit swapchain,
+accepts the target on a WPF window's own HWND, and reaches Commit - and then covers the
+whole client area.
+
+The control is what makes that a finding. Read on 2026-08-23 on Windows 11 build 26200,
+the demo drew solid red over every pixel with topmost FALSE, and identically with TRUE.
+Two arrangements, one result: CreateTargetForHwnd's flag is not being honoured on a
+window that owns a redirection bitmap. PP281 to PP283 are not wrong, they are narrower
+than they read - each measured that the compositor ACCEPTS the tree, and none of them
+could measure a pixel.
+
+So the option PP9 rejected the child-HWND path to protect does not exist, and three
+answers are left. A child HWND carries HDR and nothing can be drawn over it, which costs
+PP10's overlay outright. An overlay rebuilt above a composed swapchain keeps both and
+means PP10's screen is written a second time in a framework it was not designed against.
+SDR chosen deliberately costs the picture and nothing else, and is the only cheap one.
+
+This task owes the choice and the measurement under it, not an implementation. The wrong
+outcome here is the one PP163 nearly produced: a path named in prose, accepted by an
+API, and never looked at.
+
 ## Block D — Screens
 
 ## Block E — Windows-only build
