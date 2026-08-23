@@ -230,6 +230,8 @@ public partial class App : Application
             IReadOnlyDictionary<string, string> exempt = AssertionRatchet.Exemptions(root);
             if (exempt.TryGetValue(id, out string? reason))
                 Console.WriteLine($"[ratchet] and is exempt: {reason}");
+            else
+                ShippedBesideATest(root, id);
 
             return 0;
         }
@@ -240,6 +242,73 @@ public partial class App : Application
             Console.WriteLine("  " + line);
 
         return 0;
+    }
+
+    /// <summary>
+    /// PP308: whether the commit that shipped this task also carried a test, asked of git.
+    ///
+    /// A DIAGNOSTIC and not the gate - see <see cref="AssertionRatchet.AssertionFilesIn"/> for why
+    /// that decision went the way it did. It runs where somebody is paying the debt down, on a
+    /// machine that has the history, and answers the question that makes paying cheap: seventy-five
+    /// of the ninety-six already have their assertions written, under the id the work continued.
+    ///
+    /// Every failure here is silent by design. No git, no history, a shallow clone, a commit
+    /// message that names the task somewhere other than its scope - all of them mean "cannot say",
+    /// and a diagnostic that shouted about its own absence would be worse than one that stops.
+    /// </summary>
+    private static void ShippedBesideATest(string root, string id)
+    {
+        string? sha = Git(root, $"log --format=%H -E --grep \\({id}\\)")?
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .FirstOrDefault();
+
+        if (sha is null)
+            return;
+
+        string? changed = Git(root, $"show --name-only --format= {sha.Trim()}");
+        if (changed is null)
+            return;
+
+        IReadOnlyList<string> tests =
+            AssertionRatchet.AssertionFilesIn(changed.Split('\n', StringSplitOptions.RemoveEmptyEntries));
+
+        if (tests.Count == 0)
+            return;
+
+        Console.WriteLine($"[ratchet] but the commit that shipped it touched {tests.Count} assertion file(s):");
+        foreach (string file in tests)
+            Console.WriteLine("    " + file);
+
+        Console.WriteLine($"[ratchet] so the assertions likely exist - naming {id} in one of those pays it.");
+    }
+
+    /// <summary>One git command, or null where git cannot answer for any reason at all.</summary>
+    private static string? Git(string root, string arguments)
+    {
+        try
+        {
+            using var git = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "git",
+                Arguments = arguments,
+                WorkingDirectory = root,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            });
+
+            if (git is null)
+                return null;
+
+            string output = git.StandardOutput.ReadToEnd();
+            return git.WaitForExit(10_000) && git.ExitCode == 0 ? output : null;
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            // No git on PATH. The count does not need one; only this line did.
+            return null;
+        }
     }
 
     private static int Controllers()

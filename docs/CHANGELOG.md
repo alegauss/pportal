@@ -139,6 +139,7 @@
 - ✅ **PP307** **the ratchet holds 96 tasks with no assertion naming them and nothing schedules paying any of them** — the 96 read against git: 75 have a test in their own commit, 11 could not, and 1 is real.
 - ✅ **PP310** **a task whose output is prose cannot ship: nothing asserts it, so the debt rises past a ceiling that may not rise** — an exempt line in the ceiling file, refused unless it carries the reason it is exempt.
 - ✅ **PP311** **an id written in a fixture or an expected value pays a real task's debt, because the join reads the whole file** — the join cannot be parsed apart, so every payment is auditable: --ratchet <id> says where.
+- ✅ **PP308** **the ratchet's id join misses 75 tasks whose test shipped in the same commit, and only git can see that** — git answers where the test already is, as a diagnostic; the gate stays the id join, free and offline.
 
 ## Block F — Managed core
 

@@ -152,6 +152,42 @@ public class AssertionRatchetTests(ITestOutputHelper output)
     }
 
     /// <summary>
+    /// PP308: which of a commit's changed paths could hold an assertion.
+    ///
+    /// The same three places the walk covers, asked of a path instead - which is what lets the file
+    /// list of a COMMIT be filtered the same way as a checkout. That filter is the whole of what
+    /// the git diagnostic needs from this side; running git is the caller's.
+    /// </summary>
+    [Theory]
+    [InlineData("tests/ChiakiNg.Tests/HolepunchIdentifiersTests.cs", true)]
+    [InlineData("test/takion.c", true)]
+    [InlineData("app/SelfTest.cs", true)]
+    [InlineData(@"tests\ChiakiNg.Tests\Foo.cs", true)]
+    [InlineData("app/Protocol/Candidate.cs", false)]
+    [InlineData("lib/src/session.c", false)]
+    [InlineData("tests/assertion-ratchet.txt", false)]
+    [InlineData("docs/ROADMAP.md", false)]
+    [InlineData("", false)]
+    public void WhatCouldHoldAnAssertionIsRecognisedByPath(string path, bool expected)
+        => Assert.Equal(expected, AssertionRatchet.IsAssertionPath(path));
+
+    /// <summary>And a commit's file list becomes the assertion files in it, once each.</summary>
+    [Fact]
+    public void ACommitsFileListBecomesItsAssertionFiles()
+    {
+        IReadOnlyList<string> files = AssertionRatchet.AssertionFilesIn(
+        [
+            "app/Protocol/Candidate.cs",
+            "tests/ChiakiNg.Tests/CandidateTests.cs",
+            "docs/ROADMAP.md",
+            "tests/ChiakiNg.Tests/CandidateTests.cs",
+            "  test/fec.c  ",
+        ]);
+
+        Assert.Equal(["tests/ChiakiNg.Tests/CandidateTests.cs", "test/fec.c"], files);
+    }
+
+    /// <summary>
     /// An id is a whole id: the prefix of one is not found inside it.
     ///
     /// Every id here is above 900 for the reason the fixture above gives, and the NEGATIVE case is

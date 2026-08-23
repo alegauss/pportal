@@ -147,31 +147,6 @@ Filed so the gap is written down rather than remembered. The workflow signs noth
 today and says nothing about it, which is the state where a release goes out unsigned
 because every part of it was green.
 
-### §PP308 Whether the ratchet should read git
-
-PP307's pass asked one question of every uncovered id - did the commit that shipped this
-also touch an assertion file - and answered 75 of 96 where the id join answered none. It
-is a better join because it is the non-goal restated: the rule says a test lands in the
-same commit as the line it holds, which is a fact about a commit and not about prose. It
-is also the one join a comment cannot satisfy.
-
-Three costs, none small enough to skip.
-
-The gate would read git, so the test shells out. One `git log` over the history builds
-the map in one process rather than ninety-six, but it is a dependency a unit test does
-not have.
-
-Shallow clones see nothing. actions/checkout takes depth 1, so on a runner every task reads
-as uncovered and the ratchet is red on every push until the workflow asks for fetch-depth: 0
-- a full history download per job.
-
-And it has a floor: nine ids shipped under a scope that is not the task id, so no depth
-of history finds them. Those need the id join anyway, which means keeping both.
-
-What is open is whether a gate needing full history on every CI run is worth 75 of 96,
-against an id join that is free, works offline, and is wrong in the direction that only
-ever asks for more tests.
-
 ## Block F — Managed core
 
 ### §PP23 The oracle this block cannot be written without

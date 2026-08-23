@@ -136,6 +136,60 @@ public static partial class AssertionRatchet
         return found;
     }
 
+    /// <summary>
+    /// PP308: whether a repository-relative path is one an assertion could live in.
+    ///
+    /// The same three places <see cref="AssertionPaths"/> names, asked of a path rather than found
+    /// by walking - which is what lets a list of files a COMMIT touched be filtered the same way as
+    /// a checkout.
+    /// </summary>
+    public static bool IsAssertionPath(string path)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+
+        string normalised = path.Trim().Replace('\\', '/');
+        if (normalised.Length == 0 || !AssertionExtensions.Contains(Path.GetExtension(normalised)))
+            return false;
+
+        return normalised.StartsWith("tests/", StringComparison.OrdinalIgnoreCase)
+            || normalised.StartsWith("test/", StringComparison.OrdinalIgnoreCase)
+            || normalised.Equals("app/SelfTest.cs", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// PP308: the assertion files among a set of changed paths, in order and without repeats.
+    ///
+    /// THE DECISION THIS TASK WAS FILED TO TAKE, and it is not the one the symptom proposed.
+    ///
+    /// Asking git whether the commit that shipped a task also touched an assertion file answers 75
+    /// of the 96 the id join misses, and is the non-goal restated - the rule says a test lands in
+    /// the same commit as the line it holds, which is a fact about a commit. It is tempting as the
+    /// gate and it is wrong as the gate. actions/checkout takes depth 1, so every task would read
+    /// as uncovered on a runner until the workflow downloads the whole history on every job; the
+    /// test would shell out to a program a unit test has no business needing; and nine ids shipped
+    /// under a scope that is not their own, so the id join has to stay anyway.
+    ///
+    /// So git is a DIAGNOSTIC and not a gate. The count stays the id join - free, offline, and
+    /// wrong in the direction that only ever asks for more tests. This runs where a person is
+    /// paying the debt down, on a machine that has the history, and answers the one question that
+    /// makes paying cheap: the assertions for this task already exist, and here is the file.
+    /// </summary>
+    public static IReadOnlyList<string> AssertionFilesIn(IEnumerable<string> changedPaths)
+    {
+        ArgumentNullException.ThrowIfNull(changedPaths);
+
+        var files = new List<string>();
+
+        foreach (string path in changedPaths)
+        {
+            string normalised = path.Trim().Replace('\\', '/');
+            if (IsAssertionPath(normalised) && !files.Contains(normalised, StringComparer.OrdinalIgnoreCase))
+                files.Add(normalised);
+        }
+
+        return files;
+    }
+
     /// <summary>Every task id named anywhere in a body of assertion text.</summary>
     public static IReadOnlySet<string> Named(string assertions)
     {
