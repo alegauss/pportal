@@ -53,6 +53,7 @@ public static partial class HostCommandLine
         new("--capture-mapping", "[path]", "render the mapping screen off-screen to a PNG"),
         new("--map-controller", "", "open the mapping screen against a real pad"),
         new("--dcomp-demo", "", "show what one window composes, which PP163 is answered by looking at"),
+        new("--topmost", "", "with --dcomp-demo: the control, asking the visual to cover WPF instead"),
     ];
 
     /// <summary>

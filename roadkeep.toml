@@ -99,12 +99,12 @@ declared = [
     # A code-signing certificate, which is a purchase and an identity check against a legal
     # entity rather than anything a commit can produce.
     "signing-certificate",
-    # Somebody at this machine looking at the screen. PP284 built its window saying so - "a
-    # person answers in one glance" - because a composed window does not screenshot reliably
-    # and a check reading one would report on its own capture stack. Tried anyway on
-    # 2026-08-22: the capture returned whatever was in front of the demo, which is the second
-    # reason and the worse one. This is not a thing a session does; it is a thing a person does.
-    "a-person-looking",
+    # "a-person-looking" was declared here for PP163 and left with it on 2026-08-23. PP284's window
+    # was looked at, and the reading was a fourth outcome it had not predicted - solid red over the
+    # whole client area, with --topmost reading identically. Worth keeping from the entry that
+    # stood here: what the session could not do was CAPTURE the window, and what closed it was a
+    # person taking a screenshot themselves. That is a narrower boundary than "a person looks", and
+    # a line needing this again should say which of the two it means.
 ]
 
 # Declared at all means governed. This port's constraints are the load-bearing part of it —

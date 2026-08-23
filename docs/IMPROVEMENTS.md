@@ -42,32 +42,6 @@ reaches the issue tracker first. It is a separate line from PP9 because it is Wi
 DXGI work that does not depend on which of the three renderer shapes wins, only on there
 being a window.
 
-### §PP163 The eight-bit ceiling under PP9
-
-D3DImage is D3D9Ex, and PP9 chose it without establishing what it can carry. Measured
-rather than read: chiaki_render_share_to_d3d9_format builds the same share in either
-format, and the two halves of the answer are apart from each other.
-
-The ten-bit surface EXISTS. D3D11 creates R10G10B10A2_UNORM, DXGI shares the handle, and
-D3D9Ex opens it as D3DFMT_A2B10G10R10. That pairing is forced rather than chosen: DXGI
-has no B-first ten-bit format, so there is no second spelling to have got wrong. Nothing
-in the graphics stack refuses HDR.
-
-WPF does. SetBackBuffer throws NotSupportedException - unsupported pixel format - for
-that surface. The composition path carries eight bits per channel and nothing wider, and
-the buffer is refused before any question of metadata or tone mapping arises.
-
-So HDR needs a path that is not D3DImage. A DXGI swapchain in a child HWND is the one
-PP9 rejected, because nothing can be drawn over an HWND, and PP10 has since built the
-overlay as XAML over a D3DImage. The other is a DirectComposition visual, and three
-tasks took it apart: PP281 built the tree to Commit, PP282 asked it with the visual
-BEHIND the window's content where a video plane must sit, and PP283 asked that of a real
-WPF window's HWND. All three hold.
-
-One question is left and it needs a person: what WPF DRAWS over that visual. Its window
-owns a redirection bitmap, so accepting the tree and showing through it are not the same
-fact.
-
 ## Block D — Screens
 
 ## Block E — Windows-only build

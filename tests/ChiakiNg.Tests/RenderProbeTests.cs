@@ -342,8 +342,13 @@ public class RenderProbeTests
     /// put a window on screen would be one that fails for reasons about the desk it ran on - which
     /// is why the interaction suite is excluded from the gate and why this does not belong there.
     ///
-    /// What this does NOT answer is what WPF draws over the visual. That needs a screenshot and two
-    /// pixels, and it is the last thing PP163 is waiting for.
+    /// What this does NOT answer is what WPF draws over the visual, and PP284's window answered it
+    /// on 2026-08-23: nothing. The visual covered the whole client area with topmost FALSE and TRUE
+    /// alike, so the arrangement this accepts is not the arrangement that reaches the screen.
+    ///
+    /// That does not weaken this assertion, it locates it. ACCEPTING the target is what this and
+    /// PP281 and PP282 measure, and all three still pass; the pixel was never in their reach. Kept
+    /// green because the acceptance is real and a later presentation path may want it.
     /// </summary>
     [Fact]
     public void AWpfWindowsHwndAcceptsTheTarget()

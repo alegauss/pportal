@@ -77,6 +77,29 @@ public class HostCommandLineTests(ITestOutputHelper output)
     }
 
     /// <summary>
+    /// PP163: the control the demo's reading is only worth anything against.
+    ///
+    /// --dcomp-demo on its own runs the arrangement the design rests on, and on 2026-08-23 it drew
+    /// solid red over the whole client area - WPF's own content nowhere, which is none of the three
+    /// outcomes DcompDemo predicted. That reading has two explanations pointing at different work:
+    /// the compositor ignored the arrangement, or WPF drew nothing. --topmost is what separates
+    /// them, because running the same tree the other way up answers one and not the other.
+    ///
+    /// The drift check below would stay green if this flag and its dispatch were deleted together,
+    /// which is exactly the deletion that would take the control away and leave the reading
+    /// unfalsifiable. So the flag is named here rather than left to a consistency check.
+    /// </summary>
+    [Fact]
+    public void TheDcompDemoCarriesItsControl()
+    {
+        Assert.Contains(
+            HostCommandLine.Flags,
+            flag => string.Equals(flag.Name, "--topmost", StringComparison.Ordinal));
+
+        Assert.Empty(HostCommandLine.Unrecognised(["--dcomp-demo", "--topmost"]));
+    }
+
+    /// <summary>
     /// THE DRIFT CHECK. What the list describes is what the dispatch matches, both ways.
     ///
     /// A flag in the source and not in the list is undiscoverable, which is PP306 happening again.

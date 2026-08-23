@@ -11,8 +11,7 @@
 
 ## Block C — Video and input path
 
-- ⏳ **PP11** (deps: PP9 ✅, PP163) **fullscreen, HDR handoff and refresh-rate switching are handled by the Qt window** — the refresh-rate switching, and the HDR half that PP163 has now shown needs a different presentation path. → §PP11
-- 📋 **PP163** (deps: PP9 ✅) (requires: a-person-looking) **an HDR picture cannot reach the display through D3DImage, which refuses any surface wider than eight bits** — one question left, and answering it means looking at a real window: a capture reads the desktop, not the demo. → §PP163
+- ⏳ **PP11** (deps: PP9 ✅, PP163 ✅) **fullscreen, HDR handoff and refresh-rate switching are handled by the Qt window** — the refresh-rate switching, and the HDR half that PP163 has now shown needs a different presentation path. → §PP11
 
 ## Block D — Screens
 

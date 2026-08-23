@@ -30,6 +30,24 @@ namespace ChiakiNg.Views;
 /// NO RED ANYWHERE with the left half blue means the visual is not composing at all, whatever the
 /// compositor said when it accepted the tree.
 ///
+/// What was actually read, 2026-08-23
+/// ----------------------------------
+/// A FOURTH thing, which none of the three above describes: solid red over the WHOLE client area.
+/// No blue block, no text - WPF's content nowhere at all, with the window chrome still DWM's.
+///
+/// And --topmost read identically. That is the control and it is what makes this a finding rather
+/// than a puzzle: both arrangements produce the same pixel, so CreateTargetForHwnd's topmost is not
+/// being honoured on a WPF window's HWND. The visual covers the window's content either way.
+///
+/// This does not contradict PP281 to PP283. All three measured that the compositor ACCEPTS the tree
+/// and all three still hold - "DirectComposition: attached" prints on both runs. None of them
+/// measured a pixel, which is the whole reason this window exists. The premise they were built on -
+/// that FALSE puts the tree behind the window's content - is accepted by the API and does not
+/// materialise here.
+///
+/// The consequence is the one the ALL BLUE reading was written to name, reached from the opposite
+/// side: PP10's XAML overlay would not be seen. Windows 11 build 26200.
+///
 /// The transparent background is the mechanism
 /// -------------------------------------------
 /// HwndTarget.BackgroundColor is what makes a WPF window's redirection surface transparent where
@@ -51,8 +69,16 @@ public static class DcompDemo
     /// <summary>
     /// Opens the window and returns once it closes.
     /// </summary>
+    /// <param name="topmost">
+    /// PP163: the control. False is the design's own arrangement and the default, so the reading a
+    /// person takes without arguments is still the one this file describes above. True is asked
+    /// only to find out whether the flag reaches the compositor at all: the 2026-08-23 reading of
+    /// false was solid red over the whole client area - WPF's content nowhere - and if true looks
+    /// identical then CreateTargetForHwnd's arrangement is not being honoured on a WPF HWND, which
+    /// is a different finding from WPF having drawn nothing.
+    /// </param>
     /// <returns>0 where the tree attached, 2 where it did not - the same shape --selftest uses.</returns>
-    public static int Run()
+    public static int Run(bool topmost = false)
     {
         using RenderDevice? device =
             ChiakiRender.CreateD3d11(forceSoftware: false) ?? ChiakiRender.CreateD3d11(forceSoftware: true);
@@ -85,10 +111,11 @@ public static class DcompDemo
             source.CompositionTarget.BackgroundColor = Colors.Transparent;
 
         DcompAttachment? attached = device.AttachDirectComposition(
-            hwnd, SwapchainFormat.Rgb10A2, topmost: false,
+            hwnd, SwapchainFormat.Rgb10A2, topmost,
             FillRed, FillGreen, FillBlue, out DcompStage stage);
 
         Console.WriteLine($"DirectComposition: {(attached is null ? $"FAILED at {stage}" : "attached")}");
+        Console.WriteLine($"topmost: {topmost} - {(topmost ? "the control; the visual is ASKED to cover WPF" : "the design's arrangement; the visual is asked to sit BEHIND WPF")}");
         Console.WriteLine("Expect RED on the right and BLUE on the left.");
         Console.WriteLine("  red visible  -> WPF composes above the visual, and PP163's option holds");
         Console.WriteLine("  no red       -> WPF's surface is opaque and the video would be hidden");
