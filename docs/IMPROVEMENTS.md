@@ -415,20 +415,21 @@ are what is left.
 
 The comparison the other eleven used does not transfer. fec, frameprocessor and
 videoreceiver were checked by running the managed side and the C side over the same
-buffers and diffing the output, which works because a buffer function is a function -
-hand it the same bytes twice and it answers twice. A session is a state machine over a
-socket: there is no second run, the console is not in the room, and the C cannot be
-driven without one either.
+buffers and diffing the output, which works because a buffer function is a function. A
+session is a state machine over a socket: there is no second run, the console is not in
+the room, and the C cannot be driven without one either.
 
 So the oracle has to be a recording. A captured exchange - the session request and its
 answer, the control channel's messages in order with their timings, the switch to the
-stream - replayed against both implementations, which is the only form of this that is
-repeatable at all.
+stream - replayed against both implementations, which is the only repeatable form of
+this.
 
-Making it needs a console and a session that reaches the stream, which is a thing to do
-rather than a thing to write. Sanitising it needs care too: a real exchange carries the
-account id, the registration key and the nonce, and PP88's redaction rules already name
-what a log may not keep.
+Making it needs a console, and a source, which this was written as though it had. It
+does not. The log is all a managed caller sees, and it carries the session bytes only as
+the hexdump PP320 redacts whole, while ctrl logs a type and a size and never a payload.
+The flag this was reduced to would record nothing worth replaying. What is owed first is
+a shim callback per message, where redaction can name a field instead of guessing at a
+row.
 
 ### §PP313 The second door out of PP33
 
