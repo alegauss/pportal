@@ -75,6 +75,7 @@
 - ✅ **PP296** **RP-Nonce is matched case-sensitively though HTTP header names are not, so a console spelling it otherwise fails** — all three header names matched without regard to case, in session.c and in the port together.
 - ✅ **PP163** **an HDR picture cannot reach the display through D3DImage, which refuses any surface wider than eight bits** — topmost FALSE and TRUE draw the same red over WPF's content, so PP10's overlay is not seen either way (design §PP163 superseded: the compositor accepts the tree and the pixel does not follow).
 - ✅ **PP321** **the buffered pacer's interval comes from the display and nothing states what a rate change mid-stream does to it** — the display's rate paces the present, a rate change gets past an armed pace thread, and a missed deadline catches up in whole intervals.
+- ✅ **PP319** **no presentation path carries HDR: D3DImage refuses ten bits and a DirectComposition visual hides WPF's overlay** — the overlay goes above the video in the compositor's tree, measured to Commit and the only one of three that keeps both (design §PP319 superseded: topmost is about child windows).
 
 ## Block D — Screens
 

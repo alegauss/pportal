@@ -11,8 +11,8 @@
 
 ## Block C — Video and input path
 
-- ⏳ **PP11** (deps: PP9 ✅, PP163 ✅) **fullscreen, HDR handoff and refresh-rate switching are handled by the Qt window** — the HDR half alone now that PP321 has shipped the refresh-rate switching, and PP163 has shown it needs a different presentation path. → §PP11
-- 📋 **PP319** (deps: —) **no presentation path carries HDR: D3DImage refuses ten bits and a DirectComposition visual hides WPF's overlay** — PP163 measured both and neither leaves PP10's overlay standing, so what is left is a child HWND, an overlay rebuilt above a composed swapchain, or SDR on purpose. → §PP319
+- ⏳ **PP11** (deps: PP9 ✅, PP163 ✅, PP322) **fullscreen, HDR handoff and refresh-rate switching are handled by the Qt window** — the HDR half alone: PP319 chose the overlay above the video in the compositor's tree, and PP322 is the reading that has to confirm it. → §PP11
+- 📋 **PP322** (deps: —) **the two-layer tree commits and nobody has looked at it, which is the mistake PP163 made one layer down** — PP319 chose the compositor's overlay on an API's acceptance, and --dcomp-demo still shows one layer, so the pixel that confirms or refuses the choice has not been read. → §PP322
 
 ## Block D — Screens
 

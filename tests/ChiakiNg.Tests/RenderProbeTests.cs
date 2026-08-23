@@ -476,6 +476,73 @@ public class RenderProbeTests
     }
 
     /// <summary>
+    /// PP319: an eight-bit overlay composes ABOVE a ten-bit video plane, in one tree.
+    ///
+    /// This is the measurement the choice rests on. PP284 read the pixel and found the tree over the
+    /// whole client area with topmost false and true alike - which is not a flag being ignored, it
+    /// is what CreateTargetForHwnd's second argument means: it orders the tree against the window's
+    /// CHILD WINDOWS, and a redirection bitmap is not a child. WPF's own drawing is under the tree
+    /// in both arrangements, so the one PP163 wanted does not exist and never did.
+    ///
+    /// That leaves exactly one option that keeps an HDR plane AND something drawn over it: put the
+    /// overlay in the compositor's tree too. The two formats are DIFFERENT on purpose - a ten-bit
+    /// video and an eight-bit premultiplied overlay - because that is the arrangement PP10's screen
+    /// would become, and asking it with one format twice would confuse composing with matching.
+    /// </summary>
+    [Fact]
+    public void AnEightBitOverlayComposesAboveATenBitVideoPlane()
+    {
+        using RenderDevice? device = AnyDevice();
+        Assert.NotNull(device);
+
+        LayersStage stage = device.ProbeLayers(SwapchainFormat.Rgb10A2, SwapchainFormat.Bgra8);
+
+        Assert.True(
+            stage == LayersStage.Ok,
+            $"the two-layer tree stopped at {stage}, which leaves PP319 with SDR on purpose as the "
+                + "only option that keeps PP10's overlay");
+    }
+
+    /// <summary>
+    /// And the stage it reports is real. Handed an overlay format DXGI has no such thing as, it must
+    /// fail at CreateSurface - the call that consumes it - rather than at the video plane below,
+    /// which is built from a format that is fine.
+    ///
+    /// Worth asserting separately from the video plane's: the two formats travel through different
+    /// calls, and a probe that used one for both would pass the test above and answer the wrong
+    /// question.
+    /// </summary>
+    [Fact]
+    public void AnImpossibleOverlayFormatStopsAtTheSurfaceAndNotAtTheVideo()
+    {
+        using RenderDevice? device = AnyDevice();
+        Assert.NotNull(device);
+
+        LayersStage stage = device.ProbeLayers(SwapchainFormat.Rgb10A2, (SwapchainFormat)0x7000);
+
+        Assert.Equal(LayersStage.Surface, stage);
+    }
+
+    /// <summary>
+    /// And the video plane's format still reaches the swapchain, which the collapsed
+    /// <see cref="LayersStage.Tree"/> would otherwise hide.
+    ///
+    /// Tree is one value standing for the whole of PP281's path, so a reader cannot tell from it
+    /// which step failed - that is deliberate, and it is also why it has to be shown to happen at
+    /// all. A probe that silently ignored the video format would pass every other assertion here.
+    /// </summary>
+    [Fact]
+    public void AnImpossibleVideoFormatStopsInTheTreeBelow()
+    {
+        using RenderDevice? device = AnyDevice();
+        Assert.NotNull(device);
+
+        LayersStage stage = device.ProbeLayers((SwapchainFormat)0x7000, SwapchainFormat.Bgra8);
+
+        Assert.Equal(LayersStage.Tree, stage);
+    }
+
+    /// <summary>
     /// PP163: and the obvious HDR test is not one. An EIGHT-bit swapchain reports HDR10 support
     /// too, because CheckColorSpaceSupport answers about the colour space and not about whether
     /// the buffer has the bits to carry it.

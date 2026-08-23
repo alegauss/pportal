@@ -317,6 +317,60 @@ CHIAKI_RENDER_API void *chiaki_render_dcomp_attach(
 CHIAKI_RENDER_API void chiaki_render_dcomp_detach(void *session);
 
 /**
+ * PP319: the overlay ABOVE the video, in the compositor's own tree rather than in WPF's.
+ *
+ * PP284 read the pixel and it was a fourth outcome: the visual covered the whole client area with
+ * topmost FALSE and TRUE alike, WPF's content nowhere. The entry called that flag "not honoured".
+ * It is honoured; it is about something else. CreateTargetForHwnd's second argument orders the tree
+ * against the window's CHILD WINDOWS, and a redirection bitmap is not a child - so a WPF window's
+ * own drawing is under the tree in both arrangements, which is exactly what was seen.
+ *
+ * That closes the arrangement PP163 wanted and opens the only one left that keeps both: if nothing
+ * WPF draws can be above the tree, then what has to be above the video is a SECOND VISUAL. This
+ * builds that: a container, the ten-bit swapchain below it, and an eight-bit premultiplied
+ * IDCompositionSurface above it with something drawn in.
+ *
+ * Two claims, and the second is the one nothing so far has asked. That a swapchain is content, which
+ * PP281 measured. And that a surface of a DIFFERENT format and a different bit depth composes over
+ * it in one tree - an SDR overlay above an HDR plane, which is what PP10's screen would become.
+ *
+ * The draw is not decoration. An IDCompositionSurface that was never drawn into is not a surface the
+ * compositor has anything for, and BeginDraw is where a format it will not take is refused - so a
+ * probe that created the surface and stopped would report on CreateSurface's argument checking.
+ *
+ * Its own hidden window, like chiaki_render_dcomp_probe: this asks about the tree's shape and not
+ * about whose window it is, and PP283 already answered that a WPF HWND takes a target.
+ */
+typedef enum chiaki_render_layers_stage
+{
+	CHIAKI_RENDER_LAYERS_OK = 0,
+	CHIAKI_RENDER_LAYERS_NO_DEVICE,
+	CHIAKI_RENDER_LAYERS_WINDOW,     /**< the hidden top-level window the target needs */
+	CHIAKI_RENDER_LAYERS_TREE,       /**< everything PP281 already measured, up to the video visual */
+	CHIAKI_RENDER_LAYERS_SURFACE,    /**< IDCompositionDevice::CreateSurface for the overlay */
+	CHIAKI_RENDER_LAYERS_BEGIN,      /**< IDCompositionSurface::BeginDraw */
+	CHIAKI_RENDER_LAYERS_RTV,        /**< CreateRenderTargetView on the atlas texture it handed back */
+	CHIAKI_RENDER_LAYERS_END,        /**< IDCompositionSurface::EndDraw */
+	CHIAKI_RENDER_LAYERS_VISUAL,     /**< CreateVisual for the overlay */
+	CHIAKI_RENDER_LAYERS_CONTENT,    /**< SetContent with the surface rather than a swapchain */
+	CHIAKI_RENDER_LAYERS_ORDER,      /**< AddVisual twice: the video, then the overlay above it */
+	CHIAKI_RENDER_LAYERS_ROOT,       /**< IDCompositionTarget::SetRoot with the container */
+	CHIAKI_RENDER_LAYERS_COMMIT,     /**< where the compositor accepts the two-layer tree or does not */
+} chiaki_render_layers_stage;
+
+/**
+ * Builds the two-layer tree over a swapchain in `format` and reports where it stopped.
+ *
+ * `overlay_format` is the surface's, asked separately on purpose: the interesting answer is the one
+ * where the two differ, and passing the same value for both is how "they compose" gets confused with
+ * "they match".
+ *
+ * Returns true only after Commit.
+ */
+CHIAKI_RENDER_API bool chiaki_render_layers_probe(
+		void *d3d11, int32_t format, int32_t overlay_format, int32_t *out_stage);
+
+/**
  * PP9's last unanswered link: a DECODED FRAME through pl_render_image.
  *
  * Everything before this rendered nothing. PP133 calls pl_render_image with a NULL image, which

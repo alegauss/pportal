@@ -144,6 +144,37 @@ public enum DcompStage
 }
 
 /// <summary>
+/// PP319: which step of the TWO-layer tree failed, or Ok.
+///
+/// <see cref="Tree"/> is everything <see cref="DcompStage"/> already covers, collapsed into one
+/// value: a failure there is PP281's question and it has a probe of its own that answers it in its
+/// own vocabulary. Everything after it is new.
+/// </summary>
+public enum LayersStage
+{
+    Ok = 0,
+    NoDevice,
+    /// <summary>The hidden top-level window, as the single-layer probe needs one too.</summary>
+    Window,
+    /// <summary>The whole single-layer path below this one - PP281's, and not re-reported here.</summary>
+    Tree,
+    /// <summary>CreateSurface for the overlay, which is where a refused overlay format fails.</summary>
+    Surface,
+    /// <summary>BeginDraw - the step that makes it a surface the compositor has anything for.</summary>
+    Begin,
+    Rtv,
+    End,
+    Visual,
+    /// <summary>SetContent with a SURFACE rather than a swapchain, which nothing before asked.</summary>
+    Content,
+    /// <summary>AddVisual twice, the overlay named above the video rather than merely added second.</summary>
+    Order,
+    Root,
+    /// <summary>Commit, where the compositor accepts two layers of different formats or does not.</summary>
+    Commit,
+}
+
+/// <summary>
 /// PP284: a live DirectComposition tree on somebody else's window.
 ///
 /// Disposable because it outlives the call that made it, which is the entire difference between
@@ -469,6 +500,34 @@ public sealed class RenderDevice : IDisposable
     private static extern IntPtr DcompAttach(
         IntPtr d3d11, int format, [MarshalAs(UnmanagedType.I1)] bool topmost, IntPtr hwnd,
         float r, float g, float b, out int stage);
+
+    /// <summary>
+    /// PP319: the overlay ABOVE the video, as a second visual rather than as WPF content.
+    ///
+    /// PP284 read the pixel: the tree covered the whole client area with topmost false and true
+    /// alike. That is not a flag being ignored - CreateTargetForHwnd orders the tree against the
+    /// window's CHILD WINDOWS, and a redirection bitmap is not a child, so WPF's own drawing is
+    /// under the tree either way. The arrangement PP163 wanted does not exist.
+    ///
+    /// What is left that keeps both is this one: the overlay in the compositor's tree, above the
+    /// video. Two claims, and only the first has been measured before - that a swapchain is
+    /// content, and that a surface of a DIFFERENT format composes over it in the same tree.
+    /// </summary>
+    /// <param name="format">The video plane's. Ten bits is the one the whole question is about.</param>
+    /// <param name="overlayFormat">
+    /// The overlay surface's, asked separately: the interesting answer is the one where the two
+    /// differ, and passing the same value for both confuses "they compose" with "they match".
+    /// </param>
+    public LayersStage ProbeLayers(SwapchainFormat format, SwapchainFormat overlayFormat)
+    {
+        bool committed = LayersProbe(Handle, (int)format, (int)overlayFormat, out int stage);
+        return committed ? LayersStage.Ok : (LayersStage)stage;
+    }
+
+    [DllImport(ChiakiRender.Library, EntryPoint = "chiaki_render_layers_probe",
+        CallingConvention = CallingConvention.Cdecl)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    private static extern bool LayersProbe(IntPtr d3d11, int format, int overlayFormat, out int stage);
 
     /// <summary>
     /// PP9: one decoded frame through pl_render_image, and the pixel it produced.

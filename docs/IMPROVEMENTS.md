@@ -36,41 +36,41 @@ of the three are answered: fullscreen shipped as a state machine, and PP321 took
 refresh rate, which this window reads as an input on every tick rather than sets on the
 panel.
 
-What is left is HDR, and it is the one with no path. The swapchain's format and the
-metadata handed with it are a property of the surface a frame is presented on, and PP163
-measured that WPF's D3DImage refuses ten bits while a DirectComposition visual hides the
-overlay PP10 draws. So this half is not code waiting to be written: it waits on PP319
-choosing between a child HWND, an overlay rebuilt above a composed swapchain, and SDR on
-purpose.
+What is left is HDR. PP163 measured that WPF's D3DImage refuses ten bits, and PP319
+chose between the three paths that left: the overlay goes above the video in the
+compositor's own tree, because a child HWND costs PP10's overlay outright and SDR on
+purpose costs the picture. A container visual carrying a ten-bit swapchain below and an
+eight-bit premultiplied surface above it commits, which is what makes that choice a
+measurement rather than a preference.
 
-It stays a separate line from PP9 for the reason it always was - this is Win32 and DXGI
+So this half is not blocked on a decision any more. It waits on PP322 - the pixel nobody
+has looked at yet, which is the exact mistake PP163 made one layer down - and then on
+PP10's screen being rebuilt against a compositor rather than against XAML.
+
+It stays a separate line from PP9 for the reason it always was: this is Win32 and DXGI
 work that does not depend on which of the renderer shapes wins, only on there being a
-window - and it is now the whole of the line rather than a third of it.
+window.
 
-### §PP319 The two paths PP163 measured, and the three left
+### §PP322 The reading the two-layer choice still owes
 
-PP163 priced two presentation paths and both are now measured rather than argued.
-D3DImage refuses any surface wider than eight bits, which is a throw from SetBackBuffer
-and not a judgement call. A DirectComposition visual accepts the ten-bit swapchain,
-accepts the target on a WPF window's own HWND, and reaches Commit - and then covers the
-whole client area.
+PP319 measured that a container visual takes a ten-bit swapchain below and an eight-bit
+premultiplied surface above it, ordered by reference rather than by call order, all the
+way to Commit. That is the same depth PP281 to PP283 reached one layer down, and PP284
+then read a pixel none of them had predicted.
 
-The control is what makes that a finding. Read on 2026-08-23 on Windows 11 build 26200,
-the demo drew solid red over every pixel with topmost FALSE, and identically with TRUE.
-Two arrangements, one result: CreateTargetForHwnd's flag is not being honoured on a
-window that owns a redirection bitmap. PP281 to PP283 are not wrong, they are narrower
-than they read - each measured that the compositor ACCEPTS the tree, and none of them
-could measure a pixel.
+So the shape of the risk is known exactly: a compositor accepting a tree says nothing
+about what lands on the glass. What is unread here is whether the overlay visual draws
+OVER the video plane rather than under it or not at all, and whether an eight-bit
+premultiplied surface composes over a ten-bit plane without the alpha being taken twice.
 
-So the option PP9 rejected the child-HWND path to protect does not exist, and three
-answers are left. A child HWND carries HDR and nothing can be drawn over it, which costs
-PP10's overlay outright. An overlay rebuilt above a composed swapchain keeps both and
-means PP10's screen is written a second time in a framework it was not designed against.
-SDR chosen deliberately costs the picture and nothing else, and is the only cheap one.
+The apparatus mostly exists. DcompDemo puts one filled swapchain on a WPF window and
+says in prose what each possible reading means; this needs the second visual added to
+it, sized well inside the first so the lower plane is still visible around it, and the
+readings written the same way. Then a person looks once.
 
-This task owes the choice and the measurement under it, not an implementation. The wrong
-outcome here is the one PP163 nearly produced: a path named in prose, accepted by an
-API, and never looked at.
+If the reading refuses it, PP319's choice falls to SDR on purpose, which is the only
+remaining option that keeps PP10's screen. That is why this is a line of its own rather
+than the first step of the implementation: it can still change the answer.
 
 ## Block D — Screens
 

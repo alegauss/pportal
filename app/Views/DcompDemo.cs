@@ -36,8 +36,15 @@ namespace ChiakiNg.Views;
 /// No blue block, no text - WPF's content nowhere at all, with the window chrome still DWM's.
 ///
 /// And --topmost read identically. That is the control and it is what makes this a finding rather
-/// than a puzzle: both arrangements produce the same pixel, so CreateTargetForHwnd's topmost is not
-/// being honoured on a WPF window's HWND. The visual covers the window's content either way.
+/// than a puzzle: both arrangements produce the same pixel. The visual covers the window's content
+/// either way.
+///
+/// PP319 corrected the CAUSE this entry first gave for that. It said the flag was not being
+/// honoured. It is: CreateTargetForHwnd's second argument orders the tree against the window's CHILD
+/// WINDOWS, and a redirection bitmap is not a child of anything - so a WPF window's own drawing is
+/// UNDER the tree in both arrangements, which is documented behaviour and not a defect. The reading
+/// is unchanged and the conclusion is stronger: the arrangement PP163 wanted was never available,
+/// so no Windows build will start producing it.
 ///
 /// This does not contradict PP281 to PP283. All three measured that the compositor ACCEPTS the tree
 /// and all three still hold - "DirectComposition: attached" prints on both runs. None of them

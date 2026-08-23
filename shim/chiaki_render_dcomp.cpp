@@ -21,6 +21,7 @@
 
 #include <windows.h>
 #include <d3d11.h>
+#include <d3d11_1.h>
 #include <dxgi1_2.h>
 #include <dcomp.h>
 
@@ -189,20 +190,14 @@ done:
 	return ok;
 }
 
-extern "C" CHIAKI_RENDER_API bool chiaki_render_dcomp_probe(
-		void *d3d11, int32_t format, bool topmost, int32_t *out_stage)
+// A REAL top-level window, hidden. CreateTargetForHwnd refuses a message-only window, so there is
+// no way to ask any of this without one - which is the difference between these probes and the
+// swapchain one, and worth knowing before a build machine runs them.
+static HWND chiaki_render_dcomp_window(void)
 {
-	// A REAL top-level window, hidden. CreateTargetForHwnd refuses a message-only window, so there
-	// is no way to ask this without one - which is the difference between this probe and the
-	// swapchain one, and worth knowing before a build machine runs it.
 	HINSTANCE instance = GetModuleHandleW(nullptr);
 	static const wchar_t *class_name = L"ChiakiNgDCompProbe";
 	WNDCLASSEXW cls = {};
-	HWND hwnd = nullptr;
-	bool ok;
-
-	if(out_stage)
-		*out_stage = CHIAKI_RENDER_DCOMP_WINDOW;
 
 	cls.cbSize = sizeof(cls);
 	cls.lpfnWndProc = DefWindowProcW;
@@ -211,11 +206,23 @@ extern "C" CHIAKI_RENDER_API bool chiaki_render_dcomp_probe(
 	// A class that is already registered is not an error: this runs more than once per process and
 	// RegisterClassExW fails the second time with ERROR_CLASS_ALREADY_EXISTS.
 	if(!RegisterClassExW(&cls) && GetLastError() != ERROR_CLASS_ALREADY_EXISTS)
-		return false;
+		return nullptr;
 
-	hwnd = CreateWindowExW(
+	return CreateWindowExW(
 			WS_EX_NOREDIRECTIONBITMAP, class_name, L"", WS_POPUP,
 			0, 0, 16, 16, nullptr, nullptr, instance, nullptr);
+}
+
+extern "C" CHIAKI_RENDER_API bool chiaki_render_dcomp_probe(
+		void *d3d11, int32_t format, bool topmost, int32_t *out_stage)
+{
+	HWND hwnd = nullptr;
+	bool ok;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_DCOMP_WINDOW;
+
+	hwnd = chiaki_render_dcomp_window();
 	if(!hwnd)
 		return false;
 
@@ -300,6 +307,193 @@ extern "C" CHIAKI_RENDER_API void *chiaki_render_dcomp_attach(
 	}
 
 	return self;
+}
+
+// PP319: the overlay's own dimensions. Smaller than the video plane on purpose - an overlay the size
+// of the whole swapchain would compose correctly whether or not the compositor honours two layers,
+// because there would be nothing of the lower one left to be wrong about.
+#define CHIAKI_RENDER_LAYERS_OVERLAY_W 320
+#define CHIAKI_RENDER_LAYERS_OVERLAY_H 180
+
+// The overlay's fill: premultiplied opaque blue. Premultiplied is not a detail - the surface is
+// created DXGI_ALPHA_MODE_PREMULTIPLIED, and a colour written straight would compose as a wash the
+// first time the alpha is anything but one.
+static const float chiaki_render_layers_overlay_fill[4] = { 0.0f, 0.0f, 1.0f, 1.0f };
+
+// Draws into the overlay surface, which is the step that makes it a surface the compositor has
+// anything for. Split out because BeginDraw hands back an ATLAS - the texture is shared with other
+// surfaces and the offset says where this one starts - and clearing it whole would be clearing
+// somebody else's.
+static bool chiaki_render_layers_draw(
+		ID3D11Device *device, IDCompositionSurface *surface, int32_t *out_stage)
+{
+	ID3D11Texture2D *atlas = nullptr;
+	ID3D11RenderTargetView *rtv = nullptr;
+	ID3D11DeviceContext *context = nullptr;
+	ID3D11DeviceContext1 *context1 = nullptr;
+	POINT offset = {};
+	RECT rect = {};
+	bool ok = false;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_LAYERS_BEGIN;
+	if(FAILED(surface->BeginDraw(
+			nullptr, __uuidof(ID3D11Texture2D), reinterpret_cast<void **>(&atlas), &offset)))
+		return false;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_LAYERS_RTV;
+	if(FAILED(device->CreateRenderTargetView(atlas, nullptr, &rtv)))
+		goto done;
+
+	device->GetImmediateContext(&context);
+	if(!context)
+		goto done;
+	if(FAILED(context->QueryInterface(__uuidof(ID3D11DeviceContext1), reinterpret_cast<void **>(&context1))))
+		goto done;
+
+	// ClearView with a rect rather than ClearRenderTargetView, for the atlas reason above.
+	rect.left = offset.x;
+	rect.top = offset.y;
+	rect.right = offset.x + CHIAKI_RENDER_LAYERS_OVERLAY_W;
+	rect.bottom = offset.y + CHIAKI_RENDER_LAYERS_OVERLAY_H;
+	context1->ClearView(rtv, chiaki_render_layers_overlay_fill, &rect, 1);
+	ok = true;
+
+done:
+	if(context1)
+		context1->Release();
+	if(context)
+		context->Release();
+	if(rtv)
+		rtv->Release();
+	if(atlas)
+		atlas->Release();
+
+	// EndDraw whatever happened. A surface left open is one no later BeginDraw on this device will
+	// be given, so a failure that skipped it would break every probe after it in the same process.
+	if(out_stage && ok)
+		*out_stage = CHIAKI_RENDER_LAYERS_END;
+	if(FAILED(surface->EndDraw()))
+		ok = false;
+
+	return ok;
+}
+
+extern "C" CHIAKI_RENDER_API bool chiaki_render_layers_probe(
+		void *d3d11, int32_t format, int32_t overlay_format, int32_t *out_stage)
+{
+	// PP319: two visuals, ordered, in one tree - the video below and an overlay of a different
+	// format above it. PP284 established that nothing WPF draws gets above this tree, so this is the
+	// only arrangement left that keeps both an HDR plane and something over it.
+	chiaki_render_dcomp_session tree = {};
+	ID3D11Device *device = nullptr;
+	IDCompositionSurface *surface = nullptr;
+	IDCompositionVisual *overlay = nullptr;
+	IDCompositionVisual *container = nullptr;
+	HWND hwnd = nullptr;
+	int32_t build_stage = 0;
+	bool ok = false;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_LAYERS_NO_DEVICE;
+
+	device = chiaki_render_d3d11_device(d3d11);
+	if(!device)
+		return false;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_LAYERS_WINDOW;
+	hwnd = chiaki_render_dcomp_window();
+	if(!hwnd)
+		return false;
+
+	// Everything PP281 already measured, in one step: swapchain, device, target, the video visual,
+	// and a Commit of the one-layer tree. Its own stages are not reported here - a failure in them
+	// is PP281's question and not this one's, and the probe above answers it in its own vocabulary.
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_LAYERS_TREE;
+	if(!chiaki_render_dcomp_build(d3d11, format, false, hwnd, &build_stage, &tree))
+		goto done;
+
+	// The root has to be let go before the video visual can be given a parent: a visual belongs to
+	// one place in one tree, and a target root is a place.
+	tree.target->SetRoot(nullptr);
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_LAYERS_SURFACE;
+	if(FAILED(tree.dcomp->CreateSurface(
+			CHIAKI_RENDER_LAYERS_OVERLAY_W, CHIAKI_RENDER_LAYERS_OVERLAY_H,
+			static_cast<DXGI_FORMAT>(overlay_format), DXGI_ALPHA_MODE_PREMULTIPLIED, &surface)))
+		goto done;
+
+	if(!chiaki_render_layers_draw(device, surface, out_stage))
+		goto done;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_LAYERS_VISUAL;
+	if(FAILED(tree.dcomp->CreateVisual(&overlay)))
+		goto done;
+
+	// The second claim, and the one nothing before this asked: a SURFACE is content too, and it does
+	// not have to be the format the swapchain is.
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_LAYERS_CONTENT;
+	if(FAILED(overlay->SetContent(surface)))
+		goto done;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_LAYERS_ORDER;
+	if(FAILED(tree.dcomp->CreateVisual(&container)))
+		goto done;
+	// The order is the measurement. The video goes in first with no reference, and the overlay goes
+	// in ABOVE it by naming it - insertAbove TRUE against a reference visual, rather than trusting
+	// the order of two AddVisual calls, which the API does not promise.
+	if(FAILED(container->AddVisual(tree.visual, FALSE, nullptr)))
+		goto done;
+	if(FAILED(container->AddVisual(overlay, TRUE, tree.visual)))
+		goto done;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_LAYERS_ROOT;
+	if(FAILED(tree.target->SetRoot(container)))
+		goto done;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_LAYERS_COMMIT;
+	if(FAILED(tree.dcomp->Commit()))
+		goto done;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_LAYERS_OK;
+	ok = true;
+
+done:
+	// The container owns nothing the session does not, so the root goes first for the reason detach
+	// gives: a compositor left holding a tree whose contents are going away keeps showing them.
+	if(tree.target)
+		tree.target->SetRoot(nullptr);
+	if(tree.dcomp)
+		tree.dcomp->Commit();
+
+	if(container)
+		container->Release();
+	if(overlay)
+		overlay->Release();
+	if(surface)
+		surface->Release();
+	if(tree.visual)
+		tree.visual->Release();
+	if(tree.target)
+		tree.target->Release();
+	if(tree.dcomp)
+		tree.dcomp->Release();
+	if(tree.swapchain)
+		tree.swapchain->Release();
+	if(hwnd)
+		DestroyWindow(hwnd);
+
+	return ok;
 }
 
 extern "C" CHIAKI_RENDER_API void chiaki_render_dcomp_detach(void *session)
