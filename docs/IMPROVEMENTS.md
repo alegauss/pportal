@@ -31,16 +31,21 @@ three, so it is the moment when the duplication is visible.
 
 ### §PP11 What the window owns
 
-Beyond presenting frames, the Qt window decides how the session meets the display:
-exclusive or borderless fullscreen, whether the swapchain is HDR and how the metadata is
-passed on, and whether the refresh rate follows the stream. Qt answers some of these and
-the code around it answers the rest.
+Beyond presenting frames, the Qt window decides how the session meets the display. Two
+of the three are answered: fullscreen shipped as a state machine, and PP321 took the
+refresh rate, which this window reads as an input on every tick rather than sets on the
+panel.
 
-None of it survives the window being replaced, and none of it is optional - a stream
-that tears, or that shows an SDR picture on an HDR display, is the complaint that
-reaches the issue tracker first. It is a separate line from PP9 because it is Win32 and
-DXGI work that does not depend on which of the three renderer shapes wins, only on there
-being a window.
+What is left is HDR, and it is the one with no path. The swapchain's format and the
+metadata handed with it are a property of the surface a frame is presented on, and PP163
+measured that WPF's D3DImage refuses ten bits while a DirectComposition visual hides the
+overlay PP10 draws. So this half is not code waiting to be written: it waits on PP319
+choosing between a child HWND, an overlay rebuilt above a composed swapchain, and SDR on
+purpose.
+
+It stays a separate line from PP9 for the reason it always was - this is Win32 and DXGI
+work that does not depend on which of the renderer shapes wins, only on there being a
+window - and it is now the whole of the line rather than a third of it.
 
 ### §PP319 The two paths PP163 measured, and the three left
 

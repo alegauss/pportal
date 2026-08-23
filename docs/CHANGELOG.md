@@ -74,6 +74,7 @@
 - ✅ **PP299** **a console omitting system-version crashes discovery through an unguarded atoi(NULL) in the classifier** — the guard in discovery.c, and the shim's substitution deleted so a test can reach the null.
 - ✅ **PP296** **RP-Nonce is matched case-sensitively though HTTP header names are not, so a console spelling it otherwise fails** — all three header names matched without regard to case, in session.c and in the port together.
 - ✅ **PP163** **an HDR picture cannot reach the display through D3DImage, which refuses any surface wider than eight bits** — topmost FALSE and TRUE draw the same red over WPF's content, so PP10's overlay is not seen either way (design §PP163 superseded: the compositor accepts the tree and the pixel does not follow).
+- ✅ **PP321** **the buffered pacer's interval comes from the display and nothing states what a rate change mid-stream does to it** — the display's rate paces the present, a rate change gets past an armed pace thread, and a missed deadline catches up in whole intervals.
 
 ## Block D — Screens
 
