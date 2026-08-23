@@ -15,7 +15,20 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <IsPackable>false</IsPackable>
     <!-- UseWPF, because the referenced project is a WPF assembly and the test host has to resolve
-         the same framework reference to load it at all. -->
+         the same framework reference to load it at all.
+
+         PP227: it is also where UI Automation comes from - UIAutomationClient and
+         UIAutomationTypes, the same two assemblies PowerShell loads with Add-Type - so the harness
+         that drives the real window costs no dependency at all. That matters here beyond taste:
+         this port exists partly to DELETE dependencies (PP33 is two of them leaving), and a test
+         harness that added one would be arguing against the thing it tests.
+
+         PP317: and it supplies them with no item of its own. Two bare <Reference Include="…" />
+         items used to say so explicitly, which asked for the assemblies down the pre-SDK path and
+         printed four MSBuild warnings on every build of this tree - MSB3245 twice for not finding
+         them there, then MSB3243 twice for resolving the resulting conflict "arbitrarily", which
+         is a choice made by neither this project nor anybody who wrote it. Naming what the
+         framework already provides is what created the second candidate to choose between. -->
     <UseWPF>true</UseWPF>
     <!-- The app's own single-file gate does not apply here: this project is never published as
          one, and its assembly has a real path on disk. -->
@@ -30,17 +43,6 @@
 
   <ItemGroup>
     <Using Include="System.IO" />
-  </ItemGroup>
-
-  <!-- PP227: UI Automation, which drives the real window.
-       Part of the Windows Desktop framework this project already targets rather than a package -
-       the same two assemblies PowerShell loads with Add-Type - so the interaction loop costs no
-       dependency at all. That matters here beyond taste: this port exists partly to DELETE
-       dependencies (PP33 is two of them leaving), and a test harness that added one would be
-       arguing against the thing it tests. -->
-  <ItemGroup>
-    <Reference Include="UIAutomationClient" />
-    <Reference Include="UIAutomationTypes" />
   </ItemGroup>
 
   <ItemGroup>

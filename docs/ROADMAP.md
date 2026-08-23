@@ -40,8 +40,6 @@
 
 ## Block G — Test discipline
 
-- 📋 **PP317** (deps: —) **four MSBuild warnings print on every build of the test project, and PP316's policy cannot reach any of them** — MSB3245 cannot locate UIAutomationClient or UIAutomationTypes and MSB3243 then picks one arbitrarily, so PP227's reference is resolved by nobody's decision. → §PP317
-
 ## Block H — Performance and telemetry
 
 - ⏳ **PP46** (deps: PP42 ✅, PP63) **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — A Chromium leaving the build should be visible in cold start and in megabytes, and stating it without measuring is how a port collects folklore. → §PP46

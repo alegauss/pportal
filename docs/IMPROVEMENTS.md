@@ -457,32 +457,6 @@ zero should be decided rather than discovered.
 
 ## Block G — Test discipline
 
-### §PP317 The four warnings PP316 does not reach
-
-PP316 made every compiler warning an error in the two projects the gate builds, and four
-warnings survived it. They are MSBuild's rather than the compiler's, so
-`TreatWarningsAsErrors` does not reach them by design, and `MSBuildTreatWarningsAsErrors`
-- the property that would - turns the whole of MSBuild's diagnostic stream into errors and
-was not what PP316 argued for.
-
-What they say is worth reading. MSB3245 cannot locate `UIAutomationClient` or
-`UIAutomationTypes` while resolving a version difference, and MSB3243 then reports that
-it is choosing between two candidates of the same name "arbitrarily". Both are part of
-the Windows Desktop framework this project already targets, which is exactly the
-argument PP227 made for referencing them at all: no package, no dependency. The bare
-`<Reference Include="…" />` item asks for them by the older path, and the older path is
-the one that cannot find them.
-
-So the defect is not a red build. It is green, and the interaction tests PP227 and PP229
-shipped do run. It is that four lines print on every build of this tree while PP316's
-whole sentence is that a warning nobody reads is a message with no recipient - and two
-of them name a choice between assemblies made by neither the project nor anybody who
-wrote it.
-
-The likely correction is to drop the two `Reference` items and let the framework
-reference supply them, checked against a run of the UI Automation tests rather than
-against a build.
-
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed

@@ -46,6 +46,25 @@ public static partial class WarningPolicy
         [.. GatedProjects.Select(SanitizerSource.LocateRelative).OfType<string>()];
 
     /// <summary>
+    /// PP317: a project text with its XML comments removed, which is what every reader here reads.
+    ///
+    /// Found by this file's own check going red on this file's own prose. The csproj comment that
+    /// explains why the two UIAutomation references were DELETED spells one out to say what it is
+    /// talking about, and a reader matching flat text counted it as a live item.
+    ///
+    /// Both directions matter and the other one is worse. A commented-out
+    /// <c>&lt;TreatWarningsAsErrors&gt;true&lt;/TreatWarningsAsErrors&gt;</c> would read as a
+    /// project refusing warnings while the build printed them - a gate reporting on prose is a
+    /// gate that is not there, which is the whole of what PP316 was filed about.
+    /// </summary>
+    public static string WithoutComments(string projectText)
+    {
+        ArgumentNullException.ThrowIfNull(projectText);
+
+        return XmlCommentRegex().Replace(projectText, "");
+    }
+
+    /// <summary>
     /// Whether a project text turns every compiler warning into an error.
     ///
     /// The value is read rather than assumed present: <c>&lt;TreatWarningsAsErrors&gt;false&lt;/&gt;</c>
@@ -56,7 +75,7 @@ public static partial class WarningPolicy
     {
         ArgumentNullException.ThrowIfNull(projectText);
 
-        Match match = TreatWarningsAsErrorsRegex().Match(projectText);
+        Match match = TreatWarningsAsErrorsRegex().Match(WithoutComments(projectText));
         return match.Success
             && string.Equals(match.Groups[1].Value.Trim(), "true", StringComparison.OrdinalIgnoreCase);
     }
@@ -73,7 +92,7 @@ public static partial class WarningPolicy
 
         var codes = new List<string>();
 
-        foreach (Match element in NoWarnRegex().Matches(projectText))
+        foreach (Match element in NoWarnRegex().Matches(WithoutComments(projectText)))
         {
             foreach (string token in element.Groups[1].Value.Split(
                 [';', ',', ' ', '\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries))
@@ -89,8 +108,45 @@ public static partial class WarningPolicy
         return codes;
     }
 
+    /// <summary>
+    /// PP317: every assembly a project asks for by bare name, which is the pre-SDK resolution path.
+    ///
+    /// The four warnings PP316's policy could not reach were all this: two
+    /// <c>&lt;Reference Include="UIAutomation…" /&gt;</c> items naming assemblies the WindowsDesktop
+    /// framework reference already supplied. MSB3245 could not find them down that path, MSB3243
+    /// then resolved the conflict between the two candidates "arbitrarily", and naming what was
+    /// already there is what created the second candidate to choose between.
+    ///
+    /// A Reference carrying a <c>HintPath</c> is not this: it names a file on disk, which is a
+    /// deliberate answer to where an assembly comes from and not a guess at one.
+    /// </summary>
+    public static IReadOnlyList<string> BareAssemblyReferencesIn(string projectText)
+    {
+        ArgumentNullException.ThrowIfNull(projectText);
+
+        var names = new List<string>();
+
+        foreach (Match item in BareReferenceRegex().Matches(WithoutComments(projectText)))
+        {
+            if (item.Value.Contains("HintPath", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            string name = item.Groups[1].Value;
+            if (!names.Contains(name, StringComparer.OrdinalIgnoreCase))
+                names.Add(name);
+        }
+
+        return names;
+    }
+
     [GeneratedRegex(@"<TreatWarningsAsErrors>([^<]*)</TreatWarningsAsErrors>", RegexOptions.IgnoreCase)]
     private static partial Regex TreatWarningsAsErrorsRegex();
+
+    [GeneratedRegex(@"<Reference\s[^>]*?Include=""([^""]+)""[^>]*?/>", RegexOptions.IgnoreCase)]
+    private static partial Regex BareReferenceRegex();
+
+    [GeneratedRegex(@"<!--.*?-->", RegexOptions.Singleline)]
+    private static partial Regex XmlCommentRegex();
 
     [GeneratedRegex(@"<NoWarn>([^<]*)</NoWarn>", RegexOptions.IgnoreCase)]
     private static partial Regex NoWarnRegex();

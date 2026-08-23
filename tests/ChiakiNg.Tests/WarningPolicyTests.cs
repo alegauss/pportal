@@ -116,4 +116,77 @@ public class WarningPolicyTests(ITestOutputHelper output)
     [Fact]
     public void TheHostIsTheProjectPP22AlreadyNames()
         => Assert.Contains(BuildWorkflow.HostProjectRelativePath, WarningPolicy.GatedProjects);
+
+    /// <summary>
+    /// PP317. No gated project asks for an assembly the framework reference already supplies.
+    ///
+    /// This is the half PP316 could not gate: MSB3245 and MSB3243 are MSBuild's warnings and
+    /// TreatWarningsAsErrors does not reach them, so what stops them coming back is a check on the
+    /// cause rather than on the message. Re-adding either UIAutomation reference turns this red.
+    /// </summary>
+    [Fact]
+    public void NoGatedProjectNamesAnAssemblyTheFrameworkSupplies()
+    {
+        IReadOnlyList<string> projects = WarningPolicy.LocateGatedProjects();
+        Assert.True(projects.Count > 0, "not running out of a checkout");
+
+        IReadOnlyList<string> named =
+        [
+            .. projects
+                .SelectMany(path => WarningPolicy.BareAssemblyReferencesIn(File.ReadAllText(path)))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Order(StringComparer.OrdinalIgnoreCase),
+        ];
+
+        Assert.True(
+            named.Count == 0,
+            "asked for by bare name, which is the pre-SDK path that cannot find them and then "
+                + "resolves the conflict it created arbitrarily: " + string.Join(", ", named));
+    }
+
+    /// <summary>
+    /// PP317: a project's prose is not its project. This check went red on the csproj comment that
+    /// explains why the two UIAutomation references were deleted, because the comment spells one
+    /// out to say what it is talking about.
+    /// </summary>
+    [Fact]
+    public void WhatAnXmlCommentSaysIsNotWhatTheProjectDeclares()
+    {
+        Assert.Empty(WarningPolicy.BareAssemblyReferencesIn(
+            """<!-- Two bare <Reference Include="UIAutomationClient" /> items used to say so. -->"""));
+
+        // The worse direction: a policy commented out reads as a policy that is not there.
+        Assert.False(WarningPolicy.RefusesEveryWarning(
+            "<!-- <TreatWarningsAsErrors>true</TreatWarningsAsErrors> -->"));
+
+        Assert.Empty(WarningPolicy.SuppressedIn("<!-- <NoWarn>CS0108</NoWarn> -->"));
+
+        // And a comment spanning lines is one comment, not a line-by-line filter.
+        Assert.False(WarningPolicy.RefusesEveryWarning(
+            "<!-- once:\n  <TreatWarningsAsErrors>true</TreatWarningsAsErrors>\n-->"));
+    }
+
+    /// <summary>The bare form is the one that goes down the old path, and it is what is read.</summary>
+    [Fact]
+    public void ABareReferenceIsRead()
+    {
+        Assert.Equal(
+            ["UIAutomationClient", "UIAutomationTypes"],
+            WarningPolicy.BareAssemblyReferencesIn(
+                """<Reference Include="UIAutomationClient" /><Reference Include="UIAutomationTypes" />"""));
+    }
+
+    /// <summary>
+    /// And a Reference carrying a HintPath is not the same claim: it names a file on disk, which
+    /// is an answer to where an assembly comes from rather than a guess at one.
+    /// </summary>
+    [Fact]
+    public void AReferenceThatNamesAFileIsNotABareOne()
+    {
+        Assert.Empty(WarningPolicy.BareAssemblyReferencesIn(
+            """<Reference Include="Some.Vendor" HintPath="..\lib\Some.Vendor.dll" />"""));
+
+        Assert.Empty(WarningPolicy.BareAssemblyReferencesIn(
+            "<Reference Include=\"Some.Vendor\"><HintPath>..\\lib\\Some.Vendor.dll</HintPath></Reference>"));
+    }
 }
