@@ -47,6 +47,7 @@
 - ✅ **PP145** **the login's two browserless paths have no port, so a machine WebView2 will not start on cannot log in at all** — the paste-back form, the online-id lookup, and the button only one of them gets back after a failure.
 - ✅ **PP147** **the port has two touchpad answers in two files, so the SDL path is a third place 1079 could be typed** — one type holds both pads and names the third; the SDL path is handed its extents.
 - ✅ **PP174** **nothing stops a second copy of a pad's size being typed back into the port, which is how the Qt client reached three** — one client, one answer, as a check rather than a claim.
+- ✅ **PP320** **the log sanitiser redacts nothing in a hexdump, so RP-RegistKey and RP-Nonce survive in the bytes and the ASCII gutter** — a hexdump row is redacted whole, bytes and gutter, before any line rule runs (design §PP320 superseded: field names and grouped hex leave the tail on the next row unlabelled).
 
 ## Block C — Video and input path
 

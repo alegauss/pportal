@@ -25,6 +25,28 @@ namespace ChiakiNg.Session;
 /// </summary>
 public static partial class SessionLogSanitizer
 {
+    /// <summary>
+    /// PP320: a hexdump row, redacted WHOLE, and it runs before everything else.
+    ///
+    /// The rules below this one read a log line. chiaki_log_hexdump does not write log lines: it
+    /// writes an offset, sixteen bytes as space-separated pairs, and an ASCII gutter of every
+    /// printable character. session.c dumps the session request at line 955 and the response header
+    /// at 1019, so RP-Registkey and RP-Nonce go through here in two shapes at once - as hex, and as
+    /// text in the gutter. Measured against a real row, the long-hex rule never fires because the
+    /// pairs are separated, and the labelled-secret rule does not name either field.
+    ///
+    /// Whole, and not field by field, because a gutter is sixteen characters wide and a secret is
+    /// longer than that. "RP-Registkey: 3e" ends one row and the rest of the value continues on the
+    /// next with no label above it, where no per-line rule can reach it. PP88 is the precedent and
+    /// it is exact: a partial redaction is worse than none, because a reader scanning for leaks
+    /// skips a line that says redacted.
+    ///
+    /// First, so no later rule can mangle a row into something this no longer recognises. Eight
+    /// groups rather than sixteen so a short final row is still caught, and the offset column is
+    /// left wherever the match does not reach it - it names a position and carries nothing.
+    /// </summary>
+    private const string HexdumpRowPattern = @"(?:[0-9a-fA-F]{2} ){8,}[^\n]*";
+
     private const string Ipv4Pattern =
         @"\b(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\b";
 
@@ -66,6 +88,7 @@ public static partial class SessionLogSanitizer
     /// </summary>
     public static IReadOnlyList<string> Patterns { get; } =
     [
+        HexdumpRowPattern,
         Ipv4Pattern,
         Ipv6Pattern,
         LabeledSecretPattern,
@@ -82,7 +105,11 @@ public static partial class SessionLogSanitizer
     {
         ArgumentNullException.ThrowIfNull(message);
 
-        string s = Ipv4().Replace(message, "<redacted-ipv4>");
+        // PP320 first. A row that reaches the rules below arrives already redacted, so none of them
+        // can turn it into something this one would no longer match.
+        string s = HexdumpRow().Replace(message, "<redacted-hexdump>");
+
+        s = Ipv4().Replace(s, "<redacted-ipv4>");
         s = Ipv6().Replace(s, "<redacted-ipv6>");
         s = LabeledSecret().Replace(s, "$1<redacted>");
         s = AccountId().Replace(s, "$1<redacted>");
@@ -94,6 +121,9 @@ public static partial class SessionLogSanitizer
         // Unlabelled long hex identifiers, which is what a console id looks like in the wild.
         return LongHex().Replace(s, "<redacted-hex>");
     }
+
+    [GeneratedRegex(HexdumpRowPattern)]
+    private static partial Regex HexdumpRow();
 
     [GeneratedRegex(Ipv4Pattern)]
     private static partial Regex Ipv4();

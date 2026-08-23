@@ -1408,6 +1408,47 @@ public static class SelfTest
                     == "at 20:10:38 the stream started",
                 SessionLogSanitizer.Sanitize("at 20:10:38 the stream started"));
 
+            // PP320. These two are real rows: chiaki_log_hexdump writes "%6zx %s%s" - an offset in
+            // six columns, sixteen bytes as pairs, then a gutter where anything outside 0x21..0x7e
+            // becomes a dot, which is why the space in each reads as one. session.c dumps the
+            // session request this way at line 955 and the response header at 1019.
+            //
+            // The field is RP-Registkey, with a lowercase k. That is how session.c spells it at
+            // line 893, and a rule written against the obvious RP-RegistKey would have matched
+            // nothing while looking correct.
+            const string keyRow =
+                "    20 52 50 2d 52 65 67 69 73 74 6b 65 79 3a 20 33 65 RP-Registkey:.3e";
+            Check("a hexdump row carrying the registration key is redacted whole",
+                SessionLogSanitizer.Sanitize(keyRow) == "    <redacted-hexdump>",
+                SessionLogSanitizer.Sanitize(keyRow));
+
+            // The offset survives here and not above, because the match begins at the first pair
+            // and this offset's last two characters are not one. It names a position and carries
+            // nothing, so either outcome is safe - stated so a reader is not surprised by the
+            // difference between the two lines.
+            const string postRow =
+                "     0 50 4f 53 54 20 2f 73 63 65 2f 72 70 2f 73 65 73 POST./sce/rp/ses";
+            Check("the gutter goes with it, so the request line does not survive in text",
+                SessionLogSanitizer.Sanitize(postRow) == "     0 <redacted-hexdump>",
+                SessionLogSanitizer.Sanitize(postRow));
+
+            // The other direction, and the one that decides whether this rule is usable at all: a
+            // log is worth keeping only if ordinary lines come through it. Eight pairs is a shape
+            // prose does not have.
+            const string ordinary = "Ctrl sending message type 5, size 20";
+            Check("an ordinary ctrl line is not a hexdump",
+                SessionLogSanitizer.Sanitize(ordinary) == ordinary,
+                SessionLogSanitizer.Sanitize(ordinary));
+
+            // What PP320 was filed against, held as an assertion rather than a note: before this
+            // rule, every pattern in the file read this row and none of them matched it.
+            Check("the rules that read a log line still cannot reach a dump on their own",
+                !SessionLogSanitizer.Patterns
+                    .Where(p => p != SessionLogSanitizer.Patterns[0])
+                    .Any(p => System.Text.RegularExpressions.Regex.IsMatch(
+                        keyRow, p, System.Text.RegularExpressions.RegexOptions.IgnoreCase)),
+                keyRow);
+
             Check("account and duid assignments are redacted",
                 SessionLogSanitizer.Sanitize("account_id=abcdef duid=0011ZZ")
                     == "account_id=<redacted> duid=<redacted>",
@@ -1455,7 +1496,7 @@ public static class SelfTest
             else
             {
                 IReadOnlyList<string> cppPatterns = SanitizerSource.PatternsIn(cppSource);
-                Check("the Qt client declares the same nine patterns, character for character",
+                Check("the Qt client declares the same ten patterns, character for character",
                     cppPatterns.Count == SessionLogSanitizer.Patterns.Count
                     && cppPatterns.OrderBy(p => p, StringComparer.Ordinal)
                         .SequenceEqual(SessionLogSanitizer.Patterns.OrderBy(p => p, StringComparer.Ordinal)),

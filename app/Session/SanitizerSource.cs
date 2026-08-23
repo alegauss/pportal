@@ -8,7 +8,7 @@ namespace ChiakiNg.Session;
 /// The sanitiser's patterns exist twice - once as QRegularExpression literals in
 /// gui/src/sessionlog.cpp, once as constants in <see cref="SessionLogSanitizer"/> - because
 /// libchiaki has no regex engine, so there is no C translation unit both halves could share
-/// without hand-rolling nine matchers. Duplication was therefore the choice; going unchecked was
+/// without hand-rolling ten matchers. Duplication was therefore the choice; going unchecked was
 /// not. This reads the C++ file and hands back the raw-string literals in it, so the selftest can
 /// say the two texts are identical.
 ///

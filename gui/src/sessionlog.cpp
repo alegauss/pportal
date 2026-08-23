@@ -110,6 +110,27 @@ static void LogCb(ChiakiLogLevel level, const char *msg, void *user)
 // Heap-allocated regexes that intentionally outlive static destruction,
 // preventing use-after-free when background threads (e.g. takion) log
 // while the process is shutting down.
+// PP320: a hexdump row, redacted whole, and applied before every rule below.
+//
+// The other rules read a log line. chiaki_log_hexdump does not write log lines - it writes an
+// offset, sixteen bytes as space-separated pairs, and an ASCII gutter of every printable character.
+// session.c dumps the session request and the response header that way, so RP-Registkey and
+// RP-Nonce pass through in two shapes at once, as hex and as text. The long-hex rule cannot fire
+// because the pairs are separated, and the labelled-secret rule names neither field.
+//
+// Whole, and not field by field: the gutter is sixteen characters wide and a secret is longer, so
+// the tail of one continues on the next row with no label above it. PP88's finding applies exactly
+// - a partial redaction is worse than none, because a reader scanning for leaks skips a line that
+// says redacted.
+//
+// This text is duplicated in app/Session/SessionLogSanitizer.cs and the .NET selftest asserts the
+// two are character-identical.
+static const QRegularExpression &sanitize_hexdump_row_re()
+{
+	static const auto *re = new QRegularExpression(
+		R"((?:[0-9a-fA-F]{2} ){8,}[^\n]*)");
+	return *re;
+}
 static const QRegularExpression &sanitize_ipv4_re()
 {
 	static const auto *re = new QRegularExpression(
@@ -185,6 +206,10 @@ static const QRegularExpression &sanitize_session_id_eq_re()
 static QString SanitizeLogMessage(const QString &msg)
 {
 	QString sanitized = msg;
+
+	// PP320 first, so a row that reaches the rules below is already redacted and none of them can
+	// turn it into something this one would no longer match.
+	sanitized.replace(sanitize_hexdump_row_re(), QStringLiteral("<redacted-hexdump>"));
 
 	sanitized.replace(sanitize_ipv4_re(), QStringLiteral("<redacted-ipv4>"));
 	sanitized.replace(sanitize_ipv6_re(), QStringLiteral("<redacted-ipv6>"));
