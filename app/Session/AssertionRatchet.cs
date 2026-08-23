@@ -253,7 +253,7 @@ public static partial class AssertionRatchet
             named.UnionWith(Named(File.ReadAllText(file)));
 
         IReadOnlyDictionary<string, string> exempt = Exemptions(root);
-        IReadOnlyDictionary<string, string> indexed = Index(root);
+        IReadOnlyDictionary<string, IReadOnlyList<string>> indexed = Index(root);
 
         return
         [
@@ -274,16 +274,21 @@ public static partial class AssertionRatchet
     ///
     /// A line here is exactly as strong as an id in a summary and NO STRONGER. It is generated from
     /// git rather than typed - the commit whose subject names the task, and the assertion files it
-    /// touched, kept only where there is exactly one - so no line is a guess between two, and a
-    /// commit's file list never changes. A false line is added the way a false exemption is:
-    /// written, and read in the diff.
+    /// touched - and a commit's file list never changes, so no line goes stale. A false line is
+    /// added the way a false exemption is: written, and read in the diff.
+    ///
+    /// PP315: ALL the files, not the one. The first rule kept a claim only where the commit touched
+    /// exactly one assertion file, so that no line was a guess between two - and it excluded eleven
+    /// tasks whose commits touched two, which is stronger evidence rather than weaker. PP160
+    /// shipped ConsoleSettingsTests and ConsoleSettingsViewTests: the model and the view of one
+    /// screen, both of them holding it.
     /// </summary>
-    public static IReadOnlyDictionary<string, string> Index(string root)
+    public static IReadOnlyDictionary<string, IReadOnlyList<string>> Index(string root)
     {
         ArgumentNullException.ThrowIfNull(root);
 
         string path = Path.Combine(root, IndexRelativePath);
-        return File.Exists(path) ? IndexIn(File.ReadAllText(path)) : ReadOnlyEmpty;
+        return File.Exists(path) ? IndexIn(File.ReadAllText(path)) : NoClaims;
     }
 
     /// <summary>
@@ -293,21 +298,25 @@ public static partial class AssertionRatchet
     /// exemption's reason follows, and for the same reason: a bare list of ids is something
     /// appended to in a hurry.
     /// </summary>
-    public static IReadOnlyDictionary<string, string> IndexIn(string text)
+    public static IReadOnlyDictionary<string, IReadOnlyList<string>> IndexIn(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
 
-        var claims = new Dictionary<string, string>(StringComparer.Ordinal);
+        var claims = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
 
         foreach (Match line in IndexRegex().Matches(text))
         {
-            string file = line.Groups["file"].Value.Trim();
-            if (file.Length > 0)
-                claims.TryAdd(line.Groups["id"].Value, file);
+            string[] files = line.Groups["files"].Value
+                .Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            if (files.Length > 0)
+                claims.TryAdd(line.Groups["id"].Value, files);
         }
 
         return claims;
     }
+
+    private static readonly Dictionary<string, IReadOnlyList<string>> NoClaims = [];
 
     /// <summary>
     /// PP310: the tasks no assertion can cover, each with the reason, read from the ceiling file.
@@ -433,7 +442,7 @@ public static partial class AssertionRatchet
     //
     // Anchored at the start of a line so a comment cannot become a claim, and the path is required
     // for the reason an exemption's reason is.
-    [GeneratedRegex(@"^(?<id>[A-Za-z]+[0-9]+)[ \t]+(?<file>[^\r\n#]*)$", RegexOptions.Multiline)]
+    [GeneratedRegex(@"^(?<id>[A-Za-z]+[0-9]+)[ \t]+(?<files>[^\r\n#]*)$", RegexOptions.Multiline)]
     private static partial Regex IndexRegex();
 
     // # exempt PP307 - a pass over a list, whose whole output is the prose above.

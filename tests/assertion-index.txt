@@ -14,6 +14,7 @@
 #
 # A false line is added the way a false exemption is - written, and read in the diff.
 PP3 app/SelfTest.cs
+PP4 app/SelfTest.cs
 PP80 app/SelfTest.cs
 PP84 app/SelfTest.cs
 PP85 app/SelfTest.cs
@@ -42,22 +43,33 @@ PP115 app/SelfTest.cs
 PP116 app/SelfTest.cs
 PP120 tests/ChiakiNg.Tests/GmacVectorTests.cs
 PP122 tests/ChiakiNg.Tests/BitstreamTruncationTests.cs
+PP134 app/SelfTest.cs tests/ChiakiNg.Tests/RenderProbeTests.cs
 PP136 tests/ChiakiNg.Tests/FocusChainBehaviorTests.cs
 PP137 tests/ChiakiNg.Tests/FocusVisualTests.cs
 PP138 tests/ChiakiNg.Tests/ConsoleListTests.cs
 PP139 tests/ChiakiNg.Tests/DialogViewModelTests.cs
 PP143 tests/ChiakiNg.Tests/ConsoleListViewTests.cs
 PP144 tests/ChiakiNg.Tests/PsnTokenExchangeTests.cs
+PP145 tests/ChiakiNg.Tests/PsnLoginViewModelTests.cs tests/ChiakiNg.Tests/PsnLoginViewTests.cs
 PP146 tests/ChiakiNg.Tests/JsonCTests.cs
+PP148 tests/ChiakiNg.Tests/VideoSettingsTests.cs tests/ChiakiNg.Tests/VideoSettingsViewTests.cs
 PP150 tests/ChiakiNg.Tests/ReorderQueueOracleTests.cs
+PP151 app/SelfTest.cs tests/ChiakiNg.Tests/FrameTimingTests.cs
 PP152 tests/ChiakiNg.Tests/VlRbspOracleTests.cs
 PP153 tests/ChiakiNg.Tests/BitstreamParserOracleTests.cs
+PP154 tests/ChiakiNg.Tests/BitstreamRewriteOracleTests.cs tests/ChiakiNg.Tests/VlRbspOracleTests.cs
+PP155 tests/ChiakiNg.Tests/DisplaySettingsTests.cs tests/ChiakiNg.Tests/DisplaySettingsViewTests.cs
 PP156 tests/ChiakiNg.Tests/SteamShortcutTests.cs
+PP157 tests/ChiakiNg.Tests/StreamSettingsTests.cs tests/ChiakiNg.Tests/StreamSettingsViewTests.cs
 PP158 tests/ChiakiNg.Tests/AudioSettingsTests.cs
+PP160 tests/ChiakiNg.Tests/ConsoleSettingsTests.cs tests/ChiakiNg.Tests/ConsoleSettingsViewTests.cs
+PP161 tests/ChiakiNg.Tests/KeySettingsTests.cs tests/ChiakiNg.Tests/KeySettingsViewTests.cs
+PP166 tests/ChiakiNg.Tests/ConfigSettingsTests.cs tests/ChiakiNg.Tests/ConfigSettingsViewTests.cs
 PP169 tests/ChiakiNg.Tests/PlaceboPresetsTests.cs
 PP170 tests/ChiakiNg.Tests/PlaceboTuningOptionsTests.cs
 PP174 tests/ChiakiNg.Tests/TouchpadSingleAnswerTests.cs
 PP175 tests/ChiakiNg.Tests/RenderProbeTests.cs
+PP178 tests/ChiakiNg.Tests/BaselineLineTests.cs tests/ChiakiNg.Tests/PlaceboTuningOptionsTests.cs
 PP180 tests/ChiakiNg.Tests/BaselineStageTests.cs
 PP181 tests/ChiakiNg.Tests/BaselineDefaultsTests.cs
 PP185 tests/ChiakiNg.Tests/SuiteCoverageTests.cs

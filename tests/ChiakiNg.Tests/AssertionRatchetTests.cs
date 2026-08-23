@@ -160,15 +160,21 @@ public class AssertionRatchetTests(ITestOutputHelper output)
     [Fact]
     public void AClaimWithNoFileIsNotOne()
     {
-        IReadOnlyDictionary<string, string> claims = AssertionRatchet.IndexIn("""
+        IReadOnlyDictionary<string, IReadOnlyList<string>> claims = AssertionRatchet.IndexIn("""
             # PP9001 tests/Commented.cs
             PP9002 tests/ChiakiNg.Tests/RealTests.cs
             PP9003
-            PP9004\t
+            PP9005 tests/ChiakiNg.Tests/ModelTests.cs tests/ChiakiNg.Tests/ViewTests.cs
             """);
 
-        Assert.Single(claims);
-        Assert.Equal("tests/ChiakiNg.Tests/RealTests.cs", claims["PP9002"]);
+        Assert.Equal(2, claims.Count);
+        Assert.Equal(["tests/ChiakiNg.Tests/RealTests.cs"], claims["PP9002"]);
+
+        // PP315: several files is the ordinary case, not the exception - a screen ships its model
+        // and its view together, and the commit that shipped it touched both.
+        Assert.Equal(
+            ["tests/ChiakiNg.Tests/ModelTests.cs", "tests/ChiakiNg.Tests/ViewTests.cs"],
+            claims["PP9005"]);
 
         // A comment is not a claim, and a bare id is not one either.
         Assert.DoesNotContain("PP9001", claims);
@@ -188,14 +194,15 @@ public class AssertionRatchetTests(ITestOutputHelper output)
         string? root = SanitizerSource.RepositoryRoot();
         Assert.True(root is not null, "not running out of a checkout");
 
-        IReadOnlyDictionary<string, string> claims = AssertionRatchet.Index(root);
+        IReadOnlyDictionary<string, IReadOnlyList<string>> claims = AssertionRatchet.Index(root);
         Assert.NotEmpty(claims);
 
         string[] missing =
         [
             .. claims
-                .Where(claim => !File.Exists(Path.Combine(root, claim.Value.Replace('/', Path.DirectorySeparatorChar))))
-                .Select(claim => $"{claim.Key} -> {claim.Value}"),
+                .SelectMany(claim => claim.Value.Select(file => (claim.Key, file)))
+                .Where(claim => !File.Exists(Path.Combine(root, claim.file.Replace('/', Path.DirectorySeparatorChar))))
+                .Select(claim => $"{claim.Key} -> {claim.file}"),
         ];
 
         Assert.True(missing.Length == 0,

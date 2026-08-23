@@ -41,12 +41,47 @@
 #
 # exempt PP307 - a pass over a list; its whole output is the split written above.
 #
+# PP315: the twenty that could not have had a test, each said rather than counted.
+#
+# Four changed the gates themselves, where the gate IS the assertion - a test asserting that
+# a build script builds is the build script:
+# exempt PP56 - compile.cmd builds chiaki-unit; the suite linking at all is the assertion.
+# exempt PP67 - test.cmd launches the suite; what it proves is that the suite runs.
+# exempt PP74 - compile.cmd builds app/; the .NET host compiling is the assertion.
+# exempt PP75 - test.cmd runs the host's selftest; the selftest running is the assertion.
+#
+# Sixteen are measurements, whose deliverable was a number in a report and not a behaviour.
+# A test over one would assert that this machine still measures what it measured:
+# exempt PP39 - the baseline of the four counters this build already draws on screen.
+# exempt PP40 - a measurement; its result is the number it reported.
+# exempt PP41 - a measurement; its result is the number it reported.
+# exempt PP42 - a measurement; its result is the number it reported.
+# exempt PP43 - the two present paths measured before PP9 committed to one.
+# exempt PP45 - a measurement; its result is the number it reported.
+# exempt PP46 - the startup and installer deltas; the delta is the deliverable.
+# exempt PP47 - an evaluation: DLSS needs inputs a decoded stream does not carry.
+# exempt PP48 - whether preferring the cuda decoder helps, which is a number.
+# exempt PP54 - a measurement; its result is the number it reported.
+# exempt PP58 - the airspace path's halved frame rate, measured and unexplained.
+# exempt PP61 - a fix to the startup harness in spike/, which the suite does not build.
+# exempt PP62 - no published Windows release carries Chromium, measured.
+# exempt PP65 - d3d11va's decode submission stall, measured as a percentile.
+# exempt PP66 - the decode-path spike's result.json naming its adapter.
+# exempt PP71 - the cuda decoder's send percentile against d3d11va's.
+#
 # 95 is where PP309 left it, having written the assertions PP225 shipped without - the one
 # code change in the port of which that was true, and the whole of what the split above found.
 #
 # PP314 took it to 32. Not by writing tests: by recording, in tests/assertion-index.txt, the
 # assertion file each task's OWN shipping commit carried - which is the same claim as an id in
 # a summary, made once where it can be checked instead of edited into sixty files. 63 lines,
-# generated from git rather than typed. What is left below is closer to what the port owes,
-# and `ChiakiNg.exe --ratchet` says which they are.
-32
+# generated from git rather than typed.
+#
+# PP315 took it to ZERO, and zero is the number this file was for. 75 index lines and 21
+# exemptions - each of the exemptions a sentence, below - and not one test written to move it,
+# because not one of the 96 was a task that needed a test written. That was PP307's finding
+# and this is it applied.
+#
+# From here the ratchet does what PP38 built it for: the next task that ships with nothing
+# asserting it takes this to 1, and the suite goes red on the commit that did it.
+0
