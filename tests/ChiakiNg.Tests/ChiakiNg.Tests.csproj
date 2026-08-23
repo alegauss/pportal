@@ -20,6 +20,12 @@
     <!-- The app's own single-file gate does not apply here: this project is never published as
          one, and its assembly has a real path on disk. -->
     <EnableSingleFileAnalyzer>false</EnableSingleFileAnalyzer>
+    <!-- PP316: warnings are errors here too, and this is the project that needed it most. The two
+         the compiler was printing were both about assertions - one comparing two literals, one
+         reporting an empty collection without naming what was in it - so what a warning meant in
+         THIS assembly was "a test says less than it looks like it says". That is the same failure
+         PP56 and PP226 were filed for, arriving through the one channel already pointed at it. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
   <ItemGroup>

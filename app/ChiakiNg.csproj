@@ -47,6 +47,17 @@
          release, and a warning in a build that prints hundreds of lines is invisible too. -->
     <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
     <WarningsAsErrors>$(WarningsAsErrors);IL3000;IL3001;IL3002</WarningsAsErrors>
+    <!-- PP316: and the same answer for every other warning, for the reason the paragraph above
+         gives about IL3000. This build prints hundreds of lines and nobody reads them, so a
+         warning is a message with no recipient: xUnit2000 named a test assertion that compared
+         two literals and could not fail, on every run, from the commit that wrote it until a
+         session happened to read the log. Three codes as errors and the rest as prose was a
+         list, and a list only guards what somebody thought of - which is PP279's finding about
+         the root-file list, one file out.
+
+         Kept alongside the line above rather than replacing it: the three IL codes are named
+         because their reason is specific and survives any later decision to scope this down. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
   <!-- One self-contained .exe, Release only. Not a style choice: claude-tray measured what the

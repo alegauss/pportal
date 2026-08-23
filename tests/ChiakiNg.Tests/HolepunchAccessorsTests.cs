@@ -45,10 +45,16 @@ public class HolepunchAccessorsTests
         Assert.Equal("chiaki_holepunch_session_get_stun_allocation", guarded.Name);
     }
 
-    /// <summary>And none of them states a length.</summary>
+    /// <summary>
+    /// And none of them states a length.
+    ///
+    /// PP316: the predicate stays with the assertion rather than being filtered away first. An
+    /// <c>Assert.Empty</c> over a <c>Where</c> reports "the collection was not empty" and never
+    /// names the accessor that broke it, which is the whole of what a red run has to say.
+    /// </summary>
     [Fact]
     public void NoneOfThemStatesALength()
-        => Assert.Empty(HolepunchAccessors.All.Where(a => a.StatesALength));
+        => Assert.DoesNotContain(HolepunchAccessors.All, a => a.StatesALength);
 
     /// <summary>The socket getter hands back the session's own handle, not a copy.</summary>
     [Fact]

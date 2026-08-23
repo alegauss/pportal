@@ -100,14 +100,22 @@ public class HolepunchIdentifiersTests
             (HolepunchIdentifiers.DeviceUidBuffer * 2) + 1, HolepunchIdentifiers.DeviceUidBuffer));
     }
 
-    /// <summary>The UUID's shape: thirty-six characters, four dashes, a version and a variant.</summary>
+    /// <summary>
+    /// The UUID's shape: thirty-six characters, four dashes, a version and a variant.
+    ///
+    /// PP316: the dash count is read off <c>uuid</c>. What stood here was
+    /// <c>Assert.Equal("--- -".Replace(" ", "").Length, 4)</c> - the length of a literal written in
+    /// this file, against 4 - which passed without touching the UUID and would have passed against
+    /// the empty string. The loop below is not the same claim: it checks the four declared
+    /// positions carry a dash, and a FIFTH dash anywhere else passes it.
+    /// </summary>
     [Fact]
     public void TheUuidHasTheShapeItShould()
     {
         string uuid = HolepunchIdentifiers.Uuid();
 
         Assert.Equal(36, uuid.Length);
-        Assert.Equal("--- -".Replace(" ", "", StringComparison.Ordinal).Length, 4);
+        Assert.Equal(4, uuid.Count(c => c == '-'));
 
         foreach (int at in HolepunchIdentifiers.UuidDashes)
             Assert.Equal('-', uuid[at]);

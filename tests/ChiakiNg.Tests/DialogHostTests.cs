@@ -142,7 +142,13 @@ public class DialogHostTests
 
         var view = new DialogHostView { DataContext = model };
         var screen = new ConfirmDialogView();
-        view.Content = screen;
+
+        // PP316: Screen, and it used to be Content. Spelled Content this reached the property that
+        // hid ContentControl.Content, and which of the two a caller got depended on the static type
+        // of the reference - so the same line through a UserControl or a ContentControl variable
+        // would have REPLACED the host's whole markup tree with the screen instead of putting it
+        // inside the ContentHost. The compiler said so on every build, as CS0108.
+        view.Screen = screen;
         Realise(view);
 
         Assert.Equal("Display Settings", ((TextBlock)view.FindName("TitleLabel")).Text);
@@ -151,7 +157,7 @@ public class DialogHostTests
         var action = (Button)view.FindName("ActionButton");
         Assert.Equal("Create", action.Content);
         Assert.False(action.IsEnabled);
-        Assert.Same(screen, view.Content);
+        Assert.Same(screen, view.Screen);
 
         model.ButtonEnabled = true;
         Realise(view);

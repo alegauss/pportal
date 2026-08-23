@@ -457,29 +457,6 @@ zero should be decided rather than discovered.
 
 ## Block G — Test discipline
 
-### §PP316 The warnings the gate does not read
-
-`TheUuidHasTheShapeItShould` is documented as "thirty-six characters, four dashes, a
-version and a variant", and its second assertion is `Assert.Equal("--- -".Replace(" ",
-"").Length, 4)` - the length of a literal written in the test, against 4. It passes for
-a reason that has nothing to do with a UUID, and it would pass if `Uuid()` returned the
-empty string. The dash positions are checked on the next line, so what the count loses
-is small; what is lost for good is a reader's belief that the green above the docstring
-means the docstring.
-
-The compiler has been saying so, in every run. xUnit2000 names that call; xUnit2029
-names the `Assert.Empty` in `HolepunchAccessorsTests` where `DoesNotContain` is meant,
-which reports that something stated a length without ever saying which; CS0108 names
-`DialogHostView.Content` hiding `ContentControl.Content` - two properties under one
-name, where which one a binding reaches depends on the static type of the reference
-holding it. All three print and all three pass, because `WarningsAsErrors` in
-`app/ChiakiNg.csproj` lists IL3000, IL3001 and IL3002 and nothing else.
-
-This is PP56 and PP226 one level along. Both were a green that proved nothing, and both
-were found by a person reading rather than by the gate that was supposed to be the
-reading. The correction has two halves and only the second is durable: fix the four
-sites, then make the build refuse the next one instead of printing it.
-
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed

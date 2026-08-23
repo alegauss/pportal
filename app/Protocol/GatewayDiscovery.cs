@@ -96,7 +96,10 @@ public static class GatewayDiscovery
     {
         return ending switch
         {
-            DiscoveryEnding.Abandoned => (GatewayStatus.NotFound, CanBeOverwritten: true),
+            // Abandoned: the thread is still running, so it can still overwrite this. The name is
+            // on the return type above and not repeated here - an element name on a switch arm is
+            // dropped against a named target type, which the compiler reports and nothing read.
+            DiscoveryEnding.Abandoned => (GatewayStatus.NotFound, true),
 
             // Both settled paths agree with what the work found.
             _ => (threadWouldFind ? GatewayStatus.Found : GatewayStatus.NotFound, false),

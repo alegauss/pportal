@@ -296,6 +296,7 @@
 - ✅ **PP36** **the only CI job is the roadkeep lint gate, so no test result can turn a branch red** — both suites fail the job that builds, and their results are kept from the run that goes red.
 - ✅ **PP38** **nothing counts the shipped lines that carry no assertion, so the rule is a sentence rather than a gate** — the shipped tasks no assertion names, counted against a ceiling that may fall and not rise.
 - ✅ **PP312** **brief has offered the same unstartable task four sessions running, because what blocks it is a console and not a dep** — five lines say what they wait on, and the names are held against the config that declares them.
+- ✅ **PP316** **a test named for the UUID's four dashes asserts one literal against another, and the analyzer says so in every run** — TreatWarningsAsErrors on both gated projects, and the four it would have refused are fixed - one of them a property whose rename found a caller no grep for its type could see.
 
 ## Block H — Performance and telemetry
 

@@ -23,8 +23,16 @@ public partial class DialogHostView : UserControl
         PreviewKeyDown += OnPreviewKeyDown;
     }
 
-    /// <summary>The screen this host is showing.</summary>
-    public object? Content
+    /// <summary>
+    /// The screen this host is showing.
+    ///
+    /// PP316: named Screen and not Content. It used to be Content, which hides
+    /// <see cref="ContentControl.Content"/> that this control inherits - and the two are different
+    /// objects, because the base one is the whole markup tree in DialogHostView.xaml and this one
+    /// is what sits inside the ContentHost within it. Which of them a caller reached depended on
+    /// the static type of the reference holding the view, and nothing in the tree read either.
+    /// </summary>
+    public object? Screen
     {
         get => ContentHost.Content;
         set => ContentHost.Content = value;
