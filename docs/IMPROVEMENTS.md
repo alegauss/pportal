@@ -457,6 +457,29 @@ zero should be decided rather than discovered.
 
 ## Block G — Test discipline
 
+### §PP318 The shape no analyzer names
+
+PP316 fixed one assertion that compared a literal to a literal and then made the
+compiler refuse the next one. It cannot: xUnit2000 fires on a literal in the WRONG
+ARGUMENT, not on two of them, and `Assert.Equal(0, 0)` is well-formed by every rule the
+analyzers carry. One grep over `tests\` for the shape found it standing in
+`NatDiagnosisTests`, under a comment reading "the measurement said zero; what the
+guessing uses is one" - a contrast the line below it already draws in full, since
+`IncrementUsed(measuredIncrement: 0, verdict)` names the zero and asserts the one.
+
+So the policy PP316 installed does not reach the defect PP316 was filed for. What does
+reach it is a check on the source, which is machinery this tree already has: fifteen
+blocks of the selftest read a C or C++ file and compare the port against it, and PP280
+and PP304 read prose the same way.
+
+The claim is deliberately a SHAPE and not a meaning. Two literals either side of an
+`Assert.Equal`, an `Assert.True(true)`, an `Assert.False(false)` - each is decidable by
+reading the call, and none can be true about the code under test. What it will not find
+is an assertion over constants reaching it through a local, or one whose subject is a
+fixture the test also wrote. Those need a reader that resolves names, and one that tried
+would be turned off within a week for what it reported wrongly - the argument PP278
+already made about guarding by convention.
+
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed
