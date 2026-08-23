@@ -140,6 +140,7 @@
 - ✅ **PP310** **a task whose output is prose cannot ship: nothing asserts it, so the debt rises past a ceiling that may not rise** — an exempt line in the ceiling file, refused unless it carries the reason it is exempt.
 - ✅ **PP311** **an id written in a fixture or an expected value pays a real task's debt, because the join reads the whole file** — the join cannot be parsed apart, so every payment is auditable: --ratchet <id> says where.
 - ✅ **PP308** **the ratchet's id join misses 75 tasks whose test shipped in the same commit, and only git can see that** — git answers where the test already is, as a diagnostic; the gate stays the id join, free and offline.
+- ✅ **PP314** **the ceiling says 95 and the port owes about one, so the number a reader acts on overstates the debt by two orders** — an index of which assertion file each shipping commit carried, generated from git: 95 to 32.
 
 ## Block F — Managed core
 

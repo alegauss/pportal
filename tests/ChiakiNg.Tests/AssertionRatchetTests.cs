@@ -152,6 +152,67 @@ public class AssertionRatchetTests(ITestOutputHelper output)
     }
 
     /// <summary>
+    /// PP314: a claim needs a file, the way an exemption needs a reason.
+    ///
+    /// A bare list of ids is something appended to in a hurry; an id with a path beside it is a
+    /// statement that can be checked against the commit that made it.
+    /// </summary>
+    [Fact]
+    public void AClaimWithNoFileIsNotOne()
+    {
+        IReadOnlyDictionary<string, string> claims = AssertionRatchet.IndexIn("""
+            # PP9001 tests/Commented.cs
+            PP9002 tests/ChiakiNg.Tests/RealTests.cs
+            PP9003
+            PP9004\t
+            """);
+
+        Assert.Single(claims);
+        Assert.Equal("tests/ChiakiNg.Tests/RealTests.cs", claims["PP9002"]);
+
+        // A comment is not a claim, and a bare id is not one either.
+        Assert.DoesNotContain("PP9001", claims);
+        Assert.DoesNotContain("PP9003", claims);
+    }
+
+    /// <summary>
+    /// And the real index: every file it names exists, and every id it claims actually shipped.
+    ///
+    /// Both directions matter. A path that is gone means the claim points at nothing - the file
+    /// was renamed and the coverage went with it. An id that never shipped is a line about nothing,
+    /// and the likeliest way to get one is a typo.
+    /// </summary>
+    [Fact]
+    public void EveryClaimNamesAFileThatExistsAndATaskThatShipped()
+    {
+        string? root = SanitizerSource.RepositoryRoot();
+        Assert.True(root is not null, "not running out of a checkout");
+
+        IReadOnlyDictionary<string, string> claims = AssertionRatchet.Index(root);
+        Assert.NotEmpty(claims);
+
+        string[] missing =
+        [
+            .. claims
+                .Where(claim => !File.Exists(Path.Combine(root, claim.Value.Replace('/', Path.DirectorySeparatorChar))))
+                .Select(claim => $"{claim.Key} -> {claim.Value}"),
+        ];
+
+        Assert.True(missing.Length == 0,
+            "these claims name a file this tree does not have, so the coverage they record points "
+                + "at nothing: " + string.Join(", ", missing));
+
+        string? ledgerPath = AssertionRatchet.LocateLedger();
+        Assert.True(ledgerPath is not null, "no ledger to check the index against");
+
+        IReadOnlySet<string> shipped = AssertionRatchet.Shipped(File.ReadAllText(ledgerPath));
+        string[] unknown = [.. claims.Keys.Where(id => !shipped.Contains(id))];
+
+        Assert.True(unknown.Length == 0,
+            "these are claimed and never shipped, so they cover nothing: " + string.Join(", ", unknown));
+    }
+
+    /// <summary>
     /// PP308: which of a commit's changed paths could hold an assertion.
     ///
     /// The same three places the walk covers, asked of a path instead - which is what lets the file

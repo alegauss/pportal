@@ -41,6 +41,9 @@ public static partial class AssertionRatchet
     /// <summary>Where the ceiling is kept. Not governed: it is a measurement, not a plan.</summary>
     public const string CeilingRelativePath = @"tests\assertion-ratchet.txt";
 
+    /// <summary>PP314: where the id-to-assertion claims are recorded, one per line.</summary>
+    public const string IndexRelativePath = @"tests\assertion-index.txt";
+
     /// <summary>
     /// The trees an assertion can live in, and the one file outside them that is also assertions.
     /// </summary>
@@ -250,13 +253,60 @@ public static partial class AssertionRatchet
             named.UnionWith(Named(File.ReadAllText(file)));
 
         IReadOnlyDictionary<string, string> exempt = Exemptions(root);
+        IReadOnlyDictionary<string, string> indexed = Index(root);
 
         return
         [
             .. shipped
-                .Where(id => !named.Contains(id) && !exempt.ContainsKey(id))
+                .Where(id => !named.Contains(id) && !exempt.ContainsKey(id) && !indexed.ContainsKey(id))
                 .OrderByDescending(NumberOf),
         ];
+    }
+
+    /// <summary>
+    /// PP314: the assertion file each task's own shipping commit carried, read from the index.
+    ///
+    /// The ceiling said 95 and PP307 proved the port owed about one - because seventy-five of them
+    /// have their assertions written under the id the work continued, PP300's under PP29 and
+    /// PP208's in HolepunchIdentifiersTests. Naming both ids in each file is sixty careful edits to
+    /// prose that is already careful, four characters at a time; recording the claim once, where it
+    /// can be checked, is the same claim and one file.
+    ///
+    /// A line here is exactly as strong as an id in a summary and NO STRONGER. It is generated from
+    /// git rather than typed - the commit whose subject names the task, and the assertion files it
+    /// touched, kept only where there is exactly one - so no line is a guess between two, and a
+    /// commit's file list never changes. A false line is added the way a false exemption is:
+    /// written, and read in the diff.
+    /// </summary>
+    public static IReadOnlyDictionary<string, string> Index(string root)
+    {
+        ArgumentNullException.ThrowIfNull(root);
+
+        string path = Path.Combine(root, IndexRelativePath);
+        return File.Exists(path) ? IndexIn(File.ReadAllText(path)) : ReadOnlyEmpty;
+    }
+
+    /// <summary>
+    /// The claims in an index: <c>PP208 tests/ChiakiNg.Tests/HolepunchIdentifiersTests.cs</c>.
+    ///
+    /// A line naming an id and no path is not a claim and is not read as one - the same rule an
+    /// exemption's reason follows, and for the same reason: a bare list of ids is something
+    /// appended to in a hurry.
+    /// </summary>
+    public static IReadOnlyDictionary<string, string> IndexIn(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+
+        var claims = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        foreach (Match line in IndexRegex().Matches(text))
+        {
+            string file = line.Groups["file"].Value.Trim();
+            if (file.Length > 0)
+                claims.TryAdd(line.Groups["id"].Value, file);
+        }
+
+        return claims;
     }
 
     /// <summary>
@@ -378,6 +428,13 @@ public static partial class AssertionRatchet
     // PP292, and not PP2 inside it.
     [GeneratedRegex(@"\bPP[0-9]+\b")]
     private static partial Regex IdRegex();
+
+    // PP208 tests/ChiakiNg.Tests/HolepunchIdentifiersTests.cs
+    //
+    // Anchored at the start of a line so a comment cannot become a claim, and the path is required
+    // for the reason an exemption's reason is.
+    [GeneratedRegex(@"^(?<id>[A-Za-z]+[0-9]+)[ \t]+(?<file>[^\r\n#]*)$", RegexOptions.Multiline)]
+    private static partial Regex IndexRegex();
 
     // # exempt PP307 - a pass over a list, whose whole output is the prose above.
     //

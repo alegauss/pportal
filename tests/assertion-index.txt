@@ -1,0 +1,78 @@
+﻿# PP314: what already holds what.
+#
+# One line per shipped task, naming the assertion file its OWN shipping commit carried. The
+# ratchet (PP38) reads these as coverage, exactly as strong as an id written in a test's
+# summary and no stronger - because that is what they are: the same claim, recorded once
+# where it can be checked instead of edited into sixty files four characters at a time.
+#
+# GENERATED FROM GIT, not typed. For each id, the commit whose subject names it in scope, and
+# the assertion files that commit touched - kept only where there is exactly ONE, so no line
+# here is a guess between two. A commit's file list never changes, so no line goes stale.
+#
+# Regenerate the same way it was made: `ChiakiNg.exe --ratchet <id>` prints the same answer
+# for one id, which is how a line here is checked without trusting the file that holds it.
+#
+# A false line is added the way a false exemption is - written, and read in the diff.
+PP3 app/SelfTest.cs
+PP80 app/SelfTest.cs
+PP84 app/SelfTest.cs
+PP85 app/SelfTest.cs
+PP86 app/SelfTest.cs
+PP89 app/SelfTest.cs
+PP90 app/SelfTest.cs
+PP92 app/SelfTest.cs
+PP94 app/SelfTest.cs
+PP95 app/SelfTest.cs
+PP96 app/SelfTest.cs
+PP97 app/SelfTest.cs
+PP99 app/SelfTest.cs
+PP100 app/SelfTest.cs
+PP101 app/SelfTest.cs
+PP102 app/SelfTest.cs
+PP103 app/SelfTest.cs
+PP104 app/SelfTest.cs
+PP106 app/SelfTest.cs
+PP109 test/reorderqueue.c
+PP110 app/SelfTest.cs
+PP111 app/SelfTest.cs
+PP112 app/SelfTest.cs
+PP113 app/SelfTest.cs
+PP114 app/SelfTest.cs
+PP115 app/SelfTest.cs
+PP116 app/SelfTest.cs
+PP120 tests/ChiakiNg.Tests/GmacVectorTests.cs
+PP122 tests/ChiakiNg.Tests/BitstreamTruncationTests.cs
+PP136 tests/ChiakiNg.Tests/FocusChainBehaviorTests.cs
+PP137 tests/ChiakiNg.Tests/FocusVisualTests.cs
+PP138 tests/ChiakiNg.Tests/ConsoleListTests.cs
+PP139 tests/ChiakiNg.Tests/DialogViewModelTests.cs
+PP143 tests/ChiakiNg.Tests/ConsoleListViewTests.cs
+PP144 tests/ChiakiNg.Tests/PsnTokenExchangeTests.cs
+PP146 tests/ChiakiNg.Tests/JsonCTests.cs
+PP150 tests/ChiakiNg.Tests/ReorderQueueOracleTests.cs
+PP152 tests/ChiakiNg.Tests/VlRbspOracleTests.cs
+PP153 tests/ChiakiNg.Tests/BitstreamParserOracleTests.cs
+PP156 tests/ChiakiNg.Tests/SteamShortcutTests.cs
+PP158 tests/ChiakiNg.Tests/AudioSettingsTests.cs
+PP169 tests/ChiakiNg.Tests/PlaceboPresetsTests.cs
+PP170 tests/ChiakiNg.Tests/PlaceboTuningOptionsTests.cs
+PP174 tests/ChiakiNg.Tests/TouchpadSingleAnswerTests.cs
+PP175 tests/ChiakiNg.Tests/RenderProbeTests.cs
+PP180 tests/ChiakiNg.Tests/BaselineStageTests.cs
+PP181 tests/ChiakiNg.Tests/BaselineDefaultsTests.cs
+PP185 tests/ChiakiNg.Tests/SuiteCoverageTests.cs
+PP186 tests/ChiakiNg.Tests/CurlSemanticsTests.cs
+PP187 tests/ChiakiNg.Tests/HttpTransferTests.cs
+PP188 tests/ChiakiNg.Tests/PushSocketTests.cs
+PP189 tests/ChiakiNg.Tests/HttpTransferTests.cs
+PP193 tests/ChiakiNg.Tests/CandidateTests.cs
+PP199 tests/ChiakiNg.Tests/PortAllocationTests.cs
+PP200 tests/ChiakiNg.Tests/StunMessageTests.cs
+PP202 tests/ChiakiNg.Tests/RudpSendBufferTests.cs
+PP203 tests/ChiakiNg.Tests/RudpExchangeTests.cs
+PP204 tests/ChiakiNg.Tests/PortGuessingTests.cs
+PP205 tests/ChiakiNg.Tests/NatProbeTests.cs
+PP206 tests/ChiakiNg.Tests/PsnEndpointsTests.cs
+PP208 tests/ChiakiNg.Tests/HolepunchIdentifiersTests.cs
+PP209 tests/ChiakiNg.Tests/DeviceListTests.cs
+PP285 tests/ChiakiNg.Tests/CountedClaimTests.cs

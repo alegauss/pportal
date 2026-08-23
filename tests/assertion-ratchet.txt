@@ -43,4 +43,10 @@
 #
 # 95 is where PP309 left it, having written the assertions PP225 shipped without - the one
 # code change in the port of which that was true, and the whole of what the split above found.
-95
+#
+# PP314 took it to 32. Not by writing tests: by recording, in tests/assertion-index.txt, the
+# assertion file each task's OWN shipping commit carried - which is the same claim as an id in
+# a summary, made once where it can be checked instead of edited into sixty files. 63 lines,
+# generated from git rather than typed. What is left below is closer to what the port owes,
+# and `ChiakiNg.exe --ratchet` says which they are.
+32
