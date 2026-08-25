@@ -13,6 +13,7 @@
 #include <chiaki/fec.h>
 #include <chiaki/ffmpegdecoder.h>
 #include <chiaki/frameprocessor.h>
+#include <chiaki/messagetap.h>
 
 #include <libavutil/frame.h>
 
@@ -159,6 +160,64 @@ CHIAKI_SHIM_API void chiaki_shim_log_write(void *log, int32_t level, const char 
 CHIAKI_SHIM_API char chiaki_shim_log_level_char(int32_t level)
 {
 	return chiaki_log_level_char((ChiakiLogLevel)level);
+}
+
+/**
+ * PP323: the tap's trampoline and the pointer it hands on.
+ *
+ * The same shape as the log's, for the same reason: libchiaki's callback takes an enum whose
+ * underlying type is the compiler's choice, and casting a managed function pointer into that slot
+ * would be a bet on what MinGW picked today. So the shim installs a function of its own.
+ *
+ * The size re-narrows too. lib/src carries a size_t and a managed handler wants a length it can
+ * make a span of, and a payload wider than int32 does not exist here - the ctrl receive buffer and
+ * the session header buffer are both far below it. Clamped rather than truncated: a negative length
+ * would be the one value a span constructor throws on, arriving from a code path nobody could find.
+ */
+static ChiakiShimTapCb chiaki_shim_tap_cb = NULL;
+static void *chiaki_shim_tap_user = NULL;
+
+static void chiaki_shim_tap_trampoline(
+		int32_t direction, const char *channel, uint16_t type,
+		const uint8_t *payload, size_t payload_size, void *user)
+{
+	ChiakiShimTapCb cb = chiaki_shim_tap_cb;
+	(void)user;
+
+	if(!cb)
+		return;
+
+	if(payload_size > (size_t)INT32_MAX)
+		payload_size = (size_t)INT32_MAX;
+
+	cb(direction, channel, type, payload, (int32_t)payload_size, chiaki_shim_tap_user);
+}
+
+CHIAKI_SHIM_API void chiaki_shim_tap_set(ChiakiShimTapCb cb, void *user)
+{
+	chiaki_shim_tap_user = user;
+	chiaki_shim_tap_cb = cb;
+
+	// Uninstalled at the LIBRARY when the managed side clears it, rather than left installed and
+	// answering nothing. A tap that stays wired is a branch every ctrl message keeps paying for, and
+	// chiaki_message_tap_active would then say yes to a caller that had turned it off.
+	chiaki_message_tap_set(cb ? chiaki_shim_tap_trampoline : NULL, NULL);
+}
+
+CHIAKI_SHIM_API bool chiaki_shim_tap_active(void)
+{
+	return chiaki_message_tap_active();
+}
+
+CHIAKI_SHIM_API void chiaki_shim_tap_emit(
+		int32_t direction, const char *channel, uint16_t type,
+		const uint8_t *payload, int32_t payload_size)
+{
+	if(payload_size < 0)
+		return;
+
+	chiaki_message_tap_emit(
+			(ChiakiMessageTapDirection)direction, channel, type, payload, (size_t)payload_size);
 }
 
 CHIAKI_SHIM_API int32_t chiaki_shim_lib_init(void)

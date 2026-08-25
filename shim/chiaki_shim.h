@@ -153,6 +153,52 @@ CHIAKI_SHIM_API void chiaki_shim_log_write(void *log, int32_t level, const char 
 CHIAKI_SHIM_API char chiaki_shim_log_level_char(int32_t level);
 
 /**
+ * PP323: the message tap, which is the log's opposite and the reason it exists.
+ *
+ * PP297 needs a recorded exchange to port the four untested modules against, and the log cannot
+ * be the source. The session bytes reach a managed caller as a hexdump PP320 redacts WHOLE - it has
+ * to, because a formatted row cannot be redacted by field without leaving the tail of a key on the
+ * next one - and ctrl logs a type and a size and never a payload.
+ *
+ * What crosses here is not text. A direction, a channel, a message type and the bytes, so that the
+ * thing which redacts can name a field instead of guessing at a row. lib/src emits at exactly four
+ * points, each the moment the message is plaintext: see chiaki/messagetap.h.
+ *
+ * The trampoline is C for the reason the log's is (see ChiakiShimLogCb): libchiaki's callback takes
+ * an enum whose underlying type is the compiler's choice, and this re-emits it as int32_t.
+ *
+ * THE PAYLOAD DOES NOT OUTLIVE THE CALL, and for the two ctrl sites it does not even outlive it
+ * intact: the send site's buffer is encrypted in place a statement later. A handler that keeps the
+ * pointer reads ciphertext rather than crashing, which is worth naming because it looks like
+ * corruption and not like a bug.
+ */
+typedef void (*ChiakiShimTapCb)(
+		int32_t direction,
+		const char *channel,
+		uint16_t type,
+		const uint8_t *payload,
+		int32_t payload_size,
+		void *user);
+
+/** Installs the tap, or clears it with NULL. Set it before a session starts; see the header. */
+CHIAKI_SHIM_API void chiaki_shim_tap_set(ChiakiShimTapCb cb, void *user);
+
+/** Whether anything is listening, so the managed side can assert the install rather than assume it. */
+CHIAKI_SHIM_API bool chiaki_shim_tap_active(void);
+
+/**
+ * Emits one message through chiaki_message_tap_emit, exactly as a library site would.
+ *
+ * Not a test hook, for the same reason chiaki_shim_log_write is not one: it goes through the
+ * library's own emit rather than straight to the callback, so what a caller exercises is the one
+ * implementation the four sites use. Without it the tap could only be checked by running a session
+ * against a console, which is the thing PP297 does not have and this exists to make possible.
+ */
+CHIAKI_SHIM_API void chiaki_shim_tap_emit(
+		int32_t direction, const char *channel, uint16_t type,
+		const uint8_t *payload, int32_t payload_size);
+
+/**
  * chiaki_lib_init, which nothing on the managed side had called.
  *
  * It is not a formality. It seeds rand, builds jerasure's Galois field - which the frame

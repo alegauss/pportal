@@ -5,6 +5,7 @@
 #include <chiaki/base64.h>
 #include <chiaki/http.h>
 #include <chiaki/time.h>
+#include <chiaki/messagetap.h>
 
 #include "utils.h"
 
@@ -632,6 +633,11 @@ static ChiakiErrorCode ctrl_message_send(ChiakiCtrl *ctrl, uint16_t type, const 
 	if(payload)
 		chiaki_log_hexdump(ctrl->session->log, CHIAKI_LOG_VERBOSE, payload, payload_size);
 
+	// PP323: here and not one line lower. The next statement encrypts into `enc`, and a recording
+	// taken after it holds ciphertext that replays against nothing.
+	chiaki_message_tap_emit(
+			CHIAKI_MESSAGE_TAP_SENT, CHIAKI_MESSAGE_TAP_CHANNEL_CTRL, type, payload, payload_size);
+
 	uint8_t *enc = NULL;
 	if(payload)
 	{
@@ -798,6 +804,12 @@ static void ctrl_message_received(ChiakiCtrl *ctrl, uint16_t msg_type, uint8_t *
 	CHIAKI_LOGV(ctrl->session->log, "Ctrl received message of type %#x, size %#llx", (unsigned int)msg_type, (unsigned long long)payload_size);
 	if(payload_size > 0)
 		chiaki_log_hexdump(ctrl->session->log, CHIAKI_LOG_VERBOSE, payload, payload_size);
+
+	// PP323: after the decrypt above and before the switch below, which is the only window in which
+	// this message is plaintext AND still one thing rather than a handler's arguments.
+	chiaki_message_tap_emit(
+			CHIAKI_MESSAGE_TAP_RECEIVED, CHIAKI_MESSAGE_TAP_CHANNEL_CTRL,
+			msg_type, payload, payload_size);
 
 	switch(msg_type)
 	{

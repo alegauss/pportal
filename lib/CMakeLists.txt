@@ -24,6 +24,7 @@ set(HEADER_FILES
 		include/chiaki/frameprocessor.h
 		include/chiaki/packetstats.h
 		include/chiaki/sessionbaseline.h
+		include/chiaki/messagetap.h
 		include/chiaki/decoderchoice.h
 		include/chiaki/seqnum.h
 		include/chiaki/discovery.h
@@ -72,6 +73,7 @@ set(SOURCE_FILES
 		src/frameprocessor.c
 		src/packetstats.c
 		src/sessionbaseline.c
+		src/messagetap.c
 		src/decoderchoice.c
 		src/discovery.c
 		src/congestioncontrol.c

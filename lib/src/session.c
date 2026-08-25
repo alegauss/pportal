@@ -6,6 +6,7 @@
 #include <chiaki/http.h>
 #include <chiaki/base64.h>
 #include <chiaki/random.h>
+#include <chiaki/messagetap.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -953,6 +954,12 @@ static ChiakiErrorCode session_thread_request_session(ChiakiSession *session, Ch
 
 	CHIAKI_LOGI(session->log, "Sending session request");
 	chiaki_log_hexdump(session->log, CHIAKI_LOG_VERBOSE, (uint8_t *)send_buf, request_len);
+
+	// PP323: the request as it goes out. Type 0 - this is HTTP and its type is the channel, which
+	// is what the tap's header says the zero means rather than leaving it to be inferred.
+	chiaki_message_tap_emit(
+			CHIAKI_MESSAGE_TAP_SENT, CHIAKI_MESSAGE_TAP_CHANNEL_SESSION,
+			0, (const uint8_t *)send_buf, (size_t)request_len);
 	if(!session->rudp)
 	{
 		chiaki_mutex_unlock(&session->state_mutex);
@@ -1017,6 +1024,13 @@ static ChiakiErrorCode session_thread_request_session(ChiakiSession *session, Ch
 	ChiakiHttpResponse http_response;
 	CHIAKI_LOGV(session->log, "Session Response Header:");
 	chiaki_log_hexdump(session->log, CHIAKI_LOG_VERBOSE, (const uint8_t *)buf, header_size);
+
+	// PP323: the answer, before the parse. After it the header is a struct of pointers into this
+	// same buffer, and a recording of that is a recording of the parser rather than of the console.
+	chiaki_message_tap_emit(
+			CHIAKI_MESSAGE_TAP_RECEIVED, CHIAKI_MESSAGE_TAP_CHANNEL_SESSION,
+			0, (const uint8_t *)buf, header_size);
+
 	err = chiaki_http_response_parse(&http_response, buf, header_size);
 	if(err != CHIAKI_ERR_SUCCESS)
 	{

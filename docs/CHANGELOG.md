@@ -48,6 +48,7 @@
 - ✅ **PP147** **the port has two touchpad answers in two files, so the SDL path is a third place 1079 could be typed** — one type holds both pads and names the third; the SDL path is handed its extents.
 - ✅ **PP174** **nothing stops a second copy of a pad's size being typed back into the port, which is how the Qt client reached three** — one client, one answer, as a check rather than a claim.
 - ✅ **PP320** **the log sanitiser redacts nothing in a hexdump, so RP-RegistKey and RP-Nonce survive in the bytes and the ASCII gutter** — a hexdump row is redacted whole, bytes and gutter, before any line rule runs (design §PP320 superseded: field names and grouped hex leave the tail on the next row unlabelled).
+- ✅ **PP323** **libchiaki hands a managed caller a log and nothing else, so a recording of a session has no payload to hold** — the four chokepoints where a session is still plaintext now emit a direction, a channel, a type and the bytes to an installable tap, so PP297's recording has a source the log could never be.
 
 ## Block C — Video and input path
 
