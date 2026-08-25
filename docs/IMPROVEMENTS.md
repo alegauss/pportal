@@ -465,6 +465,29 @@ zero should be decided rather than discovered.
 
 ## Block G — Test discipline
 
+### §PP324 A skip is not a pass and is not a red gate
+
+Both tests end their summary with the same sentence: without a controller the window
+says so and this SKIPS rather than passes, because a run reporting success for a
+property nobody observed is the defect the whole file exists to stop.
+
+The code does not skip. It calls Assert.Fail with a message beginning NOT CHECKED, which
+is the honest half - the property really was not checked. The dishonest half is the
+colour. A machine with no pad gets a red suite for two tests, every run, and the
+sentence explaining why is inside the failure rather than beside it.
+
+That is worse than the pass it was written to avoid, and for the same reason. A gate
+whose red is expected is one a reader learns to skim, and the next red that is NOT
+expected arrives into a suite where two failures are already normal. What the file
+exists to stop was a green nobody could trust; what replaced it is a red nobody reads.
+
+The third state exists. Assert.Skip reports neither, and a skipped test is counted as
+skipped on the same summary line that counts the failures - so the run stays green on a
+machine with no hardware while still refusing to claim the property held.
+
+The guard stays where it is. NotChecked already builds the sentence and already reads it
+off the window rather than guessing; only the call it is passed to changes.
+
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed
