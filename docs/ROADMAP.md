@@ -40,8 +40,6 @@
 
 ## Block G — Test discipline
 
-- 📋 **PP324** (deps: —) **two mapping tests call Assert.Fail on a machine with no pad, so the gate is red for a property nobody can observe** — the summary of each already says SKIPS - fail was chosen over pass because a skip was not on offer, and a red that is expected trains the gate to be waved through. → §PP324
-
 ## Block H — Performance and telemetry
 
 - ⏳ **PP46** (deps: PP42 ✅, PP63) **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — A Chromium leaving the build should be visible in cold start and in megabytes, and stating it without measuring is how a port collects folklore. → §PP46
