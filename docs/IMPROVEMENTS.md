@@ -438,6 +438,30 @@ nothing here reaches a console over the internet. So probably not - and "probabl
 why this is an idea rather than a task. Turning a capability off to make a count reach
 zero should be decided rather than discovered.
 
+### §PP331 A message the library will not name
+
+The PP297 capture is the first time anything in this tree watched a real control
+channel, and it found a message the enum has no name for. Type 0x41, payload
+00-00-00-00-02-01-00-00, sent by the console shortly after DISPLAYB on a session that
+connected and stayed up. Not an error path and not a corner case: it arrived on the
+first capture ever taken.
+
+What ctrl.c does with it is the part worth filing. The default branch of the type switch
+hexdumps the payload at WARNING level, and the line above it - the one naming which type
+arrived - is commented out, and has been since the fork. The log shows eight anonymous
+bytes at a level meaning something is wrong, with nothing saying what was received or
+that anything is unhandled.
+
+Two things follow and only one is this task. Naming the type is research, and the
+capture is now how to do it: take one with the console doing different things and see
+when 0x41 changes. Reporting it is not research. A message the library cannot name
+should say so, with its number, at a level meaning unhandled rather than broken.
+
+The port has a reason beyond tidiness. PP294 rewrites ctrl.c against this recording, and
+a type the C silently drops is one the rewrite will silently drop differently - the
+replay agrees, both are wrong, and the disagreement surfaces as a stream behaving oddly
+much later. A named unknown is something a replay can assert about.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry
