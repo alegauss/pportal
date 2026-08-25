@@ -271,6 +271,7 @@ export const input = {
     [{ b: "Focus navigation everywhere." }, " Directional focus is an attached property rather than a control of its own, so it applies to the ordinary WPF controls the screens are built from instead of a private widget vocabulary."] as Rich,
     [{ b: "Your own bindings." }, " The mapping screen reads the device's real binding strings through SDL, captures a press against the slot you picked, and writes the mapping back."] as Rich,
     [{ b: "A pad that is plugged in now." }, " The device list, the button events and the axis positions are read on the thread that owns SDL, so a controller connected mid-session is a controller that works."] as Rich,
+    [{ b: "Not only a PlayStation pad." }, " SDL is called directly rather than rewritten, so anything it can map arrives mapped, an Xbox controller included, and the haptics the console sends fold to plain rumble on a pad with no haptic motors."] as Rich,
     [{ b: "Keyboard too." }, " Every key binding is a row in the settings, for the machine where the pad is in another room."] as Rich,
   ],
   terminalTitle: "pportal.exe --help",

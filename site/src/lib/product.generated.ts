@@ -56,6 +56,21 @@ export const HOST_FLAGS: readonly HostFlag[] = [
     "summary": "render the mapping screen off-screen to a PNG"
   },
   {
+    "name": "--record",
+    "argument": "[path]",
+    "summary": "record this session's exchange to a file, for PP297's replay"
+  },
+  {
+    "name": "--capture-exchange",
+    "argument": "[path]",
+    "summary": "wake a registered console, run one session and record the exchange"
+  },
+  {
+    "name": "--console",
+    "argument": "[name]",
+    "summary": "with --capture-exchange: which registered console, by nickname"
+  },
+  {
     "name": "--map-controller",
     "argument": "",
     "summary": "open the mapping screen against a real pad"

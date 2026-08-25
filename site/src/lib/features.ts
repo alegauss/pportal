@@ -78,10 +78,10 @@ export const features: FeatureRecord[] = [
     slug: "controllers",
     title: "Controllers: the pad works in the menus too",
     description:
-      "Directional focus on every screen as an attached property, SDL device and binding strings read on the thread that owns them, and a mapping screen that captures the press you meant.",
+      "Directional focus on every screen as an attached property, SDL device and binding strings read on the thread that owns them, and a mapping screen that captures the press you meant on any pad SDL can map, an Xbox controller included.",
     ogTitle: "PPortal: controllers",
     ogDescription:
-      "Focus navigation on every screen, SDL bindings read live, and a mapping capture that takes the press.",
+      "Focus navigation on every screen, SDL bindings read live, a mapping capture that takes the press, and any pad SDL can map.",
     eyebrow: "Input",
     heading: "Controllers",
     lead: [
@@ -109,6 +109,26 @@ export const features: FeatureRecord[] = [
           ],
           [
             "Triggers are captured without turning on the axes, because the sticks flood the log and the trigger is what you were trying to bind.",
+          ],
+        ],
+      },
+      {
+        heading: "Any pad SDL can map, an Xbox one included",
+        body: [
+          "SDL is the one native dependency this port did not move. Nothing about the device layer was tied to Qt, so it is called directly rather than through the shim the rest of the C goes through, which means the pads that work here are the pads SDL already knows. An Xbox controller enumerates, arrives carrying its own binding string, and reaches the mapping screen with every row already filled in.",
+        ],
+        list: [
+          [
+            "The rows are named for the PlayStation pad: Cross, Moon, Box, Pyramid, the shoulders, the triggers. What sits on each row is whatever your controller calls that control, so rebinding an Xbox pad is the same screen and the same capture as rebinding a DualSense.",
+          ],
+          [
+            "A device SDL has no mapping for is left out of the list rather than shown with empty rows, because a pad with no bindings gives the screen nothing to draw.",
+          ],
+          [
+            "Haptics fold to rumble on a pad with no haptic motors. The console sends a stereo haptic stream a DualSense plays as sound, and a controller that cannot play one gets a single strength scaled by your intensity setting instead, which is what a PS4 pad already feels during a PS5 session.",
+          ],
+          [
+            "What is hardware stays hardware: adaptive triggers and the touchpad are not emulated on a pad that has neither, though the D-pad can be turned into a finger on the touchpad for the ones without.",
           ],
         ],
       },
