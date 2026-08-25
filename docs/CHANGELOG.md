@@ -284,6 +284,7 @@
 - ✅ **PP334** **the RP-Version retry is three attempts and the third reads the same reply differently, and nothing managed reproduces it** — the three rungs, the strcmp guard, the 5.0 substitution and the asymmetry the last attempt reads a reply with, as a decision table over one answer.
 - ✅ **PP335** **the login PIN loop says a PIN was wrong from a flag set before anyone could know, and nothing managed has it** — the loop, the unbounded wait for a person, the inner ctrl-failure check, and the flag that says a PIN was wrong because the console asked twice.
 - ✅ **PP336** **the session thread ends through two labels with different cleanup, and nothing managed says which reason a client sees** — the two exits, the fall-through that guarantees one quit event, and the rule that a recorded reason outlives the generic failure after it.
+- ✅ **PP337** **the device id a console is told is mostly fixed bytes, and nothing managed builds one** — the device id's fixed prefix and written zeroes, the colon that pins the address family, the target, and the 360p a disabled video actually asks for.
 
 ## Block G — Test discipline
 
