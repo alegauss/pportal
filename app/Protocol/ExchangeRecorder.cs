@@ -83,6 +83,43 @@ public sealed class ExchangeRecorder : IDisposable
             return recording.Write();
     }
 
+    /// <summary>
+    /// Stops recording and writes what it has, answering what happened rather than throwing.
+    ///
+    /// The caller is an application on its way out, after the user has already closed it, so a
+    /// throw here would replace whatever they did last with a crash dialog - and the thing that
+    /// failed is a diagnostic, which is the one thing that must never be why a session ends badly.
+    /// The sentence comes back so the caller can print it; this decides nothing about where.
+    ///
+    /// STOPPED BEFORE THE WRITE, so a message arriving on the ctrl thread cannot land in the
+    /// recording halfway through serialising it.
+    /// </summary>
+    /// <returns>True where the file was written.</returns>
+    public bool TryWriteTo(string path, out string message)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+
+        Dispose();
+
+        try
+        {
+            string? directory = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(directory))
+                Directory.CreateDirectory(directory);
+
+            File.WriteAllText(path, Write());
+
+            message = $"{Recording.Entries.Count} entries written to {path}";
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
+            or NotSupportedException or ArgumentException or PathTooLongException)
+        {
+            message = $"could not write {path}: {ex.Message}";
+            return false;
+        }
+    }
+
     /// <summary>Stops recording. Idempotent.</summary>
     public void Dispose()
     {

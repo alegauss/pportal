@@ -1,7 +1,9 @@
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Threading;
+using ChiakiNg.Protocol;
 using ChiakiNg.Session;
+using ChiakiNg.Settings;
 
 namespace ChiakiNg;
 
@@ -490,6 +492,12 @@ public partial class App : Application
     /// <summary>The open pad, closed on the way out.</summary>
     private IntPtr mappingPad;
 
+    /// <summary>PP297: the recorder `--record` armed, or null. Held for the application's lifetime.</summary>
+    private ExchangeRecorder? recorder;
+
+    /// <summary>Where it writes, decided at startup so the path printed then is the one used.</summary>
+    private string? recordingPath;
+
     /// <summary>
     /// PP223: `--map-controller`, the mapping screen against a real pad.
     ///
@@ -627,8 +635,28 @@ public partial class App : Application
             window.ShowMessage($"{pad.Name} enumerated and would not open");
     }
 
+    /// <summary>
+    /// PP297: the recording, written where <c>--record</c> said. The deciding is the recorder's;
+    /// this only picks which stream the sentence goes to.
+    /// </summary>
+    private void WriteRecording()
+    {
+        if (recorder is null || recordingPath is null)
+            return;
+
+        bool written = recorder.TryWriteTo(recordingPath, out string message);
+        recorder = null;
+
+        if (written)
+            Console.WriteLine($"[record] {message}");
+        else
+            Console.Error.WriteLine($"[record] {message}");
+    }
+
     protected override void OnExit(ExitEventArgs e)
     {
+        WriteRecording();
+
         if (mappingSdl is not null)
         {
             mappingSdl.Invoke(() => Gamepads.CloseController(mappingPad), TimeSpan.FromSeconds(5));
@@ -728,6 +756,28 @@ public partial class App : Application
 
             string path = capture + 1 < e.Args.Length ? e.Args[capture + 1] : "mapping.png";
             Environment.Exit(CaptureMapping(path));
+        }
+
+        // PP297: recording is the one flag here that does NOT exit - it arms something and lets the
+        // application run, because what it records is a session nobody has started yet. Armed before
+        // base.OnStartup so the tap is installed before any window can reach a console: a recording
+        // that begins after the session request has gone out is missing the half PP297 needs most.
+        // Matched HERE, against the literal, like every other flag. PP306's check reads this file
+        // for those literals and holds them against the documented list, so a flag whose only
+        // mention of its own name lives in another file reads to it as undocumented - correctly:
+        // that check is about what this dispatch answers. Where it writes is HostCommandLine's,
+        // which is what makes the path rules assertable.
+        if (e.Args.Any(a => string.Equals(a, "--record", StringComparison.OrdinalIgnoreCase)))
+        {
+            ReopenStdOut();
+
+            recordingPath = HostCommandLine.RecordingPath(
+                e.Args, QtPaths.LogDirectory, DateTimeOffset.Now);
+            recorder = ExchangeRecorder.Start();
+
+            // Said now and not at the end. A recording written on exit is a file nobody knows to
+            // look for, and a session that ends badly is exactly when somebody wants it.
+            Console.WriteLine($"[record] the exchange is being recorded to {recordingPath}");
         }
 
         base.OnStartup(e);

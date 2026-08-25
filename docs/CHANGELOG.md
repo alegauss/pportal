@@ -275,6 +275,7 @@
 - ✅ **PP300** **discovery's protocol half is wrapped rather than ported, so its parser and classifier are still C** — Discovery's packets, classifier and reply parser are now managed code, each answer compared with the C's on the same bytes.
 - ✅ **PP325** **the recording's redaction is shaped for log lines, so RP-Nonce reaches the file the moment a payload is structured** — a second sanitiser takes a value because of the header above it, composed in front of PP88's, so a short registration key and a base64 nonce never reach the recording.
 - ✅ **PP326** **nothing joins PP323's tap to PP297's recording, and a ctrl payload rendered as hex is eaten by the log sanitiser** — a recorder turns tapped messages into entries, rendering ctrl bytes as dash-separated pairs no sanitiser rule matches and dropping the payload of the six types that carry a secret.
+- ✅ **PP327** **the recorder exists and nothing turns it on, so making a capture is still a code change rather than a flag** — --record arms the recorder before any window opens and writes the exchange on exit, so a capture is a session with a console rather than a code change.
 
 ## Block G — Test discipline
 

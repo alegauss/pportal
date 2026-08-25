@@ -196,6 +196,81 @@ public class ExchangeRecorderTests
     }
 
     /// <summary>
+    /// PP297: the file `--record` leaves behind, into a directory that did not exist.
+    ///
+    /// The log directory is there on a machine that has run the Qt client and not on one that has
+    /// not, and a recording lost because nobody had streamed yet would be found only by the person
+    /// who most needed it.
+    /// </summary>
+    [Fact]
+    public void TheRecordingIsWrittenAndMakesItsDirectory()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), "pportal-record-" + Guid.NewGuid().ToString("n"));
+        string path = Path.Combine(directory, "nested", "exchange.txt");
+
+        try
+        {
+            using ExchangeRecorder recorder = ExchangeRecorder.Start();
+            ChiakiMessageTap.Emit(ExchangeTapDirection.Sent, ChiakiMessageTap.CtrlChannel, 0x14, [1, 2]);
+
+            Assert.True(recorder.TryWriteTo(path, out string message), message);
+
+            Assert.Contains("1 entries", message, StringComparison.Ordinal);
+            Assert.Contains("0014 01-02", File.ReadAllText(path), StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+                Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Writing STOPS it, so nothing lands in the file while it is being serialised.
+    ///
+    /// The recorder is disposed on the way into the write for this reason, and it is asserted
+    /// because the alternative reads identically and fails only under a session that is still busy.
+    /// </summary>
+    [Fact]
+    public void WritingStopsTheRecording()
+    {
+        string path = Path.Combine(Path.GetTempPath(), "pportal-record-" + Guid.NewGuid().ToString("n") + ".txt");
+
+        try
+        {
+            using ExchangeRecorder recorder = ExchangeRecorder.Start();
+            Assert.True(recorder.TryWriteTo(path, out _));
+
+            Assert.False(ChiakiMessageTap.Active);
+
+            ChiakiMessageTap.Emit(ExchangeTapDirection.Sent, ChiakiMessageTap.CtrlChannel, 0x14, [9]);
+            Assert.Empty(recorder.Recording.Entries);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    /// <summary>
+    /// A path that cannot be written answers false and a sentence, and does not throw.
+    ///
+    /// This runs on the way out of an application the user has already closed. A throw would replace
+    /// whatever they did last with a crash dialog, over a diagnostic failing to save.
+    /// </summary>
+    [Fact]
+    public void AnUnwritablePathIsAnAnswerAndNotAThrow()
+    {
+        using ExchangeRecorder recorder = ExchangeRecorder.Start();
+
+        // A directory where a file has to be, which no permission can make writable.
+        bool written = recorder.TryWriteTo(Path.GetTempPath(), out string message);
+
+        Assert.False(written);
+        Assert.Contains("could not write", message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// EVERY NUMBER IN THE SECRET LIST IS STILL THE ONE ctrl.c DECLARES.
     ///
     /// The list is a copy, and a type renumbered upstream would leave it redacting a message that no

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -51,6 +52,7 @@ public static partial class HostCommandLine
         new("--capture-controller", "", "log presses for twenty seconds; add --analog for the sticks"),
         new("--analog", "", "with --capture-controller: include the axes, which flood the log"),
         new("--capture-mapping", "[path]", "render the mapping screen off-screen to a PNG"),
+        new("--record", "[path]", "record this session's exchange to a file, for PP297's replay"),
         new("--map-controller", "", "open the mapping screen against a real pad"),
         new("--dcomp-demo", "", "show what one window composes, which PP163 is answered by looking at"),
         new("--topmost", "", "with --dcomp-demo: the control, asking the visual to cover WPF instead"),
@@ -86,6 +88,51 @@ public static partial class HostCommandLine
         known.UnionWith(HelpFlags);
 
         return [.. args.Where(a => a.StartsWith("--", StringComparison.Ordinal) && !known.Contains(a))];
+    }
+
+    /// <summary>
+    /// PP297: where <c>--record</c> writes, or null where it was not asked for.
+    ///
+    /// The flag is the last thing that task was reduced to - "a flag rather than a project" - and
+    /// this is the half of it that can be checked without a console in the room.
+    ///
+    /// THE NEXT ARGUMENT IS ONLY A PATH IF IT IS NOT A FLAG. --capture-mapping takes whatever
+    /// follows it, so `--capture-mapping --analog` writes a PNG called "--analog"; that is its bug
+    /// and not one to copy. Here a following argument that starts with a dash means the path was
+    /// omitted, and the default is used.
+    ///
+    /// DEFAULTED WITH A TIMESTAMP, because the alternative is one name reused. A recording is made
+    /// to be compared with another one, and a run that silently replaced the file it is about to be
+    /// diffed against would be the worst possible failure of this feature.
+    /// </summary>
+    /// <param name="defaultDirectory">Where an omitted path lands - the session log directory.</param>
+    /// <param name="now">Stamped into the default name. Passed in so this can be asserted about.</param>
+    public static string? RecordingPath(
+        IReadOnlyList<string> args, string defaultDirectory, DateTimeOffset now)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+        ArgumentNullException.ThrowIfNull(defaultDirectory);
+
+        int at = -1;
+        for (int i = 0; i < args.Count; i++)
+        {
+            if (string.Equals(args[i], "--record", StringComparison.OrdinalIgnoreCase))
+            {
+                at = i;
+                break;
+            }
+        }
+
+        if (at < 0)
+            return null;
+
+        string? next = at + 1 < args.Count ? args[at + 1] : null;
+        if (next is not null && !next.StartsWith('-'))
+            return next;
+
+        return Path.Combine(
+            defaultDirectory,
+            $"exchange-{now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture)}.txt");
     }
 
     /// <summary>The list, as it is printed.</summary>

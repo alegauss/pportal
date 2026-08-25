@@ -45,7 +45,14 @@ chiaki.conf
 /appimage
 .cache/
 *.vscode
-site/
+
+# site/ used to be ignored here, and the rule arrived with the fork: upstream builds its
+# mkdocs documentation into that directory, so ignoring it was right there. Nothing in this
+# tree runs mkdocs, and site/ is now the source of the published site, which makes it source
+# rather than output. The rule was inert only in the sense that nothing had tried to add the
+# directory yet: `git add site/` declined without a word, and a whole project would have
+# looked committed and been absent from every clone. site/.gitignore covers what really is
+# output there (node_modules, dist and dist-server).
 
 # roadkeep's own working directory: lint reports and run state, regenerated on
 # demand and never read by another clone.

@@ -1,0 +1,113 @@
+# PPortal
+
+> PlayStation Remote Play for Windows, built on .NET 10 and WPF. Ten-bit video composed by
+> DirectComposition, hardware decode chosen from what the machine reports, the consoles and
+> pairings you already registered, and no browser inside the download.
+
+Site: https://alegauss.github.io/pportal/
+Source: https://github.com/alegauss/pportal
+Licence: AGPL-3.0
+Platform: Windows 10 or 11, x64. There is no Linux, macOS, Android or Switch build, and
+that is a decision rather than a gap.
+
+Every page on this site has a Markdown twin at the same address with `index.md` appended,
+converted from the same render as the HTML, so it cannot disagree with the page. The list
+of routes, their twins and their sizes is in `manifest.json`.
+
+## What it is
+
+A remote play client that behaves like a Windows program. The streaming protocol comes
+from the Chiaki and chiaki-ng projects; what PPortal rebuilt is everything around it: the
+window, the video presentation, the input path and the settings, on .NET rather than Qt.
+
+## The video path
+
+- The decoded frame never goes through WPF's own image path, which accepts eight bits per
+  channel and nothing wider, so HDR would be ruled out before the stream started.
+- libplacebo renders into a shared Direct3D 11 texture, and DirectComposition puts that
+  texture on screen as a ten-bit plane with the window's overlay composed above it.
+- The overlay is above the plane rather than behind it, because that is the one arrangement
+  of the three that keeps both the ten-bit picture and the stream HUD.
+- The present is paced by the refresh rate of the display the window is on, and a rate
+  change mid-session changes the pacing with it.
+- libplacebo's scalers, debanding, tone curves and colour mapping are exposed on two
+  screens, with presets over the sliders.
+
+## Decode, and what a machine without an NVIDIA card keeps
+
+- d3d11va, Vulkan and CUDA are the decode paths. CUDA is preferred only when the window
+  reports an NVIDIA card and the decoder is actually available; otherwise Vulkan, then
+  d3d11va.
+- The floor on a machine with no NVIDIA card: hardware decode through d3d11va, a renderer
+  that is Vulkan with an OpenGL fallback, and an SDR present that loads nothing from NVIDIA.
+- A feature that is not available is not in the menu. There is no dialog explaining that a
+  different card would be better.
+- The measurements published for this project were taken on an RTX 4060, and every recorded
+  result names the card. Paced at 60fps, the CUDA path measured last of the three.
+
+## Input
+
+- Directional focus navigation on every screen, attached to ordinary WPF controls rather
+  than built into a private set of lookalike widgets.
+- SDL owns the device list, the button events and the axis positions, read on the thread
+  that owns it, so a pad plugged in mid-session works.
+- The mapping screen reads the device's own binding strings and captures a press against
+  the slot you picked.
+- Keyboard bindings are a tab in the settings.
+
+## The screens
+
+- The console list is the front door: discovery, manual hosts and hidden consoles in one
+  list, with each row offering what its state allows (stream, wake, or retry).
+- Registration is one dialog on its own path and three more reached from elsewhere, and the
+  PIN rules for the two console generations are kept as two rules.
+- Settings are nine tabs: General, Video, Stream, Audio, Consoles, Keys, Controllers,
+  Remote and Config, committed when a field is finished.
+- Where a stored value is not the label shown, the stored value stayed, so a setting reads
+  back the way it always did.
+- Signing in to PSN runs in a WebView2 panel on the runtime Windows already carries, so
+  there is no second browser in the download.
+
+## What it records
+
+- Each session appends one line to a record on the local machine, naming the decoder, the
+  renderer, the requested bitrate and both loss settings.
+- Timed per session: receive, reorder dwell, reassemble, error correction, and the decoder's
+  send-to-pull.
+- A latency floor: input queueing plus the console's own reported round trip, in
+  milliseconds.
+- `compare-baselines` reads two records and prints p50, p99 and maximum per stage with the
+  difference, and refuses two records whose field sets differ.
+- Nothing is uploaded. There is no account anywhere in the application.
+
+## Setup
+
+- Registered consoles, manual and hidden hosts, controller mappings and the PSN token are
+  read from the store already on the machine, resolved against the active Windows profile.
+- The installer uses an identifier of its own, so an existing chiaki-ng installation is left
+  in place rather than upgraded, and both can be run on the same machine.
+
+## Non-goals
+
+- No Linux, macOS, Android or Switch build.
+- No cross-platform UI toolkit, because it would give back none of the Win32, DXGI and
+  WebView2 access the screens and the video path depend on.
+- No vendor path whose absence is visible to the user.
+- No redesign of screens that already worked.
+- No telemetry.
+
+## Pages
+
+- / : the landing page
+- /features/picture/ : the video path, and why the overlay sits above the plane
+- /features/controllers/ : focus navigation, SDL, and the mapping capture
+- /features/screens/ : the console list, the dialogs, and the nine settings tabs
+- /features/latency/ : what is timed, and how two runs are compared
+- /features/setup/ : what comes across from an existing installation
+- /hardware/ : what this asks of your GPU, and the floor without an NVIDIA card
+
+## Trademarks
+
+Unofficial community project. Not affiliated with, endorsed by, or sponsored by Sony
+Interactive Entertainment. "PlayStation", "PS4" and "PS5" are trademarks of Sony
+Interactive Entertainment Inc.
