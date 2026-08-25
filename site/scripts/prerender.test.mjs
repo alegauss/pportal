@@ -58,6 +58,26 @@ test("each page has a unique title, its canonical, and an og:image", () => {
   }
 });
 
+// The nav is rendered into every route, so a link written as a bare "#section" is a link that
+// works on the landing page and silently does nothing on the other six: the browser sets the
+// hash, finds no element of that id, and stays where it is. There is no router to rescue it.
+// This is the assertion that catches it, and it reads every anchor rather than the nav's,
+// because the same mistake anywhere on a page has the same silence.
+test("every in-page anchor has the element it names, on the page that carries it", () => {
+  for (const r of manifest.routes) {
+    const html = readFileSync(join(distDir, r.html), "utf8");
+    const ids = new Set([...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]));
+    const targets = [...html.matchAll(/href="#([^"]*)"/g)].map((m) => m[1]);
+    const dangling = targets.filter((t) => !ids.has(t));
+    assert.deepEqual(
+      dangling,
+      [],
+      `${r.html} links to #${dangling.join(", #")}, which is not on that page: ` +
+        "a cross-page section link carries the base and the path in front of its anchor",
+    );
+  }
+});
+
 test("no twin leaks the nav, the footer or the call to action", () => {
   // Strings that exist only in the nav, the theme control and the footer: if one
   // reaches a twin, a whole subtree the converter is meant to drop has leaked into it.

@@ -45,12 +45,15 @@ export const parentUrl = "https://alegauss.github.io/";
 // cannot go stale, and it is also where the checksums live.
 export const releasesUrl = `${repoUrl}/releases/latest`;
 
-// Section anchors act on the landing page; the page links are base-absolute so they resolve
-// the same from every route. The brand and the footer link home the same way.
+// The first three are sections of the landing page, and the nav is on every route, so each
+// one carries the landing page's own URL in front of its anchor. A bare "#picture" is not a
+// link from anywhere else: the browser sets the hash, finds no element of that id on a
+// feature page, and does nothing at all. There is no router here, so this is an ordinary
+// full load that lands on the section. The brand and the footer link home the same way.
 export const navLinks = [
-  { href: "#picture", label: "The picture" },
-  { href: "#input", label: "Controllers" },
-  { href: "#window", label: "Screens" },
+  { href: "/pportal/#picture", label: "The picture" },
+  { href: "/pportal/#input", label: "Controllers" },
+  { href: "/pportal/#window", label: "Screens" },
   { href: "/pportal/hardware/", label: "Hardware" },
 ] as const;
 
