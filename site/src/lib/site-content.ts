@@ -45,15 +45,14 @@ export const parentUrl = "https://alegauss.github.io/";
 // cannot go stale, and it is also where the checksums live.
 export const releasesUrl = `${repoUrl}/releases/latest`;
 
-// The first three are sections of the landing page, and the nav is on every route, so each
-// one carries the landing page's own URL in front of its anchor. A bare "#picture" is not a
-// link from anywhere else: the browser sets the hash, finds no element of that id on a
-// feature page, and does nothing at all. There is no router here, so this is an ordinary
-// full load that lands on the section. The brand and the footer link home the same way.
+// The nav lists ROUTES, never sections. It used to carry three landing anchors, and both of
+// that arrangement's problems came from the same root: a bare "#picture" does nothing at all
+// from a page that has no element of that id, and "Controllers" in the nav meant the landing
+// section while "Controllers" in the content meant the page, which is one label for two
+// destinations. Two entries also fit where four did not, which is what lets the labels
+// survive far further down the width than they used to.
 export const navLinks = [
-  { href: "/pportal/#picture", label: "The picture" },
-  { href: "/pportal/#input", label: "Controllers" },
-  { href: "/pportal/#window", label: "Screens" },
+  { href: "/pportal/features/", label: "Features" },
   { href: "/pportal/hardware/", label: "Hardware" },
 ] as const;
 
@@ -424,6 +423,25 @@ export const download = {
 // The page behind the banner. It is the product's own hardware note, written for a reader
 // rather than for a contributor, and it keeps the note's least comfortable sentence: the
 // measurements were all taken on one card.
+// The index the nav points at. The cards themselves are read off the feature records, so this
+// is only the page's own frame: what the list is, and why there is a page per part at all.
+export const featuresIndex = {
+  meta: {
+    title: "Features: one page per part of PPortal",
+    description:
+      "The video path, the controllers, the screens, the latency work and the setup, each with a page of its own that says how it is built rather than that it exists.",
+    ogTitle: "PPortal: features",
+    ogDescription:
+      "Five pages, one per part of the client: the picture, controllers, screens, latency and setup.",
+  },
+  backLabel: "← Home",
+  eyebrow: "In depth",
+  heading: "One page per part of it",
+  lead: [
+    "Each of these is a part of the client that has enough behind it to be worth a page rather than a paragraph, and each is something a README, an issue or a search result can link straight at. They say how the thing is built and what it refused to do, which is the half a feature list leaves out.",
+  ] as Rich,
+};
+
 export const hardware = {
   meta: {
     title: "Hardware: what PPortal asks of your GPU",

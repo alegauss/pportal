@@ -462,6 +462,36 @@ a type the C silently drops is one the rewrite will silently drop differently - 
 replay agrees, both are wrong, and the disagreement surfaces as a stream behaving oddly
 much later. A named unknown is something a replay can assert about.
 
+### §PP339 A cancellation poll used as an error exit
+
+The session thread has two macros that both end it, and they do not mean the same thing.
+QUIT unlocks and jumps. CHECK_STOP jumps only if should_stop is set - it is a poll for
+cancellation and not an error exit.
+
+At the rudp init one is used where the other was meant:
+
+    session->rudp = chiaki_rudp_init(rudp_sock, session->log);
+    if(!session->rudp)
+    {
+        CHIAKI_LOGE(session->log, "Initializing rudp failed");
+        CHECK_STOP(quit);
+    }
+
+With nobody having asked to stop, that logs an error at ERROR level and then falls
+straight through the if. The thread carries on with rudp NULL.
+
+What follows is worse than a crash would be. The PSN registration block is guarded by
+if(session->rudp), so it is skipped. The thread then makes an ordinary session request,
+and the non-rudp path walks connect_info.host_addrinfos - which chiaki_session_init only
+fills in the branch for sessions that have NO holepunch session. Here it is NULL, the
+loop runs zero times, and the session fails as though no address answered.
+
+So the one failure that was diagnosed becomes one that is not. The log says rudp failed;
+the quit reason the user is shown says the session request did, and the two are far
+enough apart that nobody reading the second would look for the first.
+
+The fix is one macro. Reproducing this in managed code would be reproducing a typo.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry
