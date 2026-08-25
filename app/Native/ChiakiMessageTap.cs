@@ -53,6 +53,14 @@ public enum ExchangeTapDirection
 /// </summary>
 public sealed unsafe class ChiakiMessageTap : IDisposable
 {
+    /// <summary>
+    /// The control conversation, spelled as CHIAKI_MESSAGE_TAP_CHANNEL_CTRL spells it.
+    /// </summary>
+    public const string CtrlChannel = "ctrl";
+
+    /// <summary>And the session request and its answer, which carry no message type.</summary>
+    public const string SessionChannel = "session";
+
     /// <summary>The one that is installed, or null. See the note on being global.</summary>
     private static ChiakiMessageTap? installed;
 

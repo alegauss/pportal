@@ -463,31 +463,6 @@ nothing here reaches a console over the internet. So probably not - and "probabl
 why this is an idea rather than a task. Turning a capability off to make a count reach
 zero should be decided rather than discovered.
 
-### §PP326 The last wire, and the question it forces
-
-PP323 built the tap and PP297 built the format, the writer, the reader and the replay.
-Nothing connects them. A recorder is a small class - install a tap, stamp each message
-off a monotonic clock, call Add - and it is small only until the ctrl channel arrives.
-
-ExchangeEntry holds a text payload, and that suits the session channel exactly: an HTTP
-head is text, PP325 redacts it by header name, and a person reading the file sees what
-was said. The control channel is not text. Its payloads are decrypted structs, and a
-struct has to be rendered.
-
-Every obvious rendering is destroyed on the way in. Continuous hex of eight bytes is
-sixteen hex characters, which LongHexPattern redacts whole; space-separated pairs are
-what HexdumpRowPattern was written for and it takes eight groups. Both rules are correct
-and neither can change - PP88 holds them against gui/src/sessionlog.cpp - so the
-recorder either renders into something they do not match, or Add gains a way to take a
-payload already redacted.
-
-Behind that sits the real question: what a recording of the control channel may keep at
-all. A ctrl message is plaintext only because it was just decrypted, and the session-id
-message IS the session id. Redacting by type is the shape PP325 argues for, and it is a
-different list from the header one - it names a message type, not a field.
-
-The type has no home either. ExchangeEntry carries a channel and not a type.
-
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry

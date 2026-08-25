@@ -1,0 +1,118 @@
+# The site (site/), separate from the .NET solution.
+#
+# Publishing is deliberate: the deploy fires on workflow_dispatch only. A deploy on every push
+# is one nobody can hold still while reviewing it, and the site is the one artefact where a
+# defect is public immediately.
+#
+# The gate is the build. There is no separate typecheck or lint step, because `npm run build`
+# already is one: it runs the generation from the application's own source, tsc, the client
+# build, the social card, the SSR build and the prerender, and the prerender's replace-or-throw
+# head patch and the route-pair assertion are the route and head gates.
+#
+# The gate and the deploy are two decisions. The gate runs on every push, so a rename that
+# breaks the build is found by the person who pushed it rather than by the person who
+# publishes weeks later; the deploy still waits to be asked, and serves the bytes the gate
+# already built.
+#
+# ┌─────────────────────────────────────────────────────────────────────────────────────┐
+# │ ONE-TIME REPOSITORY SETTING, without which the deploy is inert:                      │
+# │   Settings → Pages → Build and deployment → Source: "GitHub Actions"                 │
+# │ The site is served at alegauss.github.io/pportal/, which Pages derives from the      │
+# │ repository name rather than from anything in this file.                              │
+# └─────────────────────────────────────────────────────────────────────────────────────┘
+
+name: site
+
+on:
+  push:
+    paths:
+      - "site/**"
+      - ".github/workflows/site.yml"
+      # the copy states the version and the flag list, and both are generated from these
+      - "app/ChiakiNg.csproj"
+      - "app/Session/HostCommandLine.cs"
+  pull_request:
+    paths:
+      - "site/**"
+      - ".github/workflows/site.yml"
+      - "app/ChiakiNg.csproj"
+      - "app/Session/HostCommandLine.cs"
+  workflow_dispatch:
+
+# Least privilege by default. The Pages grants live on the job that publishes, so a push is
+# never handed the token that can deploy.
+permissions:
+  contents: read
+
+# A publish must not overlap another publish, and two gate runs on two branches have nothing to
+# do with each other. Keying the group on the event is what keeps a push from cancelling a
+# deploy that is halfway through.
+concurrency:
+  group: ${{ github.event_name == 'workflow_dispatch' && 'pages' || format('site-gate-{0}', github.ref) }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build (the gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The social card rasterises SVG text with resvg, which needs a font on disk.
+      - name: Fonts for the social card
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends fonts-dejavu-core
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
+      - name: Build
+        working-directory: site
+        run: |
+          npm ci
+          npm run build
+
+      # The site's own claims: the route pair, the twin per route, the generated flag list, the
+      # sitemap, the social card and the scroll rule, asserted against what was built.
+      - name: Test
+        working-directory: site
+        run: npm test
+
+      # Only what is about to be published is kept. On a push the build is the whole point and
+      # the output is not wanted anywhere.
+      - name: Keep the built site for the deploy
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-dist
+          path: site/dist
+          retention-days: 1
+
+  deploy:
+    name: deploy to Pages
+    needs: build
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      # The bytes the gate already built and tested, rather than a second build: two builds of
+      # one commit are two answers about it, and the published one would be the untested.
+      - uses: actions/download-artifact@v4
+        with:
+          name: site-dist
+          path: dist
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - id: deploy
+        uses: actions/deploy-pages@v4

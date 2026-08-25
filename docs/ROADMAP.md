@@ -37,7 +37,6 @@
 - 📋 **PP295** (deps: PP27 ⏳, PP297 ⏳) **streamconnection.c is 1326 lines and is the last C caller of the video receiver, so every deletion below waits on it** — PP286 to PP291 ported the frame path bottom-up and none of it removed C, because this is what still calls the native receiver. → §PP295
 - ⏳ **PP297** (deps: PP320 ✅) (requires: console) **no session exchange has ever been captured, so the four modules with no test cannot be ported against anything** — the capture needs a source as well as a console, and the log is not one: PP320 redacts the dump whole and ctrl logs a type and a size. → §PP297
 - 💭 **PP313** (deps: PP33 ⏳) **curl and json-c would leave the build today if the remote path were built off, and that trades a feature for a count** — PP33's fourth criterion otherwise waits on the managed session, and the tri_option is already there. → §PP313
-- 📋 **PP326** (deps: —) **nothing joins PP323's tap to PP297's recording, and a ctrl payload rendered as hex is eaten by the log sanitiser** — the recording is text and the ctrl channel is binary: every hex rendering trips the hexdump-row rule or the long-hex one, and both redact the payload whole. → §PP326
 
 ## Block G — Test discipline
 
