@@ -154,30 +154,6 @@ Filed so the gap is written down rather than remembered. The workflow signs noth
 today and says nothing about it, which is the state where a release goes out unsigned
 because every part of it was green.
 
-### §PP330 PP330 - the app's icon, rendered from the site's mark
-
-The site's mark lives in site/public/logo.svg, and that file is the only drawing of it.
-The app cannot read an SVG - ApplicationIcon takes a Windows .ico, which is a container
-of rasters - so something has to turn one into the other, and whatever does it becomes a
-second place the mark exists.
-
-site/scripts/app-icon.mjs renders it, beside og-image.mjs and for the same reason: resvg
-is already a dependency there and the SVG it reads is the site's. It writes
-assets/pportal.ico at seven sizes, 16 to 256, as uncompressed BGRA below 256 and a PNG
-at 256. The logo is 64 by 72 and an icon is square, so the renderer widens the viewBox
-rather than the drawing, and refuses if it is not the viewBox it knows.
-
-The second copy is what the stamp is for. assets/pportal.ico.source records the SHA-256
-of the SVG the .ico was rendered from, over LF-normalised bytes so a checkout's line
-endings are not the mark, and AppIconTests takes the same hash over the SVG in the tree.
-A redrawn mark and a stale icon is the failure with no other symptom - the build is
-green, the site is new, the executable is old - and a red test is what it looks like
-instead.
-
-The Qt client keeps gui/chiaking.ico. It is upstream's executable and the one being
-retired, and giving it this port's mark would put the new brand on the application the
-new brand is not.
-
 ## Block F — Managed core
 
 ### §PP23 The oracle this block cannot be written without

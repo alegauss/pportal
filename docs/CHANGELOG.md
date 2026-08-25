@@ -149,6 +149,7 @@
 - ✅ **PP308** **the ratchet's id join misses 75 tasks whose test shipped in the same commit, and only git can see that** — git answers where the test already is, as a diagnostic; the gate stays the id join, free and offline.
 - ✅ **PP314** **the ceiling says 95 and the port owes about one, so the number a reader acts on overstates the debt by two orders** — an index of which assertion file each shipping commit carried, generated from git: 95 to 32.
 - ✅ **PP315** **the ceiling reads 32 and none of the 32 is a task that needs a test written, so the number still is not the debt** — the index takes every file a commit carried, twenty gates and measurements say so, and the ceiling reads zero.
+- ✅ **PP330** **the executable, its window and the installer carry upstream's chiaki mark, and the site now ships a different one** — the site's mark rendered to a seven-size .ico that the executable, its window and the installer all carry, stamped with the SVG's hash so a redrawn logo turns the suite red.
 
 ## Block F — Managed core
 
