@@ -77,6 +77,31 @@ refuses it, PP319's choice falls to SDR on purpose.
 
 ## Block D — Screens
 
+### §PP329 An argument that is a flag is not an argument
+
+Two flags in the dispatch take an optional argument, and both read it the same way: find
+the flag, and if there is anything at all after it, that is the value.
+
+    string path = capture + 1 < e.Args.Length ? e.Args[capture + 1] : mapping.png;
+    string? id  = ratchet + 1 < e.Args.Length ? e.Args[ratchet + 1] : null;
+
+Nothing there asks whether what follows is a flag. `--capture-mapping --analog` writes a
+PNG called --analog into the working directory and never touches --analog; `--ratchet
+--selftest` looks for a task whose id is --selftest, reports that nothing names it, and
+exits without running the selftest. Both are silent: the argument was accepted, so no
+refusal is printed, and PP306's unknown-flag check cannot help because both spellings
+ARE known flags.
+
+The shape of the fix is already in the tree. PP327 needed the same decision for --record
+and made it there - a following argument beginning with a dash means the argument was
+omitted - and the reason it was written locally rather than shared is that it was one
+caller at the time. It is three now, which is the moment it stops being a local rule.
+
+Two dashes and not one, for the reason PP306 gives about Unrecognised: a bare word is
+what these flags legitimately take, and this port has never used a single-dash spelling
+for anything, so refusing one would turn a relative path into an error for no case that
+exists.
+
 ## Block E — Windows-only build
 
 ### §PP63 One configure that exists only to be measured

@@ -16,6 +16,8 @@
 
 ## Block D — Screens
 
+- 📋 **PP329** (deps: —) **--capture-mapping and --ratchet take whatever follows them, so a flag after either is swallowed as its argument** — --capture-mapping --analog writes a PNG named --analog and runs no capture; --ratchet --selftest looks up an id called --selftest and never selftests. → §PP329
+
 ## Block E — Windows-only build
 
 - 📋 **PP63** (deps: PP62 ✅) (requires: msvc-qt-webengine) **nothing in the tree can configure a Qt build carrying WebEngine, so PP46's before cannot be produced at all** — MSYS2 has no qt6-webengine and no Windows release carries Chromium, so the reference is built once with MSVC. → §PP63
