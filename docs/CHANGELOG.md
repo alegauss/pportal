@@ -279,6 +279,7 @@
 - ✅ **PP326** **nothing joins PP323's tap to PP297's recording, and a ctrl payload rendered as hex is eaten by the log sanitiser** — a recorder turns tapped messages into entries, rendering ctrl bytes as dash-separated pairs no sanitiser rule matches and dropping the payload of the six types that carry a secret.
 - ✅ **PP327** **the recorder exists and nothing turns it on, so making a capture is still a code change rather than a flag** — --record arms the recorder before any window opens and writes the exchange on exit, so a capture is a session with a console rather than a code change.
 - ✅ **PP328** **the recorder divides the tick rate down first, so every offset it stamps is wrong where that division has a remainder** — the offset is the ticks scaled by the counter's own rate, so a machine whose counter is not a whole number of ticks per microsecond records the time that passed.
+- ✅ **PP332** **nothing managed builds the session request, so PP297's recording is an oracle with nothing to judge** — the managed session request, redacted the way the capture was, is character for character the head that reached a real PS5.
 
 ## Block G — Test discipline
 
