@@ -1,0 +1,5 @@
+# PP330: what assets/pportal.ico was rendered from. Written by site/scripts/app-icon.mjs;
+# AppIconTests fails when the source below no longer hashes to this.
+source site/public/logo.svg
+sha256 379c86911408e50fe607e6638b2f9bab4680d388943a145a20b5b3d562df99b5
+sizes 16,24,32,48,64,128,256

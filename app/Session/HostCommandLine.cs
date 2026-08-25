@@ -90,16 +90,57 @@ public static partial class HostCommandLine
         return [.. args.Where(a => a.StartsWith("--", StringComparison.Ordinal) && !known.Contains(a))];
     }
 
+    /// <summary>Whether the arguments carry this flag, spelled either way.</summary>
+    public static bool Has(IReadOnlyList<string> args, string flag)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+        ArgumentNullException.ThrowIfNull(flag);
+
+        return args.Any(a => string.Equals(a, flag, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// PP329: the value a flag takes, or null where it was omitted - INCLUDING where what follows
+    /// is another flag.
+    ///
+    /// Three flags here take an optional argument and two of them used to read it as "whatever is
+    /// next, if there is anything at all". Nothing asked whether that was a flag, so
+    /// `--capture-mapping --analog` wrote a PNG called "--analog" and ran no capture, and
+    /// `--ratchet --selftest` looked up a task whose id was "--selftest" and exited without
+    /// selftesting. Both silently: the argument was accepted, so nothing was refused, and PP306's
+    /// unknown-flag check cannot help because both spellings ARE known flags.
+    ///
+    /// TWO DASHES AND NOT ONE, for the reason PP306 gives about <see cref="Unrecognised"/>: a bare
+    /// word is what these flags legitimately take, and this port has never spelled anything with a
+    /// single dash - so refusing one would turn a relative path into an error for no case that
+    /// exists. A value that must start with a dash is still reachable, by putting it after a flag
+    /// that takes none.
+    ///
+    /// PP327 made this decision locally for --record when it was the only caller. It is three now,
+    /// which is when it stops being a local rule.
+    /// </summary>
+    public static string? ValueAfter(IReadOnlyList<string> args, string flag)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+        ArgumentNullException.ThrowIfNull(flag);
+
+        for (int i = 0; i < args.Count; i++)
+        {
+            if (!string.Equals(args[i], flag, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            string? next = i + 1 < args.Count ? args[i + 1] : null;
+            return next is not null && !next.StartsWith("--", StringComparison.Ordinal) ? next : null;
+        }
+
+        return null;
+    }
+
     /// <summary>
     /// PP297: where <c>--record</c> writes, or null where it was not asked for.
     ///
     /// The flag is the last thing that task was reduced to - "a flag rather than a project" - and
     /// this is the half of it that can be checked without a console in the room.
-    ///
-    /// THE NEXT ARGUMENT IS ONLY A PATH IF IT IS NOT A FLAG. --capture-mapping takes whatever
-    /// follows it, so `--capture-mapping --analog` writes a PNG called "--analog"; that is its bug
-    /// and not one to copy. Here a following argument that starts with a dash means the path was
-    /// omitted, and the default is used.
     ///
     /// DEFAULTED WITH A TIMESTAMP, because the alternative is one name reused. A recording is made
     /// to be compared with another one, and a run that silently replaced the file it is about to be
@@ -113,22 +154,11 @@ public static partial class HostCommandLine
         ArgumentNullException.ThrowIfNull(args);
         ArgumentNullException.ThrowIfNull(defaultDirectory);
 
-        int at = -1;
-        for (int i = 0; i < args.Count; i++)
-        {
-            if (string.Equals(args[i], "--record", StringComparison.OrdinalIgnoreCase))
-            {
-                at = i;
-                break;
-            }
-        }
-
-        if (at < 0)
+        if (!Has(args, "--record"))
             return null;
 
-        string? next = at + 1 < args.Count ? args[at + 1] : null;
-        if (next is not null && !next.StartsWith('-'))
-            return next;
+        if (ValueAfter(args, "--record") is string path)
+            return path;
 
         return Path.Combine(
             defaultDirectory,

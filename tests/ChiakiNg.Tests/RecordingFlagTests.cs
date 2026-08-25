@@ -60,17 +60,14 @@ public class RecordingFlagTests
     }
 
     /// <summary>
-    /// A FLAG AFTER THE FLAG IS NOT A PATH, which is the case --capture-mapping gets wrong.
+    /// A FLAG AFTER THE FLAG IS NOT A PATH.
     ///
-    /// It takes whatever follows it, so `--capture-mapping --analog` writes a PNG named "--analog".
-    /// Copying that here would mean `--record --selftest` writing the recording to a file called
-    /// "--selftest" and never running the selftest, so an argument starting with a dash means the
-    /// path was omitted.
+    /// Otherwise `--record --selftest` writes the recording to a file called "--selftest" and never
+    /// runs the selftest - which is exactly what --capture-mapping and --ratchet did until PP329.
     /// </summary>
     [Theory]
     [InlineData("--selftest")]
     [InlineData("--analog")]
-    [InlineData("-h")]
     public void AFlagAfterTheFlagIsNotAPath(string next)
     {
         string? path = HostCommandLine.RecordingPath(["--record", next], Logs, Noon);

@@ -715,15 +715,13 @@ public partial class App : Application
         }
 
         // PP305: the debt PP38 counts, in the form it can be paid in. PP311: with an id after it,
-        // where that id is named instead - which is how a payment is audited.
-        int ratchet = Array.FindIndex(
-            e.Args, a => string.Equals(a, "--ratchet", StringComparison.OrdinalIgnoreCase));
-
-        if (ratchet >= 0)
+        // where that id is named instead - which is how a payment is audited. PP329: and a FLAG
+        // after it is not an id, so `--ratchet --selftest` still runs the selftest.
+        if (HostCommandLine.Has(e.Args, "--ratchet"))
         {
             ReopenStdOut();
 
-            string? id = ratchet + 1 < e.Args.Length ? e.Args[ratchet + 1] : null;
+            string? id = HostCommandLine.ValueAfter(e.Args, "--ratchet");
             Environment.Exit(id is null ? Ratchet() : RatchetFor(id));
         }
 
@@ -747,15 +745,13 @@ public partial class App : Application
             Environment.Exit(CaptureController(TimeSpan.FromSeconds(20), analog));
         }
 
-        int capture = Array.FindIndex(
-            e.Args, a => string.Equals(a, "--capture-mapping", StringComparison.OrdinalIgnoreCase));
-
-        if (capture >= 0)
+        // PP329: the path, unless what follows is a flag - `--capture-mapping --analog` used to
+        // write a PNG called "--analog" and run no capture at all.
+        if (HostCommandLine.Has(e.Args, "--capture-mapping"))
         {
             ReopenStdOut();
-
-            string path = capture + 1 < e.Args.Length ? e.Args[capture + 1] : "mapping.png";
-            Environment.Exit(CaptureMapping(path));
+            Environment.Exit(
+                CaptureMapping(HostCommandLine.ValueAfter(e.Args, "--capture-mapping") ?? "mapping.png"));
         }
 
         // PP297: recording is the one flag here that does NOT exit - it arms something and lets the

@@ -87,7 +87,9 @@ OutputBaseFilename=chiaki-ng-windows-installer
 ; Into build\, which is ignored, because an installer is output and not source. Upstream's
 ; OutputDir was the repository root, which is how a 90 MB artefact ends up in a diff.
 OutputDir=..\build
-SetupIconFile=..\gui\chiaking.ico
+; PP330: the same file the installed executable carries, and not upstream's mark. What this
+; installs is ChiakiNg.exe, so a setup window wearing the client's icon offers the wrong one.
+SetupIconFile=..\assets\pportal.ico
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern

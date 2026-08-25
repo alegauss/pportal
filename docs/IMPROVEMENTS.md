@@ -77,31 +77,6 @@ refuses it, PP319's choice falls to SDR on purpose.
 
 ## Block D — Screens
 
-### §PP329 An argument that is a flag is not an argument
-
-Two flags in the dispatch take an optional argument, and both read it the same way: find
-the flag, and if there is anything at all after it, that is the value.
-
-    string path = capture + 1 < e.Args.Length ? e.Args[capture + 1] : mapping.png;
-    string? id  = ratchet + 1 < e.Args.Length ? e.Args[ratchet + 1] : null;
-
-Nothing there asks whether what follows is a flag. `--capture-mapping --analog` writes a
-PNG called --analog into the working directory and never touches --analog; `--ratchet
---selftest` looks for a task whose id is --selftest, reports that nothing names it, and
-exits without running the selftest. Both are silent: the argument was accepted, so no
-refusal is printed, and PP306's unknown-flag check cannot help because both spellings
-ARE known flags.
-
-The shape of the fix is already in the tree. PP327 needed the same decision for --record
-and made it there - a following argument beginning with a dash means the argument was
-omitted - and the reason it was written locally rather than shared is that it was one
-caller at the time. It is three now, which is the moment it stops being a local rule.
-
-Two dashes and not one, for the reason PP306 gives about Unrecognised: a bare word is
-what these flags legitimately take, and this port has never used a single-dash spelling
-for anything, so refusing one would turn a relative path into an error for no case that
-exists.
-
 ## Block E — Windows-only build
 
 ### §PP63 One configure that exists only to be measured
@@ -178,6 +153,30 @@ port can take on its own.
 Filed so the gap is written down rather than remembered. The workflow signs nothing
 today and says nothing about it, which is the state where a release goes out unsigned
 because every part of it was green.
+
+### §PP330 PP330 - the app's icon, rendered from the site's mark
+
+The site's mark lives in site/public/logo.svg, and that file is the only drawing of it.
+The app cannot read an SVG - ApplicationIcon takes a Windows .ico, which is a container
+of rasters - so something has to turn one into the other, and whatever does it becomes a
+second place the mark exists.
+
+site/scripts/app-icon.mjs renders it, beside og-image.mjs and for the same reason: resvg
+is already a dependency there and the SVG it reads is the site's. It writes
+assets/pportal.ico at seven sizes, 16 to 256, as uncompressed BGRA below 256 and a PNG
+at 256. The logo is 64 by 72 and an icon is square, so the renderer widens the viewBox
+rather than the drawing, and refuses if it is not the viewBox it knows.
+
+The second copy is what the stamp is for. assets/pportal.ico.source records the SHA-256
+of the SVG the .ico was rendered from, over LF-normalised bytes so a checkout's line
+endings are not the mark, and AppIconTests takes the same hash over the SVG in the tree.
+A redrawn mark and a stale icon is the failure with no other symptom - the build is
+green, the site is new, the executable is old - and a red test is what it looks like
+instead.
+
+The Qt client keeps gui/chiaking.ico. It is upstream's executable and the one being
+retired, and giving it this port's mark would put the new brand on the application the
+new brand is not.
 
 ## Block F — Managed core
 

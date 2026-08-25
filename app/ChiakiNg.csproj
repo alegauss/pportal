@@ -16,9 +16,13 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <!-- The Qt client's icon, referenced where it already lives. A second copy is a second
-         thing to update, and the two executables are the same application. -->
-    <ApplicationIcon>..\gui\chiaking.ico</ApplicationIcon>
+    <!-- PP330: the site's mark, rendered to an .ico by site/scripts/app-icon.mjs. This used to
+         be ..\gui\chiaking.ico, on the reasoning that a second copy is a second thing to update
+         and the two executables are the same application - but they are not: that one is
+         upstream's client, this port replaces it, and the mark on the download page is this
+         one. The second copy is stamped rather than avoided, so the test says when it is stale.
+         The window inherits this; MainWindow names no Icon, which is what keeps it one file. -->
+    <ApplicationIcon>..\assets\pportal.ico</ApplicationIcon>
     <AssemblyName>ChiakiNg</AssemblyName>
     <RootNamespace>ChiakiNg</RootNamespace>
     <!-- Single source of truth for the version, and it tracks the Qt client's: CMakeLists.txt
