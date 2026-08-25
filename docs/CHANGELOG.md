@@ -273,6 +273,7 @@
 - ✅ **PP298** **the GMAC needs a 16-byte nonce and a 4-byte tag, and .NET's AesGcm accepts neither, so PP26 cannot finish on the BCL** — GHASH and the GCM tag by hand, agreeing with the runtime's GCM where it answers and with chiaki's where it will not.
 - ✅ **PP29 (the response parser)** **registration and discovery are 1775 lines that decide whether a console can be found and paired at all** — The registration reply is the only time a console hands over its keys, and three of its header names change with the family.
 - ✅ **PP300** **discovery's protocol half is wrapped rather than ported, so its parser and classifier are still C** — Discovery's packets, classifier and reply parser are now managed code, each answer compared with the C's on the same bytes.
+- ✅ **PP325** **the recording's redaction is shaped for log lines, so RP-Nonce reaches the file the moment a payload is structured** — a second sanitiser takes a value because of the header above it, composed in front of PP88's, so a short registration key and a base64 nonce never reach the recording.
 
 ## Block G — Test discipline
 

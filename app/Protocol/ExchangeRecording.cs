@@ -37,9 +37,16 @@ public enum ExchangeDirection
 /// Redacted on the way IN, not on the way out
 /// -------------------------------------------
 /// A real exchange carries the account id, the registration key and the nonce. <see cref="Add"/>
-/// runs PP88's sanitiser before the entry is stored, so an unredacted payload never exists in
-/// memory long enough to be written by accident - a recording is a file somebody attaches to an
-/// issue, and "we redact it when we save" is how the other kind of story starts.
+/// redacts before the entry is stored, so an unredacted payload never exists in memory long enough
+/// to be written by accident - a recording is a file somebody attaches to an issue, and "we redact
+/// it when we save" is how the other kind of story starts.
+///
+/// TWO SANITISERS AND THE ORDER MATTERS (PP325). PP88's runs over a line of text and is held
+/// character-for-character against gui/src/sessionlog.cpp. It is not enough on its own here: down
+/// the log path RP-Registkey and RP-Nonce were covered by PP320 redacting a hexdump row WHOLE, and
+/// a payload arriving structured has no such cover. A base64 nonce matches none of those ten rules.
+/// So <see cref="SessionHeaderSanitizer"/> goes FIRST and takes the value under a named header,
+/// then PP88's runs over what is left.
 ///
 /// The format is one line per entry
 /// --------------------------------
@@ -76,7 +83,12 @@ public sealed class ExchangeRecording
         // machine problem, and a recording with a negative offset is one no replay can order.
         long offset = Math.Max(0, atMicroseconds - originMicroseconds.Value);
 
-        entries.Add(new ExchangeEntry(offset, direction, channel, SessionLogSanitizer.Sanitize(payload)));
+        // PP325: by field, then by line. See the note on the class for why it is both and this way
+        // round - the header rule needs the value still sitting under its name, and PP88's rules can
+        // rewrite a line into something no header rule would recognise.
+        string redacted = SessionLogSanitizer.Sanitize(SessionHeaderSanitizer.Sanitize(payload));
+
+        entries.Add(new ExchangeEntry(offset, direction, channel, redacted));
     }
 
     /// <summary>The recording as text, one entry per line.</summary>
