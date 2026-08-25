@@ -53,6 +53,8 @@ public static partial class HostCommandLine
         new("--analog", "", "with --capture-controller: include the axes, which flood the log"),
         new("--capture-mapping", "[path]", "render the mapping screen off-screen to a PNG"),
         new("--record", "[path]", "record this session's exchange to a file, for PP297's replay"),
+        new("--capture-exchange", "[path]", "wake a registered console, run one session and record the exchange"),
+        new("--console", "[name]", "with --capture-exchange: which registered console, by nickname"),
         new("--map-controller", "", "open the mapping screen against a real pad"),
         new("--dcomp-demo", "", "show what one window composes, which PP163 is answered by looking at"),
         new("--topmost", "", "with --dcomp-demo: the control, asking the visual to cover WPF instead"),

@@ -745,6 +745,21 @@ public partial class App : Application
             Environment.Exit(CaptureController(TimeSpan.FromSeconds(20), analog));
         }
 
+        // PP297: the capture itself. Exits like every other capture flag - it drives a session
+        // rather than opening one, so there is no window for StartupUri to put behind it.
+        if (HostCommandLine.Has(e.Args, "--capture-exchange"))
+        {
+            ReopenStdOut();
+
+            string path = HostCommandLine.ValueAfter(e.Args, "--capture-exchange")
+                ?? Path.Combine(QtPaths.LogDirectory,
+                    $"exchange-{DateTimeOffset.Now:yyyyMMdd-HHmmss}.txt");
+
+            Environment.Exit(
+                ExchangeCapture.Run(path, HostCommandLine.ValueAfter(e.Args, "--console"))
+                    == CaptureOutcome.Recorded ? 0 : 1);
+        }
+
         // PP329: the path, unless what follows is a flag - `--capture-mapping --analog` used to
         // write a PNG called "--analog" and run no capture at all.
         if (HostCommandLine.Has(e.Args, "--capture-mapping"))

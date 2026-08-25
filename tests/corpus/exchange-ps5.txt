@@ -1,0 +1,16 @@
+chiaki-exchange-1
+0	->	session	GET /sie/ps5/rp/sess/init HTTP/1.1\r\nHost: <redacted-ipv4>:9295\r\nUser-Agent: remoteplay Windows\r\nConnection: close\r\nContent-Length: 0\r\nRP-Registkey: <redacted>\r\nRp-Version: 1.0\r\n\r\n
+28985	<-	session	HTTP/1.1 200 OK\r\nConnection: close\r\nPragma: no-cache\r\nContent-Length: 0\r\nRP-Nonce: <redacted>\r\nRP-Version: 1.0\r\nRP-SupportCmd: 136000\r\nRP-Feature: 1\r\n\r\n
+4889627	<-	ctrl	0005 <redacted>
+5085764	<-	ctrl	00fe 
+5085804	->	ctrl	01fe 
+6371501	<-	ctrl	0033 <redacted>
+6371569	->	ctrl	0036 00-01-01-59
+6371677	->	ctrl	0036 00-01-01-59
+6371722	->	ctrl	0910 00-00-00-00
+6373306	<-	ctrl	0016 01-ff
+6706549	<-	ctrl	0041 00-00-00-00-02-01-00-00
+10085718	<-	ctrl	00fe 
+10085737	->	ctrl	01fe 
+15085784	<-	ctrl	00fe 
+15085802	->	ctrl	01fe 

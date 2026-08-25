@@ -414,31 +414,6 @@ sends.
 Deleting is the deliverable, not just porting. The C video receiver leaving the build is
 what makes the five ports beneath it real.
 
-### §PP297 The recording that has never been made
-
-Eleven modules of this port have been translated and every one of them had a test/
-counterpart to be judged by. Four do not: session.c, ctrl.c, streamconnection.c and
-senkusha.c. They are PP28's three files and the one beneath them, and between them they
-are what is left.
-
-The comparison the other eleven used does not transfer. fec, frameprocessor and
-videoreceiver were checked by running the managed side and the C side over the same
-buffers and diffing the output, which works because a buffer function is a function. A
-session is a state machine over a socket: there is no second run, the console is not in
-the room, and the C cannot be driven without one either.
-
-So the oracle has to be a recording. A captured exchange - the session request and its
-answer, the control channel's messages in order with their timings, the switch to the
-stream - replayed against both implementations, which is the only repeatable form of
-this.
-
-Making it needs a console, and a source, which this was written as though it had. It
-does not. The log is all a managed caller sees, and it carries the session bytes only as
-the hexdump PP320 redacts whole, while ctrl logs a type and a size and never a payload.
-The flag this was reduced to would record nothing worth replaying. What is owed first is
-a shim callback per message, where redaction can name a field instead of guessing at a
-row.
-
 ### §PP313 The second door out of PP33
 
 PP33's first three criteria are met. Every curl and json-c area in holepunch.c has a
