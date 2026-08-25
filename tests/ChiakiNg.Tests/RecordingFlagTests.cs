@@ -4,7 +4,7 @@ using Xunit;
 namespace ChiakiNg.Tests;
 
 /// <summary>
-/// PP297: `--record`, which is the whole of what that task was reduced to - "a flag rather than a
+/// PP327: `--record`, which is the whole of what PP297 was reduced to - "a flag rather than a
 /// project" - and the half of it that can be checked with no console in the room.
 ///
 /// What cannot be checked here is a real capture. What can is every decision the flag makes before

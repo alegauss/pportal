@@ -141,13 +141,42 @@ public sealed class ExchangeRecorder : IDisposable
         lock (guard)
         {
             recording.Add(
-                clock.ElapsedTicks / (Stopwatch.Frequency / 1_000_000),
+                Microseconds(clock.ElapsedTicks, Stopwatch.Frequency),
                 message.Direction == ExchangeTapDirection.Sent
                     ? ExchangeDirection.Sent
                     : ExchangeDirection.Received,
                 message.Channel,
                 payload);
         }
+    }
+
+    /// <summary>
+    /// PP328: how long the clock has run, in microseconds, WITHOUT rounding the rate first.
+    ///
+    /// The obvious spelling divides the tick rate down to ticks-per-microsecond and then divides
+    /// the ticks by that, and the inner division is integer. On the 10 MHz counter Windows has
+    /// reported since Windows 8 it comes to exactly 10 and the arithmetic is right by luck.
+    /// QueryPerformanceFrequency promises a FIXED rate and not that one: a VM on the ACPI
+    /// power-management timer reports 3,579,545 Hz, which rounds to 3, and every offset then reads
+    /// about 19 percent long. A counter under 1 MHz would round the divisor to nought.
+    ///
+    /// Multiplying first fixes it: the rate is never rounded on its own, and the truncation happens
+    /// once at the end, where the loss is the unit the recording is written in rather than a scale
+    /// error in every entry.
+    ///
+    /// A FUNCTION OF TWO NUMBERS and not of the clock, because a test cannot move
+    /// Stopwatch.Frequency. Taking the rate as an argument is the only way the case this exists for
+    /// - a counter that is not a whole number of ticks per microsecond - can be asserted at all on
+    /// a machine whose counter is.
+    ///
+    /// The multiply cannot overflow at any rate a session runs at: a 10 MHz counter reaches
+    /// long.MaxValue after about 29 000 years of ticks times a million.
+    /// </summary>
+    public static long Microseconds(long ticks, long frequency)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(frequency);
+
+        return ticks * 1_000_000 / frequency;
     }
 
     /// <summary>

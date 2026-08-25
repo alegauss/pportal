@@ -196,6 +196,57 @@ public class ExchangeRecorderTests
     }
 
     /// <summary>
+    /// PP328: the offset is the ticks scaled by the rate, not the ticks divided by a rounded rate.
+    ///
+    /// 10 MHz is what Windows has reported since Windows 8 and it is the one rate under which the
+    /// broken spelling was right, which is why every PP326 test passed over it.
+    /// </summary>
+    [Theory]
+    [InlineData(10_000_000L, 10L, 1L)]           // the usual Windows counter: ten ticks a microsecond
+    [InlineData(10_000_000L, 10_000_000L, 1_000_000L)]  // a whole second of it
+    [InlineData(1_000_000L, 1_234L, 1_234L)]     // a 1 MHz counter is the identity
+    public void AnOffsetIsTheTicksScaledByTheRate(long frequency, long ticks, long expected)
+    {
+        Assert.Equal(expected, ExchangeRecorder.Microseconds(ticks, frequency));
+    }
+
+    /// <summary>
+    /// THE CASE THE BUG WAS IN: a rate that is not a whole number of ticks per microsecond.
+    ///
+    /// 3,579,545 Hz is the ACPI power-management timer, which a VM falls back to. Dividing the rate
+    /// first rounds it to 3, so a second of ticks came out as 1,193,181 microseconds - about 19
+    /// percent long. The whole value of a recording is that two of them can be compared, and two
+    /// taken on machines that round differently disagree for a reason in neither implementation.
+    /// </summary>
+    [Fact]
+    public void ARateThatIsNotAWholeNumberOfTicksPerMicrosecondIsStillRight()
+    {
+        const long acpi = 3_579_545;
+
+        // One second of that counter is one second, whatever the rate divides into.
+        Assert.Equal(1_000_000, ExchangeRecorder.Microseconds(acpi, acpi));
+
+        // And what the old spelling produced, kept here so the regression is named rather than
+        // described: ticks / (frequency / 1_000_000) with both divisions integer.
+        long asItWas = acpi / (acpi / 1_000_000);
+        Assert.Equal(1_193_181, asItWas);
+        Assert.NotEqual(asItWas, ExchangeRecorder.Microseconds(acpi, acpi));
+    }
+
+    /// <summary>
+    /// A rate below 1 MHz is answered rather than divided by zero.
+    ///
+    /// No Windows machine reports one, which is exactly why the old spelling could sit there: the
+    /// crash was unreachable and the wrong number was not.
+    /// </summary>
+    [Fact]
+    public void ARateBelowAMegahertzStillAnswers()
+    {
+        Assert.Equal(1_000_000, ExchangeRecorder.Microseconds(100_000, 100_000));
+        Assert.Throws<ArgumentOutOfRangeException>(() => ExchangeRecorder.Microseconds(1, 0));
+    }
+
+    /// <summary>
     /// PP297: the file `--record` leaves behind, into a directory that did not exist.
     ///
     /// The log directory is there on a machine that has run the Qt client and not on one that has
