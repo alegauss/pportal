@@ -282,6 +282,7 @@
 - ✅ **PP332** **nothing managed builds the session request, so PP297's recording is an oracle with nothing to judge** — the managed session request, redacted the way the capture was, is character for character the head that reached a real PS5.
 - ✅ **PP333** **PP332 added a second HTTP head parser beside PP33's, and the two disagree about spacing and duplicates** — the duplicate reader is gone and the answer goes through PP33's parser, so libchiaki's three transcribed quirks apply to it like every other reply.
 - ✅ **PP334** **the RP-Version retry is three attempts and the third reads the same reply differently, and nothing managed reproduces it** — the three rungs, the strcmp guard, the 5.0 substitution and the asymmetry the last attempt reads a reply with, as a decision table over one answer.
+- ✅ **PP335** **the login PIN loop says a PIN was wrong from a flag set before anyone could know, and nothing managed has it** — the loop, the unbounded wait for a person, the inner ctrl-failure check, and the flag that says a PIN was wrong because the console asked twice.
 
 ## Block G — Test discipline
 
