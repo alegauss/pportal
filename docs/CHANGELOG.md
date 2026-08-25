@@ -280,6 +280,7 @@
 - ✅ **PP327** **the recorder exists and nothing turns it on, so making a capture is still a code change rather than a flag** — --record arms the recorder before any window opens and writes the exchange on exit, so a capture is a session with a console rather than a code change.
 - ✅ **PP328** **the recorder divides the tick rate down first, so every offset it stamps is wrong where that division has a remainder** — the offset is the ticks scaled by the counter's own rate, so a machine whose counter is not a whole number of ticks per microsecond records the time that passed.
 - ✅ **PP332** **nothing managed builds the session request, so PP297's recording is an oracle with nothing to judge** — the managed session request, redacted the way the capture was, is character for character the head that reached a real PS5.
+- ✅ **PP333** **PP332 added a second HTTP head parser beside PP33's, and the two disagree about spacing and duplicates** — the duplicate reader is gone and the answer goes through PP33's parser, so libchiaki's three transcribed quirks apply to it like every other reply.
 
 ## Block G — Test discipline
 

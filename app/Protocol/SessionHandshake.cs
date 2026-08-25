@@ -80,43 +80,30 @@ public static class SessionHandshake
     }
 
     /// <summary>
-    /// The three headers session.c reads back out of the answer, by the names it compares.
+    /// PP333: the answer, read by the parser the rest of the port reads one with.
     ///
-    /// All three with strcasecmp, which is why this does too - PP293's note about the two spellings
-    /// is not a tidiness observation: the request writes "Rp-Version" and the reply is matched as
-    /// "RP-Version", and a case-sensitive reader finds neither.
+    /// This used to be a reader of its own, written because PP332 needed the recorded answer's
+    /// headers to assert against. It was the third in the tree and the worst: HttpResponse.Parse
+    /// is PP33's managed replacement for chiaki_http_response_parse and transcribes three rules
+    /// from a parser nobody wrote down - reverse order, exactly one space skipped after the colon,
+    /// a header with no trailing newline dropped - and the reader here reproduced none of them.
+    ///
+    /// They agree on every answer in the corpus, which is why it went in green. They part on a
+    /// value with two spaces, on a duplicate header and on a reply with no final newline, and the
+    /// port would then hold two answers about one response with nothing comparing them.
+    ///
+    /// So this is a call, not a parser. What it adds is the last step SessionResponse expects: the
+    /// three fields a session turns on, out of the headers that parse produced.
     /// </summary>
-    public static IReadOnlyDictionary<string, string> ResponseHeaders(string response)
+    /// <returns>Null where the text is not a response libchiaki would have accepted either.</returns>
+    public static SessionResponseFields? ReadAnswer(string response)
     {
         ArgumentNullException.ThrowIfNull(response);
 
-        var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (HttpResponse.Parse(response) is not var (code, headers))
+            return null;
 
-        // The status line is not a header, and the body - which this request never has - is past
-        // the blank line. Split on \n and trim \r so a reply with either ending is read the same.
-        foreach (string line in response.Split('\n').Skip(1))
-        {
-            string trimmed = line.TrimEnd('\r');
-            if (trimmed.Length == 0)
-                break;
-
-            int colon = trimmed.IndexOf(':', StringComparison.Ordinal);
-            if (colon <= 0)
-                continue;
-
-            headers[trimmed[..colon].Trim()] = trimmed[(colon + 1)..].Trim();
-        }
-
-        return headers;
-    }
-
-    /// <summary>The HTTP status of an answer, or -1 where the line is not one.</summary>
-    public static int StatusOf(string response)
-    {
-        ArgumentNullException.ThrowIfNull(response);
-
-        string[] parts = response.Split('\n')[0].Split(' ');
-        return parts.Length >= 2 && int.TryParse(parts[1], out int status) ? status : -1;
+        return SessionResponse.Parse(code, headers);
     }
 }
 

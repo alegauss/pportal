@@ -54,13 +54,15 @@ public class SessionHandshakeTests
     }
 
     /// <summary>
-    /// And the answer parses into the three headers session.c reads back.
+    /// And the recorded answer reads into the three fields a session turns on.
     ///
     /// RP-Nonce is redacted in the corpus and still present as a FIELD, which is what PP325 kept it
-    /// for: a reader can see the console sent one without the corpus carrying it.
+    /// for: a reader can see the console sent one without the corpus carrying it. That also means
+    /// the recording cannot be replayed into a real handshake, which is correct - it is an oracle
+    /// for the shape of the exchange, not a credential.
     /// </summary>
     [Fact]
-    public void TheRecordedAnswerParsesIntoTheHeadersSessionReadsBack()
+    public void TheRecordedAnswerReadsIntoTheFieldsSessionTurnsOn()
     {
         ExchangeRecording? recording = Corpus();
         if (recording is null)
@@ -69,27 +71,42 @@ public class SessionHandshakeTests
         ExchangeEntry received = recording.Entries.First(e =>
             e.Channel == "session" && e.Direction == ExchangeDirection.Received);
 
-        Assert.Equal(200, SessionHandshake.StatusOf(received.Payload));
+        SessionResponseFields? answer = SessionHandshake.ReadAnswer(received.Payload);
 
-        IReadOnlyDictionary<string, string> headers =
-            SessionHandshake.ResponseHeaders(received.Payload);
+        Assert.NotNull(answer);
+        Assert.True(answer.Value.Success);
+        Assert.Equal("<redacted>", answer.Value.Nonce);
+        Assert.NotNull(answer.Value.RpVersion);
+        Assert.Equal(0u, answer.Value.ErrorCode);
+    }
 
-        Assert.Equal("<redacted>", headers["RP-Nonce"]);
-        Assert.True(headers.ContainsKey("RP-Version"));
+    /// <summary>
+    /// PP333: it goes through PP33's parser, so libchiaki's quirks come with it.
+    ///
+    /// The reader this replaced trimmed values and split on newlines, and would have answered
+    /// happily here. HttpResponse.Parse refuses a reply that is not one, which is the behaviour the
+    /// rest of the port already agrees with libchiaki about.
+    /// </summary>
+    [Fact]
+    public void SomethingThatIsNotAResponseIsRefusedRatherThanRead()
+    {
+        Assert.Null(SessionHandshake.ReadAnswer("RP-Nonce: abc\r\n\r\n"));
+        Assert.Null(SessionHandshake.ReadAnswer("HTTP/1.1 200 OK"));
     }
 
     /// <summary>
     /// Read case-insensitively, because the two ends of session.c disagree with each other: the
-    /// request writes "Rp-Version" and the reply is matched with strcasecmp as "RP-Version".
+    /// request writes "Rp-Version" and PP296 settled the reply is matched without regard to case.
     /// </summary>
     [Fact]
     public void AHeaderIsFoundWhicheverWayItIsSpelled()
     {
-        IReadOnlyDictionary<string, string> headers = SessionHandshake.ResponseHeaders(
+        SessionResponseFields? answer = SessionHandshake.ReadAnswer(
             "HTTP/1.1 200 OK\r\nRp-Version: 10.0\r\nRP-NONCE: abc\r\n\r\n");
 
-        Assert.Equal("10.0", headers["RP-Version"]);
-        Assert.Equal("abc", headers["rp-nonce"]);
+        Assert.NotNull(answer);
+        Assert.Equal("10.0", answer.Value.RpVersion);
+        Assert.Equal("abc", answer.Value.Nonce);
     }
 
     /// <summary>The path is the one branch the target decides, and all three are reproduced.</summary>
