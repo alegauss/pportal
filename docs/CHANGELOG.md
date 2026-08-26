@@ -290,6 +290,7 @@
 - ✅ **PP341** **the rudp ctrl send sizes a stack buffer with a uint8_t, so a payload of 248 bytes or more overflows it** — the length is a size_t, so the sum that fills the buffer is the sum that sized it, and a check reads for the shape rather than the line.
 - ✅ **PP342** **a session id makes the client send three messages and nothing managed reproduces the order** — the burst a session id triggers, in order, held against the capture; the heartbeat answered regardless; and the four rungs that substitute an id rather than fail.
 - ✅ **PP344** **the two ctrl send paths disagree about a null payload with a size, and nothing managed has either** — the queue's copy, its order and the null-payload disagreement, both answers reproduced and each held against the path that gives it.
+- ✅ **PP346** **the ctrl read loop adds eight to a uint32 length, and the wrap defeats the overflow check below it** — the bound is on the announced length alone, before anything is added to it, so a header claiming four gigabytes ends the channel instead of being decrypted in place.
 
 ## Block G — Test discipline
 

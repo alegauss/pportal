@@ -422,15 +422,24 @@ static void *ctrl_thread_func(void *user)
 			uint32_t payload_size = *((uint32_t *)ctrl->recv_buf);
 			payload_size = ntohl(payload_size);
 
-			if(ctrl->recv_buf_size < 8 + payload_size)
+			// PP339/PP346: the bound is on payload_size ALONE, before anything is added to it.
+			//
+			// Both tests used to be written on `8 + payload_size`, and that sum is unsigned 32-bit:
+			// an announced length of 0xFFFFFFF8 or more wrapped it to between zero and seven. The
+			// loop only runs while recv_buf_size is at least eight, so the first test was false, the
+			// overflow check was never reached, and the message was dispatched with the length as
+			// announced - into an in-place decrypt over four gigabytes of a 512-byte buffer. The
+			// header is plaintext, so whatever holds this connection chose that number.
+			if(payload_size > sizeof(ctrl->recv_buf) - 8)
 			{
-				if(8 + payload_size > sizeof(ctrl->recv_buf))
-				{
-					CHIAKI_LOGE(ctrl->session->log, "Ctrl buffer overflow!");
-					overflow = true;
-				}
+				CHIAKI_LOGE(ctrl->session->log, "Ctrl buffer overflow!");
+				overflow = true;
 				break;
 			}
+
+			// Past the bound above, this sum cannot exceed the buffer and cannot wrap.
+			if(ctrl->recv_buf_size < 8 + payload_size)
+				break;
 
 			uint16_t msg_type = *((chiaki_unaligned_uint16_t *)(ctrl->recv_buf + 4));
 			msg_type = ntohs(msg_type);

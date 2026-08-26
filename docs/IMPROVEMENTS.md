@@ -159,7 +159,7 @@ because every part of it was green.
 ### §PP23 The oracle this block cannot be written without
 
 chiaki exists because the PlayStation remote play protocol was reverse engineered. There
-is no document to implement against: the 24590 lines of C in lib/src are the
+is no document to implement against: the 24599 lines of C in lib/src are the
 specification, and a managed rewrite that reads them and reproduces them is a
 translation whose only correctness test is behavioural.
 
@@ -198,7 +198,7 @@ bytes.
 
 ### §PP28 The state machines
 
-session.c is 1219 lines, ctrl.c 1485 and streamconnection.c 1326. Together they are the
+session.c is 1219 lines, ctrl.c 1494 and streamconnection.c 1326. Together they are the
 connection: what is sent in which order, what is waited for, what a timeout means at
 each point, and how a session comes apart when the console stops answering.
 
@@ -346,7 +346,7 @@ Repair any upstream and the port's copy becomes the divergence, on the next run.
 
 ### §PP294 The control channel, on its own
 
-The second of PP28's three. ctrl.c is the longest at 1485 lines and carries the most
+The second of PP28's three. ctrl.c is the longest at 1494 lines and carries the most
 message types - the control connection a session opens alongside the stream, over which
 the console reports state changes, accepts requests and answers keepalives.
 
@@ -486,36 +486,6 @@ The fix is a return type and a caller that reads it. What the session thread sho
 with a failure is a real question and not a small one: the PIN has already been consumed
 and freed on its side by then, so there is nothing left to retry with, and ending the
 session with a reason naming memory is more honest than a third prompt.
-
-### §PP346 A bound the arithmetic in front of it defeats
-
-The ctrl read loop takes a length off the wire and frames a message with it:
-
-    uint32_t payload_size = ntohl(*(uint32_t *)ctrl->recv_buf);
-    if(ctrl->recv_buf_size < 8 + payload_size)
-    {
-        if(8 + payload_size > sizeof(ctrl->recv_buf))
-            overflow = true;
-        break;
-    }
-
-Both tests are written on `8 + payload_size`, and that sum is unsigned 32-bit: the
-literal promotes to the uint32_t. For any announced length from 0xFFFFFFF8 upward it
-wraps to between zero and seven. The loop only runs while recv_buf_size is at least
-eight, so the first test is false, the second is never reached, and the message is
-dispatched with the length as announced.
-
-What that reaches is not a read. ctrl_message_received decrypts IN PLACE -
-chiaki_rpcrypt_decrypt(&rpcrypt, counter, payload, payload, payload_size) - so a header
-claiming 0xFFFFFFFF starts an AES-CTR pass over four gigabytes beginning eight bytes
-into a 512-byte buffer. The hexdump and the PP323 tap follow with the same length.
-
-The eight-byte header is plaintext; only the payload is encrypted. So the field that
-decides this is not authenticated, and whatever holds the ctrl connection chooses it.
-
-The check that exists is the right check. It is defeated by the arithmetic in front of
-it, which is why the bound belongs on payload_size ALONE - compared against the buffer
-less its header - where nothing can wrap before the comparison happens.
 
 ### §PP347 A copy with no room to check
 
