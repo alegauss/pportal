@@ -499,6 +499,60 @@ are already three messages by the time anything sees them.
 Two things are owed and they separate cleanly. The emit sites are a code change. The
 capture that follows needs a console, and this project has one - PS5-385.
 
+### §PP396 Four channels, two of them never recorded
+
+PP23 named four modules with no test at all. PP391 replayed ctrl against PP297's capture
+and PP392 replayed session. PP393 measured why the other two could not be: PP323 chose
+four tap sites and all four were in the two files already done, so senkusha and the
+stream connection had no channel and no recording could hold them.
+
+PP394 and PP395 built those channels. Every senkusha protobuf goes through one
+chokepoint that taps, and the received one is tapped above the decode. The stream
+connection has the same for its eight ordinary sends, its BIG tapped whole above the
+fragmentation, and its receive tapped above the state lock.
+
+So the code half is finished and nothing is left but the recording. PP327 already turned
+the recorder on with a flag, PP297 established what a good capture looks like, and PP326
+settled which payloads are redacted on the way in - the two new channels carry protobufs
+rather than credentials, and the type list that redacts is keyed to ctrl message types,
+so what those channels record needs a reading before the first capture is published.
+
+That reading is the one piece of design left here. Everything else is a session: wake
+the console, connect with --record, play for long enough that senkusha measures an MTU
+and the stream connection walks its three states, and keep the file.
+
+Nothing in a test can do it, which is why this line carries a requirement rather than a
+dep.
+
+### §PP397 One secret list, three numbering schemes
+
+PP326 settled which ctrl payloads never reach a recording, and keyed the answer to the
+message type: SESSION_ID goes because its payload IS the session id, LOGIN_PIN_REP
+because it is the PIN the user typed. ExchangeRecorder consults that list for every
+channel that is not the session one.
+
+PP394 and PP395 added two channels to that set, and neither numbers its messages the way
+ctrl does. A senkusha or stream message carries takion data type - 1, 2, 8, 9 - where a
+ctrl message carries 0x33 or 0x8004. One list, two numbering schemes, and nothing says
+so.
+
+Today that is a leak in one direction. stream_connection_send_big sets
+
+    msg.big_payload.session_key.arg = session->session_id;
+
+so a BIG carries the session id, and it crosses on the stream channel as data type 1.
+The list has no entry for that, so PP326's own reason for redacting SESSION_ID applies
+to a message it will not redact. The corpus is a file in a public repository, which is
+what ExchangeCorpusTests exists to say.
+
+It is also a collision waiting the other way. A ctrl type added to the list whose number
+happens to match a takion data type would redact the wrong channel's messages, and a
+recording missing the payloads of every streaminfo ack would look like a capture taken
+badly rather than like a rule misfiring.
+
+The same reading is owed for the BIG's launch spec and encrypted key, which nothing here
+has judged.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry
