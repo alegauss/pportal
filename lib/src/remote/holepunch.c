@@ -1946,7 +1946,18 @@ static ChiakiErrorCode get_websocket_fqdn(Session *session, char **fqdn)
         err = CHIAKI_ERR_UNKNOWN;
         goto cleanup_json;
     }
+    // PP398: checked. `err` is CHIAKI_ERR_SUCCESS by here, so a failed strdup returned success with
+    // *fqdn left NULL - and the caller stores it in session->ws_fqdn and carries on. What consumes
+    // it is snprintf("wss://%s/np/pushNotification", session->ws_fqdn), so the session then tries
+    // to open a websocket to a host built from a null pointer. PP345's shape: the failure arrives
+    // as something else, and here that something is the network being broken.
     *fqdn = strdup(json_object_get_string(fqdn_json));
+    if(!(*fqdn))
+    {
+        CHIAKI_LOGE(session->log, "get_websocket_fqdn: Memory could not be allocated for the websocket FQDN");
+        err = CHIAKI_ERR_MEMORY;
+        goto cleanup_json;
+    }
 
 cleanup_json:
     json_object_put(json);

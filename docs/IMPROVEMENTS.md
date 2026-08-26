@@ -159,7 +159,7 @@ because every part of it was green.
 ### §PP23 The oracle this block cannot be written without
 
 chiaki exists because the PlayStation remote play protocol was reverse engineered. There
-is no document to implement against: the 25160 lines of C in lib/src are the
+is no document to implement against: the 25179 lines of C in lib/src are the
 specification, and a managed rewrite that reads them and reproduces them is a
 translation whose only correctness test is behavioural.
 
@@ -214,7 +214,7 @@ way the crypto does.
 
 ### §PP29 The first thing that can be proved against a console
 
-regist.c is 910 lines, discovery.c 492 and discoveryservice.c 384: the broadcast that
+regist.c is 918 lines, discovery.c 492 and discoveryservice.c 384: the broadcast that
 finds a console, the reply that describes it, the wake packet, and the PIN exchange that
 ends with key material stored.
 
@@ -291,7 +291,7 @@ host would use regardless of this block.
 
 ### §PP33 Two dependencies that simply leave
 
-holepunch.c is 5797 lines and is the only translation unit in this tree that still needs
+holepunch.c is 5808 lines and is the only translation unit in this tree that still needs
 either library: 234 curl_easy calls, 4 curl_ws, and the json_object and json_tokener
 sites beside them. http.c is not among them. It is 262 lines over rudp and winsock and
 carries no curl symbol at all, which is not what the first version of this section said

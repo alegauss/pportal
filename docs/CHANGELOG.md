@@ -338,6 +338,7 @@
 - ✅ **PP395** **streamconnection has no tap channel, which is the last of PP23's four modules without one** — the last of PP23's four modules gets a channel: eight sends behind a chokepoint, the BIG tapped whole, the receive above the lock.
 - ✅ **PP397** **a recorded BIG would publish the session id PP326 redacts on ctrl, because the secret list is keyed by ctrl type** — the recorder asks the channel as well as the type, the tap carries the protobuf payload type, and a BIG is redacted.
 - 🗑 **PP393** **the tap emits from ctrl.c and session.c only, so the two modules PP23 still owes have nothing to replay against** — superseded by PP396: its diagnosis was acted on rather than shipped under this id: PP394 gave senkusha a channel, PP395 gave the stream one, and PP396 carries the capture that is left.
+- ✅ **PP398** **two allocations in lib/src are used without being checked, and one is a null dereference on the PSN path** — the two are checked and the rule is stated over lib/src, with the shapes where NULL is a correct answer excused by their consumer.
 
 ## Block G — Test discipline
 

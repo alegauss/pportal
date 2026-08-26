@@ -367,6 +367,14 @@ static void *regist_thread_func(void *user)
 	{
 		send_buf_size = request_header_size + payload_size;
 		send_buf = calloc(send_buf_size, sizeof(char));
+		// PP398: checked. The two copies below write into it unconditionally, so a failed
+		// allocation was a null dereference on the PSN registration path - and this is the branch
+		// a console registered over PSN takes, not a corner of one.
+		if(!send_buf)
+		{
+			CHIAKI_LOGE(regist->log, "Regist could not allocate %zu bytes for the request", send_buf_size);
+			goto fail_socket;
+		}
 		memcpy(send_buf, request_header, request_header_size);
 		memcpy(send_buf + request_header_size, payload, payload_size);
 	}
