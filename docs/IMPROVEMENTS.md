@@ -471,6 +471,34 @@ takion.c is PP27's file and this crosses into it, which is why this is a line ra
 than a wider edit under PP295. What it owes is the fix for all eight and a check that
 reads every file rather than the one where the first two were found.
 
+### §PP393 Two of four, and the tap sees the wrong two
+
+PP23 names four modules with no test at all: session, ctrl, streamconnection and
+senkusha. PP391 replayed the control channel against PP297's capture and PP392 replayed
+the session one. The other two cannot be replayed at all, and the reason is upstream of
+the harness.
+
+PP323 put the tap at four chokepoints. All four are in the two files already done:
+
+    ctrl.c:756     a message about to be sent, before it is encrypted
+    ctrl.c:937     a message received, after the decrypt and before the switch
+    session.c:998  the request head
+    session.c:1068 the answer
+
+streamconnection.c and senkusha.c have no emit site. So there is no channel for them, no
+recording can hold them, and a participant written against either would have nothing to
+be judged by - which is the whole of what PP23 says the port is missing.
+
+That is not an oversight in PP323. Its reasoning is that the tap belongs where a message
+is plaintext AND still one thing rather than a handler's arguments, and it found that
+window twice per file for the two files it covered. The same window has to be found for
+takion's data path and for senkusha's ping exchange, and neither is obviously in one
+place: senkusha sends AV packets built by hand, and the stream connection's protobufs
+are already three messages by the time anything sees them.
+
+Two things are owed and they separate cleanly. The emit sites are a code change. The
+capture that follows needs a console, and this project has one - PS5-385.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry
