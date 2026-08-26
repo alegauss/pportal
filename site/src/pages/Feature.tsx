@@ -14,17 +14,34 @@ function Figure({ kind }: { kind: FeatureRecord["figure"] }) {
   return null;
 }
 
-export function FeaturePage({ record }: { record: FeatureRecord }) {
-  const idx = features.findIndex((f) => f.slug === record.slug);
-  const prev = idx > 0 ? features[idx - 1] : null;
-  const next = idx < features.length - 1 ? features[idx + 1] : null;
+// The second level, and the reason there is no dropdown in the nav: the sibling pages are
+// listed once you are on one of them, where they are the choice actually in front of you.
+// A <nav> rather than a <div>, which is what keeps it out of the Markdown twins - it is
+// chrome, and the twins carry content.
+function Siblings({ slug }: { slug: string }) {
+  return (
+    <nav className="feature-siblings" aria-label="The other pages">
+      {features.map((f) => (
+        <a
+          className={f.slug === slug ? "current" : undefined}
+          aria-current={f.slug === slug ? "page" : undefined}
+          href={`/pportal/features/${f.slug}/`}
+          key={f.slug}
+        >
+          {f.heading}
+        </a>
+      ))}
+    </nav>
+  );
+}
 
+export function FeaturePage({ record }: { record: FeatureRecord }) {
   return (
     <>
       <Nav />
       <header className="hero page-hero" id="top">
         <div className="wrap">
-          <a className="feature-back" href="/pportal/#features">
+          <a className="feature-back" href="/pportal/features/">
             ← All pages
           </a>
           <div className="eyebrow">{record.eyebrow}</div>
@@ -37,6 +54,7 @@ export function FeaturePage({ record }: { record: FeatureRecord }) {
 
       <section>
         <div className="wrap">
+          <Siblings slug={record.slug} />
           {record.figure && <Figure kind={record.figure} />}
           <div className="feature-body">
             {record.sections.map((s) => (
@@ -68,23 +86,6 @@ export function FeaturePage({ record }: { record: FeatureRecord }) {
                 )}
               </div>
             ))}
-          </div>
-
-          <div className="feature-nav reveal">
-            {prev ? (
-              <a className="feature-nav-link" href={`/pportal/features/${prev.slug}/`}>
-                ← {prev.heading}
-              </a>
-            ) : (
-              <span />
-            )}
-            {next ? (
-              <a className="feature-nav-link next" href={`/pportal/features/${next.slug}/`}>
-                {next.heading} →
-              </a>
-            ) : (
-              <span />
-            )}
           </div>
         </div>
       </section>

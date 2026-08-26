@@ -22,6 +22,7 @@ before(() => {
 const EXPECTED = [
   "/",
   "/hardware",
+  "/features",
   "/features/picture",
   "/features/controllers",
   "/features/screens",

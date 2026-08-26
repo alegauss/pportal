@@ -313,13 +313,19 @@ nav .wrap {
   background: var(--panel-2);
   transform: translateY(-2px);
 }
-/* Two buttons stand in the nav, so the width left for the labels is tighter by a
-   whole button and the point they have to go went up with it. Below 1180px the labels go and
-   the buttons stay: a reader who cannot reach the download has lost more than one who cannot
-   reach an anchor. Above it the gap tightens and "part of" drops first, so there is a band
-   that keeps everything rather than dropping straight to the buttons.
+/* Two buttons stand in the nav, so the width left for the labels is tighter by a whole
+   button. Above 1320px the gap tightens and "part of" drops first, so there is a band that
+   keeps everything rather than dropping straight to the buttons.
 
-   These two numbers were chosen with margin rather than measured — this workspace has no
+   The point where the labels themselves go used to be 1180px, and it was set when they were
+   three anchors into the landing page: losing them cost a reader a scroll shortcut, which is
+   less than losing the download. They are routes now, and they are the only two, so losing
+   them costs the whole site's navigation instead - a phone reader would be left with a
+   download button and no way to reach a page. Two labels also take roughly half the width
+   four did. Both changes point the same way, so the point moved down rather than the rule
+   changing.
+
+   These numbers were chosen with margin rather than measured — this workspace has no
    headless browser by design, so the honest thing is to say so. What is not a guess is the
    direction: nowrap above means a row that no longer fits overflows instead of growing a
    second line, which is why the labels give way early rather than late. */
@@ -328,7 +334,7 @@ nav .wrap {
     gap: 16px;
   }
 }
-@media (max-width: 1180px) {
+@media (max-width: 620px) {
   .nav-links a:not(.btn) {
     display: none;
   }
@@ -1554,28 +1560,42 @@ footer .wrap {
   color: var(--accent-strong);
   font-weight: 600;
 }
-.feature-nav {
+/* The sibling strip: the site's second level, shown on the pages it addresses. It scrolls
+   sideways rather than wrapping, because five labels on a phone would otherwise set the
+   header's height from the narrowest one. The current page stays in the list rather than
+   being dropped from it: a strip that loses an entry as you arrive is a strip that changes
+   shape under the reader. */
+.feature-siblings {
   display: flex;
-  justify-content: space-between;
-  gap: 16px;
+  gap: 8px;
   max-width: 780px;
-  margin: 20px auto 0;
-  padding-top: 24px;
-  border-top: 1px solid var(--line);
+  margin: 0 auto 28px;
+  padding-bottom: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
-.feature-nav-link {
+.feature-siblings::-webkit-scrollbar {
+  display: none;
+}
+.feature-siblings a {
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
   color: var(--muted);
-  font-size: 0.92rem;
+  font-size: 0.88rem;
   font-weight: 500;
-  transition: color 0.2s;
-  max-width: 48%;
+  white-space: nowrap;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
 }
-.feature-nav-link:hover {
-  color: var(--accent);
+.feature-siblings a:hover {
+  color: var(--text);
+  border-color: var(--violet);
+  background: var(--panel);
 }
-.feature-nav-link.next {
-  text-align: right;
-  margin-left: auto;
+.feature-siblings a.current {
+  color: var(--text);
+  background: var(--panel-2);
+  border-color: var(--violet);
 }
 
 /* ---------- matrix table (the hardware page) ---------- */

@@ -58,6 +58,9 @@ export const navLinks = [
 
 export const footer = {
   links: [
+    // Below 620px the nav's labels give way to the buttons, so these two are the only route
+    // links a phone reader has. They lead the list for that reason.
+    { href: "/pportal/features/", label: "Features" },
     { href: "/pportal/hardware/", label: "Hardware" },
     { href: repoUrl, label: "GitHub" },
     { href: releasesUrl, label: "Releases" },

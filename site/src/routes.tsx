@@ -1,8 +1,9 @@
 import type { ComponentType } from "react";
 import { Landing } from "./pages/Landing";
 import { Hardware } from "./pages/Hardware";
+import { Features } from "./pages/Features";
 import { FeaturePage } from "./pages/Feature";
-import { hardware, meta } from "./lib/site-content";
+import { featuresIndex, hardware, meta } from "./lib/site-content";
 import { features } from "./lib/features";
 
 // GitHub Pages derives the base from the repository name: the site is served at
@@ -42,6 +43,13 @@ export const ROUTE_META: RouteMeta[] = [
     ogTitle: hardware.meta.ogTitle,
     ogDescription: hardware.meta.ogDescription,
   },
+  {
+    path: "/features",
+    title: featuresIndex.meta.title,
+    description: featuresIndex.meta.description,
+    ogTitle: featuresIndex.meta.ogTitle,
+    ogDescription: featuresIndex.meta.ogDescription,
+  },
   // The depth pages' metadata is read off the same records as their routes and pages below,
   // so a page cannot ship with a route and no title, or a page and no route.
   ...features.map((f) => ({
@@ -59,6 +67,7 @@ export const ROUTE_META: RouteMeta[] = [
 export const ROUTES: { path: string; component: ComponentType }[] = [
   { path: "/", component: Landing },
   { path: "/hardware", component: Hardware },
+  { path: "/features", component: Features },
   ...features.map((f) => ({
     path: `/features/${f.slug}`,
     // one stable component per record, bound to it

@@ -343,31 +343,6 @@ flag, its count loop is guarded by the return above it, peek writes both out-poi
 where pull guards its own, and takion still passes NULL and still drops on a bad MAC.
 Repair any upstream and the port's copy becomes the divergence, on the next run.
 
-### §PP293 The session lifetime, on its own
-
-PP28 named three files and 3977 lines as one task, and its own text said the split
-should happen when the work is started rather than now. It is being started, so this is
-the first of the three.
-
-session.c is the outermost of them: the login, the wakeup packet, the connect sequence
-and the teardown, plus the event queue a client reads. It is the one whose failures a
-user describes in words - it did not connect, it hung on the login - rather than as a
-picture problem.
-
-It also has the friendliest oracle of the three. Registration and discovery already have
-recorded vectors, and a connect exchange is a sequence of messages that can be replayed
-against both implementations offline; nothing in it needs a console answering in real
-time the way takion's timing does.
-
-What it shares with the other two is the shape of the risk. There is no diagram and the
-code is the diagram, and the ordering was written to match observed behaviour rather
-than designed - so the honest expectation is that some of it looks wrong and is not, and
-a port that tidies it is a port that has changed it.
-
-Ported behind a seam like PP291's, not against a session pointer: the six settings and
-four messages that measurement found there is the pattern, and this file is where most
-of both live.
-
 ### §PP294 The control channel, on its own
 
 The second of PP28's three. ctrl.c is the longest at 1469 lines and carries the most
