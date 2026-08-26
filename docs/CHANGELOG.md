@@ -296,6 +296,7 @@
 - ✅ **PP348** **ctrl.c's ctrl_failed overwrites a recorded quit reason, which is the rule PP336 asserted the label keeps** — the generic ctrl failure guards on NONE like the label does, so a cause the user can act on outlives the control channel dying after it.
 - ✅ **PP349** **the ctrl thread's loop is unported, and a cancelled select is its work branch rather than a failure** — a cancelled wait is the work branch, the three conditions are read in order before and after it, and the buffer frames two messages out of one read.
 - ✅ **PP350** **the ctrl channel owns two stop pipes for different jobs and nothing managed states which wakes what** — each pipe's job named and read out of the source: the select waits on notify, a blocking send is given stop, and only a stop pokes both.
+- ✅ **PP351** **accept and reject are the same ctrl message told apart by one unnamed byte, and nothing managed builds either** — the 36-byte header with its length in two fields, the pre-incremented counter, and accept and reject named rather than spelled four bytes at a time.
 
 ## Block G — Test discipline
 

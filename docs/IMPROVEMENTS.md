@@ -487,30 +487,6 @@ with a failure is a real question and not a small one: the PIN has already been 
 and freed on its side by then, so there is nothing left to retry with, and ending the
 session with a reason naming memory is more honest than a third prompt.
 
-### §PP351 Four asks, and the bytes that tell two apart
-
-Four exported functions let a screen ask the control channel for something, and all four
-are the send queue with a payload built in front of it. They are small and they are the
-whole of what the keyboard and the power button do.
-
-goto-bed is the queue with no payload at all. accept and reject are the same message
-type, KEYBOARD_CLOSE_REQ, distinguished only by the last byte of a four-byte payload:
-zero accepts, one rejects. Nothing names those two constants, and swapping them would
-send the console the opposite of what the user pressed with nothing anywhere to catch
-it.
-
-set_text is the one with structure. It allocates a header plus the text, zeroes it,
-copies the text AFTER the header, and then writes three fields over the front: a counter
-that pre-increments a member of ctrl, and the text length written TWICE into two
-separate fields. Both lengths are the byte length of the text, and nothing says why
-there are two - so a port writing one and leaving the other zero would be sending a
-message the console reads differently.
-
-The counter is the part worth care. It is ++ctrl->keyboard_text_counter, read and
-written outside any lock, from whatever thread the screen runs on. A second caller
-during the first would produce two messages with the same counter, and the console's
-idea of which text is current is that number.
-
 ### §PP353 A machine made of two flags
 
 The last handlers PP294 has not reached. Three of them are ordinary and two are a state
