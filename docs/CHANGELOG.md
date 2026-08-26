@@ -309,6 +309,7 @@
 - ✅ **PP368** **a gkcrypt owning a live thread was released with a bare free, leaving that thread writing into freed memory** — the gkcrypt goes through the wrapper that joins its thread, the early buffer is tested before it is written, and both are checked as shapes across three files.
 - ✅ **PP370** **the streaminfo ack's result was discarded, so a client reports connected while the console waits to be told** — the ack's result is read and failing ends the state, the disconnect logs, and a check over all eight sends refuses any answer thrown away.
 - ✅ **PP371** **a NULL disconnect reason is dereferenced twice, on the path that runs whenever a console hangs up** — the flag saying the reason is there is set before the strdup that fills it; both reads now go through one tested local, and the comparison stays exact so PP336 holds.
+- ✅ **PP376** **a BIG that lands exactly on a fragment boundary never gets its end-of-message flag** — the remainder was tested against the first-message overhead even on a continuation, so a remainder of exactly mtu - 25 was consumed whole and the trailing send that carries the end flag was skipped.
 
 ## Block G — Test discipline
 

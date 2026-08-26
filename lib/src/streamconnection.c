@@ -1152,7 +1152,16 @@ static ChiakiErrorCode stream_connection_send_big(ChiakiStreamConnection *stream
 	mtu -= 50;
 	uint32_t buf_pos = 0;
 	bool first = true;
-	while((mtu < total_size + 26) || (mtu < total_size + 25 && !first))
+
+	// PP376: which overhead the remainder is tested against depends on which message would carry it,
+	// and this tested both regardless. A continuation costs 25 and a first message 26, so on a
+	// remainder of exactly mtu - 25 the old condition asked `mtu < mtu + 1`, took a fragment that
+	// consumed all of it, and left total_size at 0 - which the trailing send is guarded against. That
+	// send is not an optimisation: it is the only one that passes 1 as the end-of-message flag. The
+	// console was left waiting for a continuation that was never coming while the client waited for
+	// BANG, both sides without an error, until whichever timeout is shorter. Now the loop takes a
+	// fragment only while a strict remainder is left, so the terminator always has something to go on.
+	while(first ? (mtu < total_size + 26) : (mtu < total_size + 25))
 	{
 		if(first)
 		{

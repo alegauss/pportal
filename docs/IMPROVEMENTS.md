@@ -159,7 +159,7 @@ because every part of it was green.
 ### §PP23 The oracle this block cannot be written without
 
 chiaki exists because the PlayStation remote play protocol was reverse engineered. There
-is no document to implement against: the 24743 lines of C in lib/src are the
+is no document to implement against: the 24752 lines of C in lib/src are the
 specification, and a managed rewrite that reads them and reproduces them is a
 translation whose only correctness test is behavioural.
 
@@ -198,7 +198,7 @@ bytes.
 
 ### §PP28 The state machines
 
-session.c is 1228 lines, ctrl.c 1574 and streamconnection.c 1381. Together they are the
+session.c is 1228 lines, ctrl.c 1574 and streamconnection.c 1390. Together they are the
 connection: what is sent in which order, what is waited for, what a timeout means at
 each point, and how a session comes apart when the console stops answering.
 
@@ -780,32 +780,6 @@ the fragment that failed is the point: "failed to send BIG fragment 3 of 5" is a
 sentence someone can act on, and a return value taken from the last send is not.
 
 The fix is the loop's; the boundary defect in the same loop is its own line.
-
-### §PP376 The BIG terminator the loop can eat
-
-Every send in the fragment loop passes 0 as its first argument; the trailing send after
-the loop passes 1. That argument is what tells the console the message is complete, so
-the trailing send is not an optimisation - it is the terminator.
-
-It is guarded by `if(total_size > 0)`, and total_size can reach exactly 0 inside the
-loop. Take a continuation fragment where total_size equals mtu - 25: `mtu < total_size +
-26` reads as `mtu < mtu + 1`, which is true, so the loop takes one more fragment of
-exactly mtu - 25 bytes and total_size becomes 0. The next test fails, the loop exits,
-`total_size > 0` is false, and the function returns success having sent every byte of
-BIG and no terminator.
-
-The console then waits for a continuation that will never come, and the client waits for
-BANG. Both sides are waiting, neither has an error, and the session dies on whichever
-timeout is shorter.
-
-Whether it happens is decided by two numbers neither side chose: the encoded length of
-the launch spec, which moves with resolution, codec, HDR and the base64 handshake key,
-and the MTU senkusha measured. A rare alignment, perfectly reproducible once a given
-console and profile hit it - the shape of a bug reported as "this one console never
-connects".
-
-The last fragment sent should carry the flag, which makes the trailing send a special
-case of the loop rather than a separate path.
 
 ## Block G — Test discipline
 
