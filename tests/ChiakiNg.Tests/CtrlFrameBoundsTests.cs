@@ -102,6 +102,36 @@ public class CtrlFrameBoundsTests
         Assert.Equal(FrameVerdict.Overflow, CtrlFrameBounds.Judge(505, 512));
     }
 
+    /// <summary>
+    /// PP347: the source buffer is larger than the destination, which is what makes the missing
+    /// bound reachable with a single well-formed message.
+    /// </summary>
+    [Fact]
+    public void TheRudpBufferIsLargerThanTheOneItFeeds()
+    {
+        Assert.True(CtrlFrameBounds.RudpReceiveBufferSize > CtrlFrameBounds.ReceiveBufferSize);
+
+        // A message filling the source does not fit the destination, even empty.
+        Assert.False(CtrlFrameBounds.FitsInTheCtrlBuffer(
+            CtrlFrameBounds.RudpReceiveBufferSize, buffered: 0));
+    }
+
+    /// <summary>
+    /// And the fill is what the framing loop left, so a partial message raises the bar.
+    ///
+    /// 512 bytes fit an empty buffer exactly; one byte already there and they do not.
+    /// </summary>
+    [Theory]
+    [InlineData(512, 0, true)]
+    [InlineData(512, 1, false)]
+    [InlineData(504, 8, true)]
+    [InlineData(505, 8, false)]
+    [InlineData(0, 512, true)]
+    public void WhatFitsDependsOnWhatIsAlreadyThere(int messageBytes, int buffered, bool fits)
+    {
+        Assert.Equal(fits, CtrlFrameBounds.FitsInTheCtrlBuffer(messageBytes, buffered));
+    }
+
     /// <summary>And ctrl.c still bounds the length alone, before the test it protects.</summary>
     [Fact]
     public void CtrlStillBoundsTheLengthAlone()
@@ -119,5 +149,39 @@ public class CtrlFrameBoundsTests
         Assert.True(
             CtrlFrameBoundsSource.TheBoundStillComesFirst(thread),
             "the bound no longer comes before the completeness test it protects");
+    }
+
+    /// <summary>
+    /// PP347: and every copy into that buffer is guarded by the room left in it.
+    ///
+    /// Counted rather than located, because two arms had the same defect and a third written the
+    /// same way would be a third.
+    /// </summary>
+    [Fact]
+    public void NoCopyIntoTheCtrlBufferIsUnbounded()
+    {
+        string? path = CtrlFrameBoundsSource.Locate();
+        if (path is null)
+            return;
+
+        string? thread = CtrlFrameBoundsSource.ThreadBody(path);
+        Assert.NotNull(thread);
+
+        Assert.Equal(0, CtrlFrameBoundsSource.UnboundedCopiesIntoTheCtrlBuffer(thread));
+    }
+
+    /// <summary>And the counter finds one where there is one, so the check above means something.</summary>
+    [Fact]
+    public void TheCounterFindsAnUnboundedCopy()
+    {
+        const string asItWas = """
+            				if((message.data_size - offset - 8) == ctrl_payload_size)
+            				{
+            					memcpy(ctrl->recv_buf + ctrl->recv_buf_size, message.data + offset, message.data_size - offset);
+            					ctrl->recv_buf_size += message.data_size - offset;
+            				}
+            """;
+
+        Assert.Equal(1, CtrlFrameBoundsSource.UnboundedCopiesIntoTheCtrlBuffer(asItWas));
     }
 }

@@ -159,7 +159,7 @@ because every part of it was green.
 ### §PP23 The oracle this block cannot be written without
 
 chiaki exists because the PlayStation remote play protocol was reverse engineered. There
-is no document to implement against: the 24599 lines of C in lib/src are the
+is no document to implement against: the 24607 lines of C in lib/src are the
 specification, and a managed rewrite that reads them and reproduces them is a
 translation whose only correctness test is behavioural.
 
@@ -198,7 +198,7 @@ bytes.
 
 ### §PP28 The state machines
 
-session.c is 1219 lines, ctrl.c 1494 and streamconnection.c 1326. Together they are the
+session.c is 1219 lines, ctrl.c 1502 and streamconnection.c 1326. Together they are the
 connection: what is sent in which order, what is waited for, what a timeout means at
 each point, and how a session comes apart when the console stops answering.
 
@@ -346,7 +346,7 @@ Repair any upstream and the port's copy becomes the divergence, on the next run.
 
 ### §PP294 The control channel, on its own
 
-The second of PP28's three. ctrl.c is the longest at 1494 lines and carries the most
+The second of PP28's three. ctrl.c is the longest at 1502 lines and carries the most
 message types - the control connection a session opens alongside the stream, over which
 the console reports state changes, accepts requests and answers keepalives.
 
@@ -486,36 +486,6 @@ The fix is a return type and a caller that reads it. What the session thread sho
 with a failure is a real question and not a small one: the PIN has already been consumed
 and freed on its side by then, so there is nothing left to retry with, and ending the
 session with a reason naming memory is more honest than a third prompt.
-
-### §PP347 A copy with no room to check
-
-The TCP receive is bounded correctly: recv() is handed sizeof(recv_buf) - recv_buf_size
-and cannot write past the buffer. The rudp receive is not.
-
-Two arms of the subtype switch copy a rudp message into the same 512-byte recv_buf:
-
-    memcpy(ctrl->recv_buf + ctrl->recv_buf_size, message.data + offset,
-           message.data_size - offset);
-    ctrl->recv_buf_size += message.data_size - offset;
-
-Nothing there compares the destination's remaining room against what is about to be
-written. The only guard in front of it is a consistency check - that the announced ctrl
-payload size equals the message size less its own eight-byte header - which says the
-message is well formed and nothing about whether it fits.
-
-The sizes make it reachable rather than theoretical. rudp_recv_buf is 520 bytes and
-recv_buf is 512, so a single well-formed message can be larger than the buffer it is
-copied into before any accumulation. And recv_buf_size is not reset per message: it is
-whatever the framing loop left behind, so a partial message already sitting there raises
-the destination offset.
-
-The limit passed to chiaki_rudp_recv_only is the confusing part and worth naming
-separately: it is sizeof(ctrl->rudp_recv_buf) - ctrl->recv_buf_size, which subtracts one
-buffer's fill level from the other buffer's capacity. There is only one size field for
-two buffers.
-
-The fix is a bound at each memcpy. Whether the two buffers should share a size field is
-the question underneath, and a larger one.
 
 ### §PP348 Two writers, one field, opposite rules
 

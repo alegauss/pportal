@@ -550,7 +550,13 @@ static void *ctrl_thread_func(void *user)
 							break;
 						// check if message is ctrl message by making sure the payload size (size of message - 8 byte header is correct)
 						uint32_t ctrl_payload_size = ntohl(*(uint32_t*)(message.data + offset));
-						if((message.data_size - offset - 8) == ctrl_payload_size)
+						// PP347: the destination's remaining room, checked. The test above says the
+						// message is well formed and nothing about whether it fits: rudp_recv_buf is
+						// 520 bytes and recv_buf is 512, so one well-formed message can be larger
+						// than the buffer it is copied into - and recv_buf_size is whatever the
+						// framing loop left behind, which raises the offset it is copied to.
+						if((message.data_size - offset - 8) == ctrl_payload_size
+								&& (size_t)(message.data_size - offset) <= sizeof(ctrl->recv_buf) - ctrl->recv_buf_size)
 						{
 							memcpy(ctrl->recv_buf + ctrl->recv_buf_size, message.data + offset, message.data_size - offset);
 							ctrl->recv_buf_size += message.data_size - offset;
@@ -574,7 +580,9 @@ static void *ctrl_thread_func(void *user)
 						if((message.data_size - offset2) < 8)
 							break;
 						uint32_t ctrl_payload_size2 = ntohl(*(uint32_t*)(message.data + offset2));
-						if((message.data_size - offset2 - 8) == ctrl_payload_size2)
+						// PP347: the same bound as the arm above, for the same reason.
+						if((message.data_size - offset2 - 8) == ctrl_payload_size2
+								&& (size_t)(message.data_size - offset2) <= sizeof(ctrl->recv_buf) - ctrl->recv_buf_size)
 						{
 							memcpy(ctrl->recv_buf + ctrl->recv_buf_size, message.data + offset2, message.data_size - offset2);
 							ctrl->recv_buf_size += message.data_size - offset2;

@@ -86,6 +86,29 @@ public static class CtrlFrameBounds
     /// <summary>Whether an announced length wraps the sum the old spelling used.</summary>
     public static bool WrapsTheOldSum(uint announced)
         => unchecked((uint)CtrlFraming.HeaderSize + announced) < announced;
+
+    /// <summary>The rudp receive buffer, which is EIGHT BYTES LARGER than the one it feeds.</summary>
+    public const int RudpReceiveBufferSize = 520;
+
+    /// <summary>
+    /// PP347: whether a rudp message may be copied into the ctrl buffer at its current fill.
+    ///
+    /// The check the C already had is a consistency test - the announced ctrl payload size equals
+    /// the message length less its own eight-byte header - which says the message is well formed and
+    /// nothing about whether it fits. Two things make that reachable rather than theoretical: the
+    /// source buffer is 520 bytes where the destination is 512, so one well-formed message can be
+    /// larger than what it is copied into; and the fill is whatever the framing loop left behind,
+    /// which raises the offset it lands at.
+    /// </summary>
+    /// <param name="messageBytes">How much of the rudp message is copied - its length past the offset.</param>
+    /// <param name="buffered">What the ctrl buffer already holds.</param>
+    public static bool FitsInTheCtrlBuffer(int messageBytes, int buffered)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(messageBytes);
+        ArgumentOutOfRangeException.ThrowIfNegative(buffered);
+
+        return messageBytes <= ReceiveBufferSize - buffered;
+    }
 }
 
 /// <summary>
@@ -136,5 +159,35 @@ public static class CtrlFrameBoundsSource
             "ctrl->recv_buf_size < 8 + payload_size", StringComparison.Ordinal);
 
         return bound >= 0 && complete > bound;
+    }
+
+    /// <summary>
+    /// PP347: every copy into the ctrl buffer, and whether each is guarded by the room left in it.
+    ///
+    /// Counted rather than located, because there are two arms with the same defect and a third
+    /// written the same way would be a third. What is looked for is the destination expression, and
+    /// what is required is that the room appears in the condition governing it.
+    /// </summary>
+    /// <returns>The number of copies with no bound on the destination.</returns>
+    public static int UnboundedCopiesIntoTheCtrlBuffer(string threadBody)
+    {
+        ArgumentNullException.ThrowIfNull(threadBody);
+
+        const string destination = "memcpy(ctrl->recv_buf + ctrl->recv_buf_size,";
+        const string room = "sizeof(ctrl->recv_buf) - ctrl->recv_buf_size";
+
+        var unbounded = 0;
+        for (int at = threadBody.IndexOf(destination, StringComparison.Ordinal);
+             at >= 0;
+             at = threadBody.IndexOf(destination, at + 1, StringComparison.Ordinal))
+        {
+            // The condition that governs a copy is above it. Looking back to the previous `if` is
+            // enough here: every one of these sits alone inside its own braces.
+            int guard = threadBody.LastIndexOf("if(", at, StringComparison.Ordinal);
+            if (guard < 0 || !threadBody[guard..at].Contains(room, StringComparison.Ordinal))
+                unbounded++;
+        }
+
+        return unbounded;
     }
 }
