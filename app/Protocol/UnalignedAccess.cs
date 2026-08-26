@@ -43,16 +43,66 @@ public readonly record struct PointerAccess(
 /// </summary>
 public static partial class UnalignedAccess
 {
-    /// <summary>The file this rule is stated over.</summary>
+    /// <summary>The file PP378 stated this rule over, kept because that is where it started.</summary>
     public const string RelativePath = @"lib\src\senkusha.c";
 
     /// <summary>The file, or null outside a checkout.</summary>
     public static string? Locate() => SanitizerSource.LocateRelative(RelativePath);
 
+    /// <summary>PP382: where the library's C lives, which is what the rule now reads.</summary>
+    public const string SourceRelativePath = @"lib\src";
+
+    /// <summary>The directory, or null outside a checkout. See PP382's note on the locator.</summary>
+    public static string? LocateSources() => SanitizerSource.LocateDirectory(SourceRelativePath);
+
+    /// <summary>
+    /// PP382: the accesses that keep a plain cast, each because a buffer carries the guarantee.
+    ///
+    /// PP378 scoped its rule to one file because "does this pointer carry a guarantee" is answered
+    /// per buffer and could not be guessed everywhere. PP381's widened reader made the rest of the
+    /// tree readable, so the answer is now given per site - and these four are the sites where it
+    /// is yes.
+    ///
+    /// BOTH BUFFERS SAY SO IN THE C. ctrl.c's recv_buf and its eight-byte header are each declared
+    /// under <c>__attribute__((aligned(__alignof__(uint32_t))))</c>, and the attribute is there
+    /// BECAUSE of these reads. A plain cast on either is the guarantee being used rather than one
+    /// being assumed, which is the whole distinction this rule is about.
+    ///
+    /// An exception is a file and a target, not a line number: line numbers move and the reason
+    /// does not. A fifth exception added here without an attribute beside it is the failure mode,
+    /// and it is a review question rather than something a regex can judge.
+    /// </summary>
+    public static IReadOnlyDictionary<string, IReadOnlySet<string>> Aligned { get; } =
+        new Dictionary<string, IReadOnlySet<string>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["ctrl.c"] = new HashSet<string>(StringComparer.Ordinal)
+            {
+                "ctrl->recv_buf",
+                "header",
+                "header + 4",
+                "header + 6",
+            },
+        };
+
+    /// <summary>Whether this access is one of the four that may keep a plain cast.</summary>
+    public static bool IsDeliberatelyAligned(PointerAccess access)
+        => Aligned.TryGetValue(access.File, out IReadOnlySet<string>? targets)
+            && targets.Contains(access.Target);
+
+    /// <summary>
+    /// The CAST only, up to its closing parenthesis. What follows it is read by hand.
+    ///
+    /// PP382: the first version of this ended in <c>\((?&lt;target&gt;[^)]*)\)</c> and so matched
+    /// only targets that were parenthesised. Every write in holepunch.c is
+    /// <c>*(uint32_t*)&amp;confirm_buf[0]</c> and ctrl.c's guarded read is
+    /// <c>*((uint32_t *)ctrl-&gt;recv_buf)</c> - neither has parentheses round the target, and the
+    /// sweep saw neither. The inner parenthesis is optional for the same reason PP381 made it
+    /// optional one file over: the tree writes both.
+    /// </summary>
     [GeneratedRegex(
-        @"\*\s*\(\s*\(\s*(?<unaligned>chiaki_unaligned_)?uint(?<bits>16|32|64)_t\s*\*\s*\)\s*\((?<target>[^)]*)\)",
+        @"\*\s*\(\s*\(?\s*(?<unaligned>chiaki_unaligned_)?uint(?<bits>16|32|64)_t\s*\*\s*\)",
         RegexOptions.None)]
-    private static partial Regex CastAccess();
+    private static partial Regex CastPrefix();
 
     /// <summary>
     /// Every multi-byte access through a pointer cast in the file.
@@ -68,7 +118,7 @@ public static partial class UnalignedAccess
 
         var accesses = new List<PointerAccess>();
 
-        foreach (Match match in CastAccess().Matches(source))
+        foreach (Match match in CastPrefix().Matches(source))
         {
             // Commented-out code is not code - PP374's exclusion, for the same reason.
             int lineStart = source.LastIndexOf('\n', Math.Max(0, match.Index - 1)) + 1;
@@ -80,17 +130,73 @@ public static partial class UnalignedAccess
                 source.Take(match.Index).Count(c => c == '\n') + 1,
                 int.Parse(match.Groups["bits"].Value),
                 match.Groups["unaligned"].Success,
-                match.Groups["target"].Value.Trim()));
+                TargetAfter(source, match.Index + match.Length)));
         }
 
         return accesses;
     }
 
-    /// <summary>The ones claiming an alignment the pointer does not carry.</summary>
+    /// <summary>
+    /// What the cast is applied to, read from just past it.
+    ///
+    /// Two shapes, because the tree writes both. A parenthesised target is taken whole, counting
+    /// parentheses so <c>(buf + f(x))</c> would survive; a bare one runs to the first delimiter at
+    /// bracket depth zero, so <c>&amp;confirm_buf[0x44]</c> keeps its subscript and
+    /// <c>ctrl-&gt;recv_buf</c> keeps its arrow.
+    /// </summary>
+    private static string TargetAfter(string source, int at)
+    {
+        while (at < source.Length && char.IsWhiteSpace(source[at]))
+            at++;
+
+        if (at >= source.Length)
+            return string.Empty;
+
+        if (source[at] == '(')
+        {
+            var depth = 0;
+            for (int scan = at; scan < source.Length; scan++)
+            {
+                if (source[scan] == '(')
+                {
+                    depth++;
+                }
+                else if (source[scan] == ')' && --depth == 0)
+                {
+                    return source[(at + 1)..scan].Trim();
+                }
+            }
+
+            return source[(at + 1)..].Trim();
+        }
+
+        var brackets = 0;
+        int start = at;
+        for (; at < source.Length; at++)
+        {
+            char c = source[at];
+
+            if (c == '[')
+                brackets++;
+            else if (c == ']')
+                brackets--;
+            else if (brackets == 0 && (c is ')' or ';' or ',' or '=' or '\n'))
+                break;
+        }
+
+        return source[start..at].Trim();
+    }
+
+    /// <summary>
+    /// The ones claiming an alignment the pointer does not carry.
+    ///
+    /// PP382: the four in <see cref="Aligned"/> are not among them - they claim one the buffer
+    /// really has. Everything else that reaches for a plain cast is a site where nobody checked.
+    /// </summary>
     public static IReadOnlyList<PointerAccess> ClaimingAlignment(IEnumerable<PointerAccess> accesses)
     {
         ArgumentNullException.ThrowIfNull(accesses);
 
-        return accesses.Where(a => !a.IsUnaligned).ToList();
+        return accesses.Where(a => !a.IsUnaligned && !IsDeliberatelyAligned(a)).ToList();
     }
 }

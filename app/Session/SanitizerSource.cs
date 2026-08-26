@@ -95,6 +95,36 @@ public static partial class SanitizerSource
     }
 
     /// <summary>
+    /// A repository DIRECTORY, resolved the same way.
+    ///
+    /// PP382: separate from <see cref="LocateRelative(string)"/> rather than folded into it, and
+    /// that is the whole point. That one ends in <c>File.Exists</c>, so every caller that handed it
+    /// a directory got null and every rule built on one silently did not run - which is exactly
+    /// what a locator returning null is supposed to mean and exactly why nobody noticed.
+    ///
+    /// The two sweeps over lib/src were the callers: PP374's byte-order width rule and PP378's
+    /// unaligned-access rule. Both early-returned on null by design, both reported green, and
+    /// neither had ever opened a file. Widening the file locator instead would make a path that is
+    /// meant to be a file answer for a directory of the same name, so the kinds stay apart and a
+    /// caller says which it wants.
+    /// </summary>
+    public static string? LocateDirectory(string relativePath)
+        => LocateDirectory(relativePath, AppContext.BaseDirectory);
+
+    /// <summary>The same, from a directory named by the caller.</summary>
+    public static string? LocateDirectory(string relativePath, string startDirectory)
+    {
+        ArgumentNullException.ThrowIfNull(relativePath);
+
+        string? root = RepositoryRootFrom(startDirectory);
+        if (root is null)
+            return null;
+
+        string candidate = Path.Combine(root, relativePath);
+        return Directory.Exists(candidate) ? candidate : null;
+    }
+
+    /// <summary>
     /// Every R"(...)" literal in the file, in the order it declares them. Raw strings are what the
     /// C++ side uses for these patterns precisely because a backslash means a backslash in them,
     /// which is what makes a character-for-character comparison meaningful at all.

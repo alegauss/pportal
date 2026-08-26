@@ -196,14 +196,21 @@ public static class NatProbeSource
     /// <summary>The file, or null outside a checkout.</summary>
     public static string? Locate() => SanitizerSource.LocateRelative(RelativePath);
 
-    /// <summary>The offsets this port copied, in the order the core writes them.</summary>
+    /// <summary>
+    /// The offsets this port copied, in the order the core writes them.
+    ///
+    /// PP382 respelled the three casts here as <c>chiaki_unaligned_uint*_t</c>. These buffers are
+    /// written at hex offsets - <c>&amp;request_buf[i][0x44]</c> - so alignment depended on a
+    /// constant nobody chose for that reason, and this check quoting the old spelling is what
+    /// noticed the change rather than a reason to keep it.
+    /// </summary>
     public static IReadOnlyList<string> RequestWrites { get; } =
     [
-        "*(uint32_t*)&request_buf[i][0x00] = htonl(MSG_TYPE_REQ);",
+        "*(chiaki_unaligned_uint32_t*)&request_buf[i][0x00] = htonl(MSG_TYPE_REQ);",
         "memcpy(&request_buf[i][0x04], session->hashed_id_local, sizeof(session->hashed_id_local));",
         "memcpy(&request_buf[i][0x24], session->hashed_id_console, sizeof(session->hashed_id_console));",
-        "*(uint16_t*)&request_buf[i][0x44] = htons(session->sid_local);",
-        "*(uint16_t*)&request_buf[i][0x46] = htons(session->sid_console);",
+        "*(chiaki_unaligned_uint16_t*)&request_buf[i][0x44] = htons(session->sid_local);",
+        "*(chiaki_unaligned_uint16_t*)&request_buf[i][0x46] = htons(session->sid_console);",
         "memcpy(&request_buf[i][0x4b], request_id[i], sizeof(request_id[i]));",
     ];
 
@@ -247,9 +254,10 @@ public static class NatProbeSource
     public static bool TheTailIsStillMaskedBySessionIds(string core)
     {
         ArgumentNullException.ThrowIfNull(core);
-        return core.Contains("*(uint16_t*)&confirm_buf[0x50] = htons(session->sid_local);", StringComparison.Ordinal)
-            && core.Contains("*(uint16_t*)&confirm_buf[0x52] = htons(session->sid_console);", StringComparison.Ordinal)
-            && core.Contains("*(uint16_t*)&confirm_buf[0x54] = htons(session->sid_local);", StringComparison.Ordinal)
+        // PP382: the same respelling as RequestWrites above, for the same reason.
+        return core.Contains("*(chiaki_unaligned_uint16_t*)&confirm_buf[0x50] = htons(session->sid_local);", StringComparison.Ordinal)
+            && core.Contains("*(chiaki_unaligned_uint16_t*)&confirm_buf[0x52] = htons(session->sid_console);", StringComparison.Ordinal)
+            && core.Contains("*(chiaki_unaligned_uint16_t*)&confirm_buf[0x54] = htons(session->sid_local);", StringComparison.Ordinal)
             && core.Contains("xor_bytes(&confirm_buf[0x50], console_addr, 4);", StringComparison.Ordinal)
             && core.Contains("xor_bytes(&confirm_buf[0x54], console_port, 2);", StringComparison.Ordinal);
     }

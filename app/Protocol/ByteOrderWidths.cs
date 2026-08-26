@@ -43,8 +43,14 @@ public static partial class ByteOrderWidths
     /// <summary>Where the library's C lives.</summary>
     public const string SourceRelativePath = @"lib\src";
 
-    /// <summary>The directory, or null outside a checkout.</summary>
-    public static string? LocateSources() => SanitizerSource.LocateRelative(SourceRelativePath);
+    /// <summary>
+    /// The directory, or null outside a checkout.
+    ///
+    /// PP382: through <see cref="SanitizerSource.LocateDirectory(string)"/>. This asked the FILE
+    /// locator for a directory and was handed null in every checkout there has ever been, so the
+    /// sweep below early-returned and the rule this class exists for never ran once.
+    /// </summary>
+    public static string? LocateSources() => SanitizerSource.LocateDirectory(SourceRelativePath);
 
     /// <summary>
     /// PP381: the parenthesis that hid thirty-three of thirty-eight.

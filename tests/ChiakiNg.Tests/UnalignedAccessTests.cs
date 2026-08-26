@@ -1,4 +1,4 @@
-using ChiakiNg.Protocol;
+﻿using ChiakiNg.Protocol;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -42,6 +42,98 @@ public class UnalignedAccessTests(ITestOutputHelper output)
             claiming.Count == 0,
             "these read or write multiple bytes through a plain cast, on pointers that carry no "
             + "alignment guarantee:\n  " + string.Join("\n  ", claiming));
+    }
+
+    private static IReadOnlyList<PointerAccess> EveryAccessInTheLibrary()
+    {
+        string? dir = UnalignedAccess.LocateSources();
+        if (dir is null)
+            return [];
+
+        var found = new List<PointerAccess>();
+        foreach (string file in Directory.EnumerateFiles(dir, "*.c", SearchOption.AllDirectories))
+            found.AddRange(UnalignedAccess.AccessesIn(Path.GetFileName(file), File.ReadAllText(file)));
+
+        return found;
+    }
+
+    /// <summary>
+    /// PP382: THE SAME RULE, over the whole library.
+    ///
+    /// PP378 scoped it to one file because whether a pointer carries a guarantee is answered per
+    /// buffer, and the answer was not known everywhere. PP381's widened reader made the tree
+    /// readable and the answer was then given per site: twenty-two had nothing, four had an
+    /// attribute put there for them.
+    /// </summary>
+    [Fact]
+    public void NothingInTheLibraryClaimsAnAlignmentItWasNotGiven()
+    {
+        IReadOnlyList<PointerAccess> accesses = EveryAccessInTheLibrary();
+        if (accesses.Count == 0)
+            return;
+
+        // A floor, for PP381's reason: a sweep that quietly stopped matching reads exactly like a
+        // clean one. A hundred and thirty-three today, across takion, holepunch, ctrl and the frame path.
+        Assert.True(accesses.Count >= 100, $"the sweep found only {accesses.Count} accesses");
+
+        IReadOnlyList<PointerAccess> claiming = UnalignedAccess.ClaimingAlignment(accesses);
+
+        foreach (PointerAccess access in claiming)
+            output.WriteLine(access.ToString());
+
+        Assert.True(
+            claiming.Count == 0,
+            $"{claiming.Count} multi-byte access(es) go through a plain cast on a pointer that "
+            + "carries no alignment guarantee:\n  " + string.Join("\n  ", claiming));
+    }
+
+    /// <summary>
+    /// And the four exceptions are still exceptions - present, plain, and excused by name.
+    ///
+    /// Asserted because an empty exception list would make the rule above pass by having nothing to
+    /// forgive, and because the day one of them stops being reached is the day its attribute can go.
+    /// </summary>
+    [Fact]
+    public void TheFourDeliberateOnesAreStillThere()
+    {
+        IReadOnlyList<PointerAccess> accesses = EveryAccessInTheLibrary();
+        if (accesses.Count == 0)
+            return;
+
+        IReadOnlyList<PointerAccess> excused =
+            [.. accesses.Where(a => !a.IsUnaligned && UnalignedAccess.IsDeliberatelyAligned(a))];
+
+        Assert.Equal(4, excused.Count);
+        Assert.All(excused, a => Assert.Equal("ctrl.c", a.File));
+    }
+
+    /// <summary>
+    /// The exception is by target, not by file - so a fifth plain cast in ctrl.c on some other
+    /// buffer is still a finding.
+    /// </summary>
+    [Fact]
+    public void AnUnexcusedTargetInAnExcusedFileIsStillAFinding()
+    {
+        const string Elsewhere = "uint32_t n = ntohl(*((uint32_t *)(message.data + 4)));";
+
+        PointerAccess access = Assert.Single(UnalignedAccess.AccessesIn("ctrl.c", Elsewhere));
+
+        Assert.False(UnalignedAccess.IsDeliberatelyAligned(access));
+        Assert.Single(UnalignedAccess.ClaimingAlignment([access]));
+
+        // While the buffer that does carry the attribute is excused.
+        PointerAccess guaranteed = Assert.Single(
+            UnalignedAccess.AccessesIn("ctrl.c", "uint32_t n = *((uint32_t *)ctrl->recv_buf);"));
+
+        Assert.True(UnalignedAccess.IsDeliberatelyAligned(guaranteed));
+        Assert.Empty(UnalignedAccess.ClaimingAlignment([guaranteed]));
+
+        // And the same target in a different file is not excused, because the attribute is not
+        // there either.
+        PointerAccess elsewhereFile = Assert.Single(
+            UnalignedAccess.AccessesIn("takion.c", "uint32_t n = *((uint32_t *)ctrl->recv_buf);"));
+
+        Assert.False(UnalignedAccess.IsDeliberatelyAligned(elsewhereFile));
     }
 
     /// <summary>

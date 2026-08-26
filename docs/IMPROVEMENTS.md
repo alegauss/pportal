@@ -159,7 +159,7 @@ because every part of it was green.
 ### §PP23 The oracle this block cannot be written without
 
 chiaki exists because the PlayStation remote play protocol was reverse engineered. There
-is no document to implement against: the 24924 lines of C in lib/src are the
+is no document to implement against: the 24934 lines of C in lib/src are the
 specification, and a managed rewrite that reads them and reproduces them is a
 translation whose only correctness test is behavioural.
 
@@ -198,7 +198,7 @@ bytes.
 
 ### §PP28 The state machines
 
-session.c is 1239 lines, ctrl.c 1607 and streamconnection.c 1466. Together they are the
+session.c is 1239 lines, ctrl.c 1615 and streamconnection.c 1466. Together they are the
 connection: what is sent in which order, what is waited for, what a timeout means at
 each point, and how a session comes apart when the console stops answering.
 
@@ -470,35 +470,6 @@ every MTU ping is discarded.
 takion.c is PP27's file and this crosses into it, which is why this is a line rather
 than a wider edit under PP295. What it owes is the fix for all eight and a check that
 reads every file rather than the one where the first two were found.
-
-### §PP382 The rule PP378 scoped, and where the answer is now known
-
-PP378 stated the rule over senkusha.c and said why it was scoped there: whether a
-pointer carries an alignment guarantee is answered per buffer, and a tree-wide sweep
-would flag reads that are aligned on purpose. Widening PP381's reader made the rest of
-the tree readable, so the answer can now be given per site instead of guessed.
-
-There are 26 multi-byte accesses through a plain cast in lib/src. Four are deliberate
-and carry the proof beside them:
-
-    ctrl.c:457            recv_buf, declared __attribute__((aligned(__alignof__(uint32_t))))
-    ctrl.c:724, 725, 726  header[8], with the same attribute three lines above
-
-The other 22 have nothing:
-
-    ctrl.c:592, 622       message.data + offset - a heap pointer at a wire offset
-    rudpsendbuffer.c:307  packet->buf + 6
-    holepunch.c           19 sites into request_buf, confirm_buf, response_buf and req
-
-holepunch.c is the bulk and the worst shape. Its writes index a byte array at hex
-offsets - &confirm_buf[0x44], &confirm_buf[0x52] - so alignment depends on a constant
-nobody chose for that reason.
-
-The reads are where a fault would land rather than a wrong answer: holepunch.c:4181 and
-:4522 both take a message type through uint32_t*, on buffers that came off a socket.
-
-What this owes is the type at all 22, the attribute left alone at the four that have it,
-and the rule stated over lib/src with those four named as the exceptions they are.
 
 ## Block G — Test discipline
 

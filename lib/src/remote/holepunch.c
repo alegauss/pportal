@@ -1,4 +1,4 @@
-/*
+﻿/*
  * SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
  *
  * This file is part of Chiaki - A Free and Open Source PS4 Remote Play Client
@@ -140,7 +140,7 @@ static const char session_connrequest_fmt[] =
      "\\\"candidate\\\":%s,"                   // 4: Candidates, JSON array of objects
      "\\\"defaultRouteMacAddr\\\":\\\"%s\\\"," // 5: colon-separated lowercase values
      // NOTE: Needs to be an empty string if local peer address is not submitted
-     //       This leads to broken JSON, but the official app does it this way as well ¯\_(ツ)_/¯
+     //       This leads to broken JSON, but the official app does it this way as well Â¯\_(ãƒ„)_/Â¯
      "\\\"localPeerAddr\\\":%s,"               // 6: JSON object or **empty string**
      "\\\"localHashedId\\\":\\\"%s\\\"}";      // 7: 16 byte buffer, base64 encoded
 static const char session_connrequest_candidate_fmt[] =
@@ -3717,11 +3717,11 @@ static ChiakiErrorCode check_candidates(
     for(int i = 0; i < CHECK_CANDIDATES_REQUEST_NUMBER; i++)
     {
         chiaki_random_bytes_crypt(request_id[i], sizeof(request_id[i]));
-        *(uint32_t*)&request_buf[i][0x00] = htonl(MSG_TYPE_REQ);
+        *(chiaki_unaligned_uint32_t*)&request_buf[i][0x00] = htonl(MSG_TYPE_REQ);
         memcpy(&request_buf[i][0x04], session->hashed_id_local, sizeof(session->hashed_id_local));
         memcpy(&request_buf[i][0x24], session->hashed_id_console, sizeof(session->hashed_id_console));
-        *(uint16_t*)&request_buf[i][0x44] = htons(session->sid_local);
-        *(uint16_t*)&request_buf[i][0x46] = htons(session->sid_console);
+        *(chiaki_unaligned_uint16_t*)&request_buf[i][0x44] = htons(session->sid_local);
+        *(chiaki_unaligned_uint16_t*)&request_buf[i][0x46] = htons(session->sid_console);
         memcpy(&request_buf[i][0x4b], request_id[i], sizeof(request_id[i]));
     }
 
@@ -4178,7 +4178,7 @@ static ChiakiErrorCode check_candidates(
             err = CHIAKI_ERR_NETWORK;
             goto cleanup_sockets;
         }
-        uint32_t msg_type = ntohl(*((uint32_t*)(response_buf)));
+        uint32_t msg_type = ntohl(*((chiaki_unaligned_uint32_t*)(response_buf)));
         if (msg_type == MSG_TYPE_REQ)
         {
             CHIAKI_LOGI(session->log, "Responding to request");
@@ -4390,11 +4390,11 @@ cleanup_sockets:
 static ChiakiErrorCode send_response_ps(Session *session, uint8_t *req, chiaki_socket_t *sock, Candidate *candidate)
 {
         uint8_t confirm_buf[88] = {0};
-        *(uint32_t*)&confirm_buf[0] = htonl(MSG_TYPE_RESP);
+        *(chiaki_unaligned_uint32_t*)&confirm_buf[0] = htonl(MSG_TYPE_RESP);
         memcpy(&confirm_buf[0x4], session->hashed_id_local, sizeof(session->hashed_id_local));
         memcpy(&confirm_buf[0x24], session->hashed_id_console, sizeof(session->hashed_id_console));
-        *(uint16_t*)&confirm_buf[0x44] = htons(session->sid_local);
-        *(uint16_t*)&confirm_buf[0x46] = htons(session->sid_console);
+        *(chiaki_unaligned_uint16_t*)&confirm_buf[0x44] = htons(session->sid_local);
+        *(chiaki_unaligned_uint16_t*)&confirm_buf[0x46] = htons(session->sid_console);
         memcpy(&confirm_buf[0x4b], &req[0x4b], 5);
         uint8_t console_addr[16];
         uint8_t console_port[2];
@@ -4415,10 +4415,10 @@ static ChiakiErrorCode send_response_ps(Session *session, uint8_t *req, chiaki_s
                 return CHIAKI_ERR_INVALID_DATA;
             }
         }
-        *(uint16_t*)console_port = htons(candidate->port);
-        *(uint16_t*)&confirm_buf[0x50] = htons(session->sid_local);
-        *(uint16_t*)&confirm_buf[0x52] = htons(session->sid_console);
-        *(uint16_t*)&confirm_buf[0x54] = htons(session->sid_local);
+        *(chiaki_unaligned_uint16_t*)console_port = htons(candidate->port);
+        *(chiaki_unaligned_uint16_t*)&confirm_buf[0x50] = htons(session->sid_local);
+        *(chiaki_unaligned_uint16_t*)&confirm_buf[0x52] = htons(session->sid_console);
+        *(chiaki_unaligned_uint16_t*)&confirm_buf[0x54] = htons(session->sid_local);
         xor_bytes(&confirm_buf[0x50], console_addr, 4);
         xor_bytes(&confirm_buf[0x54], console_port, 2);
 
@@ -4443,11 +4443,11 @@ static ChiakiErrorCode send_response_ps(Session *session, uint8_t *req, chiaki_s
 static ChiakiErrorCode send_responseto_ps(Session *session, uint8_t *req, chiaki_socket_t *sock, Candidate *candidate, struct sockaddr *addr, socklen_t len)
 {
         uint8_t confirm_buf[88] = {0};
-        *(uint32_t*)&confirm_buf[0] = htonl(MSG_TYPE_RESP);
+        *(chiaki_unaligned_uint32_t*)&confirm_buf[0] = htonl(MSG_TYPE_RESP);
         memcpy(&confirm_buf[0x4], session->hashed_id_local, sizeof(session->hashed_id_local));
         memcpy(&confirm_buf[0x24], session->hashed_id_console, sizeof(session->hashed_id_console));
-        *(uint16_t*)&confirm_buf[0x44] = htons(session->sid_local);
-        *(uint16_t*)&confirm_buf[0x46] = htons(session->sid_console);
+        *(chiaki_unaligned_uint16_t*)&confirm_buf[0x44] = htons(session->sid_local);
+        *(chiaki_unaligned_uint16_t*)&confirm_buf[0x46] = htons(session->sid_console);
         memcpy(&confirm_buf[0x4b], &req[0x4b], 5);
         uint8_t console_addr[16];
         uint8_t console_port[2];
@@ -4468,10 +4468,10 @@ static ChiakiErrorCode send_responseto_ps(Session *session, uint8_t *req, chiaki
                 return CHIAKI_ERR_INVALID_DATA;
             }
         }
-        *(uint16_t*)console_port = htons(candidate->port);
-        *(uint16_t*)&confirm_buf[0x50] = htons(session->sid_local);
-        *(uint16_t*)&confirm_buf[0x52] = htons(session->sid_console);
-        *(uint16_t*)&confirm_buf[0x54] = htons(session->sid_local);
+        *(chiaki_unaligned_uint16_t*)console_port = htons(candidate->port);
+        *(chiaki_unaligned_uint16_t*)&confirm_buf[0x50] = htons(session->sid_local);
+        *(chiaki_unaligned_uint16_t*)&confirm_buf[0x52] = htons(session->sid_console);
+        *(chiaki_unaligned_uint16_t*)&confirm_buf[0x54] = htons(session->sid_local);
         xor_bytes(&confirm_buf[0x50], console_addr, 4);
         xor_bytes(&confirm_buf[0x54], console_port, 2);
 
@@ -4519,7 +4519,7 @@ static ChiakiErrorCode receive_request_send_response_ps(Session *session, chiaki
             CHIAKI_LOGE(session->log, "check_candidates: Received request of unexpected size %zd from %s:%d", len, candidate->addr, candidate->port);
             return CHIAKI_ERR_NETWORK;
         }
-        uint32_t msg_type = ntohl(*(uint32_t*)(req));
+        uint32_t msg_type = ntohl(*(chiaki_unaligned_uint32_t*)(req));
         if(msg_type == MSG_TYPE_RESP)
         {
             CHIAKI_LOGI(session->log, "Received an extra response, ignoring....");
@@ -4551,43 +4551,43 @@ static void log_session_state(Session *session)
     state_str[0] = '[';
     state_str[1] = '\0';
     if (session->state & SESSION_STATE_INIT)
-        strcat(state_str, " ✅INIT");
+        strcat(state_str, " âœ…INIT");
     if (session->state & SESSION_STATE_WS_OPEN)
-        strcat(state_str, " ✅WS_OPEN");
+        strcat(state_str, " âœ…WS_OPEN");
     if (session->state & SESSION_STATE_DELETED)
-        strcat(state_str, " ✅DELETED");
+        strcat(state_str, " âœ…DELETED");
     if (session->state & SESSION_STATE_CREATED)
-        strcat(state_str, " ✅CREATED");
+        strcat(state_str, " âœ…CREATED");
     if (session->state & SESSION_STATE_STARTED)
-        strcat(state_str, " ✅STARTED");
+        strcat(state_str, " âœ…STARTED");
     if (session->state & SESSION_STATE_CLIENT_JOINED)
-        strcat(state_str, " ✅CLIENT_JOINED");
+        strcat(state_str, " âœ…CLIENT_JOINED");
     if (session->state & SESSION_STATE_DATA_SENT)
-        strcat(state_str, " ✅DATA_SENT");
+        strcat(state_str, " âœ…DATA_SENT");
     if (session->state & SESSION_STATE_CONSOLE_JOINED)
-        strcat(state_str, " ✅CONSOLE_JOINED");
+        strcat(state_str, " âœ…CONSOLE_JOINED");
     if (session->state & SESSION_STATE_CUSTOMDATA1_RECEIVED)
-        strcat(state_str, " ✅CUSTOMDATA1_RECEIVED");
+        strcat(state_str, " âœ…CUSTOMDATA1_RECEIVED");
     if (session->state &SESSION_STATE_CTRL_OFFER_RECEIVED)
-        strcat(state_str, " ✅CTRL_OFFER_RECEIVED");
+        strcat(state_str, " âœ…CTRL_OFFER_RECEIVED");
     if (session->state & SESSION_STATE_CTRL_OFFER_SENT)
-        strcat(state_str, " ✅CTRL_OFFER_SENT");
+        strcat(state_str, " âœ…CTRL_OFFER_SENT");
     if (session->state & SESSION_STATE_CTRL_CONSOLE_ACCEPTED)
-        strcat(state_str, " ✅CTRL_CONSOLE_ACCEPTED");
+        strcat(state_str, " âœ…CTRL_CONSOLE_ACCEPTED");
     if (session->state & SESSION_STATE_CTRL_CLIENT_ACCEPTED)
-        strcat(state_str, " ✅CTRL_CLIENT_ACCEPTED");
+        strcat(state_str, " âœ…CTRL_CLIENT_ACCEPTED");
     if (session->state & SESSION_STATE_CTRL_ESTABLISHED)
-        strcat(state_str, " ✅CTRL_ESTABLISHED");
+        strcat(state_str, " âœ…CTRL_ESTABLISHED");
     if (session->state & SESSION_STATE_DATA_OFFER_RECEIVED)
-        strcat(state_str, " ✅DATA_OFFER_RECEIVED");
+        strcat(state_str, " âœ…DATA_OFFER_RECEIVED");
     if (session->state & SESSION_STATE_DATA_OFFER_SENT)
-        strcat(state_str, " ✅DATA_OFFER_SENT");
+        strcat(state_str, " âœ…DATA_OFFER_SENT");
     if (session->state & SESSION_STATE_DATA_CONSOLE_ACCEPTED)
-        strcat(state_str, " ✅DATA_CONSOLE_ACCEPTED");
+        strcat(state_str, " âœ…DATA_CONSOLE_ACCEPTED");
     if (session->state & SESSION_STATE_DATA_CLIENT_ACCEPTED)
-        strcat(state_str, " ✅DATA_CLIENT_ACCEPTED");
+        strcat(state_str, " âœ…DATA_CLIENT_ACCEPTED");
     if (session->state & SESSION_STATE_DATA_ESTABLISHED)
-        strcat(state_str, " ✅DATA_ESTABLISHED");
+        strcat(state_str, " âœ…DATA_ESTABLISHED");
     strcat(state_str, " ]");
     CHIAKI_LOGV(session->log, "Holepunch session state: %d = %s", session->state, state_str);
 }

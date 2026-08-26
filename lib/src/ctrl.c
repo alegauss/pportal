@@ -454,6 +454,9 @@ static void *ctrl_thread_func(void *user)
 		bool overflow = false;
 		while(ctrl->recv_buf_size >= 8)
 		{
+			// PP382: aligned on purpose, and one of the four in lib/src that are. recv_buf carries
+			// __attribute__((aligned(__alignof__(uint32_t)))) in ctrl.h for exactly this read, so
+			// the plain cast is the guarantee being used rather than one being assumed.
 			uint32_t payload_size = *((uint32_t *)ctrl->recv_buf);
 			payload_size = ntohl(payload_size);
 
@@ -589,7 +592,9 @@ static void *ctrl_thread_func(void *user)
 						if((message.data_size - offset) < 8)
 							break;
 						// check if message is ctrl message by making sure the payload size (size of message - 8 byte header is correct)
-						uint32_t ctrl_payload_size = ntohl(*(uint32_t*)(message.data + offset));
+						// PP382: message.data is a heap pointer and offset is 2, 6 or 8 off the wire,
+						// so nothing here is four-byte aligned by anything but luck.
+						uint32_t ctrl_payload_size = ntohl(*(chiaki_unaligned_uint32_t*)(message.data + offset));
 						// PP347: the destination's remaining room, checked. The test above says the
 						// message is well formed and nothing about whether it fits: rudp_recv_buf is
 						// 520 bytes and recv_buf is 512, so one well-formed message can be larger
@@ -619,7 +624,8 @@ static void *ctrl_thread_func(void *user)
 						// ctrl message header is 8 bytes
 						if((message.data_size - offset2) < 8)
 							break;
-						uint32_t ctrl_payload_size2 = ntohl(*(uint32_t*)(message.data + offset2));
+						// PP382, as above.
+						uint32_t ctrl_payload_size2 = ntohl(*(chiaki_unaligned_uint32_t*)(message.data + offset2));
 						// PP347: the same bound as the arm above, for the same reason.
 						if((message.data_size - offset2 - 8) == ctrl_payload_size2
 								&& (size_t)(message.data_size - offset2) <= sizeof(ctrl->recv_buf) - ctrl->recv_buf_size)
@@ -721,6 +727,8 @@ static ChiakiErrorCode ctrl_message_send(ChiakiCtrl *ctrl, uint16_t type, const 
 	__attribute__((aligned(__alignof__(uint32_t))))
 #endif
 	uint8_t header[8];
+	// PP382: the other three deliberate ones. The attribute three lines above is what makes these
+	// plain casts legal, and it is there because of them.
 	*((uint32_t *)header) = htonl((uint32_t)payload_size);
 	*((uint16_t *)(header + 4)) = htons(type);
 	*((uint16_t *)(header + 6)) = 0;

@@ -327,6 +327,7 @@
 - ✅ **PP379** **the senkusha disconnect is sent and its answer dropped, so one that never left is never logged** — the senkusha disconnect reads and logs its answer, and the rule covers every answering call in the file.
 - ✅ **PP381** **PP374's width check reads 5 of the 38 byte-order conversions in lib/src, missing every doubled parenthesis** — the width reader matches both spellings of the cast, and a floor under the sweep's count is what asserts its reach.
 - ✅ **PP380** **six waits in senkusha.c log that nothing arrived and then report the measurement, or the whole run, as passed** — all six wait blocks answer a silence the way the RTT loop always did, under a rule over every wait in the file.
+- ✅ **PP382** **22 multi-byte accesses in lib/src go through a plain cast on pointers that carry no alignment guarantee** — 22 plain casts go through the unaligned type, four keep theirs by name, and the locator that left both lib/src sweeps dead resolves directories.
 
 ## Block G — Test discipline
 
