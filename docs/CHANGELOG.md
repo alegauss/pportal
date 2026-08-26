@@ -321,6 +321,7 @@
 - ✅ **PP354** **two ctrl receive buffers share one size field, and the rudp read limit subtracts the wrong buffer's fill** — the dead 520-byte field is gone and the rudp receive takes the whole datagram, which on a UDP socket is a truncated ctrl message no longer lost.
 - ✅ **PP359** **RP-Prohibit hides the stream without touching either display flag, so any DisplayA zero un-hides it** — RP-Prohibit raises a third flag the DisplayA recovery branch also guards on, so nothing un-hides a prohibited session.
 - ✅ **PP363** **the stream's idle loop treats a timeout as work, which is the inverse of the ctrl loop PP349 ported** — the idle loop is a table where a timeout is the work, asserted against the ctrl loop it inverts.
+- ✅ **PP364** **six cascading exit labels lift two measurements before freeing what made them, and the order is load-bearing** — the six-label cascade is a table, and both measurement rescues are asserted against the frees that would lose them.
 
 ## Block G — Test discipline
 

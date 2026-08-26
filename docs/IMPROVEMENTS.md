@@ -438,31 +438,6 @@ Until then PP33 is correctly blocked and its remaining query correctly reads 420
 Reading that number as the size of the job is what its own section warns against: it is
 one file, and the work is at the other end.
 
-### §PP364 Six labels, and the numbers rescued between two of them
-
-Where session.c has two exit labels (PP336), the stream connection has six, cascading:
-disconnect, err_congestion_control, close_takion, err_video_receiver,
-err_haptics_receiver, err_audio_receiver. Each unwinds exactly one thing and falls
-through to the next, so an entry point half way down releases exactly what was built
-above it. It is the most disciplined teardown in the three files PP28 named.
-
-TWO MEASUREMENTS ARE LIFTED BEFORE THE THING THAT MADE THEM IS FREED, and both carry a
-comment saying so. input_to_wire is copied out of the feedback sender before fini, and
-the four frame-path stage timings are copied out of takion and the video receiver before
-the receiver is freed - after takion_close, so the thread that wrote them has been
-joined and there is nothing to race. A port that freed first would lose the numbers and
-would lose them silently, since a zero reads as a measurement.
-
-THE ORDER OF close_takion AND err_video_receiver IS LOAD-BEARING for that reason, not
-for tidiness: the receiver's timings are read between them.
-
-And streaminfo_early_buf is freed at the disconnect label as well as when it is
-replayed, because the replay only happens on the path that reaches EXPECT_STREAMINFO -
-every earlier failure leaves it allocated.
-
-This is the half of PP295 that is not about messages at all, and it is where a rewrite
-loses measurements rather than behaviour.
-
 ### §PP366 Three layers, and the ten lines PP30 waits on
 
 The dispatch is three layers and each asks a different question, which is why the same
