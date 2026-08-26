@@ -346,6 +346,7 @@
 - ✅ **PP403** **three strncpy copies in holepunch.c are bounded by sizeof(dest), so a full-length name or address leaves no terminator** — the three copies go through copy_bounded, which truncates as before and terminates, and a rule over holepunch.c refuses any copy bounded by the size of what it writes into.
 - ✅ **PP404** **54 asserts in lib/src inspect an error code, and PP357 established that the shipped build compiles every assert out** — a census counts every error code inspected by nothing but an assert, ratcheted so it may fall and not rise, and the websocket thread checks its notification lock.
 - ✅ **PP405** **two logs print a sized receive buffer with %s, and neither buffer is terminated at the length the caller knows** — both take %.*s with the length the caller already had, and a rule over lib/src refuses a third.
+- ✅ **PP406** **PP404 counts 53 asserted error codes without asking which callee can fail, and on Windows most of them cannot** — the census splits by whether the callee has a failure path, read out of thread.c, and the twenty that can fail carry their own ceiling.
 
 ## Block G — Test discipline
 
