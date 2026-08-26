@@ -39,6 +39,22 @@ test("no source calls scrollIntoView", () => {
   );
 });
 
+// The header's chrome is sticky, sits at z-index 50 and paints a blurred bar. Styled by the
+// bare element, every other <nav> on the page gets all three: the sibling strip on the
+// feature pages became a second sticky bar and parked itself on top of the header as soon as
+// the page moved. Nothing failed - it rendered, and it was wrong - so the selector is held
+// here rather than remembered.
+test("the header's chrome is styled by its class, not by the nav element", () => {
+  const css = readFileSync(join(siteDir, "src", "index.css"), "utf8");
+  const bare = [...css.matchAll(/^nav[\s{,]/gm)].map((m) => m[0].trim());
+  assert.deepEqual(
+    bare,
+    [],
+    "index.css styles the bare nav element, so every <nav> on the page inherits the " +
+      "header's sticky bar: scope the rule to nav.site-nav",
+  );
+});
+
 test("no source fetches a third-party font at page load", () => {
   const all = [...sourceFiles, join(siteDir, "index.html")];
   const offenders = all.filter((f) => readFileSync(f, "utf8").includes("fonts.googleapis.com"));
