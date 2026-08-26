@@ -312,6 +312,7 @@
 - ✅ **PP376** **a BIG that lands exactly on a fragment boundary never gets its end-of-message flag** — the remainder was tested against the first-message overhead even on a continuation, so a remainder of exactly mtu - 25 was consumed whole and the trailing send that carries the end flag was skipped.
 - ✅ **PP375** **the BIG fragment loop discards every send result but the last, so a truncated BIG reports success** — err was assigned per fragment and read after the loop, where the trailing send had already overwritten it; the loop now leaves on the fragment that failed and names it.
 - ✅ **PP372** **a decoded video header has no owner until the receiver takes it, and three paths lose it** — the count check sat below the realloc, the streaminfo exits freed nothing, and the handover was void so a refusal could not be told from a transfer; it answers now.
+- ✅ **PP374** **the pad info timestamp is read 32 bits wide and byte-swapped 16, so the logged value is the field's top half** — ntohs takes a uint16_t, so the four-byte read was truncated to its top network half before any swap; the rule is now over every conversion in lib/src, and this was the only mismatch.
 
 ## Block G — Test discipline
 

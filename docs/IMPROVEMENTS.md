@@ -159,7 +159,7 @@ because every part of it was green.
 ### §PP23 The oracle this block cannot be written without
 
 chiaki exists because the PlayStation remote play protocol was reverse engineered. There
-is no document to implement against: the 24820 lines of C in lib/src are the
+is no document to implement against: the 24828 lines of C in lib/src are the
 specification, and a managed rewrite that reads them and reproduces them is a
 translation whose only correctness test is behavioural.
 
@@ -198,7 +198,7 @@ bytes.
 
 ### §PP28 The state machines
 
-session.c is 1228 lines, ctrl.c 1574 and streamconnection.c 1453. Together they are the
+session.c is 1228 lines, ctrl.c 1574 and streamconnection.c 1461. Together they are the
 connection: what is sent in which order, what is waited for, what a timeout means at
 each point, and how a session comes apart when the console stops answering.
 
@@ -703,33 +703,6 @@ The check is written over the group rather than the two: every encoder in this f
 its own name in its own failure log, so a tenth added by copying a ninth is caught.
 Naming the payload type rather than a hand-written phrase would make the class
 impossible, and is the better fix if the type has a name at that point.
-
-### §PP374 A four-byte read through a two-byte swap
-
-The pad info handler reads a timestamp out of the 0x19 payload:
-
-    uint32_t timestamp = ntohs(*(chiaki_unaligned_uint32_t *)(buf + 4));
-
-The read is four bytes wide and the swap is two. `ntohs` takes a uint16_t, so the 32-bit
-value is truncated to its low half before anything is swapped - on a little-endian host
-that half is the two MOST significant network bytes, and the two least significant are
-discarded. The result is the top half of the field, swapped, in a uint32_t.
-
-It is logged as "%u seconds after stream began", which means the number printed advances
-once per 65536 units of whatever the console is counting, and is wrong by that factor
-for the whole session. The value is used nowhere else, so this costs a diagnostic rather
-than behaviour - and it costs it on the motion-reset path, which is where somebody looks
-when motion control drifts.
-
-The read is in bounds: the 0x19 case is 25 bytes and this takes 4 from offset 4.
-
-Searching for the shape rather than the line found this to be the only width mismatch in
-lib/src. Six other reads pair `ntohs` with a `chiaki_unaligned_uint16_t`, including the
-seqnum on the line above it, which is what makes this one look deliberate at a glance.
-
-The fix is `ntohl`, and the assertion is over the pairing: every `ntohs` in lib/src
-reads 16 bits and every `ntohl` reads 32. That is checkable by shape and holds for the
-whole tree, so it also catches the inverse mistake nobody has made yet.
 
 ## Block G — Test discipline
 

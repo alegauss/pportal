@@ -558,7 +558,15 @@ static void stream_connection_takion_data_pad_info(ChiakiStreamConnection *strea
 			// sequence number of feedback packet this is responding to
 			uint16_t feedback_packet_seq_num = ntohs(*(chiaki_unaligned_uint16_t *)(buf));
 			// int16_t unknown = ntohs(*(chiaki_unaligned_uint16_t *)(buf + 2));
-			uint32_t timestamp = ntohs(*(chiaki_unaligned_uint32_t *)(buf + 4));
+			// PP374: ntohl, matching the width of the read. ntohs takes a uint16_t, so this four-byte
+			// read was truncated to its low half BEFORE anything was swapped - on a little-endian host
+			// that half is the two most significant network bytes, and the other two were discarded.
+			// What got logged was the top of the field, so the number advanced once per 65536 units of
+			// whatever the console counts, for the whole session. It is only a diagnostic, but it is
+			// the diagnostic on the motion-reset path, which is where somebody looks when motion
+			// control drifts. The seqnum on the line above pairs ntohs with a 16-bit read, which is
+			// what made this one look deliberate.
+			uint32_t timestamp = ntohl(*(chiaki_unaligned_uint32_t *)(buf + 4));
 			if(stream_connection->haptic_intensity != buf[20])
 			{
 				stream_connection->haptic_intensity = buf[20];
