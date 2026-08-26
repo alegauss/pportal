@@ -332,6 +332,7 @@
 - ✅ **PP384** **chiaki_rudp_send_recv discards all four send results, so a send that never left is reported as a receive timeout** — all four arms read what they sent, a failed send skips the wait, and the summary says how many tries never left.
 - ✅ **PP385** **seven more sends in ctrl.c discard their result, and PP383's rule ships as a ceiling of seven rather than zero** — the drain leaves, the PIN and heartbeat fail the channel, the four fallbacks report, and the ceiling is zero.
 - 🗑 **PP389** **seven logs in holepunch.c carry another function's name, and two are verbatim duplicates of the real one's** — superseded by PP390: every one of the seven was already decided - PP235 reproduces two on purpose and PP238 ruled five defensible - so what is owed is the marker PP390 carries, not the fix.
+- ✅ **PP391** **the replay harness has only ever been fed recordings the tests wrote, so no managed module answers the real capture** — PP342's table answers PP297's capture end to end, and the harness learns which conversation a participant owns.
 
 ## Block G — Test discipline
 

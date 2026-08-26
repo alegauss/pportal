@@ -85,6 +85,37 @@ public static class ExchangeReplay
     /// <summary>
     /// Replays every entry, in order, and answers where it first diverged.
     /// </summary>
+    /// <summary>
+    /// PP23: the same, scoped to the conversation one participant owns.
+    ///
+    /// A capture holds more than one conversation on more than one socket - PP297's has an HTTP
+    /// request and its answer beside a control channel - and <see cref="Run(ExchangeRecording,
+    /// IExchangeParticipant)"/> replays all of it. So a participant that implements the control
+    /// channel and nothing else diverges on the recording's FIRST entry, which is an HTTP request
+    /// it was never going to send, and the verdict names a protocol failure that is a scoping one.
+    ///
+    /// The channels really are separate: different sockets, different framing, different code. What
+    /// was missing is a way to say so.
+    /// </summary>
+    /// <param name="recording">The whole capture.</param>
+    /// <param name="participant">The implementation being judged.</param>
+    /// <param name="channel">The one conversation it owns.</param>
+    public static Divergence RunChannel(
+        ExchangeRecording recording, IExchangeParticipant participant, string channel)
+    {
+        ArgumentNullException.ThrowIfNull(recording);
+        ArgumentNullException.ThrowIfNull(channel);
+
+        var scoped = new ExchangeRecording();
+        foreach (ExchangeEntry entry in recording.Entries.Where(
+                     e => string.Equals(e.Channel, channel, StringComparison.Ordinal)))
+        {
+            scoped.Add(entry.AtMicroseconds, entry.Direction, entry.Channel, entry.Payload);
+        }
+
+        return Run(scoped, participant);
+    }
+
     public static Divergence Run(ExchangeRecording recording, IExchangeParticipant participant)
     {
         ArgumentNullException.ThrowIfNull(recording);
