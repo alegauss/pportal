@@ -159,7 +159,7 @@ because every part of it was green.
 ### §PP23 The oracle this block cannot be written without
 
 chiaki exists because the PlayStation remote play protocol was reverse engineered. There
-is no document to implement against: the 24679 lines of C in lib/src are the
+is no document to implement against: the 24694 lines of C in lib/src are the
 specification, and a managed rewrite that reads them and reproduces them is a
 translation whose only correctness test is behavioural.
 
@@ -198,7 +198,7 @@ bytes.
 
 ### §PP28 The state machines
 
-session.c is 1219 lines, ctrl.c 1574 and streamconnection.c 1326. Together they are the
+session.c is 1219 lines, ctrl.c 1574 and streamconnection.c 1341. Together they are the
 connection: what is sent in which order, what is waited for, what a timeout means at
 each point, and how a session comes apart when the console stops answering.
 
@@ -372,7 +372,7 @@ The third of PP28's three, and the one that decides when C starts leaving this b
 
 PP286 through PP291 ported the frame path from the bottom up: the Galois field, the
 Cauchy matrix, the Reed-Solomon codec, the frame processor, the video receiver. None of
-it removed a single line of C, and the reason is one call. streamconnection.c:1262 hands
+it removed a single line of C, and the reason is one call. streamconnection.c:1276 hands
 packets to chiaki_video_receiver_av_packet, so videoreceiver.c stays, so
 frameprocessor.c stays, so fec.c stays, and jerasure and gf-complete stay with them.
 PP30 has read 13 sites through five ports for exactly that reason.
@@ -621,6 +621,33 @@ other answer, and it is the one that makes the log line honest.
 Reproducing it as dead is what the port does now, with an assertion that it stays dead -
 because a port that grew a use for it would be reporting failures sooner than the C, and
 that difference would not show up in any message-level comparison.
+
+### §PP366 Three layers, and the ten lines PP30 waits on
+
+The dispatch is three layers and each asks a different question, which is why the same
+bytes mean different things at different moments.
+
+stream_connection_takion_cb asks what kind of takion event it is. CONNECTED and
+DISCONNECT are acted on ONLY while the state is TAKION_CONNECT - so takion dying during
+EXPECT_BANG signals nothing here, and the wait sits out its whole timeout. That is the
+same shape as PP365's dead flag and from the same direction: the machine learns about
+failures late or not at all.
+
+stream_connection_takion_data asks what kind of data: protobuf, rumble, pad info,
+trigger effects.
+
+stream_connection_takion_data_protobuf asks WHAT STATE THE MACHINE IS IN - expect_bang,
+expect_streaminfo, or idle - and it holds the state mutex across the whole handler,
+which is what lets the run function read state_finished immediately after its wait. So
+one protobuf on the wire is three different messages depending on where the walk had got
+to. §PP295's claim that the ordering IS the behaviour is this function.
+
+And the AV route is ten lines and one of them is the whole of PP30's leverage. The
+packet is decrypted IN PLACE at key_pos plus one block - not at key_pos - and then
+routed by two flags: video to the video receiver, haptics to the haptics one, everything
+else to audio. That single call to chiaki_video_receiver_av_packet is why
+videoreceiver.c stays, so frameprocessor.c stays, so fec.c stays, and jerasure with
+them.
 
 ## Block G — Test discipline
 

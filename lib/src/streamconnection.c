@@ -1256,7 +1256,22 @@ static ChiakiErrorCode stream_connection_send_disconnect(ChiakiStreamConnection 
 
 static void stream_connection_takion_av(ChiakiStreamConnection *stream_connection, ChiakiTakionAVPacket *packet)
 {
-	chiaki_gkcrypt_decrypt(stream_connection->gkcrypt_remote, packet->key_pos + CHIAKI_GKCRYPT_BLOCK_SIZE, packet->data, packet->data_size);
+	// PP367: the result, read. This was discarded, and on failure the decrypt returns before the
+	// xor - so the buffer was still ciphertext and went to the receiver as a frame. What that looks
+	// like from outside is not an error: a frame that decodes into noise, a frame processor
+	// reporting corruption, and an IDR requested for a packet that arrived intact and was mangled
+	// here. Under memory pressure, which is when the key stream allocation fails, a stream that
+	// degrades and blames the network. The two callers in takion.c check theirs.
+	ChiakiErrorCode decrypt_err = chiaki_gkcrypt_decrypt(stream_connection->gkcrypt_remote,
+			packet->key_pos + CHIAKI_GKCRYPT_BLOCK_SIZE, packet->data, packet->data_size);
+	if(decrypt_err != CHIAKI_ERR_SUCCESS)
+	{
+		CHIAKI_LOGE(stream_connection->log, "StreamConnection failed to decrypt an AV packet: %s",
+				chiaki_error_string(decrypt_err));
+		// Dropped rather than passed on. An undecrypted frame is not data, and the receiver already
+		// knows how to report a gap.
+		return;
+	}
 
 	if(packet->is_video)
 		chiaki_video_receiver_av_packet(stream_connection->video_receiver, packet);

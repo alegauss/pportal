@@ -305,6 +305,7 @@
 - ✅ **PP361** **the microphone toggle logs the opposite of what it sends, and the rudp subtype switch says it is wrong** — the log word is derived from the byte it describes, and the switch's three fallthroughs are a table rather than four tidy arms.
 - ✅ **PP355** **ctrl fini frees the login pin and never the message queue, so anything queued when the loop errors out leaks** — the fini releases the queue as well as the pin, and the check is the symmetry over both rather than a note about one.
 - ✅ **PP362** **the stream connection walks three states before a stream exists, and one message can arrive before it is expected** — the three states, the predicate the wait actually uses, and the early streaminfo that is replayed rather than dropped.
+- ✅ **PP367** **the AV decrypt's result is discarded, so a failed decrypt hands ciphertext to the video receiver** — the AV decrypt's result is read and a failed packet is dropped, and a check over every cipher call refuses any result thrown away.
 
 ## Block G — Test discipline
 
