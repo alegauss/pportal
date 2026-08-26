@@ -42,6 +42,67 @@ public static class CCall
     /// is punctuation. <c>f(a, b)</c> and <c>f(a,b)</c> become the same thing; <c>md + 0x10</c> and
     /// <c>md+0x10</c> do too; <c>#endif</c> and <c>xor_bytes</c> stay two words.
     /// </summary>
+    /// <summary>
+    /// PP400: the text with its comments removed, for a claim about what the code does NOT contain.
+    ///
+    /// AN ABSENCE CHECK READS A COMMENT AS CODE, and the comment explaining a fix is exactly where
+    /// the old code gets quoted. Three checks went red that way in one session: a list asserting a
+    /// field was gone matched the comment saying where it used to live, a clamp asserting the old
+    /// expression was absent matched the comment quoting it, and a generator check matched a
+    /// comment describing what it had replaced. Each time the code was right and the reader was
+    /// reading prose.
+    ///
+    /// A PRESENCE check does not need this - a comment cannot make a call happen - so this is a
+    /// separate reader rather than a change to <see cref="Compact"/>, which several predicates rely
+    /// on seeing everything they are given.
+    ///
+    /// A string literal is left alone: <c>"// not a comment"</c> is a message somebody logs.
+    /// </summary>
+    public static string Code(string source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        var built = new System.Text.StringBuilder(source.Length);
+
+        for (var at = 0; at < source.Length; at++)
+        {
+            char c = source[at];
+
+            if (c == '"')
+            {
+                int close = at + 1;
+                while (close < source.Length && (source[close] != '"' || source[close - 1] == '\\'))
+                    close++;
+
+                int end = Math.Min(close, source.Length - 1);
+                built.Append(source, at, end - at + 1);
+                at = end;
+                continue;
+            }
+
+            if (c == '/' && at + 1 < source.Length && source[at + 1] == '/')
+            {
+                while (at < source.Length && source[at] != '\n')
+                    at++;
+
+                built.Append('\n');
+                continue;
+            }
+
+            if (c == '/' && at + 1 < source.Length && source[at + 1] == '*')
+            {
+                int close = source.IndexOf("*/", at + 2, StringComparison.Ordinal);
+                at = close < 0 ? source.Length - 1 : close + 1;
+                built.Append(' ');
+                continue;
+            }
+
+            built.Append(c);
+        }
+
+        return built.ToString();
+    }
+
     public static string Compact(string text)
     {
         ArgumentNullException.ThrowIfNull(text);

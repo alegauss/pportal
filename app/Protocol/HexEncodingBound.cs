@@ -74,13 +74,14 @@ public static class HexEncodingBound
         if (body is null)
             return false;
 
-        // The absent half is the ASSIGNMENT, not the phrase. The first version asked for
-        // "max_len * 2" to be gone and the comment above the fix quotes the old test verbatim, so
-        // the check failed on the sentence explaining why it exists - PP390's shape, where a
-        // comment mentioning a thing was read as the thing.
-        return CCall.Mark(body, "if (len > (max_len - 1) / 2)") >= 0
-            && CCall.Mark(body, "len = (max_len - 1) / 2;") >= 0
-            && CCall.Mark(body, "len = max_len * 2;") < 0;
+        // PP400: through Code, so the comment above the fix - which quotes the old test verbatim -
+        // is not read as the old test. The absent half can then be the expression itself rather
+        // than a narrower spelling chosen to dodge the prose.
+        string code = CCall.Code(body);
+
+        return CCall.Mark(code, "if (len > (max_len - 1) / 2)") >= 0
+            && CCall.Mark(code, "len = (max_len - 1) / 2;") >= 0
+            && CCall.Mark(code, "max_len * 2") < 0;
     }
 
     /// <summary>

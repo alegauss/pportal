@@ -34,14 +34,20 @@ namespace ChiakiNg.Protocol;
 /// Unlike PP235's misnamed logs, nothing here said the defect had to be reproduced. It was found
 /// and written down, and a finding written down is not a decision to keep it.
 ///
-/// AND THE SESSION UUID IS NOT RANDOM. <c>random_uuidv4</c> calls <c>srand(time(NULL))</c> on every
-/// invocation and then draws from <c>rand()</c> - so two sessions created within the same second
-/// get the SAME identifier, deterministically, and the same client run twice a second apart can
-/// predict its own next one. The file has <c>chiaki_random_bytes_crypt</c> a few hundred lines away
-/// and uses it for the five bytes of PP205; this is the identifier the whole session is keyed by.
+/// AND THE SESSION UUID WAS NOT RANDOM, WHICH PP400 CORRECTED. <c>random_uuidv4</c> called
+/// <c>srand(time(NULL))</c> on every invocation and then drew from <c>rand()</c> - so two sessions
+/// created within the same second got the SAME identifier, deterministically, and the same client
+/// run twice a second apart could predict its own next one. This is the identifier the whole
+/// session is keyed by, and it goes into the URL of every session message.
 ///
-/// The SHAPE is reproduced exactly - the dashes, the version nibble, the variant nibble - and the
-/// numbers come from a real generator. The collision is demonstrated in a test rather than shipped.
+/// The file had <c>chiaki_random_bytes_crypt</c> a few hundred lines away and already used it for
+/// the five bytes of PP205, which is what made the draw a choice rather than an absence. It draws
+/// sixteen bytes from it now, one NIBBLE per hex digit - <c>byte % 16</c> per digit would spend a
+/// whole byte on four bits and repeat once the sixteen ran out.
+///
+/// The SHAPE is unchanged - the dashes, the version nibble, the variant nibble - and the managed
+/// side, which always used a real generator, is untouched. The collision the port demonstrated in a
+/// test is now a thing only the test can produce.
 /// </summary>
 public static class HolepunchIdentifiers
 {
@@ -202,12 +208,70 @@ public static class HolepunchIdentifiersSource
             && body.Contains("snprintf(hex_str + i * 2, 3, \"%02x\", bytes[i]);", StringComparison.Ordinal);
     }
 
-    /// <summary>Whether the UUID is still reseeded from the clock on every call.</summary>
+    /// <summary>
+    /// Whether the UUID is still reseeded from the clock on every call.
+    ///
+    /// PP400 corrected it, so this answers FALSE now and the assertion that used it was inverted
+    /// rather than deleted - the shape is the one to notice coming back. Either half returning is
+    /// the defect: a seed from the clock, or a draw from rand().
+    /// </summary>
     public static bool TheUuidIsStillSeededFromTheClock(string core)
     {
         ArgumentNullException.ThrowIfNull(core);
-        return CCall.Happens(core, "srand((unsigned int)time(NULL))")
-            && core.Contains("out[i] = hex[rand() % 16];", StringComparison.Ordinal);
+
+        // PP400: through Code, because the comment explaining the fix quotes both halves of what it
+        // replaced - and an absence check reads a comment as code.
+        string code = CCall.Code(core);
+
+        return CCall.Happens(code, "srand((unsigned int)time(NULL))")
+            || code.Contains("out[i] = hex[rand() % 16];", StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// PP400: whether the UUID now comes from the crypto generator, and spends one nibble per digit.
+    ///
+    /// The second half matters as much as the first. Thirty-two hex digits drawn as
+    /// <c>byte % 16</c> would spend a whole byte on four bits and repeat once sixteen ran out - a
+    /// weaker generator wearing the same shape, and one a check for the crypto call alone would
+    /// have called fixed.
+    /// </summary>
+    public static bool TheUuidComesFromTheCryptoGenerator(string core)
+    {
+        ArgumentNullException.ThrowIfNull(core);
+
+        string? body = CFunction.Body(core, "void random_uuidv4(");
+        string? nibble = CFunction.Body(core, "uint8_t uuid_nibble(");
+        if (body is null || nibble is null)
+            return false;
+
+        // The draw is in the generator; the halving is in the helper it calls. Both, because a
+        // crypto draw spent as `byte % 16` per digit would satisfy the first alone.
+        return CCall.Happens(body, "chiaki_random_bytes_crypt(bytes, sizeof(bytes))")
+            && CCall.Happens(body, "uuid_nibble(bytes, digit++)")
+            && CCall.Mark(nibble, "bytes[digit / 2] >> 4") >= 0
+            && CCall.Mark(nibble, "bytes[digit / 2] & 0x0f") >= 0;
+    }
+
+    /// <summary>
+    /// And whether a generator that failed produces nothing rather than something predictable.
+    ///
+    /// There is no way to report from here - the function returns void and its callers do not ask -
+    /// so the choice is between an empty identifier and one drawn from a generator that failed. An
+    /// empty one fails visibly at the first request that carries it.
+    /// </summary>
+    public static bool AFailedDrawProducesNothing(string core)
+    {
+        ArgumentNullException.ThrowIfNull(core);
+
+        string? body = CFunction.Body(core, "void random_uuidv4(");
+        if (body is null)
+            return false;
+
+        int failed = CCall.Mark(body, "!= CHIAKI_ERR_SUCCESS");
+        int emptied = CCall.Mark(body, "out[0] = '\\0';", failed < 0 ? 0 : failed);
+        int left = CCall.Mark(body, "return;", emptied < 0 ? 0 : emptied);
+
+        return failed >= 0 && emptied > failed && left > emptied;
     }
 
     /// <summary>
@@ -228,6 +292,9 @@ public static class HolepunchIdentifiersSource
             && core.Contains("} else if (i == 14) {", StringComparison.Ordinal)
             && core.Contains("out[i] = '4';", StringComparison.Ordinal)
             && core.Contains("} else if (i == 19) {", StringComparison.Ordinal)
-            && core.Contains("out[i] = hex[(rand() % 4) + 8];", StringComparison.Ordinal);
+            // PP400: the variant nibble is still 8 to b, and the clause names its source - which
+            // moved from rand() to the drawn bytes. The four positions above are the shape and are
+            // unchanged; this one is the shape AND the generator, so it moves with the generator.
+            && core.Contains("out[i] = hex[(uuid_nibble(bytes, digit++) % 4) + 8];", StringComparison.Ordinal);
     }
 }

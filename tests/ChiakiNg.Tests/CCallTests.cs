@@ -217,6 +217,54 @@ public class CCallTests
         Assert.False(CCall.InOrder("free(notif);"));
     }
 
+    /// <summary>
+    /// PP400: a comment quoting the old code is not the old code.
+    ///
+    /// Three absence checks went red on this in one session, each because the comment explaining a
+    /// fix quoted what it had replaced. The code was right every time and the reader was reading
+    /// prose.
+    /// </summary>
+    [Fact]
+    public void ACommentQuotingTheOldCodeIsNotTheOldCode()
+    {
+        const string Fixed = """
+            	// PP399: the clamp was inverted. The test said `len > max_len * 2`, which permits four
+            	// times what fits.
+            	if (len > (max_len - 1) / 2) {
+            		len = (max_len - 1) / 2;
+            	}
+            """;
+
+        // The comment is why a check on the raw text finds what is not there.
+        Assert.True(CCall.Mark(Fixed, "max_len * 2") >= 0);
+
+        // And is not there once the prose is gone.
+        Assert.Equal(-1, CCall.Mark(CCall.Code(Fixed), "max_len * 2"));
+
+        // The code itself survives.
+        Assert.True(CCall.Mark(CCall.Code(Fixed), "len = (max_len - 1) / 2;") >= 0);
+    }
+
+    /// <summary>Block comments too, and a string that looks like one is left alone.</summary>
+    [Fact]
+    public void BlockCommentsGoAndStringsStay()
+    {
+        Assert.Equal(-1, CCall.Mark(CCall.Code("a; /* srand(x) */ b;"), "srand(x)"));
+
+        // A message somebody logs is code, whatever it looks like.
+        const string Logged = """CHIAKI_LOGE(log, "// srand(x) was here");""";
+
+        Assert.True(CCall.Mark(CCall.Code(Logged), "srand(x)") >= 0);
+    }
+
+    /// <summary>And it reads what it is given (PP272).</summary>
+    [Fact]
+    public void CodeReadsWhatItIsGiven()
+    {
+        Assert.Equal("", CCall.Code(""));
+        Assert.Equal("f(x);", CCall.Code("f(x);"));
+    }
+
     /// <summary>Compacting is what makes the rest of it work, so it is stated on its own.</summary>
     [Fact]
     public void CompactingRemovesLayoutAndNothingElse()

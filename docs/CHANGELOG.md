@@ -340,6 +340,7 @@
 - 🗑 **PP393** **the tap emits from ctrl.c and session.c only, so the two modules PP23 still owes have nothing to replay against** — superseded by PP396: its diagnosis was acted on rather than shipped under this id: PP394 gave senkusha a channel, PP395 gave the stream one, and PP396 carries the capture that is left.
 - ✅ **PP398** **two allocations in lib/src are used without being checked, and one is a null dereference on the PSN path** — the two are checked and the rule is stated over lib/src, with the shapes where NULL is a correct answer excused by their consumer.
 - ✅ **PP399** **bytes_to_hex clamps against twice its output buffer, so its bound permits four times the room it has** — the clamp is against the room it has, a zero destination leaves first, and PP33's check now watches for the old shape.
+- ✅ **PP400** **the session id comes from srand(time(NULL)) and rand(), so two sessions in the same second share it** — the session id draws sixteen bytes from the crypto generator, a nibble per digit, and PP33's shape is unchanged.
 
 ## Block G — Test discipline
 

@@ -186,8 +186,19 @@ public class HolepunchIdentifiersTests
         Assert.False(
             HolepunchIdentifiersSource.TheEncoderStillGuardsTheWrongWay(core),
             "the encoder guards the wrong way again");
+        // PP400: inverted, for PP399's reason. PP33 recorded that the session id came from
+        // srand(time(NULL)) and rand(), noted the crypto generator sitting in the same file, and
+        // left it. Nothing said the defect had to be reproduced, and two sessions a second apart
+        // sharing the identifier the whole session is keyed by is not behaviour to carry across.
+        Assert.False(
+            HolepunchIdentifiersSource.TheUuidIsStillSeededFromTheClock(core),
+            "the session id is drawn from the clock again");
         Assert.True(
-            HolepunchIdentifiersSource.TheUuidIsStillSeededFromTheClock(core), "seeded from the clock");
+            HolepunchIdentifiersSource.TheUuidComesFromTheCryptoGenerator(core),
+            "the session id no longer comes from the crypto generator, a nibble per digit");
+        Assert.True(
+            HolepunchIdentifiersSource.AFailedDrawProducesNothing(core),
+            "a generator that failed now yields an identifier rather than an empty string");
         Assert.True(
             HolepunchIdentifiersSource.ACryptoGeneratorIsStillInTheSameFile(core),
             "a crypto generator was available all along");

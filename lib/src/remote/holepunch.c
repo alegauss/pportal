@@ -2038,19 +2038,55 @@ static void bytes_to_hex(const uint8_t* bytes, size_t len, char* hex_str, size_t
  *
  * @param[out] out Buffer to write the UUID to, must be at least 37 bytes long
  */
+// PP400: one nibble of the drawn bytes per hex digit, high half first.
+//
+// Thirty-one of a UUID's thirty-six positions take a digit - four are dashes and one is the fixed
+// version '4' - so sixteen bytes carry it with a nibble to spare. Taking `byte % 16` per digit
+// would spend a whole byte on four bits and start repeating once the sixteen ran out, which is a
+// weaker generator wearing the same shape.
+static uint8_t uuid_nibble(const uint8_t *bytes, int digit)
+{
+    return (digit % 2) == 0
+            ? (uint8_t)(bytes[digit / 2] >> 4)
+            : (uint8_t)(bytes[digit / 2] & 0x0f);
+}
+
 static void random_uuidv4(char* out)
 {
-    srand((unsigned int)time(NULL));
+    // PP400: from the crypto generator, not from rand().
+    //
+    // This called srand((unsigned int)time(NULL)) on EVERY invocation and then drew every nibble
+    // from rand(). Two sessions created within the same second therefore got the same identifier,
+    // deterministically - and this is the identifier the whole PSN session is keyed by, the one
+    // that goes into remotePlaySessions/%s/sessionMessage. Re-seeding per call also throws away
+    // whatever entropy the sequence had accumulated, so it is worse than seeding once.
+    //
+    // chiaki_random_bytes_crypt is a few hundred lines from here and this file already uses it for
+    // PP205's five bytes. Sixteen bytes is what a UUIDv4 carries; the version and variant nibbles
+    // are fixed over the top of them, exactly as the shape below always did.
     const char hex[] = "0123456789abcdef";
+    uint8_t bytes[16];
+
+    if(chiaki_random_bytes_crypt(bytes, sizeof(bytes)) != CHIAKI_ERR_SUCCESS)
+    {
+        // Nothing here can report, and a predictable id is worse than none - so the caller gets an
+        // empty string rather than one drawn from a generator that failed.
+        out[0] = '\0';
+        return;
+    }
+
+    // The chain below is the one that was here, position for position - PP33 pinned this shape and
+    // it is the shape that is right. Only where the digits come FROM has changed.
+    int digit = 0;
     for (int i = 0; i < 36; i++) {
         if (i == 8 || i == 13 || i == 18 || i == 23) {
             out[i] = '-';
         } else if (i == 14) {
             out[i] = '4';
         } else if (i == 19) {
-            out[i] = hex[(rand() % 4) + 8];
+            out[i] = hex[(uuid_nibble(bytes, digit++) % 4) + 8];
         } else {
-            out[i] = hex[rand() % 16];
+            out[i] = hex[uuid_nibble(bytes, digit++)];
         }
     }
     out[36] = '\0';
