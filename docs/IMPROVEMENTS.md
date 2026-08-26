@@ -159,7 +159,7 @@ because every part of it was green.
 ### §PP23 The oracle this block cannot be written without
 
 chiaki exists because the PlayStation remote play protocol was reverse engineered. There
-is no document to implement against: the 24627 lines of C in lib/src are the
+is no document to implement against: the 24639 lines of C in lib/src are the
 specification, and a managed rewrite that reads them and reproduces them is a
 translation whose only correctness test is behavioural.
 
@@ -198,7 +198,7 @@ bytes.
 
 ### §PP28 The state machines
 
-session.c is 1219 lines, ctrl.c 1522 and streamconnection.c 1326. Together they are the
+session.c is 1219 lines, ctrl.c 1534 and streamconnection.c 1326. Together they are the
 connection: what is sent in which order, what is waited for, what a timeout means at
 each point, and how a session comes apart when the console stops answering.
 
@@ -346,7 +346,7 @@ Repair any upstream and the port's copy becomes the divergence, on the next run.
 
 ### §PP294 The control channel, on its own
 
-The second of PP28's three. ctrl.c is the longest at 1522 lines and carries the most
+The second of PP28's three. ctrl.c is the longest at 1534 lines and carries the most
 message types - the control connection a session opens alongside the stream, over which
 the console reports state changes, accepts requests and answers keepalives.
 
@@ -486,36 +486,6 @@ The fix is a return type and a caller that reads it. What the session thread sho
 with a failure is a real question and not a small one: the PIN has already been consumed
 and freed on its side by then, so there is nothing left to retry with, and ending the
 session with a reason naming memory is more honest than a third prompt.
-
-### §PP348 Two writers, one field, opposite rules
-
-PP336 established a rule and asserted it: the session thread's ctrl_failed label writes
-CTRL_UNKNOWN only where quit_reason is still NONE, so a specific reason recorded earlier
-survives the generic failure that follows it. The check for that is green.
-
-ctrl.c has a function of the same name and the opposite policy:
-
-    static void ctrl_failed(ChiakiCtrl *ctrl, ChiakiQuitReason reason)
-    {
-        ...
-        ctrl->session->quit_reason = reason;
-        ctrl->session->ctrl_failed = true;
-
-No guard. Every call clobbers whatever was there, and the ctrl thread calls it on a
-failed connect, a short rudp message, a failed rudp receive, a rudp finish message, a
-recv error and a buffer overflow.
-
-So the guarantee holds only against the label. A session refused because the console was
-already in use records SESSION_REQUEST_RP_IN_USE, and the ctrl connection failing
-afterwards - which it will, since there is no session to carry it - replaces that with
-CTRL_UNKNOWN. The user is told the control channel failed. The reason they could have
-acted on was written down and then written over, by the code path most likely to run
-next.
-
-Which of the two policies is right is a real question. The label's guard exists because
-the specific reason came first and is more useful; the function's lack of one may be
-deliberate for a ctrl failure that genuinely supersedes. What is not defensible is the
-two disagreeing silently about one field.
 
 ### §PP349 The loop where cancelled means work
 

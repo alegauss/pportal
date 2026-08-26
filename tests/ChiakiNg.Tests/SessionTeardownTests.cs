@@ -108,6 +108,56 @@ public class SessionTeardownTests
             exit => Assert.True(SessionTeardown.SendsQuitEvent(exit)));
     }
 
+    /// <summary>
+    /// PP348: ctrl.c's GENERIC failure guards too, which is where PP336's rule was defeated.
+    ///
+    /// PP336 asserted the rule and it held - for the session thread's label, while ctrl.c's
+    /// ctrl_failed assigned unconditionally on six paths to the same field. A session refused for
+    /// something the user could act on had that replaced by CTRL_UNKNOWN when the ctrl connection
+    /// failed afterwards, which it does, since there is no session left to carry it.
+    ///
+    /// THE RULE IS NOT "EVERY WRITER GUARDS" - the first version of this test said that and failed
+    /// on four writes that are all correct. A specific cause recorded first needs no guard, and
+    /// STOPPED should override: a stop is what the user asked for. Only the generic failure must
+    /// not overwrite.
+    /// </summary>
+    [Fact]
+    public void TheGenericCtrlFailureDoesNotOverwriteARecordedReason()
+    {
+        string? path = SessionTeardownSource.LocateCtrl();
+        if (path is null)
+            return;
+
+        string? body = ChiakiNg.Session.CFunction.BodyIn(path, "static void ctrl_failed(");
+        Assert.NotNull(body);
+
+        Assert.True(
+            SessionTeardownSource.TheGenericCtrlFailureGuards(body),
+            "ctrl_failed writes the quit reason without guarding on NONE");
+        Assert.True(
+            SessionTeardownSource.TheFailureItselfIsStillUnconditional(body),
+            "ctrl_failed no longer reports the failure unconditionally, so a session could wait on a dead ctrl");
+    }
+
+    /// <summary>And the reader finds the unguarded version, so the check above means something.</summary>
+    [Fact]
+    public void TheReaderFindsAnUnguardedGenericFailure()
+    {
+        const string asItWas = """
+            static void ctrl_failed(ChiakiCtrl *ctrl, ChiakiQuitReason reason)
+            {
+            	chiaki_mutex_lock(&ctrl->session->state_mutex);
+            	ctrl->session->quit_reason = reason;
+            	ctrl->session->ctrl_failed = true;
+            }
+            """;
+
+        string? body = ChiakiNg.Session.CFunction.Body(asItWas, "static void ctrl_failed(");
+
+        Assert.NotNull(body);
+        Assert.False(SessionTeardownSource.TheGenericCtrlFailureGuards(body));
+    }
+
     /// <summary>And session.c still has the teardown this reproduces.</summary>
     [Fact]
     public void SessionStillDeclaresTheTeardown()

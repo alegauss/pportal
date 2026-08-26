@@ -179,4 +179,57 @@ public static class SessionTeardownSource
         return core.Contains(
             "else if(err != CHIAKI_ERR_SUCCESS && err != CHIAKI_ERR_CANCELED)", StringComparison.Ordinal);
     }
+
+    /// <summary>Where the other writer of the quit reason lives.</summary>
+    public const string CtrlRelativePath = @"lib\src\ctrl.c";
+
+    /// <summary>ctrl.c, or null outside a checkout.</summary>
+    public static string? LocateCtrl() => SanitizerSource.LocateRelative(CtrlRelativePath);
+
+    /// <summary>
+    /// PP348: whether ctrl.c's generic failure still guards before recording its reason.
+    ///
+    /// THE RULE IS NARROWER THAN "EVERY WRITER GUARDS", and the first version of this check said
+    /// that and was wrong. Most writes of the quit reason record a specific cause and are the first
+    /// thing on their path - the initialiser writing NONE, a rudp ack failing, the stream
+    /// connection's own outcome - and a guard would change nothing for them. STOPPED is stronger
+    /// than that: a stop is what the user asked for and SHOULD override a diagnosis in progress.
+    ///
+    /// What must guard is the generic failure. ctrl_failed is reached from six places with
+    /// CTRL_UNKNOWN or CTRL_CONNECT_FAILED, and it runs after whatever actually went wrong - so
+    /// unguarded it replaced "the console is already in use" with "ctrl failed" on the way out.
+    /// </summary>
+    public static bool TheGenericCtrlFailureGuards(string ctrlFailedBody)
+    {
+        ArgumentNullException.ThrowIfNull(ctrlFailedBody);
+
+        int guard = ctrlFailedBody.IndexOf(
+            "quit_reason == CHIAKI_QUIT_REASON_NONE", StringComparison.Ordinal);
+        int write = ctrlFailedBody.IndexOf(
+            "quit_reason = reason", StringComparison.Ordinal);
+
+        return guard >= 0 && write > guard;
+    }
+
+    /// <summary>
+    /// And whether it still reports the failure itself unconditionally.
+    ///
+    /// The reason is what a client is TOLD; ctrl_failed is how the session thread LEARNS. Guarding
+    /// the second would leave a session waiting on a control channel that had already died.
+    /// </summary>
+    public static bool TheFailureItselfIsStillUnconditional(string ctrlFailedBody)
+    {
+        ArgumentNullException.ThrowIfNull(ctrlFailedBody);
+
+        int flag = ctrlFailedBody.IndexOf("ctrl_failed = true", StringComparison.Ordinal);
+        if (flag < 0)
+            return false;
+
+        // Not inside the guard: the closing brace of the guarded assignment comes before it.
+        int guard = ctrlFailedBody.IndexOf(
+            "quit_reason == CHIAKI_QUIT_REASON_NONE", StringComparison.Ordinal);
+
+        return guard < 0 || flag > ctrlFailedBody.IndexOf(
+            "quit_reason = reason", StringComparison.Ordinal);
+    }
 }

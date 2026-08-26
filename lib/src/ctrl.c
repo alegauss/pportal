@@ -302,7 +302,19 @@ static void ctrl_failed(ChiakiCtrl *ctrl, ChiakiQuitReason reason)
 {
 	ChiakiErrorCode mutex_err = chiaki_mutex_lock(&ctrl->session->state_mutex);
 	assert(mutex_err == CHIAKI_ERR_SUCCESS);
-	ctrl->session->quit_reason = reason;
+
+	// PP348: guarded, the way session_thread_func's ctrl_failed label already guards. This assigned
+	// unconditionally on all six paths that reach it, so a session refused for a reason the user
+	// could act on - the console already in use, a version mismatch - had that replaced with
+	// CTRL_UNKNOWN by the ctrl connection failing afterwards, which it will, since there is no
+	// session left to carry it.
+	//
+	// The guard costs nothing it was doing: a ctrl failure on a healthy session finds NONE here and
+	// records itself as before. What it stops is only the overwrite.
+	if(ctrl->session->quit_reason == CHIAKI_QUIT_REASON_NONE)
+		ctrl->session->quit_reason = reason;
+
+	// Unconditional: this is how the session thread learns ctrl died, whatever the reason says.
 	ctrl->session->ctrl_failed = true;
 	chiaki_mutex_unlock(&ctrl->session->state_mutex);
 	chiaki_cond_signal(&ctrl->session->state_cond);

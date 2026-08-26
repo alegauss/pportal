@@ -293,6 +293,7 @@
 - ✅ **PP346** **the ctrl read loop adds eight to a uint32 length, and the wrap defeats the overflow check below it** — the bound is on the announced length alone, before anything is added to it, so a header claiming four gigabytes ends the channel instead of being decrypted in place.
 - ✅ **PP347** **the rudp arm copies a message into the 512-byte ctrl buffer with no bound, and its source buffer is 520** — both rudp arms check the room left in the destination, and a count of unbounded copies into it holds at zero rather than a check on the two that were wrong.
 - ✅ **PP352** **the two display handlers read payload bytes without checking the size, so a short message is decided by leftovers** — both display handlers check before they index, and a count over every handler holds at zero rather than a check on the two that were wrong.
+- ✅ **PP348** **ctrl.c's ctrl_failed overwrites a recorded quit reason, which is the rule PP336 asserted the label keeps** — the generic ctrl failure guards on NONE like the label does, so a cause the user can act on outlives the control channel dying after it.
 
 ## Block G — Test discipline
 
