@@ -125,6 +125,21 @@ CHIAKI_EXPORT void chiaki_message_tap_emit(
  */
 #define CHIAKI_MESSAGE_TAP_CHANNEL_SENKUSHA "senkusha"
 
+/**
+ * PP395: and for the stream connection's protobufs, which completes PP23's four modules.
+ *
+ * The same `type` convention as senkusha - takion's data type, not a ctrl message type - because
+ * this channel carries three different conversations under one wire format (PP366): the state the
+ * machine is in decides what an arriving protobuf means, and the data type is what a recording has
+ * to keep so a replay can tell them apart.
+ *
+ * THE BIG IS TAPPED WHOLE, before the fragmentation. PP375 established that a BIG is cut into as
+ * many takion messages as the measured MTU requires, so a recording of fragments would replay only
+ * against a run that negotiated the same link. What crosses here is the message; the slicing is the
+ * transport's and is not protocol.
+ */
+#define CHIAKI_MESSAGE_TAP_CHANNEL_STREAM "stream"
+
 #ifdef __cplusplus
 }
 #endif

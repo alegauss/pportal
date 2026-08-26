@@ -335,6 +335,7 @@
 - ✅ **PP391** **the replay harness has only ever been fed recordings the tests wrote, so no managed module answers the real capture** — PP342's table answers PP297's capture end to end, and the harness learns which conversation a participant owns.
 - ✅ **PP392** **the session request and its answer are asserted as two halves, and nothing says the request comes first** — the client-opened channel replays as a conversation, and a participant can say what it opens with.
 - ✅ **PP394** **senkusha has no tap channel, so PP393's first half is unbuilt for one of the two modules PP23 owes** — senkusha gets a channel: six protobuf sends behind one chokepoint that taps, and the receive tapped above the decode.
+- ✅ **PP395** **streamconnection has no tap channel, which is the last of PP23's four modules without one** — the last of PP23's four modules gets a channel: eight sends behind a chokepoint, the BIG tapped whole, the receive above the lock.
 
 ## Block G — Test discipline
 

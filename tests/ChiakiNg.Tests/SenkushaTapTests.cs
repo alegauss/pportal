@@ -100,24 +100,10 @@ public class SenkushaTapTests
         Assert.NotEqual(ChiakiMessageTap.SessionChannel, ChiakiMessageTap.SenkushaChannel);
     }
 
-    /// <summary>
-    /// PP394's remaining half, stated so it is not mistaken for done: streamconnection.c still has
-    /// no emit site, so PP23 still owes one module.
-    ///
-    /// Asserted rather than commented, because a comment saying what is missing goes stale and a
-    /// failing assertion cannot. This turns red the day streamconnection is tapped, which is when
-    /// this sentence should be deleted.
-    /// </summary>
-    [Fact]
-    public void StreamConnectionStillHasNoChannel()
-    {
-        string? path = MessageTapSource.Locate(@"lib\src\streamconnection.c");
-        if (path is null)
-            return;
-
-        Assert.DoesNotContain(
-            "chiaki_message_tap_emit", File.ReadAllText(path), StringComparison.Ordinal);
-    }
+    // PP394 asserted here that streamconnection.c still had no emit site, so PP23's remaining half
+    // could not be mistaken for done - and said the assertion should be deleted the day that
+    // changed. PP395 tapped it, this went red, and it is gone. What replaced it is the positive
+    // form: StreamConnectionTapTests.EveryOneOfTheFourFilesEmits.
 
     /// <summary>The readers read what they are given (PP272).</summary>
     [Fact]

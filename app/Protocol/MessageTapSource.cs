@@ -103,6 +103,100 @@ public static class MessageTapSource
         return tapped >= 0 && decoded > tapped;
     }
 
+    /// <summary>PP395: the fourth and last of PP23's modules to get a channel.</summary>
+    public const string StreamSource = @"lib\src\streamconnection.c";
+
+    /// <summary>
+    /// Whether the stream connection's unfragmented sends still go through one place.
+    ///
+    /// Eight of them did not, which is the same shape senkusha had. The BIG is deliberately not
+    /// among them - it taps itself before the fragmentation, and
+    /// <see cref="TheBigIsStillTappedWholeBeforeItIsFragmented"/> is that half.
+    /// </summary>
+    public static bool TheStreamSendsStillGoThroughOnePlace(string stream)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+
+        string? body = CFunction.Body(stream, "ChiakiErrorCode stream_connection_send_data(");
+        if (body is null)
+            return false;
+
+        int tapped = body.IndexOf("CHIAKI_MESSAGE_TAP_CHANNEL_STREAM", StringComparison.Ordinal);
+        int sent = body.IndexOf(
+            "chiaki_takion_send_message_data(", tapped < 0 ? 0 : tapped, StringComparison.Ordinal);
+
+        return tapped >= 0 && sent > tapped && OtherStreamSendsIn(stream) == 0;
+    }
+
+    /// <summary>
+    /// How many sends bypass the chokepoint, not counting the BIG's fragments.
+    ///
+    /// The four in the fragment loop are the BIG's and are excluded BY SHAPE rather than by count:
+    /// every one of them sends `buf + buf_pos`, which is a slice, and no other send in the file
+    /// does. A ninth ordinary send written straight onto takion would pass `buf` and be caught.
+    /// </summary>
+    public static int OtherStreamSendsIn(string stream)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+
+        int direct = CCall.Count(stream, "chiaki_takion_send_message_data(")
+            + CCall.Count(stream, "chiaki_takion_send_message_data_cont(");
+
+        // One inside the chokepoint, and four fragment sends that carry a slice.
+        int fragments = CCall.Count(stream, "buf + buf_pos, buf_size, NULL")
+            + CCall.Count(stream, "buf + buf_pos, total_size, NULL");
+
+        return direct - 1 - fragments;
+    }
+
+    /// <summary>
+    /// Whether the BIG is still tapped whole, before the loop that cuts it up.
+    ///
+    /// PP375 measured that the number of fragments follows the negotiated MTU. A recording of
+    /// fragments would therefore replay only against a run that measured the same link, which is
+    /// the opposite of an oracle - so the tap sits above the loop and carries the whole message.
+    /// </summary>
+    public static bool TheBigIsStillTappedWholeBeforeItIsFragmented(string stream)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+
+        string? body = CFunction.Body(stream, "ChiakiErrorCode stream_connection_send_big(");
+        if (body is null)
+            return false;
+
+        int tapped = body.IndexOf("CHIAKI_MESSAGE_TAP_CHANNEL_STREAM", StringComparison.Ordinal);
+        int loop = body.IndexOf("while(first ?", tapped < 0 ? 0 : tapped, StringComparison.Ordinal);
+
+        // Tapped, then fragmented - and with the whole encoded length rather than a fragment's.
+        return tapped >= 0
+            && loop > tapped
+            && body[tapped..loop].Contains("stream.bytes_written", StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Whether the received protobuf is still tapped ABOVE the state lock.
+    ///
+    /// PP366 established that the lock spans the whole switch so the run thread can read
+    /// state_finished the moment its wait returns. A tap handler called under it would hold that
+    /// window open for as long as a recorder takes to write a line, which is a diagnostic changing
+    /// the timing of the thing it observes.
+    /// </summary>
+    public static bool TheStreamReceiveIsStillTappedAboveTheLock(string stream)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+
+        string? body = CFunction.Body(stream, "void stream_connection_takion_data_protobuf(");
+        if (body is null)
+            return false;
+
+        int tapped = body.IndexOf("CHIAKI_MESSAGE_TAP_RECEIVED", StringComparison.Ordinal);
+        int locked = body.IndexOf(
+            "chiaki_mutex_lock(&stream_connection->state_mutex)", tapped < 0 ? 0 : tapped,
+            StringComparison.Ordinal);
+
+        return tapped >= 0 && locked > tapped;
+    }
+
     /// <summary>One of the three, or null outside a checkout.</summary>
     public static string? Locate(string relative) => SanitizerSource.LocateRelative(relative);
 

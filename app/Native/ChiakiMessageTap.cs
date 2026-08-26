@@ -70,6 +70,16 @@ public sealed unsafe class ChiakiMessageTap : IDisposable
     /// </summary>
     public const string SenkushaChannel = "senkusha";
 
+    /// <summary>
+    /// PP395: the stream connection's protobufs, spelled as CHIAKI_MESSAGE_TAP_CHANNEL_STREAM does.
+    ///
+    /// The fourth channel, and the one that completes PP23's four modules. Its BIG is tapped WHOLE
+    /// rather than per fragment: PP375 measured that a BIG is cut into as many takion messages as
+    /// the MTU requires, so a recording of fragments would replay only against a run that
+    /// negotiated the same link.
+    /// </summary>
+    public const string StreamChannel = "stream";
+
     /// <summary>The one that is installed, or null. See the note on being global.</summary>
     private static ChiakiMessageTap? installed;
 
