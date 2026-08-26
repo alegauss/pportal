@@ -30,8 +30,15 @@ public class ByteOrderWidthsTests
         foreach (string file in Directory.EnumerateFiles(dir, "*.c", SearchOption.AllDirectories))
             reads.AddRange(ByteOrderWidths.ReadsIn(Path.GetFileName(file), File.ReadAllText(file)));
 
-        // The sweep has to find something, or a rule over an empty set would pass forever.
-        Assert.NotEmpty(reads);
+        // PP381: NOT NotEmpty. That is what this said, and it held while the reader was matching
+        // five of the thirty-eight conversions in the tree - a clean sweep over five reads exactly
+        // like a clean sweep over all of them, and nothing here could tell the two apart. The
+        // failure was a doubled parenthesis the regex did not allow, and it was found by another
+        // task rather than by this one. A floor is what makes the sweep's REACH an assertion.
+        Assert.True(
+            reads.Count >= ByteOrderWidths.Floor,
+            $"the sweep found {reads.Count} conversions, under the floor of {ByteOrderWidths.Floor} - "
+                + "the reader has stopped matching a spelling the tree uses");
 
         IReadOnlyList<ByteOrderRead> mismatched = ByteOrderWidths.Mismatches(reads);
 
@@ -39,6 +46,43 @@ public class ByteOrderWidthsTests
             mismatched.Count == 0,
             "these conversions do not match the width of the read they wrap:\n  "
                 + string.Join("\n  ", mismatched));
+    }
+
+    /// <summary>
+    /// PP381: the reader sees BOTH spellings, which is the whole of what was wrong with it.
+    ///
+    /// The tree writes the doubled parenthesis in takion.c, audio.c, frameprocessor.c, senkusha.c
+    /// and ctrl.c, and the single one in ctrl.c and streamconnection.c. Only the second was matched,
+    /// so thirty-three of thirty-eight conversions were outside a rule that reported them clean.
+    /// </summary>
+    [Fact]
+    public void TheReaderSeesBothSpellingsOfTheCast()
+    {
+        const string Single = "uint32_t n = ntohl(*(chiaki_unaligned_uint32_t *)(buf + 4));";
+        const string Doubled = "uint32_t n = ntohl(*((chiaki_unaligned_uint32_t *)(buf + 4)));";
+
+        ByteOrderRead single = Assert.Single(ByteOrderWidths.ReadsIn("x.c", Single));
+        ByteOrderRead doubled = Assert.Single(ByteOrderWidths.ReadsIn("x.c", Doubled));
+
+        Assert.Equal(32, single.ReadBits);
+        Assert.Equal(32, doubled.ReadBits);
+        Assert.True(single.Matches);
+        Assert.True(doubled.Matches);
+    }
+
+    /// <summary>
+    /// And it finds a mismatch in the doubled spelling too, so the widening bought a rule and not
+    /// just a count.
+    /// </summary>
+    [Fact]
+    public void AMismatchInTheDoubledSpellingIsFound()
+    {
+        const string Wrong = "uint32_t timestamp = ntohs(*((chiaki_unaligned_uint32_t *)(buf + 4)));";
+
+        ByteOrderRead read = Assert.Single(ByteOrderWidths.ReadsIn("x.c", Wrong));
+
+        Assert.False(read.Matches);
+        Assert.Single(ByteOrderWidths.Mismatches([read]));
     }
 
     /// <summary>

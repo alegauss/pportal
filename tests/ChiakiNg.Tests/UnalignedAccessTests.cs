@@ -100,16 +100,15 @@ public class UnalignedAccessTests(ITestOutputHelper output)
     }
 
     /// <summary>
-    /// PP374's width rule does NOT see this line, which is a finding rather than a gap in this
-    /// task - and it is asserted so the gap is a fact somebody can act on.
+    /// PP381 closed the gap this test was written to record, so it now asserts the join instead.
     ///
-    /// ByteOrderWidths matches `ntohl(*(T *)(...))` and this file spells it `ntohl(*((T *)(...)))`.
-    /// Both are the same access; only the second is invisible. This assertion stands until the
-    /// reader is widened, and turns red the moment it is - which is when it should be deleted
-    /// along with the task that widened it.
+    /// The pong tag is the one line both rules meet on: PP378 says the access goes through the
+    /// unaligned type, PP374 says the swap matches the width it wraps - and until PP381 widened the
+    /// reader, the second rule could not see this spelling at all and this test asserted its
+    /// absence.
     /// </summary>
     [Fact]
-    public void TheWidthRuleDoesNotReachThisSpelling()
+    public void TheWidthRuleNowReachesThisLineToo()
     {
         string? path = UnalignedAccess.Locate();
         if (path is null)
@@ -118,11 +117,10 @@ public class UnalignedAccessTests(ITestOutputHelper output)
         IReadOnlyList<ByteOrderRead> reads =
             ByteOrderWidths.ReadsIn(UnalignedAccess.RelativePath, File.ReadAllText(path));
 
-        Assert.Empty(reads);
+        ByteOrderRead tag = Assert.Single(reads);
 
-        // And it does see the other spelling, so this is about the parentheses and not about the
-        // file - which is the difference between a blind spot and a reader that finds nothing.
-        Assert.Single(
-            ByteOrderWidths.ReadsIn("x.c", "ntohl(*(chiaki_unaligned_uint32_t *)(packet->data + 4))"));
+        Assert.Equal("ntohl", tag.Conversion);
+        Assert.Equal(32, tag.ReadBits);
+        Assert.Empty(ByteOrderWidths.Mismatches(reads));
     }
 }

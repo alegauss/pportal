@@ -325,6 +325,7 @@
 - ✅ **PP366** **one protobuf on the wire is three messages depending on the state, and the AV route is where every deletion waits** — the three dispatch layers are a table, and the AV route's block offset and video call are asserted as PP30's premise.
 - ✅ **PP378** **the pong tag is read through a plain uint32_t pointer, three lines from where the file uses the unaligned type** — the pong tag reads through the unaligned type, and a rule over senkusha.c covers every cast in it.
 - ✅ **PP379** **the senkusha disconnect is sent and its answer dropped, so one that never left is never logged** — the senkusha disconnect reads and logs its answer, and the rule covers every answering call in the file.
+- ✅ **PP381** **PP374's width check reads 5 of the 38 byte-order conversions in lib/src, missing every doubled parenthesis** — the width reader matches both spellings of the cast, and a floor under the sweep's count is what asserts its reach.
 
 ## Block G — Test discipline
 

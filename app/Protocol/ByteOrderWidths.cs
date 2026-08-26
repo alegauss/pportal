@@ -46,10 +46,29 @@ public static partial class ByteOrderWidths
     /// <summary>The directory, or null outside a checkout.</summary>
     public static string? LocateSources() => SanitizerSource.LocateRelative(SourceRelativePath);
 
+    /// <summary>
+    /// PP381: the parenthesis that hid thirty-three of thirty-eight.
+    ///
+    /// The tree writes both `ntohl(*(T *)x)` and `ntohl(*((T *)x))`, and this matched only the
+    /// first - so the sweep read two lines of ctrl.c and three of streamconnection.c, and never
+    /// looked at audio.c, frameprocessor.c, senkusha.c or the twenty-five in takion.c. Nothing
+    /// failed: a clean sweep over five sites reads exactly like a clean sweep over all of them,
+    /// which is why <see cref="Floor"/> now exists beside the rule.
+    /// </summary>
     [GeneratedRegex(
-        @"(?<conv>ntohs|ntohl)\s*\(\s*\*\s*\(\s*(chiaki_unaligned_)?uint(?<bits>16|32|64)_t\s*\*\s*\)",
+        @"(?<conv>ntohs|ntohl)\s*\(\s*\*\s*\(\s*\(?\s*(chiaki_unaligned_)?uint(?<bits>16|32|64)_t\s*\*\s*\)",
         RegexOptions.None)]
     private static partial Regex ConversionOverACast();
+
+    /// <summary>
+    /// The fewest conversions a sweep of lib/src may find before the rule is about nothing.
+    ///
+    /// Thirty-eight today. A floor rather than the exact count, because conversions come and go
+    /// with the port and a number that has to be edited on every deletion gets edited without
+    /// being read. What it catches is the regex quietly stopping matching, which is the failure
+    /// this task exists because of - and which nothing else in the test can see.
+    /// </summary>
+    public const int Floor = 30;
 
     /// <summary>
     /// Every conversion wrapping a pointer cast, with the width of each.

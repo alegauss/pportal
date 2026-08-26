@@ -496,36 +496,34 @@ the same, an ack nobody sent.
 
 So this is owed before PP365's fix, not after.
 
-### §PP381 The check that reads five of thirty-eight
+### §PP382 The rule PP378 scoped, and where the answer is now known
 
-PP374 established that a byte-order conversion must handle the width of the read it
-wraps, and left a check that sweeps every .c file in lib/src. The check reads five
-conversions. There are thirty-eight.
+PP378 stated the rule over senkusha.c and said why it was scoped there: whether a
+pointer carries an alignment guarantee is answered per buffer, and a tree-wide sweep
+would flag reads that are aligned on purpose. Widening PP381's reader made the rest of
+the tree readable, so the answer can now be given per site instead of guessed.
 
-The reader matches one spelling:
+There are 26 multi-byte accesses through a plain cast in lib/src. Four are deliberate
+and carry the proof beside them:
 
-    ntohl(*(chiaki_unaligned_uint32_t *)(buf + 4))
+    ctrl.c:457            recv_buf, declared __attribute__((aligned(__alignof__(uint32_t))))
+    ctrl.c:724, 725, 726  header[8], with the same attribute three lines above
 
-and the tree mostly writes the other:
+The other 22 have nothing:
 
-    ntohl(*((chiaki_unaligned_uint32_t *)(buf + 4)))
+    ctrl.c:592, 622       message.data + offset - a heap pointer at a wire offset
+    rudpsendbuffer.c:307  packet->buf + 6
+    holepunch.c           19 sites into request_buf, confirm_buf, response_buf and req
 
-One doubled parenthesis, and the regex stops matching. What it sees is two lines in
-ctrl.c and three in streamconnection.c - one of which is commented out. What it does not
-see is all of audio.c, all of frameprocessor.c, senkusha.c, and the twenty-five in
-takion.c, which is the file with the most byte-order arithmetic in the library.
+holepunch.c is the bulk and the worst shape. Its writes index a byte array at hex
+offsets - &confirm_buf[0x44], &confirm_buf[0x52] - so alignment depends on a constant
+nobody chose for that reason.
 
-This was found by PP378 rather than by the check, which is the part worth stating. A
-sweep that reports zero mismatches over five sites reads exactly like one that reports
-zero over thirty-eight, and nothing in the test says which it did - so the count is the
-thing to assert, not just the verdict.
+The reads are where a fault would land rather than a wrong answer: holepunch.c:4181 and
+:4522 both take a message type through uint32_t*, on buffers that came off a socket.
 
-One of the thirty-three is also PP378's defect in another file: holepunch.c:4181 reads a
-message type through a plain `uint32_t*`, with no unaligned type and no alignment
-guarantee on `response_buf`.
-
-What this owes is the parenthesis, a floor under the number of conversions the sweep
-finds, and whatever the widened check then turns red.
+What this owes is the type at all 22, the attribute left alone at the four that have it,
+and the rule stated over lib/src with those four named as the exceptions they are.
 
 ## Block G — Test discipline
 
