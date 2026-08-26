@@ -44,6 +44,7 @@
 - 📋 **PP364** (deps: —) **six cascading exit labels lift two measurements before freeing what made them, and the order is load-bearing** — input_to_wire before the sender's fini, and four frame-path timings between takion_close and the receiver's free - a zero reads as a measurement. → §PP364
 - 📋 **PP365** (deps: —) **state_failed is written eight times in streamconnection.c and read nowhere, so a failed handler waits out its timeout** — the predicate watches finished, stop and remote_disconnected; the log line says didn't receive or failed to handle because it cannot tell them apart. → §PP365
 - 📋 **PP366** (deps: —) **one protobuf on the wire is three messages depending on the state, and the AV route is where every deletion waits** — the dispatch asks event kind, then data kind, then state; and ten lines decrypt at key_pos plus a block and route by two flags. → §PP366
+- 📋 **PP369** (deps: PP27 ⏳) **seven asserts still carry weight about data across three files, and PP357's check reads only one of them** — four are size assertions in front of reads in takion.c; one guards an ECDH secret from being overwritten, one a pointer dereferenced two lines later. → §PP369
 
 ## Block G — Test discipline
 

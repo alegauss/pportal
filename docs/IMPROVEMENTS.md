@@ -596,31 +596,30 @@ every earlier failure leaves it allocated.
 This is the half of PP295 that is not about messages at all, and it is where a rewrite
 loses measurements rather than behaviour.
 
-### §PP365 A flag written eight times and read never
+### §PP365 A flag written eight times, read never, and signalled anyway
 
-state_failed is written eight times in streamconnection.c and read nowhere. Four of the
-writes clear it as each state is entered; three set it - when takion reports a
-disconnect event, when the bang handler cannot use what arrived, and when the streaminfo
-handler cannot. Nothing looks.
+state_failed is written eight times in streamconnection.c and read nowhere. Four writes
+clear it as each state is entered; three set it - when takion reports a disconnect, when
+the bang handler cannot use what arrived, and when the streaminfo handler cannot.
 
-The wait predicate does not: state_finished_cond_check watches state_finished,
-should_stop and remote_disconnected. The run function does not either - after each wait
-it tests should_stop and then state_finished, and nothing else.
+The wait predicate does not read it: state_finished_cond_check watches state_finished,
+should_stop and remote_disconnected. Neither does the run function, which after each
+wait tests should_stop and then state_finished and nothing else.
 
-So a handler that fails does not wake the wait. It sets a flag and returns, and the
-thread sits there for the whole EXPECT_TIMEOUT_MS before concluding that nothing
-arrived. The C's own log line is the tell: "StreamConnection didn't receive bang or
-failed to handle it" - one sentence for two different things, because at that point it
-genuinely cannot tell them apart.
+AND THE FAILURE PATH SIGNALS THE CONDITION ANYWAY, which is the part that makes this a
+defect rather than dead code. expect_bang's error label sets state_failed and calls
+cond_signal. The waiting thread wakes, re-evaluates the predicate the wait was given,
+finds it false - because the flag just set is not in it - and goes back to sleep. So
+somebody wrote the wake-up believing it would work, and it is spent for nothing.
 
-Which makes this two questions rather than one. Whether the flag should be watched is a
-behaviour change: a bang that fails to parse would end the stream immediately instead of
-after the timeout, which is better and is different. Whether it should be deleted is the
-other answer, and it is the one that makes the log line honest.
+What follows is a full EXPECT_TIMEOUT_MS after the failure is already known. The C's own
+log line is the tell: "didn't receive bang or failed to handle it" - one sentence for
+two things, because at that point it cannot tell them apart.
 
-Reproducing it as dead is what the port does now, with an assertion that it stays dead -
-because a port that grew a use for it would be reporting failures sooner than the C, and
-that difference would not show up in any message-level comparison.
+Two answers. Watching the flag ends the stream at once, which is better and is different
+behaviour. Deleting it makes the log line honest. The port reproduces it as dead, with
+an assertion that it stays dead, because a port that grew a use would report failures
+sooner than the C in a way no message-level comparison would show.
 
 ### §PP366 Three layers, and the ten lines PP30 waits on
 
@@ -648,6 +647,34 @@ routed by two flags: video to the video receiver, haptics to the haptics one, ev
 else to audio. That single call to chiaki_video_receiver_av_packet is why
 videoreceiver.c stays, so frameprocessor.c stays, so fec.c stays, and jerasure with
 them.
+
+### §PP369 The rule PP357 set, in the files it did not reach
+
+PP357 established that an assert is not a bound here, because this project builds
+Release with -DNDEBUG. It fixed the two in ctrl.c that guarded a copy, and the check it
+left behind reads ctrl.c and nothing else.
+
+There are 28 asserts across the four files PP28 and PP27 name. Twenty-one are assert(err
+== CHIAKI_ERR_SUCCESS) after a mutex lock - a separate argument, since what follows a
+failed lock is unsynchronised rather than out of bounds. Seven carry weight about data:
+
+    streamconnection.c:855  assert(!stream_connection->ecdh_secret);
+    session.c:560           assert(session->login_pin_entered && session->login_pin);
+    takion.c:629            assert(buf_size >= 0xc);
+    takion.c:1201           assert(buf_size > 0);
+    takion.c:1489           assert(msg.payload_size == 0x10 + TAKION_COOKIE_SIZE);
+    takion.c:1544           assert(msg.payload_size == 0);
+    takion.c:1555           assert(base_type == VIDEO || base_type == AUDIO);
+
+Four of those are size assertions in front of reads - the exact shape PP357 fixed, in
+the file its check does not look at. The streamconnection one guards against a second
+bang overwriting an ECDH secret and leaking the first, which is reachable while the run
+thread has not yet changed state. The session one is dereferenced two lines later by
+chiaki_ctrl_set_login_pin.
+
+takion.c is PP27's file and this crosses into it, which is why this is a line rather
+than a wider edit under PP295. What it owes is the fix for all seven and a check that
+reads every file rather than the one where the first two were found.
 
 ## Block G — Test discipline
 
