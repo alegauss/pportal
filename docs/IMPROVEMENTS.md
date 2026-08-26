@@ -487,31 +487,6 @@ with a failure is a real question and not a small one: the PIN has already been 
 and freed on its side by then, so there is nothing left to retry with, and ending the
 session with a reason naming memory is more honest than a third prompt.
 
-### §PP353 A machine made of two flags
-
-The last handlers PP294 has not reached. Three of them are ordinary and two are a state
-machine between them.
-
-DISPLAYA and DISPLAYB share two flags, cant_displaya and cant_displayb, and only their
-combination means anything. DISPLAYA carrying 0x1 raises the first flag and says nothing
-to the client. DISPLAYB then decides: with the first flag up and a payload that is NOT
-01-ff, it tells the display sink the stream cannot be shown and raises the second. A
-payload of 01-ff with the second flag up lowers it again - and the capture recorded
-exactly one DISPLAYB, carrying 01-ff, which is the clearing value.
-
-So the message the console actually sent in the one recorded session is the one that
-means "nothing is wrong", and the interesting path is the one no capture has. That is
-worth stating because it is the whole reason this needs porting against the source
-rather than the recording.
-
-The login PIN request has an ordering rule with teeth: arriving AFTER a session id, it
-fails the session outright, because a login cannot be redone once the session has one.
-The comment says so.
-
-The login reply switches on a single byte of state, and it warns about any size other
-than one while still reading the byte where there is at least one - a shape PP352 is
-about the absence of.
-
 ### §PP354 Two buffers, one fill
 
 ChiakiCtrl has two receive buffers and one size field:
