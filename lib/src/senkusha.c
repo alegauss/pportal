@@ -731,7 +731,12 @@ static void senkusha_takion_av(ChiakiSenkusha *senkusha, ChiakiTakionAVPacket *p
 			goto beach;
 		}
 
-		uint32_t tag = ntohl(*((uint32_t *)(packet->data + 4)));
+		// PP378: through the unaligned type, like the three writes this file already spells that
+		// way. packet->data points into a received AV packet at wherever its header ended, and this
+		// reads four bytes past that - no alignment guarantee at either step. The swap was always
+		// right, so on x86 the number was too; what was wrong was the access, which a compiler may
+		// assume cannot happen and a stricter target faults on instead of answering.
+		uint32_t tag = ntohl(*((chiaki_unaligned_uint32_t *)(packet->data + 4)));
 		if(tag != senkusha->ping_tag)
 		{
 			CHIAKI_LOGW(senkusha->log, "Senkusha received Pong with invalid tag");

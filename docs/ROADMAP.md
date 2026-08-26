@@ -37,9 +37,9 @@
 - 💭 **PP313** (deps: PP33 ⏳) **curl and json-c would leave the build today if the remote path were built off, and that trades a feature for a count** — PP33's fourth criterion otherwise waits on the managed session, and the tri_option is already there. → §PP313
 - 📋 **PP340** (deps: —) **the PSN path lives in session.c's nine holepunch call sites, so PP33's deletion would take remote play with it** — the offer, the punch, the two sockets, the regist info, the address, the port and the fini are all driven from C; nothing managed owns that flow. → §PP340
 - 📋 **PP369** (deps: PP27 ⏳) **eight asserts still carry weight about data across four files, and PP357's check reads only one of them** — four are size assertions in front of reads in takion.c, one guards an ECDH secret, one a pointer dereferenced two lines later, one an offset in senkusha.c. → §PP369
-- 📋 **PP378** (deps: —) **the pong tag is read through a plain uint32_t pointer, three lines from where the file uses the unaligned type** — PP374's family: packet->data + 4 carries no alignment guarantee, and this same file writes its own tags through chiaki_unaligned_uint32_t three times. → §PP378
 - 📋 **PP379** (deps: —) **the senkusha disconnect is sent and its answer dropped, so one that never left is never logged** — PP370 read and logged the same call in streamconnection.c, where a disconnect that did not reach the console is why the next attempt is refused as in use. → §PP379
 - 📋 **PP380** (deps: —) **three waits log that nothing arrived and then report the measurement as passed** — The branch is dead only because the predicate has two fields, and PP365's remedy is to add the third one that makes all three live. → §PP380
+- 📋 **PP381** (deps: —) **PP374's width check reads 5 of the 38 byte-order conversions in lib/src, missing every doubled parenthesis** — ntohl(*((T *)x)) is how takion.c, audio.c and ctrl.c spell it; the reader only matches ntohl(*(T *)x), so 33 sites are unchecked. → §PP381
 
 ## Block G — Test discipline
 

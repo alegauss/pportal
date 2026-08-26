@@ -159,7 +159,7 @@ because every part of it was green.
 ### §PP23 The oracle this block cannot be written without
 
 chiaki exists because the PlayStation remote play protocol was reverse engineered. There
-is no document to implement against: the 24880 lines of C in lib/src are the
+is no document to implement against: the 24885 lines of C in lib/src are the
 specification, and a managed rewrite that reads them and reproduces them is a
 translation whose only correctness test is behavioural.
 
@@ -496,33 +496,6 @@ the same, an ack nobody sent.
 
 So this is owed before PP365's fix, not after.
 
-### §PP378 The one read the file did not give its own type
-
-senkusha.c reads the tag out of a pong with
-
-    uint32_t tag = ntohl(*((uint32_t *)(packet->data + 4)));
-
-and writes its own tags, three times in the same file, through
-`chiaki_unaligned_uint32_t`. The type exists precisely because these offsets carry no
-alignment guarantee: `packet->data` points into a received AV packet, at whatever offset
-the header happened to end, and the read is four bytes past that.
-
-The swap is right, which is what separates this from PP374. There a four-byte value went
-through a two-byte swap and the number came out wrong on every packet. Here the number
-is correct on x86 and the defect is the access itself - undefined behaviour that a
-compiler is free to assume cannot happen, and that on a stricter target faults instead
-of returning the wrong answer.
-
-What makes it worth a line rather than a shrug is that the file already knows. Three
-writes use the unaligned type and one read does not, so this is not a target the port
-has decided against - it is one place that did not get the same treatment as its
-neighbours. That is the same shape as PP367, PP370 and PP377: one call in a group whose
-siblings are correct.
-
-The fix is the type. What it owes beyond that is a check that reads every four-byte
-access in the file and asserts the unaligned type on all of them, so a fifth added later
-is covered without anyone remembering this line.
-
 ### §PP379 The disconnect that holds the port against the next attempt
 
 The senkusha run ends at a `disconnect:` label that calls
@@ -549,6 +522,37 @@ it.
 So: read it, log it, return what the run had already decided. This is the third member
 of the family after PP370 and PP363's heartbeat, and the check the fix owes should read
 every send in senkusha.c rather than this one - the same way PP370's does for its file.
+
+### §PP381 The check that reads five of thirty-eight
+
+PP374 established that a byte-order conversion must handle the width of the read it
+wraps, and left a check that sweeps every .c file in lib/src. The check reads five
+conversions. There are thirty-eight.
+
+The reader matches one spelling:
+
+    ntohl(*(chiaki_unaligned_uint32_t *)(buf + 4))
+
+and the tree mostly writes the other:
+
+    ntohl(*((chiaki_unaligned_uint32_t *)(buf + 4)))
+
+One doubled parenthesis, and the regex stops matching. What it sees is two lines in
+ctrl.c and three in streamconnection.c - one of which is commented out. What it does not
+see is all of audio.c, all of frameprocessor.c, senkusha.c, and the twenty-five in
+takion.c, which is the file with the most byte-order arithmetic in the library.
+
+This was found by PP378 rather than by the check, which is the part worth stating. A
+sweep that reports zero mismatches over five sites reads exactly like one that reports
+zero over thirty-eight, and nothing in the test says which it did - so the count is the
+thing to assert, not just the verdict.
+
+One of the thirty-three is also PP378's defect in another file: holepunch.c:4181 reads a
+message type through a plain `uint32_t*`, with no unaligned type and no alignment
+guarantee on `response_buf`.
+
+What this owes is the parenthesis, a floor under the number of conversions the sweep
+finds, and whatever the widened check then turns red.
 
 ## Block G — Test discipline
 
