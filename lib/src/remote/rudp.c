@@ -453,25 +453,39 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_rudp_stop_pipe_select_single(RudpInstance *
 CHIAKI_EXPORT ChiakiErrorCode chiaki_rudp_send_recv(RudpInstance *rudp, RudpMessage *message, uint8_t *buf, size_t buf_size, uint16_t remote_counter, RudpPacketType send_type, RudpPacketType recv_type, size_t min_data_size, size_t tries)
 {
     bool success = false;
+    // PP384: what the four sends answered, and how many tries never reached the socket at all.
+    ChiakiErrorCode send_err = CHIAKI_ERR_SUCCESS;
+    size_t send_failures = 0;
     for(int i = 0; i < tries; i++)
     {
         switch(send_type)
         {
             case INIT_REQUEST:
-                chiaki_rudp_send_init_message(rudp);
+                send_err = chiaki_rudp_send_init_message(rudp);
                 break;
             case COOKIE_REQUEST:
-                chiaki_rudp_send_cookie_message(rudp, buf, buf_size);
+                send_err = chiaki_rudp_send_cookie_message(rudp, buf, buf_size);
                 break;
             case ACK:
-                chiaki_rudp_send_ack_message(rudp, remote_counter);
+                send_err = chiaki_rudp_send_ack_message(rudp, remote_counter);
                 break;
             case SESSION_MESSAGE:
-                chiaki_rudp_send_session_message(rudp, remote_counter, buf, buf_size);
+                send_err = chiaki_rudp_send_session_message(rudp, remote_counter, buf, buf_size);
                 break;
             default:
                 CHIAKI_LOGE(rudp->log, "Selected RudpPacketType 0x%04x to send that is not supported by rudp send receive.", send_type);
                 return CHIAKI_ERR_INVALID_DATA;
+        }
+        // PP384: all four answered a code and all four were discarded, so the next statement waited
+        // the full select timeout for a reply to a message that had never left - and the loop then
+        // reported what it saw, a timeout, which reads as the console not answering. The retry is
+        // right either way; what was wrong is spending a timeout on it and blaming the far end.
+        if(send_err != CHIAKI_ERR_SUCCESS)
+        {
+            send_failures++;
+            CHIAKI_LOGE(rudp->log, "Rudp failed to send packet type 0x%04x on try %d of %llu: %s",
+                    send_type, i + 1, (unsigned long long)tries, chiaki_error_string(send_err));
+            continue;
         }
         ChiakiErrorCode err = chiaki_rudp_select_recv(rudp, 1500, message);
         if(err == CHIAKI_ERR_TIMEOUT)
@@ -553,8 +567,21 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_rudp_send_recv(RudpInstance *rudp, RudpMess
         return CHIAKI_ERR_SUCCESS;
     else
     {
-        CHIAKI_LOGE(rudp->log, "Could not receive correct RUDP message after %llu tries", tries);
+        // PP384: which of the two happened, said once. "Could not receive" over tries that never
+        // sent is the sentence that sent people looking at the console.
+        if(send_failures > 0)
+        {
+            CHIAKI_LOGE(rudp->log,
+                    "Could not receive correct RUDP message after %llu tries, %llu of which never left this host: %s",
+                    (unsigned long long)tries, (unsigned long long)send_failures,
+                    chiaki_error_string(send_err));
+        }
+        else
+            CHIAKI_LOGE(rudp->log, "Could not receive correct RUDP message after %llu tries", tries);
         print_rudp_message_type(rudp, recv_type);
+        // The code is unchanged on purpose. Nine callers test it only against SUCCESS, and turning
+        // a send failure into a different one is a behaviour change this line did not ask for -
+        // the report is what was missing, not the branch.
         return CHIAKI_ERR_INVALID_RESPONSE;
     }
 }

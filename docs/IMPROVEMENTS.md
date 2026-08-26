@@ -159,7 +159,7 @@ because every part of it was green.
 ### §PP23 The oracle this block cannot be written without
 
 chiaki exists because the PlayStation remote play protocol was reverse engineered. There
-is no document to implement against: the 24974 lines of C in lib/src are the
+is no document to implement against: the 25001 lines of C in lib/src are the
 specification, and a managed rewrite that reads them and reproduces them is a
 translation whose only correctness test is behavioural.
 
@@ -470,36 +470,6 @@ every MTU ping is discarded.
 takion.c is PP27's file and this crosses into it, which is why this is a line rather
 than a wider edit under PP295. What it owes is the fix for all eight and a check that
 reads every file rather than the one where the first two were found.
-
-### §PP384 Four sends into a timeout that blames the console
-
-chiaki_rudp_send_recv is the retry loop the whole PSN handshake runs through: init,
-cookie, ack and session message all reach the console from its switch. Every arm of that
-switch throws its answer away.
-
-    case INIT_REQUEST:
-        chiaki_rudp_send_init_message(rudp);
-        break;
-
-All four return a ChiakiErrorCode, and the next statement is a receive with a timeout.
-So a send that failed on the socket is followed by waiting the full timeout for a reply
-to a message that never left, and the loop then reports what it saw: a timeout. The
-caller is told the console did not answer.
-
-What that costs is diagnosis rather than correctness. The retry is right - a lost
-datagram is exactly what this loop exists for - but a send that failed locally is not a
-lost datagram, and the two are worth telling apart when someone is looking at why a
-remote play session would not start. The information is in hand and thrown away one line
-before it is needed.
-
-It is also slow in the case where it is wrong: tries times the select timeout, spent
-waiting for replies to messages the socket refused.
-
-PP370, PP375 and PP379 are the same family, each one call in a group whose siblings were
-correct. This is the shape where all four siblings are wrong together.
-
-What this owes is the four results read, a log that separates a failed send from a
-silent console, and the retry left alone.
 
 ### §PP385 Seven decisions behind one ceiling
 
