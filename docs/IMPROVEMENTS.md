@@ -159,7 +159,7 @@ because every part of it was green.
 ### §PP23 The oracle this block cannot be written without
 
 chiaki exists because the PlayStation remote play protocol was reverse engineered. There
-is no document to implement against: the 25140 lines of C in lib/src are the
+is no document to implement against: the 25160 lines of C in lib/src are the
 specification, and a managed rewrite that reads them and reproduces them is a
 translation whose only correctness test is behavioural.
 
@@ -198,7 +198,7 @@ bytes.
 
 ### §PP28 The state machines
 
-session.c is 1244 lines, ctrl.c 1710 and streamconnection.c 1504. Together they are the
+session.c is 1244 lines, ctrl.c 1710 and streamconnection.c 1524. Together they are the
 connection: what is sent in which order, what is waited for, what a timeout means at
 each point, and how a session comes apart when the console stops answering.
 
@@ -523,35 +523,6 @@ and the stream connection walks its three states, and keep the file.
 
 Nothing in a test can do it, which is why this line carries a requirement rather than a
 dep.
-
-### §PP397 One secret list, three numbering schemes
-
-PP326 settled which ctrl payloads never reach a recording, and keyed the answer to the
-message type: SESSION_ID goes because its payload IS the session id, LOGIN_PIN_REP
-because it is the PIN the user typed. ExchangeRecorder consults that list for every
-channel that is not the session one.
-
-PP394 and PP395 added two channels to that set, and neither numbers its messages the way
-ctrl does. A senkusha or stream message carries takion data type - 1, 2, 8, 9 - where a
-ctrl message carries 0x33 or 0x8004. One list, two numbering schemes, and nothing says
-so.
-
-Today that is a leak in one direction. stream_connection_send_big sets
-
-    msg.big_payload.session_key.arg = session->session_id;
-
-so a BIG carries the session id, and it crosses on the stream channel as data type 1.
-The list has no entry for that, so PP326's own reason for redacting SESSION_ID applies
-to a message it will not redact. The corpus is a file in a public repository, which is
-what ExchangeCorpusTests exists to say.
-
-It is also a collision waiting the other way. A ctrl type added to the list whose number
-happens to match a takion data type would redact the wrong channel's messages, and a
-recording missing the payloads of every streaminfo ack would look like a capture taken
-badly rather than like a rule misfiring.
-
-The same reading is owed for the BIG's launch spec and encrypted key, which nothing here
-has judged.
 
 ## Block G — Test discipline
 

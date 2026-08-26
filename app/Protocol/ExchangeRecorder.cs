@@ -194,10 +194,13 @@ public sealed class ExchangeRecorder : IDisposable
         if (message.Channel == ChiakiMessageTap.SessionChannel)
             return Latin1.GetString(message.Payload);
 
-        // Everything else is the control channel: the type, then the bytes or the marker.
-        string body = CtrlMessageSecrets.MayRecord(message.Type)
+        // PP397: everything else is A control-style channel, and there are now three of them. The
+        // rule is asked of the channel as well as the type, because a ctrl message type and a
+        // protobuf payload type are different numbering schemes and this used to consult one list
+        // for both - so a BIG carrying the session id was recorded in the clear.
+        string body = MessageSecrets.MayRecord(message.Channel, message.Type)
             ? Dashed(message.Payload)
-            : CtrlMessageSecrets.Marker;
+            : MessageSecrets.Marker;
 
         return $"{message.Type:x4} {body}";
     }

@@ -80,6 +80,14 @@ public sealed unsafe class ChiakiMessageTap : IDisposable
     /// </summary>
     public const string StreamChannel = "stream";
 
+    /// <summary>
+    /// PP397: CHIAKI_MESSAGE_TAP_TYPE_UNKNOWN - a message whose protobuf would not decode.
+    ///
+    /// Higher than any payload type tkproto knows, so a rule naming a message by number cannot
+    /// match it by accident. Nothing classifies it, so nothing may record its payload.
+    /// </summary>
+    public const ushort UnknownType = 0xffff;
+
     /// <summary>The one that is installed, or null. See the note on being global.</summary>
     private static ChiakiMessageTap? installed;
 

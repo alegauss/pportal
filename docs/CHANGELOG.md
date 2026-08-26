@@ -336,6 +336,7 @@
 - ✅ **PP392** **the session request and its answer are asserted as two halves, and nothing says the request comes first** — the client-opened channel replays as a conversation, and a participant can say what it opens with.
 - ✅ **PP394** **senkusha has no tap channel, so PP393's first half is unbuilt for one of the two modules PP23 owes** — senkusha gets a channel: six protobuf sends behind one chokepoint that taps, and the receive tapped above the decode.
 - ✅ **PP395** **streamconnection has no tap channel, which is the last of PP23's four modules without one** — the last of PP23's four modules gets a channel: eight sends behind a chokepoint, the BIG tapped whole, the receive above the lock.
+- ✅ **PP397** **a recorded BIG would publish the session id PP326 redacts on ctrl, because the secret list is keyed by ctrl type** — the recorder asks the channel as well as the type, the tap carries the protobuf payload type, and a BIG is redacted.
 
 ## Block G — Test discipline
 

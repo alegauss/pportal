@@ -54,7 +54,7 @@ static void stream_connection_takion_data_idle(ChiakiStreamConnection *stream_co
 static void stream_connection_takion_data_expect_bang(ChiakiStreamConnection *stream_connection, uint8_t *buf, size_t buf_size);
 static void stream_connection_takion_data_expect_streaminfo(ChiakiStreamConnection *stream_connection, uint8_t *buf, size_t buf_size);
 static ChiakiErrorCode stream_connection_send_streaminfo_ack(ChiakiStreamConnection *stream_connection);
-static ChiakiErrorCode stream_connection_send_data(ChiakiStreamConnection *stream_connection, uint8_t data_type, uint8_t *buf, size_t buf_size);
+static ChiakiErrorCode stream_connection_send_data(ChiakiStreamConnection *stream_connection, uint8_t data_type, uint16_t payload_type, uint8_t *buf, size_t buf_size);
 static void stream_connection_takion_av(ChiakiStreamConnection *stream_connection, ChiakiTakionAVPacket *packet);
 static ChiakiErrorCode stream_connection_send_heartbeat(ChiakiStreamConnection *stream_connection);
 
@@ -476,8 +476,27 @@ static void stream_connection_takion_data_protobuf(ChiakiStreamConnection *strea
 	// tap handler called under it would hold that window open for as long as a recorder takes to
 	// write a line. Above it the buffer is still the bytes that arrived and still one message,
 	// which is the window PP323's rule asks for.
-	chiaki_message_tap_emit(
-			CHIAKI_MESSAGE_TAP_RECEIVED, CHIAKI_MESSAGE_TAP_CHANNEL_STREAM, 1, buf, buf_size);
+	//
+	// PP397: and the type it carries is the PROTOBUF's, not takion's. Five different messages cross
+	// this channel as data type 1 - BIG, BANG, heartbeat, disconnect, controller connection - so
+	// the takion type identifies nothing a redaction rule could name. The payload type does, which
+	// is why the buffer is peeked at here.
+	//
+	// The peek is under the tap's own guard, so it costs nothing when nobody is recording, and it
+	// decodes into a throwaway: the handlers below decode the same bytes again and are untouched.
+	if(chiaki_message_tap_active())
+	{
+		tkproto_TakionMessage peek;
+		memset(&peek, 0, sizeof(peek));
+		pb_istream_t peek_stream = pb_istream_from_buffer(buf, buf_size);
+		uint16_t payload_type = pb_decode(&peek_stream, tkproto_TakionMessage_fields, &peek)
+				? (uint16_t)peek.type
+				: CHIAKI_MESSAGE_TAP_TYPE_UNKNOWN;
+
+		chiaki_message_tap_emit(
+				CHIAKI_MESSAGE_TAP_RECEIVED, CHIAKI_MESSAGE_TAP_CHANNEL_STREAM,
+				payload_type, buf, buf_size);
+	}
 
 	chiaki_mutex_lock(&stream_connection->state_mutex);
 	switch(stream_connection->state)
@@ -1216,7 +1235,8 @@ static ChiakiErrorCode stream_connection_send_big(ChiakiStreamConnection *stream
 	// how many slices there are: it depends on the measured MTU, so a recording of fragments would
 	// only replay against a run that negotiated the same link, which is the opposite of an oracle.
 	chiaki_message_tap_emit(
-			CHIAKI_MESSAGE_TAP_SENT, CHIAKI_MESSAGE_TAP_CHANNEL_STREAM, 1, buf, stream.bytes_written);
+			CHIAKI_MESSAGE_TAP_SENT, CHIAKI_MESSAGE_TAP_CHANNEL_STREAM,
+			tkproto_TakionMessage_PayloadType_BIG, buf, stream.bytes_written);
 
 	int32_t total_size = stream.bytes_written;
 	uint32_t mtu = (session->mtu_in < session->mtu_out) ? session->mtu_in : session->mtu_out;
@@ -1306,7 +1326,7 @@ static ChiakiErrorCode stream_connection_send_controller_connection(ChiakiStream
 	}
 
 	buf_size = stream.bytes_written;
-	return stream_connection_send_data(stream_connection, 1, buf, buf_size);
+	return stream_connection_send_data(stream_connection, 1, tkproto_TakionMessage_PayloadType_CONTROLLERCONNECTION, buf, buf_size);
 }
 
 static ChiakiErrorCode stream_connection_enable_microphone(ChiakiStreamConnection *stream_connection)
@@ -1344,7 +1364,7 @@ static ChiakiErrorCode stream_connection_enable_microphone(ChiakiStreamConnectio
 	}
 
 	buf_size = stream.bytes_written;
-	return stream_connection_send_data(stream_connection, 1, buf, buf_size);
+	return stream_connection_send_data(stream_connection, 1, tkproto_TakionMessage_PayloadType_STREAMINFO, buf, buf_size);
 }
 
 // PP395: the chokepoint the stream connection did not have, so its protobufs can be recorded.
@@ -1357,10 +1377,10 @@ static ChiakiErrorCode stream_connection_enable_microphone(ChiakiStreamConnectio
 // The data type crosses with the message. PP366 established that this channel carries three
 // conversations under one wire format, and the type is what a recording keeps so a replay can tell
 // them apart: 1 for most, 2 for the keyboard pair, 9 for the streaminfo ack.
-static ChiakiErrorCode stream_connection_send_data(ChiakiStreamConnection *stream_connection, uint8_t data_type, uint8_t *buf, size_t buf_size)
+static ChiakiErrorCode stream_connection_send_data(ChiakiStreamConnection *stream_connection, uint8_t data_type, uint16_t payload_type, uint8_t *buf, size_t buf_size)
 {
 	chiaki_message_tap_emit(
-			CHIAKI_MESSAGE_TAP_SENT, CHIAKI_MESSAGE_TAP_CHANNEL_STREAM, data_type, buf, buf_size);
+			CHIAKI_MESSAGE_TAP_SENT, CHIAKI_MESSAGE_TAP_CHANNEL_STREAM, payload_type, buf, buf_size);
 
 	return chiaki_takion_send_message_data(&stream_connection->takion, 1, data_type, buf, buf_size, NULL);
 }
@@ -1383,7 +1403,7 @@ static ChiakiErrorCode stream_connection_send_streaminfo_ack(ChiakiStreamConnect
 	}
 
 	buf_size = stream.bytes_written;
-	return stream_connection_send_data(stream_connection, 9, buf, buf_size);
+	return stream_connection_send_data(stream_connection, 9, tkproto_TakionMessage_PayloadType_STREAMINFOACK, buf, buf_size);
 }
 
 static ChiakiErrorCode stream_connection_send_disconnect(ChiakiStreamConnection *stream_connection)
@@ -1410,7 +1430,7 @@ static ChiakiErrorCode stream_connection_send_disconnect(ChiakiStreamConnection 
 	CHIAKI_LOGI(stream_connection->log, "StreamConnection sending Disconnect");
 
 	buf_size = stream.bytes_written;
-	ChiakiErrorCode err = stream_connection_send_data(stream_connection, 1, buf, buf_size);
+	ChiakiErrorCode err = stream_connection_send_data(stream_connection, 1, tkproto_TakionMessage_PayloadType_DISCONNECT, buf, buf_size);
 
 	return err;
 }
@@ -1457,7 +1477,7 @@ static ChiakiErrorCode stream_connection_send_heartbeat(ChiakiStreamConnection *
 		return CHIAKI_ERR_UNKNOWN;
 	}
 
-	return stream_connection_send_data(stream_connection, 1, buf, stream.bytes_written);
+	return stream_connection_send_data(stream_connection, 1, tkproto_TakionMessage_PayloadType_HEARTBEAT, buf, stream.bytes_written);
 }
 
 CHIAKI_EXPORT ChiakiErrorCode stream_connection_send_corrupt_frame(ChiakiStreamConnection *stream_connection, ChiakiSeqNum16 start, ChiakiSeqNum16 end)
@@ -1481,7 +1501,7 @@ CHIAKI_EXPORT ChiakiErrorCode stream_connection_send_corrupt_frame(ChiakiStreamC
 	}
 
 	CHIAKI_LOGW(stream_connection->log, "StreamConnection reporting corrupt frame(s) from %u to %u", (unsigned int)start, (unsigned int)end);
-	return stream_connection_send_data(stream_connection, 2, buf, stream.bytes_written);
+	return stream_connection_send_data(stream_connection, 2, tkproto_TakionMessage_PayloadType_CORRUPTFRAME, buf, stream.bytes_written);
 }
 
 CHIAKI_EXPORT ChiakiErrorCode stream_connection_send_idr_request(ChiakiStreamConnection *stream_connection)
@@ -1500,5 +1520,5 @@ CHIAKI_EXPORT ChiakiErrorCode stream_connection_send_idr_request(ChiakiStreamCon
 	}
 
 	CHIAKI_LOGI(stream_connection->log, "StreamConnection requesting IDR frame");
-	return stream_connection_send_data(stream_connection, 2, buf, stream.bytes_written);
+	return stream_connection_send_data(stream_connection, 2, tkproto_TakionMessage_PayloadType_IDRREQUEST, buf, stream.bytes_written);
 }

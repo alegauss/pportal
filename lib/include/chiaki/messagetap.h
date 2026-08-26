@@ -140,6 +140,16 @@ CHIAKI_EXPORT void chiaki_message_tap_emit(
  */
 #define CHIAKI_MESSAGE_TAP_CHANNEL_STREAM "stream"
 
+/**
+ * PP397: what a stream or senkusha message's `type` is when the protobuf would not decode.
+ *
+ * Not a payload type any message has - the highest tkproto knows is 25 - so a rule that names a
+ * message by number cannot match it by accident. A message that did not decode is one nothing can
+ * classify, and PP326's principle says a value goes because of the field it sits in: with no field
+ * identified, the safe answer is that it may not be recorded.
+ */
+#define CHIAKI_MESSAGE_TAP_TYPE_UNKNOWN 0xffff
+
 #ifdef __cplusplus
 }
 #endif
