@@ -212,31 +212,40 @@ public static class CtrlReactionsSource
         return handler > arm && enable > handler && next > enable;
     }
 
-    /// <summary>Whether the microphone is still toggled twice, and still to false both times.</summary>
+    /// <summary>
+    /// Whether the microphone is still toggled twice, and still to false both times.
+    ///
+    /// PP383: matched WITHOUT the trailing semicolon. This asked for
+    /// <c>ctrl_message_toggle_microphone(ctrl, false);</c> and went red when the two calls were
+    /// wrapped in the guard that reads their result - a check on punctuation rather than on the
+    /// two sends, failing on a change that kept both of them exactly where they were.
+    /// </summary>
     public static bool TheMicrophoneIsStillToggledTwice(string core)
     {
         ArgumentNullException.ThrowIfNull(core);
 
-        int first = core.IndexOf("ctrl_message_toggle_microphone(ctrl, false);", StringComparison.Ordinal);
+        const string Call = "ctrl_message_toggle_microphone(ctrl, false)";
+
+        int first = core.IndexOf(Call, StringComparison.Ordinal);
         if (first < 0)
             return false;
 
-        int second = core.IndexOf(
-            "ctrl_message_toggle_microphone(ctrl, false);",
-            first + 1,
-            StringComparison.Ordinal);
+        int second = core.IndexOf(Call, first + Call.Length, StringComparison.Ordinal);
 
         return second > first;
     }
 
     /// <summary>
     /// Whether the burst still ends with display-devices, after the two conditional pairs.
+    ///
+    /// PP383: without the semicolon, for the reason given on the check above - both readers keyed
+    /// on punctuation, and both went red on a change that moved neither send.
     /// </summary>
     public static bool TheBurstStillEndsWithDisplayDevices(string core)
     {
         ArgumentNullException.ThrowIfNull(core);
 
-        int mic = core.IndexOf("ctrl_message_toggle_microphone(ctrl, false);", StringComparison.Ordinal);
+        int mic = core.IndexOf("ctrl_message_toggle_microphone(ctrl, false)", StringComparison.Ordinal);
         int display = core.IndexOf(
             "CTRL_MESSAGE_TYPE_DISPLAY_DEVICES, display", StringComparison.Ordinal);
 

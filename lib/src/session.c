@@ -622,7 +622,12 @@ static void *session_thread_func(void *arg)
 		chiaki_mutex_lock(&session->state_mutex);
 		if(err != CHIAKI_ERR_SUCCESS)
 			goto ctrl_failed;
-		ctrl_enable_features(&session->ctrl);
+		// PP383: the same answer as the ctrl thread's own call site. This one already has a label
+		// for it, and a burst that failed here has moved the encryption counter past the console
+		// on a session that had not received a session id in the first place.
+		err = ctrl_enable_features(&session->ctrl);
+		if(err != CHIAKI_ERR_SUCCESS)
+			goto ctrl_failed;
 	}
 
 	if(!session->ctrl_session_id_received)

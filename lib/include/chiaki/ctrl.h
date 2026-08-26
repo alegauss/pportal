@@ -93,7 +93,9 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_ctrl_keyboard_accept(ChiakiCtrl *ctrl);
 CHIAKI_EXPORT ChiakiErrorCode chiaki_ctrl_keyboard_reject(ChiakiCtrl *ctrl);
 CHIAKI_EXPORT ChiakiErrorCode ctrl_message_go_home(ChiakiCtrl *ctrl);
 CHIAKI_EXPORT ChiakiErrorCode ctrl_message_set_fallback_session_id(ChiakiCtrl *ctrl);
-CHIAKI_EXPORT void ctrl_enable_features(ChiakiCtrl *ctrl);
+// PP383: returns a code because the burst it sends can fail, and a failure means the encryption
+// counter has moved on without the console rather than that a feature is off.
+CHIAKI_EXPORT ChiakiErrorCode ctrl_enable_features(ChiakiCtrl *ctrl);
 
 #ifdef __cplusplus
 }

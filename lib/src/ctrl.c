@@ -887,7 +887,12 @@ static void ctrl_message_received(ChiakiCtrl *ctrl, uint16_t msg_type, uint8_t *
 	{
 		case CTRL_MESSAGE_TYPE_SESSION_ID:
 			ctrl_message_received_session_id(ctrl, payload, payload_size);
-			ctrl_enable_features(ctrl);
+			// PP383: a failed burst ends the channel. This handler is void and there is nothing to
+			// return through, but a counter that has drifted means nothing further will decrypt -
+			// so ctrl_failed is the honest answer rather than carrying on and reporting the first
+			// unreadable message as a protocol error.
+			if(ctrl_enable_features(ctrl) != CHIAKI_ERR_SUCCESS)
+				ctrl_failed(ctrl, CHIAKI_QUIT_REASON_CTRL_UNKNOWN);
 			break;
 		case CTRL_MESSAGE_TYPE_HEARTBEAT_REQ:
 			ctrl_message_received_heartbeat_req(ctrl, payload, payload_size);
@@ -930,15 +935,39 @@ static void ctrl_message_received(ChiakiCtrl *ctrl, uint16_t msg_type, uint8_t *
 	}
 }
 
-CHIAKI_EXPORT void ctrl_enable_features(ChiakiCtrl *ctrl)
+// PP383: every send in the burst is read, and the first failure ends it.
+//
+// STOPPING IS THE POINT, not tidiness. ctrl_message_send spends crypt_counter_local at ENCRYPT
+// time, before anything reaches the socket, so a send that fails has already consumed a counter
+// value the console never saw. From there the two disagree, and every later ctrl message decrypts
+// against the wrong counter - so carrying on with the remaining sends widens a break rather than
+// salvaging a feature. What is reported is not "the keyboard did not enable"; it is that the
+// channel is finished.
+#define CTRL_FEATURE_SEND(call, what) do { \
+		ChiakiErrorCode feature_err = (call); \
+		if(feature_err != CHIAKI_ERR_SUCCESS) \
+		{ \
+			CHIAKI_LOGE(ctrl->session->log, \
+					"Ctrl failed to send %s while enabling features: %s", \
+					(what), chiaki_error_string(feature_err)); \
+			return feature_err; \
+		} \
+	} while(0)
+
+CHIAKI_EXPORT ChiakiErrorCode ctrl_enable_features(ChiakiCtrl *ctrl)
 {
 	if(ctrl->session->connect_info.enable_dualsense)
 	{
 		CHIAKI_LOGI(ctrl->session->log, "Enabling DualSense features");
 		const uint8_t enable[3] = { 0x00, 0x40, 0x00 };
-		ctrl_message_send(ctrl, CTRL_MESSAGE_TYPE_ENABLE_DUALSENSE_FEATURES, enable, 3);
+		CTRL_FEATURE_SEND(ctrl_message_send(ctrl, CTRL_MESSAGE_TYPE_ENABLE_DUALSENSE_FEATURES, enable, 3),
+				"the DualSense enable");
+		// PP383: fifteen initialisers for a sixteen-byte payload, so the last byte is an implicit
+		// zero. Reproduced rather than corrected - the two readings differ only in whether a sixth
+		// 0xff was meant, nothing in this tree says which, and PP297's capture was taken with
+		// DualSense off so it does not hold this message.
 		const uint8_t connect[0x10] = { 0xa0, 0xab, 0x51, 0xbd, 0xd1, 0x7e, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00 };
-		ctrl_message_send(ctrl, 0x11, connect, 0x10);
+		CTRL_FEATURE_SEND(ctrl_message_send(ctrl, 0x11, connect, 0x10), "the DualSense connect");
 	}
 	if(ctrl->session->connect_info.enable_keyboard)
 	{
@@ -946,13 +975,19 @@ CHIAKI_EXPORT void ctrl_enable_features(ChiakiCtrl *ctrl)
 		// TODO: Signature ?!
 		uint8_t enable = 1;
 		uint8_t signature[0x10] = { 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x05, 0xAE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-		ctrl_message_send(ctrl, CTRL_MESSAGE_TYPE_KEYBOARD_ENABLE, signature, 0x10);
-		ctrl_message_send(ctrl, CTRL_MESSAGE_TYPE_KEYBOARD_ENABLE_TOGGLE, &enable, 1);
+		CTRL_FEATURE_SEND(ctrl_message_send(ctrl, CTRL_MESSAGE_TYPE_KEYBOARD_ENABLE, signature, 0x10),
+				"the keyboard enable");
+		CTRL_FEATURE_SEND(ctrl_message_send(ctrl, CTRL_MESSAGE_TYPE_KEYBOARD_ENABLE_TOGGLE, &enable, 1),
+				"the keyboard toggle");
 	}
-	ctrl_message_toggle_microphone(ctrl, false);
-	ctrl_message_toggle_microphone(ctrl, false);
+	// Twice, both false, and PP342 asserts it stays twice - the capture has them 108 microseconds
+	// apart. Two sends means two counter values, so the second is as load-bearing as the first.
+	CTRL_FEATURE_SEND(ctrl_message_toggle_microphone(ctrl, false), "the first microphone toggle");
+	CTRL_FEATURE_SEND(ctrl_message_toggle_microphone(ctrl, false), "the second microphone toggle");
 	uint8_t display[0x4] = { 0x00, 0x00, 0x00, 0x00 };
-	ctrl_message_send(ctrl, CTRL_MESSAGE_TYPE_DISPLAY_DEVICES, display, 0x4);
+	CTRL_FEATURE_SEND(ctrl_message_send(ctrl, CTRL_MESSAGE_TYPE_DISPLAY_DEVICES, display, 0x4),
+			"the display devices request");
+	return CHIAKI_ERR_SUCCESS;
 }
 
 static void ctrl_message_received_session_id(ChiakiCtrl *ctrl, uint8_t *payload, size_t payload_size)

@@ -1,0 +1,196 @@
+using ChiakiNg.Session;
+
+namespace ChiakiNg.Protocol;
+
+/// <summary>
+/// PP383: no send in the control channel has its answer discarded, and the feature burst reports.
+///
+/// ctrl_enable_features sent seven messages, read none of them, and returned void - so the SESSION_ID
+/// arm that calls it could not learn anything either. PP342 modelled that burst and PP297's capture
+/// holds three of the seven; what nothing modelled was what happens when one does not go.
+///
+/// THE COUNTER IS WHY THIS IS NOT ABOUT FEATURES. ctrl_message_send spends crypt_counter_local at
+/// ENCRYPT time, before a byte reaches the socket, so a send that fails has already consumed a value
+/// the console never saw. From there the two sides disagree and every later ctrl message decrypts
+/// against the wrong counter. A DualSense enable that did not go is not a controller without
+/// haptics; it is a control channel that stops working shortly afterwards, for a reason nothing
+/// logged.
+///
+/// SO THE BURST STOPS AT THE FIRST FAILURE. Sending the rest would spend more counter values into a
+/// gap that is already open, and there is nothing to salvage: the feature this call was for is the
+/// least of what has gone.
+///
+/// AND BOTH CALLERS END THE CHANNEL. The handler is void and reaches ctrl_failed; the session
+/// thread's copy has a label for it already. PP370's rule said the result must be READ rather than
+/// that failing must end anything - here it does end something, because a drifted counter has no
+/// other answer.
+/// </summary>
+public static class CtrlSendResults
+{
+    /// <summary>Where the sends live.</summary>
+    public const string RelativePath = @"lib\src\ctrl.c";
+
+    /// <summary>The file, or null outside a checkout.</summary>
+    public static string? Locate() => SanitizerSource.LocateRelative(RelativePath);
+
+    /// <summary>
+    /// The sends in ctrl.c that answer something.
+    ///
+    /// ctrl_message_send is the one every other goes through, so it is the one a discard is likely
+    /// to be. The wrappers are named too, for the reason PP379's list is: a rule over one name
+    /// covers one shape of mistake.
+    /// </summary>
+    public static IReadOnlyList<string> SendsThatAnswer { get; } =
+    [
+        "ctrl_message_send",
+        "ctrl_message_toggle_microphone",
+        "ctrl_message_connect_microphone",
+        "ctrl_message_go_home",
+        "ctrl_message_set_fallback_session_id",
+        "ctrl_enable_features",
+    ];
+
+    /// <summary>
+    /// Every call to one of them whose result goes nowhere.
+    ///
+    /// Through PP370's reader, which PP379 lifted out for exactly this: the shape of a discard is a
+    /// fact about C and only the list is a fact about the file.
+    /// </summary>
+    public static IReadOnlyList<string> DiscardedResults(string source)
+        => StreamSendResults.DiscardedCalls(source, SendsThatAnswer);
+
+    /// <summary>
+    /// How many discards ctrl.c still holds outside the burst, as a CEILING that may fall.
+    ///
+    /// PP383 fixed the seven sends in ctrl_enable_features. Stating the rule over the file - which
+    /// is what PP370 and PP379 do for theirs - then found seven more, and each of them is a
+    /// different decision rather than the same one repeated:
+    ///
+    ///   ctrl.c:519   the drain's send. A queued message that fails is lost, and PP349's loop has
+    ///                no notion of putting one back.
+    ///   ctrl.c:533   the login PIN send itself. PP345 made the HANDOVER report; this is the wire.
+    ///   ctrl.c:1029  the keyboard accept or reject.
+    ///   ×4           ctrl_message_set_fallback_session_id, whose answer nobody reads on any of the
+    ///                four rungs of the session-id ladder.
+    ///
+    /// So the rule ships as a ratchet rather than narrowed to the function that was fixed. Narrowing
+    /// it would have been the third hollow green in this block: a check that passes because it was
+    /// pointed away from what it found. This way an EIGHTH discard turns the suite red today, and
+    /// PP385 drives the number to zero.
+    ///
+    /// The count may fall and may not rise. If it falls, lower it in the same commit.
+    /// </summary>
+    public const int DiscardCeiling = 7;
+
+    /// <summary>
+    /// The seven messages the burst sends, in the order PP342 established.
+    ///
+    /// Named so the rule below is about all of them: a burst that grew an eighth unchecked send
+    /// would satisfy a count and not this.
+    /// </summary>
+    public static IReadOnlyList<string> Burst { get; } =
+    [
+        "CTRL_MESSAGE_TYPE_ENABLE_DUALSENSE_FEATURES",
+        "0x11",
+        "CTRL_MESSAGE_TYPE_KEYBOARD_ENABLE",
+        "CTRL_MESSAGE_TYPE_KEYBOARD_ENABLE_TOGGLE",
+        "ctrl_message_toggle_microphone",
+        "ctrl_message_toggle_microphone",
+        "CTRL_MESSAGE_TYPE_DISPLAY_DEVICES",
+    ];
+
+    /// <summary>
+    /// Whether the burst can report at all, read off its declaration.
+    ///
+    /// The header rather than the body, for PP345's reason: a body that returns a code from a
+    /// function declared void does not compile, and one that does not is what a caller cannot see.
+    /// </summary>
+    public static bool TheBurstCanReportAFailure(string header)
+    {
+        ArgumentNullException.ThrowIfNull(header);
+
+        return header.Contains("ChiakiErrorCode ctrl_enable_features(", StringComparison.Ordinal)
+            && !header.Contains("void ctrl_enable_features(", StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Whether every send inside the burst is read, counted rather than located.
+    ///
+    /// What is required is that the body holds no bare send at all: each goes through the guard
+    /// that tests and returns. A count is the right shape because the burst is a list that grows.
+    /// </summary>
+    public static int UncheckedSendsInTheBurst(string source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        string? body = CFunction.Body(source, "ChiakiErrorCode ctrl_enable_features(");
+        if (body is null)
+            return -1;
+
+        return StreamSendResults.DiscardedCalls(body, SendsThatAnswer).Count;
+    }
+
+    /// <summary>
+    /// Whether the burst still stops at the first failure rather than sending on.
+    ///
+    /// The guard has to RETURN. One that only logged would satisfy "the result is read" and would
+    /// still spend the remaining counter values into a gap the console does not know about.
+    /// </summary>
+    public static bool TheBurstStopsAtTheFirstFailure(string source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        int guard = source.IndexOf("#define CTRL_FEATURE_SEND(", StringComparison.Ordinal);
+        if (guard < 0)
+            return false;
+
+        int end = source.IndexOf("} while(0)", guard, StringComparison.Ordinal);
+        if (end < 0)
+            return false;
+
+        string macro = source[guard..end];
+
+        return macro.Contains("feature_err != CHIAKI_ERR_SUCCESS", StringComparison.Ordinal)
+            && macro.Contains("CHIAKI_LOGE", StringComparison.Ordinal)
+            && macro.Contains("return feature_err;", StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Whether both callers end the channel on a failed burst.
+    ///
+    /// Two files and two mechanisms - ctrl_failed in the handler, the ctrl_failed LABEL in the
+    /// session thread - so this takes each source and asks for the one that belongs to it.
+    /// </summary>
+    public static bool TheHandlerEndsTheChannel(string ctrlSource)
+    {
+        ArgumentNullException.ThrowIfNull(ctrlSource);
+
+        int arm = ctrlSource.IndexOf("case CTRL_MESSAGE_TYPE_SESSION_ID:", StringComparison.Ordinal);
+        if (arm < 0)
+            return false;
+
+        int call = ctrlSource.IndexOf(
+            "if(ctrl_enable_features(ctrl) != CHIAKI_ERR_SUCCESS)", arm, StringComparison.Ordinal);
+        int failed = ctrlSource.IndexOf("ctrl_failed(ctrl,", call < 0 ? arm : call, StringComparison.Ordinal);
+        int next = ctrlSource.IndexOf("case CTRL_MESSAGE_TYPE_HEARTBEAT_REQ:", arm, StringComparison.Ordinal);
+
+        return call > arm && failed > call && (next < 0 || failed < next);
+    }
+
+    /// <summary>The same for the session thread's own call.</summary>
+    public static bool TheSessionThreadEndsTheChannel(string sessionSource)
+    {
+        ArgumentNullException.ThrowIfNull(sessionSource);
+
+        int call = sessionSource.IndexOf(
+            "err = ctrl_enable_features(&session->ctrl);", StringComparison.Ordinal);
+        if (call < 0)
+            return false;
+
+        int tested = sessionSource.IndexOf(
+            "if(err != CHIAKI_ERR_SUCCESS)", call, StringComparison.Ordinal);
+        int jump = sessionSource.IndexOf("goto ctrl_failed;", tested < 0 ? call : tested, StringComparison.Ordinal);
+
+        return tested > call && jump > tested;
+    }
+}

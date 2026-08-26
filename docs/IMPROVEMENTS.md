@@ -159,7 +159,7 @@ because every part of it was green.
 ### §PP23 The oracle this block cannot be written without
 
 chiaki exists because the PlayStation remote play protocol was reverse engineered. There
-is no document to implement against: the 24934 lines of C in lib/src are the
+is no document to implement against: the 24974 lines of C in lib/src are the
 specification, and a managed rewrite that reads them and reproduces them is a
 translation whose only correctness test is behavioural.
 
@@ -198,7 +198,7 @@ bytes.
 
 ### §PP28 The state machines
 
-session.c is 1239 lines, ctrl.c 1615 and streamconnection.c 1466. Together they are the
+session.c is 1244 lines, ctrl.c 1650 and streamconnection.c 1466. Together they are the
 connection: what is sent in which order, what is waited for, what a timeout means at
 each point, and how a session comes apart when the console stops answering.
 
@@ -471,38 +471,6 @@ takion.c is PP27's file and this crosses into it, which is why this is a line ra
 than a wider edit under PP295. What it owes is the fix for all eight and a check that
 reads every file rather than the one where the first two were found.
 
-### §PP383 Seven sends, no answers, and a counter that must not drift
-
-A session id arriving makes the client send a burst - PP342 modelled it, and PP297's
-capture holds three of the seven. ctrl_enable_features sends all of them and reads none:
-
-    ctrl_message_send(ctrl, CTRL_MESSAGE_TYPE_ENABLE_DUALSENSE_FEATURES, enable, 3);
-    ctrl_message_send(ctrl, 0x11, connect, 0x10);
-    ctrl_message_send(ctrl, CTRL_MESSAGE_TYPE_KEYBOARD_ENABLE, signature, 0x10);
-    ctrl_message_send(ctrl, CTRL_MESSAGE_TYPE_KEYBOARD_ENABLE_TOGGLE, &enable, 1);
-    ctrl_message_toggle_microphone(ctrl, false);
-    ctrl_message_toggle_microphone(ctrl, false);
-    ctrl_message_send(ctrl, CTRL_MESSAGE_TYPE_DISPLAY_DEVICES, display, 0x4);
-
-Every one answers a ChiakiErrorCode. The function is void, so its caller - the
-SESSION_ID arm of the dispatch switch - cannot learn anything either, and the session
-carries on believing the features it asked for are on.
-
-PP370 settled the shape one file over and PP379 applied it to a third. This is the
-larger version of both: seven sends rather than one, and no return type to report
-through. What a user gets is a DualSense whose haptics never arrive or a keyboard that
-does not open, with a clean log and a stream that is otherwise fine.
-
-The encryption counter is the sharper half. ctrl_message_send increments
-crypt_counter_local per message, and a send that fails partway is a counter the console
-and the client no longer agree on - which is not a missing feature but a channel that
-stops decrypting.
-
-Also worth an eye while here: the 0x11 payload declares sixteen bytes and lists fifteen.
-
-What this owes is a return type, a caller that reads it, and PP370's rule extended to
-ctrl.c so a further send is covered.
-
 ### §PP384 Four sends into a timeout that blames the console
 
 chiaki_rudp_send_recv is the retry loop the whole PSN handshake runs through: init,
@@ -532,6 +500,33 @@ correct. This is the shape where all four siblings are wrong together.
 
 What this owes is the four results read, a log that separates a failed send from a
 silent console, and the retry left alone.
+
+### §PP385 Seven decisions behind one ceiling
+
+PP383 fixed the seven sends in ctrl_enable_features and then stated the rule over the
+file, the way PP370 did for streamconnection.c and PP379 for senkusha.c. Stating it is
+what found seven more, and none of them is the burst's mistake repeated:
+
+    ctrl.c:519   the drain's send, inside PP349's cancelled branch. A queued message that
+                 fails to send is dropped, and the loop has already unlinked it - there
+                 is nothing to put back.
+    ctrl.c:533   the login PIN reaching the wire. PP345 made the HANDOVER report a
+                 failure; this is the send itself, and its failure has the same ending -
+                 the console asks again and the next prompt says the PIN was wrong.
+    ctrl.c:1029  the keyboard accept or reject.
+    ×4           ctrl_message_set_fallback_session_id, on all four rungs of the session
+                 id ladder. It answers a code and every rung ignores it, so a fallback
+                 that could not be generated is indistinguishable from one that was.
+
+So PP383's check ships as a ceiling of seven rather than narrowed to the function it
+fixed. Narrowing it would be a check pointed away from what it found, which is the
+failure PP381 and PP382 were both about. An eighth discard is red today.
+
+The counter argument PP383 rests on does not carry here: only two of these seven are
+ctrl_message_send, so most cannot desync the encryption counter. Each needs its own
+answer, and the drain's is a real design question rather than a return type.
+
+What this owes is the seven read and the ceiling lowered to zero in the same commit.
 
 ## Block G — Test discipline
 
