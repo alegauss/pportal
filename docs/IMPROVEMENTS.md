@@ -596,31 +596,6 @@ every earlier failure leaves it allocated.
 This is the half of PP295 that is not about messages at all, and it is where a rewrite
 loses measurements rather than behaviour.
 
-### §PP365 A flag written eight times, read never, and signalled anyway
-
-state_failed is written eight times in streamconnection.c and read nowhere. Four writes
-clear it as each state is entered; three set it - when takion reports a disconnect, when
-the bang handler cannot use what arrived, and when the streaminfo handler cannot.
-
-The wait predicate does not read it: state_finished_cond_check watches state_finished,
-should_stop and remote_disconnected. Neither does the run function, which after each
-wait tests should_stop and then state_finished and nothing else.
-
-AND THE FAILURE PATH SIGNALS THE CONDITION ANYWAY, which is the part that makes this a
-defect rather than dead code. expect_bang's error label sets state_failed and calls
-cond_signal. The waiting thread wakes, re-evaluates the predicate the wait was given,
-finds it false - because the flag just set is not in it - and goes back to sleep. So
-somebody wrote the wake-up believing it would work, and it is spent for nothing.
-
-What follows is a full EXPECT_TIMEOUT_MS after the failure is already known. The C's own
-log line is the tell: "didn't receive bang or failed to handle it" - one sentence for
-two things, because at that point it cannot tell them apart.
-
-Two answers. Watching the flag ends the stream at once, which is better and is different
-behaviour. Deleting it makes the log line honest. The port reproduces it as dead, with
-an assertion that it stays dead, because a port that grew a use would report failures
-sooner than the C in a way no message-level comparison would show.
-
 ### §PP366 Three layers, and the ten lines PP30 waits on
 
 The dispatch is three layers and each asks a different question, which is why the same
