@@ -159,7 +159,7 @@ because every part of it was green.
 ### §PP23 The oracle this block cannot be written without
 
 chiaki exists because the PlayStation remote play protocol was reverse engineered. There
-is no document to implement against: the 24897 lines of C in lib/src are the
+is no document to implement against: the 24924 lines of C in lib/src are the
 specification, and a managed rewrite that reads them and reproduces them is a
 translation whose only correctness test is behavioural.
 
@@ -470,31 +470,6 @@ every MTU ping is discarded.
 takion.c is PP27's file and this crosses into it, which is why this is a line rather
 than a wider edit under PP295. What it owes is the fix for all eight and a check that
 reads every file rather than the one where the first two were found.
-
-### §PP380 The success PP365's fix would switch on
-
-Three waits in senkusha.c end the same way: the predicate came back false, the error was
-not a timeout, and no stop was asked for. All three log that nothing was received, and
-all three then report the test as having passed - two by falling through into `success =
-true`, one by returning the `CHIAKI_ERR_SUCCESS` still sitting in `err`.
-
-The RTT loop is the one that gets it right. Its identical block ends in `continue`, so a
-missing pong costs that ping and nothing else. The MTU in test, the MTU out test and the
-generic ack helper do not - the usual shape here: one call in a group whose siblings are
-correct.
-
-None of the three is reachable today, which is why this is a line and not a fix already
-made. The predicate is `state_finished || should_stop`, so a wait returning SUCCESS
-proves one of the two is set, and if it is not `state_finished` the `should_stop` arm
-returns CANCELED first. The branch is dead by arithmetic, not by design.
-
-PP365 is what makes it worth writing down. It found that this same predicate ignores
-`state_failed` - written ten times here, read nowhere. The obvious remedy is to add it,
-and that one change makes all three branches live at once. Each then answers a failed
-measurement with a success: an inbound MTU larger than the link carries, an outbound one
-the same, an ack nobody sent.
-
-So this is owed before PP365's fix, not after.
 
 ### §PP382 The rule PP378 scoped, and where the answer is now known
 

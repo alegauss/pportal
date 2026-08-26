@@ -37,7 +37,6 @@
 - 💭 **PP313** (deps: PP33 ⏳) **curl and json-c would leave the build today if the remote path were built off, and that trades a feature for a count** — PP33's fourth criterion otherwise waits on the managed session, and the tri_option is already there. → §PP313
 - 📋 **PP340** (deps: —) **the PSN path lives in session.c's nine holepunch call sites, so PP33's deletion would take remote play with it** — the offer, the punch, the two sockets, the regist info, the address, the port and the fini are all driven from C; nothing managed owns that flow. → §PP340
 - 📋 **PP369** (deps: PP27 ⏳) **eight asserts still carry weight about data across four files, and PP357's check reads only one of them** — four are size assertions in front of reads in takion.c, one guards an ECDH secret, one a pointer dereferenced two lines later, one an offset in senkusha.c. → §PP369
-- 📋 **PP380** (deps: —) **three waits log that nothing arrived and then report the measurement as passed** — The branch is dead only because the predicate has two fields, and PP365's remedy is to add the third one that makes all three live. → §PP380
 - 📋 **PP382** (deps: —) **22 multi-byte accesses in lib/src go through a plain cast on pointers that carry no alignment guarantee** — PP378 stated the rule over senkusha.c; ctrl.c, holepunch.c and rudpsendbuffer.c hold the rest, and four more are aligned on purpose. → §PP382
 
 ## Block G — Test discipline

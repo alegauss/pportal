@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
+﻿// SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
 
 #include <chiaki/senkusha.h>
 #include <chiaki/session.h>
@@ -178,7 +178,15 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_senkusha_run(ChiakiSenkusha *senkusha, uint
 		if(senkusha->should_stop)
 			err = CHIAKI_ERR_CANCELED;
 		else
+		{
 			CHIAKI_LOGE(session->log, "Senkusha Takion connect failed");
+			// PP380: the answer as well as the log. `err` is still CHIAKI_ERR_SUCCESS on this arm -
+			// the wait returned SUCCESS, the predicate is false and nobody asked to stop - so the
+			// QUIT below carried a success out of a connect that did not happen. Unreachable while
+			// the predicate has two fields; PP365's remedy adds the third and makes it live.
+			// UNKNOWN is what senkusha_send_client_mtu_command already answers for this same case.
+			err = CHIAKI_ERR_UNKNOWN;
+		}
 
 		QUIT(quit_takion);
 	}
@@ -206,7 +214,10 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_senkusha_run(ChiakiSenkusha *senkusha, uint
 		if(senkusha->should_stop)
 			err = CHIAKI_ERR_CANCELED;
 		else
+		{
 			CHIAKI_LOGE(session->log, "Senkusha didn't receive protocol request ack");
+			err = CHIAKI_ERR_UNKNOWN; // PP380, as above.
+		}
 
 		QUIT(quit_takion);
 	}
@@ -236,7 +247,10 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_senkusha_run(ChiakiSenkusha *senkusha, uint
 		if(senkusha->should_stop)
 			err = CHIAKI_ERR_CANCELED;
 		else
+		{
 			CHIAKI_LOGE(session->log, "Senkusha didn't receive bang");
+			err = CHIAKI_ERR_UNKNOWN; // PP380, as above.
+		}
 
 		QUIT(quit_takion);
 	}
@@ -440,6 +454,11 @@ static ChiakiErrorCode senkusha_run_mtu_in_test(ChiakiSenkusha *senkusha, uint32
 					return CHIAKI_ERR_CANCELED;
 				else
 					CHIAKI_LOGE(senkusha->log, "Senkusha failed to receive MTU response");
+
+				// PP380: the retry the timeout arm above already takes, and the one the RTT loop
+				// takes for its own missing pong. Falling out of this block reached the success
+				// below, so a response that never came reported the MTU as carried.
+				continue;
 			}
 
 			CHIAKI_LOGI(senkusha->log, "Senkusha MTU %u success", (unsigned int)cur);
@@ -582,6 +601,8 @@ static ChiakiErrorCode senkusha_run_mtu_out_test(ChiakiSenkusha *senkusha, uint3
 				}
 				else
 					CHIAKI_LOGE(senkusha->log, "Senkusha failed to receive MTU pong");
+
+				continue; // PP380, as in the in test above.
 			}
 
 			CHIAKI_LOGI(senkusha->log, "Senkusha MTU ping %u success", (unsigned int)cur);
@@ -969,7 +990,13 @@ static ChiakiErrorCode senkusha_send_data_wait_for_ack(ChiakiSenkusha *senkusha,
 		if(senkusha->should_stop)
 			err = CHIAKI_ERR_CANCELED;
 		else
+		{
 			CHIAKI_LOGE(senkusha->log, "Senkusha failed to receive data ack for %s", what);
+			// PP380: and answered. The timeout arm above leaves CHIAKI_ERR_TIMEOUT in `err`, the
+			// stop arm writes CANCELED, and this one wrote nothing - so the return below handed
+			// back the SUCCESS the wait had left there, for an ack nobody sent.
+			err = CHIAKI_ERR_UNKNOWN;
+		}
 	}
 
 	return err;
