@@ -895,8 +895,15 @@ static void ctrl_message_received(ChiakiCtrl *ctrl, uint16_t msg_type, uint8_t *
 			ctrl_message_received_switch_to_stream_connection(ctrl, payload, payload_size);
 			break;
 		default:
-			// CHIAKI_LOGW(ctrl->session->log, "Received Ctrl Message with unknown type %#x", msg_type);
-			chiaki_log_hexdump(ctrl->session->log, CHIAKI_LOG_WARNING, payload, payload_size);
+			// PP331: the number, at a level meaning unhandled. The naming line above was commented
+			// out since the fork and the hexdump ran at WARNING, so this branch printed eight
+			// anonymous bytes at a level meaning something is broken. It is reached on every
+			// session: PP297's capture recorded type 0x41 shortly after DISPLAYB on a connection
+			// that stayed up. Nothing is wrong here - the library simply has no name for it.
+			CHIAKI_LOGI(ctrl->session->log, "Ctrl received unhandled message of type %#x, size %#llx",
+					(unsigned int)msg_type, (unsigned long long)payload_size);
+			if(payload_size > 0)
+				chiaki_log_hexdump(ctrl->session->log, CHIAKI_LOG_INFO, payload, payload_size);
 			break;
 	}
 }

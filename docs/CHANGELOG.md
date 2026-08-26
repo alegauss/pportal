@@ -316,6 +316,7 @@
 - ✅ **PP373** **two encoding-failure logs name a message the function is not encoding** — both lines were the neighbour's, and one existed verbatim in two functions; the rule is now derived from each function's own name rather than from a table.
 - ✅ **PP365** **state_failed is written eight times in streamconnection.c and read nowhere, so a failed handler waits out its timeout** — reproduced as dead, with the predicate and the spent signal both asserted - and the same shape found in senkusha.c, ten writes and a two-field predicate, so both files are checked.
 - ✅ **PP377** **three failure logs in the generic ack helper name the echo command, which is only one of its two callers** — the name arrives as an argument now, and the check reads both files: senkusha's five encoders are the negative control PP373's file could not be.
+- ✅ **PP331** **a ctrl type the enum does not name arrives on every session, and the line that would say which is commented out** — the unhandled ctrl branch names the type at an informational level, and its hexdump no longer shouts.
 
 ## Block G — Test discipline
 

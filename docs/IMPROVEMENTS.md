@@ -159,7 +159,7 @@ because every part of it was green.
 ### §PP23 The oracle this block cannot be written without
 
 chiaki exists because the PlayStation remote play protocol was reverse engineered. There
-is no document to implement against: the 24836 lines of C in lib/src are the
+is no document to implement against: the 24843 lines of C in lib/src are the
 specification, and a managed rewrite that reads them and reproduces them is a
 translation whose only correctness test is behavioural.
 
@@ -198,7 +198,7 @@ bytes.
 
 ### §PP28 The state machines
 
-session.c is 1228 lines, ctrl.c 1574 and streamconnection.c 1466. Together they are the
+session.c is 1228 lines, ctrl.c 1581 and streamconnection.c 1466. Together they are the
 connection: what is sent in which order, what is waited for, what a timeout means at
 each point, and how a session comes apart when the console stops answering.
 
@@ -413,30 +413,6 @@ TODAY. The Qt client is off by default, the managed host does not stream yet, an
 nothing here reaches a console over the internet. So probably not - and "probably" is
 why this is an idea rather than a task. Turning a capability off to make a count reach
 zero should be decided rather than discovered.
-
-### §PP331 A message the library will not name
-
-The PP297 capture is the first time anything in this tree watched a real control
-channel, and it found a message the enum has no name for. Type 0x41, payload
-00-00-00-00-02-01-00-00, sent by the console shortly after DISPLAYB on a session that
-connected and stayed up. Not an error path and not a corner case: it arrived on the
-first capture ever taken.
-
-What ctrl.c does with it is the part worth filing. The default branch of the type switch
-hexdumps the payload at WARNING level, and the line above it - the one naming which type
-arrived - is commented out, and has been since the fork. The log shows eight anonymous
-bytes at a level meaning something is wrong, with nothing saying what was received or
-that anything is unhandled.
-
-Two things follow and only one is this task. Naming the type is research, and the
-capture is now how to do it: take one with the console doing different things and see
-when 0x41 changes. Reporting it is not research. A message the library cannot name
-should say so, with its number, at a level meaning unhandled rather than broken.
-
-The port has a reason beyond tidiness. PP294 rewrites ctrl.c against this recording, and
-a type the C silently drops is one the rewrite will silently drop differently - the
-replay agrees, both are wrong, and the disagreement surfaces as a stream behaving oddly
-much later. A named unknown is something a replay can assert about.
 
 ### §PP340 What has to be true before the file can go
 
