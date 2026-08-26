@@ -438,33 +438,6 @@ Until then PP33 is correctly blocked and its remaining query correctly reads 420
 Reading that number as the size of the job is what its own section warns against: it is
 one file, and the work is at the other end.
 
-### §PP366 Three layers, and the ten lines PP30 waits on
-
-The dispatch is three layers and each asks a different question, which is why the same
-bytes mean different things at different moments.
-
-stream_connection_takion_cb asks what kind of takion event it is. CONNECTED and
-DISCONNECT are acted on ONLY while the state is TAKION_CONNECT - so takion dying during
-EXPECT_BANG signals nothing here, and the wait sits out its whole timeout. That is the
-same shape as PP365's dead flag and from the same direction: the machine learns about
-failures late or not at all.
-
-stream_connection_takion_data asks what kind of data: protobuf, rumble, pad info,
-trigger effects.
-
-stream_connection_takion_data_protobuf asks WHAT STATE THE MACHINE IS IN - expect_bang,
-expect_streaminfo, or idle - and it holds the state mutex across the whole handler,
-which is what lets the run function read state_finished immediately after its wait. So
-one protobuf on the wire is three different messages depending on where the walk had got
-to. §PP295's claim that the ordering IS the behaviour is this function.
-
-And the AV route is ten lines and one of them is the whole of PP30's leverage. The
-packet is decrypted IN PLACE at key_pos plus one block - not at key_pos - and then
-routed by two flags: video to the video receiver, haptics to the haptics one, everything
-else to audio. That single call to chiaki_video_receiver_av_packet is why
-videoreceiver.c stays, so frameprocessor.c stays, so fec.c stays, and jerasure with
-them.
-
 ### §PP369 The rule PP357 set, in the files it did not reach
 
 PP357 established that an assert is not a bound here, because this project builds

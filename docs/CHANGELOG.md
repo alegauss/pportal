@@ -322,6 +322,7 @@
 - ✅ **PP359** **RP-Prohibit hides the stream without touching either display flag, so any DisplayA zero un-hides it** — RP-Prohibit raises a third flag the DisplayA recovery branch also guards on, so nothing un-hides a prohibited session.
 - ✅ **PP363** **the stream's idle loop treats a timeout as work, which is the inverse of the ctrl loop PP349 ported** — the idle loop is a table where a timeout is the work, asserted against the ctrl loop it inverts.
 - ✅ **PP364** **six cascading exit labels lift two measurements before freeing what made them, and the order is load-bearing** — the six-label cascade is a table, and both measurement rescues are asserted against the frees that would lose them.
+- ✅ **PP366** **one protobuf on the wire is three messages depending on the state, and the AV route is where every deletion waits** — the three dispatch layers are a table, and the AV route's block offset and video call are asserted as PP30's premise.
 
 ## Block G — Test discipline
 
