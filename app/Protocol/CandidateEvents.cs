@@ -1,3 +1,5 @@
+﻿using ChiakiNg.Session;
+
 namespace ChiakiNg.Protocol;
 
 /// <summary>What an attempt to watch a socket produced.</summary>
@@ -142,9 +144,10 @@ public static class CandidateEventsSource
     {
         string body = Adder(core);
 
-        int invalid = body.IndexOf("if (CHIAKI_SOCKET_IS_INVALID(sock))", StringComparison.Ordinal);
-        int capacity = body.IndexOf(
-            "ctx->events_count >= ctx->events_capacity", StringComparison.Ordinal);
+        string compact = CCall.Compact(body); // PP388
+
+        int invalid = CCall.Mark(compact, "if (CHIAKI_SOCKET_IS_INVALID(sock))");
+        int capacity = CCall.Mark(compact, "ctx->events_count >= ctx->events_capacity");
 
         return invalid >= 0 && capacity > invalid;
     }
@@ -156,14 +159,16 @@ public static class CandidateEventsSource
     {
         string body = Callback(core);
 
-        int records = body.IndexOf("ctx->ready_sock = (chiaki_socket_t)fd;", StringComparison.Ordinal);
-        int asks = body.IndexOf("event_base_loopexit(ctx->base, NULL);", StringComparison.Ordinal);
+        string compact = CCall.Compact(body); // PP388
+
+        int records = CCall.Mark(compact, "ctx->ready_sock = (chiaki_socket_t)fd;");
+        int asks = CCall.At(compact, "event_base_loopexit(ctx->base, NULL)");
 
         // Recorded unconditionally, and the exit requested with no deadline - which is what lets
         // the rest of the round run and overwrite it.
         return records >= 0
             && asks > records
-            && !body[..records].Contains("if (ctx->event_triggered)", StringComparison.Ordinal);
+            && CCall.Mark(compact[..records], "if (ctx->event_triggered)") < 0;
     }
 
     /// <summary>Whether the events are still armed to persist.</summary>

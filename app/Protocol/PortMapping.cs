@@ -1,3 +1,5 @@
+﻿using ChiakiNg.Session;
+
 namespace ChiakiNg.Protocol;
 
 /// <summary>Which of the four calls to the router is being made.</summary>
@@ -136,21 +138,24 @@ public static class PortMappingSource
         int calls = text.Split(
             "upnp_delete_udp_port_mapping(session->log, &session->gw,", StringSplitOptions.None).Length - 1;
 
-        int block = text.IndexOf("    if(session->gw.data)\n", StringComparison.Ordinal);
+        // PP388: the block anchor, the free and the slice between them in one space.
+        string compact = CCall.Compact(text);
+
+        int block = CCall.Mark(compact, "if(session->gw.data)");
         if (block < 0 || calls != 2)
             return false;
 
-        int frees = text.IndexOf("free(session->gw.urls);", block, StringComparison.Ordinal);
+        int frees = CCall.At(compact, "free(session->gw.urls)", block);
         if (frees < 0)
             return false;
 
-        string teardown = text[block..frees];
+        string teardown = compact[block..frees];
 
-        return teardown.Contains("if(session->local_port_ctrl != 0)", StringComparison.Ordinal)
-            && teardown.Contains("if(session->local_port_data != 0)", StringComparison.Ordinal)
-            && teardown.Split(
-                "upnp_delete_udp_port_mapping(session->log, &session->gw,", StringSplitOptions.None)
-                .Length - 1 == 2;
+        // PP388: the needle is compacted too, because the slice it is counted in is - splitting
+        // compacted text on a raw literal finds nothing and reads as "no calls in the teardown".
+        return CCall.Mark(teardown, "if(session->local_port_ctrl != 0)") >= 0
+            && CCall.Mark(teardown, "if(session->local_port_data != 0)") >= 0
+            && CCall.Count(teardown, "upnp_delete_udp_port_mapping(session->log, &session->gw,") == 2;
     }
 
     /// <summary>And whether a failed delete is still logged without stopping anything.</summary>

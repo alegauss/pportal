@@ -165,12 +165,14 @@ public static class SessionTeardownSource
     {
         ArgumentNullException.ThrowIfNull(core);
 
-        int quit = core.IndexOf("\nquit:", StringComparison.Ordinal);
+        string compact = CCall.Compact(core); // PP388
+
+        int quit = CCall.Mark(compact, "quit:");
         if (quit < 0)
             return false;
 
-        int unlock = core.IndexOf("chiaki_mutex_unlock(&session->state_mutex);", quit, StringComparison.Ordinal);
-        int send = core.IndexOf("chiaki_session_send_event(session, &quit_event);", quit, StringComparison.Ordinal);
+        int unlock = CCall.At(compact, "chiaki_mutex_unlock(&session->state_mutex)", quit);
+        int send = CCall.At(compact, "chiaki_session_send_event(session, &quit_event)", quit);
 
         return unlock > 0 && send > unlock;
     }

@@ -1,3 +1,5 @@
+﻿using ChiakiNg.Session;
+
 namespace ChiakiNg.Protocol;
 
 /// <summary>What a step of the negotiation would tell the caller, once one is listening.</summary>
@@ -102,10 +104,13 @@ public static class PunchNegotiationSource
     {
         string body = Body(core);
 
-        int sent = body.IndexOf("send_offer(session);", StringComparison.Ordinal);
-        int waits = body.IndexOf("wait_for_session_message_ack(", StringComparison.Ordinal);
-        int says = body.IndexOf(
-            PunchNegotiation.WhatAnUnsentOfferLooksLike, StringComparison.Ordinal);
+        // PP388: three marks in one space. The third is a message rather than a call, which is
+        // exactly why the anchor reader exists beside the call one.
+        string compact = CCall.Compact(body);
+
+        int sent = CCall.At(compact, "send_offer(session)");
+        int waits = CCall.Mark(compact, "wait_for_session_message_ack(");
+        int says = CCall.Mark(compact, PunchNegotiation.WhatAnUnsentOfferLooksLike);
 
         return sent >= 0 && waits > sent && says > waits;
     }
@@ -115,13 +120,16 @@ public static class PunchNegotiationSource
     {
         string body = Body(core);
 
-        int taken = body.IndexOf(
-            "const int our_offer_req_id = session->local_req_id;", StringComparison.Ordinal);
-        int bumped = body.IndexOf("session->local_req_id++;", taken + 1, StringComparison.Ordinal);
-        int accepted = body.IndexOf(
-            "send_accept(session, session->local_req_id,", StringComparison.Ordinal);
+        string compact = CCall.Compact(body); // PP388
 
-        return taken >= 0 && bumped > taken && accepted > bumped;
+        int taken = CCall.Mark(compact, "const int our_offer_req_id = session->local_req_id;");
+        if (taken < 0)
+            return false;
+
+        int bumped = CCall.Mark(compact, "session->local_req_id++;", taken + 1);
+        int accepted = CCall.Mark(compact, "send_accept(session, session->local_req_id,");
+
+        return bumped > taken && accepted > bumped;
     }
 
     /// <summary>The stretch between the handshake and the accept.</summary>

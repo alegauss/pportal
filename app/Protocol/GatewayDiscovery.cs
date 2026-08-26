@@ -1,3 +1,5 @@
+﻿using ChiakiNg.Session;
+
 namespace ChiakiNg.Protocol;
 
 /// <summary>Which of the five places writes the gateway status.</summary>
@@ -142,9 +144,11 @@ public static class GatewayDiscoverySource
     {
         string body = Body(core);
 
-        int locks = body.IndexOf("chiaki_mutex_lock(&session->state_mutex);", StringComparison.Ordinal);
-        int writes = body.IndexOf("session->gw_status = GATEWAY_STATUS_FOUND;", StringComparison.Ordinal);
-        int unlocks = body.IndexOf("chiaki_mutex_unlock(&session->state_mutex);", StringComparison.Ordinal);
+        string compact = CCall.Compact(body); // PP388
+
+        int locks = CCall.At(compact, "chiaki_mutex_lock(&session->state_mutex)");
+        int writes = CCall.Mark(compact, "session->gw_status = GATEWAY_STATUS_FOUND;");
+        int unlocks = CCall.At(compact, "chiaki_mutex_unlock(&session->state_mutex)");
 
         return locks >= 0 && writes > locks && unlocks > writes;
     }

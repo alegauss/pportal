@@ -1,3 +1,5 @@
+﻿using ChiakiNg.Session;
+
 namespace ChiakiNg.Protocol;
 
 /// <summary>What the login-PIN loop does next.</summary>
@@ -143,13 +145,15 @@ public static class LoginPinSource
     {
         ArgumentNullException.ThrowIfNull(core);
 
-        int loop = core.IndexOf("while(session->ctrl_login_pin_requested)", StringComparison.Ordinal);
+        string compact = CCall.Compact(core); // PP388
+
+        int loop = CCall.Mark(compact, "while(session->ctrl_login_pin_requested)");
         if (loop < 0)
             return false;
 
-        int send = core.IndexOf("chiaki_session_send_event(session, &event);", loop, StringComparison.Ordinal);
-        int assign = core.IndexOf("pin_incorrect = true;", loop, StringComparison.Ordinal);
-        int wait = core.IndexOf("session_check_state_pred_pin", loop, StringComparison.Ordinal);
+        int send = CCall.At(compact, "chiaki_session_send_event(session, &event)", loop);
+        int assign = CCall.Mark(compact, "pin_incorrect = true;", loop);
+        int wait = CCall.Mark(compact, "session_check_state_pred_pin", loop);
 
         return send > 0 && assign > send && wait > assign;
     }

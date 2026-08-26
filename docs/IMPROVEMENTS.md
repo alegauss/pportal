@@ -473,34 +473,6 @@ reads every file rather than the one where the first two were found.
 
 ## Block G — Test discipline
 
-### §PP388 Positions from two different spaces
-
-PP386 moved the 27 occurrence predicates onto CCall, which asks whether a call happens
-without asking how it is punctuated. The 20 ordering predicates could not go with them,
-and the reason is arithmetic rather than effort.
-
-CCall.At answers a position in COMPACTED text - layout removed, tokens still separated.
-Those positions are comparable to each other and to nothing else. Every one of the 20
-compares a call's position against an anchor computed the other way:
-
-    int retry = connectBody.IndexOf(if(retry), StringComparison.Ordinal);
-    int disconnect = connectBody.IndexOf(ctrl_disconnect_tcp(ctrl);, retry, ...);
-
-Convert the second line alone and `retry` is an index into the raw text handed to a
-search over the compacted one. The check still compiles, still returns a bool, and now
-means nothing - which is worse than the brittleness PP386 set out to remove, because a
-false alarm is loud and this would be silent.
-
-So all of a predicate moves or none of it does, and the anchors are not always calls:
-`if(retry)`, a comment, a label. What is owed first is a way to mark arbitrary text in
-compacted space, so an anchor and a call can be measured against each other.
-
-Twelve of the 20 assert an ordering of two or three calls with no other anchor, and
-those go straight onto CCall.InOrder, which exists. The other eight need the mark.
-
-What this owes is that mark, the twelve onto InOrder, and the eight rewritten in one
-space rather than two.
-
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed

@@ -155,7 +155,11 @@ public static class PunchOpeningSource
 
         // Only as far as the acknowledgement, which is where this slice ends - the candidate
         // exchange after it is a later one and its text would make these searches ambiguous.
-        int end = core.IndexOf("chiaki_mutex_lock(&session->stop_mutex);", start, StringComparison.Ordinal);
+        // PP388: without the semicolon. This one slices RAW text, so it cannot move to compacted
+        // marks - a compacted position does not address the string being cut. Dropping the
+        // terminator is the whole of what is available here, and it is strictly more tolerant: the
+        // boundary is where that lock is taken, however the line ends.
+        int end = core.IndexOf("chiaki_mutex_lock(&session->stop_mutex)", start, StringComparison.Ordinal);
         return end < 0 ? core[start..] : core[start..end];
     }
 }

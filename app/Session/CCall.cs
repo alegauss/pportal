@@ -136,6 +136,37 @@ public static class CCall
     }
 
     /// <summary>
+    /// PP388: where arbitrary text sits in compacted space, so an anchor and a call can be
+    /// measured against each other.
+    ///
+    /// <see cref="At"/> answers positions that are comparable to each other and to NOTHING else.
+    /// Twenty ordering predicates measured a call against an anchor found by a raw IndexOf - an
+    /// `if(retry)`, a comment, a label - and mixing the two spaces produces a check that compiles,
+    /// returns a bool, and means nothing. That is worse than the brittleness this reader exists to
+    /// remove, because a false alarm is loud and a mismeasured position is silent.
+    ///
+    /// So an anchor gets the same treatment as a call: compacted, then found. No boundary test -
+    /// an anchor is not necessarily an identifier, and `if(retry)` is a fragment rather than a name.
+    /// </summary>
+    /// <param name="source">The C, or any part of it.</param>
+    /// <param name="anchor">Any text - a call, a fragment, a label.</param>
+    /// <param name="from">Where to start, in compacted space.</param>
+    public static int Mark(string source, string anchor, int from = 0)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentException.ThrowIfNullOrEmpty(anchor);
+        ArgumentOutOfRangeException.ThrowIfNegative(from);
+
+        string needle = Compact(anchor);
+        if (needle.Length == 0)
+            return -1;
+
+        string haystack = Compact(source);
+
+        return from > haystack.Length ? -1 : haystack.IndexOf(needle, from, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// Whether these calls appear in this order, each after the last.
     ///
     /// The commonest ordering claim in this port - a teardown that must release one thing before

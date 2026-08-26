@@ -157,12 +157,16 @@ public static class CtrlHandshakeResponseSource
     {
         ArgumentNullException.ThrowIfNull(connectBody);
 
-        int retry = connectBody.IndexOf("ctrl_request_retry = true;", StringComparison.Ordinal);
+        // PP388: the anchor and the two calls in one space. Converting only the calls would have
+        // measured them against a `retry` index into the raw text, which compiles and means nothing.
+        string compact = CCall.Compact(connectBody);
+
+        int retry = CCall.Mark(compact, "ctrl_request_retry = true;");
         if (retry < 0)
             return false;
 
-        int disconnect = connectBody.IndexOf("ctrl_disconnect_tcp(ctrl);", retry, StringComparison.Ordinal);
-        int reconnect = connectBody.IndexOf("ctrl_connect_tcp(ctrl);", retry, StringComparison.Ordinal);
+        int disconnect = CCall.At(compact, "ctrl_disconnect_tcp(ctrl)", retry);
+        int reconnect = CCall.At(compact, "ctrl_connect_tcp(ctrl)", retry);
 
         return disconnect > retry && reconnect > disconnect;
     }

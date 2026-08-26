@@ -1,3 +1,5 @@
+﻿using ChiakiNg.Session;
+
 namespace ChiakiNg.Protocol;
 
 /// <summary>What a dequeue releases, in the order it releases them.</summary>
@@ -131,11 +133,13 @@ public static class NotificationOwnershipSource
     {
         string body = Between(core, "static void dequeueNq(", "\n/**");
 
-        int document = body.IndexOf("json_object_put(notif->json);", StringComparison.Ordinal);
-        int text = body.IndexOf("free(notif->json_buf);", StringComparison.Ordinal);
-        int node = body.IndexOf("free(notif);", StringComparison.Ordinal);
-
-        return document >= 0 && text > document && node > text;
+        // PP388: an ordering claim, which is what InOrder is. The three releases have to happen in
+        // that order and the punctuation around them is not the claim.
+        return CCall.InOrder(
+            body,
+            "json_object_put(notif->json)",
+            "free(notif->json_buf)",
+            "free(notif)");
     }
 
     /// <summary>And whether it still writes to the node before freeing it.</summary>
@@ -143,14 +147,19 @@ public static class NotificationOwnershipSource
     {
         string body = Between(core, "static void dequeueNq(", "\n/**");
 
-        int node = body.IndexOf("free(notif);", StringComparison.Ordinal);
+        // PP388: one space, not two. The position below and the slice taken from it have to be
+        // measured against the same text, so the body is compacted once and everything after that
+        // reads it - which is also what lets the two writes be spelled with their spaces.
+        string compact = CCall.Compact(body);
+
+        int node = CCall.At(compact, "free(notif)");
         if (node < 0)
             return false;
 
-        string before = body[..node];
+        string before = compact[..node];
 
-        return before.Contains("notif->json = NULL;", StringComparison.Ordinal)
-            && before.Contains("notif->json_buf = NULL;", StringComparison.Ordinal);
+        return CCall.Mark(before, "notif->json = NULL;") >= 0
+            && CCall.Mark(before, "notif->json_buf = NULL;") >= 0;
     }
 
     /// <summary>Whether an empty dequeue still says nothing.</summary>

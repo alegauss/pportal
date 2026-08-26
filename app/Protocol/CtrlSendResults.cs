@@ -103,12 +103,14 @@ public static class CtrlSendResults
     {
         ArgumentNullException.ThrowIfNull(source);
 
-        int copied = source.IndexOf("uint16_t drain_type = msg->type;", StringComparison.Ordinal);
+        string compact = CCall.Compact(source); // PP388
+
+        int copied = CCall.Mark(compact, "uint16_t drain_type = msg->type;");
         if (copied < 0)
             return false;
 
-        int freed = source.IndexOf("ctrl_message_queue_free(msg);", copied, StringComparison.Ordinal);
-        int logged = source.IndexOf("(unsigned int)drain_type", freed < 0 ? copied : freed, StringComparison.Ordinal);
+        int freed = CCall.At(compact, "ctrl_message_queue_free(msg)", copied);
+        int logged = CCall.Mark(compact, "(unsigned int)drain_type", freed < 0 ? copied : freed);
 
         return freed > copied && logged > freed;
     }

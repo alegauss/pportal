@@ -128,6 +128,75 @@ public class CCallTests
     }
 
     /// <summary>
+    /// PP388: THE MIXING THAT MADE THE OTHER TWENTY IMPOSSIBLE.
+    ///
+    /// A position from At is comparable to one from Mark and to nothing else. This is the whole
+    /// reason Mark exists: twenty predicates measured a call against an anchor found by a raw
+    /// IndexOf, and converting only the call would have compared a compacted position with a raw
+    /// one - a check that compiles, returns a bool, and means nothing.
+    /// </summary>
+    [Fact]
+    public void AnAnchorAndACallAreMeasuredInTheSameSpace()
+    {
+        const string Body = """
+            	ctrl_request_retry = true;
+
+            	ctrl_disconnect_tcp(ctrl);
+            	ctrl_connect_tcp(ctrl);
+            """;
+
+        int retry = CCall.Mark(Body, "ctrl_request_retry = true;");
+        int disconnect = CCall.At(Body, "ctrl_disconnect_tcp(ctrl)", retry);
+        int reconnect = CCall.At(Body, "ctrl_connect_tcp(ctrl)", retry);
+
+        Assert.True(retry >= 0);
+        Assert.True(disconnect > retry);
+        Assert.True(reconnect > disconnect);
+
+        // The raw index is a DIFFERENT number, which is what makes mixing them silent rather than
+        // loud - both are plausible offsets into something.
+        Assert.NotEqual(Body.IndexOf("ctrl_request_retry = true;", StringComparison.Ordinal), retry);
+    }
+
+    /// <summary>
+    /// And a slice taken from compacted text agrees with marks into it, which is what the converted
+    /// predicates rely on.
+    /// </summary>
+    [Fact]
+    public void ASliceOfCompactedTextAgreesWithItsMarks()
+    {
+        const string Body = """
+            	notif->json = NULL;
+            	notif->json_buf = NULL;
+            	free(notif);
+            """;
+
+        string compact = CCall.Compact(Body);
+
+        int node = CCall.At(compact, "free(notif)");
+        Assert.True(node >= 0);
+
+        string before = compact[..node];
+
+        Assert.True(CCall.Mark(before, "notif->json = NULL;") >= 0);
+        Assert.True(CCall.Mark(before, "notif->json_buf = NULL;") >= 0);
+
+        // Compacting is idempotent, so marking into an already-compacted string is the same answer.
+        Assert.Equal(CCall.Compact(compact), compact);
+    }
+
+    /// <summary>An anchor is not a call, so it gets no identifier-boundary test.</summary>
+    [Fact]
+    public void AnAnchorNeedNotBeAName()
+    {
+        Assert.True(CCall.Mark("if(retry)\n\tf(x);", "if(retry)") >= 0);
+        Assert.True(CCall.Mark("\tsession->gw_status = GATEWAY_STATUS_FOUND;", "gw_status = GATEWAY_STATUS_FOUND") >= 0);
+        Assert.True(CCall.Mark("quit:\n\treturn err;", "quit:") >= 0);
+
+        Assert.Equal(-1, CCall.Mark("f(x);", "nothing here"));
+    }
+
+    /// <summary>
     /// PP272: it answers no about a file with nothing in it, and about a call that is nothing.
     /// </summary>
     [Fact]
@@ -136,7 +205,12 @@ public class CCallTests
         Assert.False(CCall.Happens("", "free(notif);"));
         Assert.Equal(0, CCall.Count("", "free(notif);"));
         Assert.Equal(-1, CCall.At("", "free(notif);"));
+        Assert.Equal(-1, CCall.Mark("", "free(notif);"));
         Assert.False(CCall.InOrder("", "free(notif)"));
+
+        // And a start past the end is an answer rather than a throw, which a converted predicate
+        // reaches whenever its first mark lands near the tail.
+        Assert.Equal(-1, CCall.Mark("f(x);", "f(x)", 99));
 
         // A call that is only a terminator claims nothing, and says so.
         Assert.Equal(0, CCall.Count("free(notif);", ";"));

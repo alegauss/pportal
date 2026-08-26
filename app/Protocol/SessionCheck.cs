@@ -1,3 +1,5 @@
+﻿using ChiakiNg.Session;
+
 namespace ChiakiNg.Protocol;
 
 /// <summary>How a session check ended, in the outcomes the core distinguishes.</summary>
@@ -113,8 +115,12 @@ public static class SessionCheckSource
     {
         string body = Body(core);
 
-        int logged = body.IndexOf("retrieved session data", StringComparison.Ordinal);
-        int released = body.IndexOf("json_object_put(json);", StringComparison.Ordinal);
+        // PP388: both marks in compacted space, so the comparison is between two positions in one
+        // text rather than one in each of two.
+        string compact = CCall.Compact(body);
+
+        int logged = CCall.Mark(compact, "retrieved session data");
+        int released = CCall.At(compact, "json_object_put(json)");
 
         return logged >= 0 && released > logged;
     }
@@ -127,22 +133,24 @@ public static class SessionCheckSource
     {
         string body = Body(core);
 
-        int missing = body.IndexOf(
-            "http_check_session: Couldn't create new json tokener", StringComparison.Ordinal);
+        // PP388: compacted once, and every position and slice below reads that.
+        string compact = CCall.Compact(body);
+
+        int missing = CCall.Mark(compact, "http_check_session: Couldn't create new json tokener");
         if (missing < 0)
             return false;
 
-        int leaves = body.IndexOf("goto cleanup;", missing, StringComparison.Ordinal);
+        int leaves = CCall.Mark(compact, "goto cleanup;", missing);
         if (leaves < 0)
             return false;
 
         // Nothing sets err between the log and the jump - which is the whole of it.
-        string branch = body[missing..leaves];
-        if (branch.Contains("err =", StringComparison.Ordinal))
+        string branch = compact[missing..leaves];
+        if (CCall.Mark(branch, "err =") >= 0)
             return false;
 
         // And the neighbour DOES, which is what makes it an asymmetry rather than a convention.
-        return body.Contains("err = CHIAKI_ERR_UNKNOWN;", StringComparison.Ordinal);
+        return CCall.Mark(compact, "err = CHIAKI_ERR_UNKNOWN;") >= 0;
     }
 
     /// <summary>Whether its failures still say "Creating" in a function that creates nothing.</summary>

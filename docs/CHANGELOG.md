@@ -366,6 +366,7 @@
 - 🗑 **PP324** **test.cmd interaction reports failure where no pad is plugged in, on a premise xUnit stopped making true** — abandoned: checked rather than assumed: xUnit 2.9.3 exposes neither Assert.Skip nor a public SkipException - both are v3 - so the guard's premise holds and a third answer costs a runner upgrade.
 - ✅ **PP343** **the only reader that finds a C function body rather than its prototype is named after the reorder queue** — one reader named for what it reads, counting braces rather than trusting a closing one in column zero, with the two copies delegating to it.
 - ✅ **PP386** **47 drift predicates pin a bare call to its exact spelling, semicolon included, and four broke this block** — the 27 occurrence predicates ask CCall whether a call happens; the 20 ordering ones need their arithmetic moved and are PP388.
+- ✅ **PP388** **20 ordering predicates mix compacted call positions with raw offsets, so none can move onto CCall alone** — every ordering predicate reads one compacted space, and the raw slicer keeps its anchor without the terminator.
 
 ## Block H — Performance and telemetry
 

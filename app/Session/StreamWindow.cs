@@ -213,19 +213,21 @@ public static class StreamWindowSource
     {
         ArgumentNullException.ThrowIfNull(cpp);
 
-        int start = cpp.IndexOf("void QmlMainWindow::fullscreenTime()", StringComparison.Ordinal);
+        string compact = CCall.Compact(cpp); // PP388
+
+        int start = CCall.Mark(compact, "void QmlMainWindow::fullscreenTime()");
         if (start < 0)
             return false;
 
         // The guard is the first statement of the function; anything past the setMinimumSize is a
         // different part of it and would make this pass for the wrong reason.
-        int pin = cpp.IndexOf("setMinimumSize(size());", start, StringComparison.Ordinal);
+        int pin = CCall.At(compact, "setMinimumSize(size())", start);
         if (pin < 0)
             return false;
 
-        string head = cpp[start..pin];
-        return head.Contains("if(windowState() == Qt::WindowFullScreen)", StringComparison.Ordinal)
-            && head.Contains("return;", StringComparison.Ordinal);
+        string head = compact[start..pin];
+        return CCall.Mark(head, "if(windowState() == Qt::WindowFullScreen)") >= 0
+            && CCall.Mark(head, "return;") >= 0;
     }
 
     /// <summary>Whether the minimum size is still pinned on the way in and released on the way out.</summary>

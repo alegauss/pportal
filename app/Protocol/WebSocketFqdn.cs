@@ -1,3 +1,5 @@
+﻿using ChiakiNg.Session;
+
 namespace ChiakiNg.Protocol;
 
 /// <summary>How the lookup for the websocket's host ended.</summary>
@@ -121,16 +123,19 @@ public static class WebSocketFqdnSource
     {
         string body = Body(core);
 
-        int logs = body.IndexOf("Couldn't create new json tokener", StringComparison.Ordinal);
+        // PP388: one space for the two marks and the slice between them.
+        string compact = CCall.Compact(body);
+
+        int logs = CCall.Mark(compact, "Couldn't create new json tokener");
         if (logs < 0)
             return false;
 
-        int leaves = body.IndexOf("goto cleanup;", logs, StringComparison.Ordinal);
+        int leaves = CCall.Mark(compact, "goto cleanup;", logs);
         if (leaves < 0)
             return false;
 
         // Nothing between the message and the jump assigns the error variable.
-        return !body[logs..leaves].Contains("err =", StringComparison.Ordinal);
+        return CCall.Mark(compact[logs..leaves], "err =") < 0;
     }
 
     /// <summary>
@@ -141,12 +146,14 @@ public static class WebSocketFqdnSource
     {
         string body = Body(core);
 
-        int parse = body.IndexOf("get_websocket_fqdn: Parsing JSON failed", StringComparison.Ordinal);
+        string compact = CCall.Compact(body); // PP388
+
+        int parse = CCall.Mark(compact, "get_websocket_fqdn: Parsing JSON failed");
         if (parse < 0)
             return false;
 
-        int leaves = body.IndexOf("goto cleanup_json_tokener;", parse, StringComparison.Ordinal);
-        return leaves > parse && body[parse..leaves].Contains("err =", StringComparison.Ordinal);
+        int leaves = CCall.Mark(compact, "goto cleanup_json_tokener;", parse);
+        return leaves > parse && CCall.Mark(compact[parse..leaves], "err =") >= 0;
     }
 
     /// <summary>Whether the address is still written only on the way past both checks.</summary>
@@ -195,8 +202,10 @@ public static class WebSocketFqdnSource
     {
         string body = Body(core);
 
-        int copied = body.IndexOf("*fqdn = strdup(", StringComparison.Ordinal);
-        int released = body.IndexOf("json_object_put(json);", StringComparison.Ordinal);
+        string compact = CCall.Compact(body); // PP388
+
+        int copied = CCall.Mark(compact, "*fqdn = strdup(");
+        int released = CCall.At(compact, "json_object_put(json)");
 
         return copied >= 0 && released > copied;
     }

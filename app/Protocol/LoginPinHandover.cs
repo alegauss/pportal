@@ -121,13 +121,15 @@ public static class LoginPinHandover
     {
         ArgumentNullException.ThrowIfNull(source);
 
-        int call = source.IndexOf($"= {Handover}(&session->ctrl", StringComparison.Ordinal);
+        string compact = CCall.Compact(source); // PP388
+
+        int call = CCall.Mark(compact, $"= {Handover}(&session->ctrl");
         if (call < 0)
             return false;
 
-        int freed = source.IndexOf("free(session->login_pin);", call, StringComparison.Ordinal);
-        int cleared = source.IndexOf("session->login_pin = NULL;", call, StringComparison.Ordinal);
-        int check = source.IndexOf("if(pin_err != CHIAKI_ERR_SUCCESS)", call, StringComparison.Ordinal);
+        int freed = CCall.At(compact, "free(session->login_pin)", call);
+        int cleared = CCall.Mark(compact, "session->login_pin = NULL;", call);
+        int check = CCall.Mark(compact, "if(pin_err != CHIAKI_ERR_SUCCESS)", call);
 
         return freed > call && cleared > freed && check > cleared;
     }
