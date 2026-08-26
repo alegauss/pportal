@@ -246,16 +246,12 @@ public static class CtrlReactionsSource
     /// <summary>
     /// One handler's body, or null.
     ///
-    /// THROUGH ReorderQueueSource.BodyOf RATHER THAN A READER OF ITS OWN. ctrl.c forward-declares
-    /// every static handler at the top, so a search for the name finds a prototype ending in a
-    /// semicolon - and a body taken from there spans most of the file. MessageTapSource documents
-    /// that trap and BodyOf avoids it by requiring a brace after the parameter list.
-    ///
-    /// The name is wrong for a general helper and PP343 is about moving it. Calling the misnamed
-    /// one is still better than a third copy of the same reader (PP333).
+    /// Through <see cref="CFunction"/>, which skips the prototype ctrl.c declares at the top of the
+    /// file for every static handler - the trap this walked into before PP343 gave the reader a name
+    /// that says what it reads.
     /// </summary>
     public static string? HandlerBody(string filePath, string handler)
-        => ReorderQueueSource.BodyOf(filePath, handler);
+        => CFunction.BodyIn(filePath, handler);
 
     /// <summary>
     /// Whether a heartbeat is still answered whatever its payload carried.

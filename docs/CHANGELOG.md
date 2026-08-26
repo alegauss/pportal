@@ -322,6 +322,7 @@
 - ✅ **PP317** **four MSBuild warnings print on every build of the test project, and PP316's policy cannot reach any of them** — The two bare Reference items are gone and the framework reference supplies both assemblies, so the build prints zero warnings where it printed four.
 - ✅ **PP318** **an assertion comparing two constants passes every analyzer, and one grep found one still standing in the suite** — A source sweep over the assertion corpus fails on the shape, and the one Assert.Equal(0, 0) it was written against is deleted.
 - 🗑 **PP324** **test.cmd interaction reports failure where no pad is plugged in, on a premise xUnit stopped making true** — abandoned: checked rather than assumed: xUnit 2.9.3 exposes neither Assert.Skip nor a public SkipException - both are v3 - so the guard's premise holds and a third answer costs a runner upgrade.
+- ✅ **PP343** **the only reader that finds a C function body rather than its prototype is named after the reorder queue** — one reader named for what it reads, counting braces rather than trusting a closing one in column zero, with the two copies delegating to it.
 
 ## Block H — Performance and telemetry
 

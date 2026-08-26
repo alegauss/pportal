@@ -115,48 +115,10 @@ public static class MessageTapSource
     }
 
     /// <summary>
-    /// One function's body, from its signature to the brace that closes it.
-    ///
-    /// THE FIRST MATCH IS NOT THE FUNCTION. Both sites this reads are declared at the top of ctrl.c
-    /// before they are defined - the file's own style - so a search that took the first occurrence
-    /// lands on a prototype ending in a semicolon, walks forward to the next `{` in the file, and
-    /// bounds a body belonging to something else entirely. That checked out green while comparing
-    /// two positions in a function neither call is in.
-    ///
-    /// So a match is only the definition when what follows its parameter list is a brace. Brace
-    /// counted from there rather than matched to a blank line, because ctrl.c's functions contain
-    /// blank lines and its style puts the opening brace on its own.
+    /// One function's body. PP343 moved the reader itself to <see cref="CFunction"/>, which is where
+    /// the note about prototypes now lives - this file had the only correct copy of it and two
+    /// others were written without finding it.
     /// </summary>
     private static string? Function(string source, string signature)
-    {
-        for (int start = source.IndexOf(signature, StringComparison.Ordinal);
-             start >= 0;
-             start = source.IndexOf(signature, start + signature.Length, StringComparison.Ordinal))
-        {
-            int close = source.IndexOf(')', start);
-            if (close < 0)
-                return null;
-
-            int open = close + 1;
-            while (open < source.Length && char.IsWhiteSpace(source[open]))
-                open++;
-
-            // A prototype. Keep looking; the definition is further down.
-            if (open >= source.Length || source[open] != '{')
-                continue;
-
-            var depth = 0;
-            for (int at = open; at < source.Length; at++)
-            {
-                if (source[at] == '{')
-                    depth++;
-                else if (source[at] == '}' && --depth == 0)
-                    return source[start..(at + 1)];
-            }
-
-            return null;
-        }
-
-        return null;
-    }
+        => CFunction.Body(source, signature);
 }

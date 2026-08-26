@@ -39,25 +39,15 @@ public static partial class ReorderQueueSource
     public static string? LocateTakion() => SanitizerSource.LocateRelative(TakionRelativePath);
 
     /// <summary>
-    /// The body of a CHIAKI_EXPORT function, from its opening brace to the first closing brace in
-    /// column zero. Crude, and sufficient: every function in this file is written that way, and a
-    /// brace counter would be a second thing that can be wrong about a file the compiler already
-    /// agrees with.
+    /// The body of a function in this file.
+    ///
+    /// PP343: this used to match the first closing brace in column zero, which was crude and
+    /// sufficient right up until a function contained a brace at the start of a line. It now counts
+    /// braces, through <see cref="CFunction"/> - the one reader, which also skips the prototypes
+    /// this file does not have and ctrl.c does.
     /// </summary>
     public static string? BodyOf(string filePath, string function)
-    {
-        ArgumentNullException.ThrowIfNull(filePath);
-        ArgumentNullException.ThrowIfNull(function);
-
-        string text = File.ReadAllText(filePath);
-        Match open = Regex.Match(text, Regex.Escape(function) + @"\s*\([^)]*\)\s*\r?\n\{");
-        if (!open.Success)
-            return null;
-
-        int start = open.Index + open.Length;
-        Match close = Regex.Match(text[start..], @"\r?\n\}");
-        return close.Success ? text.Substring(start, close.Index) : null;
-    }
+        => CFunction.BodyIn(filePath, function);
 
     /// <summary>The port's own seam, which is where the fini callbacks are deliberately lost.</summary>
     public const string ShimRelativePath = @"shim\chiaki_shim.c";
