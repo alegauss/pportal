@@ -294,6 +294,7 @@
 - ✅ **PP347** **the rudp arm copies a message into the 512-byte ctrl buffer with no bound, and its source buffer is 520** — both rudp arms check the room left in the destination, and a count of unbounded copies into it holds at zero rather than a check on the two that were wrong.
 - ✅ **PP352** **the two display handlers read payload bytes without checking the size, so a short message is decided by leftovers** — both display handlers check before they index, and a count over every handler holds at zero rather than a check on the two that were wrong.
 - ✅ **PP348** **ctrl.c's ctrl_failed overwrites a recorded quit reason, which is the rule PP336 asserted the label keeps** — the generic ctrl failure guards on NONE like the label does, so a cause the user can act on outlives the control channel dying after it.
+- ✅ **PP349** **the ctrl thread's loop is unported, and a cancelled select is its work branch rather than a failure** — a cancelled wait is the work branch, the three conditions are read in order before and after it, and the buffer frames two messages out of one read.
 
 ## Block G — Test discipline
 

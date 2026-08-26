@@ -487,29 +487,6 @@ with a failure is a real question and not a small one: the PIN has already been 
 and freed on its side by then, so there is nothing left to retry with, and ending the
 session with a reason naming memory is more honest than a third prompt.
 
-### §PP349 The loop where cancelled means work
-
-The ctrl thread is one loop with two halves: frame whatever is already buffered, then
-wait for more. PP341 ported the framing of a message and PP342 what arriving messages
-cause. The loop itself is neither.
-
-CANCELED IS THE WORK BRANCH, which is the shape a reader has to know before anything
-else makes sense. The select is given UINT64_MAX and returns CHIAKI_ERR_CANCELED when
-the notify pipe is poked - and that branch is where the send queue is drained and a
-typed PIN goes out. An error return is the other branch. A port treating CANCELED as a
-failure would send nothing anybody queued; one treating it as a timeout would spin.
-
-The queue is drained with the lock RELEASED around each send, so a send cannot block
-whoever is enqueuing. The PIN is lifted out under the lock, cleared, sent unlocked, then
-freed - an ownership transfer written across four statements.
-
-And the PIN branch ends in `continue` rather than falling through, so a stop requested
-in the same wake-up as a PIN is not noticed until the next turn of the loop. One extra
-pass, not a hang, but it is the kind of ordering a rewrite silently changes.
-
-The framing half needs PP346 fixed before it is worth porting: the bound it depends on
-is the one the arithmetic defeats.
-
 ### §PP350 Two pipes, and what each is for
 
 PP338 wrote down the session's stop-join-fini order because nothing stated it. The
