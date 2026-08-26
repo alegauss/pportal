@@ -438,34 +438,6 @@ Until then PP33 is correctly blocked and its remaining query correctly reads 420
 Reading that number as the size of the job is what its own section warns against: it is
 one file, and the work is at the other end.
 
-### §PP363 The loop where a timeout is the work
-
-Once a stream is up, the run function sits in a loop with one job: wait, and if the wait
-TIMED OUT, send a heartbeat and wait again. Anything that is not a timeout leaves the
-loop and the stream ends.
-
-    err = cond_timedwait_pred(..., HEARTBEAT_INTERVAL_MS, state_finished_cond_check, ...);
-    if(err != CHIAKI_ERR_TIMEOUT)
-        break;
-    stream_connection_send_heartbeat(stream_connection);
-
-So a timeout is the work and success is the exit, which is the inverse of PP349's ctrl
-loop where CANCELED was the work and everything else was failure. Two loops in two
-files, both with a condition wait, and the return value that means "carry on" is the
-opposite one in each. A port reading either from memory of the other would either stop
-sending heartbeats or spin.
-
-A heartbeat that fails to send is LOGGED AND IGNORED. The loop carries on and waits
-again, so a stream whose heartbeats are all failing looks alive from in here until the
-console gives up on it - which is the right behaviour for a diagnostic message and worth
-being deliberate about rather than inheriting.
-
-How the run's error code is decided is the other half. At the disconnect label three
-things are tested in order: should_stop wins and gives CANCELED, then
-remote_disconnected gives DISCONNECTED, and otherwise whatever err already held stands.
-PP336 already ported what the session makes of those three - this is where they come
-from.
-
 ### §PP364 Six labels, and the numbers rescued between two of them
 
 Where session.c has two exit labels (PP336), the stream connection has six, cascading:
