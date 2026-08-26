@@ -343,6 +343,7 @@
 - ✅ **PP400** **the session id comes from srand(time(NULL)) and rand(), so two sessions in the same second share it** — the session id draws sixteen bytes from the crypto generator, a nibble per digit, and PP33's shape is unchanged.
 - ✅ **PP401** **a short duid leaves the rest of a stack local untouched, so a device identifier carries stack contents to PSN** — the decoder fills its destination before parsing, so a short duid yields zeros rather than stack contents.
 - 🗑 **PP402** **the hex decoder truncates a long duid and pads a short one, where the managed side refuses both** — abandoned: already decided: DeviceList.cs reproduces one bad device losing the whole list, because a port that skipped it would show a console list the Qt client never shows.
+- ✅ **PP403** **three strncpy copies in holepunch.c are bounded by sizeof(dest), so a full-length name or address leaves no terminator** — the three copies go through copy_bounded, which truncates as before and terminates, and a rule over holepunch.c refuses any copy bounded by the size of what it writes into.
 
 ## Block G — Test discipline
 

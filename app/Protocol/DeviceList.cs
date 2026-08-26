@@ -62,6 +62,12 @@ public readonly record struct HolepunchDevice(
 /// fills it - so a thirty-two character console name leaves the buffer running into whatever
 /// follows. This port keeps the truncation, which is behaviour, and drops the missing terminator,
 /// which is not.
+///
+/// PP403: and so does the core now. That last sentence was an argument for correcting the C rather
+/// than reproducing it - unlike the paragraph three above, which gives a reason the port carries the
+/// all-or-nothing refusal, and which is what stopped PP402. The core routes this copy and the two
+/// candidate addresses through <c>copy_bounded</c>, which truncates exactly as before and terminates.
+/// The rule below is over the whole file: no copy may be bounded by the size of what it writes into.
 /// </summary>
 public static class DeviceListReader
 {
@@ -273,6 +279,82 @@ public static class DeviceListSource
         return core.Contains(
             "strncpy(device.device_name, json_object_get_string(device_name), sizeof(device.device_name));",
             StringComparison.Ordinal);
+    }
+
+    /// <summary>Whether the name now goes through the copy that terminates.</summary>
+    public static bool TheNameGoesThroughTheBoundedCopy(string core)
+    {
+        ArgumentNullException.ThrowIfNull(core);
+        return CCall.Happens(
+            CCall.Code(core),
+            "copy_bounded(device.device_name, sizeof(device.device_name), json_object_get_string(device_name));");
+    }
+
+    /// <summary>
+    /// PP403: the rule over the file - no copy bounded by the size of what it writes into.
+    ///
+    /// That is the one strncpy shape that cannot terminate: a source at least as long as the buffer
+    /// fills every byte with a character. The two copies left in the file are bounded by lengths
+    /// computed from the source, into a buffer that was memset first, and they stay.
+    ///
+    /// Read through <see cref="CCall.Code"/>, because the note above <c>copy_bounded</c> quotes the
+    /// shape it replaced - the mistake PP399, PP400 and PP401 each made once.
+    ///
+    /// PP272: a file with no copies in it answers NO rather than yes. Read the other way this is a
+    /// bare absence, and a bare absence is satisfied by an empty string - which is what PP354's
+    /// check was, and what this one was until the empty-file rule said so.
+    /// </summary>
+    public static bool NoCopyIsBoundedByItsDestinationSize(string core)
+    {
+        ArgumentNullException.ThrowIfNull(core);
+
+        string code = CCall.Code(core);
+        const string call = "strncpy(";
+
+        if (!CCall.Happens(code, call))
+            return false;
+
+        for (int at = code.IndexOf(call, StringComparison.Ordinal); at >= 0;
+             at = code.IndexOf(call, at + 1, StringComparison.Ordinal))
+        {
+            // Not part of a longer identifier - CCall keeps its own test private, and this one
+            // reads raw text rather than compacted, so it is made here.
+            if (at > 0 && (char.IsLetterOrDigit(code[at - 1]) || code[at - 1] == '_'))
+                continue;
+
+            int open = at + call.Length - 1;
+            int end = ArgumentsEnd(code, open);
+
+            // An unbalanced call is not something to wave through: the file no longer parses the
+            // way this rule reads it, and saying so is the honest answer.
+            if (end < 0 || code.AsSpan(open, end - open).Contains("sizeof", StringComparison.Ordinal))
+                return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>Where the argument list opened at <paramref name="open"/> closes, or -1.</summary>
+    private static int ArgumentsEnd(string code, int open)
+    {
+        int depth = 0;
+
+        for (int at = open; at < code.Length; at++)
+        {
+            if (code[at] == '(')
+                depth++;
+            else if (code[at] == ')' && --depth == 0)
+                return at;
+        }
+
+        return -1;
+    }
+
+    /// <summary>How many copies the file still makes, so the rule above is not vacuous.</summary>
+    public static int CopiesInTheFile(string core)
+    {
+        ArgumentNullException.ThrowIfNull(core);
+        return CCall.Count(CCall.Code(core), "strncpy(");
     }
 
     /// <summary>And whether the buffer it copies into is still that size.</summary>

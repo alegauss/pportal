@@ -154,8 +154,9 @@ public class DeviceListTests
     }
 
     /// <summary>
-    /// And one that exactly fills it keeps every character - where the core's strncpy would leave
-    /// the buffer with no terminator at all, which is not behaviour to reproduce.
+    /// And one that exactly fills it keeps every character - where the core's strncpy left the
+    /// buffer with no terminator at all, which was not behaviour to reproduce. PP403 corrected the
+    /// core to match; this stays as the statement of what the port does.
     /// </summary>
     [Fact]
     public void ANameThatExactlyFillsTheBufferIsKeptWhole()
@@ -195,8 +196,60 @@ public class DeviceListTests
         Assert.True(DeviceListSource.TheFeatureScanIsStillLenient(core), "the one lenient place");
         Assert.True(
             DeviceListSource.TheTypeIsStillStampedFromTheArgument(core), "stamped, not read");
+        // PP403: inverted. The class note already said the truncation was behaviour and the missing
+        // terminator was not, which is an argument for correcting the C rather than reproducing it -
+        // so it was, and this now watches for the old shape returning.
+        Assert.False(
+            DeviceListSource.TheNameIsStillCopiedWithoutATerminator(core), "strncpy into its own size again");
         Assert.True(
-            DeviceListSource.TheNameIsStillCopiedWithoutATerminator(core), "strncpy into its own size");
+            DeviceListSource.TheNameGoesThroughTheBoundedCopy(core), "the name no longer goes through copy_bounded");
         Assert.True(DeviceListSource.TheNameBufferIsStillThatSize(File.ReadAllText(header)), "thirty-two");
+    }
+
+    /// <summary>
+    /// PP403: the rule over the file, not just over the one call that was found.
+    ///
+    /// All three sites were written the same way and a fourth would be, so what is asserted is the
+    /// shape: no copy in holepunch.c may be bounded by the size of what it writes into. That bound
+    /// is the one that cannot terminate.
+    /// </summary>
+    [Fact]
+    public void NoCopyInTheFileIsBoundedByItsOwnDestination()
+    {
+        string? path = DeviceListSource.Locate();
+        if (path is null)
+            return;
+
+        string core = File.ReadAllText(path);
+
+        // PP271: a sweep that found nothing to look at has not passed. Two copies remain - both
+        // bounded by lengths taken from the source, into a buffer memset first - and they are what
+        // keeps this rule from being vacuous.
+        Assert.True(DeviceListSource.CopiesInTheFile(core) > 0, "no copies left to rule on");
+        Assert.True(
+            DeviceListSource.NoCopyIsBoundedByItsDestinationSize(core),
+            "a copy is bounded by the size of what it writes into, which cannot terminate");
+    }
+
+    /// <summary>PP272: and the rule answers no to a file that has the shape.</summary>
+    [Fact]
+    public void TheRuleRefusesACopyBoundedByItsDestination()
+    {
+        Assert.False(
+            DeviceListSource.NoCopyIsBoundedByItsDestinationSize(
+                "void f(void) { strncpy(dst, src, sizeof(dst)); }"));
+        Assert.True(
+            DeviceListSource.NoCopyIsBoundedByItsDestinationSize(
+                "void f(void) { strncpy(dst, src, len); }"));
+
+        // A comment quoting the old shape is not the old shape - the mistake made three times over
+        // PP399, PP400 and PP401.
+        Assert.True(
+            DeviceListSource.NoCopyIsBoundedByItsDestinationSize(
+                "// was strncpy(dst, src, sizeof(dst));\nvoid f(void) { strncpy(dst, src, len); }"));
+
+        // And a file with no copies in it answers no, rather than passing on an absence.
+        Assert.Equal(0, DeviceListSource.CopiesInTheFile(""));
+        Assert.False(DeviceListSource.NoCopyIsBoundedByItsDestinationSize(""));
     }
 }

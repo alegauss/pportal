@@ -359,6 +359,7 @@ static inline size_t curl_write_cb(
     void* ptr, size_t size, size_t nmemb, void* userdata);
 static ChiakiErrorCode hex_to_bytes(const char* hex_str, uint8_t* bytes, size_t max_len);
 static void bytes_to_hex(const uint8_t* bytes, size_t len, char* hex_str, size_t max_len);
+static void copy_bounded(char* dst, size_t dst_size, const char* src);
 static void random_uuidv4(char* out);
 static void *websocket_thread_func(void *user);
 static NotificationType parse_notification_type(ChiakiLog *log, json_object* json);
@@ -614,7 +615,7 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_holepunch_list_devices(
             err = CHIAKI_ERR_UNKNOWN;
             goto cleanup_devices;
         }
-        strncpy(device.device_name, json_object_get_string(device_name), sizeof(device.device_name));
+        copy_bounded(device.device_name, sizeof(device.device_name), json_object_get_string(device_name));
         (*devices)[i] = device;
     }
 
@@ -2026,6 +2027,21 @@ static ChiakiErrorCode hex_to_bytes(const char* hex_str, uint8_t* bytes, size_t 
             return CHIAKI_ERR_INVALID_DATA;
     }
     return CHIAKI_ERR_SUCCESS;
+}
+
+// PP403: strncpy bounded by the size of its destination is the one shape that does not terminate -
+// a source at least that long fills every byte with a character and leaves no NUL. Three fields
+// here are copied from server JSON that way: the device name into char[32], which an ordinary
+// console name reaches, and the two candidate addresses into adjacent char[INET6_ADDRSTRLEN], where
+// a full one runs straight on into its neighbour and getaddrinfo takes the pair.
+//
+// The truncation is kept, because that is behaviour DeviceList's note says the port carries. Only
+// the missing terminator goes, which the same note says is not.
+static void copy_bounded(char* dst, size_t dst_size, const char* src) {
+    if (dst_size == 0)
+        return;
+    strncpy(dst, src, dst_size - 1);
+    dst[dst_size - 1] = '\0';
 }
 
 static void bytes_to_hex(const uint8_t* bytes, size_t len, char* hex_str, size_t max_len) {
@@ -5230,7 +5246,7 @@ static ChiakiErrorCode session_message_parse(
                 goto invalid_schema;
             }
             const char *addr_str = json_object_get_string(jobj);
-            strncpy(candidate.addr, addr_str, sizeof(candidate.addr));
+            copy_bounded(candidate.addr, sizeof(candidate.addr), addr_str);
 
             json_object_object_get_ex(candidate_json, "mappedAddr", &jobj);
             if (jobj == NULL || !json_object_is_type(jobj, json_type_string))
@@ -5239,7 +5255,7 @@ static ChiakiErrorCode session_message_parse(
                 goto invalid_schema;
             }
             const char *mapped_addr_str = json_object_get_string(jobj);
-            strncpy(candidate.addr_mapped, mapped_addr_str, sizeof(candidate.addr_mapped));
+            copy_bounded(candidate.addr_mapped, sizeof(candidate.addr_mapped), mapped_addr_str);
 
             json_object_object_get_ex(candidate_json, "port", &jobj);
             if (jobj == NULL || !json_object_is_type(jobj, json_type_int))
