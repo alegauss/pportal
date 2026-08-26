@@ -462,6 +462,31 @@ Until then PP33 is correctly blocked and its remaining query correctly reads 420
 Reading that number as the size of the job is what its own section warns against: it is
 one file, and the work is at the other end.
 
+### §PP345 A failure that arrives as an accusation
+
+Three functions carry a login PIN from the person who typed it to the console, and only
+two of them can report a failure.
+
+chiaki_session_set_login_pin returns ChiakiErrorCode and answers CHIAKI_ERR_MEMORY where
+its malloc fails. The session thread then forwards the PIN with
+chiaki_ctrl_set_login_pin, which returns void - and its first statement is a malloc that
+returns early on failure, before login_pin_entered is set and before the notify pipe is
+poked. Nothing anywhere learns that the PIN was dropped.
+
+What the user sees is the interesting part, and PP335 is why. The ctrl thread never
+sends the PIN, so the console never accepts it and asks again; the session thread's loop
+treats a second request as the refusal it always treats one as, and the next prompt says
+the last PIN was wrong. It was not wrong. There was no memory.
+
+The failure is rare and the report is the point. A person told their PIN was wrong types
+it again, carefully, and is told the same thing - and the log says nothing about it
+either, because the early return does not log.
+
+The fix is a return type and a caller that reads it. What the session thread should do
+with a failure is a real question and not a small one: the PIN has already been consumed
+and freed on its side by then, so there is nothing left to retry with, and ending the
+session with a reason naming memory is more honest than a third prompt.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry

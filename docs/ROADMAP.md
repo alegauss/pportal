@@ -37,6 +37,7 @@
 - 💭 **PP313** (deps: PP33 ⏳) **curl and json-c would leave the build today if the remote path were built off, and that trades a feature for a count** — PP33's fourth criterion otherwise waits on the managed session, and the tri_option is already there. → §PP313
 - 📋 **PP331** (deps: —) **a ctrl type the enum does not name arrives on every session, and the line that would say which is commented out** — PP297's capture recorded 0x41 off a real PS5; ctrl.c's default branch hexdumps it at warning level with the type itself commented out. → §PP331
 - 📋 **PP340** (deps: —) **the PSN path lives in session.c's nine holepunch call sites, so PP33's deletion would take remote play with it** — the offer, the punch, the two sockets, the regist info, the address, the port and the fini are all driven from C; nothing managed owns that flow. → §PP340
+- 📋 **PP345** (deps: —) **chiaki_ctrl_set_login_pin returns void, so an allocation failure reaches the user as a wrong PIN** — the malloc failure returns before login_pin_entered is set, the console never gets the PIN and asks again - which PP335 established is the only thing that says wrong. → §PP345
 
 ## Block G — Test discipline
 
