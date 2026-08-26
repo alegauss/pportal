@@ -770,7 +770,10 @@ CHIAKI_EXPORT ChiakiErrorCode ctrl_message_connect_microphone(ChiakiCtrl *ctrl)
 
 CHIAKI_EXPORT ChiakiErrorCode ctrl_message_toggle_microphone(ChiakiCtrl *ctrl, bool muted)
 {
-	CHIAKI_LOGV(ctrl->session->log, "Ctrl sending toggle microphone mute message: %s", muted ? "unmute": "mute");
+	// PP361: the sentence said the opposite of the bytes. muted writes zero into the third byte and
+	// logged "unmute", so a verbose log read while chasing a microphone problem contradicted the
+	// wire. The wire was right; only the word was wrong.
+	CHIAKI_LOGV(ctrl->session->log, "Ctrl sending toggle microphone mute message: %s", muted ? "mute": "unmute");
 	uint8_t toggle[0x4] = {0, 1, 1, 89};
 	if(muted)
 		toggle[2] = 0;

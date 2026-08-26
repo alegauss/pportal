@@ -301,6 +301,8 @@
 - ✅ **PP356** **the ctrl connect spends the crypt counter three to six times, so the first message is not encrypted at zero** — the counter accounting per target and transport, the little-endian streaming type, and the conditional headers appended last.
 - ✅ **PP357** **the two keyboard handlers bound their copy with an assert, and the shipped build defines NDEBUG** — both handlers check the announced length against what arrived, and a shape check refuses any assert left as the only bound on a copy.
 - ✅ **PP358** **the ctrl response parser matches headers with strcmp, which is the defect PP296 fixed in its sibling** — both ctrl headers matched without regard to case, and the check runs over every parser in lib/src rather than the one PP296 reached.
+- ✅ **PP360** **the ctrl handshake's response side is unported, and the remote counter starts at one or zero depending on it** — the one-shot retry, the remote counter spent only where the server type decrypts, and the two downgrades - only one of which the auto-downgrade flag gates.
+- ✅ **PP361** **the microphone toggle logs the opposite of what it sends, and the rudp subtype switch says it is wrong** — the log word is derived from the byte it describes, and the switch's three fallthroughs are a table rather than four tidy arms.
 
 ## Block G — Test discipline
 

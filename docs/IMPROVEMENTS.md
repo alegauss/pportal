@@ -159,7 +159,7 @@ because every part of it was green.
 ### §PP23 The oracle this block cannot be written without
 
 chiaki exists because the PlayStation remote play protocol was reverse engineered. There
-is no document to implement against: the 24662 lines of C in lib/src are the
+is no document to implement against: the 24665 lines of C in lib/src are the
 specification, and a managed rewrite that reads them and reproduces them is a
 translation whose only correctness test is behavioural.
 
@@ -198,7 +198,7 @@ bytes.
 
 ### §PP28 The state machines
 
-session.c is 1219 lines, ctrl.c 1557 and streamconnection.c 1326. Together they are the
+session.c is 1219 lines, ctrl.c 1560 and streamconnection.c 1326. Together they are the
 connection: what is sent in which order, what is waited for, what a timeout means at
 each point, and how a session comes apart when the console stops answering.
 
@@ -346,7 +346,7 @@ Repair any upstream and the port's copy becomes the divergence, on the next run.
 
 ### §PP294 The control channel, on its own
 
-The second of PP28's three. ctrl.c is the longest at 1557 lines and carries the most
+The second of PP28's three. ctrl.c is the longest at 1560 lines and carries the most
 message types - the control connection a session opens alongside the stream, over which
 the console reports state changes, accepts requests and answers keepalives.
 
@@ -567,58 +567,6 @@ Which of the two this should be is a real question: a third flag that the DISPLA
 branch also guards on, or a prohibition that is not expressed through the display
 machine at all. The port reproduces the C for now, and cannot reproduce it faithfully
 without saying which.
-
-### §PP360 The response side, and the other counter
-
-What remains of ctrl.c after the connect: the response side of the handshake, the login
-state switch, the three keyboard messages the console sends, and the three small
-senders.
-
-THE CTRL REQUEST IS RETRIED EXACTLY ONCE, on timeout, and on the TCP path the socket is
-torn down and reconnected before the second attempt. A one-shot flag, like PP334's
-ladder is a count and not a loop - and for the same reason.
-
-THE REMOTE COUNTER IS ALSO PRE-SPENT, which is PP356's finding from the other side.
-Where the response carried a well-formed RP-Server-Type it is decrypted at
-crypt_counter_remote++, so the first RECEIVED ctrl message decrypts at one. Where the
-header was absent or the wrong length it decrypts at zero. The starting point is
-therefore conditional on what the console sent, which is the same trap as the local
-counter with an extra branch in it.
-
-The server type drives two downgrades: a regular PS4 asked for 1080p is dropped to 720p
-keeping its frame rate, and a PS4 or PS4 Pro asked for anything but H264 is forced to
-H264. Both only where the header was valid, which is what PP358 is about.
-
-The three senders are fixed payloads with one variable bit: the microphone toggle's
-third byte, where zero is muted and one is not - and the corpus confirms the layout,
-00-01-01-59, twice.
-
-### §PP361 A log that lies and a switch that admits it
-
-Two small things found while reading the last of ctrl.c, kept together because each is
-one line and neither is worth a task of its own.
-
-THE MICROPHONE TOGGLE'S LOG IS INVERTED:
-
-    CHIAKI_LOGV(log, "Ctrl sending toggle microphone mute message: %s", muted ? "unmute": "mute");
-    uint8_t toggle[0x4] = {0, 1, 1, 89};
-    if(muted)
-        toggle[2] = 0;
-
-muted true writes zero into the third byte and logs "unmute". The wire is right and the
-sentence is backwards, so a verbose log read while chasing a microphone problem says the
-opposite of what was sent. The corpus confirms which way the byte goes:
-ctrl_enable_features calls this twice with false and the recording holds 00-01-01-59
-twice.
-
-THE SUBTYPE SWITCH SAYS SO ITSELF. The rudp arm of the read loop switches on
-message.subtype with the comment "wrong but works", and the arms fall through
-deliberately - 0x12, 0x26 and 0x36 all land in 0x02 after acking. It is upstream's own
-admission that the dispatch is not the shape the protocol has, and it is the one place
-in the file where a port cannot claim to be reproducing intent, only behaviour.
-
-Neither changes what goes on the wire. Both are the kind of thing a reader trusts and
-should not: one lies in the log, the other says out loud that it is wrong.
 
 ## Block G — Test discipline
 
