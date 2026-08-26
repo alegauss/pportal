@@ -670,7 +670,11 @@ static ChiakiErrorCode ctrl_message_send(ChiakiCtrl *ctrl, uint16_t type, const 
 
 	if(ctrl->session->rudp)
 	{
-		uint8_t buf_size = 8 + payload_size;
+		// PP341: size_t and not uint8_t. The sum was truncated into eight bits while both copies
+		// below used the real lengths, so a payload of 248 wrapped the length to zero and the
+		// header copy alone wrote eight bytes past the buffer. Reachable through
+		// chiaki_session_set_login_pin, which takes an unbounded size_t from its caller.
+		size_t buf_size = 8 + payload_size;
 		uint8_t buf[buf_size];
 		memcpy(buf, header, 8);
 		if(enc)

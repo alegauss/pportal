@@ -3,7 +3,11 @@ import { ThemeToggle } from "./ui/ThemeToggle";
 
 export function Nav() {
   return (
-    <nav>
+    // Classed, not bare: the header's chrome is styled by nav.site-nav rather than by the
+    // element, so a <nav> elsewhere on the page is a list of links and not a second sticky
+    // bar. The sibling strip on the feature pages is one, and it inherited all of this -
+    // sticky, top: 0 and z-index 50 - which parked it on top of this bar as the page moved.
+    <nav className="site-nav">
       <div className="wrap">
         <div className="nav-left">
           <a className="brand" href="/pportal/">

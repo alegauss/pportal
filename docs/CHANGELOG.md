@@ -287,6 +287,7 @@
 - ✅ **PP337** **the device id a console is told is mostly fixed bytes, and nothing managed builds one** — the device id's fixed prefix and written zeroes, the colon that pins the address family, the target, and the 360p a disabled video actually asks for.
 - ✅ **PP338** **stop, join and fini have an order nothing states, and both wrong orders fail as something else** — the phase table saying what stop, join and fini do in each phase, and the four wake-ups a stop performs, held against session.c.
 - ✅ **PP339** **a failed rudp init is logged as an error and then ignored, so the session fails later naming something else** — both failures now quit instead of polling for a stop nobody asked for, and a check finds the shape rather than the line - which is how the second one was found.
+- ✅ **PP341** **the rudp ctrl send sizes a stack buffer with a uint8_t, so a payload of 248 bytes or more overflows it** — the length is a size_t, so the sum that fills the buffer is the sum that sized it, and a check reads for the shape rather than the line.
 
 ## Block G — Test discipline
 
