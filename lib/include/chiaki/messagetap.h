@@ -111,6 +111,20 @@ CHIAKI_EXPORT void chiaki_message_tap_emit(
 /** And for the session request and its response, which are HTTP and carry no message type. */
 #define CHIAKI_MESSAGE_TAP_CHANNEL_SESSION "session"
 
+/**
+ * PP394: and for senkusha's protobuf exchange, which had no channel and so could not be recorded.
+ *
+ * PP323's four sites are all in ctrl.c and session.c, which are two of the four modules PP23 names
+ * as untested. PP391 and PP392 replayed those two; the other two had nothing to be judged by, and
+ * PP393 said why. This is the first half of the answer for one of them.
+ *
+ * THE `type` HERE IS TAKION'S DATA TYPE, not a ctrl message type. Senkusha's protobufs cross as
+ * takion data on channel 1, and what distinguishes them on the wire is the data type byte - 1 for
+ * the version and big messages, 8 for the MTU and echo commands. A recording that dropped it would
+ * hold a stream of protobufs with no way to tell which conversation each belonged to.
+ */
+#define CHIAKI_MESSAGE_TAP_CHANNEL_SENKUSHA "senkusha"
+
 #ifdef __cplusplus
 }
 #endif

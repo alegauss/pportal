@@ -17,6 +17,7 @@
 #include <pb.h>
 #include <chiaki/takion.h>
 #include <chiaki/gkcrypt.h>
+#include <chiaki/messagetap.h>
 
 
 
@@ -62,6 +63,7 @@ static ChiakiErrorCode senkusha_send_echo_command(ChiakiSenkusha *senkusha, bool
 static ChiakiErrorCode senkusha_send_mtu_command(ChiakiSenkusha *senkusha, tkproto_SenkushaMtuCommand *command);
 static ChiakiErrorCode senkusha_send_client_mtu_command(ChiakiSenkusha *senkusha, tkproto_SenkushaClientMtuCommand *command, bool wait_for_ack);
 static ChiakiErrorCode senkusha_send_data_wait_for_ack(ChiakiSenkusha *senkusha, uint8_t *buf, size_t buf_size, const char *what);
+static ChiakiErrorCode senkusha_send_data(ChiakiSenkusha *senkusha, uint8_t data_type, uint8_t *buf, size_t buf_size, ChiakiSeqNum32 *seq_num_out);
 
 CHIAKI_EXPORT ChiakiErrorCode chiaki_senkusha_init(ChiakiSenkusha *senkusha, ChiakiSession *session)
 {
@@ -670,6 +672,14 @@ static void senkusha_takion_data(ChiakiSenkusha *senkusha, ChiakiTakionMessageDa
 	if(data_type != CHIAKI_TAKION_MESSAGE_DATA_TYPE_PROTOBUF)
 		return;
 
+	// PP394: here and not one line lower, which is PP323's rule for ctrl.c:937 read across. Below
+	// this the protobuf has been decoded into msg and is a handler's arguments; above it, it is the
+	// bytes that arrived. The data type crosses with it so a recording can tell one conversation
+	// from another.
+	chiaki_message_tap_emit(
+			CHIAKI_MESSAGE_TAP_RECEIVED, CHIAKI_MESSAGE_TAP_CHANNEL_SENKUSHA,
+			(uint16_t)data_type, buf, buf_size);
+
 	tkproto_TakionMessage msg;
 	memset(&msg, 0, sizeof(msg));
 
@@ -829,7 +839,7 @@ static ChiakiErrorCode senkusha_set_version(ChiakiSenkusha *senkusha)
 		return CHIAKI_ERR_UNKNOWN;
 	}
 	buf_size = stream.bytes_written;
-	ChiakiErrorCode err = chiaki_takion_send_message_data(&senkusha->takion, 1, 1, buf, buf_size, NULL);
+	ChiakiErrorCode err = senkusha_send_data(senkusha, 1, buf, buf_size, NULL);
 	return err;
 }
 
@@ -860,7 +870,7 @@ static ChiakiErrorCode senkusha_send_big(ChiakiSenkusha *senkusha)
 	}
 
 	buf_size = stream.bytes_written;
-	ChiakiErrorCode err = chiaki_takion_send_message_data(&senkusha->takion, 1, 1, buf, buf_size, NULL);
+	ChiakiErrorCode err = senkusha_send_data(senkusha, 1, buf, buf_size, NULL);
 
 	return err;
 }
@@ -887,7 +897,7 @@ static ChiakiErrorCode senkusha_send_disconnect(ChiakiSenkusha *senkusha)
 	}
 
 	buf_size = stream.bytes_written;
-	ChiakiErrorCode err = chiaki_takion_send_message_data(&senkusha->takion, 1, 1, buf, buf_size, NULL);
+	ChiakiErrorCode err = senkusha_send_data(senkusha, 1, buf, buf_size, NULL);
 
 	return err;
 }
@@ -935,7 +945,7 @@ static ChiakiErrorCode senkusha_send_mtu_command(ChiakiSenkusha *senkusha, tkpro
 		return CHIAKI_ERR_UNKNOWN;
 	}
 
-	return chiaki_takion_send_message_data(&senkusha->takion, 1, 8, buf, stream.bytes_written, NULL);
+	return senkusha_send_data(senkusha, 8, buf, stream.bytes_written, NULL);
 }
 
 static ChiakiErrorCode senkusha_send_client_mtu_command(ChiakiSenkusha *senkusha, tkproto_SenkushaClientMtuCommand *command, bool wait_for_ack)
@@ -959,7 +969,7 @@ static ChiakiErrorCode senkusha_send_client_mtu_command(ChiakiSenkusha *senkusha
 	}
 
 	if(!wait_for_ack)
-		return chiaki_takion_send_message_data(&senkusha->takion, 1, 8, buf, stream.bytes_written, NULL);
+		return senkusha_send_data(senkusha, 8, buf, stream.bytes_written, NULL);
 
 	return senkusha_send_data_wait_for_ack(senkusha, buf, stream.bytes_written, "client mtu command");
 }
@@ -967,12 +977,32 @@ static ChiakiErrorCode senkusha_send_client_mtu_command(ChiakiSenkusha *senkusha
 // PP377: `what` names the message being sent, because this helper has two callers and every
 // failure log here named the first one. A client MTU command that went unacked reported itself as
 // an echo command, which is the one line a reader has to go on and it pointed at the wrong send.
+// PP394: the chokepoint senkusha did not have, so its protobufs can be recorded.
+//
+// PP323 put the tap where a message is plaintext AND still one thing rather than a handler's
+// arguments. ctrl.c had that window in one place - ctrl_message_send - and senkusha had it in six,
+// which is why PP393 said the site was not obvious. So the window is MADE: every protobuf send now
+// goes through here, and the tap is the one line above the transport call.
+//
+// The data type crosses with it. Senkusha's protobufs are takion data on channel 1 and what tells
+// them apart is that byte - 1 for the version and big messages, 8 for the MTU and echo commands -
+// so a recording without it holds a stream of protobufs and no way to say which is which.
+//
+// This is also where PP379's rule now has one place to look rather than six.
+static ChiakiErrorCode senkusha_send_data(ChiakiSenkusha *senkusha, uint8_t data_type, uint8_t *buf, size_t buf_size, ChiakiSeqNum32 *seq_num_out)
+{
+	chiaki_message_tap_emit(
+			CHIAKI_MESSAGE_TAP_SENT, CHIAKI_MESSAGE_TAP_CHANNEL_SENKUSHA, data_type, buf, buf_size);
+
+	return chiaki_takion_send_message_data(&senkusha->takion, 1, data_type, buf, buf_size, seq_num_out);
+}
+
 static ChiakiErrorCode senkusha_send_data_wait_for_ack(ChiakiSenkusha *senkusha, uint8_t *buf, size_t buf_size, const char *what)
 {
 	senkusha->state = STATE_EXPECT_DATA_ACK;
 	senkusha->state_finished = false;
 	senkusha->state_failed = false;
-	ChiakiErrorCode err = chiaki_takion_send_message_data(&senkusha->takion, 1, 8, buf, buf_size, &senkusha->data_ack_seq_num_expected);
+	ChiakiErrorCode err = senkusha_send_data(senkusha, 8, buf, buf_size, &senkusha->data_ack_seq_num_expected);
 	if(err != CHIAKI_ERR_SUCCESS)
 	{
 		CHIAKI_LOGE(senkusha->log, "Senkusha failed to send %s", what);

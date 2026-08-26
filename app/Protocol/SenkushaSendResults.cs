@@ -48,6 +48,10 @@ public static class SenkushaSendResults
         "senkusha_send_mtu_command",
         "senkusha_send_client_mtu_command",
         "senkusha_send_data_wait_for_ack",
+        // PP394: the chokepoint every protobuf send now goes through, so the tap has one place to
+        // sit. Added here because PP379's check against the file found it the moment it existed -
+        // which is the whole reason that check reads the file rather than trusting this list.
+        "senkusha_send_data",
         "senkusha_run_rtt_test",
         "senkusha_run_mtu_in_test",
         "senkusha_run_mtu_out_test",

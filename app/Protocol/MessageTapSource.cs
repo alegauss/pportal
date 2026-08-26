@@ -34,6 +34,75 @@ public static class MessageTapSource
     /// <summary>The tap itself, which is where the sites' contract is written down.</summary>
     public const string TapHeader = @"lib\include\chiaki\messagetap.h";
 
+    /// <summary>
+    /// PP394: senkusha's two, which PP393 said had to be found rather than chosen.
+    ///
+    /// PP323's four sites cover ctrl.c and session.c, and those are two of the four modules PP23
+    /// names as untested - the two PP391 and PP392 replayed. streamconnection.c and senkusha.c had
+    /// no channel at all, so no recording could hold them.
+    /// </summary>
+    public const string SenkushaSource = @"lib\src\senkusha.c";
+
+    /// <summary>
+    /// Whether senkusha's protobuf sends still go through one place.
+    ///
+    /// THE CHOKEPOINT IS MADE, NOT FOUND, and that is the difference from the other four. ctrl.c had
+    /// its window in ctrl_message_send; senkusha spread the same window over six call sites, which
+    /// is why PP393 said the site was not obvious. senkusha_send_data is that window introduced, and
+    /// this asserts every send is behind it - a seventh added straight onto takion would be a
+    /// message no recording holds.
+    /// </summary>
+    public static bool TheSenkushaSendsStillGoThroughOnePlace(string senkusha)
+    {
+        ArgumentNullException.ThrowIfNull(senkusha);
+
+        // The helper taps and then forwards, in that order: after the transport call the buffer is
+        // the transport's business and the send may already have failed.
+        string? body = CFunction.Body(senkusha, "ChiakiErrorCode senkusha_send_data(");
+        if (body is null)
+            return false;
+
+        int tapped = body.IndexOf("CHIAKI_MESSAGE_TAP_CHANNEL_SENKUSHA", StringComparison.Ordinal);
+        int sent = body.IndexOf("chiaki_takion_send_message_data(", tapped < 0 ? 0 : tapped, StringComparison.Ordinal);
+        if (tapped < 0 || sent < tapped)
+            return false;
+
+        // And nothing else in the file reaches the transport directly.
+        return CCall.Count(senkusha, "chiaki_takion_send_message_data(&senkusha->takion, 1, data_type, buf, buf_size, seq_num_out)") == 1
+            && OtherTransportSendsIn(senkusha) == 0;
+    }
+
+    /// <summary>
+    /// How many protobuf sends bypass the chokepoint, which is the number that must stay zero.
+    /// </summary>
+    public static int OtherTransportSendsIn(string senkusha)
+    {
+        ArgumentNullException.ThrowIfNull(senkusha);
+
+        // Every call to the transport, less the one inside the helper.
+        return CCall.Count(senkusha, "chiaki_takion_send_message_data(") - 1;
+    }
+
+    /// <summary>
+    /// Whether the received protobuf is still tapped before it becomes a handler's arguments.
+    ///
+    /// PP323's rule for ctrl.c:937, read across: above the decode it is the bytes that arrived, and
+    /// below it the message is a struct nobody can replay.
+    /// </summary>
+    public static bool TheSenkushaReceiveIsStillTappedBeforeTheDecode(string senkusha)
+    {
+        ArgumentNullException.ThrowIfNull(senkusha);
+
+        string? body = CFunction.Body(senkusha, "void senkusha_takion_data(");
+        if (body is null)
+            return false;
+
+        int tapped = body.IndexOf("CHIAKI_MESSAGE_TAP_RECEIVED", StringComparison.Ordinal);
+        int decoded = body.IndexOf("pb_decode(", tapped < 0 ? 0 : tapped, StringComparison.Ordinal);
+
+        return tapped >= 0 && decoded > tapped;
+    }
+
     /// <summary>One of the three, or null outside a checkout.</summary>
     public static string? Locate(string relative) => SanitizerSource.LocateRelative(relative);
 

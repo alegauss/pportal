@@ -61,6 +61,15 @@ public sealed unsafe class ChiakiMessageTap : IDisposable
     /// <summary>And the session request and its answer, which carry no message type.</summary>
     public const string SessionChannel = "session";
 
+    /// <summary>
+    /// PP394: senkusha's protobuf exchange, spelled as CHIAKI_MESSAGE_TAP_CHANNEL_SENKUSHA spells it.
+    ///
+    /// The third channel, and the first added since PP323 chose four sites. Its `type` is takion's
+    /// data type rather than a ctrl message type - 1 for the version and big messages, 8 for the MTU
+    /// and echo commands - which is what tells one conversation from another in a recording.
+    /// </summary>
+    public const string SenkushaChannel = "senkusha";
+
     /// <summary>The one that is installed, or null. See the note on being global.</summary>
     private static ChiakiMessageTap? installed;
 

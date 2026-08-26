@@ -334,6 +334,7 @@
 - 🗑 **PP389** **seven logs in holepunch.c carry another function's name, and two are verbatim duplicates of the real one's** — superseded by PP390: every one of the seven was already decided - PP235 reproduces two on purpose and PP238 ruled five defensible - so what is owed is the marker PP390 carries, not the fix.
 - ✅ **PP391** **the replay harness has only ever been fed recordings the tests wrote, so no managed module answers the real capture** — PP342's table answers PP297's capture end to end, and the harness learns which conversation a participant owns.
 - ✅ **PP392** **the session request and its answer are asserted as two halves, and nothing says the request comes first** — the client-opened channel replays as a conversation, and a participant can say what it opens with.
+- ✅ **PP394** **senkusha has no tap channel, so PP393's first half is unbuilt for one of the two modules PP23 owes** — senkusha gets a channel: six protobuf sends behind one chokepoint that taps, and the receive tapped above the decode.
 
 ## Block G — Test discipline
 
