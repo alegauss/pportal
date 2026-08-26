@@ -1113,7 +1113,18 @@ static void ctrl_message_received_keyboard_open(ChiakiCtrl *ctrl, uint8_t *paylo
 
 	CtrlKeyboardOpenMessage *msg = (CtrlKeyboardOpenMessage *)payload;
 	msg->text_length = ntohl(msg->text_length);
-	assert(payload_size == sizeof(CtrlKeyboardOpenMessage) + msg->text_length);
+
+	// PP357: a check and not an assert. This project builds Release with -DNDEBUG, so the assert
+	// that stood here was nothing in the shipped binary - and the guard above covers the header
+	// only. A message announcing more text than it carried was malloc'd at that length and memcpy'd
+	// out of a 512-byte buffer, into a string handed to a screen as what the user is editing.
+	if(payload_size != sizeof(CtrlKeyboardOpenMessage) + msg->text_length)
+	{
+		CHIAKI_LOGE(ctrl->session->log,
+				"Ctrl received keyboard open claiming %u bytes of text in a payload of %zu",
+				(unsigned int)msg->text_length, payload_size);
+		return;
+	}
 
 	uint8_t *buffer = msg->text_length > 0 ? malloc((size_t)msg->text_length + 1) : NULL;
 	if(buffer)
@@ -1152,7 +1163,15 @@ static void ctrl_message_received_keyboard_text_change(ChiakiCtrl *ctrl, uint8_t
 
 	CtrlKeyboardTextResponseMessage *msg = (CtrlKeyboardTextResponseMessage *)payload;
 	msg->text_length1 = ntohl(msg->text_length1);
-	assert(payload_size == sizeof(CtrlKeyboardTextResponseMessage) + msg->text_length1);
+
+	// PP357: the same swap as keyboard open above, for the same reason.
+	if(payload_size != sizeof(CtrlKeyboardTextResponseMessage) + msg->text_length1)
+	{
+		CHIAKI_LOGE(ctrl->session->log,
+				"Ctrl received keyboard text change claiming %u bytes of text in a payload of %zu",
+				(unsigned int)msg->text_length1, payload_size);
+		return;
+	}
 
 	uint8_t *buffer = msg->text_length1 > 0 ? malloc((size_t)msg->text_length1 + 1) : NULL;
 	if(buffer)

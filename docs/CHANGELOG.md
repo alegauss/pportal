@@ -299,6 +299,7 @@
 - ✅ **PP351** **accept and reject are the same ctrl message told apart by one unnamed byte, and nothing managed builds either** — the 36-byte header with its length in two fields, the pre-incremented counter, and accept and reject named rather than spelled four bytes at a time.
 - ✅ **PP353** **two display flags decide whether the stream is shown, and the one value the capture holds is the clearing one** — the table over both flags: A raises silently, B stops the stream once, clearing is silent, and only a DisplayA zero ever says it is back.
 - ✅ **PP356** **the ctrl connect spends the crypt counter three to six times, so the first message is not encrypted at zero** — the counter accounting per target and transport, the little-endian streaming type, and the conditional headers appended last.
+- ✅ **PP357** **the two keyboard handlers bound their copy with an assert, and the shipped build defines NDEBUG** — both handlers check the announced length against what arrived, and a shape check refuses any assert left as the only bound on a copy.
 
 ## Block G — Test discipline
 

@@ -159,7 +159,7 @@ because every part of it was green.
 ### §PP23 The oracle this block cannot be written without
 
 chiaki exists because the PlayStation remote play protocol was reverse engineered. There
-is no document to implement against: the 24639 lines of C in lib/src are the
+is no document to implement against: the 24658 lines of C in lib/src are the
 specification, and a managed rewrite that reads them and reproduces them is a
 translation whose only correctness test is behavioural.
 
@@ -198,7 +198,7 @@ bytes.
 
 ### §PP28 The state machines
 
-session.c is 1219 lines, ctrl.c 1534 and streamconnection.c 1326. Together they are the
+session.c is 1219 lines, ctrl.c 1553 and streamconnection.c 1326. Together they are the
 connection: what is sent in which order, what is waited for, what a timeout means at
 each point, and how a session comes apart when the console stops answering.
 
@@ -346,7 +346,7 @@ Repair any upstream and the port's copy becomes the divergence, on the next run.
 
 ### §PP294 The control channel, on its own
 
-The second of PP28's three. ctrl.c is the longest at 1534 lines and carries the most
+The second of PP28's three. ctrl.c is the longest at 1553 lines and carries the most
 message types - the control connection a session opens alongside the stream, over which
 the console reports state changes, accepts requests and answers keepalives.
 
@@ -540,37 +540,6 @@ The asymmetry is the interesting part. fini DOES free login_pin, the other thing
 outside caller allocates into ctrl and hands over. So ownership at teardown was thought
 about and one of the two was missed - which is why this is a line rather than a note.
 The fix is a loop in fini calling the free that already exists.
-
-### §PP357 A bound that is not in the binary
-
-Both keyboard receive handlers check that the header arrived and then trust an assert
-for everything after it:
-
-    if(payload_size < sizeof(CtrlKeyboardOpenMessage))
-        return;
-    msg->text_length = ntohl(msg->text_length);
-    assert(payload_size == sizeof(CtrlKeyboardOpenMessage) + msg->text_length);
-    buffer = malloc((size_t)msg->text_length + 1);
-    memcpy(buffer, payload + sizeof(CtrlKeyboardOpenMessage), msg->text_length);
-
-The guard covers 32 bytes of header. The relationship between what arrived and what the
-header CLAIMS arrived is covered by the assert, and this project builds Release with
--DNDEBUG - so in the binary it ships, that line is nothing. The keyboard text-change
-handler is the same shape against its own 44-byte header.
-
-A message announcing a text length larger than it carried therefore mallocs that length
-and memcpys it out of a 512-byte buffer. A modest lie - a thousand bytes claimed, forty
-arrived - reads half a kilobyte past the end and hands it to a screen as the text the
-user is editing. A large one asks for four gigabytes, and where the allocation succeeds
-reads that far.
-
-The length is not authenticated in any useful sense: it is inside the encrypted payload,
-so it is whatever decrypted, and a decrypt that produced garbage produces a garbage
-length rather than an error.
-
-The fix is the check the assert was standing in for, which every other handler in the
-file writes out. Whether asserts should be relied on anywhere in a library built with
-NDEBUG is the larger question this is one instance of.
 
 ### §PP358 The parser PP296 did not reach
 
