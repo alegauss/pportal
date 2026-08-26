@@ -159,7 +159,7 @@ because every part of it was green.
 ### §PP23 The oracle this block cannot be written without
 
 chiaki exists because the PlayStation remote play protocol was reverse engineered. There
-is no document to implement against: the 24658 lines of C in lib/src are the
+is no document to implement against: the 24662 lines of C in lib/src are the
 specification, and a managed rewrite that reads them and reproduces them is a
 translation whose only correctness test is behavioural.
 
@@ -198,7 +198,7 @@ bytes.
 
 ### §PP28 The state machines
 
-session.c is 1219 lines, ctrl.c 1553 and streamconnection.c 1326. Together they are the
+session.c is 1219 lines, ctrl.c 1557 and streamconnection.c 1326. Together they are the
 connection: what is sent in which order, what is waited for, what a timeout means at
 each point, and how a session comes apart when the console stops answering.
 
@@ -346,7 +346,7 @@ Repair any upstream and the port's copy becomes the divergence, on the next run.
 
 ### §PP294 The control channel, on its own
 
-The second of PP28's three. ctrl.c is the longest at 1553 lines and carries the most
+The second of PP28's three. ctrl.c is the longest at 1557 lines and carries the most
 message types - the control connection a session opens alongside the stream, over which
 the console reports state changes, accepts requests and answers keepalives.
 
@@ -540,30 +540,6 @@ The asymmetry is the interesting part. fini DOES free login_pin, the other thing
 outside caller allocates into ctrl and hands over. So ownership at teardown was thought
 about and one of the two was missed - which is why this is a line rather than a note.
 The fix is a loop in fini calling the free that already exists.
-
-### §PP358 The parser PP296 did not reach
-
-This tree has two HTTP response parsers for two handshakes. PP296 changed one of them
-and left the other, and the argument PP296 made applies to both word for word.
-
-parse_session_response matches RP-Nonce, RP-Version and RP-Application-Reason with
-strcasecmp, because an HTTP field name is case-insensitive and a console spelling one
-otherwise was the defect PP296 was filed for. parse_ctrl_response, thirty lines further
-down the same kind of function, matches RP-Server-Type and RP-Prohibit with strcmp.
-
-So a console answering the ctrl request with "rp-server-type" is a console whose server
-type this port does not read. What follows from that is not an error: server_type_valid
-stays false, the branch logs "No valid Server Type in ctrl response", and the connect
-carries on - without the two downgrades that branch performs. A regular PS4 asked for
-1080p would be asked for 1080p, and a PS4 asked for H265 would be asked for H265, both
-of which it does not support.
-
-The failure is therefore a stream that does not start, or starts wrong, on a console
-that answered correctly in a spelling nobody thought to allow. And it is invisible from
-this side: the log line says the header was not valid, which reads as the console not
-having sent one.
-
-Two parsers, one rule, one of them fixed. The other is this.
 
 ### §PP359 A third writer to a two-flag machine
 

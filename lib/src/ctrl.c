@@ -1212,7 +1212,11 @@ static void parse_ctrl_response(CtrlResponse *response, ChiakiHttpResponse *http
 	response->rp_prohibit = false;
 	for(ChiakiHttpHeader *header=http_response->headers; header; header=header->next)
 	{
-		if(strcmp(header->key, "RP-Server-Type") == 0)
+		// PP358: both case-insensitively, which is what an HTTP field name is - the same change
+		// PP296 made to parse_session_response and did not reach here. A console spelling
+		// RP-Server-Type otherwise lost both downgrades below, so a regular PS4 was asked for 1080p
+		// and for H265, and the log said the header was not valid.
+		if(strcasecmp(header->key, "RP-Server-Type") == 0)
 		{
 			size_t server_type_size = sizeof(response->rp_server_type);
 			ChiakiErrorCode err = chiaki_base64_decode(header->value, strlen(header->value) + 1, response->rp_server_type, &server_type_size);
@@ -1223,7 +1227,7 @@ static void parse_ctrl_response(CtrlResponse *response, ChiakiHttpResponse *http
 			}
 			response->server_type_valid = server_type_size == sizeof(response->rp_server_type);
 		}
-		else if(strcmp(header->key, "RP-Prohibit") == 0)
+		else if(strcasecmp(header->key, "RP-Prohibit") == 0)
 			response->rp_prohibit = atoi(header->value) == 1;
 	}
 }
