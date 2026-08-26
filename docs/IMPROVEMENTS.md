@@ -464,6 +464,31 @@ one file, and the work is at the other end.
 
 ## Block G — Test discipline
 
+### §PP343 A general reader behind a subsystem's name
+
+Reading a C function's body is the commonest thing the drift checks do, and it has one
+trap: every static handler is forward-declared at the top of its file, so a search for
+the name finds a prototype ending in a semicolon. A body taken from there runs to the
+next closing brace in the file, and the comparison that follows is between two positions
+in a function neither call is in.
+
+MessageTapSource documents that trap at length, because it checked out green while doing
+exactly it. ReorderQueueSource.BodyOf avoids it by requiring a brace after the parameter
+list. Those are two readers of the same thing, in two files, and PP342 walked into the
+trap a third time before calling the second one.
+
+So the reader exists, it is correct, and it is public. What is wrong is only where it
+lives: a helper about C source is addressed through a class about the reorder queue, and
+the name is what tells the next author it is not for them. PP342 calls it and says so in
+a comment, which is a comment that should not need to exist.
+
+The move is small and its value is not the tidiness. A reader that looks general gets
+reused; one named after a subsystem gets copied, and the copy is the version that walks
+into the trap - which has now happened twice and been caught twice by a failing test
+rather than by review.
+
+Nothing about the reader itself changes.
+
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed

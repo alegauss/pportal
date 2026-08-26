@@ -40,6 +40,8 @@
 
 ## Block G — Test discipline
 
+- 📋 **PP343** (deps: —) **the only reader that finds a C function body rather than its prototype is named after the reorder queue** — three files need it and two grew their own; MessageTapSource documents the trap it avoids, and CtrlReactions now calls it through a name about neither. → §PP343
+
 ## Block H — Performance and telemetry
 
 - ⏳ **PP46** (deps: PP42 ✅, PP63) **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — A Chromium leaving the build should be visible in cold start and in megabytes, and stating it without measuring is how a port collects folklore. → §PP46
