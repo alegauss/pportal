@@ -2364,8 +2364,17 @@ static void* websocket_thread_func(void *user) {
                 }
                 session_message_free(msg);
             }
+            // PP404: this was assert(mutex_err == CHIAKI_ERR_SUCCESS), and Release defines NDEBUG -
+            // so in the shipped binary a lock that failed went on to enqueue under a lock it did
+            // not hold, signal, and unlock a mutex it never took. Leaving by the path the rest of
+            // this loop uses leaks one notification at thread exit, which is what the !notif branch
+            // above already does, and is the cheaper of the two.
             ChiakiErrorCode mutex_err = chiaki_mutex_lock(&session->notif_mutex);
-            assert(mutex_err == CHIAKI_ERR_SUCCESS);
+            if (mutex_err != CHIAKI_ERR_SUCCESS)
+            {
+                CHIAKI_LOGE(session->log, "websocket_thread_func: Locking notification mutex failed with error %s", chiaki_error_string(mutex_err));
+                goto cleanup_json;
+            }
             enqueueNq(session->ws_notification_queue, notif);
             chiaki_cond_signal(&session->notif_cond);
             chiaki_mutex_unlock(&session->notif_mutex);

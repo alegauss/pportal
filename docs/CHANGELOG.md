@@ -344,6 +344,7 @@
 - ✅ **PP401** **a short duid leaves the rest of a stack local untouched, so a device identifier carries stack contents to PSN** — the decoder fills its destination before parsing, so a short duid yields zeros rather than stack contents.
 - 🗑 **PP402** **the hex decoder truncates a long duid and pads a short one, where the managed side refuses both** — abandoned: already decided: DeviceList.cs reproduces one bad device losing the whole list, because a port that skipped it would show a console list the Qt client never shows.
 - ✅ **PP403** **three strncpy copies in holepunch.c are bounded by sizeof(dest), so a full-length name or address leaves no terminator** — the three copies go through copy_bounded, which truncates as before and terminates, and a rule over holepunch.c refuses any copy bounded by the size of what it writes into.
+- ✅ **PP404** **54 asserts in lib/src inspect an error code, and PP357 established that the shipped build compiles every assert out** — a census counts every error code inspected by nothing but an assert, ratcheted so it may fall and not rise, and the websocket thread checks its notification lock.
 
 ## Block G — Test discipline
 

@@ -159,7 +159,7 @@ because every part of it was green.
 ### §PP23 The oracle this block cannot be written without
 
 chiaki exists because the PlayStation remote play protocol was reverse engineered. There
-is no document to implement against: the 25257 lines of C in lib/src are the
+is no document to implement against: the 25266 lines of C in lib/src are the
 specification, and a managed rewrite that reads them and reproduces them is a
 translation whose only correctness test is behavioural.
 
@@ -291,7 +291,7 @@ host would use regardless of this block.
 
 ### §PP33 Two dependencies that simply leave
 
-holepunch.c is 5886 lines and is the only translation unit in this tree that still needs
+holepunch.c is 5895 lines and is the only translation unit in this tree that still needs
 either library: 234 curl_easy calls, 4 curl_ws, and the json_object and json_tokener
 sites beside them. http.c is not among them. It is 262 lines over rudp and winsock and
 carries no curl symbol at all, which is not what the first version of this section said
@@ -495,30 +495,6 @@ and the stream connection walks its three states, and keep the file.
 
 Nothing in a test can do it, which is why this line carries a requirement rather than a
 dep.
-
-### §PP404 Fifty-four invariants that are not in the binary
-
-PP357 settled the argument: this project configures Release with -DNDEBUG, read out of
-the build cache rather than assumed, so every assert in lib/src is absent from the
-binary that ships. What it did not settle is how many invariants stand on one. Its check
-reads ctrl.c, and looks for the one shape those two keyboard handlers had - an assert
-between a size and a memcpy.
-
-There are 54 asserts on an error code across eleven files: holepunch.c 13, senkusha.c
-11, streamconnection.c 8, ctrl.c 7, session.c 6, and the rest in ones and twos. Two are
-recorded. SessionCreate names the one beside the notification wait, where a wait that
-failed re-tests its condition and waits again. Nothing counts or looks at the other 52.
-
-The compiler already points at two. holepunch.c declares an error code, assigns it seven
-times and inspects it only through asserts, so the release build has a variable set and
-never read; the same warning fires on a mutex lock. That one is load-bearing: if
-chiaki_mutex_lock fails, the release build goes on to enqueue a notification under a
-lock it does not hold, signal a condition variable, and unlock a mutex it never took.
-
-What is wanted is the census PP357 did not take - every assert whose subject is an error
-code, counted so the number cannot rise, with the sites already examined named so the
-unexamined ones are visible. And the mutex lock, which is a defect rather than a
-candidate, checked.
 
 ## Block G — Test discipline
 
