@@ -12,27 +12,38 @@ type AdFormat = "in-content" | "footer" | "sidebar" | "strip";
  * the loader reserves, so nothing on the page moves when it arrives - and when the catalogue
  * cannot be read the loader collapses the slot itself, leaving no gap.
  */
-export function Ad({ format = "in-content", slot }: { readonly format?: AdFormat; readonly slot: string }) {
+/**
+ * `band` is which of the two containers the caller is standing in. A slot between top-level
+ * sections needs the page's own `.wrap` around it to line up with them; a slot already inside
+ * a column has one, and adding a second would indent the banner by that container's padding
+ * and leave it narrower than the text it sits between.
+ */
+export function Ad({
+  format = "in-content",
+  slot,
+  band = true,
+}: {
+  readonly format?: AdFormat;
+  readonly slot: string;
+  readonly band?: boolean;
+}) {
   useAds();
 
-  return (
-    // Dropped from the Markdown twin for the reason the call to action is: an agent sent to
-    // evaluate PPortal is not the reader this is for, and someone else's product is forty
-    // words it would pay for on every page.
-    <div className="ad-band" data-twin="omit">
-      <div className="wrap">
-        <div
+  const unit = (
+    <div
           className="ad"
           data-japode-ads=""
           data-ad-format={format}
           data-ad-slot={slot}
           // The loader never touches localStorage, so the recency memory it would otherwise
-          // keep is not a thing this site has to declare.
+          // keep is not a thing this site has to declare. The network's own default is "on",
+          // which rotates the last four campaigns for half an hour; this trades that for
+          // having nothing to say about storage at all.
           data-ad-memory="off"
-          // The catalogue cannot exclude us on its own - PPortal's own campaign points at the
-          // GitHub repository rather than at this domain, so the loader's host check never
-          // recognises the page it is standing on.
-          data-ad-exclude="pportal"
+          // No data-ad-exclude. Self-exclusion is the host page's job in this network - a
+          // campaign carries no host of its own, so a product keeps itself off its own site
+          // by naming its id here. PPortal has no campaign in the catalogue to name, so there
+          // is nothing to exclude, and an id that matches nothing would read as if there were.
         />
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { Nav } from "../components/Nav";
 import { Footer } from "../components/Footer";
+import { Ad } from "../components/ui/Ad";
 import { Rich } from "../components/ui/Rich";
 import { RawSvg } from "../components/ui/RawSvg";
 import { features, type FeatureRecord } from "../lib/features";
@@ -35,7 +36,12 @@ function Siblings({ slug }: { slug: string }) {
   );
 }
 
-export function FeaturePage({ record }: { record: FeatureRecord }) {
+export function FeaturePage({ record }: { readonly record: FeatureRecord }) {
+  // The seam the ad takes: before the section that starts the back half. A page here runs
+  // three or four sections, so this is the boundary a reader crosses about midway, and it is
+  // always a boundary BETWEEN sections rather than a gap inside one.
+  const adBefore = Math.ceil(record.sections.length / 2);
+
   return (
     <>
       <Nav />
@@ -57,8 +63,9 @@ export function FeaturePage({ record }: { record: FeatureRecord }) {
           <Siblings slug={record.slug} />
           {record.figure && <Figure kind={record.figure} />}
           <div className="feature-body">
-            {record.sections.map((s) => (
+            {record.sections.map((s, at) => (
               <div className="feature-section reveal" key={s.heading}>
+                {at === adBefore && <Ad slot={`feature-${record.slug}`} />}
                 <h2>{s.heading}</h2>
                 {s.body && (
                   <p>

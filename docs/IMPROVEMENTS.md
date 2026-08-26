@@ -438,6 +438,30 @@ a type the C silently drops is one the rewrite will silently drop differently - 
 replay agrees, both are wrong, and the disagreement surfaces as a stream behaving oddly
 much later. A named unknown is something a replay can assert about.
 
+### §PP340 What has to be true before the file can go
+
+PP33's end state is that chiaki-lib stops compiling holepunch.c and the two link lines
+go. Its own criteria say so. What it does not say is what has to be true first, and
+reading the callers is how that became visible: session.c drives the whole PSN path from
+C, across nine call sites.
+
+They are not incidental. The ctrl socket and the data socket, the offer, the hole punch,
+the registration info, the selected address, the ctrl port, and the fini - each is a
+step of the connect sequence for a session played over the internet rather than the
+local network. Delete the file today and the build breaks; make the build pass by
+deleting the callers too, and remote play over PSN goes with them.
+
+That is why this is a line of its own rather than a bullet under PP33. The deletion is a
+consequence; the work is the managed side owning the flow - a seam the session thread
+asks for a socket and an address through, with the C behind it until managed code is.
+PP266 already performs the five session HTTP calls over HttpClient, so the pattern
+exists; what has no counterpart is the websocket, the STUN exchange and the punch
+itself.
+
+Until then PP33 is correctly blocked and its remaining query correctly reads 420.
+Reading that number as the size of the job is what its own section warns against: it is
+one file, and the work is at the other end.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry
