@@ -60,27 +60,102 @@ public static class CtrlSendResults
         => StreamSendResults.DiscardedCalls(source, SendsThatAnswer);
 
     /// <summary>
-    /// How many discards ctrl.c still holds outside the burst, as a CEILING that may fall.
+    /// How many discards ctrl.c still holds, which is none.
     ///
-    /// PP383 fixed the seven sends in ctrl_enable_features. Stating the rule over the file - which
-    /// is what PP370 and PP379 do for theirs - then found seven more, and each of them is a
-    /// different decision rather than the same one repeated:
-    ///
-    ///   ctrl.c:519   the drain's send. A queued message that fails is lost, and PP349's loop has
-    ///                no notion of putting one back.
-    ///   ctrl.c:533   the login PIN send itself. PP345 made the HANDOVER report; this is the wire.
-    ///   ctrl.c:1029  the keyboard accept or reject.
-    ///   ×4           ctrl_message_set_fallback_session_id, whose answer nobody reads on any of the
-    ///                four rungs of the session-id ladder.
-    ///
-    /// So the rule ships as a ratchet rather than narrowed to the function that was fixed. Narrowing
-    /// it would have been the third hollow green in this block: a check that passes because it was
-    /// pointed away from what it found. This way an EIGHTH discard turns the suite red today, and
-    /// PP385 drives the number to zero.
-    ///
-    /// The count may fall and may not rise. If it falls, lower it in the same commit.
+    /// PP383 fixed the burst and shipped this as a ceiling of seven, because stating the rule over
+    /// the file found seven more and each was a different decision. PP385 answered all seven, so
+    /// the ratchet is at zero and ctrl.c joins streamconnection.c and senkusha.c in asserting it
+    /// flatly. Lowered in the commit that earned it, which is the rule the assertion ratchet states
+    /// for shipped tasks and the same one applies here.
     /// </summary>
-    public const int DiscardCeiling = 7;
+    public const int DiscardCeiling = 0;
+
+    /// <summary>
+    /// PP385: whether the drain still LEAVES on a failed send rather than draining on.
+    ///
+    /// The node is unlinked and freed either way, so there is nothing to retry - and the counter
+    /// has moved, so every message still queued would spend another value into the same gap. The
+    /// break is what separates this from a log.
+    /// </summary>
+    public static bool TheDrainLeavesOnAFailedSend(string source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        int drain = source.IndexOf("while(ctrl->msg_queue)", StringComparison.Ordinal);
+        if (drain < 0)
+            return false;
+
+        int read = source.IndexOf("drain_err = ctrl_message_send(", drain, StringComparison.Ordinal);
+        int tested = source.IndexOf("if(drain_err != CHIAKI_ERR_SUCCESS)", read < 0 ? drain : read, StringComparison.Ordinal);
+        int failed = source.IndexOf("ctrl_failed(ctrl,", tested < 0 ? drain : tested, StringComparison.Ordinal);
+        int left = source.IndexOf("break;", failed < 0 ? drain : failed, StringComparison.Ordinal);
+
+        return read > drain && tested > read && failed > tested && left > failed;
+    }
+
+    /// <summary>
+    /// Whether the queued message's type is copied before the node is freed.
+    ///
+    /// The log wants it and ctrl_message_queue_free ends the node it lives in, so reading it after
+    /// is a use-after-free - which is what the first version of this fix did.
+    /// </summary>
+    public static bool TheDrainCopiesTheTypeBeforeTheFree(string source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        int copied = source.IndexOf("uint16_t drain_type = msg->type;", StringComparison.Ordinal);
+        if (copied < 0)
+            return false;
+
+        int freed = source.IndexOf("ctrl_message_queue_free(msg);", copied, StringComparison.Ordinal);
+        int logged = source.IndexOf("(unsigned int)drain_type", freed < 0 ? copied : freed, StringComparison.Ordinal);
+
+        return freed > copied && logged > freed;
+    }
+
+    /// <summary>
+    /// Whether the fallback session id is reported without ending anything.
+    ///
+    /// It sends nothing, so no counter moves - the failure is that the session has no id, and the
+    /// session thread's own check already ends on that. A log is the whole of what was owed, and a
+    /// ctrl_failed here would be this port ending sessions the C carries on with.
+    /// </summary>
+    public static bool TheFallbackIsReportedAndNotFatal(string source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        int guard = source.IndexOf("#define CTRL_FALLBACK_SESSION_ID(", StringComparison.Ordinal);
+        if (guard < 0)
+            return false;
+
+        int end = source.IndexOf("} while(0)", guard, StringComparison.Ordinal);
+        if (end < 0)
+            return false;
+
+        string macro = source[guard..end];
+
+        return macro.Contains("fallback_err != CHIAKI_ERR_SUCCESS", StringComparison.Ordinal)
+            && macro.Contains("CHIAKI_LOGE", StringComparison.Ordinal)
+            && !macro.Contains("ctrl_failed(", StringComparison.Ordinal);
+    }
+
+    /// <summary>How many of the session-id ladder's rungs go through that guard. Four.</summary>
+    public static int FallbackCallsThroughTheGuard(string source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        var count = 0;
+        const string Call = "CTRL_FALLBACK_SESSION_ID(ctrl);";
+
+        for (int at = source.IndexOf(Call, StringComparison.Ordinal);
+             at >= 0;
+             at = source.IndexOf(Call, at + Call.Length, StringComparison.Ordinal))
+        {
+            count++;
+        }
+
+        return count;
+    }
 
     /// <summary>
     /// The seven messages the burst sends, in the order PP342 established.

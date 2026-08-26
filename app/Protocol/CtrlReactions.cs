@@ -287,10 +287,16 @@ public static class CtrlReactionsSource
     {
         ArgumentNullException.ThrowIfNull(body);
 
+        // PP385: counted through the guard the four rungs now go through, not through the bare
+        // call. This asked for ctrl_message_set_fallback_session_id(ctrl) by name and went red when
+        // the four were wrapped in the macro that reads their result - the third reader in this
+        // file keyed on how a call is spelled rather than on whether it happens.
         var fallbacks = 0;
-        for (int at = body.IndexOf("ctrl_message_set_fallback_session_id(ctrl)", StringComparison.Ordinal);
+        const string Call = "CTRL_FALLBACK_SESSION_ID(ctrl)";
+
+        for (int at = body.IndexOf(Call, StringComparison.Ordinal);
              at >= 0;
-             at = body.IndexOf("ctrl_message_set_fallback_session_id(ctrl)", at + 1, StringComparison.Ordinal))
+             at = body.IndexOf(Call, at + Call.Length, StringComparison.Ordinal))
         {
             fallbacks++;
         }

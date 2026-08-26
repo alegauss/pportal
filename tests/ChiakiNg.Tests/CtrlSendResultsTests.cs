@@ -88,17 +88,14 @@ public class CtrlSendResultsTests(ITestOutputHelper output)
     }
 
     /// <summary>
-    /// THE RULE, over the whole file rather than the function that was wrong - as a RATCHET.
+    /// THE RULE, over the whole file - and PP385 brought the ratchet to zero.
     ///
-    /// PP370 for streamconnection.c and PP379 for senkusha.c could both assert zero. ctrl.c cannot
-    /// yet: stating the rule over the file is what found seven more discards outside the burst, and
-    /// each is a different decision rather than this one repeated. They are PP385's.
-    ///
-    /// A ceiling rather than a narrowed rule, because narrowing it to the function this task fixed
-    /// would be a check pointed away from what it found. An eighth discard is red today.
+    /// PP383 shipped this as a ceiling of seven because stating the rule over the file found seven
+    /// discards outside the burst, each a different decision. All seven are answered, so ctrl.c now
+    /// asserts what streamconnection.c and senkusha.c assert: none at all.
     /// </summary>
     [Fact]
-    public void NoNewSendInTheFileIsDiscarded()
+    public void NoSendInTheFileIsDiscarded()
     {
         if (Ctrl() is not { } core)
             return;
@@ -108,16 +105,69 @@ public class CtrlSendResultsTests(ITestOutputHelper output)
         foreach (string call in discarded)
             output.WriteLine(call);
 
+        Assert.Equal(0, CtrlSendResults.DiscardCeiling);
+
         Assert.True(
             discarded.Count <= CtrlSendResults.DiscardCeiling,
             $"{discarded.Count} discarded results, over the ceiling of "
             + $"{CtrlSendResults.DiscardCeiling}: " + string.Join(", ", discarded));
+    }
 
-        // And it may fall: a ratchet left loose has given the gain away, which is the rule
-        // AssertionRatchetTests states for shipped tasks and the same one applies here.
+    /// <summary>
+    /// PP385: the drain LEAVES on a failed send rather than draining on into the same gap.
+    ///
+    /// The node is unlinked and freed either way, so there is nothing to retry. What the break buys
+    /// is that the messages still queued do not each spend another counter value.
+    /// </summary>
+    [Fact]
+    public void TheDrainLeavesRatherThanDrainingOn()
+    {
+        if (Ctrl() is not { } core)
+            return;
+
         Assert.True(
-            discarded.Count == CtrlSendResults.DiscardCeiling,
-            $"only {discarded.Count} discards remain - lower DiscardCeiling to that in this commit");
+            CtrlSendResults.TheDrainLeavesOnAFailedSend(core),
+            "the drain no longer reads its send, fails the channel and leaves");
+    }
+
+    /// <summary>
+    /// And it copies the queued type before freeing the node that holds it.
+    ///
+    /// Asserted because the first version of this fix read msg->type in the log AFTER
+    /// ctrl_message_queue_free - a use-after-free introduced by the change that added the log.
+    /// </summary>
+    [Fact]
+    public void TheDrainDoesNotReadAFreedNode()
+    {
+        if (Ctrl() is not { } core)
+            return;
+
+        Assert.True(
+            CtrlSendResults.TheDrainCopiesTheTypeBeforeTheFree(core),
+            "the drain's log reads the queued node after it has been freed");
+    }
+
+    /// <summary>
+    /// PP385: the fallback session id is REPORTED and not fatal, which is the one of the seven
+    /// that gets a different answer.
+    ///
+    /// It sends nothing, so nothing desyncs. Its failure is that the session has no id, and the
+    /// session thread already ends on that - so a ctrl_failed here would be this port ending
+    /// sessions the C carries on with.
+    /// </summary>
+    [Fact]
+    public void TheFallbackSessionIdIsReportedWithoutEndingTheChannel()
+    {
+        if (Ctrl() is not { } core)
+            return;
+
+        Assert.True(
+            CtrlSendResults.TheFallbackIsReportedAndNotFatal(core),
+            "the fallback session id guard now ends the channel, which the C does not");
+
+        // All four rungs of the ladder, which is what PP342's JudgeSessionId models as four
+        // fallbacks - so a fifth rung added without the guard is a rung that says nothing.
+        Assert.Equal(4, CtrlSendResults.FallbackCallsThroughTheGuard(core));
     }
 
     /// <summary>
@@ -168,5 +218,48 @@ public class CtrlSendResultsTests(ITestOutputHelper output)
         const string Bare = "\tctrl_message_send(ctrl, CTRL_MESSAGE_TYPE_GO_HOME, NULL, 0);";
 
         Assert.Single(CtrlSendResults.DiscardedResults(Bare));
+
+        // PP385's readers, on the shapes they replaced.
+        Assert.False(CtrlSendResults.TheDrainLeavesOnAFailedSend(""));
+        Assert.False(CtrlSendResults.TheDrainCopiesTheTypeBeforeTheFree(""));
+        Assert.False(CtrlSendResults.TheFallbackIsReportedAndNotFatal(""));
+        Assert.Equal(0, CtrlSendResults.FallbackCallsThroughTheGuard(""));
+
+        const string DrainAsItWas = """
+            			while(ctrl->msg_queue)
+            			{
+            				ChiakiCtrlMessageQueue *msg = ctrl->msg_queue;
+            				ctrl->msg_queue = msg->next;
+            				chiaki_mutex_unlock(&ctrl->notif_mutex);
+            				ctrl_message_send(ctrl, msg->type, msg->payload, msg->payload_size);
+            				ctrl_message_queue_free(msg);
+            				chiaki_mutex_lock(&ctrl->notif_mutex);
+            			}
+            """;
+
+        Assert.False(CtrlSendResults.TheDrainLeavesOnAFailedSend(DrainAsItWas));
+
+        // The use-after-free the log introduced, which is the reader's real subject.
+        const string ReadAfterFree = """
+            				ChiakiErrorCode drain_err = ctrl_message_send(ctrl, msg->type, msg->payload, msg->payload_size);
+            				ctrl_message_queue_free(msg);
+            				CHIAKI_LOGE(ctrl->session->log, "type %#x", (unsigned int)msg->type);
+            """;
+
+        Assert.False(CtrlSendResults.TheDrainCopiesTheTypeBeforeTheFree(ReadAfterFree));
+
+        // And a fallback guard that ends the channel, which would be stricter than the C.
+        const string FatalFallback = """
+            #define CTRL_FALLBACK_SESSION_ID(ctrl) do { \
+            		ChiakiErrorCode fallback_err = ctrl_message_set_fallback_session_id(ctrl); \
+            		if(fallback_err != CHIAKI_ERR_SUCCESS) \
+            		{ \
+            			CHIAKI_LOGE((ctrl)->session->log, "no fallback"); \
+            			ctrl_failed(ctrl, CHIAKI_QUIT_REASON_CTRL_UNKNOWN); \
+            		} \
+            	} while(0)
+            """;
+
+        Assert.False(CtrlSendResults.TheFallbackIsReportedAndNotFatal(FatalFallback));
     }
 }

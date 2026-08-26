@@ -330,6 +330,7 @@
 - ✅ **PP382** **22 multi-byte accesses in lib/src go through a plain cast on pointers that carry no alignment guarantee** — 22 plain casts go through the unaligned type, four keep theirs by name, and the locator that left both lib/src sweeps dead resolves directories.
 - ✅ **PP383** **ctrl_enable_features sends seven messages, discards every result, and returns void so its caller cannot know either** — the feature burst returns a code, stops at the first failure, and both callers end a channel whose counter has drifted.
 - ✅ **PP384** **chiaki_rudp_send_recv discards all four send results, so a send that never left is reported as a receive timeout** — all four arms read what they sent, a failed send skips the wait, and the summary says how many tries never left.
+- ✅ **PP385** **seven more sends in ctrl.c discard their result, and PP383's rule ships as a ceiling of seven rather than zero** — the drain leaves, the PIN and heartbeat fail the channel, the four fallbacks report, and the ceiling is zero.
 
 ## Block G — Test discipline
 

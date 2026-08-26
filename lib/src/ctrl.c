@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
+﻿// SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
 
 #include <chiaki/ctrl.h>
 #include <chiaki/session.h>
@@ -343,6 +343,38 @@ static void ctrl_failed(ChiakiCtrl *ctrl, ChiakiQuitReason reason)
 	chiaki_cond_signal(&ctrl->session->state_cond);
 }
 
+// PP385: a send that failed anywhere in a void handler, answered the way PP383 answers it.
+//
+// ctrl_message_send spends crypt_counter_local at ENCRYPT time, so any failure of it has already
+// taken a counter value the console never saw and the two sides no longer agree. That is true of
+// the queued drain, the login PIN and the heartbeat reply alike - none of them is a feature that
+// merely did not happen. These handlers are void and cannot report, so ctrl_failed is what they
+// have, and it is the honest answer rather than carrying on until the first unreadable message
+// arrives and is blamed on the protocol.
+#define CTRL_SEND_OR_FAIL(call, what) do { \
+		ChiakiErrorCode ctrl_send_err = (call); \
+		if(ctrl_send_err != CHIAKI_ERR_SUCCESS) \
+		{ \
+			CHIAKI_LOGE(ctrl->session->log, "Ctrl failed to send %s: %s", \
+					(what), chiaki_error_string(ctrl_send_err)); \
+			ctrl_failed(ctrl, CHIAKI_QUIT_REASON_CTRL_UNKNOWN); \
+		} \
+	} while(0)
+
+// PP385: and the fallback session id, which is a different failure with a different owner.
+//
+// It sends nothing - it generates an id locally and stores it - so no counter moves and nothing
+// desyncs. What a failure means is that the session has no id at all, and the session thread
+// ALREADY ends on that: its `if(!session->ctrl_session_id_received)` is what carries this. So what
+// was missing here is only the sentence saying which of the two happened, on all four rungs.
+#define CTRL_FALLBACK_SESSION_ID(ctrl) do { \
+		ChiakiErrorCode fallback_err = ctrl_message_set_fallback_session_id(ctrl); \
+		if(fallback_err != CHIAKI_ERR_SUCCESS) \
+			CHIAKI_LOGE((ctrl)->session->log, \
+					"Ctrl could not generate a fallback session id: %s", \
+					chiaki_error_string(fallback_err)); \
+	} while(0)
+
 static void ctrl_disconnect_tcp(ChiakiCtrl *ctrl)
 {
 	if(!CHIAKI_SOCKET_IS_INVALID(ctrl->sock))
@@ -516,9 +548,27 @@ static void *ctrl_thread_func(void *user)
 				ChiakiCtrlMessageQueue *msg = ctrl->msg_queue;
 				ctrl->msg_queue = msg->next;
 				chiaki_mutex_unlock(&ctrl->notif_mutex);
-				ctrl_message_send(ctrl, msg->type, msg->payload, msg->payload_size);
+				// PP385: the drain's send, read. The node is already unlinked and is freed two
+				// lines down, so there is nothing to put back and no retry to take - which is why
+				// this one LEAVES rather than carrying on: the counter has moved and every message
+				// still queued would spend another value into the same gap.
+				//
+				// The type is copied BEFORE the free, because the log below wants it and
+				// ctrl_message_queue_free is what ends the node it lives in.
+				uint16_t drain_type = msg->type;
+				ChiakiErrorCode drain_err = ctrl_message_send(ctrl, msg->type, msg->payload, msg->payload_size);
 				ctrl_message_queue_free(msg);
 				chiaki_mutex_lock(&ctrl->notif_mutex);
+				if(drain_err != CHIAKI_ERR_SUCCESS)
+				{
+					CHIAKI_LOGE(ctrl->session->log,
+							"Ctrl failed to send queued message of type %#x, dropping it and leaving the drain: %s",
+							(unsigned int)drain_type, chiaki_error_string(drain_err));
+					chiaki_mutex_unlock(&ctrl->notif_mutex);
+					ctrl_failed(ctrl, CHIAKI_QUIT_REASON_CTRL_UNKNOWN);
+					chiaki_mutex_lock(&ctrl->notif_mutex);
+					break;
+				}
 			}
 
 			if(ctrl->login_pin_entered)
@@ -530,7 +580,12 @@ static void *ctrl_thread_func(void *user)
 				ctrl->login_pin = NULL;
 				ctrl->login_pin_size = 0;
 				chiaki_mutex_unlock(&ctrl->notif_mutex);
-				ctrl_message_send(ctrl, CTRL_MESSAGE_TYPE_LOGIN_PIN_REP, login_pin, login_pin_size);
+				// PP385: the PIN on the wire. PP345 made the HANDOVER report a failure; this is the
+				// send, and its failure has the same ending - the console never gets the PIN, asks
+				// again, and PP335 says a second request is the only thing that says "wrong".
+				CTRL_SEND_OR_FAIL(
+						ctrl_message_send(ctrl, CTRL_MESSAGE_TYPE_LOGIN_PIN_REP, login_pin, login_pin_size),
+						"the login PIN");
 				free(login_pin);
 				chiaki_mutex_lock(&ctrl->notif_mutex);
 				continue;
@@ -1004,7 +1059,7 @@ static void ctrl_message_received_session_id(ChiakiCtrl *ctrl, uint8_t *payload,
 	if(payload_size < 2)
 	{
 		CHIAKI_LOGE(ctrl->session->log, "Invalid Session Id \"%s\" received", payload);
-		ctrl_message_set_fallback_session_id(ctrl);
+		CTRL_FALLBACK_SESSION_ID(ctrl);
 		return;
 	}
 
@@ -1021,14 +1076,14 @@ static void ctrl_message_received_session_id(ChiakiCtrl *ctrl, uint8_t *payload,
 	if(payload_size >= CHIAKI_SESSION_ID_SIZE_MAX - 1)
 	{
 		CHIAKI_LOGE(ctrl->session->log, "Received Session Id is too long");
-		ctrl_message_set_fallback_session_id(ctrl);
+		CTRL_FALLBACK_SESSION_ID(ctrl);
 		return;
 	}
 
 	if(payload_size < 24)
 	{
 		CHIAKI_LOGE(ctrl->session->log, "Received Session Id is too short");
-		ctrl_message_set_fallback_session_id(ctrl);
+		CTRL_FALLBACK_SESSION_ID(ctrl);
 		return;
 	}
 
@@ -1042,7 +1097,7 @@ static void ctrl_message_received_session_id(ChiakiCtrl *ctrl, uint8_t *payload,
 		if(c >= '0' && c <= '9')
 			continue;
 		CHIAKI_LOGE(ctrl->session->log, "Ctrl received Session Id contains invalid characters");
-		ctrl_message_set_fallback_session_id(ctrl);
+		CTRL_FALLBACK_SESSION_ID(ctrl);
 		return;
 	}
 
@@ -1061,7 +1116,12 @@ static void ctrl_message_received_heartbeat_req(ChiakiCtrl *ctrl, uint8_t *paylo
 		CHIAKI_LOGW(ctrl->session->log, "Ctrl received Heartbeat request with non-empty payload");
 
 	CHIAKI_LOGI(ctrl->session->log, "Ctrl received Heartbeat, sending reply");
-	ctrl_message_send(ctrl, CTRL_MESSAGE_TYPE_HEARTBEAT_REP, NULL, 0);
+	// PP385: read. PP342 asserts this reply is unconditional and immediate - the capture answers
+	// three heartbeats in 40, 19 and 18 microseconds - and a reply that does not go is a session
+	// the console will drop on its own timeout. Ending here says why; waiting says nothing.
+	CTRL_SEND_OR_FAIL(
+			ctrl_message_send(ctrl, CTRL_MESSAGE_TYPE_HEARTBEAT_REP, NULL, 0),
+			"the heartbeat reply");
 }
 
 static void ctrl_message_received_switch_to_stream_connection(ChiakiCtrl *ctrl, uint8_t *payload, size_t payload_size)

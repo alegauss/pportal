@@ -81,11 +81,49 @@ public static partial class StreamSendResults
             foreach (Match call in Regex.Matches(
                          source, @"^[ \t]*" + Regex.Escape(function) + @"\s*\(", RegexOptions.Multiline))
             {
-                found.Add(call.Value.Trim());
+                // PP385: and the call has to END a statement, not merely begin a line.
+                //
+                // "nothing but whitespace to its left" was the whole rule, and a call passed as an
+                // argument on its own line satisfies it - so wrapping two sends in a guard that
+                // reads their result reported both as discards, which is the opposite of what had
+                // happened to them. The close parenthesis followed by a semicolon is what separates
+                // a statement from an argument, and it is exact rather than a heuristic.
+                if (EndsAStatement(source, call.Index + call.Length - 1))
+                    found.Add(call.Value.Trim());
             }
         }
 
         return found;
+    }
+
+    /// <summary>
+    /// Whether the parenthesis at <paramref name="open"/> closes into a semicolon.
+    ///
+    /// Counted rather than found, so a call with parenthesised arguments of its own is measured to
+    /// its own close and not to the first one after it.
+    /// </summary>
+    private static bool EndsAStatement(string source, int open)
+    {
+        var depth = 0;
+        for (int at = open; at < source.Length; at++)
+        {
+            if (source[at] == '(')
+            {
+                depth++;
+            }
+            else if (source[at] == ')' && --depth == 0)
+            {
+                for (int after = at + 1; after < source.Length; after++)
+                {
+                    if (!char.IsWhiteSpace(source[after]))
+                        return source[after] == ';';
+                }
+
+                return false;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>
