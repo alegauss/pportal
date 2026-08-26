@@ -159,7 +159,7 @@ because every part of it was green.
 ### §PP23 The oracle this block cannot be written without
 
 chiaki exists because the PlayStation remote play protocol was reverse engineered. There
-is no document to implement against: the 24607 lines of C in lib/src are the
+is no document to implement against: the 24627 lines of C in lib/src are the
 specification, and a managed rewrite that reads them and reproduces them is a
 translation whose only correctness test is behavioural.
 
@@ -198,7 +198,7 @@ bytes.
 
 ### §PP28 The state machines
 
-session.c is 1219 lines, ctrl.c 1502 and streamconnection.c 1326. Together they are the
+session.c is 1219 lines, ctrl.c 1522 and streamconnection.c 1326. Together they are the
 connection: what is sent in which order, what is waited for, what a timeout means at
 each point, and how a session comes apart when the console stops answering.
 
@@ -346,7 +346,7 @@ Repair any upstream and the port's copy becomes the divergence, on the next run.
 
 ### §PP294 The control channel, on its own
 
-The second of PP28's three. ctrl.c is the longest at 1502 lines and carries the most
+The second of PP28's three. ctrl.c is the longest at 1522 lines and carries the most
 message types - the control connection a session opens alongside the stream, over which
 the console reports state changes, accepts requests and answers keepalives.
 
@@ -586,33 +586,6 @@ The counter is the part worth care. It is ++ctrl->keyboard_text_counter, read an
 written outside any lock, from whatever thread the screen runs on. A second caller
 during the first would produce two messages with the same counter, and the console's
 idea of which text is current is that number.
-
-### §PP352 The two handlers that never look at the size
-
-Every handler in ctrl.c that reads its payload checks the size first. The session id
-refuses under two bytes. The login message warns and returns under one. The heartbeat
-and the stream switch warn about a payload they do not want. Two do not check at all.
-
-    static void ctrl_message_received_displaya(ChiakiCtrl *ctrl, uint8_t *payload, size_t payload_size)
-    {
-        if(payload[0] == 0x1)
-
-displayb is worse by one byte: it reads payload[0] and payload[1], and does so twice.
-Neither function mentions payload_size anywhere in its body.
-
-This is not memory-unsafe, and the honest description matters. The payload points eight
-bytes into a 512-byte buffer that always has room, so a zero-length DISPLAYA reads a
-byte that is inside the buffer and was not part of the message - whatever the previous
-message left there, or whatever was never written. The behaviour is real and the read is
-not out of bounds.
-
-What follows from it is a state machine driven by leftovers. cant_displaya and
-cant_displayb decide whether the client tells its display sink the stream cannot be
-shown, and a stale 0x01 flips that without a console having said anything. The user sees
-the stream stop for content that is not playing.
-
-The fix is the check the other handlers already have. The size is even in the signature,
-unused, which is the shape of a check that was meant to be there.
 
 ### §PP353 A machine made of two flags
 

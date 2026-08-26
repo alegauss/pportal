@@ -1008,6 +1008,17 @@ static void ctrl_message_received_login_pin_req(ChiakiCtrl *ctrl, uint8_t *paylo
 
 static void ctrl_message_received_displaya(ChiakiCtrl *ctrl, uint8_t *payload, size_t payload_size)
 {
+	// PP352: the check every other handler has. This read one byte and never looked at the size,
+	// and payload points into a buffer that always has room - so a zero-length message read
+	// whatever the previous one left there, and a stale 0x1 raised the flag that tells the display
+	// sink the stream cannot be shown. Shaped like the login handler's: warn, and return only where
+	// there is nothing to read.
+	if(payload_size < 1)
+	{
+		CHIAKI_LOGW(ctrl->session->log, "Ctrl received DisplayA with an empty payload");
+		return;
+	}
+
 	if(payload[0] == 0x1)
 	{
 		ctrl->cant_displaya = true;
@@ -1022,6 +1033,15 @@ static void ctrl_message_received_displaya(ChiakiCtrl *ctrl, uint8_t *payload, s
 
 static void ctrl_message_received_displayb(ChiakiCtrl *ctrl, uint8_t *payload, size_t payload_size)
 {
+	// PP352: two bytes, because both tests below read payload[0] AND payload[1]. The recorded
+	// value is 01-ff, which is the pair that clears the flag - so a short message read as
+	// something other than 01-ff is the branch that RAISES it, and stops the stream.
+	if(payload_size < 2)
+	{
+		CHIAKI_LOGW(ctrl->session->log, "Ctrl received DisplayB with a payload shorter than two bytes");
+		return;
+	}
+
 	if(ctrl->cant_displaya == true)
 	{
 		if(!(payload[0] == 0x01 && payload[1] == 0xff) && !ctrl->cant_displayb)
