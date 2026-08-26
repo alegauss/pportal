@@ -1,4 +1,4 @@
-using ChiakiNg.Session;
+﻿using ChiakiNg.Session;
 
 namespace ChiakiNg.Protocol;
 
@@ -115,7 +115,7 @@ public static class CtrlSendQueueSource
         ArgumentNullException.ThrowIfNull(queuedSend);
 
         return queuedSend.Contains("queue->payload = malloc(payload_size);", StringComparison.Ordinal)
-            && queuedSend.Contains("memcpy(queue->payload, payload, payload_size);", StringComparison.Ordinal);
+            && CCall.Happens(queuedSend, "memcpy(queue->payload, payload, payload_size)");
     }
 
     /// <summary>Whether it is still appended at the tail rather than pushed at the head.</summary>

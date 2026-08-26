@@ -160,7 +160,7 @@ public static partial class RumbleRoutingSource
     public static bool DualSenseAmplitudeIsShifted(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
-        return text.Contains("SetDualSenseRumble(left >> 8, right >> 8);", StringComparison.Ordinal);
+        return CCall.Happens(text, "SetDualSenseRumble(left >> 8, right >> 8)");
     }
 
     /// <summary>Whether every other pad still gets the whole value and the same duration.</summary>

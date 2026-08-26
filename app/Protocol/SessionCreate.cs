@@ -1,3 +1,5 @@
+﻿using ChiakiNg.Session;
+
 namespace ChiakiNg.Protocol;
 
 /// <summary>Every wait the holepunch flow makes, and what bounds it.</summary>
@@ -173,7 +175,7 @@ public static class SessionCreateSource
 
         string after = body[waits..closes];
 
-        return after.Contains("assert(err == CHIAKI_ERR_SUCCESS);", StringComparison.Ordinal)
+        return CCall.Happens(after, "assert(err == CHIAKI_ERR_SUCCESS)")
             && !after.Contains("if (err", StringComparison.Ordinal)
             && !after.Contains("if(err", StringComparison.Ordinal);
     }

@@ -1,4 +1,6 @@
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
+
+using ChiakiNg.Session;
 
 namespace ChiakiNg.Protocol;
 
@@ -112,6 +114,6 @@ public static class GkKeyStream
         ArgumentNullException.ThrowIfNull(core);
 
         return core.Contains("EVP_aes_128_ecb()", StringComparison.Ordinal)
-            && core.Contains("counter_add(cur, gkcrypt->iv, counter_offset++);", StringComparison.Ordinal);
+            && CCall.Happens(core, "counter_add(cur, gkcrypt->iv, counter_offset++)");
     }
 }

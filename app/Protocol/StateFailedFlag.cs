@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using ChiakiNg.Session;
 
 namespace ChiakiNg.Protocol;
@@ -152,7 +152,7 @@ public static partial class StateFailedFlag
             if (set < 0)
                 return false;
 
-            if (!body[set..].Contains("chiaki_cond_signal(&stream_connection->state_cond);", StringComparison.Ordinal))
+            if (!CCall.Happens(body[set..], "chiaki_cond_signal(&stream_connection->state_cond)"))
                 return false;
         }
 

@@ -1,4 +1,4 @@
-using System.Buffers.Binary;
+﻿using System.Buffers.Binary;
 using System.Net;
 using System.Net.Sockets;
 using ChiakiNg.Session;
@@ -247,7 +247,7 @@ public static class NatProbeSource
     public static bool TheResponseStillEchoesTheFiveBytes(string core)
     {
         ArgumentNullException.ThrowIfNull(core);
-        return core.Contains("memcpy(&confirm_buf[0x4b], &req[0x4b], 5);", StringComparison.Ordinal);
+        return CCall.Happens(core, "memcpy(&confirm_buf[0x4b], &req[0x4b], 5)");
     }
 
     /// <summary>Whether the tail still masks the address and port with the session ids.</summary>
@@ -258,8 +258,8 @@ public static class NatProbeSource
         return core.Contains("*(chiaki_unaligned_uint16_t*)&confirm_buf[0x50] = htons(session->sid_local);", StringComparison.Ordinal)
             && core.Contains("*(chiaki_unaligned_uint16_t*)&confirm_buf[0x52] = htons(session->sid_console);", StringComparison.Ordinal)
             && core.Contains("*(chiaki_unaligned_uint16_t*)&confirm_buf[0x54] = htons(session->sid_local);", StringComparison.Ordinal)
-            && core.Contains("xor_bytes(&confirm_buf[0x50], console_addr, 4);", StringComparison.Ordinal)
-            && core.Contains("xor_bytes(&confirm_buf[0x54], console_port, 2);", StringComparison.Ordinal);
+            && CCall.Happens(core, "xor_bytes(&confirm_buf[0x50], console_addr, 4)")
+            && CCall.Happens(core, "xor_bytes(&confirm_buf[0x54], console_port, 2)");
     }
 
     /// <summary>Whether the family is still chosen by looking for a dot.</summary>

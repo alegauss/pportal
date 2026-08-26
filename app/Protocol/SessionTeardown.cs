@@ -1,4 +1,4 @@
-using ChiakiNg.Native;
+﻿using ChiakiNg.Native;
 using ChiakiNg.Session;
 
 namespace ChiakiNg.Protocol;
@@ -131,8 +131,8 @@ public static class SessionTeardownSource
 
         // Nothing between them may return, and the join must be there.
         string between = core[viaCtrl..quit];
-        return between.Contains("chiaki_ctrl_stop(&session->ctrl);", StringComparison.Ordinal)
-            && between.Contains("chiaki_ctrl_join(&session->ctrl);", StringComparison.Ordinal)
+        return CCall.Happens(between, "chiaki_ctrl_stop(&session->ctrl)")
+            && CCall.Happens(between, "chiaki_ctrl_join(&session->ctrl)")
             && !between.Contains("return", StringComparison.Ordinal);
     }
 

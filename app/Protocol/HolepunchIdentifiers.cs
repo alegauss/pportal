@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using ChiakiNg.Session;
 
 namespace ChiakiNg.Protocol;
@@ -190,7 +190,7 @@ public static class HolepunchIdentifiersSource
     public static bool TheUuidIsStillSeededFromTheClock(string core)
     {
         ArgumentNullException.ThrowIfNull(core);
-        return core.Contains("srand((unsigned int)time(NULL));", StringComparison.Ordinal)
+        return CCall.Happens(core, "srand((unsigned int)time(NULL))")
             && core.Contains("out[i] = hex[rand() % 16];", StringComparison.Ordinal);
     }
 

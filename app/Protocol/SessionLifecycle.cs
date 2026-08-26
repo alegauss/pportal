@@ -1,4 +1,4 @@
-using ChiakiNg.Session;
+﻿using ChiakiNg.Session;
 
 namespace ChiakiNg.Protocol;
 
@@ -198,9 +198,9 @@ public static class SessionLifecycleSource
 
         string body = core[fini..end];
 
-        return body.Contains("chiaki_stop_pipe_fini(&session->stop_pipe);", StringComparison.Ordinal)
-            && body.Contains("chiaki_cond_fini(&session->state_cond);", StringComparison.Ordinal)
-            && body.Contains("chiaki_mutex_fini(&session->state_mutex);", StringComparison.Ordinal)
+        return CCall.Happens(body, "chiaki_stop_pipe_fini(&session->stop_pipe)")
+            && CCall.Happens(body, "chiaki_cond_fini(&session->state_cond)")
+            && CCall.Happens(body, "chiaki_mutex_fini(&session->state_mutex)")
             && !body.Contains("chiaki_session_stop", StringComparison.Ordinal)
             && !body.Contains("chiaki_session_join", StringComparison.Ordinal);
     }

@@ -1,3 +1,5 @@
+﻿using ChiakiNg.Session;
+
 namespace ChiakiNg.Protocol;
 
 /// <summary>Which GMAC key a packet is authenticated under, and how it has to be obtained.</summary>
@@ -84,7 +86,7 @@ public static class GmacKeyWindow
     {
         ArgumentNullException.ThrowIfNull(core);
 
-        return core.Contains("chiaki_gkcrypt_gen_tmp_gmac_key(gkcrypt, key_index, gmac_key_tmp);", StringComparison.Ordinal)
-            && core.Contains("chiaki_gkcrypt_gen_new_gmac_key(gkcrypt, key_index);", StringComparison.Ordinal);
+        return CCall.Happens(core, "chiaki_gkcrypt_gen_tmp_gmac_key(gkcrypt, key_index, gmac_key_tmp)")
+            && CCall.Happens(core, "chiaki_gkcrypt_gen_new_gmac_key(gkcrypt, key_index)");
     }
 }

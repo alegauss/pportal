@@ -1,4 +1,4 @@
-namespace ChiakiNg.Session;
+﻿namespace ChiakiNg.Session;
 
 /// <summary>
 /// PP11: the window type a session is started with, as settings.h numbers it.
@@ -232,8 +232,8 @@ public static class StreamWindowSource
     public static bool TheMinimumSizeIsPinnedAndReleased(string cpp)
     {
         ArgumentNullException.ThrowIfNull(cpp);
-        return cpp.Contains("setMinimumSize(size());", StringComparison.Ordinal)
-            && cpp.Contains("setMinimumSize(QSize(0, 0));", StringComparison.Ordinal);
+        return CCall.Happens(cpp, "setMinimumSize(size())")
+            && CCall.Happens(cpp, "setMinimumSize(QSize(0, 0))");
     }
 
     /// <summary>Whether the adjustable flag still comes back a second later.</summary>
@@ -250,7 +250,7 @@ public static class StreamWindowSource
         return cpp.Contains("case WindowType::Fullscreen:", StringComparison.Ordinal)
             && cpp.Contains("case WindowType::Zoom:", StringComparison.Ordinal)
             && cpp.Contains("case WindowType::Stretch:", StringComparison.Ordinal)
-            && cpp.Contains("setVideoMode(VideoMode::Stretch);", StringComparison.Ordinal);
+            && CCall.Happens(cpp, "setVideoMode(VideoMode::Stretch)");
     }
 
     /// <summary>

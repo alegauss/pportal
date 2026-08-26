@@ -40,7 +40,7 @@
 
 ## Block G — Test discipline
 
-- 📋 **PP386** (deps: —) **47 drift predicates pin a bare call to its exact spelling, semicolon included, and four broke this block** — the semicolon is the claim in a wire-format check and incidental in an occurrence check, and nothing in the tree tells the two apart. → §PP386
+- 📋 **PP388** (deps: —) **20 ordering predicates mix compacted call positions with raw offsets, so none can move onto CCall alone** — each takes a start anchor computed by a raw IndexOf, and a position from one space is not comparable to a position from the other. → §PP388
 
 ## Block H — Performance and telemetry
 

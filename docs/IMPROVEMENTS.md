@@ -473,35 +473,33 @@ reads every file rather than the one where the first two were found.
 
 ## Block G — Test discipline
 
-### §PP386 Checks that cry on a refactor
+### §PP388 Positions from two different spaces
 
-101 predicates in app/ assert a C statement by quoting it whole, terminating semicolon
-included. Four of them went red this block on changes that moved no behaviour:
+PP386 moved the 27 occurrence predicates onto CCall, which asks whether a call happens
+without asking how it is punctuated. The 20 ordering predicates could not go with them,
+and the reason is arithmetic rather than effort.
 
-    TheMicrophoneIsStillToggledTwice        wrapping two sends in a result guard
-    TheBurstStillEndsWithDisplayDevices     the same edit
-    AnUnusableSessionIdStillFallsBack       wrapping four calls in a result guard
-    StreamSendResults.DiscardedCalls        a call passed as an argument on its own line
+CCall.At answers a position in COMPACTED text - layout removed, tokens still separated.
+Those positions are comparable to each other and to nothing else. Every one of the 20
+compares a call's position against an anchor computed the other way:
 
-None of the four was a false negative - they were false ALARMS, and that is the harm. A
-check that cries on a refactor teaches the next reader to change the check rather than
-read it, which is how a real failure later gets waved through.
+    int retry = connectBody.IndexOf(if(retry), StringComparison.Ordinal);
+    int disconnect = connectBody.IndexOf(ctrl_disconnect_tcp(ctrl);, retry, ...);
 
-The split is 47 to 54. Forty-seven quote a bare call, where the claim is that the call
-HAPPENS or that two happen in an order, and the semicolon is incidental. Fifty-four
-carry an assignment or a hex offset, where the exact spelling IS the claim: NatProbe
-writes into confirm_buf at 0x50, 0x52 and 0x54, and loosening those would give away the
-whole check.
+Convert the second line alone and `retry` is an index into the raw text handed to a
+search over the compacted one. The check still compiles, still returns a bool, and now
+means nothing - which is worse than the brittleness PP386 set out to remove, because a
+false alarm is loud and this would be silent.
 
-So the finding is not that quoting statements is wrong. It is that the tree has no way
-to say which kind a predicate is, and both kinds are written identically.
+So all of a predicate moves or none of it does, and the anchors are not always calls:
+`if(retry)`, a comment, a label. What is owed first is a way to mark arbitrary text in
+compacted space, so an anchor and a call can be measured against each other.
 
-Ten of the forty-seven are pinned to calls answering a ChiakiErrorCode, which is the
-population the result-reading programme keeps wrapping - PP370, PP375, PP379, PP383,
-PP384 and PP385 are all that shape, and it is not finished.
+Twelve of the 20 assert an ordering of two or three calls with no other anchor, and
+those go straight onto CCall.InOrder, which exists. The other eight need the mark.
 
-What this owes is the criterion, a reader for occurrence and ordering that ignores
-punctuation, and the forty-seven moved onto it.
+What this owes is that mark, the twelve onto InOrder, and the eight rewritten in one
+space rather than two.
 
 ## Block H — Performance and telemetry
 

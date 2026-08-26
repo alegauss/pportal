@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using ChiakiNg.Session;
 
 namespace ChiakiNg.Protocol;
@@ -123,7 +123,7 @@ public static class VideoProfileOwnershipSource
             return false;
 
         // And the check frees before it leaves, since the header is already decoded by then.
-        return body[check..pad].Contains("free(header_buf.buf);", StringComparison.Ordinal);
+        return CCall.Happens(body[check..pad], "free(header_buf.buf)");
     }
 
     /// <summary>

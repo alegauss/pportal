@@ -1,4 +1,4 @@
-using ChiakiNg.Session;
+﻿using ChiakiNg.Session;
 
 namespace ChiakiNg.Protocol;
 
@@ -269,7 +269,7 @@ public static class RudpSendBufferSource
         return push.Contains("err = CHIAKI_ERR_OVERFLOW;", StringComparison.Ordinal)
             && push.Contains("err = CHIAKI_ERR_INVALID_DATA;", StringComparison.Ordinal)
             && push.Contains("goto beach;", StringComparison.Ordinal)
-            && push.Contains("free(buf);", StringComparison.Ordinal);
+            && CCall.Happens(push, "free(buf)");
     }
 
     /// <summary>Whether the comparison's two halves still disagree at exactly half the space.</summary>

@@ -1,4 +1,6 @@
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
+
+using ChiakiNg.Session;
 
 namespace ChiakiNg.Protocol;
 
@@ -110,6 +112,6 @@ public static class GkDerivation
     {
         ArgumentNullException.ThrowIfNull(core);
 
-        return core.Contains("xor_bytes(md, md + 0x10, 0x10);", StringComparison.Ordinal);
+        return CCall.Happens(core, "xor_bytes(md, md + 0x10, 0x10)");
     }
 }

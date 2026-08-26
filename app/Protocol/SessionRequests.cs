@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using ChiakiNg.Session;
 
 namespace ChiakiNg.Protocol;
@@ -207,8 +207,8 @@ public static class SessionRequestsSource
     public static bool TheBlobsAreStillCryptoRandom(string core)
     {
         ArgumentNullException.ThrowIfNull(core);
-        return core.Contains("chiaki_random_bytes_crypt(session->data1, sizeof(session->data1));", StringComparison.Ordinal)
-            && core.Contains("chiaki_random_bytes_crypt(session->data2, sizeof(session->data2));", StringComparison.Ordinal)
+        return CCall.Happens(core, "chiaki_random_bytes_crypt(session->data1, sizeof(session->data1))")
+            && CCall.Happens(core, "chiaki_random_bytes_crypt(session->data2, sizeof(session->data2))")
             && core.Contains($"char data1_base64[{SessionRequests.DataBase64Buffer}] = {{0}};", StringComparison.Ordinal);
     }
 

@@ -1,4 +1,4 @@
-using ChiakiNg.Session;
+﻿using ChiakiNg.Session;
 
 namespace ChiakiNg.Protocol;
 
@@ -178,8 +178,8 @@ public static class RudpExchangeSource
             return false;
 
         string body = core[at..end];
-        return body.Contains("free(message->data);", StringComparison.Ordinal)
-            && body.Contains("memcpy(message, message->subMessage, sizeof(RudpMessage));", StringComparison.Ordinal);
+        return CCall.Happens(body, "free(message->data)")
+            && CCall.Happens(body, "memcpy(message, message->subMessage, sizeof(RudpMessage))");
     }
 
     /// <summary>Whether a too-short payload still re-enters the send rather than failing.</summary>

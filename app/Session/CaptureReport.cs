@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text;
 
 namespace ChiakiNg.Session;
@@ -323,6 +323,6 @@ public static class PadOpenSource
     public static bool ItStillClosesWhatItOpened(string source)
     {
         ArgumentNullException.ThrowIfNull(source);
-        return source.Contains("SDL_GameControllerClose(controller);", StringComparison.Ordinal);
+        return CCall.Happens(source, "SDL_GameControllerClose(controller)");
     }
 }
