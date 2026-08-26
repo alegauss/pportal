@@ -46,11 +46,17 @@ CHIAKI_EXPORT void chiaki_video_receiver_fini(ChiakiVideoReceiver *video_receive
 /**
  * Called after receiving the Stream Info Packet.
  *
+ * PP372: the return value says whether ownership actually moved. This used to promise the transfer
+ * unconditionally and then decline it on one path - profiles already set - leaving the caller holding
+ * buffers it believed it had handed over, with nothing in the signature to tell it apart.
+ *
  * @param video_receiver
- * @param profiles Array of profiles. Ownership of the contained header buffers will be transferred to the ChiakiVideoReceiver!
+ * @param profiles Array of profiles. On CHIAKI_ERR_SUCCESS, ownership of the contained header buffers
+ *                 has been transferred to the ChiakiVideoReceiver. On anything else the caller still
+ *                 owns them and must free them.
  * @param profiles_count must be <= CHIAKI_VIDEO_PROFILES_MAX
  */
-CHIAKI_EXPORT void chiaki_video_receiver_stream_info(ChiakiVideoReceiver *video_receiver, ChiakiVideoProfile *profiles, size_t profiles_count);
+CHIAKI_EXPORT ChiakiErrorCode chiaki_video_receiver_stream_info(ChiakiVideoReceiver *video_receiver, ChiakiVideoProfile *profiles, size_t profiles_count);
 
 CHIAKI_EXPORT void chiaki_video_receiver_av_packet(ChiakiVideoReceiver *video_receiver, ChiakiTakionAVPacket *packet);
 CHIAKI_EXPORT void chiaki_video_receiver_set_waiting_for_idr(ChiakiVideoReceiver *video_receiver, bool waiting_for_idr);

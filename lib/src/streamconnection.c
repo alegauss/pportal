@@ -931,6 +931,17 @@ static bool pb_decode_resolution(pb_istream_t *stream, const pb_field_t *field, 
 		return true;
 	}
 
+	// PP372: the full-array check moved above the realloc it used to sit below. The console chooses
+	// how many resolutions it announces, and every one past the maximum was decoded, padded and then
+	// dropped on the floor with nothing owning it. Checked here, the header is freed once and no
+	// padded copy is made for a profile there is no room for.
+	if(ctx->video_profiles_count >= CHIAKI_VIDEO_PROFILES_MAX)
+	{
+		CHIAKI_LOGE(ctx->stream_connection->session->log, "Received more resolutions than the maximum");
+		free(header_buf.buf);
+		return true;
+	}
+
 	uint8_t *header_buf_padded = realloc(header_buf.buf, header_buf.size + CHIAKI_VIDEO_BUFFER_PADDING_SIZE);
 	if(!header_buf_padded)
 	{
@@ -940,18 +951,30 @@ static bool pb_decode_resolution(pb_istream_t *stream, const pb_field_t *field, 
 	}
 	memset(header_buf_padded + header_buf.size, 0, CHIAKI_VIDEO_BUFFER_PADDING_SIZE);
 
-	if(ctx->video_profiles_count >= CHIAKI_VIDEO_PROFILES_MAX)
-	{
-		CHIAKI_LOGE(ctx->stream_connection->session->log, "Received more resolutions than the maximum");
-		return true;
-	}
-
 	ChiakiVideoProfile *profile = &ctx->video_profiles[ctx->video_profiles_count++];
 	profile->width = resolution.width;
 	profile->height = resolution.height;
 	profile->header_sz = header_buf.size;
 	profile->header = header_buf_padded;
 	return true;
+}
+
+/**
+ * PP372: release the decoded video headers the context still owns.
+ *
+ * Ownership moves to the video receiver in one memcpy, and only if it accepts them. Everything before
+ * that point - and every path that never reaches it - leaves them here, which is why this exists
+ * rather than a free at each exit.
+ */
+static void decode_resolutions_context_free(DecodeResolutionsContext *ctx)
+{
+	for(size_t i=0; i<ctx->video_profiles_count; i++)
+	{
+		free(ctx->video_profiles[i].header);
+		ctx->video_profiles[i].header = NULL;
+		ctx->video_profiles[i].header_sz = 0;
+	}
+	ctx->video_profiles_count = 0;
 }
 
 static void stream_connection_takion_data_expect_streaminfo(ChiakiStreamConnection *stream_connection, uint8_t *buf, size_t buf_size)
@@ -973,9 +996,15 @@ static void stream_connection_takion_data_expect_streaminfo(ChiakiStreamConnecti
 
 	pb_istream_t stream = pb_istream_from_buffer(buf, buf_size);
 	bool r = pb_decode(&stream, tkproto_TakionMessage_fields, &msg);
+
+	// PP372: every exit from here on releases what the resolution callback allocated, unless the video
+	// receiver has taken it. The callback runs while the protobuf is being decoded, so headers exist
+	// on paths that never look at a resolution - a decode that failed halfway, a message that turned
+	// out not to be streaminfo - and each of those returned with nothing owning them.
 	if(!r)
 	{
 		CHIAKI_LOGE(stream_connection->log, "StreamConnection failed to decode data protobuf");
+		decode_resolutions_context_free(&decode_resolutions_context);
 		return;
 	}
 
@@ -983,12 +1012,14 @@ static void stream_connection_takion_data_expect_streaminfo(ChiakiStreamConnecti
 	{
 		if(msg.type == tkproto_TakionMessage_PayloadType_DISCONNECT)
 		{
+			decode_resolutions_context_free(&decode_resolutions_context);
 			stream_connection_takion_data_handle_disconnect(stream_connection, buf, buf_size);
 			return;
 		}
 
 		CHIAKI_LOGW(stream_connection->log, "StreamConnection expected streaminfo payload but received something else");
 		chiaki_log_hexdump(stream_connection->log, CHIAKI_LOG_WARNING, buf, buf_size);
+		decode_resolutions_context_free(&decode_resolutions_context);
 		return;
 	}
 
@@ -997,7 +1028,11 @@ static void stream_connection_takion_data_expect_streaminfo(ChiakiStreamConnecti
 
 	if(audio_header_buf.size != CHIAKI_AUDIO_HEADER_SIZE)
 	{
+		// PP372: and this one is the reason the leak was worth a task rather than a note. The
+		// resolutions are already decoded and padded by the time the audio header is looked at, and a
+		// console with a bad audio header gets here having had every one of them allocated.
 		CHIAKI_LOGE(stream_connection->log, "StreamConnection received invalid audio header in streaminfo");
+		decode_resolutions_context_free(&decode_resolutions_context);
 		goto error;
 	}
 
@@ -1005,9 +1040,18 @@ static void stream_connection_takion_data_expect_streaminfo(ChiakiStreamConnecti
 	chiaki_audio_header_load(&audio_header_s, audio_header);
 	chiaki_audio_receiver_stream_info(stream_connection->audio_receiver, &audio_header_s);
 
-	chiaki_video_receiver_stream_info(stream_connection->video_receiver,
+	// PP372: the handover, and whether it happened. The receiver takes the headers in one memcpy and
+	// declines on one path - profiles already set, which a second streaminfo reaches - so this is the
+	// point where ownership either moves or does not, and the answer is now in the return value
+	// rather than assumed.
+	if(chiaki_video_receiver_stream_info(stream_connection->video_receiver,
 			decode_resolutions_context.video_profiles,
-			decode_resolutions_context.video_profiles_count);
+			decode_resolutions_context.video_profiles_count) != CHIAKI_ERR_SUCCESS)
+	{
+		CHIAKI_LOGE(stream_connection->log, "StreamConnection could not hand the video profiles over");
+		decode_resolutions_context_free(&decode_resolutions_context);
+		goto error;
+	}
 
 	// TODO: do some checks?
 

@@ -159,7 +159,7 @@ because every part of it was green.
 ### §PP23 The oracle this block cannot be written without
 
 chiaki exists because the PlayStation remote play protocol was reverse engineered. There
-is no document to implement against: the 24771 lines of C in lib/src are the
+is no document to implement against: the 24820 lines of C in lib/src are the
 specification, and a managed rewrite that reads them and reproduces them is a
 translation whose only correctness test is behavioural.
 
@@ -198,7 +198,7 @@ bytes.
 
 ### §PP28 The state machines
 
-session.c is 1228 lines, ctrl.c 1574 and streamconnection.c 1409. Together they are the
+session.c is 1228 lines, ctrl.c 1574 and streamconnection.c 1453. Together they are the
 connection: what is sent in which order, what is waited for, what a timeout means at
 each point, and how a session comes apart when the console stops answering.
 
@@ -675,32 +675,6 @@ chiaki_ctrl_set_login_pin.
 takion.c is PP27's file and this crosses into it, which is why this is a line rather
 than a wider edit under PP295. What it owes is the fix for all seven and a check that
 reads every file rather than the one where the first two were found.
-
-### §PP372 Video headers with no owner, and three ways out
-
-A decoded resolution's video header is malloc'd by the protobuf callback and realloc'd
-there with padding. Nothing owns it until `chiaki_video_receiver_stream_info` memcpy's
-the profile array into the receiver. Three paths never get there, and each one loses
-every header decoded so far:
-
-- `pb_decode_resolution` reallocs the header BEFORE checking `video_profiles_count` against
-  CHIAKI_VIDEO_PROFILES_MAX, then returns on the full array without freeing it. One leak per
-  resolution past the maximum, and the count of resolutions is the console's to choose.
-- `expect_streaminfo`'s `error` label is reached with the profiles already decoded - a bad audio
-  header size gets there before the receiver is ever called - and frees none of them.
-- `chiaki_video_receiver_stream_info` itself returns early when profiles are already set, having
-  taken nothing, so the caller's headers are lost with no error the caller can see.
-
-The third is why this is one task and not three. The ownership is transferred by a
-memcpy with no handover in the signature, so a caller cannot tell whether it still owns
-what it passed. The fix either frees on every path the caller keeps, or gives the
-receiver a return value saying whether it took them.
-
-Order is the cheap part of it: moving the count check above the realloc removes the
-first leak without touching the contract.
-
-Sizes are bounded - the padded header is as large as the console's video header - so
-this is a leak per stream setup, not a way to exhaust memory from outside.
 
 ### §PP373 Nine encoders, two wearing another's name
 

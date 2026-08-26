@@ -91,12 +91,15 @@ CHIAKI_EXPORT int32_t chiaki_video_receiver_get_frames_lost_total(ChiakiVideoRec
 	return total;
 }
 
-CHIAKI_EXPORT void chiaki_video_receiver_stream_info(ChiakiVideoReceiver *video_receiver, ChiakiVideoProfile *profiles, size_t profiles_count)
+CHIAKI_EXPORT ChiakiErrorCode chiaki_video_receiver_stream_info(ChiakiVideoReceiver *video_receiver, ChiakiVideoProfile *profiles, size_t profiles_count)
 {
 	if(video_receiver->profiles_count > 0)
 	{
+		// PP372: the caller still owns what it passed, and now has a way to know it. The memcpy below
+		// is the whole of the handover, so returning before it left the caller's headers unreachable -
+		// a leak with no error anywhere, because the caller had been promised the transfer.
 		CHIAKI_LOGE(video_receiver->log, "Video Receiver profiles already set");
-		return;
+		return CHIAKI_ERR_UNKNOWN;
 	}
 
 	memcpy(video_receiver->profiles, profiles, profiles_count * sizeof(ChiakiVideoProfile));
@@ -109,6 +112,8 @@ CHIAKI_EXPORT void chiaki_video_receiver_stream_info(ChiakiVideoReceiver *video_
 		CHIAKI_LOGI(video_receiver->log, "  %zu: %ux%u", i, profile->width, profile->height);
 		//chiaki_log_hexdump(video_receiver->log, CHIAKI_LOG_DEBUG, profile->header, profile->header_sz);
 	}
+
+	return CHIAKI_ERR_SUCCESS;
 }
 
 CHIAKI_EXPORT void chiaki_video_receiver_av_packet(ChiakiVideoReceiver *video_receiver, ChiakiTakionAVPacket *packet)
