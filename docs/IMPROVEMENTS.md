@@ -159,7 +159,7 @@ because every part of it was green.
 ### §PP23 The oracle this block cannot be written without
 
 chiaki exists because the PlayStation remote play protocol was reverse engineered. There
-is no document to implement against: the 24707 lines of C in lib/src are the
+is no document to implement against: the 24727 lines of C in lib/src are the
 specification, and a managed rewrite that reads them and reproduces them is a
 translation whose only correctness test is behavioural.
 
@@ -198,7 +198,7 @@ bytes.
 
 ### §PP28 The state machines
 
-session.c is 1219 lines, ctrl.c 1574 and streamconnection.c 1354. Together they are the
+session.c is 1219 lines, ctrl.c 1574 and streamconnection.c 1374. Together they are the
 connection: what is sent in which order, what is waited for, what a timeout means at
 each point, and how a session comes apart when the console stops answering.
 
@@ -372,7 +372,7 @@ The third of PP28's three, and the one that decides when C starts leaving this b
 
 PP286 through PP291 ported the frame path from the bottom up: the Galois field, the
 Cauchy matrix, the Reed-Solomon codec, the frame processor, the video receiver. None of
-it removed a single line of C, and the reason is one call. streamconnection.c:1289 hands
+it removed a single line of C, and the reason is one call. streamconnection.c:1309 hands
 packets to chiaki_video_receiver_av_packet, so videoreceiver.c stays, so
 frameprocessor.c stays, so fec.c stays, and jerasure and gf-complete stay with them.
 PP30 has read 13 sites through five ports for exactly that reason.

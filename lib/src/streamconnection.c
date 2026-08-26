@@ -344,7 +344,17 @@ disconnect:
 		free(stream_connection->streaminfo_early_buf);
 		stream_connection->streaminfo_early_buf = NULL;
 	}
-	stream_connection_send_disconnect(stream_connection);
+	// PP370: read and logged, not acted on. Nothing here can retry - the function is leaving - but a
+	// disconnect that never reached the console is why the NEXT attempt is refused with
+	// "RP in use", and that is a sentence a user reads about a session they closed. The heartbeat
+	// (PP363) is the other deliberate exception and it logs too.
+	ChiakiErrorCode disconnect_err = stream_connection_send_disconnect(stream_connection);
+	if(disconnect_err != CHIAKI_ERR_SUCCESS)
+	{
+		CHIAKI_LOGE(stream_connection->log,
+				"StreamConnection could not tell the console it was disconnecting: %s",
+				chiaki_error_string(disconnect_err));
+	}
 
 	if(stream_connection->should_stop)
 	{
@@ -994,9 +1004,19 @@ static void stream_connection_takion_data_expect_streaminfo(ChiakiStreamConnecti
 
 	// TODO: do some checks?
 
-	stream_connection_send_streaminfo_ack(stream_connection);
-	
-	ChiakiErrorCode err = stream_connection_send_controller_connection(stream_connection);
+	// PP370: the result, read. This was the one of the three sends whose answer was discarded, four
+	// lines from two that check theirs. The ack is what tells the console the stream setup was
+	// accepted; failing to send it and carrying on reports CONNECTED to the client while the console
+	// is still waiting to be told, and the session then dies on a timeout at the far end for a
+	// reason nothing here logged.
+	ChiakiErrorCode err = stream_connection_send_streaminfo_ack(stream_connection);
+	if(err != CHIAKI_ERR_SUCCESS)
+	{
+		CHIAKI_LOGE(stream_connection->log, "StreamConnection failed to send streaminfo ack");
+		goto error;
+	}
+
+	err = stream_connection_send_controller_connection(stream_connection);
 	if(err != CHIAKI_ERR_SUCCESS)
 	{
 		CHIAKI_LOGE(stream_connection->log, "StreamConnection failed to send controller connection");

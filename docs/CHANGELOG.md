@@ -307,6 +307,7 @@
 - ✅ **PP362** **the stream connection walks three states before a stream exists, and one message can arrive before it is expected** — the three states, the predicate the wait actually uses, and the early streaminfo that is replayed rather than dropped.
 - ✅ **PP367** **the AV decrypt's result is discarded, so a failed decrypt hands ciphertext to the video receiver** — the AV decrypt's result is read and a failed packet is dropped, and a check over every cipher call refuses any result thrown away.
 - ✅ **PP368** **a gkcrypt owning a live thread was released with a bare free, leaving that thread writing into freed memory** — the gkcrypt goes through the wrapper that joins its thread, the early buffer is tested before it is written, and both are checked as shapes across three files.
+- ✅ **PP370** **the streaminfo ack's result was discarded, so a client reports connected while the console waits to be told** — the ack's result is read and failing ends the state, the disconnect logs, and a check over all eight sends refuses any answer thrown away.
 
 ## Block G — Test discipline
 
