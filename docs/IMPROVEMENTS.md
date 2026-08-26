@@ -292,29 +292,30 @@ host would use regardless of this block.
 ### §PP33 Two dependencies that simply leave
 
 holepunch.c is 5786 lines and is the only translation unit in this tree that still needs
-either library: 234 curl_easy calls, 4 curl_ws, 158 json_object and 34 json_tokener, all
-420 of them in that one file. http.c is not among them. It is 262 lines over rudp and
-winsock and carries no curl symbol at all, which is not what the first version of this
-section said it was built around.
+either library: 234 curl_easy calls, 4 curl_ws, and the json_object and json_tokener
+sites beside them. http.c is not among them. It is 262 lines over rudp and winsock and
+carries no curl symbol at all, which is not what the first version of this section said
+it was built around.
 
 ```roadkeep-remaining
 lib/src/**/*.c :: curl_easy_|json_object|json_tokener
 ```
 
-What the count does not say is that it is one file with four callers. session.c makes
-three holepunch calls, the shim one, qmlbackend.cpp three and holepunch-test.c twelve,
-so the deletion is gated on the managed side owning the flow and session.c no longer
-asking for it - not on translating four hundred separate sites.
+Read that count carefully: it reports 420 sites in "46 files", and 46 is every .c under
+lib/src - the glob's reach, not the hits. Every one of the 420 is in holepunch.c.
 
-The behaviours themselves are largely ported. PP231 stated the websocket auto-ACK, PP266
-performs the five session calls over a real HttpClient, and the shim exposes json-c's
-accessors deliberately: an oracle the managed parser is held against (PP215), not a
-dependency waiting to be removed.
+What the count does not say is who calls it. session.c has NINE call sites over seven
+functions - the ctrl and data sockets, the offer, the punch, the regist info, the
+selected address, the ctrl port and the fini - the shim one and qmlbackend.cpp three. An
+earlier version of this counted a holepunch-test.c that is not in the tree.
 
-So what remains is the end state rather than the translation. chiaki-lib stops compiling
-holepunch.c, the two link lines in lib/CMakeLists.txt go, and the query reads zero
-because there is no file left for it to count in. Reading it as a burndown is what made
-four shipped tasks look like none.
+The behaviours are largely ported. PP231 stated the websocket auto-ACK, PP266 performs
+the five session calls over a real HttpClient, and the shim exposes json-c's accessors
+deliberately: an oracle the managed parser is held against (PP215), not a dependency
+waiting to go.
+
+So what remains is not translation. It is session.c no longer asking, and that is a task
+nothing here names yet.
 
 ### §PP107 The two nobody called
 

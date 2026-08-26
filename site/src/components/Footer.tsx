@@ -1,6 +1,10 @@
 import { footer, sponsor } from "../lib/site-content";
 import { Signal } from "./ui/Signal";
 
+// No ad slot here. The house ad sits in the middle of each page's content, at a seam the
+// reading already had, rather than at the end where the footer's own sponsor block and the
+// disclaimer already are: two commercial blocks stacked at the page end read as a wall, and
+// the one furthest down the page is the one nobody reaches.
 export function Footer() {
   return (
     <footer>
