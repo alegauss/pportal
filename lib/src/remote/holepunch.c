@@ -3376,6 +3376,12 @@ static ChiakiErrorCode deleteSession(Session *session)
         {
             long http_code = 0;
             curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+            // PP390: these two name http_send_session_message and this is deleteSession. That is a
+            // real misnaming and it is REPRODUCED ON PURPOSE - PP235 decided it, because a port
+            // that corrected the strings would make its logs disagree with every report ever
+            // written against the Qt client's. See MisnamedLogs.All in app/Protocol/SessionDelete.cs.
+            // PP389 was the fourth attempt to fix these; the marker is here so a fifth reads this
+            // instead of the diff.
             CHIAKI_LOGE(session->log, "http_send_session_message: Sending holepunch session message failed with HTTP code %ld.", http_code);
             err = CHIAKI_ERR_HTTP_NONOK;
         } else {
@@ -4387,6 +4393,11 @@ cleanup_sockets:
  * @param[in] candidate Pointer to the candidate to send the response to
  * @return CHIAKI_ERR_SUCCESS on success or an error code on failure
  */
+// PP390: this function and the two below it log as check_candidates, and that is DELIBERATE. PP237
+// called it a misnaming; PP238 corrected that - all three are helpers of check_candidates, and the
+// prefix names the operation a reader is following rather than the line's own function. A log that
+// changed name three times inside one exchange would be worse. PP256 tried again and was refused.
+// The list is MisnamedLogs.NamesTheOperationNotTheFunction in app/Protocol/SessionDelete.cs.
 static ChiakiErrorCode send_response_ps(Session *session, uint8_t *req, chiaki_socket_t *sock, Candidate *candidate)
 {
         uint8_t confirm_buf[88] = {0};

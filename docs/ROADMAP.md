@@ -37,7 +37,6 @@
 - 💭 **PP313** (deps: PP33 ⏳) **curl and json-c would leave the build today if the remote path were built off, and that trades a feature for a count** — PP33's fourth criterion otherwise waits on the managed session, and the tri_option is already there. → §PP313
 - 📋 **PP340** (deps: —) **the PSN path lives in session.c's nine holepunch call sites, so PP33's deletion would take remote play with it** — the offer, the punch, the two sockets, the regist info, the address, the port and the fini are all driven from C; nothing managed owns that flow. → §PP340
 - 📋 **PP369** (deps: PP27 ⏳) **eight asserts still carry weight about data across four files, and PP357's check reads only one of them** — four are size assertions in front of reads in takion.c, one guards an ECDH secret, one a pointer dereferenced two lines later, one an offset in senkusha.c. → §PP369
-- 📋 **PP389** (deps: —) **seven logs in holepunch.c carry another function's name, and two are verbatim duplicates of the real one's** — PP373's family in the file with 314 name-prefixed logs; a reader grepping the sentence lands in the function it was copied from. → §PP389
 
 ## Block G — Test discipline
 

@@ -331,6 +331,7 @@
 - ✅ **PP383** **ctrl_enable_features sends seven messages, discards every result, and returns void so its caller cannot know either** — the feature burst returns a code, stops at the first failure, and both callers end a channel whose counter has drifted.
 - ✅ **PP384** **chiaki_rudp_send_recv discards all four send results, so a send that never left is reported as a receive timeout** — all four arms read what they sent, a failed send skips the wait, and the summary says how many tries never left.
 - ✅ **PP385** **seven more sends in ctrl.c discard their result, and PP383's rule ships as a ceiling of seven rather than zero** — the drain leaves, the PIN and heartbeat fail the channel, the four fallbacks report, and the ceiling is zero.
+- 🗑 **PP389** **seven logs in holepunch.c carry another function's name, and two are verbatim duplicates of the real one's** — superseded by PP390: every one of the seven was already decided - PP235 reproduces two on purpose and PP238 ruled five defensible - so what is owed is the marker PP390 carries, not the fix.
 
 ## Block G — Test discipline
 
@@ -367,6 +368,7 @@
 - ✅ **PP343** **the only reader that finds a C function body rather than its prototype is named after the reorder queue** — one reader named for what it reads, counting braces rather than trusting a closing one in column zero, with the two copies delegating to it.
 - ✅ **PP386** **47 drift predicates pin a bare call to its exact spelling, semicolon included, and four broke this block** — the 27 occurrence predicates ask CCall whether a call happens; the 20 ordering ones need their arithmetic moved and are PP388.
 - ✅ **PP388** **20 ordering predicates mix compacted call positions with raw offsets, so none can move onto CCall alone** — every ordering predicate reads one compacted space, and the raw slicer keeps its anchor without the terminator.
+- ✅ **PP390** **the fourth attempt to fix holepunch.c's log prefixes, and nothing in that file records the three decisions against it** — the seven carry a marker naming the decision that made them, and the rule asks whether the file still matches PP235 and PP238.
 
 ## Block H — Performance and telemetry
 
