@@ -543,6 +543,85 @@ branch also guards on, or a prohibition that is not expressed through the displa
 machine at all. The port reproduces the C for now, and cannot reproduce it faithfully
 without saying which.
 
+### §PP363 The loop where a timeout is the work
+
+Once a stream is up, the run function sits in a loop with one job: wait, and if the wait
+TIMED OUT, send a heartbeat and wait again. Anything that is not a timeout leaves the
+loop and the stream ends.
+
+    err = cond_timedwait_pred(..., HEARTBEAT_INTERVAL_MS, state_finished_cond_check, ...);
+    if(err != CHIAKI_ERR_TIMEOUT)
+        break;
+    stream_connection_send_heartbeat(stream_connection);
+
+So a timeout is the work and success is the exit, which is the inverse of PP349's ctrl
+loop where CANCELED was the work and everything else was failure. Two loops in two
+files, both with a condition wait, and the return value that means "carry on" is the
+opposite one in each. A port reading either from memory of the other would either stop
+sending heartbeats or spin.
+
+A heartbeat that fails to send is LOGGED AND IGNORED. The loop carries on and waits
+again, so a stream whose heartbeats are all failing looks alive from in here until the
+console gives up on it - which is the right behaviour for a diagnostic message and worth
+being deliberate about rather than inheriting.
+
+How the run's error code is decided is the other half. At the disconnect label three
+things are tested in order: should_stop wins and gives CANCELED, then
+remote_disconnected gives DISCONNECTED, and otherwise whatever err already held stands.
+PP336 already ported what the session makes of those three - this is where they come
+from.
+
+### §PP364 Six labels, and the numbers rescued between two of them
+
+Where session.c has two exit labels (PP336), the stream connection has six, cascading:
+disconnect, err_congestion_control, close_takion, err_video_receiver,
+err_haptics_receiver, err_audio_receiver. Each unwinds exactly one thing and falls
+through to the next, so an entry point half way down releases exactly what was built
+above it. It is the most disciplined teardown in the three files PP28 named.
+
+TWO MEASUREMENTS ARE LIFTED BEFORE THE THING THAT MADE THEM IS FREED, and both carry a
+comment saying so. input_to_wire is copied out of the feedback sender before fini, and
+the four frame-path stage timings are copied out of takion and the video receiver before
+the receiver is freed - after takion_close, so the thread that wrote them has been
+joined and there is nothing to race. A port that freed first would lose the numbers and
+would lose them silently, since a zero reads as a measurement.
+
+THE ORDER OF close_takion AND err_video_receiver IS LOAD-BEARING for that reason, not
+for tidiness: the receiver's timings are read between them.
+
+And streaminfo_early_buf is freed at the disconnect label as well as when it is
+replayed, because the replay only happens on the path that reaches EXPECT_STREAMINFO -
+every earlier failure leaves it allocated.
+
+This is the half of PP295 that is not about messages at all, and it is where a rewrite
+loses measurements rather than behaviour.
+
+### §PP365 A flag written eight times and read never
+
+state_failed is written eight times in streamconnection.c and read nowhere. Four of the
+writes clear it as each state is entered; three set it - when takion reports a
+disconnect event, when the bang handler cannot use what arrived, and when the streaminfo
+handler cannot. Nothing looks.
+
+The wait predicate does not: state_finished_cond_check watches state_finished,
+should_stop and remote_disconnected. The run function does not either - after each wait
+it tests should_stop and then state_finished, and nothing else.
+
+So a handler that fails does not wake the wait. It sets a flag and returns, and the
+thread sits there for the whole EXPECT_TIMEOUT_MS before concluding that nothing
+arrived. The C's own log line is the tell: "StreamConnection didn't receive bang or
+failed to handle it" - one sentence for two different things, because at that point it
+genuinely cannot tell them apart.
+
+Which makes this two questions rather than one. Whether the flag should be watched is a
+behaviour change: a bang that fails to parse would end the stream immediately instead of
+after the timeout, which is better and is different. Whether it should be deleted is the
+other answer, and it is the one that makes the log line honest.
+
+Reproducing it as dead is what the port does now, with an assertion that it stays dead -
+because a port that grew a use for it would be reporting failures sooner than the C, and
+that difference would not show up in any message-level comparison.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry

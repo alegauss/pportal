@@ -40,6 +40,9 @@
 - 📋 **PP345** (deps: —) **chiaki_ctrl_set_login_pin returns void, so an allocation failure reaches the user as a wrong PIN** — the malloc failure returns before login_pin_entered is set, the console never gets the PIN and asks again - which PP335 established is the only thing that says wrong. → §PP345
 - 📋 **PP354** (deps: —) **two ctrl receive buffers share one size field, and the rudp read limit subtracts the wrong buffer's fill** — sizeof(rudp_recv_buf) - recv_buf_size is 520 minus how full a different buffer is; conservative rather than wrong, but not the number anybody meant. → §PP354
 - 📋 **PP359** (deps: PP353 ✅) **RP-Prohibit hides the stream without touching either display flag, so any DisplayA zero un-hides it** — it is a third caller of the callback PP353's table models, and the branch that says the stream is back is guarded on a flag this never raises. → §PP359
+- 📋 **PP363** (deps: —) **the stream's idle loop treats a timeout as work, which is the inverse of the ctrl loop PP349 ported** — a timeout sends a heartbeat and waits again; anything else ends the stream - and a heartbeat that fails to send is logged and ignored. → §PP363
+- 📋 **PP364** (deps: —) **six cascading exit labels lift two measurements before freeing what made them, and the order is load-bearing** — input_to_wire before the sender's fini, and four frame-path timings between takion_close and the receiver's free - a zero reads as a measurement. → §PP364
+- 📋 **PP365** (deps: —) **state_failed is written eight times in streamconnection.c and read nowhere, so a failed handler waits out its timeout** — the predicate watches finished, stop and remote_disconnected; the log line says didn't receive or failed to handle because it cannot tell them apart. → §PP365
 
 ## Block G — Test discipline
 
