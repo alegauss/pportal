@@ -139,6 +139,7 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_ctrl_init(ChiakiCtrl *ctrl, ChiakiSession *
 	ctrl->login_pin_size = 0;
 	ctrl->cant_displaya = false;
 	ctrl->cant_displayb = false;
+	ctrl->rp_prohibit = false;
 	ctrl->msg_queue = NULL;
 	ctrl->keyboard_text_counter = 0;
 	ctrl->sock = CHIAKI_INVALID_SOCKET;
@@ -1072,7 +1073,10 @@ static void ctrl_message_received_displaya(ChiakiCtrl *ctrl, uint8_t *payload, s
 	{
 		ctrl->cant_displaya = true;
 	}
-	else if (payload[0] == 0x0 && !ctrl->cant_displayb)
+	// PP359: and on the prohibition, which is the third thing that can be hiding the stream. Same
+	// shape as the guard beside it: the flag is not lowered either, so a later DisplayA is judged
+	// against the same state this one was.
+	else if (payload[0] == 0x0 && !ctrl->cant_displayb && !ctrl->rp_prohibit)
 	{
 		ctrl->cant_displaya = false;
 		CHIAKI_LOGI(ctrl->session->log, "Ctrl received message that the stream can now display.");
@@ -1572,7 +1576,16 @@ static ChiakiErrorCode ctrl_connect(ChiakiCtrl *ctrl)
 		CHIAKI_LOGE(session->log, "No valid Server Type in ctrl response");
 
 	if(response.rp_prohibit)
+	{
+		// PP359: recorded as well as reported. This is the THIRD writer to the belief PP353's two
+		// flags model, and it used to touch neither of them - so the client hid the stream while
+		// cant_displaya and cant_displayb both read false, and the one branch that ever says the
+		// stream is back was guarded on a flag this never raised. The first unrelated DisplayA 0x0
+		// then un-hid a session the console had said was prohibited, with nothing left to remember
+		// that it was.
+		ctrl->rp_prohibit = true;
 		ctrl->session->display_sink.cantdisplay_cb(ctrl->session->display_sink.user, true);
+	}
 
 	// if we already got more data than the header, put the rest in the buffer.
 	ctrl->recv_buf_size = received_size - header_size;

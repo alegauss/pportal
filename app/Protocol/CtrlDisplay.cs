@@ -15,10 +15,15 @@ public enum DisplayTold
     CanDisplay,
 }
 
-/// <summary>The two flags, which only mean anything together.</summary>
+/// <summary>The flags, which only mean anything together.</summary>
 /// <param name="CantA">Raised by DISPLAYA carrying 0x1. Raised silently.</param>
 /// <param name="CantB">Raised by DISPLAYB while A is up, and that is what tells the client.</param>
-public readonly record struct DisplayFlags(bool CantA = false, bool CantB = false);
+/// <param name="Prohibited">
+/// PP359: raised once by RP-Prohibit in the ctrl response, and never lowered. A prohibition is a
+/// property of the session the console granted rather than of what is on its screen.
+/// </param>
+public readonly record struct DisplayFlags(
+    bool CantA = false, bool CantB = false, bool Prohibited = false);
 
 /// <summary>One arrival's effect: what the flags become, and what the client hears.</summary>
 public readonly record struct DisplayEffect(DisplayFlags Flags, DisplayTold Told);
@@ -62,8 +67,8 @@ public static class CtrlDisplay
             return new DisplayEffect(flags with { CantA = true }, DisplayTold.Nothing);
 
         // The only thing that ever tells the client the stream is back - and it is guarded on the
-        // second flag, so it does nothing at all while that is up.
-        if (payload[0] == 0x0 && !flags.CantB)
+        // second flag AND on the prohibition (PP359), so it does nothing at all while either is up.
+        if (payload[0] == 0x0 && !flags.CantB && !flags.Prohibited)
             return new DisplayEffect(flags with { CantA = false }, DisplayTold.CanDisplay);
 
         return new DisplayEffect(flags, DisplayTold.Nothing);
@@ -97,12 +102,58 @@ public static class CtrlDisplay
     }
 
     /// <summary>
+    /// PP359: what the ctrl response's RP-Prohibit does, which is the third way into this machine.
+    ///
+    /// It arrives once, before any display message, and tells the client the stream cannot be shown.
+    /// Recording it is what the C did not do: the sink was told while both flags stayed false, so
+    /// the client's belief and the machine's state disagreed from the first moment of the session.
+    /// </summary>
+    public static DisplayEffect ReceiveProhibition(DisplayFlags flags, bool prohibited)
+        => prohibited
+            ? new DisplayEffect(flags with { Prohibited = true }, DisplayTold.CannotDisplay)
+            : new DisplayEffect(flags, DisplayTold.Nothing);
+
+    /// <summary>
+    /// Whether an RP-Prohibit header value means prohibited, by the reading ctrl.c gives it.
+    ///
+    /// <c>atoi(value) == 1</c>, REPRODUCED AND NOT CORRECTED. It is a fail-open: anything that is
+    /// not a leading integer 1 means not prohibited, and that includes the empty string, a value
+    /// that failed to decrypt, and "true". Nothing in this tree knows what a console actually sends
+    /// here, so the parse stays as it is and the shape is asserted rather than improved.
+    /// </summary>
+    public static bool ReadsAsProhibited(string? headerValue)
+    {
+        if (string.IsNullOrEmpty(headerValue))
+            return false;
+
+        var at = 0;
+        while (at < headerValue.Length && char.IsWhiteSpace(headerValue[at]))
+            at++;
+
+        var negative = false;
+        if (at < headerValue.Length && (headerValue[at] == '+' || headerValue[at] == '-'))
+            negative = headerValue[at++] == '-';
+
+        var digits = 0;
+        var value = 0;
+        while (at < headerValue.Length && char.IsAsciiDigit(headerValue[at]))
+        {
+            // Bounded rather than accumulated forever: anything past 1 is already not 1.
+            value = value >= 10 ? value : (value * 10) + (headerValue[at] - '0');
+            at++;
+            digits++;
+        }
+
+        return digits > 0 && !negative && value == 1;
+    }
+
+    /// <summary>
     /// Whether the client currently believes it cannot show the stream.
     ///
-    /// It is the second flag and not the pair: the sink is told from that one, and the first can be
-    /// stale while it is up.
+    /// The second flag or the prohibition, and never the first: the sink is told from those two,
+    /// and the first can be stale while either is up.
     /// </summary>
-    public static bool ClientIsHidingTheStream(DisplayFlags flags) => flags.CantB;
+    public static bool ClientIsHidingTheStream(DisplayFlags flags) => flags.CantB || flags.Prohibited;
 }
 
 /// <summary>
@@ -167,5 +218,67 @@ public static class CtrlDisplaySource
 
         // No callback after the clear: the last thing that arm does is lower the flag.
         return !displayBBody[clear..].Contains("cantdisplay_cb", StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// PP359: whether the connect RECORDS the prohibition as well as reporting it.
+    ///
+    /// The order is the assertion. The flag has to be raised before the sink is told, so no reader
+    /// of the machine can observe a client hiding the stream over a state that says it should not
+    /// be - which is what the whole session used to look like.
+    /// </summary>
+    public static bool TheProhibitionIsRecordedBeforeItIsReported(string connectBody)
+    {
+        ArgumentNullException.ThrowIfNull(connectBody);
+
+        int branch = connectBody.IndexOf("if(response.rp_prohibit)", StringComparison.Ordinal);
+        if (branch < 0)
+            return false;
+
+        int raise = connectBody.IndexOf("ctrl->rp_prohibit = true;", branch, StringComparison.Ordinal);
+        int told = connectBody.IndexOf("cantdisplay_cb", branch, StringComparison.Ordinal);
+
+        return raise > branch && told > raise;
+    }
+
+    /// <summary>
+    /// Whether the branch that says the stream is back also guards on the prohibition.
+    ///
+    /// This is the defect itself: that branch was guarded on cant_displayb alone, and RP-Prohibit
+    /// never raised cant_displayb - so a prohibited session was un-hidden by the first unrelated
+    /// DisplayA 0x0 the console sent.
+    /// </summary>
+    public static bool TheCanDisplayBranchAlsoGuardsOnTheProhibition(string displayABody)
+    {
+        ArgumentNullException.ThrowIfNull(displayABody);
+
+        return displayABody.Contains(
+            "payload[0] == 0x0 && !ctrl->cant_displayb && !ctrl->rp_prohibit",
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Whether the prohibition is still never lowered, which is what makes it a session property.
+    ///
+    /// Exactly one assignment of false, and it is the init. A second would be a way back out that
+    /// nothing in the ctrl response justifies: the header is read once and never sent again.
+    /// </summary>
+    public static bool TheProhibitionIsOnlyClearedAtInit(string source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        const string Cleared = "ctrl->rp_prohibit = false;";
+
+        var count = 0;
+        for (int at = source.IndexOf(Cleared, StringComparison.Ordinal);
+             at >= 0;
+             at = source.IndexOf(Cleared, at + 1, StringComparison.Ordinal))
+        {
+            count++;
+        }
+
+        return count == 1
+            && CFunction.Body(source, "chiaki_ctrl_init") is { } init
+            && init.Contains(Cleared, StringComparison.Ordinal);
     }
 }

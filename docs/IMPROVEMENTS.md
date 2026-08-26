@@ -159,7 +159,7 @@ because every part of it was green.
 ### §PP23 The oracle this block cannot be written without
 
 chiaki exists because the PlayStation remote play protocol was reverse engineered. There
-is no document to implement against: the 24867 lines of C in lib/src are the
+is no document to implement against: the 24880 lines of C in lib/src are the
 specification, and a managed rewrite that reads them and reproduces them is a
 translation whose only correctness test is behavioural.
 
@@ -198,7 +198,7 @@ bytes.
 
 ### §PP28 The state machines
 
-session.c is 1239 lines, ctrl.c 1594 and streamconnection.c 1466. Together they are the
+session.c is 1239 lines, ctrl.c 1607 and streamconnection.c 1466. Together they are the
 connection: what is sent in which order, what is waited for, what a timeout means at
 each point, and how a session comes apart when the console stops answering.
 
@@ -437,33 +437,6 @@ itself.
 Until then PP33 is correctly blocked and its remaining query correctly reads 420.
 Reading that number as the size of the job is what its own section warns against: it is
 one file, and the work is at the other end.
-
-### §PP359 A third writer to a two-flag machine
-
-PP353 ported the display state as a table over two flags, because neither means anything
-alone and only DISPLAYB tells the client the stream cannot be shown. There is a third
-caller of that same callback and it is in the connect:
-
-    if(response.rp_prohibit)
-        ctrl->session->display_sink.cantdisplay_cb(ctrl->session->display_sink.user, true);
-
-It touches neither flag. So a prohibited session starts with the client hiding the
-stream while cant_displaya and cant_displayb both read false - a state PP353's table has
-no name for, because the table is what the client believes and this is the one path that
-sets that belief from outside.
-
-What follows is worse than an inconsistency. The only thing that ever tells the client
-the stream is back is a DISPLAYA carrying 0x0, guarded on the second flag being down -
-and it is down. So the first unrelated DISPLAYA 0x0 the console sends un-hides a stream
-the console said was prohibited, and nothing in the machine remembers that it was.
-
-RP-Prohibit is also read with atoi, so any value that is not the text "1" means not
-prohibited - including a value that failed to decrypt, and including the empty string.
-
-Which of the two this should be is a real question: a third flag that the DISPLAYA
-branch also guards on, or a prohibition that is not expressed through the display
-machine at all. The port reproduces the C for now, and cannot reproduce it faithfully
-without saying which.
 
 ### §PP363 The loop where a timeout is the work
 

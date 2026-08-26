@@ -1,4 +1,4 @@
-using ChiakiNg.Protocol;
+﻿using ChiakiNg.Protocol;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -181,5 +181,166 @@ public class CtrlDisplayTests
         Assert.True(
             CtrlDisplaySource.ClearingIsStillSilent(b),
             "clearing the second flag now tells the client, which the C does not");
+    }
+
+    /// <summary>
+    /// PP359: a prohibition hides the stream and is REMEMBERED, which is the whole of the defect.
+    ///
+    /// It used to tell the client and touch neither flag, so the machine's state said the stream
+    /// was showable while the client was hiding it.
+    /// </summary>
+    [Fact]
+    public void AProhibitionHidesTheStreamAndIsRecorded()
+    {
+        DisplayEffect effect = CtrlDisplay.ReceiveProhibition(new DisplayFlags(), prohibited: true);
+
+        Assert.True(effect.Flags.Prohibited);
+        Assert.Equal(DisplayTold.CannotDisplay, effect.Told);
+        Assert.True(CtrlDisplay.ClientIsHidingTheStream(effect.Flags));
+
+        // And neither display flag moved, because neither is what this is about.
+        Assert.False(effect.Flags.CantA);
+        Assert.False(effect.Flags.CantB);
+    }
+
+    /// <summary>A response that does not prohibit changes nothing and says nothing.</summary>
+    [Fact]
+    public void NoProhibitionChangesNothing()
+    {
+        var flags = new DisplayFlags(CantA: true);
+
+        DisplayEffect effect = CtrlDisplay.ReceiveProhibition(flags, prohibited: false);
+
+        Assert.Equal(flags, effect.Flags);
+        Assert.Equal(DisplayTold.Nothing, effect.Told);
+    }
+
+    /// <summary>
+    /// PP359, THE FAILURE. A DISPLAYA 0x0 no longer un-hides a prohibited session.
+    ///
+    /// Both flags read false on a prohibited session - RP-Prohibit raises neither - so the branch
+    /// that says the stream is back was wide open, and the console sends DISPLAYA 0x0 for reasons
+    /// that have nothing to do with the prohibition.
+    /// </summary>
+    [Fact]
+    public void ADisplayAZeroDoesNotUnHideAProhibitedSession()
+    {
+        DisplayFlags flags = CtrlDisplay.ReceiveProhibition(new DisplayFlags(), true).Flags;
+
+        DisplayEffect effect = CtrlDisplay.ReceiveDisplayA(flags, [0x0]);
+
+        Assert.Equal(DisplayTold.Nothing, effect.Told);
+        Assert.True(CtrlDisplay.ClientIsHidingTheStream(effect.Flags));
+
+        // Nor is the first flag lowered, which is the same shape as the guard beside it.
+        Assert.Equal(flags, effect.Flags);
+    }
+
+    /// <summary>
+    /// And what the old machine did with it, stated so the regression is named rather than
+    /// described: with no third flag, the same arrival said the stream was back.
+    /// </summary>
+    [Fact]
+    public void TheOldMachineWouldHaveUnHiddenIt()
+    {
+        // A prohibited session, as the C recorded it: the client hiding, both flags down.
+        var asItWas = new DisplayFlags(CantA: false, CantB: false);
+
+        DisplayEffect effect = CtrlDisplay.ReceiveDisplayA(asItWas, [0x0]);
+
+        Assert.Equal(DisplayTold.CanDisplay, effect.Told);
+    }
+
+    /// <summary>
+    /// The whole cycle still recovers when the prohibition is not there, so the new guard has not
+    /// simply nailed the stream shut.
+    /// </summary>
+    [Fact]
+    public void AnUnprohibitedSessionStillRecovers()
+    {
+        DisplayFlags flags = CtrlDisplay.ReceiveProhibition(new DisplayFlags(), false).Flags;
+
+        flags = CtrlDisplay.ReceiveDisplayA(flags, [0x1]).Flags;
+        flags = CtrlDisplay.ReceiveDisplayB(flags, NotClearing).Flags;
+        Assert.True(CtrlDisplay.ClientIsHidingTheStream(flags));
+
+        flags = CtrlDisplay.ReceiveDisplayB(flags, Clearing).Flags;
+        DisplayEffect back = CtrlDisplay.ReceiveDisplayA(flags, [0x0]);
+
+        Assert.Equal(DisplayTold.CanDisplay, back.Told);
+    }
+
+    /// <summary>
+    /// PP359: the header is read with atoi, REPRODUCED. Anything that is not a leading integer 1
+    /// means not prohibited - a fail-open that includes the empty string and a value that failed to
+    /// decrypt.
+    /// </summary>
+    [Theory]
+    [InlineData("1", true)]
+    [InlineData(" 1", true)]
+    [InlineData("01", true)]
+    [InlineData("1x", true)]
+    [InlineData("  ", false)]
+    [InlineData("0", false)]
+    [InlineData("2", false)]
+    [InlineData("-1", false)]
+    [InlineData("true", false)]
+    [InlineData("", false)]
+    public void TheProhibitHeaderIsReadAsAtoiReadsIt(string value, bool prohibited)
+    {
+        Assert.Equal(prohibited, CtrlDisplay.ReadsAsProhibited(value));
+    }
+
+    /// <summary>And ctrl.c records the prohibition and guards on it.</summary>
+    [Fact]
+    public void CtrlRecordsTheProhibition()
+    {
+        string? path = CtrlDisplaySource.Locate();
+        if (path is null)
+            return;
+
+        string core = File.ReadAllText(path);
+
+        // The FULL signature, because "static ChiakiErrorCode ctrl_connect" is also a prefix of
+        // ctrl_connect_tcp - and that one is defined first, so the short name hands back the wrong
+        // function's body and every assertion below it reads as false. PP343's trap, wearing a
+        // prefix rather than a prototype.
+        string? connect = ChiakiNg.Session.CFunction.Body(
+            core, "static ChiakiErrorCode ctrl_connect(ChiakiCtrl *ctrl)");
+        string? a = ChiakiNg.Session.CFunction.Body(core, "ctrl_message_received_displaya");
+
+        Assert.NotNull(connect);
+        Assert.NotNull(a);
+
+        Assert.True(
+            CtrlDisplaySource.TheProhibitionIsRecordedBeforeItIsReported(connect),
+            "the connect tells the client without recording the prohibition first");
+        Assert.True(
+            CtrlDisplaySource.TheCanDisplayBranchAlsoGuardsOnTheProhibition(a),
+            "a DisplayA 0x0 can still un-hide a prohibited session");
+        Assert.True(
+            CtrlDisplaySource.TheProhibitionIsOnlyClearedAtInit(core),
+            "something other than chiaki_ctrl_init lowers the prohibition");
+    }
+
+    /// <summary>The readers see the shape they were written for.</summary>
+    [Fact]
+    public void TheProhibitionReadersSeeTheOldShape()
+    {
+        const string ConnectAsItWas = """
+            	if(response.rp_prohibit)
+            		ctrl->session->display_sink.cantdisplay_cb(ctrl->session->display_sink.user, true);
+            """;
+
+        Assert.False(CtrlDisplaySource.TheProhibitionIsRecordedBeforeItIsReported(ConnectAsItWas));
+
+        const string DisplayAAsItWas = "else if (payload[0] == 0x0 && !ctrl->cant_displayb)";
+
+        Assert.False(CtrlDisplaySource.TheCanDisplayBranchAlsoGuardsOnTheProhibition(DisplayAAsItWas));
+
+        // PP272's shape: none of the three may answer yes about a file with nothing in it.
+        Assert.False(CtrlDisplaySource.TheProhibitionIsRecordedBeforeItIsReported(""));
+        Assert.False(CtrlDisplaySource.TheCanDisplayBranchAlsoGuardsOnTheProhibition(""));
+        Assert.False(CtrlDisplaySource.TheProhibitionIsOnlyClearedAtInit(""));
     }
 }

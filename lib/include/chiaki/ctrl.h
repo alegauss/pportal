@@ -54,6 +54,11 @@ typedef struct chiaki_ctrl_t
 	bool login_pin_requested;
 	bool cant_displaya;
 	bool cant_displayb;
+	// PP359: the third flag of the same machine. RP-Prohibit arrives once, in the ctrl response,
+	// and used to hide the stream while both flags above read false - a state the client could be
+	// talked out of by the first unrelated DisplayA 0x0. It is never lowered: a prohibition is a
+	// property of the session the console granted, not of what is on screen.
+	bool rp_prohibit;
 
 	chiaki_socket_t sock;
 

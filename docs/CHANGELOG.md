@@ -319,6 +319,7 @@
 - ✅ **PP331** **a ctrl type the enum does not name arrives on every session, and the line that would say which is commented out** — the unhandled ctrl branch names the type at an informational level, and its hexdump no longer shouts.
 - ✅ **PP345** **chiaki_ctrl_set_login_pin returns void, so an allocation failure reaches the user as a wrong PIN** — the ctrl login PIN handover returns a code, and a dropped PIN ends the session naming memory instead of accusing the user.
 - ✅ **PP354** **two ctrl receive buffers share one size field, and the rudp read limit subtracts the wrong buffer's fill** — the dead 520-byte field is gone and the rudp receive takes the whole datagram, which on a UDP socket is a truncated ctrl message no longer lost.
+- ✅ **PP359** **RP-Prohibit hides the stream without touching either display flag, so any DisplayA zero un-hides it** — RP-Prohibit raises a third flag the DisplayA recovery branch also guards on, so nothing un-hides a prohibited session.
 
 ## Block G — Test discipline
 
