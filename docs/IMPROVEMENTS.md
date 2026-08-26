@@ -639,6 +639,35 @@ The login reply switches on a single byte of state, and it warns about any size 
 than one while still reading the byte where there is at least one - a shape PP352 is
 about the absence of.
 
+### §PP354 Two buffers, one fill
+
+ChiakiCtrl has two receive buffers and one size field:
+
+    uint8_t recv_buf[512];
+    uint8_t rudp_recv_buf[520];
+    size_t recv_buf_size;
+
+recv_buf_size tracks recv_buf, which is what the framing loop consumes from.
+rudp_recv_buf has no size of its own, and the one place its capacity is used mixes the
+two:
+
+    chiaki_rudp_recv_only(rudp, sizeof(ctrl->rudp_recv_buf) - ctrl->recv_buf_size, &message);
+
+That subtracts one buffer's fill level from the other buffer's capacity. It is not a
+crash - the limit comes out smaller than rudp_recv_buf whenever recv_buf holds anything,
+so the receive is conservative rather than over-long - but it is not the number anybody
+meant. What it says is "how much room is left in rudp_recv_buf" and what it computes is
+"520 minus how full a different buffer is".
+
+PP347 bounded the copies OUT of the rudp path into recv_buf, which is where the overflow
+was. This is the other end and a different question: whether the eight extra bytes are
+deliberate, whether rudp_recv_buf needs a fill of its own, and whether one of the two
+buffers exists only because the other could not be reused.
+
+It is a design question rather than a defect, which is why PP347 named it and did not
+answer it. Answering it wrongly is how a second buffer becomes a second thing that can
+be out of step with the first.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry

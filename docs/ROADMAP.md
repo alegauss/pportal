@@ -44,6 +44,7 @@
 - 📋 **PP351** (deps: —) **accept and reject are the same ctrl message told apart by one unnamed byte, and nothing managed builds either** — the keyboard text request also writes its length into two fields and pre-increments an unlocked counter the console uses to order edits. → §PP351
 - 📋 **PP352** (deps: —) **the two display handlers read payload bytes without checking the size, so a short message is decided by leftovers** — every other handler checks first; these two never mention payload_size, and a stale 0x01 tells the display sink the stream cannot be shown. → §PP352
 - 📋 **PP353** (deps: PP352) **two display flags decide whether the stream is shown, and the one value the capture holds is the clearing one** — DISPLAYA raises a flag silently and DISPLAYB decides from both; the recorded 01-ff is what lowers it, so every interesting path is unwitnessed. → §PP353
+- 📋 **PP354** (deps: —) **two ctrl receive buffers share one size field, and the rudp read limit subtracts the wrong buffer's fill** — sizeof(rudp_recv_buf) - recv_buf_size is 520 minus how full a different buffer is; conservative rather than wrong, but not the number anybody meant. → §PP354
 
 ## Block G — Test discipline
 
