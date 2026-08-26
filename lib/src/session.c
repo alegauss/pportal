@@ -449,7 +449,16 @@ static void *session_thread_func(void *arg)
 		if(!session->rudp)
 		{
 			CHIAKI_LOGE(session->log, "Initializing rudp failed");
-			CHECK_STOP(quit);
+			// PP339: QUIT and not CHECK_STOP. CHECK_STOP returns unless somebody asked to stop, so
+			// this logged an error and then carried on with rudp NULL - skipping the PSN regist
+			// block, then requesting a session over host_addrinfos, which session_init only fills
+			// for a session that has NO holepunch session. The loop ran zero times and the failure
+			// arrived as "no address answered", which is the one failure that was not the cause.
+			//
+			// The reason is left alone rather than invented: every other error exit in this
+			// function that has no reason of its own quits without setting one, and a reason
+			// naming the session request would be as wrong as the ending it replaced.
+			QUIT(quit);
 		}
 	}
 	// PSN Connection
@@ -567,7 +576,11 @@ static void *session_thread_func(void *arg)
 		if (err != CHIAKI_ERR_SUCCESS)
 		{
 			CHIAKI_LOGE(session->log, "!! Failed to create offer msg for data connection");
-			CHECK_STOP(quit_ctrl);
+			// PP339: the same swap as the rudp init above, and found by the check written for that
+			// one. CHECK_STOP returned unless a stop was pending, so a failed offer fell through
+			// and the thread punched a hole for a data connection it had never offered. The punch
+			// failure on the next lines already uses QUIT, which is what this was meant to be.
+			QUIT(quit_ctrl);
 		}
 		CHIAKI_LOGI(session->log, "Punching hole for data connection");
 		ChiakiEvent event_start = { 0 };

@@ -36,7 +36,6 @@
 - 📋 **PP295** (deps: PP27 ⏳, PP297 ✅) **streamconnection.c is 1326 lines and is the last C caller of the video receiver, so every deletion below waits on it** — PP286 to PP291 ported the frame path bottom-up and none of it removed C, because this is what still calls the native receiver. → §PP295
 - 💭 **PP313** (deps: PP33 ⏳) **curl and json-c would leave the build today if the remote path were built off, and that trades a feature for a count** — PP33's fourth criterion otherwise waits on the managed session, and the tri_option is already there. → §PP313
 - 📋 **PP331** (deps: —) **a ctrl type the enum does not name arrives on every session, and the line that would say which is commented out** — PP297's capture recorded 0x41 off a real PS5; ctrl.c's default branch hexdumps it at warning level with the type itself commented out. → §PP331
-- 📋 **PP339** (deps: —) **a failed rudp init is logged as an error and then ignored, so the session fails later naming something else** — CHECK_STOP quits only where a stop was asked for; with none the thread carries on with rudp NULL, into a path a holepunch session has no address for. → §PP339
 
 ## Block G — Test discipline
 

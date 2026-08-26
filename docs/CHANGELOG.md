@@ -286,6 +286,7 @@
 - ✅ **PP336** **the session thread ends through two labels with different cleanup, and nothing managed says which reason a client sees** — the two exits, the fall-through that guarantees one quit event, and the rule that a recorded reason outlives the generic failure after it.
 - ✅ **PP337** **the device id a console is told is mostly fixed bytes, and nothing managed builds one** — the device id's fixed prefix and written zeroes, the colon that pins the address family, the target, and the 360p a disabled video actually asks for.
 - ✅ **PP338** **stop, join and fini have an order nothing states, and both wrong orders fail as something else** — the phase table saying what stop, join and fini do in each phase, and the four wake-ups a stop performs, held against session.c.
+- ✅ **PP339** **a failed rudp init is logged as an error and then ignored, so the session fails later naming something else** — both failures now quit instead of polling for a stop nobody asked for, and a check finds the shape rather than the line - which is how the second one was found.
 
 ## Block G — Test discipline
 
