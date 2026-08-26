@@ -676,6 +676,137 @@ takion.c is PP27's file and this crosses into it, which is why this is a line ra
 than a wider edit under PP295. What it owes is the fix for all seven and a check that
 reads every file rather than the one where the first two were found.
 
+### §PP372 Video headers with no owner, and three ways out
+
+A decoded resolution's video header is malloc'd by the protobuf callback and realloc'd
+there with padding. Nothing owns it until `chiaki_video_receiver_stream_info` memcpy's
+the profile array into the receiver. Three paths never get there, and each one loses
+every header decoded so far:
+
+- `pb_decode_resolution` reallocs the header BEFORE checking `video_profiles_count` against
+  CHIAKI_VIDEO_PROFILES_MAX, then returns on the full array without freeing it. One leak per
+  resolution past the maximum, and the count of resolutions is the console's to choose.
+- `expect_streaminfo`'s `error` label is reached with the profiles already decoded - a bad audio
+  header size gets there before the receiver is ever called - and frees none of them.
+- `chiaki_video_receiver_stream_info` itself returns early when profiles are already set, having
+  taken nothing, so the caller's headers are lost with no error the caller can see.
+
+The third is why this is one task and not three. The ownership is transferred by a
+memcpy with no handover in the signature, so a caller cannot tell whether it still owns
+what it passed. The fix either frees on every path the caller keeps, or gives the
+receiver a return value saying whether it took them.
+
+Order is the cheap part of it: moving the count check above the realloc removes the
+first leak without touching the contract.
+
+Sizes are bounded - the padded header is as large as the console's video header - so
+this is a leak per stream setup, not a way to exhaust memory from outside.
+
+### §PP373 Nine encoders, two wearing another's name
+
+Nine functions in this file encode a protobuf and log if the encode fails. Two of them
+name a message they are not encoding:
+
+    stream_connection_enable_microphone   "controller connection protobuf encoding failed"
+    stream_connection_send_corrupt_frame  "heartbeat protobuf encoding failed"
+
+Both are the previous function's line, kept when the function was copied. The failure is
+real when it prints, and the encoding-failure log is the only thing distinguishing these
+paths in a log file - they return the same error to callers that mostly return it
+onward, so what a user sends in is a log that names the wrong message and a session that
+ended for a reason nobody can locate.
+
+The microphone one is the worse of the two, because "controller connection protobuf
+encoding failed" already exists verbatim four lines up in a function that really does
+encode one. Two identical lines from two different functions means the log cannot even
+be used to tell which ran.
+
+PP361 was this shape in a different register - a mic toggle logging the state it left
+rather than the one it entered. There the words were inverted; here they belong to
+another message entirely.
+
+The check is written over the group rather than the two: every encoder in this file has
+its own name in its own failure log, so a tenth added by copying a ninth is caught.
+Naming the payload type rather than a hand-written phrase would make the class
+impossible, and is the better fix if the type has a name at that point.
+
+### §PP374 A four-byte read through a two-byte swap
+
+The pad info handler reads a timestamp out of the 0x19 payload:
+
+    uint32_t timestamp = ntohs(*(chiaki_unaligned_uint32_t *)(buf + 4));
+
+The read is four bytes wide and the swap is two. `ntohs` takes a uint16_t, so the 32-bit
+value is truncated to its low half before anything is swapped - on a little-endian host
+that half is the two MOST significant network bytes, and the two least significant are
+discarded. The result is the top half of the field, swapped, in a uint32_t.
+
+It is logged as "%u seconds after stream began", which means the number printed advances
+once per 65536 units of whatever the console is counting, and is wrong by that factor
+for the whole session. The value is used nowhere else, so this costs a diagnostic rather
+than behaviour - and it costs it on the motion-reset path, which is where somebody looks
+when motion control drifts.
+
+The read is in bounds: the 0x19 case is 25 bytes and this takes 4 from offset 4.
+
+Searching for the shape rather than the line found this to be the only width mismatch in
+lib/src. Six other reads pair `ntohs` with a `chiaki_unaligned_uint16_t`, including the
+seqnum on the line above it, which is what makes this one look deliberate at a glance.
+
+The fix is `ntohl`, and the assertion is over the pairing: every `ntohs` in lib/src
+reads 16 bits and every `ntohl` reads 32. That is checkable by shape and holds for the
+whole tree, so it also catches the inverse mistake nobody has made yet.
+
+### §PP375 A fragmented BIG that failed halfway, reported as sent
+
+BIG is the only message this file fragments. It is also the one that carries the launch
+spec, the session key and the ECDH key, so it is what the console needs in full before
+it will answer BANG.
+
+The loop assigns `err` on every fragment and reads it on none. The trailing send then
+overwrites `err`, and that is what the function returns. A fragment that failed in the
+middle leaves the console holding a BIG whose continuation never arrived, while
+`stream_connection_run` is told the send succeeded and waits for BANG. That wait ends on
+a timeout, with nothing in the log about a send.
+
+This is the same shape as PP370 and PP367, with the difference that makes it worse:
+those discarded one result and this discards all but one, so the number of ignored
+answers grows with the size of the message and with a smaller MTU. On a link that
+measured 576 the spec fragments several times over; on 1454 it may not fragment at all,
+which is why this survives a working setup.
+
+The check belongs inside the loop with a break, not after it. Reporting the failure of
+the fragment that failed is the point: "failed to send BIG fragment 3 of 5" is a
+sentence someone can act on, and a return value taken from the last send is not.
+
+The fix is the loop's; the boundary defect in the same loop is its own line.
+
+### §PP376 The BIG terminator the loop can eat
+
+Every send in the fragment loop passes 0 as its first argument; the trailing send after
+the loop passes 1. That argument is what tells the console the message is complete, so
+the trailing send is not an optimisation - it is the terminator.
+
+It is guarded by `if(total_size > 0)`, and total_size can reach exactly 0 inside the
+loop. Take a continuation fragment where total_size equals mtu - 25: `mtu < total_size +
+26` reads as `mtu < mtu + 1`, which is true, so the loop takes one more fragment of
+exactly mtu - 25 bytes and total_size becomes 0. The next test fails, the loop exits,
+`total_size > 0` is false, and the function returns success having sent every byte of
+BIG and no terminator.
+
+The console then waits for a continuation that will never come, and the client waits for
+BANG. Both sides are waiting, neither has an error, and the session dies on whichever
+timeout is shorter.
+
+Whether it happens is decided by two numbers neither side chose: the encoded length of
+the launch spec, which moves with resolution, codec, HDR and the base64 handshake key,
+and the MTU senkusha measured. A rare alignment, perfectly reproducible once a given
+console and profile hit it - the shape of a bug reported as "this one console never
+connects".
+
+The last fragment sent should carry the flag, which makes the trailing send a special
+case of the loop rather than a separate path.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry

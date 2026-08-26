@@ -45,6 +45,11 @@
 - 📋 **PP365** (deps: —) **state_failed is written eight times in streamconnection.c and read nowhere, so a failed handler waits out its timeout** — the predicate watches finished, stop and remote_disconnected; the log line says didn't receive or failed to handle because it cannot tell them apart. → §PP365
 - 📋 **PP366** (deps: —) **one protobuf on the wire is three messages depending on the state, and the AV route is where every deletion waits** — the dispatch asks event kind, then data kind, then state; and ten lines decrypt at key_pos plus a block and route by two flags. → §PP366
 - 📋 **PP369** (deps: PP27 ⏳) **seven asserts still carry weight about data across three files, and PP357's check reads only one of them** — four are size assertions in front of reads in takion.c; one guards an ECDH secret from being overwritten, one a pointer dereferenced two lines later. → §PP369
+- 📋 **PP372** (deps: —) **a decoded video header has no owner until the receiver takes it, and three paths lose it** — the count check sits after the realloc, the streaminfo error label frees nothing, and the receiver returns early having taken nothing. → §PP372
+- 📋 **PP373** (deps: —) **two encoding-failure logs name a message the function is not encoding** — both lines were kept from the function each was copied from, and one now exists verbatim in two places. → §PP373
+- 📋 **PP374** (deps: —) **the pad info timestamp is read 32 bits wide and byte-swapped 16, so the logged value is the field's top half** — ntohs takes a uint16_t, so the 32-bit read is truncated before the swap; it is the only width mismatch in lib/src. → §PP374
+- 📋 **PP375** (deps: —) **the BIG fragment loop discards every send result but the last, so a truncated BIG reports success** — err is assigned per fragment and read after the loop, where the trailing send has already overwritten it. → §PP375
+- 📋 **PP376** (deps: —) **a BIG that lands exactly on a fragment boundary never gets its end-of-message flag** — the terminator is the trailing send, guarded by total_size > 0, and the loop can bring total_size to exactly 0. → §PP376
 
 ## Block G — Test discipline
 
