@@ -184,4 +184,109 @@ public class CtrlFrameBoundsTests
 
         Assert.Equal(1, CtrlFrameBoundsSource.UnboundedCopiesIntoTheCtrlBuffer(asItWas));
     }
+
+    /// <summary>
+    /// PP354: the eight extra bytes are the RUDP header, which is what answers whether 520 was
+    /// deliberate.
+    ///
+    /// rudp.c refuses a receive of eight bytes or fewer as less than the required RUDP header, so a
+    /// datagram carrying a full ctrl buffer is 512 + 8 on the wire. The number was meant; the array
+    /// that carried it was not.
+    /// </summary>
+    [Fact]
+    public void TheRudpDatagramIsTheCtrlBufferPlusItsHeader()
+    {
+        Assert.Equal(8, CtrlFrameBounds.RudpHeaderSize);
+        Assert.Equal(
+            CtrlFrameBounds.ReceiveBufferSize + CtrlFrameBounds.RudpHeaderSize,
+            CtrlFrameBounds.RudpReceiveBufferSize);
+    }
+
+    /// <summary>THE TASK. The rudp receive limit does not depend on the ctrl buffer's fill.</summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(300)]
+    [InlineData(512)]
+    public void TheRudpReceiveLimitIgnoresTheOtherBuffersFill(int buffered)
+    {
+        Assert.Equal(CtrlFrameBounds.RudpReceiveBufferSize, CtrlFrameBounds.RudpReceiveLimit());
+
+        // And the old spelling did not, which is the difference stated rather than described.
+        Assert.Equal(
+            CtrlFrameBounds.RudpReceiveBufferSize - buffered,
+            CtrlFrameBounds.RudpReceiveLimitAsItWas(buffered));
+    }
+
+    /// <summary>
+    /// And what that cost. Any fill at all truncated a full datagram - on a UDP socket the tail is
+    /// discarded, not left for the next receive - and the framing loop leaves a fill behind exactly
+    /// while a ctrl message is mid-reassembly.
+    /// </summary>
+    [Fact]
+    public void TheOldLimitTruncatedAtAnyFill()
+    {
+        Assert.False(CtrlFrameBounds.TheOldLimitTruncated(0));
+
+        Assert.True(CtrlFrameBounds.TheOldLimitTruncated(1));
+        Assert.True(CtrlFrameBounds.TheOldLimitTruncated(504));
+    }
+
+    /// <summary>The field that carried the number is gone, and the header names it instead.</summary>
+    [Fact]
+    public void TheRudpBufferFieldIsGoneFromTheStruct()
+    {
+        string? path = CtrlFrameBoundsSource.LocateHeader();
+        if (path is null)
+            return;
+
+        string header = File.ReadAllText(path);
+
+        Assert.True(
+            CtrlFrameBoundsSource.TheRudpFieldIsGone(header),
+            "ctrl.h still declares rudp_recv_buf, which nothing reads or writes");
+        Assert.True(
+            CtrlFrameBoundsSource.TheHeaderNamesTheDatagramSize(header),
+            "ctrl.h does not name the rudp datagram size the receive now asks for");
+    }
+
+    /// <summary>And the call asks for the whole datagram.</summary>
+    [Fact]
+    public void TheRudpReceiveAsksForTheWholeDatagram()
+    {
+        string? path = CtrlFrameBoundsSource.Locate();
+        if (path is null)
+            return;
+
+        string? thread = CtrlFrameBoundsSource.ThreadBody(path);
+        Assert.NotNull(thread);
+
+        Assert.True(
+            CtrlFrameBoundsSource.TheRudpReceiveTakesTheWholeDatagram(thread),
+            "the rudp receive still sizes itself from the ctrl buffer's fill");
+    }
+
+    /// <summary>The readers see the spelling they were written for.</summary>
+    [Fact]
+    public void TheRudpReadersSeeTheOldSpelling()
+    {
+        const string CallAsItWas =
+            "err = chiaki_rudp_recv_only(ctrl->session->rudp, "
+            + "sizeof(ctrl->rudp_recv_buf) - ctrl->recv_buf_size, &message);";
+
+        Assert.False(CtrlFrameBoundsSource.TheRudpReceiveTakesTheWholeDatagram(CallAsItWas));
+
+        const string StructAsItWas = """
+            	uint8_t recv_buf[512];
+            	uint8_t rudp_recv_buf[520];
+
+            	size_t recv_buf_size;
+            """;
+
+        Assert.False(CtrlFrameBoundsSource.TheRudpFieldIsGone(StructAsItWas));
+
+        // And PP272's trap, which this one walked into: an absence is true of nothing, so the
+        // reader has to see the buffer that stays before it can report the one that went.
+        Assert.False(CtrlFrameBoundsSource.TheRudpFieldIsGone(""));
+    }
 }

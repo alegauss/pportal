@@ -159,7 +159,7 @@ because every part of it was green.
 ### §PP23 The oracle this block cannot be written without
 
 chiaki exists because the PlayStation remote play protocol was reverse engineered. There
-is no document to implement against: the 24862 lines of C in lib/src are the
+is no document to implement against: the 24867 lines of C in lib/src are the
 specification, and a managed rewrite that reads them and reproduces them is a
 translation whose only correctness test is behavioural.
 
@@ -198,7 +198,7 @@ bytes.
 
 ### §PP28 The state machines
 
-session.c is 1239 lines, ctrl.c 1589 and streamconnection.c 1466. Together they are the
+session.c is 1239 lines, ctrl.c 1594 and streamconnection.c 1466. Together they are the
 connection: what is sent in which order, what is waited for, what a timeout means at
 each point, and how a session comes apart when the console stops answering.
 
@@ -437,35 +437,6 @@ itself.
 Until then PP33 is correctly blocked and its remaining query correctly reads 420.
 Reading that number as the size of the job is what its own section warns against: it is
 one file, and the work is at the other end.
-
-### §PP354 Two buffers, one fill
-
-ChiakiCtrl has two receive buffers and one size field:
-
-    uint8_t recv_buf[512];
-    uint8_t rudp_recv_buf[520];
-    size_t recv_buf_size;
-
-recv_buf_size tracks recv_buf, which is what the framing loop consumes from.
-rudp_recv_buf has no size of its own, and the one place its capacity is used mixes the
-two:
-
-    chiaki_rudp_recv_only(rudp, sizeof(ctrl->rudp_recv_buf) - ctrl->recv_buf_size, &message);
-
-That subtracts one buffer's fill level from the other buffer's capacity. It is not a
-crash - the limit comes out smaller than rudp_recv_buf whenever recv_buf holds anything,
-so the receive is conservative rather than over-long - but it is not the number anybody
-meant. What it says is "how much room is left in rudp_recv_buf" and what it computes is
-"520 minus how full a different buffer is".
-
-PP347 bounded the copies OUT of the rudp path into recv_buf, which is where the overflow
-was. This is the other end and a different question: whether the eight extra bytes are
-deliberate, whether rudp_recv_buf needs a fill of its own, and whether one of the two
-buffers exists only because the other could not be reused.
-
-It is a design question rather than a defect, which is why PP347 named it and did not
-answer it. Answering it wrongly is how a second buffer becomes a second thing that can
-be out of step with the first.
 
 ### §PP359 A third writer to a two-flag machine
 

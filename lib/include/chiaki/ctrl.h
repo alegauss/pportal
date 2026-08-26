@@ -16,6 +16,17 @@
 extern "C" {
 #endif
 
+/**
+ * PP354: the largest rudp ctrl datagram this channel will receive - the 512-byte ctrl receive
+ * buffer plus the eight-byte RUDP header that arrives in front of it.
+ *
+ * This used to be `sizeof(ctrl->rudp_recv_buf)`, a 520-byte array in ChiakiCtrl that NOTHING ever
+ * read or wrote. chiaki_rudp_recv_only receives into a buffer of its own and hands back a parsed
+ * message, so the field existed only to carry this number. The number is deliberate; the array
+ * was not, and having one made it possible to subtract a different buffer's fill from it.
+ */
+#define CHIAKI_CTRL_RUDP_DATAGRAM_SIZE 520
+
 typedef void (*ChiakiCantDisplayCb)(void *user, bool cant_display);
 
 typedef struct chiaki_ctrl_message_queue_t ChiakiCtrlMessageQueue;
@@ -50,8 +61,9 @@ typedef struct chiaki_ctrl_t
 	__attribute__((aligned(__alignof__(uint32_t))))
 #endif
 	uint8_t recv_buf[512];
-	uint8_t rudp_recv_buf[520];
 
+	// PP354: recv_buf_size is recv_buf's fill and only ever was. It sat under two arrays and read
+	// as though it served both, which is how it came to be subtracted from the other one's size.
 	size_t recv_buf_size;
 	uint64_t crypt_counter_local;
 	uint64_t crypt_counter_remote;

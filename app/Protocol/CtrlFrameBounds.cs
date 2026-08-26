@@ -91,6 +91,46 @@ public static class CtrlFrameBounds
     public const int RudpReceiveBufferSize = 520;
 
     /// <summary>
+    /// PP354: and the eight are the RUDP header, which is what the size was always for.
+    ///
+    /// rudp.c refuses a receive of eight bytes or fewer as "less than the required 8 byte RUDP
+    /// header", so a datagram carrying a full 512-byte ctrl buffer's worth is 520 on the wire. The
+    /// number was deliberate. What was not is that it lived as <c>sizeof(ctrl-&gt;rudp_recv_buf)</c>
+    /// - a 520-byte array of ChiakiCtrl that nothing ever read or wrote, because
+    /// chiaki_rudp_recv_only receives into a buffer of its own and returns a parsed message.
+    /// </summary>
+    public const int RudpHeaderSize = RudpReceiveBufferSize - ReceiveBufferSize;
+
+    /// <summary>
+    /// How many bytes the rudp receive may take, which is the whole datagram and nothing to do with
+    /// what the ctrl buffer currently holds.
+    /// </summary>
+    public static int RudpReceiveLimit() => RudpReceiveBufferSize;
+
+    /// <summary>
+    /// What the old spelling asked for, kept so the defect is named rather than described.
+    ///
+    /// <c>sizeof(rudp_recv_buf) - recv_buf_size</c>: one buffer's capacity less a different
+    /// buffer's fill.
+    /// </summary>
+    public static int RudpReceiveLimitAsItWas(int buffered)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(buffered);
+
+        return RudpReceiveBufferSize - buffered;
+    }
+
+    /// <summary>
+    /// Whether the old limit would have truncated a full datagram at this fill.
+    ///
+    /// It is a UDP socket: a recv buffer shorter than the datagram takes what fits and DISCARDS the
+    /// rest, so this is a message losing its tail rather than a receive being conservative. Any
+    /// fill at all was enough, and the framing loop leaves one behind exactly while a ctrl message
+    /// is still being reassembled.
+    /// </summary>
+    public static bool TheOldLimitTruncated(int buffered) => RudpReceiveLimitAsItWas(buffered) < RudpReceiveBufferSize;
+
+    /// <summary>
     /// PP347: whether a rudp message may be copied into the ctrl buffer at its current fill.
     ///
     /// The check the C already had is a consistency test - the announced ctrl payload size equals
@@ -189,5 +229,64 @@ public static class CtrlFrameBoundsSource
         }
 
         return unbounded;
+    }
+
+    /// <summary>Where the struct that carried the field lives.</summary>
+    public const string HeaderRelativePath = @"lib\include\chiaki\ctrl.h";
+
+    /// <summary>ctrl.h, or null outside a checkout.</summary>
+    public static string? LocateHeader() => SanitizerSource.LocateRelative(HeaderRelativePath);
+
+    /// <summary>
+    /// PP354: whether the field that only ever carried a number is gone.
+    ///
+    /// Asked of the header rather than of the call, because a field nothing reads is invisible from
+    /// the call site - and while it exists, a reader looking for "the rudp buffer's size" finds
+    /// something that looks like a buffer and reasons about its fill.
+    ///
+    /// PP272'S SHAPE, ANSWERED. This is a check written as an absence, and an absence is true of
+    /// nothing - so the buffer that stays is what makes it an answer about the file. The DECLARATION
+    /// is what is looked for, not the name: the comment above the constant says where the number
+    /// used to live, and a check that read a mention would call that the field.
+    /// </summary>
+    public static bool TheRudpFieldIsGone(string header)
+    {
+        ArgumentNullException.ThrowIfNull(header);
+
+        if (!header.Contains("uint8_t recv_buf[", StringComparison.Ordinal))
+            return false;
+
+        return !header.Contains("uint8_t rudp_recv_buf[", StringComparison.Ordinal);
+    }
+
+    /// <summary>Whether the header names the datagram size the call now passes.</summary>
+    public static bool TheHeaderNamesTheDatagramSize(string header)
+    {
+        ArgumentNullException.ThrowIfNull(header);
+
+        return header.Contains(
+            $"#define CHIAKI_CTRL_RUDP_DATAGRAM_SIZE {CtrlFrameBounds.RudpReceiveBufferSize}",
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// PP354: whether the rudp receive still asks for a size derived from the ctrl buffer's fill.
+    ///
+    /// The subtraction is what is looked for, not the constant: any term taking recv_buf_size off
+    /// this limit is the defect, whatever the left-hand side has become.
+    /// </summary>
+    public static bool TheRudpReceiveTakesTheWholeDatagram(string threadBody)
+    {
+        ArgumentNullException.ThrowIfNull(threadBody);
+
+        int call = threadBody.IndexOf("chiaki_rudp_recv_only(", StringComparison.Ordinal);
+        if (call < 0)
+            return false;
+
+        int end = threadBody.IndexOf(';', call);
+        string arguments = end < 0 ? threadBody[call..] : threadBody[call..end];
+
+        return arguments.Contains("CHIAKI_CTRL_RUDP_DATAGRAM_SIZE", StringComparison.Ordinal)
+            && !arguments.Contains("recv_buf_size", StringComparison.Ordinal);
     }
 }

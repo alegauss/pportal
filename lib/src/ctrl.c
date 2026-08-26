@@ -552,7 +552,12 @@ static void *ctrl_thread_func(void *user)
 			RudpMessage message;
 			uint16_t remote_counter = 0;
 			uint16_t ack_counter = 0;
-			err = chiaki_rudp_recv_only(ctrl->session->rudp, sizeof(ctrl->rudp_recv_buf) - ctrl->recv_buf_size, &message);
+			// PP354: the whole datagram, not the datagram less how full a DIFFERENT buffer is. The
+			// rudp socket is UDP, so a receive buffer shorter than the datagram truncates it and
+			// discards the remainder - and recv_buf is at its fullest exactly while a ctrl message
+			// is mid-reassembly, which is when this was shortest. What is copied OUT of the parsed
+			// message into recv_buf is bounded by recv_buf's own room, below, where PP347 put it.
+			err = chiaki_rudp_recv_only(ctrl->session->rudp, CHIAKI_CTRL_RUDP_DATAGRAM_SIZE, &message);
 			if(err != CHIAKI_ERR_SUCCESS)
 			{
 				CHIAKI_LOGE(ctrl->session->log, "Failed to receive Rudp ctrl packet");
