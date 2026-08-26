@@ -74,6 +74,61 @@ public static partial class StreamSendResults
     }
 
     /// <summary>
+    /// PP375: the same rule one level down, over the transport sends themselves.
+    ///
+    /// PP370's list above is of the wrappers. Inside them are the calls to takion, and BIG is the only
+    /// message that makes more than one - it is fragmented, so it makes as many as the MTU requires.
+    /// Every fragment assigned `err` and none read it, and the trailing send then overwrote what the
+    /// loop had learnt. A fragment that failed in the middle returned success from a function whose
+    /// caller checks it, left the console holding a BIG whose continuation never arrived, and sent the
+    /// run thread on to wait for a BANG that was never coming.
+    ///
+    /// The count of discarded answers grew with the message and with a narrower MTU, which is why a
+    /// link that measured 1454 and never fragmented hid this completely.
+    /// </summary>
+    public static IReadOnlyList<string> TakionSendsWhoseResultGoesNowhere(string source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        // A discard opens a statement: nothing but whitespace to its left. Assigned, returned or
+        // tested calls do not match, and neither does a declaration, which begins with its type.
+        return Regex.Matches(
+                source,
+                @"^[ \t]*chiaki_takion_send_message_data(_cont)?\s*\(",
+                RegexOptions.Multiline)
+            .Select(m => m.Value.Trim())
+            .ToList();
+    }
+
+    /// <summary>
+    /// Whether every fragment of a BIG still has its result read.
+    ///
+    /// Two facts, because the function has two send sites with different obligations. The loop must
+    /// test and LEAVE - a partial BIG cannot be completed by sending the rest of it, so carrying on
+    /// after a failed fragment sends bytes the console will never assemble. The trailing send must
+    /// test, but has nothing left to abandon, so logging is the whole of what it owes.
+    /// </summary>
+    public static bool EveryBigFragmentResultIsRead(string sendBigBody)
+    {
+        ArgumentNullException.ThrowIfNull(sendBigBody);
+
+        int loop = sendBigBody.IndexOf("while(first ?", StringComparison.Ordinal);
+        int trailing = sendBigBody.IndexOf("if(total_size > 0)", StringComparison.Ordinal);
+        if (loop < 0 || trailing < 0 || trailing < loop)
+            return false;
+
+        string inLoop = sendBigBody[loop..trailing];
+        bool theLoopTestsAndLeaves =
+            inLoop.Contains("err != CHIAKI_ERR_SUCCESS", StringComparison.Ordinal)
+            && inLoop.Contains("return err;", StringComparison.Ordinal);
+
+        bool theTrailingSendTests = sendBigBody[trailing..]
+            .Contains("err != CHIAKI_ERR_SUCCESS", StringComparison.Ordinal);
+
+        return theLoopTestsAndLeaves && theTrailingSendTests;
+    }
+
+    /// <summary>
     /// The order the three sends triggered by streaminfo go out in.
     ///
     /// One arrival, three departures - the same shape as PP342's session-id burst in ctrl.c, and the

@@ -33,7 +33,7 @@
 - 📋 **PP32** (deps: PP28) **audio decode and resampling are Opus and speexdsp, both native and both on the latency path** — Managed Opus exists and speexdsp has no equivalent, so the two halves of the audio path have different answers and only one of them is a choice. → §PP32
 - ⏳ **PP33** (deps: PP24 ✅, PP293 ✅, PP340) **HTTP and JSON in the core are curl and json-c, two vendored dependencies for what the runtime already does** — the deletion: holepunch.c is the only unit needing either library, and session.c is its only caller. → §PP33
 - 📋 **PP294** (deps: PP297 ✅) **ctrl.c is 1574 lines of control channel and PP28 sizes it together with two files it does not resemble** — It is the longest of the three and the one with the most message types, and none of them are on the frame path so latency is not the measure. → §PP294
-- 📋 **PP295** (deps: PP27 ⏳, PP297 ✅) **streamconnection.c is 1390 lines and is the last C caller of the video receiver, so every deletion below waits on it** — PP286 to PP291 ported the frame path bottom-up and none of it removed C, because this is what still calls the native receiver. → §PP295
+- 📋 **PP295** (deps: PP27 ⏳, PP297 ✅) **streamconnection.c is 1409 lines and is the last C caller of the video receiver, so every deletion below waits on it** — PP286 to PP291 ported the frame path bottom-up and none of it removed C, because this is what still calls the native receiver. → §PP295
 - 💭 **PP313** (deps: PP33 ⏳) **curl and json-c would leave the build today if the remote path were built off, and that trades a feature for a count** — PP33's fourth criterion otherwise waits on the managed session, and the tri_option is already there. → §PP313
 - 📋 **PP331** (deps: —) **a ctrl type the enum does not name arrives on every session, and the line that would say which is commented out** — PP297's capture recorded 0x41 off a real PS5; ctrl.c's default branch hexdumps it at warning level with the type itself commented out. → §PP331
 - 📋 **PP340** (deps: —) **the PSN path lives in session.c's nine holepunch call sites, so PP33's deletion would take remote play with it** — the offer, the punch, the two sockets, the regist info, the address, the port and the fini are all driven from C; nothing managed owns that flow. → §PP340
@@ -48,7 +48,6 @@
 - 📋 **PP372** (deps: —) **a decoded video header has no owner until the receiver takes it, and three paths lose it** — the count check sits after the realloc, the streaminfo error label frees nothing, and the receiver returns early having taken nothing. → §PP372
 - 📋 **PP373** (deps: —) **two encoding-failure logs name a message the function is not encoding** — both lines were kept from the function each was copied from, and one now exists verbatim in two places. → §PP373
 - 📋 **PP374** (deps: —) **the pad info timestamp is read 32 bits wide and byte-swapped 16, so the logged value is the field's top half** — ntohs takes a uint16_t, so the 32-bit read is truncated before the swap; it is the only width mismatch in lib/src. → §PP374
-- 📋 **PP375** (deps: —) **the BIG fragment loop discards every send result but the last, so a truncated BIG reports success** — err is assigned per fragment and read after the loop, where the trailing send has already overwritten it. → §PP375
 
 ## Block G — Test discipline
 

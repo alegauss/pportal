@@ -1161,6 +1161,14 @@ static ChiakiErrorCode stream_connection_send_big(ChiakiStreamConnection *stream
 	// console was left waiting for a continuation that was never coming while the client waited for
 	// BANG, both sides without an error, until whichever timeout is shorter. Now the loop takes a
 	// fragment only while a strict remainder is left, so the terminator always has something to go on.
+	// PP375: the results, read. Every fragment assigned err and none read it, and the trailing send
+	// then overwrote what the loop had learnt - so a fragment that failed in the middle returned
+	// success, left the console holding a BIG whose continuation never arrived, and sent the run
+	// thread on to wait for a BANG that was never coming. The number of discarded answers grew with
+	// the message and with a narrower MTU, which is why a link that measured 1454 and never fragmented
+	// hid it. Stopping at the failure is the point: a partial BIG cannot be completed by sending the
+	// rest of it, and the fragment number is what makes the log worth reading.
+	unsigned int fragment = 0;
 	while(first ? (mtu < total_size + 26) : (mtu < total_size + 25))
 	{
 		if(first)
@@ -1174,6 +1182,13 @@ static ChiakiErrorCode stream_connection_send_big(ChiakiStreamConnection *stream
 			buf_size = mtu - 25;
 			err = chiaki_takion_send_message_data_cont(&stream_connection->takion, 0, 1, buf + buf_pos, buf_size, NULL);
 		}
+		fragment++;
+		if(err != CHIAKI_ERR_SUCCESS)
+		{
+			CHIAKI_LOGE(stream_connection->log, "StreamConnection failed to send BIG fragment %u: %s",
+					fragment, chiaki_error_string(err));
+			return err;
+		}
 		buf_pos += buf_size;
 		total_size -= buf_size;
 	}
@@ -1183,6 +1198,10 @@ static ChiakiErrorCode stream_connection_send_big(ChiakiStreamConnection *stream
 		  err = chiaki_takion_send_message_data(&stream_connection->takion, 1, 1, buf + buf_pos, total_size, NULL);
 		else
 		  err = chiaki_takion_send_message_data_cont(&stream_connection->takion, 1, 1, buf + buf_pos, total_size, NULL);
+
+		if(err != CHIAKI_ERR_SUCCESS)
+			CHIAKI_LOGE(stream_connection->log, "StreamConnection failed to send the last BIG fragment (%u sent before it): %s",
+					fragment, chiaki_error_string(err));
 	}
 	return err;
 }

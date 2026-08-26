@@ -159,7 +159,7 @@ because every part of it was green.
 ### §PP23 The oracle this block cannot be written without
 
 chiaki exists because the PlayStation remote play protocol was reverse engineered. There
-is no document to implement against: the 24752 lines of C in lib/src are the
+is no document to implement against: the 24771 lines of C in lib/src are the
 specification, and a managed rewrite that reads them and reproduces them is a
 translation whose only correctness test is behavioural.
 
@@ -198,7 +198,7 @@ bytes.
 
 ### §PP28 The state machines
 
-session.c is 1228 lines, ctrl.c 1574 and streamconnection.c 1390. Together they are the
+session.c is 1228 lines, ctrl.c 1574 and streamconnection.c 1409. Together they are the
 connection: what is sent in which order, what is waited for, what a timeout means at
 each point, and how a session comes apart when the console stops answering.
 
@@ -756,30 +756,6 @@ seqnum on the line above it, which is what makes this one look deliberate at a g
 The fix is `ntohl`, and the assertion is over the pairing: every `ntohs` in lib/src
 reads 16 bits and every `ntohl` reads 32. That is checkable by shape and holds for the
 whole tree, so it also catches the inverse mistake nobody has made yet.
-
-### §PP375 A fragmented BIG that failed halfway, reported as sent
-
-BIG is the only message this file fragments. It is also the one that carries the launch
-spec, the session key and the ECDH key, so it is what the console needs in full before
-it will answer BANG.
-
-The loop assigns `err` on every fragment and reads it on none. The trailing send then
-overwrites `err`, and that is what the function returns. A fragment that failed in the
-middle leaves the console holding a BIG whose continuation never arrived, while
-`stream_connection_run` is told the send succeeded and waits for BANG. That wait ends on
-a timeout, with nothing in the log about a send.
-
-This is the same shape as PP370 and PP367, with the difference that makes it worse:
-those discarded one result and this discards all but one, so the number of ignored
-answers grows with the size of the message and with a smaller MTU. On a link that
-measured 576 the spec fragments several times over; on 1454 it may not fragment at all,
-which is why this survives a working setup.
-
-The check belongs inside the loop with a break, not after it. Reporting the failure of
-the fragment that failed is the point: "failed to send BIG fragment 3 of 5" is a
-sentence someone can act on, and a return value taken from the last send is not.
-
-The fix is the loop's; the boundary defect in the same loop is its own line.
 
 ## Block G — Test discipline
 
