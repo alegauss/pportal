@@ -179,6 +179,13 @@ public class HolepunchIdentifiersTests
         Assert.True(HolepunchIdentifiersSource.TheDecoderStillReadsInPairs(core), "two at a time");
         Assert.True(
             HolepunchIdentifiersSource.TheDeviceIsStillAnUnzeroedLocal(core), "a stack local, unzeroed");
+        // PP401: the decoder fills before it parses, so a short duid no longer carries stack
+        // contents into an identifier. The clamp above stays as it is - that half is a policy with
+        // a cost, and PP402 carries it.
+        Assert.True(
+            HolepunchIdentifiersSource.TheDecoderFillsItsDestination(core),
+            "the decoder parses into a destination it has not filled");
+
         // PP399: inverted. PP33 recorded this guard as permitting four times its buffer and left
         // it, on the argument that the callers happened to fit. That is an argument about the
         // callers rather than about the guard, and nothing said the defect had to be reproduced -

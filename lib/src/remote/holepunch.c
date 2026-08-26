@@ -2003,6 +2003,21 @@ static inline size_t curl_write_cb(
 
 static ChiakiErrorCode hex_to_bytes(const char* hex_str, uint8_t* bytes, size_t max_len) {
     size_t len = strlen(hex_str);
+
+    // PP401: the destination is filled before anything is parsed.
+    //
+    // A string SHORTER than max_len * 2 left the bytes it did not reach exactly as they were, and
+    // the caller at chiaki_holepunch_list_devices passes a stack local nobody zeroes - so a short
+    // duid produced a device identifier whose tail was whatever the stack held, returned as
+    // success. That is stack contents in an identifier sent to PSN, and it is not a policy anybody
+    // chose: it is what happens when a loop stops early over memory nobody owns yet.
+    //
+    // Zeroing changes nothing for a well-formed duid, where every byte is written anyway. What it
+    // does NOT do is decide whether a short or over-long string should be refused - that is a
+    // policy with a real cost, because this function's caller aborts the whole device list on an
+    // error rather than skipping one device, and PP402 carries it.
+    memset(bytes, 0, max_len);
+
     if (len > max_len * 2) {
         len = max_len * 2;
     }

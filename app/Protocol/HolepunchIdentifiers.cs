@@ -17,8 +17,17 @@ namespace ChiakiNg.Protocol;
 ///
 /// This port fills the destination and refuses the rest. A truncated identifier is not behaviour
 /// worth carrying across - it is a device id that does not name a device - and the uninitialised
-/// tail has no managed equivalent at all. Both divergences are pinned to the source so they stay
-/// visible.
+/// tail has no managed equivalent at all.
+///
+/// PP401 GAVE THE C THE FILLING HALF. The decoder zeroes its destination before parsing, so a short
+/// duid no longer carries stack contents into an identifier sent to PSN. That half was never a
+/// policy: it is what happens when a loop stops early over memory nobody owns yet, and zeroing
+/// changes nothing for a well-formed duid.
+///
+/// THE REFUSING HALF IS STILL A DIVERGENCE, and deliberately - see PP402. This function's caller
+/// aborts the WHOLE device list on an error rather than skipping one device, so refusing a
+/// malformed duid hides every console rather than the one that is broken. Which of those is worse
+/// is a decision about the caller, not about the decoder.
 ///
 /// HEX ENCODING GUARDED THE WRONG WAY, AND PP399 CORRECTED IT. <c>bytes_to_hex</c> tested
 /// <c>len > max_len * 2</c> before writing <c>len * 2 + 1</c> characters, so its bound permitted
@@ -159,8 +168,38 @@ public static class HolepunchIdentifiersSource
     public static bool TheDecoderStillClamps(string core)
     {
         ArgumentNullException.ThrowIfNull(core);
-        return core.Contains("if (len > max_len * 2) {", StringComparison.Ordinal)
-            && core.Contains("len = max_len * 2;", StringComparison.Ordinal);
+
+        // PP400: through Code. The clamp here is spelled the same as the one PP399 corrected in the
+        // encoder, and that fix's comment quotes it - so a reader of the raw text finds the
+        // encoder's prose while looking for the decoder's code.
+        string code = CCall.Code(core);
+
+        return code.Contains("if (len > max_len * 2) {", StringComparison.Ordinal)
+            && code.Contains("len = max_len * 2;", StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// PP401: whether the decoder fills its destination before parsing into it.
+    ///
+    /// A string shorter than the destination left the rest of it untouched, and the device-list
+    /// caller passes a stack local nobody zeroes - so a short duid produced an identifier whose
+    /// tail was stack contents, returned as success and sent to PSN.
+    ///
+    /// Before the clamp and before the loop, because either could stop early.
+    /// </summary>
+    public static bool TheDecoderFillsItsDestination(string core)
+    {
+        ArgumentNullException.ThrowIfNull(core);
+
+        string? body = CFunction.Body(CCall.Code(core), "ChiakiErrorCode hex_to_bytes(");
+        if (body is null)
+            return false;
+
+        int filled = CCall.At(body, "memset(bytes, 0, max_len)");
+        int clamped = CCall.Mark(body, "if (len > max_len * 2)", filled < 0 ? 0 : filled);
+        int parsed = CCall.At(body, "sscanf(", filled < 0 ? 0 : filled);
+
+        return filled >= 0 && clamped > filled && parsed > filled;
     }
 
     /// <summary>Whether it still walks two characters at a time with no length check.</summary>
