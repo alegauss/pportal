@@ -43,7 +43,10 @@
 - 📋 **PP363** (deps: —) **the stream's idle loop treats a timeout as work, which is the inverse of the ctrl loop PP349 ported** — a timeout sends a heartbeat and waits again; anything else ends the stream - and a heartbeat that fails to send is logged and ignored. → §PP363
 - 📋 **PP364** (deps: —) **six cascading exit labels lift two measurements before freeing what made them, and the order is load-bearing** — input_to_wire before the sender's fini, and four frame-path timings between takion_close and the receiver's free - a zero reads as a measurement. → §PP364
 - 📋 **PP366** (deps: —) **one protobuf on the wire is three messages depending on the state, and the AV route is where every deletion waits** — the dispatch asks event kind, then data kind, then state; and ten lines decrypt at key_pos plus a block and route by two flags. → §PP366
-- 📋 **PP369** (deps: PP27 ⏳) **seven asserts still carry weight about data across three files, and PP357's check reads only one of them** — four are size assertions in front of reads in takion.c; one guards an ECDH secret from being overwritten, one a pointer dereferenced two lines later. → §PP369
+- 📋 **PP369** (deps: PP27 ⏳) **eight asserts still carry weight about data across four files, and PP357's check reads only one of them** — four are size assertions in front of reads in takion.c, one guards an ECDH secret, one a pointer dereferenced two lines later, one an offset in senkusha.c. → §PP369
+- 📋 **PP378** (deps: —) **the pong tag is read through a plain uint32_t pointer, three lines from where the file uses the unaligned type** — PP374's family: packet->data + 4 carries no alignment guarantee, and this same file writes its own tags through chiaki_unaligned_uint32_t three times. → §PP378
+- 📋 **PP379** (deps: —) **the senkusha disconnect is sent and its answer dropped, so one that never left is never logged** — PP370 read and logged the same call in streamconnection.c, where a disconnect that did not reach the console is why the next attempt is refused as in use. → §PP379
+- 📋 **PP380** (deps: —) **three waits log that nothing arrived and then report the measurement as passed** — The branch is dead only because the predicate has two fields, and PP365's remedy is to add the third one that makes all three live. → §PP380
 
 ## Block G — Test discipline
 

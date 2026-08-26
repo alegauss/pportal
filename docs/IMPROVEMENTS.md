@@ -159,7 +159,7 @@ because every part of it was green.
 ### §PP23 The oracle this block cannot be written without
 
 chiaki exists because the PlayStation remote play protocol was reverse engineered. There
-is no document to implement against: the 24833 lines of C in lib/src are the
+is no document to implement against: the 24836 lines of C in lib/src are the
 specification, and a managed rewrite that reads them and reproduces them is a
 translation whose only correctness test is behavioural.
 
@@ -629,9 +629,11 @@ PP357 established that an assert is not a bound here, because this project build
 Release with -DNDEBUG. It fixed the two in ctrl.c that guarded a copy, and the check it
 left behind reads ctrl.c and nothing else.
 
-There are 28 asserts across the four files PP28 and PP27 name. Twenty-one are assert(err
-== CHIAKI_ERR_SUCCESS) after a mutex lock - a separate argument, since what follows a
-failed lock is unsynchronised rather than out of bounds. Seven carry weight about data:
+There are 28 asserts across session.c, ctrl.c, streamconnection.c and takion.c.
+Twenty-one are assert(err == CHIAKI_ERR_SUCCESS) after a mutex lock - a separate
+argument, since what follows a failed lock is unsynchronised rather than out of bounds.
+Seven carry weight about data, and senkusha.c, which no count above reaches, holds an
+eighth:
 
     streamconnection.c:855  assert(!stream_connection->ecdh_secret);
     session.c:560           assert(session->login_pin_entered && session->login_pin);
@@ -640,16 +642,98 @@ failed lock is unsynchronised rather than out of bounds. Seven carry weight abou
     takion.c:1489           assert(msg.payload_size == 0x10 + TAKION_COOKIE_SIZE);
     takion.c:1544           assert(msg.payload_size == 0);
     takion.c:1555           assert(base_type == VIDEO || base_type == AUDIO);
+    senkusha.c:538          assert(header_size == MTU_AV_PACKET_ADD);
 
-Four of those are size assertions in front of reads - the exact shape PP357 fixed, in
-the file its check does not look at. The streamconnection one guards against a second
-bang overwriting an ECDH secret and leaking the first, which is reachable while the run
-thread has not yet changed state. The session one is dereferenced two lines later by
-chiaki_ctrl_set_login_pin.
+Four are size assertions in front of reads - the shape PP357 fixed, in the file its
+check does not look at. The streamconnection one guards against a second bang
+overwriting an ECDH secret and leaking the first, reachable while the run thread has not
+yet changed state. The session one is dereferenced two lines later by
+chiaki_ctrl_set_login_pin. The senkusha one is an offset: the two lines after it write
+the ping tag at that header size, so a wrong one puts the tag inside the header and
+every MTU ping is discarded.
 
 takion.c is PP27's file and this crosses into it, which is why this is a line rather
-than a wider edit under PP295. What it owes is the fix for all seven and a check that
+than a wider edit under PP295. What it owes is the fix for all eight and a check that
 reads every file rather than the one where the first two were found.
+
+### §PP380 The success PP365's fix would switch on
+
+Three waits in senkusha.c end the same way: the predicate came back false, the error was
+not a timeout, and no stop was asked for. All three log that nothing was received, and
+all three then report the test as having passed - two by falling through into `success =
+true`, one by returning the `CHIAKI_ERR_SUCCESS` still sitting in `err`.
+
+The RTT loop is the one that gets it right. Its identical block ends in `continue`, so a
+missing pong costs that ping and nothing else. The MTU in test, the MTU out test and the
+generic ack helper do not - the usual shape here: one call in a group whose siblings are
+correct.
+
+None of the three is reachable today, which is why this is a line and not a fix already
+made. The predicate is `state_finished || should_stop`, so a wait returning SUCCESS
+proves one of the two is set, and if it is not `state_finished` the `should_stop` arm
+returns CANCELED first. The branch is dead by arithmetic, not by design.
+
+PP365 is what makes it worth writing down. It found that this same predicate ignores
+`state_failed` - written ten times here, read nowhere. The obvious remedy is to add it,
+and that one change makes all three branches live at once. Each then answers a failed
+measurement with a success: an inbound MTU larger than the link carries, an outbound one
+the same, an ack nobody sent.
+
+So this is owed before PP365's fix, not after.
+
+### §PP378 The one read the file did not give its own type
+
+senkusha.c reads the tag out of a pong with
+
+    uint32_t tag = ntohl(*((uint32_t *)(packet->data + 4)));
+
+and writes its own tags, three times in the same file, through
+`chiaki_unaligned_uint32_t`. The type exists precisely because these offsets carry no
+alignment guarantee: `packet->data` points into a received AV packet, at whatever offset
+the header happened to end, and the read is four bytes past that.
+
+The swap is right, which is what separates this from PP374. There a four-byte value went
+through a two-byte swap and the number came out wrong on every packet. Here the number
+is correct on x86 and the defect is the access itself - undefined behaviour that a
+compiler is free to assume cannot happen, and that on a stricter target faults instead
+of returning the wrong answer.
+
+What makes it worth a line rather than a shrug is that the file already knows. Three
+writes use the unaligned type and one read does not, so this is not a target the port
+has decided against - it is one place that did not get the same treatment as its
+neighbours. That is the same shape as PP367, PP370 and PP377: one call in a group whose
+siblings are correct.
+
+The fix is the type. What it owes beyond that is a check that reads every four-byte
+access in the file and asserts the unaligned type on all of them, so a fifth added later
+is covered without anyone remembering this line.
+
+### §PP379 The disconnect that holds the port against the next attempt
+
+The senkusha run ends at a `disconnect:` label that calls
+
+    senkusha_send_disconnect(senkusha);
+
+and looks at nothing. The function returns a ChiakiErrorCode, and every other send in
+the file has its answer read - which is what makes this one an omission rather than a
+policy.
+
+PP370 met the same call in streamconnection.c and settled what to do with it. The
+teardown cannot retry and should not change what it returns, because the disconnect is
+the last act of a function that is already leaving. But it can say so. A disconnect that
+never reached the console is the reason the NEXT connection attempt is refused as in
+use, about a session the user closed themselves - and with no log, nothing at that later
+refusal points back here.
+
+The senkusha case is the one where it matters more, not less. It runs before the stream
+connection, on the same console, so a senkusha disconnect that never left holds the port
+against the attempt that immediately follows it - inside the same session, not a later
+one. That failure looks like the console refusing a client that is already talking to
+it.
+
+So: read it, log it, return what the run had already decided. This is the third member
+of the family after PP370 and PP363's heartbeat, and the check the fix owes should read
+every send in senkusha.c rather than this one - the same way PP370's does for its file.
 
 ## Block G — Test discipline
 

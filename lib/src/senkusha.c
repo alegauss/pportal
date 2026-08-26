@@ -61,7 +61,7 @@ static ChiakiErrorCode senkusha_send_disconnect(ChiakiSenkusha *senkusha);
 static ChiakiErrorCode senkusha_send_echo_command(ChiakiSenkusha *senkusha, bool enable);
 static ChiakiErrorCode senkusha_send_mtu_command(ChiakiSenkusha *senkusha, tkproto_SenkushaMtuCommand *command);
 static ChiakiErrorCode senkusha_send_client_mtu_command(ChiakiSenkusha *senkusha, tkproto_SenkushaClientMtuCommand *command, bool wait_for_ack);
-static ChiakiErrorCode senkusha_send_data_wait_for_ack(ChiakiSenkusha *senkusha, uint8_t *buf, size_t buf_size);
+static ChiakiErrorCode senkusha_send_data_wait_for_ack(ChiakiSenkusha *senkusha, uint8_t *buf, size_t buf_size, const char *what);
 
 CHIAKI_EXPORT ChiakiErrorCode chiaki_senkusha_init(ChiakiSenkusha *senkusha, ChiakiSession *session)
 {
@@ -874,7 +874,7 @@ static ChiakiErrorCode senkusha_send_echo_command(ChiakiSenkusha *senkusha, bool
 		return CHIAKI_ERR_UNKNOWN;
 	}
 
-	return senkusha_send_data_wait_for_ack(senkusha, buf, stream.bytes_written);
+	return senkusha_send_data_wait_for_ack(senkusha, buf, stream.bytes_written, "echo command");
 }
 
 static ChiakiErrorCode senkusha_send_mtu_command(ChiakiSenkusha *senkusha, tkproto_SenkushaMtuCommand *command)
@@ -923,10 +923,13 @@ static ChiakiErrorCode senkusha_send_client_mtu_command(ChiakiSenkusha *senkusha
 	if(!wait_for_ack)
 		return chiaki_takion_send_message_data(&senkusha->takion, 1, 8, buf, stream.bytes_written, NULL);
 
-	return senkusha_send_data_wait_for_ack(senkusha, buf, stream.bytes_written);
+	return senkusha_send_data_wait_for_ack(senkusha, buf, stream.bytes_written, "client mtu command");
 }
 
-static ChiakiErrorCode senkusha_send_data_wait_for_ack(ChiakiSenkusha *senkusha, uint8_t *buf, size_t buf_size)
+// PP377: `what` names the message being sent, because this helper has two callers and every
+// failure log here named the first one. A client MTU command that went unacked reported itself as
+// an echo command, which is the one line a reader has to go on and it pointed at the wrong send.
+static ChiakiErrorCode senkusha_send_data_wait_for_ack(ChiakiSenkusha *senkusha, uint8_t *buf, size_t buf_size, const char *what)
 {
 	senkusha->state = STATE_EXPECT_DATA_ACK;
 	senkusha->state_finished = false;
@@ -934,7 +937,7 @@ static ChiakiErrorCode senkusha_send_data_wait_for_ack(ChiakiSenkusha *senkusha,
 	ChiakiErrorCode err = chiaki_takion_send_message_data(&senkusha->takion, 1, 8, buf, buf_size, &senkusha->data_ack_seq_num_expected);
 	if(err != CHIAKI_ERR_SUCCESS)
 	{
-		CHIAKI_LOGE(senkusha->log, "Senkusha failed to send echo command");
+		CHIAKI_LOGE(senkusha->log, "Senkusha failed to send %s", what);
 		return err;
 	}
 
@@ -944,12 +947,12 @@ static ChiakiErrorCode senkusha_send_data_wait_for_ack(ChiakiSenkusha *senkusha,
 	if(!senkusha->state_finished)
 	{
 		if(err == CHIAKI_ERR_TIMEOUT)
-			CHIAKI_LOGE(senkusha->log, "Senkusha data ack for echo command receive timeout");
+			CHIAKI_LOGE(senkusha->log, "Senkusha data ack for %s receive timeout", what);
 
 		if(senkusha->should_stop)
 			err = CHIAKI_ERR_CANCELED;
 		else
-			CHIAKI_LOGE(senkusha->log, "Senkusha failed to receive data ack for echo command");
+			CHIAKI_LOGE(senkusha->log, "Senkusha failed to receive data ack for %s", what);
 	}
 
 	return err;

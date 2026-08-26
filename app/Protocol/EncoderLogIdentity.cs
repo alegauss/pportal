@@ -63,6 +63,15 @@ public static partial class EncoderLogIdentity
     /// <summary>The file, or null outside a checkout.</summary>
     public static string? Locate() => SanitizerSource.LocateRelative(RelativePath);
 
+    /// <summary>
+    /// PP377: the other file that logs this way. Its five encoders each name themselves correctly,
+    /// which is what makes them the negative control the streamconnection ones did not have.
+    /// </summary>
+    public const string SenkushaRelativePath = @"lib\src\senkusha.c";
+
+    /// <summary>senkusha.c, or null outside a checkout.</summary>
+    public static string? LocateSenkusha() => SanitizerSource.LocateRelative(SenkushaRelativePath);
+
     /// <summary>The sentence they all end with, which is what makes the phrase before it the identity.</summary>
     public const string Suffix = " protobuf encoding failed";
 
@@ -72,7 +81,7 @@ public static partial class EncoderLogIdentity
     private static partial Regex EncoderDefinition();
 
     [GeneratedRegex(
-        @"""StreamConnection (?<claimed>[^""]+?) protobuf encoding failed""",
+        @"""(?:StreamConnection|Senkusha) (?<claimed>[^""]+?) protobuf encoding failed""",
         RegexOptions.None)]
     private static partial Regex FailureLog();
 
@@ -123,6 +132,52 @@ public static partial class EncoderLogIdentity
 
         return encoders.Where(e => !e.NamesItsOwnMessage).ToList();
     }
+
+    /// <summary>
+    /// PP377: whether a helper reached by more than one caller still names one of them in its logs.
+    ///
+    /// This is the same defect one layer down. The encoders above each own their message, so a wrong
+    /// name there is a copy-paste; a helper owns NONE of them, so any message name in its logs is
+    /// wrong for every caller but one. senkusha_send_data_wait_for_ack is reached by the echo command
+    /// and by the client MTU command, and all three of its failure logs said "echo command" - so a
+    /// client MTU command that went unacked reported the wrong send, on the one line a reader has.
+    ///
+    /// The rule is that the name arrives as an ARGUMENT: every log in the body interpolates rather
+    /// than spells, and the callers pass names that differ. Two callers passing the same string would
+    /// satisfy an interpolation check while telling a reader exactly as little as before.
+    /// </summary>
+    /// <param name="source">senkusha.c.</param>
+    /// <param name="helper">The helper's name.</param>
+    public static bool TheSharedHelperNamesNoCaller(string source, string helper)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(helper);
+
+        string? body = CFunction.Body(source, helper);
+        if (body is null)
+            return false;
+
+        // Every failure log in the body has to interpolate the name rather than spell one.
+        foreach (Match log in HelperLog().Matches(body))
+        {
+            if (!log.Groups["text"].Value.Contains("%s", StringComparison.Ordinal))
+                return false;
+        }
+
+        // And the callers have to disagree about what to pass, or the argument buys nothing.
+        var passed = CallArguments().Matches(source)
+            .Where(m => m.Groups["callee"].Value == helper)
+            .Select(m => m.Groups["name"].Value)
+            .ToList();
+
+        return passed.Count >= 2 && passed.Distinct(StringComparer.Ordinal).Count() == passed.Count;
+    }
+
+    [GeneratedRegex(@"CHIAKI_LOGE\(senkusha->log, ""(?<text>[^""]*)""", RegexOptions.None)]
+    private static partial Regex HelperLog();
+
+    [GeneratedRegex(@"(?<callee>senkusha_\w+)\([^;]*?, ""(?<name>[^""]+)""\);", RegexOptions.Singleline)]
+    private static partial Regex CallArguments();
 
     /// <summary>
     /// And the claims that appear more than once, which is the sharper half of the same defect.

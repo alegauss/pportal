@@ -39,6 +39,102 @@ public class EncoderLogIdentityTests
     }
 
     /// <summary>
+    /// PP377: THE SAME RULE OVER senkusha.c, whose five encoders all pass it.
+    ///
+    /// That is the point of running it here. PP373's file had two copied lines in it, so the rule
+    /// going green there only proves the fix; a second file where nothing was ever wrong is what
+    /// shows the reader is not simply agreeing with whatever it finds.
+    /// </summary>
+    [Fact]
+    public void EverySenkushaEncoderNamesItsOwnMessageToo()
+    {
+        string? path = EncoderLogIdentity.LocateSenkusha();
+        if (path is null)
+            return;
+
+        IReadOnlyList<EncoderLog> encoders =
+            EncoderLogIdentity.EncodersIn(File.ReadAllText(path));
+
+        Assert.True(encoders.Count >= 5, $"only {encoders.Count} encoders were found in senkusha.c");
+
+        IReadOnlyList<EncoderLog> wrong = EncoderLogIdentity.WearingAnothersName(encoders);
+
+        Assert.True(
+            wrong.Count == 0,
+            "these encoders log a message that is not theirs:\n  " + string.Join("\n  ", wrong));
+    }
+
+    /// <summary>
+    /// PP377: and the SHARED helper below them names no caller, which is where the defect was.
+    ///
+    /// The encoders each own their message, so a wrong name there is a copy-paste. The helper owns
+    /// none of them: it is reached by the echo command and by the client MTU command, and every one
+    /// of its three failure logs said "echo command". A client MTU command that went unacked
+    /// reported the wrong send on the only line a reader gets.
+    /// </summary>
+    [Fact]
+    public void TheSharedAckHelperNamesNoCaller()
+    {
+        string? path = EncoderLogIdentity.LocateSenkusha();
+        if (path is null)
+            return;
+
+        Assert.True(
+            EncoderLogIdentity.TheSharedHelperNamesNoCaller(
+                File.ReadAllText(path), "senkusha_send_data_wait_for_ack"),
+            "the shared ack helper spells a caller's message name, or its callers pass the same one");
+    }
+
+    /// <summary>And the reader rejects the helper as it was, so the check above means something.</summary>
+    [Fact]
+    public void TheReaderFindsAHelperThatNamesOneCaller()
+    {
+        const string asItWas = """
+            static ChiakiErrorCode senkusha_send_data_wait_for_ack(ChiakiSenkusha *senkusha, uint8_t *buf, size_t buf_size)
+            {
+            	ChiakiErrorCode err = chiaki_takion_send_message_data(&senkusha->takion, 1, 8, buf, buf_size, NULL);
+            	if(err != CHIAKI_ERR_SUCCESS)
+            	{
+            		CHIAKI_LOGE(senkusha->log, "Senkusha failed to send echo command");
+            		return err;
+            	}
+            	return err;
+            }
+            """;
+
+        Assert.False(
+            EncoderLogIdentity.TheSharedHelperNamesNoCaller(asItWas, "senkusha_send_data_wait_for_ack"));
+    }
+
+    /// <summary>
+    /// And it rejects two callers that pass the SAME name, which interpolation alone would let past.
+    /// </summary>
+    [Fact]
+    public void TheReaderFindsTwoCallersPassingOneName()
+    {
+        const string bothTheSame = """
+            static ChiakiErrorCode senkusha_send_data_wait_for_ack(ChiakiSenkusha *senkusha, uint8_t *buf, size_t buf_size, const char *what)
+            {
+            	CHIAKI_LOGE(senkusha->log, "Senkusha failed to send %s", what);
+            	return CHIAKI_ERR_SUCCESS;
+            }
+
+            static ChiakiErrorCode senkusha_send_echo_command(ChiakiSenkusha *senkusha, bool enable)
+            {
+            	return senkusha_send_data_wait_for_ack(senkusha, buf, n, "echo command");
+            }
+
+            static ChiakiErrorCode senkusha_send_client_mtu_command(ChiakiSenkusha *senkusha)
+            {
+            	return senkusha_send_data_wait_for_ack(senkusha, buf, n, "echo command");
+            }
+            """;
+
+        Assert.False(
+            EncoderLogIdentity.TheSharedHelperNamesNoCaller(bothTheSame, "senkusha_send_data_wait_for_ack"));
+    }
+
+    /// <summary>
     /// And no two of them log the same sentence, which is the sharper half of the same defect.
     ///
     /// "controller connection protobuf encoding failed" appeared in two functions, four lines apart.
