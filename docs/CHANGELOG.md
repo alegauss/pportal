@@ -298,6 +298,7 @@
 - ✅ **PP350** **the ctrl channel owns two stop pipes for different jobs and nothing managed states which wakes what** — each pipe's job named and read out of the source: the select waits on notify, a blocking send is given stop, and only a stop pokes both.
 - ✅ **PP351** **accept and reject are the same ctrl message told apart by one unnamed byte, and nothing managed builds either** — the 36-byte header with its length in two fields, the pre-incremented counter, and accept and reject named rather than spelled four bytes at a time.
 - ✅ **PP353** **two display flags decide whether the stream is shown, and the one value the capture holds is the clearing one** — the table over both flags: A raises silently, B stops the stream once, clearing is silent, and only a DisplayA zero ever says it is back.
+- ✅ **PP356** **the ctrl connect spends the crypt counter three to six times, so the first message is not encrypted at zero** — the counter accounting per target and transport, the little-endian streaming type, and the conditional headers appended last.
 
 ## Block G — Test discipline
 
