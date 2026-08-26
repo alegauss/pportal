@@ -1058,7 +1058,10 @@ static void ctrl_message_received_session_id(ChiakiCtrl *ctrl, uint8_t *payload,
 
 	if(payload_size < 2)
 	{
-		CHIAKI_LOGE(ctrl->session->log, "Invalid Session Id \"%s\" received", payload);
+		// PP405: %.*s and not %s. payload is ctrl->recv_buf + 8, and this branch is the one where
+		// payload_size is under two bytes - so the conversion that stops at a zero would print the
+		// messages queued behind this one, on a channel that carries the session id and the PIN.
+		CHIAKI_LOGE(ctrl->session->log, "Invalid Session Id \"%.*s\" received", (int)payload_size, payload);
 		CTRL_FALLBACK_SESSION_ID(ctrl);
 		return;
 	}

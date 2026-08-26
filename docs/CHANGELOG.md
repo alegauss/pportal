@@ -345,6 +345,7 @@
 - 🗑 **PP402** **the hex decoder truncates a long duid and pads a short one, where the managed side refuses both** — abandoned: already decided: DeviceList.cs reproduces one bad device losing the whole list, because a port that skipped it would show a console list the Qt client never shows.
 - ✅ **PP403** **three strncpy copies in holepunch.c are bounded by sizeof(dest), so a full-length name or address leaves no terminator** — the three copies go through copy_bounded, which truncates as before and terminates, and a rule over holepunch.c refuses any copy bounded by the size of what it writes into.
 - ✅ **PP404** **54 asserts in lib/src inspect an error code, and PP357 established that the shipped build compiles every assert out** — a census counts every error code inspected by nothing but an assert, ratcheted so it may fall and not rise, and the websocket thread checks its notification lock.
+- ✅ **PP405** **two logs print a sized receive buffer with %s, and neither buffer is terminated at the length the caller knows** — both take %.*s with the length the caller already had, and a rule over lib/src refuses a third.
 
 ## Block G — Test discipline
 

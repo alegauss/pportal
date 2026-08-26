@@ -159,7 +159,7 @@ because every part of it was green.
 ### §PP23 The oracle this block cannot be written without
 
 chiaki exists because the PlayStation remote play protocol was reverse engineered. There
-is no document to implement against: the 25266 lines of C in lib/src are the
+is no document to implement against: the 25270 lines of C in lib/src are the
 specification, and a managed rewrite that reads them and reproduces them is a
 translation whose only correctness test is behavioural.
 
@@ -198,7 +198,7 @@ bytes.
 
 ### §PP28 The state machines
 
-session.c is 1244 lines, ctrl.c 1710 and streamconnection.c 1524. Together they are the
+session.c is 1244 lines, ctrl.c 1713 and streamconnection.c 1524. Together they are the
 connection: what is sent in which order, what is waited for, what a timeout means at
 each point, and how a session comes apart when the console stops answering.
 
@@ -291,7 +291,7 @@ host would use regardless of this block.
 
 ### §PP33 Two dependencies that simply leave
 
-holepunch.c is 5895 lines and is the only translation unit in this tree that still needs
+holepunch.c is 5896 lines and is the only translation unit in this tree that still needs
 either library: 234 curl_easy calls, 4 curl_ws, and the json_object and json_tokener
 sites beside them. http.c is not among them. It is 262 lines over rudp and winsock and
 carries no curl symbol at all, which is not what the first version of this section said

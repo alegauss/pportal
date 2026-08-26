@@ -2313,7 +2313,8 @@ static void* websocket_thread_func(void *user) {
             if (json == NULL)
             {
                 CHIAKI_LOGE(session->log, "websocket_thread_func: Parsing JSON from payload failed");
-                CHIAKI_LOGV(session->log, "websocket_thread_func: Payload was:\n%s", buf);
+                // PP405: buf holds WEBSOCKET_MAX_FRAME_SIZE bytes and only rlen of them arrived.
+                CHIAKI_LOGV(session->log, "websocket_thread_func: Payload was:\n%.*s", (int)rlen, buf);
                 continue;
             }
             CHIAKI_LOGV(session->log, json_object_to_json_string_ext(json, JSON_C_TO_STRING_PRETTY));
