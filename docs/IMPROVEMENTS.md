@@ -159,7 +159,7 @@ because every part of it was green.
 ### §PP23 The oracle this block cannot be written without
 
 chiaki exists because the PlayStation remote play protocol was reverse engineered. There
-is no document to implement against: the 24828 lines of C in lib/src are the
+is no document to implement against: the 24833 lines of C in lib/src are the
 specification, and a managed rewrite that reads them and reproduces them is a
 translation whose only correctness test is behavioural.
 
@@ -198,7 +198,7 @@ bytes.
 
 ### §PP28 The state machines
 
-session.c is 1228 lines, ctrl.c 1574 and streamconnection.c 1461. Together they are the
+session.c is 1228 lines, ctrl.c 1574 and streamconnection.c 1466. Together they are the
 connection: what is sent in which order, what is waited for, what a timeout means at
 each point, and how a session comes apart when the console stops answering.
 
@@ -675,34 +675,6 @@ chiaki_ctrl_set_login_pin.
 takion.c is PP27's file and this crosses into it, which is why this is a line rather
 than a wider edit under PP295. What it owes is the fix for all seven and a check that
 reads every file rather than the one where the first two were found.
-
-### §PP373 Nine encoders, two wearing another's name
-
-Nine functions in this file encode a protobuf and log if the encode fails. Two of them
-name a message they are not encoding:
-
-    stream_connection_enable_microphone   "controller connection protobuf encoding failed"
-    stream_connection_send_corrupt_frame  "heartbeat protobuf encoding failed"
-
-Both are the previous function's line, kept when the function was copied. The failure is
-real when it prints, and the encoding-failure log is the only thing distinguishing these
-paths in a log file - they return the same error to callers that mostly return it
-onward, so what a user sends in is a log that names the wrong message and a session that
-ended for a reason nobody can locate.
-
-The microphone one is the worse of the two, because "controller connection protobuf
-encoding failed" already exists verbatim four lines up in a function that really does
-encode one. Two identical lines from two different functions means the log cannot even
-be used to tell which ran.
-
-PP361 was this shape in a different register - a mic toggle logging the state it left
-rather than the one it entered. There the words were inverted; here they belong to
-another message entirely.
-
-The check is written over the group rather than the two: every encoder in this file has
-its own name in its own failure log, so a tenth added by copying a ninth is caught.
-Naming the payload type rather than a hand-written phrase would make the class
-impossible, and is the better fix if the type has a name at that point.
 
 ## Block G — Test discipline
 

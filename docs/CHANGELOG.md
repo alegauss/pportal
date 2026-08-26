@@ -313,6 +313,7 @@
 - ✅ **PP375** **the BIG fragment loop discards every send result but the last, so a truncated BIG reports success** — err was assigned per fragment and read after the loop, where the trailing send had already overwritten it; the loop now leaves on the fragment that failed and names it.
 - ✅ **PP372** **a decoded video header has no owner until the receiver takes it, and three paths lose it** — the count check sat below the realloc, the streaminfo exits freed nothing, and the handover was void so a refusal could not be told from a transfer; it answers now.
 - ✅ **PP374** **the pad info timestamp is read 32 bits wide and byte-swapped 16, so the logged value is the field's top half** — ntohs takes a uint16_t, so the four-byte read was truncated to its top network half before any swap; the rule is now over every conversion in lib/src, and this was the only mismatch.
+- ✅ **PP373** **two encoding-failure logs name a message the function is not encoding** — both lines were the neighbour's, and one existed verbatim in two functions; the rule is now derived from each function's own name rather than from a table.
 
 ## Block G — Test discipline
 

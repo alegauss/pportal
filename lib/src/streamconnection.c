@@ -1316,7 +1316,10 @@ static ChiakiErrorCode stream_connection_enable_microphone(ChiakiStreamConnectio
 	bool pbr = pb_encode(&stream, tkproto_TakionMessage_fields, &msg);
 	if(!pbr)
 	{
-		CHIAKI_LOGE(stream_connection->log, "StreamConnection controller connection protobuf encoding failed");
+		// PP373: this said "controller connection", which is the line above it in the function this was
+		// copied from - and that line still exists there, so the same sentence came from two places and
+		// could not be used to tell which ran.
+		CHIAKI_LOGE(stream_connection->log, "StreamConnection microphone enable protobuf encoding failed");
 		return CHIAKI_ERR_UNKNOWN;
 	}
 
@@ -1433,7 +1436,9 @@ CHIAKI_EXPORT ChiakiErrorCode stream_connection_send_corrupt_frame(ChiakiStreamC
 	bool pbr = pb_encode(&stream, tkproto_TakionMessage_fields, &msg);
 	if(!pbr)
 	{
-		CHIAKI_LOGE(stream_connection->log, "StreamConnection heartbeat protobuf encoding failed");
+		// PP373: this said "heartbeat", the line from the function above it. The two were the only
+		// encoders in the file wearing another's name.
+		CHIAKI_LOGE(stream_connection->log, "StreamConnection corrupt frame protobuf encoding failed");
 		return CHIAKI_ERR_UNKNOWN;
 	}
 
