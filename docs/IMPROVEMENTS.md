@@ -487,29 +487,6 @@ with a failure is a real question and not a small one: the PIN has already been 
 and freed on its side by then, so there is nothing left to retry with, and ending the
 session with a reason naming memory is more honest than a third prompt.
 
-### §PP350 Two pipes, and what each is for
-
-PP338 wrote down the session's stop-join-fini order because nothing stated it. The
-control channel has the same five functions and the same absence, and one difference
-that matters: it owns TWO stop pipes rather than one.
-
-chiaki_ctrl_init sets every flag, both pipes and the socket, unwinding through two
-labels where either pipe fails. chiaki_ctrl_start creates the thread. chiaki_ctrl_stop
-sets should_stop and pokes the NOTIFY pipe, not the stop pipe. chiaki_ctrl_join joins.
-chiaki_ctrl_fini destroys both pipes and the mutex.
-
-The two pipes are the thing to get right. The notify pipe is what the loop's select
-waits on, so it is what a stop, a queued message and a typed PIN all poke - three
-different callers waking one wait, which is why the loop re-reads all three conditions
-rather than trusting what woke it. The stop pipe is passed to chiaki_send_fully so a
-send in progress can be cancelled. A port that wired one to both would either fail to
-interrupt a send or wake the select on every write.
-
-The same ordering trap as PP338 applies and for the same reason: fini destroys what a
-running thread stands on, and join does not stop. Whether the managed wrapper gets this
-right is not currently checked either way - PP338's assertions are about the session,
-and ctrl has no counterpart.
-
 ### §PP351 Four asks, and the bytes that tell two apart
 
 Four exported functions let a screen ask the control channel for something, and all four
