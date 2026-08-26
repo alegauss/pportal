@@ -303,6 +303,7 @@
 - ✅ **PP358** **the ctrl response parser matches headers with strcmp, which is the defect PP296 fixed in its sibling** — both ctrl headers matched without regard to case, and the check runs over every parser in lib/src rather than the one PP296 reached.
 - ✅ **PP360** **the ctrl handshake's response side is unported, and the remote counter starts at one or zero depending on it** — the one-shot retry, the remote counter spent only where the server type decrypts, and the two downgrades - only one of which the auto-downgrade flag gates.
 - ✅ **PP361** **the microphone toggle logs the opposite of what it sends, and the rudp subtype switch says it is wrong** — the log word is derived from the byte it describes, and the switch's three fallthroughs are a table rather than four tidy arms.
+- ✅ **PP355** **ctrl fini frees the login pin and never the message queue, so anything queued when the loop errors out leaks** — the fini releases the queue as well as the pin, and the check is the symmetry over both rather than a note about one.
 
 ## Block G — Test discipline
 

@@ -121,6 +121,8 @@ static void ctrl_message_received_keyboard_text_change(ChiakiCtrl *ctrl, uint8_t
 static void ctrl_message_received_switch_to_stream_connection(ChiakiCtrl *ctrl, uint8_t *payload, size_t payload_size);
 static ChiakiErrorCode ctrl_connect_tcp(ChiakiCtrl *ctrl);
 static void ctrl_disconnect_tcp(ChiakiCtrl *ctrl);
+// PP355: declared here because fini is above its definition and now needs it.
+static void ctrl_message_queue_free(ChiakiCtrlMessageQueue *queue);
 
 CHIAKI_EXPORT ChiakiErrorCode chiaki_ctrl_init(ChiakiCtrl *ctrl, ChiakiSession *session)
 {
@@ -191,6 +193,18 @@ CHIAKI_EXPORT void chiaki_ctrl_fini(ChiakiCtrl *ctrl)
 	chiaki_stop_pipe_fini(&ctrl->notif_pipe);
 	chiaki_mutex_fini(&ctrl->notif_mutex);
 	free(ctrl->login_pin);
+
+	// PP355: whatever is still queued. The drain in the thread's cancelled branch was the only
+	// caller of this free, and every other exit from that loop - an overflow, a select error, a recv
+	// error, a short rudp message, a finish message - skips it. So anything a screen had queued when
+	// the socket died was a linked list nothing freed. login_pin above is the other thing an outside
+	// caller allocates into ctrl; ownership at teardown was thought about and one of the two missed.
+	while(ctrl->msg_queue)
+	{
+		ChiakiCtrlMessageQueue *msg = ctrl->msg_queue;
+		ctrl->msg_queue = msg->next;
+		ctrl_message_queue_free(msg);
+	}
 }
 
 static void ctrl_message_queue_free(ChiakiCtrlMessageQueue *queue)
