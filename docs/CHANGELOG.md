@@ -289,6 +289,7 @@
 - ✅ **PP339** **a failed rudp init is logged as an error and then ignored, so the session fails later naming something else** — both failures now quit instead of polling for a stop nobody asked for, and a check finds the shape rather than the line - which is how the second one was found.
 - ✅ **PP341** **the rudp ctrl send sizes a stack buffer with a uint8_t, so a payload of 248 bytes or more overflows it** — the length is a size_t, so the sum that fills the buffer is the sum that sized it, and a check reads for the shape rather than the line.
 - ✅ **PP342** **a session id makes the client send three messages and nothing managed reproduces the order** — the burst a session id triggers, in order, held against the capture; the heartbeat answered regardless; and the four rungs that substitute an id rather than fail.
+- ✅ **PP344** **the two ctrl send paths disagree about a null payload with a size, and nothing managed has either** — the queue's copy, its order and the null-payload disagreement, both answers reproduced and each held against the path that gives it.
 
 ## Block G — Test discipline
 
