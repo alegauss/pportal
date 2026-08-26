@@ -342,6 +342,7 @@
 - ✅ **PP399** **bytes_to_hex clamps against twice its output buffer, so its bound permits four times the room it has** — the clamp is against the room it has, a zero destination leaves first, and PP33's check now watches for the old shape.
 - ✅ **PP400** **the session id comes from srand(time(NULL)) and rand(), so two sessions in the same second share it** — the session id draws sixteen bytes from the crypto generator, a nibble per digit, and PP33's shape is unchanged.
 - ✅ **PP401** **a short duid leaves the rest of a stack local untouched, so a device identifier carries stack contents to PSN** — the decoder fills its destination before parsing, so a short duid yields zeros rather than stack contents.
+- 🗑 **PP402** **the hex decoder truncates a long duid and pads a short one, where the managed side refuses both** — abandoned: already decided: DeviceList.cs reproduces one bad device losing the whole list, because a port that skipped it would show a console list the Qt client never shows.
 
 ## Block G — Test discipline
 

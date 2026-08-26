@@ -24,10 +24,15 @@ namespace ChiakiNg.Protocol;
 /// policy: it is what happens when a loop stops early over memory nobody owns yet, and zeroing
 /// changes nothing for a well-formed duid.
 ///
-/// THE REFUSING HALF IS STILL A DIVERGENCE, and deliberately - see PP402. This function's caller
-/// aborts the WHOLE device list on an error rather than skipping one device, so refusing a
-/// malformed duid hides every console rather than the one that is broken. Which of those is worse
-/// is a decision about the caller, not about the decoder.
+/// THE REFUSING HALF STAYS A DIVERGENCE, and the decision is already made - in
+/// <see cref="DeviceListSource"/>, not here. PP402 proposed making the C strict and letting the
+/// caller skip a device it cannot read; that is exactly what DeviceList records the port refusing
+/// to do, because one bad device losing the whole list is what the Qt client does and a port that
+/// skipped it would show a console list the Qt client never shows.
+///
+/// So the decoder cannot be strict: with the caller abandoning the list, refusing a malformed duid
+/// hides every console rather than the one that is broken. PP402 was retired against that reason
+/// after the change was written and reverted - the check that stopped it is DeviceList's own.
 ///
 /// HEX ENCODING GUARDED THE WRONG WAY, AND PP399 CORRECTED IT. <c>bytes_to_hex</c> tested
 /// <c>len > max_len * 2</c> before writing <c>len * 2 + 1</c> characters, so its bound permitted
