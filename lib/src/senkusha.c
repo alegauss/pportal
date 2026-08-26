@@ -273,7 +273,19 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_senkusha_run(ChiakiSenkusha *senkusha, uint
 disconnect:
 	CHIAKI_LOGI(session->log, "Senkusha is disconnecting");
 
-	senkusha_send_disconnect(senkusha);
+	// PP379: read and logged, not acted on - the answer PP370 settled for the same call in
+	// streamconnection.c. Nothing here can retry, and `err` already holds what the run decided.
+	// It matters MORE here than there: senkusha runs before the stream connection on the same
+	// console, so a disconnect that never left holds the port against the attempt that follows it
+	// inside this same session - which reaches the user as the console refusing a client that is
+	// already talking to it, with nothing at that refusal pointing back to here.
+	ChiakiErrorCode disconnect_err = senkusha_send_disconnect(senkusha);
+	if(disconnect_err != CHIAKI_ERR_SUCCESS)
+	{
+		CHIAKI_LOGE(senkusha->log,
+				"Senkusha could not tell the console it was disconnecting: %s",
+				chiaki_error_string(disconnect_err));
+	}
 	chiaki_mutex_unlock(&senkusha->state_mutex);
 
 quit_takion:

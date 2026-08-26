@@ -159,7 +159,7 @@ because every part of it was green.
 ### §PP23 The oracle this block cannot be written without
 
 chiaki exists because the PlayStation remote play protocol was reverse engineered. There
-is no document to implement against: the 24885 lines of C in lib/src are the
+is no document to implement against: the 24897 lines of C in lib/src are the
 specification, and a managed rewrite that reads them and reproduces them is a
 translation whose only correctness test is behavioural.
 
@@ -495,33 +495,6 @@ measurement with a success: an inbound MTU larger than the link carries, an outb
 the same, an ack nobody sent.
 
 So this is owed before PP365's fix, not after.
-
-### §PP379 The disconnect that holds the port against the next attempt
-
-The senkusha run ends at a `disconnect:` label that calls
-
-    senkusha_send_disconnect(senkusha);
-
-and looks at nothing. The function returns a ChiakiErrorCode, and every other send in
-the file has its answer read - which is what makes this one an omission rather than a
-policy.
-
-PP370 met the same call in streamconnection.c and settled what to do with it. The
-teardown cannot retry and should not change what it returns, because the disconnect is
-the last act of a function that is already leaving. But it can say so. A disconnect that
-never reached the console is the reason the NEXT connection attempt is refused as in
-use, about a session the user closed themselves - and with no log, nothing at that later
-refusal points back here.
-
-The senkusha case is the one where it matters more, not less. It runs before the stream
-connection, on the same console, so a senkusha disconnect that never left holds the port
-against the attempt that immediately follows it - inside the same session, not a later
-one. That failure looks like the console refusing a client that is already talking to
-it.
-
-So: read it, log it, return what the run had already decided. This is the third member
-of the family after PP370 and PP363's heartbeat, and the check the fix owes should read
-every send in senkusha.c rather than this one - the same way PP370's does for its file.
 
 ### §PP381 The check that reads five of thirty-eight
 

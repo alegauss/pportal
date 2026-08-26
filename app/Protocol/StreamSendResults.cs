@@ -56,15 +56,30 @@ public static partial class StreamSendResults
     /// </summary>
     /// <returns>The call text of each, so a failure names what it found.</returns>
     public static IReadOnlyList<string> DiscardedResults(string source)
+        => DiscardedCalls(source, SendsThatAnswer);
+
+    /// <summary>
+    /// The same reading, over any list of functions that answer something.
+    ///
+    /// PP379 needed it for senkusha.c and copying it would have been a second reader with the same
+    /// trap in it, which is what PP343 exists to stop. One reader, two callers, each bringing its
+    /// own list - because WHICH functions answer is a fact about a file and the shape of a discard
+    /// is not.
+    /// </summary>
+    /// <param name="source">The translation unit.</param>
+    /// <param name="answering">The functions whose result is worth something.</param>
+    /// <returns>The call text of each discard, so a failure names what it found.</returns>
+    public static IReadOnlyList<string> DiscardedCalls(string source, IEnumerable<string> answering)
     {
         ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(answering);
 
         var found = new List<string>();
 
-        foreach (string send in SendsThatAnswer)
+        foreach (string function in answering)
         {
             foreach (Match call in Regex.Matches(
-                         source, @"^[ \t]*" + Regex.Escape(send) + @"\s*\(", RegexOptions.Multiline))
+                         source, @"^[ \t]*" + Regex.Escape(function) + @"\s*\(", RegexOptions.Multiline))
             {
                 found.Add(call.Value.Trim());
             }

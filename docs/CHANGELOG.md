@@ -324,6 +324,7 @@
 - ✅ **PP364** **six cascading exit labels lift two measurements before freeing what made them, and the order is load-bearing** — the six-label cascade is a table, and both measurement rescues are asserted against the frees that would lose them.
 - ✅ **PP366** **one protobuf on the wire is three messages depending on the state, and the AV route is where every deletion waits** — the three dispatch layers are a table, and the AV route's block offset and video call are asserted as PP30's premise.
 - ✅ **PP378** **the pong tag is read through a plain uint32_t pointer, three lines from where the file uses the unaligned type** — the pong tag reads through the unaligned type, and a rule over senkusha.c covers every cast in it.
+- ✅ **PP379** **the senkusha disconnect is sent and its answer dropped, so one that never left is never logged** — the senkusha disconnect reads and logs its answer, and the rule covers every answering call in the file.
 
 ## Block G — Test discipline
 
