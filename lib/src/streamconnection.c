@@ -756,7 +756,12 @@ static ChiakiErrorCode stream_connection_init_crypt(ChiakiStreamConnection *stre
 	if(!stream_connection->gkcrypt_remote)
 	{
 		CHIAKI_LOGE(stream_connection->log, "StreamConnection failed to initialize remote GKCrypt with index 3");
-		free(stream_connection->gkcrypt_local);
+		// PP368: chiaki_gkcrypt_free and not free. A gkcrypt owns a key-buffer THREAD, a cond, a
+		// mutex and an aligned buffer, and chiaki_gkcrypt_fini stops the thread and JOINS it before
+		// releasing the rest. A bare free left that thread running with its struct already freed -
+		// a use-after-free by a live thread, not a leak - and this is the only path in the file that
+		// did it: fini uses the wrapper.
+		chiaki_gkcrypt_free(stream_connection->gkcrypt_local);
 		stream_connection->gkcrypt_local = NULL;
 		return CHIAKI_ERR_UNKNOWN;
 	}
@@ -800,7 +805,15 @@ static void stream_connection_takion_data_expect_bang(ChiakiStreamConnection *st
 		{
 			if(!stream_connection->streaminfo_early_buf)
 			{
+				// PP368: the allocation, checked. This memcpy'd into whatever malloc returned, so a
+				// failure wrote to NULL - and the one moment this path runs is a console answering
+				// faster than the client changes state, which is not a moment to crash in.
 				stream_connection->streaminfo_early_buf = malloc(buf_size);
+				if(!stream_connection->streaminfo_early_buf)
+				{
+					CHIAKI_LOGE(stream_connection->log, "StreamConnection could not save early streaminfo");
+					return;
+				}
 				memcpy(stream_connection->streaminfo_early_buf, buf, buf_size);
 				stream_connection->streaminfo_early_buf_size = buf_size;
 				CHIAKI_LOGI(stream_connection->log, "StreamConnection received streaminfo early, saving ...");
