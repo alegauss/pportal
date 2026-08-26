@@ -487,6 +487,218 @@ with a failure is a real question and not a small one: the PIN has already been 
 and freed on its side by then, so there is nothing left to retry with, and ending the
 session with a reason naming memory is more honest than a third prompt.
 
+### §PP346 A bound the arithmetic in front of it defeats
+
+The ctrl read loop takes a length off the wire and frames a message with it:
+
+    uint32_t payload_size = ntohl(*(uint32_t *)ctrl->recv_buf);
+    if(ctrl->recv_buf_size < 8 + payload_size)
+    {
+        if(8 + payload_size > sizeof(ctrl->recv_buf))
+            overflow = true;
+        break;
+    }
+
+Both tests are written on `8 + payload_size`, and that sum is unsigned 32-bit: the
+literal promotes to the uint32_t. For any announced length from 0xFFFFFFF8 upward it
+wraps to between zero and seven. The loop only runs while recv_buf_size is at least
+eight, so the first test is false, the second is never reached, and the message is
+dispatched with the length as announced.
+
+What that reaches is not a read. ctrl_message_received decrypts IN PLACE -
+chiaki_rpcrypt_decrypt(&rpcrypt, counter, payload, payload, payload_size) - so a header
+claiming 0xFFFFFFFF starts an AES-CTR pass over four gigabytes beginning eight bytes
+into a 512-byte buffer. The hexdump and the PP323 tap follow with the same length.
+
+The eight-byte header is plaintext; only the payload is encrypted. So the field that
+decides this is not authenticated, and whatever holds the ctrl connection chooses it.
+
+The check that exists is the right check. It is defeated by the arithmetic in front of
+it, which is why the bound belongs on payload_size ALONE - compared against the buffer
+less its header - where nothing can wrap before the comparison happens.
+
+### §PP347 A copy with no room to check
+
+The TCP receive is bounded correctly: recv() is handed sizeof(recv_buf) - recv_buf_size
+and cannot write past the buffer. The rudp receive is not.
+
+Two arms of the subtype switch copy a rudp message into the same 512-byte recv_buf:
+
+    memcpy(ctrl->recv_buf + ctrl->recv_buf_size, message.data + offset,
+           message.data_size - offset);
+    ctrl->recv_buf_size += message.data_size - offset;
+
+Nothing there compares the destination's remaining room against what is about to be
+written. The only guard in front of it is a consistency check - that the announced ctrl
+payload size equals the message size less its own eight-byte header - which says the
+message is well formed and nothing about whether it fits.
+
+The sizes make it reachable rather than theoretical. rudp_recv_buf is 520 bytes and
+recv_buf is 512, so a single well-formed message can be larger than the buffer it is
+copied into before any accumulation. And recv_buf_size is not reset per message: it is
+whatever the framing loop left behind, so a partial message already sitting there raises
+the destination offset.
+
+The limit passed to chiaki_rudp_recv_only is the confusing part and worth naming
+separately: it is sizeof(ctrl->rudp_recv_buf) - ctrl->recv_buf_size, which subtracts one
+buffer's fill level from the other buffer's capacity. There is only one size field for
+two buffers.
+
+The fix is a bound at each memcpy. Whether the two buffers should share a size field is
+the question underneath, and a larger one.
+
+### §PP348 Two writers, one field, opposite rules
+
+PP336 established a rule and asserted it: the session thread's ctrl_failed label writes
+CTRL_UNKNOWN only where quit_reason is still NONE, so a specific reason recorded earlier
+survives the generic failure that follows it. The check for that is green.
+
+ctrl.c has a function of the same name and the opposite policy:
+
+    static void ctrl_failed(ChiakiCtrl *ctrl, ChiakiQuitReason reason)
+    {
+        ...
+        ctrl->session->quit_reason = reason;
+        ctrl->session->ctrl_failed = true;
+
+No guard. Every call clobbers whatever was there, and the ctrl thread calls it on a
+failed connect, a short rudp message, a failed rudp receive, a rudp finish message, a
+recv error and a buffer overflow.
+
+So the guarantee holds only against the label. A session refused because the console was
+already in use records SESSION_REQUEST_RP_IN_USE, and the ctrl connection failing
+afterwards - which it will, since there is no session to carry it - replaces that with
+CTRL_UNKNOWN. The user is told the control channel failed. The reason they could have
+acted on was written down and then written over, by the code path most likely to run
+next.
+
+Which of the two policies is right is a real question. The label's guard exists because
+the specific reason came first and is more useful; the function's lack of one may be
+deliberate for a ctrl failure that genuinely supersedes. What is not defensible is the
+two disagreeing silently about one field.
+
+### §PP349 The loop where cancelled means work
+
+The ctrl thread is one loop with two halves: frame whatever is already buffered, then
+wait for more. PP341 ported the framing of a message and PP342 what arriving messages
+cause. The loop itself is neither.
+
+CANCELED IS THE WORK BRANCH, which is the shape a reader has to know before anything
+else makes sense. The select is given UINT64_MAX and returns CHIAKI_ERR_CANCELED when
+the notify pipe is poked - and that branch is where the send queue is drained and a
+typed PIN goes out. An error return is the other branch. A port treating CANCELED as a
+failure would send nothing anybody queued; one treating it as a timeout would spin.
+
+The queue is drained with the lock RELEASED around each send, so a send cannot block
+whoever is enqueuing. The PIN is lifted out under the lock, cleared, sent unlocked, then
+freed - an ownership transfer written across four statements.
+
+And the PIN branch ends in `continue` rather than falling through, so a stop requested
+in the same wake-up as a PIN is not noticed until the next turn of the loop. One extra
+pass, not a hang, but it is the kind of ordering a rewrite silently changes.
+
+The framing half needs PP346 fixed before it is worth porting: the bound it depends on
+is the one the arithmetic defeats.
+
+### §PP350 Two pipes, and what each is for
+
+PP338 wrote down the session's stop-join-fini order because nothing stated it. The
+control channel has the same five functions and the same absence, and one difference
+that matters: it owns TWO stop pipes rather than one.
+
+chiaki_ctrl_init sets every flag, both pipes and the socket, unwinding through two
+labels where either pipe fails. chiaki_ctrl_start creates the thread. chiaki_ctrl_stop
+sets should_stop and pokes the NOTIFY pipe, not the stop pipe. chiaki_ctrl_join joins.
+chiaki_ctrl_fini destroys both pipes and the mutex.
+
+The two pipes are the thing to get right. The notify pipe is what the loop's select
+waits on, so it is what a stop, a queued message and a typed PIN all poke - three
+different callers waking one wait, which is why the loop re-reads all three conditions
+rather than trusting what woke it. The stop pipe is passed to chiaki_send_fully so a
+send in progress can be cancelled. A port that wired one to both would either fail to
+interrupt a send or wake the select on every write.
+
+The same ordering trap as PP338 applies and for the same reason: fini destroys what a
+running thread stands on, and join does not stop. Whether the managed wrapper gets this
+right is not currently checked either way - PP338's assertions are about the session,
+and ctrl has no counterpart.
+
+### §PP351 Four asks, and the bytes that tell two apart
+
+Four exported functions let a screen ask the control channel for something, and all four
+are the send queue with a payload built in front of it. They are small and they are the
+whole of what the keyboard and the power button do.
+
+goto-bed is the queue with no payload at all. accept and reject are the same message
+type, KEYBOARD_CLOSE_REQ, distinguished only by the last byte of a four-byte payload:
+zero accepts, one rejects. Nothing names those two constants, and swapping them would
+send the console the opposite of what the user pressed with nothing anywhere to catch
+it.
+
+set_text is the one with structure. It allocates a header plus the text, zeroes it,
+copies the text AFTER the header, and then writes three fields over the front: a counter
+that pre-increments a member of ctrl, and the text length written TWICE into two
+separate fields. Both lengths are the byte length of the text, and nothing says why
+there are two - so a port writing one and leaving the other zero would be sending a
+message the console reads differently.
+
+The counter is the part worth care. It is ++ctrl->keyboard_text_counter, read and
+written outside any lock, from whatever thread the screen runs on. A second caller
+during the first would produce two messages with the same counter, and the console's
+idea of which text is current is that number.
+
+### §PP352 The two handlers that never look at the size
+
+Every handler in ctrl.c that reads its payload checks the size first. The session id
+refuses under two bytes. The login message warns and returns under one. The heartbeat
+and the stream switch warn about a payload they do not want. Two do not check at all.
+
+    static void ctrl_message_received_displaya(ChiakiCtrl *ctrl, uint8_t *payload, size_t payload_size)
+    {
+        if(payload[0] == 0x1)
+
+displayb is worse by one byte: it reads payload[0] and payload[1], and does so twice.
+Neither function mentions payload_size anywhere in its body.
+
+This is not memory-unsafe, and the honest description matters. The payload points eight
+bytes into a 512-byte buffer that always has room, so a zero-length DISPLAYA reads a
+byte that is inside the buffer and was not part of the message - whatever the previous
+message left there, or whatever was never written. The behaviour is real and the read is
+not out of bounds.
+
+What follows from it is a state machine driven by leftovers. cant_displaya and
+cant_displayb decide whether the client tells its display sink the stream cannot be
+shown, and a stale 0x01 flips that without a console having said anything. The user sees
+the stream stop for content that is not playing.
+
+The fix is the check the other handlers already have. The size is even in the signature,
+unused, which is the shape of a check that was meant to be there.
+
+### §PP353 A machine made of two flags
+
+The last handlers PP294 has not reached. Three of them are ordinary and two are a state
+machine between them.
+
+DISPLAYA and DISPLAYB share two flags, cant_displaya and cant_displayb, and only their
+combination means anything. DISPLAYA carrying 0x1 raises the first flag and says nothing
+to the client. DISPLAYB then decides: with the first flag up and a payload that is NOT
+01-ff, it tells the display sink the stream cannot be shown and raises the second. A
+payload of 01-ff with the second flag up lowers it again - and the capture recorded
+exactly one DISPLAYB, carrying 01-ff, which is the clearing value.
+
+So the message the console actually sent in the one recorded session is the one that
+means "nothing is wrong", and the interesting path is the one no capture has. That is
+worth stating because it is the whole reason this needs porting against the source
+rather than the recording.
+
+The login PIN request has an ordering rule with teeth: arriving AFTER a session id, it
+fails the session outright, because a login cannot be redone once the session has one.
+The comment says so.
+
+The login reply switches on a single byte of state, and it warns about any size other
+than one while still reading the byte where there is at least one - a shape PP352 is
+about the absence of.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry
