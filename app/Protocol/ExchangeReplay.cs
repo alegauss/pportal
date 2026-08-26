@@ -13,6 +13,20 @@ public interface IExchangeParticipant
     /// received messages produce nothing.
     /// </returns>
     IReadOnlyList<string> Receive(string channel, string payload);
+
+    /// <summary>
+    /// PP392: what this says before anything is received, for a conversation IT opens.
+    ///
+    /// The harness drove participants entirely by arrivals, which is right for the control channel
+    /// - the console speaks first there - and impossible for the session channel, where the client
+    /// sends the request. A capture that opens with a Sent entry could not be replayed at all: no
+    /// arrival precedes it, so Receive is never called, and the verdict is "expected a request,
+    /// sent nothing" about an implementation that would have sent exactly that.
+    ///
+    /// Empty by default, so a participant that only answers says so by not overriding it.
+    /// </summary>
+    /// <param name="channel">The conversation being opened.</param>
+    IReadOnlyList<string> Opening(string channel) => [];
 }
 
 /// <summary>Why a replay stopped, or that it did not.</summary>
@@ -122,6 +136,16 @@ public static class ExchangeReplay
         ArgumentNullException.ThrowIfNull(participant);
 
         var outbox = new Queue<(string Channel, string Payload)>();
+
+        // PP392: what the participant says first, before any arrival. A conversation the console
+        // opens produces nothing here and is driven entirely by Receive, as before.
+        foreach (string channel in recording.Entries
+                     .Select(e => e.Channel)
+                     .Distinct(StringComparer.Ordinal))
+        {
+            foreach (string opening in participant.Opening(channel))
+                outbox.Enqueue((channel, opening));
+        }
 
         for (int i = 0; i < recording.Entries.Count; i++)
         {
