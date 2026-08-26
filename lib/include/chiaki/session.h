@@ -107,6 +107,10 @@ typedef enum {
 	CHIAKI_QUIT_REASON_STREAM_CONNECTION_REMOTE_DISCONNECTED,
 	CHIAKI_QUIT_REASON_STREAM_CONNECTION_REMOTE_SHUTDOWN, // like REMOTE_DISCONNECTED, but because the server shut down
 	CHIAKI_QUIT_REASON_PSN_REGIST_FAILED,
+	// PP345: appended rather than filed with the other CTRL_ reasons, because every value here is
+	// marshalled by ordinal - the managed enum and the shim both count from None - and inserting
+	// one would renumber the six below it into each other's meanings.
+	CHIAKI_QUIT_REASON_CTRL_MEMORY,
 } ChiakiQuitReason;
 
 CHIAKI_EXPORT const char *chiaki_quit_reason_string(ChiakiQuitReason reason);

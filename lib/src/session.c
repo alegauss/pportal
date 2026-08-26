@@ -160,6 +160,8 @@ CHIAKI_EXPORT const char *chiaki_quit_reason_string(ChiakiQuitReason reason)
 			return "Remote has disconnected from Stream Connection the because Server shut down";
 		case CHIAKI_QUIT_REASON_PSN_REGIST_FAILED:
 			return "The Console Registration using PSN has failed";
+		case CHIAKI_QUIT_REASON_CTRL_MEMORY:
+			return "Out of memory while sending the Login PIN to Ctrl";
 		case CHIAKI_QUIT_REASON_NONE:
 		default:
 			return "Unknown";
@@ -559,11 +561,20 @@ static void *session_thread_func(void *arg)
 
 		assert(session->login_pin_entered && session->login_pin);
 		CHIAKI_LOGI(session->log, "Session received entered Login PIN, forwarding to Ctrl");
-		chiaki_ctrl_set_login_pin(&session->ctrl, session->login_pin, session->login_pin_size);
+		ChiakiErrorCode pin_err = chiaki_ctrl_set_login_pin(&session->ctrl, session->login_pin, session->login_pin_size);
 		session->login_pin_entered = false;
 		free(session->login_pin);
 		session->login_pin = NULL;
 		session->login_pin_size = 0;
+		if(pin_err != CHIAKI_ERR_SUCCESS)
+		{
+			// PP345: the PIN is already consumed and freed by here, so there is nothing left to
+			// retry with. Looping would prompt a third time, and PP335 established that a repeated
+			// prompt is the only thing that says the last PIN was wrong - which it was not.
+			CHIAKI_LOGE(session->log, "Session failed to hand the Login PIN to Ctrl: %s", chiaki_error_string(pin_err));
+			session->quit_reason = CHIAKI_QUIT_REASON_CTRL_MEMORY;
+			goto ctrl_failed;
+		}
 		// wait for session id or new login pin request
 		err = chiaki_cond_timedwait_pred(&session->state_cond, &session->state_mutex, SESSION_EXPECT_CTRL_START_MS, session_check_state_pred_ctrl_start, session);
 		CHECK_STOP(quit_ctrl);

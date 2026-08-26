@@ -252,11 +252,18 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_ctrl_send_message(ChiakiCtrl *ctrl, uint16_
 	return CHIAKI_ERR_SUCCESS;
 }
 
-CHIAKI_EXPORT void chiaki_ctrl_set_login_pin(ChiakiCtrl *ctrl, const uint8_t *pin, size_t pin_size)
+CHIAKI_EXPORT ChiakiErrorCode chiaki_ctrl_set_login_pin(ChiakiCtrl *ctrl, const uint8_t *pin, size_t pin_size)
 {
 	uint8_t *buf = malloc(pin_size);
 	if(!buf)
-		return;
+	{
+		// PP345: said out loud and answered. This return used to be silent and void, so the PIN
+		// was dropped here, login_pin_entered was never set, the ctrl thread never sent it, and
+		// the console asked again - which PP335 established is the only thing that says wrong.
+		CHIAKI_LOGE(ctrl->session->log, "Ctrl failed to allocate %llu bytes for the Login PIN",
+				(unsigned long long)pin_size);
+		return CHIAKI_ERR_MEMORY;
+	}
 	memcpy(buf, pin, pin_size);
 	ChiakiErrorCode err = chiaki_mutex_lock(&ctrl->notif_mutex);
 	assert(err == CHIAKI_ERR_SUCCESS);
@@ -267,6 +274,7 @@ CHIAKI_EXPORT void chiaki_ctrl_set_login_pin(ChiakiCtrl *ctrl, const uint8_t *pi
 	ctrl->login_pin_size = pin_size;
 	chiaki_stop_pipe_stop(&ctrl->notif_pipe);
 	chiaki_mutex_unlock(&ctrl->notif_mutex);
+	return CHIAKI_ERR_SUCCESS;
 }
 
 CHIAKI_EXPORT ChiakiErrorCode chiaki_ctrl_goto_bed(ChiakiCtrl *ctrl)

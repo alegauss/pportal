@@ -262,6 +262,12 @@ public enum ChiakiQuitReason
     StreamConnectionRemoteDisconnected,
     StreamConnectionRemoteShutdown,
     PsnRegistFailed,
+
+    /// <summary>
+    /// PP345: a Login PIN that could not be handed to ctrl. Last, because these marshal by ordinal
+    /// and libchiaki appends for the same reason.
+    /// </summary>
+    CtrlMemory,
 }
 
 /// <summary>
