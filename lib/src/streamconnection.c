@@ -690,6 +690,13 @@ static void stream_connection_takion_data_handle_disconnect(ChiakiStreamConnecti
 	stream_connection->remote_disconnected = true;
 	free(stream_connection->remote_disconnect_reason);
 	stream_connection->remote_disconnect_reason = strdup(reason);
+
+	// PP371: the reason can be NULL from here, and the session thread reads it twice without
+	// testing. Logged rather than patched with another allocation that can fail the same way; the
+	// guard belongs at the two dereferences, which is where it now is.
+	if(!stream_connection->remote_disconnect_reason)
+		CHIAKI_LOGE(stream_connection->log, "StreamConnection could not keep the disconnect reason");
+
 	chiaki_cond_signal(&stream_connection->state_cond);
 }
 

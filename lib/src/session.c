@@ -692,11 +692,20 @@ ctrl_failed:
 	if(err == CHIAKI_ERR_DISCONNECTED)
 	{
 		CHIAKI_LOGE(session->log, "Remote disconnected from StreamConnection");
-		if(!strcmp(session->stream_connection.remote_disconnect_reason, "Server shutting down"))
+
+		// PP371: the reason can be NULL. remote_disconnected is set before the strdup that fills
+		// it, so a failed allocation over there left both reads below dereferencing nothing - on the
+		// one path that runs when a console hangs up. The comparison itself is unchanged and stays
+		// exact, which is what PP336 asserts: a reason merely CONTAINING the phrase is the other
+		// quit reason.
+		const char *disconnect_reason = session->stream_connection.remote_disconnect_reason;
+
+		if(disconnect_reason && !strcmp(disconnect_reason, "Server shutting down"))
 			session->quit_reason = CHIAKI_QUIT_REASON_STREAM_CONNECTION_REMOTE_SHUTDOWN;
 		else
 			session->quit_reason = CHIAKI_QUIT_REASON_STREAM_CONNECTION_REMOTE_DISCONNECTED;
-		session->quit_reason_str = strdup(session->stream_connection.remote_disconnect_reason);
+
+		session->quit_reason_str = disconnect_reason ? strdup(disconnect_reason) : NULL;
 	}
 	else if(err != CHIAKI_ERR_SUCCESS && err != CHIAKI_ERR_CANCELED)
 	{

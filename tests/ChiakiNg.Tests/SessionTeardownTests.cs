@@ -78,6 +78,38 @@ public class SessionTeardownTests
     }
 
     /// <summary>
+    /// PP371: and both reads of that reason are guarded, because it can genuinely be null.
+    ///
+    /// remote_disconnected is set on the stream side BEFORE the strdup that fills the reason, so a
+    /// failed allocation reaches the session with nothing. The C dereferenced it twice - strcmp to
+    /// pick the quit reason, then strdup to carry it to the client - on the one path that runs when
+    /// a console hangs up.
+    /// </summary>
+    [Fact]
+    public void BothReadsOfTheDisconnectReasonAreGuarded()
+    {
+        string? path = SessionTeardownSource.Locate();
+        if (path is null)
+            return;
+
+        Assert.True(
+            SessionTeardownSource.TheDisconnectReasonIsStillGuarded(File.ReadAllText(path)),
+            "the disconnect reason is dereferenced without being tested again");
+    }
+
+    /// <summary>And the reader finds the unguarded version, so the check means something.</summary>
+    [Fact]
+    public void TheReaderFindsAnUnguardedDisconnectReason()
+    {
+        const string asItWas = """
+            		if(!strcmp(session->stream_connection.remote_disconnect_reason, "Server shutting down"))
+            			session->quit_reason = CHIAKI_QUIT_REASON_STREAM_CONNECTION_REMOTE_SHUTDOWN;
+            """;
+
+        Assert.False(SessionTeardownSource.TheDisconnectReasonIsStillGuarded(asItWas));
+    }
+
+    /// <summary>
     /// Which exit is taken depends on one thing: whether ctrl was ever started.
     ///
     /// Before it, the thread goes straight to the quit event; after it, through the ctrl teardown -

@@ -69,6 +69,10 @@ public static class SessionTeardown
     public static ChiakiQuitReason FromStreamConnection(
         ChiakiError error, string? remoteDisconnectReason) => error switch
         {
+            // PP371: null is a real answer here, not a test convenience. remote_disconnected is set
+            // before the strdup that fills the reason, so a failed allocation reaches this with
+            // nothing - and the C dereferenced it twice before that was guarded. Null takes the
+            // same branch as any other reason that is not the shutdown phrase.
             ChiakiError.Disconnected =>
                 string.Equals(remoteDisconnectReason, ShutdownReason, StringComparison.Ordinal)
                     ? ChiakiQuitReason.StreamConnectionRemoteShutdown
@@ -169,6 +173,43 @@ public static class SessionTeardownSource
         int send = core.IndexOf("chiaki_session_send_event(session, &quit_event);", quit, StringComparison.Ordinal);
 
         return unlock > 0 && send > unlock;
+    }
+
+    /// <summary>
+    /// PP371: whether both reads of the disconnect reason are still guarded against a null.
+    ///
+    /// The reason is strdup'd on the stream side AFTER remote_disconnected is set, so a failed
+    /// allocation reaches these two reads with nothing. They dereferenced it - strcmp to pick the
+    /// quit reason, then strdup to carry it to the client - on the one path that runs when a console
+    /// hangs up.
+    /// </summary>
+    public static bool TheDisconnectReasonIsStillGuarded(string core)
+    {
+        ArgumentNullException.ThrowIfNull(core);
+
+        // Stated as evidence and not as an absence, so an empty file answers no. Both reads have to
+        // be THERE, and both have to be tested - which they are by going through one local that is
+        // read out of the struct once and null-checked at each use.
+        int read = core.IndexOf(
+            "disconnect_reason = session->stream_connection.remote_disconnect_reason",
+            StringComparison.Ordinal);
+        if (read < 0)
+            return false;
+
+        bool comparisonGuarded = core.Contains(
+            "if(disconnect_reason && !strcmp(disconnect_reason, \"Server shutting down\"))",
+            StringComparison.Ordinal);
+        bool copyGuarded = core.Contains(
+            "disconnect_reason ? strdup(disconnect_reason) : NULL", StringComparison.Ordinal);
+
+        // And neither read may go back to naming the field: that is the defect returning.
+        bool straightOffTheStruct =
+            core.Contains(
+                "strcmp(session->stream_connection.remote_disconnect_reason", StringComparison.Ordinal)
+            || core.Contains(
+                "strdup(session->stream_connection.remote_disconnect_reason", StringComparison.Ordinal);
+
+        return comparisonGuarded && copyGuarded && !straightOffTheStruct;
     }
 
     /// <summary>Whether cancelling the stream connection is still not a failure.</summary>
