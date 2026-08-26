@@ -565,6 +565,31 @@ It is a design question rather than a defect, which is why PP347 named it and di
 answer it. Answering it wrongly is how a second buffer becomes a second thing that can
 be out of step with the first.
 
+### §PP355 One of two owned things freed at teardown
+
+ctrl_message_queue_free exists and has exactly one caller: the drain inside the loop's
+cancelled branch. chiaki_ctrl_fini frees ctrl->login_pin and never touches
+ctrl->msg_queue.
+
+That is fine on the path everybody takes. A stop pokes the notify pipe, the loop wakes,
+and its order is queue-then-PIN-then-stop - so the drain empties the queue before the
+stop is read, and fini finds nothing left. The queue is empty at teardown because the
+loop drained it, not because anything at teardown looks.
+
+Every other exit from the loop skips the drain. The overflow branch breaks. So do a
+failed select, a recv error, a failed rudp receive, a short rudp message and a rudp
+finish message. Anything queued when one of those happens is a linked list of malloc'd
+nodes, each with a malloc'd payload, that nothing frees.
+
+It is small - a handful of allocations, once per session, bounded by what a screen had
+queued - and it is reachable by queueing anything at the moment the socket errors.
+goto-bed from the power menu during a network drop is the shape of it.
+
+The asymmetry is the interesting part. fini DOES free login_pin, the other thing an
+outside caller allocates into ctrl and hands over. So ownership at teardown was thought
+about and one of the two was missed - which is why this is a line rather than a note.
+The fix is a loop in fini calling the free that already exists.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry

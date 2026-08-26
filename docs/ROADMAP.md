@@ -41,6 +41,7 @@
 - 📋 **PP351** (deps: —) **accept and reject are the same ctrl message told apart by one unnamed byte, and nothing managed builds either** — the keyboard text request also writes its length into two fields and pre-increments an unlocked counter the console uses to order edits. → §PP351
 - 📋 **PP353** (deps: PP352 ✅) **two display flags decide whether the stream is shown, and the one value the capture holds is the clearing one** — DISPLAYA raises a flag silently and DISPLAYB decides from both; the recorded 01-ff is what lowers it, so every interesting path is unwitnessed. → §PP353
 - 📋 **PP354** (deps: —) **two ctrl receive buffers share one size field, and the rudp read limit subtracts the wrong buffer's fill** — sizeof(rudp_recv_buf) - recv_buf_size is 520 minus how full a different buffer is; conservative rather than wrong, but not the number anybody meant. → §PP354
+- 📋 **PP355** (deps: —) **ctrl fini frees the login pin and never the message queue, so anything queued when the loop errors out leaks** — the drain is the only caller of the free, and every exit but a stop skips it; fini already frees the other thing a caller hands over. → §PP355
 
 ## Block G — Test discipline
 
