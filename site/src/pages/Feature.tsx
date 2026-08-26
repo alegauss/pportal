@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { Nav } from "../components/Nav";
 import { Footer } from "../components/Footer";
 import { Ad } from "../components/ui/Ad";
@@ -64,9 +65,10 @@ export function FeaturePage({ record }: { readonly record: FeatureRecord }) {
           {record.figure && <Figure kind={record.figure} />}
           <div className="feature-body">
             {record.sections.map((s, at) => (
-              <div className="feature-section reveal" key={s.heading}>
-                {at === adBefore && <Ad slot={`feature-${record.slug}`} />}
-                <h2>{s.heading}</h2>
+              <Fragment key={s.heading}>
+                {at === adBefore && <Ad slot={`feature-${record.slug}`} band={false} />}
+                <div className="feature-section reveal">
+                  <h2>{s.heading}</h2>
                 {s.body && (
                   <p>
                     <Rich runs={s.body} />
@@ -84,14 +86,15 @@ export function FeaturePage({ record }: { readonly record: FeatureRecord }) {
                     ))}
                   </ul>
                 )}
-                {record.slug === "picture" && s.heading === "Paced by the display" && (
-                  <p>
-                    <a className="feature-link" href="/pportal/hardware/">
-                      What this asks of your GPU →
-                    </a>
-                  </p>
-                )}
-              </div>
+                  {record.slug === "picture" && s.heading === "Paced by the display" && (
+                    <p>
+                      <a className="feature-link" href="/pportal/hardware/">
+                        What this asks of your GPU →
+                      </a>
+                    </p>
+                  )}
+                </div>
+              </Fragment>
             ))}
           </div>
         </div>

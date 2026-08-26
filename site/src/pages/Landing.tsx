@@ -19,14 +19,12 @@ import { Ad } from "../components/ui/Ad";
 //
 // The page ends on the download, and nothing follows it: a reader who has read this far has
 // decided, and the last thing they should meet is the button rather than another section.
-// Which is also why this is the one page that turns the footer's ad slot off and places its
-// own: the slot every other route ends with would land after that button here.
 //
-// The seam it takes instead is between the evidence and the depth pages. Every other boundary
-// on this page is mid-argument - why into picture, picture into pad, floor into non-goals -
-// and an ad dropped into one of those interrupts a sentence that is still being made. This
-// one is where the argument has finished and the reader is choosing where to go next, so it
-// is a pause that was already there rather than one the ad introduces.
+// The ad's seam is between the evidence and the depth pages. Every other boundary on this
+// page is mid-argument - why into picture, picture into pad, floor into non-goals - and an ad
+// dropped into one of those interrupts a sentence that is still being made. This one is where
+// the argument has finished and the reader is choosing where to go next, so it is a pause
+// that was already there rather than one the ad introduces.
 export function Landing() {
   return (
     <>
@@ -42,7 +40,7 @@ export function Landing() {
       <Floor />
       <NonGoals />
       <Download />
-      <Footer endSlot={false} />
+      <Footer />
     </>
   );
 }

@@ -1,5 +1,6 @@
 import { Nav } from "../components/Nav";
 import { Footer } from "../components/Footer";
+import { Ad } from "../components/ui/Ad";
 import { Rich } from "../components/ui/Rich";
 import { hardware } from "../lib/site-content";
 
@@ -54,6 +55,11 @@ export function Hardware() {
                 </table>
               </div>
             </div>
+
+            {/* Between the floor and what absence looks like: the table is the tall half of
+                this page, so this is where a reader crosses the middle of it, and it is a
+                boundary between two sections rather than a break inside one. */}
+            <Ad slot="hardware" band={false} />
 
             <div className="feature-section reveal">
               <h2>{hardware.absenceHeading}</h2>

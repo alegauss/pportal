@@ -1560,6 +1560,28 @@ footer .wrap {
   color: var(--accent-strong);
   font-weight: 600;
 }
+/* ---------- the house ad slot ----------
+   The loader draws inside a shadow root, so nothing here can reach the banner and nothing
+   in it can reach the page. What this owns is the box before it arrives: 140px is the
+   height ads.js reserves for the in-content format (RESERVED in site/v1/ads.js), so
+   matching it means the page does not jump when the banner lands. A catalogue that cannot
+   be read collapses the slot from inside instead, and then this min-height is the one thing
+   that would hold a blank gap open — which is why it is on .ad and not on the band. */
+.ad-band {
+  margin: 44px 0;
+}
+.ad {
+  max-width: 780px;
+  min-height: 140px;
+  margin: 0 auto;
+}
+/* Inside a column that already sets the measure, the band is the spacing and nothing else:
+   .feature-body's own gap between sections is smaller than the space a full-bleed band
+   takes between two top-level sections. */
+.feature-body .ad-band {
+  margin: 28px 0;
+}
+
 /* The sibling strip: the site's second level, shown on the pages it addresses. It scrolls
    sideways rather than wrapping, because five labels on a phone would otherwise set the
    header's height from the narrowest one. The current page stays in the list rather than
