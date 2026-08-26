@@ -471,6 +471,68 @@ takion.c is PP27's file and this crosses into it, which is why this is a line ra
 than a wider edit under PP295. What it owes is the fix for all eight and a check that
 reads every file rather than the one where the first two were found.
 
+### §PP383 Seven sends, no answers, and a counter that must not drift
+
+A session id arriving makes the client send a burst - PP342 modelled it, and PP297's
+capture holds three of the seven. ctrl_enable_features sends all of them and reads none:
+
+    ctrl_message_send(ctrl, CTRL_MESSAGE_TYPE_ENABLE_DUALSENSE_FEATURES, enable, 3);
+    ctrl_message_send(ctrl, 0x11, connect, 0x10);
+    ctrl_message_send(ctrl, CTRL_MESSAGE_TYPE_KEYBOARD_ENABLE, signature, 0x10);
+    ctrl_message_send(ctrl, CTRL_MESSAGE_TYPE_KEYBOARD_ENABLE_TOGGLE, &enable, 1);
+    ctrl_message_toggle_microphone(ctrl, false);
+    ctrl_message_toggle_microphone(ctrl, false);
+    ctrl_message_send(ctrl, CTRL_MESSAGE_TYPE_DISPLAY_DEVICES, display, 0x4);
+
+Every one answers a ChiakiErrorCode. The function is void, so its caller - the
+SESSION_ID arm of the dispatch switch - cannot learn anything either, and the session
+carries on believing the features it asked for are on.
+
+PP370 settled the shape one file over and PP379 applied it to a third. This is the
+larger version of both: seven sends rather than one, and no return type to report
+through. What a user gets is a DualSense whose haptics never arrive or a keyboard that
+does not open, with a clean log and a stream that is otherwise fine.
+
+The encryption counter is the sharper half. ctrl_message_send increments
+crypt_counter_local per message, and a send that fails partway is a counter the console
+and the client no longer agree on - which is not a missing feature but a channel that
+stops decrypting.
+
+Also worth an eye while here: the 0x11 payload declares sixteen bytes and lists fifteen.
+
+What this owes is a return type, a caller that reads it, and PP370's rule extended to
+ctrl.c so a further send is covered.
+
+### §PP384 Four sends into a timeout that blames the console
+
+chiaki_rudp_send_recv is the retry loop the whole PSN handshake runs through: init,
+cookie, ack and session message all reach the console from its switch. Every arm of that
+switch throws its answer away.
+
+    case INIT_REQUEST:
+        chiaki_rudp_send_init_message(rudp);
+        break;
+
+All four return a ChiakiErrorCode, and the next statement is a receive with a timeout.
+So a send that failed on the socket is followed by waiting the full timeout for a reply
+to a message that never left, and the loop then reports what it saw: a timeout. The
+caller is told the console did not answer.
+
+What that costs is diagnosis rather than correctness. The retry is right - a lost
+datagram is exactly what this loop exists for - but a send that failed locally is not a
+lost datagram, and the two are worth telling apart when someone is looking at why a
+remote play session would not start. The information is in hand and thrown away one line
+before it is needed.
+
+It is also slow in the case where it is wrong: tries times the select timeout, spent
+waiting for replies to messages the socket refused.
+
+PP370, PP375 and PP379 are the same family, each one call in a group whose siblings were
+correct. This is the shape where all four siblings are wrong together.
+
+What this owes is the four results read, a log that separates a failed send from a
+silent console, and the retry left alone.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry

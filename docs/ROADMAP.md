@@ -37,6 +37,8 @@
 - 💭 **PP313** (deps: PP33 ⏳) **curl and json-c would leave the build today if the remote path were built off, and that trades a feature for a count** — PP33's fourth criterion otherwise waits on the managed session, and the tri_option is already there. → §PP313
 - 📋 **PP340** (deps: —) **the PSN path lives in session.c's nine holepunch call sites, so PP33's deletion would take remote play with it** — the offer, the punch, the two sockets, the regist info, the address, the port and the fini are all driven from C; nothing managed owns that flow. → §PP340
 - 📋 **PP369** (deps: PP27 ⏳) **eight asserts still carry weight about data across four files, and PP357's check reads only one of them** — four are size assertions in front of reads in takion.c, one guards an ECDH secret, one a pointer dereferenced two lines later, one an offset in senkusha.c. → §PP369
+- 📋 **PP383** (deps: —) **ctrl_enable_features sends seven messages, discards every result, and returns void so its caller cannot know either** — PP370's rule in the file next door; this is the burst PP342 modelled, and a console that refused the keyboard enable looks identical to one that took it. → §PP383
+- 📋 **PP384** (deps: —) **chiaki_rudp_send_recv discards all four send results, so a send that never left is reported as a receive timeout** — each retry then costs the full select timeout for a failure the caller already had in hand, on the PSN path PP340 owns. → §PP384
 
 ## Block G — Test discipline
 

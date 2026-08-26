@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
+﻿// SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
 
 #ifndef CHIAKI_UNIT_TEST
 
@@ -304,9 +304,9 @@ static void rudp_send_buffer_resend(ChiakiRudpSendBuffer *send_buffer)
 				continue;
 			}
 			char packet_type[29] = {0};
-			// PP382: packet->buf is malloc'd and this is six bytes in, so the two-byte read carries no
-	// alignment guarantee of its own.
-	GetRudpPacketType(send_buffer, *((chiaki_unaligned_uint16_t *)(packet->buf + 6)), packet_type);
+			// PP382: packet->buf is malloc'd and this is six bytes in, so the two-byte read
+			// carries no alignment guarantee of its own.
+			GetRudpPacketType(send_buffer, *((chiaki_unaligned_uint16_t *)(packet->buf + 6)), packet_type);
 			CHIAKI_LOGI(send_buffer->log, "rudp Send Buffer re-sending packet with seqnum %#lx and type %s, tries: %llu", (unsigned long)packet->seq_num, packet_type, (unsigned long long)packet->tries);
 			packet->last_send_ms = now;
 			chiaki_rudp_send_raw(send_buffer->rudp, packet->buf, packet->buf_size);
