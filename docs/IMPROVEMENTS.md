@@ -471,6 +471,36 @@ takion.c is PP27's file and this crosses into it, which is why this is a line ra
 than a wider edit under PP295. What it owes is the fix for all eight and a check that
 reads every file rather than the one where the first two were found.
 
+### §PP389 Seven of 314, and two that cannot be told apart
+
+holepunch.c prefixes its log messages with the function they are in - 314 of them, over
+31 distinct names. Seven name a different function:
+
+    deleteSession():3379, 3382                 say http_send_session_message:
+    send_response_ps():4427                    says check_candidates:
+    send_responseto_ps():4480                  says check_candidates:
+    receive_request_send_response_ps():4514,
+                              4519, 4530       say check_candidates:
+
+The two in deleteSession are the sharper case. They are VERBATIM duplicates of lines
+3299 and 3303, which are in the real http_send_session_message - same sentence, same
+format arguments. So a reader who greps the message that reached their log finds two
+functions and no way to tell which one produced it, which is exactly what PP373 found in
+streamconnection.c and said out loud.
+
+The other five are the ordinary shape of the family: five sends and receives lifted out
+of check_candidates into helpers of their own, each keeping the prefix of the function
+it came from. PP377 was the same thing one layer down, where a shared helper named one
+of its two callers.
+
+The convention is what makes this worth fixing rather than tidying. Where 307 of 314
+logs name their own function, the seven that do not are not noise - they are a reader
+being told something specific and false, on the file where a remote play session that
+will not start is diagnosed.
+
+What this owes is the seven corrected and a rule over the file: a log whose prefix is a
+function name in this translation unit names the one it is in.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry
