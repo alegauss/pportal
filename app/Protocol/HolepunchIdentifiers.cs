@@ -20,10 +20,19 @@ namespace ChiakiNg.Protocol;
 /// tail has no managed equivalent at all. Both divergences are pinned to the source so they stay
 /// visible.
 ///
-/// HEX ENCODING GUARDS THE WRONG WAY. <c>bytes_to_hex</c> tests <c>len > max_len * 2</c> before
-/// writing <c>len * 2 + 1</c> characters, so its bound permits four times the room it has. It is
-/// safe today for one reason only: there is a single call site, and it passes thirty-two bytes into
-/// sixty-five characters, which fits exactly.
+/// HEX ENCODING GUARDED THE WRONG WAY, AND PP399 CORRECTED IT. <c>bytes_to_hex</c> tested
+/// <c>len > max_len * 2</c> before writing <c>len * 2 + 1</c> characters, so its bound permitted
+/// four times the room it had. It clamps against <c>(max_len - 1) / 2</c> now, and answers a
+/// zero-sized destination before subtracting - which a size_t makes necessary.
+///
+/// TWO THINGS THIS PARAGRAPH GOT WRONG, kept rather than quietly corrected because both are the
+/// reason it was only recorded. It said the guard was safe because there is a SINGLE call site;
+/// there are three, and all three happen to pass 2n+1 buffers. And "safe today" was the whole
+/// argument for leaving it - which is an argument about the callers, not about the guard, and a
+/// guard exists for the caller who gets it wrong.
+///
+/// Unlike PP235's misnamed logs, nothing here said the defect had to be reproduced. It was found
+/// and written down, and a finding written down is not a decision to keep it.
 ///
 /// AND THE SESSION UUID IS NOT RANDOM. <c>random_uuidv4</c> calls <c>srand(time(NULL))</c> on every
 /// invocation and then draws from <c>rand()</c> - so two sessions created within the same second
@@ -164,7 +173,14 @@ public static class HolepunchIdentifiersSource
             && !core.Contains("ChiakiHolepunchDeviceInfo device = {0};", StringComparison.Ordinal);
     }
 
-    /// <summary>Whether the encoder still guards a length it then multiplies past.</summary>
+    /// <summary>
+    /// Whether the encoder still guards a length it then multiplies past.
+    ///
+    /// PP399 corrected it, so this now answers FALSE and the assertion that used it was inverted
+    /// rather than deleted: the shape it looks for is the one to notice coming back, and a check
+    /// that only said the new guard is present would not recognise the old one returning under a
+    /// different spelling.
+    /// </summary>
     public static bool TheEncoderStillGuardsTheWrongWay(string core)
     {
         ArgumentNullException.ThrowIfNull(core);

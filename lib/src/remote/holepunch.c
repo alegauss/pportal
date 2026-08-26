@@ -2014,8 +2014,19 @@ static ChiakiErrorCode hex_to_bytes(const char* hex_str, uint8_t* bytes, size_t 
 }
 
 static void bytes_to_hex(const uint8_t* bytes, size_t len, char* hex_str, size_t max_len) {
-    if (len > max_len * 2) {
-        len = max_len * 2;
+    // PP399: the clamp was inverted. max_len is the size of hex_str, and every input byte writes
+    // TWO characters plus a terminator - so the most that fits is (max_len - 1) / 2. The test said
+    // `len > max_len * 2`, which permits four times that: a guard that looks like protection and
+    // allows a buffer overflow of 4x the destination.
+    //
+    // Nothing overflows today. All three callers pass 2*len+1 buffers, so the clamp has never
+    // fired and its being wrong has never shown. That is what makes it worth correcting rather
+    // than leaving: the next caller is the one it was there for.
+    if (max_len == 0) {
+        return;
+    }
+    if (len > (max_len - 1) / 2) {
+        len = (max_len - 1) / 2;
     }
     for (size_t i = 0; i < len; i++) {
         snprintf(hex_str + i * 2, 3, "%02x", bytes[i]);

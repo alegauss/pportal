@@ -179,8 +179,13 @@ public class HolepunchIdentifiersTests
         Assert.True(HolepunchIdentifiersSource.TheDecoderStillReadsInPairs(core), "two at a time");
         Assert.True(
             HolepunchIdentifiersSource.TheDeviceIsStillAnUnzeroedLocal(core), "a stack local, unzeroed");
-        Assert.True(
-            HolepunchIdentifiersSource.TheEncoderStillGuardsTheWrongWay(core), "guarded the wrong way");
+        // PP399: inverted. PP33 recorded this guard as permitting four times its buffer and left
+        // it, on the argument that the callers happened to fit. That is an argument about the
+        // callers rather than about the guard, and nothing said the defect had to be reproduced -
+        // so it was corrected, and this now watches for the old shape returning.
+        Assert.False(
+            HolepunchIdentifiersSource.TheEncoderStillGuardsTheWrongWay(core),
+            "the encoder guards the wrong way again");
         Assert.True(
             HolepunchIdentifiersSource.TheUuidIsStillSeededFromTheClock(core), "seeded from the clock");
         Assert.True(
