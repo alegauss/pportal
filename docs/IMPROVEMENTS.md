@@ -541,6 +541,140 @@ outside caller allocates into ctrl and hands over. So ownership at teardown was 
 about and one of the two was missed - which is why this is a line rather than a note.
 The fix is a loop in fini calling the free that already exists.
 
+### §PP357 A bound that is not in the binary
+
+Both keyboard receive handlers check that the header arrived and then trust an assert
+for everything after it:
+
+    if(payload_size < sizeof(CtrlKeyboardOpenMessage))
+        return;
+    msg->text_length = ntohl(msg->text_length);
+    assert(payload_size == sizeof(CtrlKeyboardOpenMessage) + msg->text_length);
+    buffer = malloc((size_t)msg->text_length + 1);
+    memcpy(buffer, payload + sizeof(CtrlKeyboardOpenMessage), msg->text_length);
+
+The guard covers 32 bytes of header. The relationship between what arrived and what the
+header CLAIMS arrived is covered by the assert, and this project builds Release with
+-DNDEBUG - so in the binary it ships, that line is nothing. The keyboard text-change
+handler is the same shape against its own 44-byte header.
+
+A message announcing a text length larger than it carried therefore mallocs that length
+and memcpys it out of a 512-byte buffer. A modest lie - a thousand bytes claimed, forty
+arrived - reads half a kilobyte past the end and hands it to a screen as the text the
+user is editing. A large one asks for four gigabytes, and where the allocation succeeds
+reads that far.
+
+The length is not authenticated in any useful sense: it is inside the encrypted payload,
+so it is whatever decrypted, and a decrypt that produced garbage produces a garbage
+length rather than an error.
+
+The fix is the check the assert was standing in for, which every other handler in the
+file writes out. Whether asserts should be relied on anywhere in a library built with
+NDEBUG is the larger question this is one instance of.
+
+### §PP358 The parser PP296 did not reach
+
+This tree has two HTTP response parsers for two handshakes. PP296 changed one of them
+and left the other, and the argument PP296 made applies to both word for word.
+
+parse_session_response matches RP-Nonce, RP-Version and RP-Application-Reason with
+strcasecmp, because an HTTP field name is case-insensitive and a console spelling one
+otherwise was the defect PP296 was filed for. parse_ctrl_response, thirty lines further
+down the same kind of function, matches RP-Server-Type and RP-Prohibit with strcmp.
+
+So a console answering the ctrl request with "rp-server-type" is a console whose server
+type this port does not read. What follows from that is not an error: server_type_valid
+stays false, the branch logs "No valid Server Type in ctrl response", and the connect
+carries on - without the two downgrades that branch performs. A regular PS4 asked for
+1080p would be asked for 1080p, and a PS4 asked for H265 would be asked for H265, both
+of which it does not support.
+
+The failure is therefore a stream that does not start, or starts wrong, on a console
+that answered correctly in a spelling nobody thought to allow. And it is invisible from
+this side: the log line says the header was not valid, which reads as the console not
+having sent one.
+
+Two parsers, one rule, one of them fixed. The other is this.
+
+### §PP359 A third writer to a two-flag machine
+
+PP353 ported the display state as a table over two flags, because neither means anything
+alone and only DISPLAYB tells the client the stream cannot be shown. There is a third
+caller of that same callback and it is in the connect:
+
+    if(response.rp_prohibit)
+        ctrl->session->display_sink.cantdisplay_cb(ctrl->session->display_sink.user, true);
+
+It touches neither flag. So a prohibited session starts with the client hiding the
+stream while cant_displaya and cant_displayb both read false - a state PP353's table has
+no name for, because the table is what the client believes and this is the one path that
+sets that belief from outside.
+
+What follows is worse than an inconsistency. The only thing that ever tells the client
+the stream is back is a DISPLAYA carrying 0x0, guarded on the second flag being down -
+and it is down. So the first unrelated DISPLAYA 0x0 the console sends un-hides a stream
+the console said was prohibited, and nothing in the machine remembers that it was.
+
+RP-Prohibit is also read with atoi, so any value that is not the text "1" means not
+prohibited - including a value that failed to decrypt, and including the empty string.
+
+Which of the two this should be is a real question: a third flag that the DISPLAYA
+branch also guards on, or a prohibition that is not expressed through the display
+machine at all. The port reproduces the C for now, and cannot reproduce it faithfully
+without saying which.
+
+### §PP360 The response side, and the other counter
+
+What remains of ctrl.c after the connect: the response side of the handshake, the login
+state switch, the three keyboard messages the console sends, and the three small
+senders.
+
+THE CTRL REQUEST IS RETRIED EXACTLY ONCE, on timeout, and on the TCP path the socket is
+torn down and reconnected before the second attempt. A one-shot flag, like PP334's
+ladder is a count and not a loop - and for the same reason.
+
+THE REMOTE COUNTER IS ALSO PRE-SPENT, which is PP356's finding from the other side.
+Where the response carried a well-formed RP-Server-Type it is decrypted at
+crypt_counter_remote++, so the first RECEIVED ctrl message decrypts at one. Where the
+header was absent or the wrong length it decrypts at zero. The starting point is
+therefore conditional on what the console sent, which is the same trap as the local
+counter with an extra branch in it.
+
+The server type drives two downgrades: a regular PS4 asked for 1080p is dropped to 720p
+keeping its frame rate, and a PS4 or PS4 Pro asked for anything but H264 is forced to
+H264. Both only where the header was valid, which is what PP358 is about.
+
+The three senders are fixed payloads with one variable bit: the microphone toggle's
+third byte, where zero is muted and one is not - and the corpus confirms the layout,
+00-01-01-59, twice.
+
+### §PP361 A log that lies and a switch that admits it
+
+Two small things found while reading the last of ctrl.c, kept together because each is
+one line and neither is worth a task of its own.
+
+THE MICROPHONE TOGGLE'S LOG IS INVERTED:
+
+    CHIAKI_LOGV(log, "Ctrl sending toggle microphone mute message: %s", muted ? "unmute": "mute");
+    uint8_t toggle[0x4] = {0, 1, 1, 89};
+    if(muted)
+        toggle[2] = 0;
+
+muted true writes zero into the third byte and logs "unmute". The wire is right and the
+sentence is backwards, so a verbose log read while chasing a microphone problem says the
+opposite of what was sent. The corpus confirms which way the byte goes:
+ctrl_enable_features calls this twice with false and the recording holds 00-01-01-59
+twice.
+
+THE SUBTYPE SWITCH SAYS SO ITSELF. The rudp arm of the read loop switches on
+message.subtype with the comment "wrong but works", and the arms fall through
+deliberately - 0x12, 0x26 and 0x36 all land in 0x02 after acking. It is upstream's own
+admission that the dispatch is not the shape the protocol has, and it is the one place
+in the file where a port cannot claim to be reproducing intent, only behaviour.
+
+Neither changes what goes on the wire. Both are the kind of thing a reader trusts and
+should not: one lies in the log, the other says out loud that it is wrong.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry

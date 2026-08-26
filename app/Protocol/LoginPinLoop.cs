@@ -36,10 +36,18 @@ public readonly record struct PinTurn(PinStep Step, bool PinIncorrect = false);
 ///
 /// pin_incorrect IS SET BEFORE THE WAIT, NOT AFTER A REFUSAL. It starts false, the prompt is sent,
 /// and then it is assigned true unconditionally - so it describes the NEXT prompt rather than this
-/// one. Nothing in the loop ever learns that a PIN was rejected; the console asking a second time
-/// IS the rejection, and the flag is set in advance because the second prompt can only happen for
-/// that reason. A port that set it from a ctrl signal would be waiting for a signal that does not
-/// exist, and would show "PIN incorrect" never.
+/// one.
+///
+/// PP357 CORRECTS WHY. The first version of this note said no ctrl signal ever reports a rejected
+/// PIN. One does: a LOGIN message carrying CTRL_LOGIN_STATE_PIN_INCORRECT, which
+/// ctrl_message_received_login answers by re-raising ctrl_login_pin_requested - the SAME flag it
+/// used to ask the first time. So the information exists and is flattened at the seam: the ctrl
+/// thread knows the PIN was wrong and the session thread receives only "a PIN is wanted".
+///
+/// Which leaves the behaviour unchanged and the reason different. This loop still cannot tell a
+/// first request from a refusal, so the flag still has to be set in advance - but a port looking
+/// for the signal would find it, one layer down, and could carry it across if anybody wanted the
+/// distinction.
 ///
 /// THE PROMPT WAIT IS UNBOUNDED. Every other wait in the connect sequence has a timeout;
 /// session.c passes UINT64_MAX here, because what it is waiting for is a person typing. Reproduced

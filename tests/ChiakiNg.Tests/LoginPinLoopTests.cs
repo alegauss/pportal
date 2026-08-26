@@ -25,12 +25,16 @@ public class LoginPinLoopTests
     }
 
     /// <summary>
-    /// THE SECOND PROMPT IS THE REFUSAL, and nothing ever told the loop so.
+    /// THE SECOND PROMPT IS THE REFUSAL, and this loop is not told which it is.
     ///
     /// pin_incorrect is assigned true straight after the first prompt is sent - before the wait,
-    /// unconditionally - so it describes the NEXT prompt. No ctrl signal reports a rejected PIN;
-    /// the console asking again IS the rejection. A port that waited for such a signal would show
-    /// "PIN incorrect" never.
+    /// unconditionally - so it describes the NEXT prompt.
+    ///
+    /// PP357: an earlier version of this said no ctrl signal reports a rejected PIN. One does -
+    /// a LOGIN carrying PIN_INCORRECT - but ctrl answers it by re-raising the same
+    /// ctrl_login_pin_requested flag it used to ask the first time, so what reaches HERE is
+    /// identical either way. The flag still has to be set in advance; the reason is that the
+    /// signal is flattened at the seam, not that it is absent.
     /// </summary>
     [Fact]
     public void TheSecondPromptSaysTheLastOneWasWrong()

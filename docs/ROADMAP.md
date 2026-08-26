@@ -40,6 +40,11 @@
 - 📋 **PP345** (deps: —) **chiaki_ctrl_set_login_pin returns void, so an allocation failure reaches the user as a wrong PIN** — the malloc failure returns before login_pin_entered is set, the console never gets the PIN and asks again - which PP335 established is the only thing that says wrong. → §PP345
 - 📋 **PP354** (deps: —) **two ctrl receive buffers share one size field, and the rudp read limit subtracts the wrong buffer's fill** — sizeof(rudp_recv_buf) - recv_buf_size is 520 minus how full a different buffer is; conservative rather than wrong, but not the number anybody meant. → §PP354
 - 📋 **PP355** (deps: —) **ctrl fini frees the login pin and never the message queue, so anything queued when the loop errors out leaks** — the drain is the only caller of the free, and every exit but a stop skips it; fini already frees the other thing a caller hands over. → §PP355
+- 📋 **PP357** (deps: —) **the two keyboard handlers bound their copy with an assert, and the shipped build defines NDEBUG** — the size check covers the header only; the announced text length is trusted, so a message claiming more than it carried is memcpyd out of a 512-byte buffer. → §PP357
+- 📋 **PP358** (deps: —) **the ctrl response parser matches headers with strcmp, which is the defect PP296 fixed in its sibling** — a console spelling RP-Server-Type otherwise loses both downgrades, so a regular PS4 is asked for 1080p and H265 and the log blames the console. → §PP358
+- 📋 **PP359** (deps: PP353 ✅) **RP-Prohibit hides the stream without touching either display flag, so any DisplayA zero un-hides it** — it is a third caller of the callback PP353's table models, and the branch that says the stream is back is guarded on a flag this never raises. → §PP359
+- 📋 **PP360** (deps: —) **the ctrl handshake's response side is unported, and the remote counter starts at one or zero depending on it** — a well-formed RP-Server-Type is decrypted at crypt_counter_remote++ and drives two downgrades; an absent one leaves the counter at zero. → §PP360
+- 📋 **PP361** (deps: —) **the microphone toggle logs the opposite of what it sends, and the rudp subtype switch says it is wrong** — muted true writes zero and logs unmute; the switch's own comment is wrong but works, with three arms falling through into a fourth. → §PP361
 
 ## Block G — Test discipline
 
