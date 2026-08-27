@@ -418,10 +418,11 @@ THE REPLACEMENT IS EVP, NOT A RENAME. OpenSSL 3.0's answer to EC_KEY is EVP_PKEY
 parameter builders and EVP_PKEY_derive, which is a different shape rather than a
 different spelling - so this is a port of a file and not a sweep of eight identifiers.
 
-AND THE PORT MAY REACH IT FIRST. PP23's tree count includes ecdh.c, and a managed key
-agreement would delete this file rather than modernise it. Whether that happens before
-an OpenSSL that has actually dropped these is the question this line exists to keep
-visible, and it is not one to answer by guessing at a release note.
+THE DECISION IS TAKEN: port it, on 2026-08-27. What made it answerable is an oracle that
+existed and nobody had named - the selftest reads test_ecdh's seven values out of
+test/gkcrypt.c, fixes the local private key, and asserts three things byte for byte: the
+local public key, its HMAC under the handshake key, and the derived secret. Scope is the
+OpenSSL branch; mbedtls uses none of the eight.
 
 ## Block G — Test discipline
 

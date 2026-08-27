@@ -45,6 +45,21 @@ ref_scheme = "id"
 # PP294 is where F starts: ctrl.c, and it unblocks four of the open lines. A file that size
 # lands through `ship --part`, one recorded half at a time.
 #
+# WHO OWNS THE SOCKETS: THE SHIM, ONE CHANNEL AT A TIME. Chosen 2026-08-27, and it was one
+# question asked three times - PP294 needs it for ctrl, PP27 for takion, PP340 for the punch, and
+# PP29, PP295, PP30 and PP33 are behind those three. A review of every open line found the front
+# is five lines and that three of them were waiting on this.
+#
+# The shim exposes connect, send and receive-one-message; the loop becomes managed; the C stays
+# behind it until managed code is. It is what §PP340 already proposed - "a seam the session thread
+# asks for a socket and an address through" - and it is incremental, so each channel migrates with
+# PP297's recording as its oracle. PP445 measured the cost of the alternative shape's first step:
+# one export, and PP437's census covers a new one in both directions for free.
+#
+# The other answer - managed sockets, stopping the C threads - is the end state and not the first
+# move: its first channel already needs lib/ changed to be able to stop a thread, and the corpus
+# holds type and payload rather than framed bytes, so framing would debut with no oracle at all.
+#
 # what jumps the queue, in order: an id or a "Block X", and nothing else.
 # The queue itself now lives in the "## Priority" section of docs/ROADMAP.md, where the
 # queue verbs reach it and `ship` takes a shipped id out of it on its own. The reasoning
