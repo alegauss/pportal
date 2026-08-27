@@ -405,6 +405,11 @@ static ChiakiErrorCode ctrl_connect_tcp(ChiakiCtrl *ctrl)
 	if(!sa)
 	{
 		CHIAKI_LOGE(session->log, "Ctrl failed to alloc sockaddr");
+		// PP415: the reason, the way PP345 gave one to the other allocation on this path. This
+		// returned without reporting, and ctrl_thread_func answers any error from ctrl_connect with
+		// CTRL_CONNECT_FAILED - so a machine out of memory told the user the network had failed.
+		// PP348's guard is what makes recording it here enough: the generic reason is then dropped.
+		ctrl_failed(ctrl, CHIAKI_QUIT_REASON_CTRL_MEMORY);
 		return CHIAKI_ERR_MEMORY;
 	}
 	memcpy(sa, addr->ai_addr, addr->ai_addrlen);

@@ -353,6 +353,7 @@
 - ✅ **PP411** **the ctrl login-PIN request handler is unported, so a PIN asked for after the session id ends the session unstated** — the request is modelled with the session id test between the two flags, and a PIN asked for too late ends the session rather than prompting.
 - ✅ **PP413** **the rudp unknown-subtype arm acks a counter it never read, and zero drops half the resend buffer** — the unknown arm acks no packet, the rule is that an arm may only ack a counter it read, and the send-ack it does make is unchanged.
 - ✅ **PP414** **the rudp offset helper carries takion's doc comment, promising a -1 nobody returns for a default that is a real answer** — the comment says what the helper returns, the default is stated as an answer rather than a sentinel, and the linkage matches its neighbours.
+- ✅ **PP415** **ctrl_connect_tcp is unported, and its sockaddr allocation failure reaches the user as a connect failure** — the connect is modelled with its five outcomes and its dropped mutex, and the sockaddr allocation failure now reports memory rather than the network.
 
 ## Block G — Test discipline
 
