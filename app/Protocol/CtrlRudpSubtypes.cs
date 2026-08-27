@@ -70,6 +70,55 @@ public static class CtrlRudpSubtypes
             or RudpAction.UnknownThenTake;
 
     /// <summary>
+    /// PP413: whether this arm reads an ack counter off the wire, at <c>message.data + 2</c>.
+    ///
+    /// Four do. The unknown arm does not, and cannot: the subtype is what it does not recognise, so
+    /// a two-byte read at a fixed offset would be inventing a layout for the one case defined by not
+    /// having one.
+    /// </summary>
+    public static bool ReadsAnAckCounter(byte subtype)
+        => ActionFor(subtype) is RudpAction.AckPacketThenTake or RudpAction.AckPacketOnly;
+
+    /// <summary>
+    /// PP413: whether this arm acknowledges a PACKET, which prunes our own resend buffer.
+    ///
+    /// THE PROPERTY WORTH HAVING A NAME FOR: this is <see cref="ReadsAnAckCounter"/> exactly. An arm
+    /// may only acknowledge a packet number it read. The unknown arm used to acknowledge
+    /// <c>ack_counter</c> without reading it - so it carried whatever a sibling submessage of the
+    /// same datagram left there, and zero where there was none.
+    ///
+    /// Zero is not a harmless value. <c>chiaki_rudp_send_buffer_ack</c> frees every buffered packet
+    /// at or older than the acknowledged seqnum, and <see cref="SeqNum.Lt"/> against zero is true
+    /// for 32769 through 65535 - so one unrecognised submessage past the halfway mark discarded
+    /// nearly half the resend buffer, and any packet in there the console never received was never
+    /// retransmitted.
+    ///
+    /// Note this acknowledgement sends NOTHING. <c>chiaki_rudp_send_ack_message</c> is what the
+    /// console sees, and the unknown arm still sends it, off <c>message.remote_counter</c> - which it
+    /// did read. So removing the packet ack changes nothing on the wire.
+    /// </summary>
+    public static bool AcksAPacket(byte subtype) => ReadsAnAckCounter(subtype);
+
+    /// <summary>
+    /// How many 16-bit seqnums an acknowledgement of <paramref name="acked"/> would prune.
+    ///
+    /// The acked one plus every older one, by RFC 1982 comparison. This is what makes zero the worst
+    /// possible accident rather than a no-op, and it is computed from <see cref="SeqNum"/> rather
+    /// than asserted in prose.
+    /// </summary>
+    public static int SeqNumsPrunedByAcking(ushort acked)
+    {
+        var pruned = 1; // the acked one itself
+        for (var candidate = 0; candidate <= ushort.MaxValue; candidate++)
+        {
+            if (candidate != acked && SeqNum.Lt((ushort)candidate, acked))
+                pruned++;
+        }
+
+        return pruned;
+    }
+
+    /// <summary>
     /// Whether the message's ctrl payload is consistent with its own length, which is the only
     /// thing checked before the bytes are taken.
     ///
@@ -145,6 +194,76 @@ public static class CtrlRudpSubtypesSource
         ArgumentNullException.ThrowIfNull(threadBody);
 
         return threadBody.Contains("int offset2 = 4;", StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// PP413: whether the unknown arm still acknowledges no packet.
+    ///
+    /// Read as the absence of a <c>chiaki_rudp_ack_packet</c> between the <c>default:</c> label and
+    /// the <c>break;</c> that ends the arm. PP400's rule applies - the comment explaining the removal
+    /// names the call, so comments are stripped before the absence is claimed, or the explanation
+    /// would satisfy the search it exists to describe.
+    ///
+    /// The arm's own send-ack is asserted present in the same reading: "acknowledges no packet" must
+    /// not be satisfiable by an arm that stopped acknowledging altogether.
+    /// </summary>
+    public static bool TheUnknownArmStillAcksNoPacket(string threadBody)
+    {
+        ArgumentNullException.ThrowIfNull(threadBody);
+
+        string code = CCall.Code(threadBody);
+
+        int arm = code.IndexOf("default:", StringComparison.Ordinal);
+        if (arm < 0)
+            return false;
+
+        string body = code[arm..];
+        int ends = body.IndexOf("break;", StringComparison.Ordinal);
+        if (ends < 0)
+            return false;
+
+        string arms = body[..ends];
+
+        return !CCall.Happens(arms, "chiaki_rudp_ack_packet(ctrl->session->rudp, ack_counter)")
+            && CCall.Happens(arms, "chiaki_rudp_send_ack_message(ctrl->session->rudp, remote_counter)");
+    }
+
+    /// <summary>
+    /// And whether the arms that DO acknowledge a packet still read the counter first.
+    ///
+    /// The other half of the rule. Both arms take it from <c>message.data + 2</c> before acking, and
+    /// an arm that acked without reading is exactly what PP413 removed.
+    /// </summary>
+    public static bool EveryPacketAckStillFollowsARead(string threadBody)
+    {
+        ArgumentNullException.ThrowIfNull(threadBody);
+
+        string code = CCall.Compact(CCall.Code(threadBody));
+
+        const string read = "ack_counter=ntohs(";
+        const string ack = "chiaki_rudp_ack_packet(ctrl->session->rudp,ack_counter)";
+
+        // Walked in pairs rather than counted: each ack must have a read of its OWN since the
+        // previous ack. Counting alone would pass an arm that acked twice off one read, and looking
+        // only backwards would pass an ack borrowing the read of the arm above it - which is the
+        // shape PP413 removed.
+        var at = 0;
+        var acks = 0;
+        while (true)
+        {
+            int nextAck = code.IndexOf(ack, at, StringComparison.Ordinal);
+            if (nextAck < 0)
+                break;
+
+            int nextRead = code.IndexOf(read, at, StringComparison.Ordinal);
+            if (nextRead < 0 || nextRead > nextAck)
+                return false;
+
+            acks++;
+            at = nextAck + ack.Length;
+        }
+
+        return acks == 2;
     }
 
     /// <summary>

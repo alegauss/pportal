@@ -672,7 +672,20 @@ static void *ctrl_thread_func(void *user)
 						break;
 					default:
 						CHIAKI_LOGI(ctrl->session->log, "Received message of unknown type: 0x%04x", message.type);
-						chiaki_rudp_ack_packet(ctrl->session->rudp, ack_counter);
+						// PP413: no chiaki_rudp_ack_packet here. It stood above this line acking
+						// ack_counter, which this arm never reads - the arms above read it off
+						// message.data + 2 first, and this one leaves whatever a sibling submessage
+						// of the same datagram put there, or zero where there was none.
+						//
+						// Zero is not a harmless value: chiaki_rudp_send_buffer_ack frees every
+						// buffered packet at or older than the acked seqnum, and older-than-zero is
+						// true for 32769 through 65535 - so an unrecognised submessage arriving once
+						// the send counter has passed halfway discarded nearly half the resend
+						// buffer, and any packet in there the console never got was never resent.
+						//
+						// Reading message.data + 2 like the arms above would invent a wire layout
+						// for the one case defined by not knowing it. The ack below is the one the
+						// console actually sees, off a counter this arm did read.
 						chiaki_rudp_send_ack_message(ctrl->session->rudp, remote_counter);
 						// we already checked before if data size was at least 4
 						int offset2 = 4;

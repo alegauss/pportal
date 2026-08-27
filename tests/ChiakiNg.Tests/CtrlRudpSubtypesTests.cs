@@ -120,6 +120,101 @@ public class CtrlRudpSubtypesTests
         Assert.Equal<byte[]>([0, 0], CtrlMicrophone.ConnectPayload());
     }
 
+    /// <summary>
+    /// PP413: AN ARM MAY ONLY ACKNOWLEDGE A PACKET NUMBER IT READ.
+    ///
+    /// The four arms that ack a packet read the counter off message.data + 2 first. The unknown arm
+    /// reads nothing, so it acks nothing - it used to ack the variable anyway, carrying whatever a
+    /// sibling submessage of the same datagram left there.
+    /// </summary>
+    [Theory]
+    [InlineData((byte)0x12, true)]
+    [InlineData((byte)0x26, true)]
+    [InlineData((byte)0x36, true)]
+    [InlineData((byte)0x24, true)]
+    [InlineData((byte)0x02, false)]
+    [InlineData((byte)0xC0, false)]
+    [InlineData((byte)0x99, false)]
+    [InlineData((byte)0x41, false)]
+    public void OnlyAnArmThatReadsTheCounterAcksAPacket(byte subtype, bool acks)
+    {
+        Assert.Equal(acks, CtrlRudpSubtypes.ReadsAnAckCounter(subtype));
+
+        // The two are the same question, which is the rule rather than a coincidence.
+        Assert.Equal(
+            CtrlRudpSubtypes.ReadsAnAckCounter(subtype), CtrlRudpSubtypes.AcksAPacket(subtype));
+    }
+
+    /// <summary>
+    /// WHY ZERO WAS THE WORST POSSIBLE ACCIDENT, computed rather than asserted in prose.
+    ///
+    /// The send buffer frees every packet at or older than the acked seqnum, and RFC 1982 puts
+    /// nearly half the space older than zero. So the value the unknown arm reached for when no
+    /// sibling had set it prunes 32768 of 65536 seqnums.
+    /// </summary>
+    [Fact]
+    public void AckingZeroWouldPruneHalfTheSpace()
+    {
+        Assert.Equal(32768, CtrlRudpSubtypes.SeqNumsPrunedByAcking(0));
+
+        // Not a property of zero alone - it is what an ack MEANS - but zero is the one an arm that
+        // read nothing lands on, and it is reached by an unrecognised subtype rather than by a bug
+        // in the arms that do read.
+        Assert.Equal(32768, CtrlRudpSubtypes.SeqNumsPrunedByAcking(1000));
+        Assert.False(CtrlRudpSubtypes.AcksAPacket(0x99));
+    }
+
+    /// <summary>
+    /// PP413: and the reader says NO to the arm as it used to be.
+    ///
+    /// A drift check that cannot see the shape it exists to refuse is worth nothing, and asserting
+    /// that against a synthetic body costs nothing and does not require putting the defect back.
+    /// The comment case is the one that matters: the explanation of the removal names the call, so a
+    /// reader that did not strip comments would be satisfied by the prose describing the absence.
+    /// </summary>
+    [Fact]
+    public void TheReaderRefusesTheArmAsItUsedToBe()
+    {
+        const string acking = """
+            switch(message.subtype)
+            {
+                default:
+                    CHIAKI_LOGI(log, "unknown");
+                    chiaki_rudp_ack_packet(ctrl->session->rudp, ack_counter);
+                    chiaki_rudp_send_ack_message(ctrl->session->rudp, remote_counter);
+                    break;
+            }
+            """;
+
+        Assert.False(CtrlRudpSubtypesSource.TheUnknownArmStillAcksNoPacket(acking));
+
+        // The fixed shape, which is what the real file must look like.
+        const string fixedArm = """
+            switch(message.subtype)
+            {
+                default:
+                    CHIAKI_LOGI(log, "unknown");
+                    // PP413: no chiaki_rudp_ack_packet(ctrl->session->rudp, ack_counter) here.
+                    chiaki_rudp_send_ack_message(ctrl->session->rudp, remote_counter);
+                    break;
+            }
+            """;
+
+        Assert.True(CtrlRudpSubtypesSource.TheUnknownArmStillAcksNoPacket(fixedArm));
+
+        // And an arm that stopped acking altogether is not "acks no packet" either.
+        const string silent = """
+            switch(message.subtype)
+            {
+                default:
+                    CHIAKI_LOGI(log, "unknown");
+                    break;
+            }
+            """;
+
+        Assert.False(CtrlRudpSubtypesSource.TheUnknownArmStillAcksNoPacket(silent));
+    }
+
     /// <summary>And ctrl.c still has both halves the way this reproduces them.</summary>
     [Fact]
     public void CtrlStillDeclaresBoth()
@@ -146,5 +241,13 @@ public class CtrlRudpSubtypesTests
         Assert.True(
             CtrlRudpSubtypesSource.TheMicrophoneLogStillAgreesWithTheByte(toggle),
             "the microphone log and the byte it writes disagree again");
+
+        // PP413: and the unknown arm still acks no packet, while still acking the message.
+        Assert.True(
+            CtrlRudpSubtypesSource.TheUnknownArmStillAcksNoPacket(thread),
+            "the unknown arm acks a packet counter again, or stopped acking the message at all");
+        Assert.True(
+            CtrlRudpSubtypesSource.EveryPacketAckStillFollowsARead(thread),
+            "a packet ack no longer has a read of its own in front of it");
     }
 }

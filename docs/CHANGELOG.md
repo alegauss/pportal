@@ -351,6 +351,7 @@
 - ✅ **PP408** **the ctrl login-result handler is unported, so nothing states that an unsolicited PIN-incorrect raises no prompt** — the handler is modelled with its warn-and-carry-on size guard, and an unsolicited PIN-incorrect is stated to raise no prompt.
 - ✅ **PP409** **the three keyboard messages the console sends are unported, and an empty text arrives as no text at all** — the three arrivals are modelled with PP357's size check whole, and an empty text is stated to reach a screen as the same nothing a close carries.
 - ✅ **PP411** **the ctrl login-PIN request handler is unported, so a PIN asked for after the session id ends the session unstated** — the request is modelled with the session id test between the two flags, and a PIN asked for too late ends the session rather than prompting.
+- ✅ **PP413** **the rudp unknown-subtype arm acks a counter it never read, and zero drops half the resend buffer** — the unknown arm acks no packet, the rule is that an arm may only ack a counter it read, and the send-ack it does make is unchanged.
 
 ## Block G — Test discipline
 
