@@ -1,0 +1,33 @@
+/* The palette, taken from site/src/index.css so /docs and / are one product rather than two.
+   Only the accent scale and the link colour are overridden: Starlight's greys, spacing and
+   type are its own, and re-deriving them here would be the redesign this file exists to avoid.
+
+   --violet #5b6cf9 is the brand constant next door. The five steps below are that hue at the
+   lightnesses Starlight asks for, and the pair under [data-theme] swap the same way the site's
+   tokens do - Starlight writes data-theme itself, so nothing here reads prefers-color-scheme. */
+
+:root {
+  --sl-color-accent-low: #d7dcfe;
+  --sl-color-accent: #3b47c4;
+  --sl-color-accent-high: #2f3aa8;
+  --sl-color-text-accent: #3b47c4;
+}
+
+:root[data-theme="dark"] {
+  --sl-color-accent-low: #1f2878;
+  --sl-color-accent: #5b6cf9;
+  --sl-color-accent-high: #b3bcff;
+  --sl-color-text-accent: #8f9dff;
+}
+
+/* The flag table renders one row per flag the host declares, and the argument column is a
+   spelling rather than prose: it wraps badly and reads wrongly when it does. */
+.host-flags td:nth-child(1),
+.host-flags td:nth-child(2) {
+  white-space: nowrap;
+}
+
+.host-flags td:nth-child(2):empty::after {
+  content: "—";
+  color: var(--sl-color-gray-4);
+}

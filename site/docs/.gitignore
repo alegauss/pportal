@@ -1,0 +1,7 @@
+node_modules
+.astro
+dist
+*.local
+
+# copied from site/public/logo.svg by scripts/assets.mjs on every build
+public/favicon.svg

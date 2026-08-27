@@ -1,0 +1,36 @@
+---
+title: The host's command line
+description: The flags ChiakiNg.exe answers, read out of the application's own source.
+---
+
+import { HostFlags } from "../../../components/HostFlags";
+
+`ChiakiNg.exe` opens the window when it is given no flag. Every flag below is declared in one
+list in `app/Session/HostCommandLine.cs`, and a name it does not declare is refused rather than
+ignored — a mistyped flag does not silently open the window.
+
+Both tables are generated from that list at build time. If a flag is renamed in the
+application, the rename lands here in the same commit.
+
+## For running it
+
+The five the front page prints. Each one does something a person running PPortal might want,
+and none of them needs a checkout.
+
+<HostFlags audience="reader" />
+
+## For working on the tree
+
+The rest report on this repository rather than on the console. They are the reason this area
+exists: they are documented nowhere a reader could reach, and `--help` is a line each.
+
+<HostFlags audience="maintainer" />
+
+Two of them are worth naming here, because they are part of how work is committed rather than
+diagnostics you run once:
+
+- `--recount` checks every size the backlog states against the files it states them about, and
+  prints the `roadkeep` call that corrects each. It writes nothing itself.
+- `--ratchet` lists the shipped tasks that no assertion mentions. The count may fall and may
+  not rise, so a task shipped with no test naming its id turns the suite red in the commit that
+  ships it.

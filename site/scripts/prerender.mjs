@@ -185,9 +185,17 @@ writeFileSync(
 // Absolute, because that is what makes the sitemap discoverable without a submission — and
 // it carries the base prefix, so the rename that moves every route moves this too.
 const sitemapUrl = `${canonicalUrl("/")}sitemap.xml`;
+
+// PP446: the documentation area under /docs is a second build with a second sitemap, because
+// this generator walks ROUTE_META and ROUTE_META will never know those pages. Naming it here
+// is what makes both halves of one deploy crawlable from one file — and it is a claim about a
+// file this script has not seen: the docs build runs after the prerender, so `docs.test.mjs`
+// asserts that what robots names is in dist. A docs build that was skipped, or emptied by a
+// later `vite build`, fails there rather than publishing a Sitemap: line pointing at a 404.
+const docsSitemapUrl = `${canonicalUrl("/")}docs/sitemap-index.xml`;
 writeFileSync(
   join(distDir, "robots.txt"),
-  `User-agent: *\nAllow: /\n\nSitemap: ${sitemapUrl}\n`,
+  `User-agent: *\nAllow: /\n\nSitemap: ${sitemapUrl}\nSitemap: ${docsSitemapUrl}\n`,
 );
 
 console.log(

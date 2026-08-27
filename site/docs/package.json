@@ -1,0 +1,24 @@
+{
+  "name": "pportal-docs",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "The technical documentation area, at /pportal/docs. Its own npm project, building into the site's dist/docs.",
+  "scripts": {
+    "prebuild": "node scripts/assets.mjs",
+    "dev": "npm run prebuild && astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "@astrojs/react": "^6.0.4",
+    "@astrojs/starlight": "^0.41.9",
+    "astro": "^7.2.9",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5"
+  }
+}

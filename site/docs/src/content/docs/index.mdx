@@ -1,0 +1,36 @@
+---
+title: PPortal internals
+description: How the port works, for a reader who wants the detail the front page leaves out.
+---
+
+The [front page](/pportal/) says what PPortal does. This area says how, at the level you would
+need to change it: the interfaces the host exposes, the session it drives, and which parts of
+upstream's C have been replaced by managed code and which have not.
+
+It is written for three people — someone deciding whether to depend on this, someone
+reading a stack trace out of it, and whoever picks up the port next.
+
+## The one rule
+
+No figure on these pages is typed. Versions, flag lists and counts are read out of the
+application's own source at build time and rendered from there, the same way the front page is
+built. A number typed into a sentence is true the day it is typed and wrong in silence
+afterwards, and reference prose is where that costs the most.
+
+Where a page states something that is *not* derived — a design decision, a boundary, a reason —
+it is written as prose and held against the tree by an assertion in the suite. What neither of
+those covers is not on these pages.
+
+## What is here
+
+Two pages, which is the skeleton and not the documentation. The area exists so that the pages
+below it have somewhere to go; the backlog entry that opened it says as much.
+
+- **[The host's command line](/pportal/docs/host/command-line/)** — the sixteen flags the
+  application answers, and which are for running it rather than working on it.
+
+## What is not here
+
+Anything about installing or using PPortal. That is the [front page](/pportal/) and the
+[hardware notes](/pportal/hardware), and duplicating either here would give a reader two
+answers that drift apart.

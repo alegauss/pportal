@@ -51,9 +51,13 @@ export const releasesUrl = `${repoUrl}/releases/latest`;
 // section while "Controllers" in the content meant the page, which is one label for two
 // destinations. Two entries also fit where four did not, which is what lets the labels
 // survive far further down the width than they used to.
+//
+// "Docs" is the third and it leaves this site: /pportal/docs/ is a separate build under the
+// same base, so it is written as a path like the other two and there is no route for it here.
 export const navLinks = [
   { href: "/pportal/features/", label: "Features" },
   { href: "/pportal/hardware/", label: "Hardware" },
+  { href: "/pportal/docs/", label: "Docs" },
 ] as const;
 
 export const footer = {
@@ -62,6 +66,7 @@ export const footer = {
     // links a phone reader has. They lead the list for that reason.
     { href: "/pportal/features/", label: "Features" },
     { href: "/pportal/hardware/", label: "Hardware" },
+    { href: "/pportal/docs/", label: "Docs" },
     { href: repoUrl, label: "GitHub" },
     { href: releasesUrl, label: "Releases" },
     { href: `${repoUrl}/blob/main/CONTRIBUTOR_GUIDE.md`, label: "Contributing" },
