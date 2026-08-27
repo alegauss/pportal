@@ -27,13 +27,22 @@ public enum FollowupStep
 /// <summary>
 /// PP256: the last thing a successful punch does - keep answering until the console stops asking.
 ///
-/// A RECEIVE THAT FAILS SPINS. There are four ways out of this loop: a timeout, a select error, a
-/// packet of the wrong size, and a message of the wrong type. A failed receive is none of them. It
-/// logs and continues, back to a wait that reports the socket readable, back to a receive that
-/// fails again. The socket was connected before this call, so on Windows an ICMP rejection arrives
-/// as a receive error on a socket select calls readable - no progress, no timeout, one log line per
-/// turn. <see cref="Leaves"/> answers which steps end the loop, and <see cref="FollowupStep.Retry"/>
-/// is the one that does not.
+/// A RECEIVE THAT FAILS USED TO SPIN, AND PP457 BOUNDED IT. There were four ways out of this loop: a
+/// timeout, a select error, a packet of the wrong size, and a message of the wrong type. A failed
+/// receive was none of them - it logged and continued, back to a wait that reports the socket
+/// readable, back to a receive that fails again. The socket is connected before this call, so on
+/// Windows an ICMP rejection arrives as a receive error on a socket select calls readable: no
+/// progress, no timeout, one log line per turn.
+///
+/// <see cref="Leaves"/> still answers which STEPS end the loop and <see cref="FollowupStep.Retry"/> is
+/// still not one of them, because the bound is not a step - it is a count above the loop, so the step
+/// function is unchanged and a fifth way out exists that no step names. That is the shape of the fix
+/// and the reason <see cref="APersistentFailureEnds"/> still answers false.
+///
+/// THIS AND <see cref="PunchExchange"/> MODEL THE SAME FUNCTION. PP256 and PP238 each ported
+/// receive_request_send_response_ps with its own vocabulary and its own source predicates, which is
+/// the duplication PP454 found one level down in the packet's offsets. Filed rather than merged here:
+/// see the backlog.
 ///
 /// THE TIMEOUT IS THE ORDINARY ENDING. A request answered loops round; only silence ends it. Timing
 /// out having heard something is success, and having heard nothing is a timeout - the value PP249
@@ -124,11 +133,15 @@ public static class FollowupExchangeSource
         => Body(core).Contains("    while (true)\n", StringComparison.Ordinal);
 
     /// <summary>
-    /// THE FINDING. Whether a failed receive still continues rather than leaving.
+    /// Whether a failed receive still continues, AND whether the loop now bounds how many times it
+    /// may.
     ///
-    /// True means the spin is present, which is what this asserts rather than a fix.
+    /// PP256 asserted only the first half, and read it as "the spin is present". PP457 bounded the
+    /// spin at the top of the loop without touching this block, so the first half stayed true and
+    /// said nothing - a predicate that outlived what it described. Both halves are here now: the
+    /// block still declines to leave, and something above it counts.
     /// </summary>
-    public static bool AFailedReceiveStillContinues(string core)
+    public static bool AFailedReceiveContinuesUnderABound(string core)
     {
         string body = Body(core);
 
@@ -141,8 +154,13 @@ public static class FollowupExchangeSource
         if (closes < 0)
             return false;
 
-        return body[fails..closes].Contains("continue;", StringComparison.Ordinal)
+        bool continuesWithoutLeaving = body[fails..closes].Contains("continue;", StringComparison.Ordinal)
             && !body[fails..closes].Contains("return", StringComparison.Ordinal);
+
+        // And the discard it counts is what the bound above the loop reads.
+        return continuesWithoutLeaving
+            && body[fails..closes].Contains("discarded++;", StringComparison.Ordinal)
+            && body.Contains("if(discarded > MAX_CONSECUTIVE_DISCARDS)", StringComparison.Ordinal);
     }
 
     /// <summary>And whether the wrong-size packet beside it still ends the punch.</summary>
@@ -170,21 +188,26 @@ public static class FollowupExchangeSource
             StringComparison.Ordinal);
 
     /// <summary>
-    /// Whether three lines still name the OPERATION and one still names nothing.
+    /// Whether four lines still name the OPERATION and one still names nothing.
     ///
-    /// The three are defensible - PP238 settled that - so what this asserts is the split, not a
-    /// count of wrongs. The fourth is the one with nothing on it.
+    /// The four are defensible - PP238 settled that - so what this asserts is the split, not a count
+    /// of wrongs. The fifth is the one with nothing on it.
+    ///
+    /// It was three of four until PP457 added the discard-limit line, which names the operation like
+    /// its neighbours. The numbers move with the file rather than the check being loosened, because
+    /// the split is the thing worth holding: a line appearing with no name at all, or with its own
+    /// function's, is a change somebody decided and should have to say so.
     /// </summary>
-    public static bool ThreeNameTheOperationAndOneNamesNothing(string core)
+    public static bool FourNameTheOperationAndOneNamesNothing(string core)
     {
         string body = Body(core);
 
         // Counted by the message, not by the macro: a hexdump takes CHIAKI_LOG_ERROR as an argument
-        // and would be counted as a fifth line by anything matching the prefix alone.
+        // and would be counted as another line by anything matching the prefix alone.
         int lines = body.Split("session->log, \"", StringSplitOptions.None).Length - 1;
         int operation = body.Split("\"check_candidates: ", StringSplitOptions.None).Length - 1;
 
-        return lines == 4 && operation == 3;
+        return lines == 5 && operation == 4;
     }
 
     /// <summary>The one line carrying no name of any kind.</summary>

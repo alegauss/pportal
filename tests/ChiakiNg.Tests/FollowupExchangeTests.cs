@@ -1,4 +1,4 @@
-using ChiakiNg.Protocol;
+﻿using ChiakiNg.Protocol;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -128,8 +128,8 @@ public class FollowupExchangeTests
             FollowupExchangeSource.TheLoopIsStillUnconditional(core),
             "the loop still has no condition of its own");
         Assert.True(
-            FollowupExchangeSource.AFailedReceiveStillContinues(core),
-            "a failed receive still continues rather than leaving");
+            FollowupExchangeSource.AFailedReceiveContinuesUnderABound(core),
+            "a failed receive still continues, and PP457's bound above the loop still counts it");
         Assert.True(
             FollowupExchangeSource.TheWrongSizeStillEndsIt(core),
             "while the wrong-size packet beside it still ends the punch");
@@ -138,8 +138,8 @@ public class FollowupExchangeTests
             FollowupExchangeSource.TheTimeoutIsStillSuccessAfterAnything(core),
             "a timeout is still success once something has been heard");
         Assert.True(
-            FollowupExchangeSource.ThreeNameTheOperationAndOneNamesNothing(core),
-            "three of its four logs still name the operation");
+            FollowupExchangeSource.FourNameTheOperationAndOneNamesNothing(core),
+            "four of its five logs still name the operation");
         Assert.True(
             FollowupExchangeSource.TheUnnamedLineIsStillThere(core),
             "and the fourth still names nothing at all");
@@ -149,3 +149,4 @@ public class FollowupExchangeTests
             "the request is still the probe's size");
     }
 }
+

@@ -1,4 +1,4 @@
-using System.Buffers.Binary;
+﻿using System.Buffers.Binary;
 using System.Net;
 using System.Net.Sockets;
 
@@ -18,7 +18,9 @@ public readonly record struct PunchIdentity(
 /// <param name="Ignored">How many extra responses were waited past.</param>
 /// <param name="Faulted">
 /// How many receives failed. Each one re-entered the wait with the WHOLE timeout, so a non-zero count
-/// means the run took longer than the timeout it was given - see the type's note.
+/// means the run took longer than the timeout it was given. Counted against
+/// <see cref="PunchAnsweringLoop.MaxConsecutiveDiscards"/> alongside <paramref name="Ignored"/>, since
+/// PP457: what a discard is does not matter to the bound, only how many came in a row.
 /// </param>
 public readonly record struct PunchAnsweringOutcome(
     PunchStep Step, int Answered, int Ignored, int Faulted);
@@ -39,15 +41,27 @@ public readonly record struct PunchAnsweringOutcome(
 /// with an error rather than succeeding. So a console that answers and then says nothing more gets a
 /// failure, and a console that asks and then says nothing more gets a success.
 ///
-/// A FAILED RECEIVE COSTS NOTHING, AND THAT IS REPRODUCED. It is counted and the wait is re-entered
-/// with the full timeout again, so the timeout bounds SILENCE rather than the run. PP238 named this as
-/// the same mistake PP212 measured in the notification wait, and it means the only bound on a run is
-/// the caller's cancellation token. It is left that way, and <see cref="PunchAnsweringOutcome.Faulted"/>
-/// is how a caller can tell it happened - the C has nothing there but a log line.
+/// A DISCARDED DATAGRAM RE-ARMS THE FULL TIMEOUT, AND PP457 BOUNDED HOW MANY IN A ROW. Both the
+/// ignored extra response and the failed receive are reached after a wait that produced something,
+/// and both used to go back to waiting with the whole timeout again and `answered` untouched - so
+/// anything able to reach the port kept the loop alive for as long as it kept sending datagrams the
+/// loop threw away, and the caller never got the timeout it asked for. No socket failure was needed.
+///
+/// The bound is on CONSECUTIVE discards, not on the run: a request resets the count, so no legitimate
+/// flow reaches it however long it takes or however many extras it interleaves. PP238 named the
+/// timeout semantics and PP256 called it a spin - both about THIS loop, not two: the two tasks ported
+/// receive_request_send_response_ps separately, which is why <see cref="FollowupExchange"/> is a
+/// second step machine over the same C.
 /// </summary>
 public sealed class PunchAnsweringLoop : IDisposable
 {
     private readonly Socket socket = new(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+
+    /// <summary>
+    /// MAX_CONSECUTIVE_DISCARDS - how many datagrams in a row the loop may throw away before it gives
+    /// up.
+    /// </summary>
+    public const int MaxConsecutiveDiscards = 32;
 
     /// <summary>The port this side bound, which is where a console sends its requests.</summary>
     public int LocalPort { get; private set; }
@@ -67,8 +81,9 @@ public sealed class PunchAnsweringLoop : IDisposable
     /// <param name="candidateAddress">The candidate address the replies advertise.</param>
     /// <param name="candidatePort">And its port.</param>
     /// <param name="timeout">
-    /// How long one wait may be silent. NOT a bound on the run: see the type's note on a failed
-    /// receive.
+    /// How long one wait may be silent. Still NOT a bound on the run - a console that keeps asking
+    /// keeps the loop going for as long as it likes, which is correct. What PP457 bounded is the run
+    /// that makes no progress: see <see cref="MaxConsecutiveDiscards"/>.
     /// </param>
     public async Task<PunchAnsweringOutcome> RunAsync(
         PunchIdentity identity,
@@ -82,12 +97,20 @@ public sealed class PunchAnsweringLoop : IDisposable
         var answered = 0;
         var ignored = 0;
         var faulted = 0;
+        var discarded = 0;
 
         byte[] buffer = new byte[PunchExchange.RequestLength * 2];
 
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
+
+            if (discarded > MaxConsecutiveDiscards)
+            {
+                // PP457: reported as Fatal, which is what the C's CHIAKI_ERR_NETWORK means to the
+                // caller here - a run that ended without the console ever asking anything.
+                return new PunchAnsweringOutcome(PunchStep.Fatal, answered, ignored, faulted);
+            }
 
             var timedOut = false;
             var received = 0;
@@ -143,14 +166,19 @@ public sealed class PunchAnsweringLoop : IDisposable
                     await socket.SendToAsync(reply, SocketFlags.None, from, cancellationToken)
                         .ConfigureAwait(false);
                     answered++;
+
+                    // A request is progress, so the run gets its discard budget back.
+                    discarded = 0;
                     break;
 
                 case PunchStep.Ignore:
                     ignored++;
+                    discarded++;
                     break;
 
                 case PunchStep.WaitAgain:
                     faulted++;
+                    discarded++;
                     break;
 
                 default:
@@ -166,3 +194,4 @@ public sealed class PunchAnsweringLoop : IDisposable
         GC.SuppressFinalize(this);
     }
 }
+

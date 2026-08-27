@@ -72,14 +72,18 @@ public class LogPrefixIdentityTests(ITestOutputHelper output)
         IReadOnlyList<PrefixedLog> wearing =
             LogPrefixIdentity.WearingAnothersName(LogPrefixIdentity.AttributionsIn(core));
 
-        Assert.Equal(7, wearing.Count);
+        // Eight since PP457, which added one to the helpers - deliberately, under PP238's decision
+        // rather than in spite of it: the new line is in receive_request_send_response_ps and says
+        // check_candidates because that is the operation a reader is following. The count moving is
+        // the point of this test, so it moves here rather than the assertion being loosened.
+        Assert.Equal(8, wearing.Count);
 
         // Two in deleteSession, reproduced on purpose by PP235.
         Assert.Equal(2, wearing.Count(l => l.In == "deleteSession"));
 
-        // And five across check_candidates' three helpers, ruled defensible by PP238.
+        // And six across check_candidates' three helpers, ruled defensible by PP238.
         Assert.Equal(
-            5,
+            6,
             wearing.Count(l => MisnamedLogs.NamesTheOperationNotTheFunction.Contains(l.In, StringComparer.Ordinal)));
     }
 

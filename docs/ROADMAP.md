@@ -34,7 +34,7 @@
 - 📋 **PP294** (deps: PP297 ✅) **ctrl.c is 1763 lines of control channel and PP28 sizes it together with two files it does not resemble** — It is the longest of the three and the one with the most message types, and none of them are on the frame path so latency is not the measure. → §PP294
 - 📋 **PP295** (deps: PP27 ⏳, PP297 ✅) **streamconnection.c is 1531 lines and is the last C caller of the video receiver, so every deletion below waits on it** — PP286 to PP291 ported the frame path bottom-up and none of it removed C, because this is what still calls the native receiver. → §PP295
 - 📋 **PP340** (deps: —) **the PSN path lives in session.c's nine holepunch call sites, so PP33's deletion would take remote play with it** — the offer, the punch, the two sockets, the regist info, the address, the port and the fini are all driven from C; nothing managed owns that flow. → §PP340
-- 📋 **PP457** (deps: —) **a persistently failing receive spins the punch answering loop at full speed, uncounted and with no backoff** — PP238 filed this as timeout semantics; PP456 running the loop showed the sharper form - no branch a failing receive reaches can leave it. → §PP457
+- 📋 **PP458** (deps: —) **PP238 and PP256 each ported the same punch loop, so two step machines model one function and neither knows it** — PP454's duplication one level up: PP457's fix had to be chased through two sets of predicates, and one stayed green describing nothing. → §PP458
 
 ## Block G — Test discipline
 

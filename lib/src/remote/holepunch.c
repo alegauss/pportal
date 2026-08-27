@@ -65,6 +65,7 @@
 #define RANDOM_ALLOCATION_SOCKS_NUMBER 250
 #define CHECK_CANDIDATES_REQUEST_NUMBER 1
 #define WAIT_RESPONSE_TIMEOUT_SEC 1
+#define MAX_CONSECUTIVE_DISCARDS 32
 #define MSG_TYPE_REQ 0x06000000
 #define MSG_TYPE_RESP 0x07000000
 #define EXTRA_CANDIDATE_ADDRESSES 3
@@ -4636,9 +4637,26 @@ static ChiakiErrorCode receive_request_send_response_ps(Session *session, chiaki
     uint8_t req[88] = {0};
     ChiakiErrorCode err = CHIAKI_ERR_SUCCESS;
     bool received = false;
+    // PP457: how many datagrams in a row this loop may throw away.
+    //
+    // Both `continue`s below are reached after a select that SUCCEEDED - an extra response, or a
+    // recv that failed - and both re-enter the wait with the FULL timeout again, leaving `received`
+    // alone. So anything that can reach this port keeps the loop alive for as long as it keeps
+    // sending datagrams the loop discards, and the caller never gets the timeout it asked for.
+    //
+    // CONSECUTIVE, not total: a request resets the count, so no legitimate flow reaches the limit
+    // however long it takes or however many extras it interleaves. Bounding the run instead would
+    // cut off a slow but correct session.
+    size_t discarded = 0;
     // Wait for followup request from responsive candidate
     while (true)
     {
+        if(discarded > MAX_CONSECUTIVE_DISCARDS)
+        {
+            CHIAKI_LOGE(session->log, "check_candidates: Discarded %zu datagrams in a row from %s:%d, giving up", discarded, candidate->addr, candidate->port);
+            return CHIAKI_ERR_NETWORK;
+        }
+
         err = chiaki_stop_pipe_select_single(&session->select_pipe, *sock, false, timeout * 1000);
         if(err == CHIAKI_ERR_TIMEOUT && received)
             return CHIAKI_ERR_SUCCESS;
@@ -4649,6 +4667,7 @@ static ChiakiErrorCode receive_request_send_response_ps(Session *session, chiaki
         if (len < 0)
         {
             CHIAKI_LOGE(session->log, "check_candidates: Receiving response from %s:%d failed with error: " CHIAKI_SOCKET_ERROR_FMT, candidate->addr, candidate->port, CHIAKI_SOCKET_ERROR_VALUE);
+            discarded++;
             continue;
         }
         if (len != sizeof(req))
@@ -4660,6 +4679,7 @@ static ChiakiErrorCode receive_request_send_response_ps(Session *session, chiaki
         if(msg_type == MSG_TYPE_RESP)
         {
             CHIAKI_LOGI(session->log, "Received an extra response, ignoring....");
+            discarded++;
             continue;
         }
         else if(msg_type != MSG_TYPE_REQ)
@@ -4670,6 +4690,8 @@ static ChiakiErrorCode receive_request_send_response_ps(Session *session, chiaki
             return err;
         }
         received = true;
+        // A request is progress, so the run gets its budget back.
+        discarded = 0;
 
         err = send_response_ps(session, req, sock, candidate);
         if(err != CHIAKI_ERR_SUCCESS)

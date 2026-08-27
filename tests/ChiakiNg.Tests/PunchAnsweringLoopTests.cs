@@ -201,6 +201,76 @@ public class PunchAnsweringLoopTests
     }
 
     /// <summary>
+    /// PP457: a flood of datagrams the loop discards no longer keeps it alive.
+    ///
+    /// Both discard paths re-arm the FULL timeout and leave `answered` alone, so before the bound
+    /// anything able to reach the port could hold the loop open indefinitely by sending extra
+    /// responses - no socket failure needed, and the caller never got the timeout it asked for. This
+    /// sends more than the limit and asserts the loop leaves, which it could not have done before.
+    /// </summary>
+    [Fact]
+    public async Task AFloodOfDiscardedDatagramsIsBounded()
+    {
+        byte[][] flood = [.. Enumerable
+            .Range(0, PunchAnsweringLoop.MaxConsecutiveDiscards + 2)
+            .Select(_ => ExtraResponse())];
+
+        (PunchAnsweringOutcome outcome, _) = await DrivenByAsync(flood);
+
+        Assert.Equal(PunchStep.Fatal, outcome.Step);
+        Assert.True(PunchExchange.Leaves(outcome.Step));
+        Assert.Equal(0, outcome.Answered);
+
+        // It gave up on the count and not on the clock: the run was never silent long enough to
+        // time out, which is the whole reason the timeout could not end it.
+        Assert.True(
+            outcome.Ignored > PunchAnsweringLoop.MaxConsecutiveDiscards,
+            $"only {outcome.Ignored} were discarded, so the bound was not what ended the run");
+    }
+
+    /// <summary>
+    /// PP457: and a request resets the budget, so no legitimate flow reaches the bound however many
+    /// extras it interleaves.
+    ///
+    /// This is the half that says the fix is a bound on consecutive discards rather than on the run.
+    /// Bounding the run would have cut this off.
+    /// </summary>
+    [Fact]
+    public async Task ARequestGivesTheDiscardBudgetBack()
+    {
+        var interleaved = new List<byte[]>();
+        for (var round = 0; round < 3; round++)
+        {
+            // Most of the budget, then a request, three times over - well past the limit in total.
+            for (var i = 0; i < PunchAnsweringLoop.MaxConsecutiveDiscards - 1; i++)
+                interleaved.Add(ExtraResponse());
+
+            interleaved.Add(Request((byte)(0xa0 + round)));
+        }
+
+        (PunchAnsweringOutcome outcome, List<byte[]> replies) = await DrivenByAsync([.. interleaved]);
+
+        Assert.Equal(PunchStep.Done, outcome.Step);
+        Assert.Equal(3, outcome.Answered);
+        Assert.Equal(3, replies.Count);
+
+        // Far more discards in total than the limit, and none of them consecutive enough to trip it.
+        Assert.Equal(3 * (PunchAnsweringLoop.MaxConsecutiveDiscards - 1), outcome.Ignored);
+    }
+
+    /// <summary>The bound is the C's, read from its define rather than trusted here.</summary>
+    [Fact]
+    public void TheBoundIsStillTheCs()
+    {
+        if (NatProbeSource.Locate() is not { } path)
+            return;
+
+        Assert.Equal(
+            (long?)PunchAnsweringLoop.MaxConsecutiveDiscards,
+            ChiakiNg.Session.CDefine.Value(File.ReadAllText(path), "MAX_CONSECUTIVE_DISCARDS"));
+    }
+
+    /// <summary>
     /// The replies really carry the masked tail PP455 un-masks, so this loop is sending the packet and
     /// not a placeholder.
     /// </summary>

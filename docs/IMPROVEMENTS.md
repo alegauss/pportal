@@ -276,7 +276,7 @@ host would use regardless of this block.
 
 ### §PP33 Two dependencies that simply leave
 
-holepunch.c is 5923 lines and is the only translation unit in this tree that still needs
+holepunch.c is 5945 lines and is the only translation unit in this tree that still needs
 either library: 234 curl_easy calls, 4 curl_ws, and the json_object and json_tokener
 sites beside them. http.c is 262 lines over rudp and winsock, is not among them, and
 carries no curl symbol at all, which is not what the first version of this section said
@@ -398,28 +398,29 @@ Until then PP33 is correctly blocked, and `remaining PP33` reads 420. Reading th
 number as the size of the job is what its own section warns against: it is one file, and
 the work is at the other end.
 
-### §PP457 The spin, and the second loop it lives in
+### §PP458 Two step machines over one loop
 
-PP238 recorded that a failed receive costs nothing: it is logged, and the `continue`
-re-enters the wait with the full timeout, so the number bounds silence rather than the
-call. PP256 named the same shape in the followup loop - "a socket error spins it with no
-way out" - and ported around it rather than repairing it.
+PP238 and PP256 each ported `receive_request_send_response_ps`. Neither knew the other
+had: PP238 called it "the loop answering punch requests" and PP256 "the last thing a
+successful punch does", and both descriptions are true of the same function.
 
-Writing this loop for PP456 made the sharper claim available. The failure is not counted
-and there is no backoff, so a receive that fails PERSISTENTLY is an unbounded busy loop
-and not merely a slow one. `chiaki_stop_pipe_select_single` on a socket in a bad state -
-closed underneath it, or the interface gone - returns its error immediately, every time.
-Nothing can leave: `continue` skips every terminal branch, and the only exits are a
-timeout, a bad datagram or a success, none of which a failing receive reaches.
+So there are two step machines over one loop. `PunchStep` and `FollowupStep` have five
+arms each that mean the same five things under different names; `PunchExchange.Next`
+takes four parameters and `FollowupExchange.Next` takes five for the same decision; and
+`PunchExchangeSource` and `FollowupExchangeSource` both cut the same body out of
+holepunch.c with their own `Body` helper and their own predicates over the same lines.
 
-So the cost is not that the run outlasts its timeout. It is a thread spinning at full
-speed, one log line per iteration, until the process ends - and on the hole punch path
-that is the thread a session is waiting on.
+This is PP454 one level up. There, three classes each read the packet's thirteen offsets
+and all three agreed, so nothing compared them. Here the two agree as well - and PP457
+showed what that costs: a fix at the top of the loop had to be chased through two sets
+of predicates, and one of them, `AFailedReceiveStillContinues`, stayed green while no
+longer describing anything. A single model would have gone red once.
 
-The fix has two halves and neither touches the working path: count consecutive failures
-and leave after a few with the error the receive gave, and bound the wait in total so
-silence broken only by failures cannot extend it without limit. PP456's `Faulted` count
-is the observation point.
+The consolidation is not the mechanical one PP454 did. Keeping both public surfaces and
+deriving is what worked for constants; two enums and two differently-shaped functions
+need one to become the authority and the other's callers to move. So this is sized as
+its own line rather than folded into a fix, and PP454's guard is the shape the result
+should be held to.
 
 ## Block G — Test discipline
 

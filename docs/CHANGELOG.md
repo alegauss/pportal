@@ -386,6 +386,7 @@
 - ✅ **PP454** **three classes each read the probe packet's thirteen offsets out of holepunch.c, and all three agreeing hid it** — PunchResponse is the one place the packet's geometry is a number, the other three derive, and a fourth copy or a re-literalised constant now fails a test.
 - ✅ **PP455** **the punch response's masked tail is built and never sent, and nothing in the port un-masks one** — the reply crosses a socket, the session-id key is un-masked from the other side, and a v6 candidate is measured sending four of its sixteen bytes.
 - ✅ **PP456** **the punch answering loop has never run, so nothing shows that receiving something never returns success** — the loop runs against a stub console: every request is answered, silence after one is the only success, and an ignored response is measured not counting as one.
+- ✅ **PP457** **extra responses and failed receives both re-arm the punch loop's full timeout, so a stream of either never times out** — both discard paths count against a consecutive limit read from the C's own define, and a request gives the budget back so no legitimate flow reaches it.
 
 ## Block G — Test discipline
 
