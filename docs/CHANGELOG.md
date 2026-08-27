@@ -377,6 +377,7 @@
 - ✅ **PP444** **the registration request payload is still C behind a P/Invoke wrapper, so nothing managed lays out the PIN exchange** — The fill, both aeropause layouts and the two inner-header forms are managed and hold against the C's own payload byte for byte; the general aeropause stays C, unexported.
 - ✅ **PP445** **the shim exports no general rpcrypt aeropause, so the PS5 half of the registration payload has no oracle** — The PS5 aeropause is exported, so the managed derivation and layout reproduce the C's head byte for byte; the offset is bounded here because the C bounds only the target.
 - ✅ **PP427** **ecdh.c's eight calls are all deprecated as of OpenSSL 3.0, and they are the whole of the key agreement** — ecdh.c is written against EVP: EVP_EC_gen for the key, EVP_PKEY_fromdata for both halves, EVP_PKEY_derive for the secret - and the recorded vector agrees byte for byte.
+- ✅ **PP448** **a PIN reply over rudp is encrypted one counter behind every other ctrl message, and nothing managed models that** — The send's counter is modelled: a PIN reply over rudp encrypts one behind, a bare message spends nothing, and the zero-counter underflow is the arithmetic the C performs and unreachable.
 
 ## Block G — Test discipline
 
