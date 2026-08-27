@@ -618,27 +618,3 @@ work is a run rather than a build. That is why this is filed as its own line ins
 held open inside PP48: the cost question had an answer here and this one does not.
 
 ## Block J — Public documentation
-
-### §PP446 A documentation area, and why not the site's own renderer
-
-The site is a bespoke renderer: React and Vite behind a prerender, with the copy held as
-data in site-content.ts and features.ts so every claim is an array element a test can
-reach. That shape is right for eight curated pages and wrong for reference prose. There
-is no Markdown pipeline — the one script named for it converts the other way, HTML to
-the twin — and no highlighting, no sidebar, no per-page contents and no search. Writing
-the ctrl packet layout as an array of strings is the alternative, and building those
-four things is building a documentation framework.
-
-Astro with Starlight is the one taken. It emits static HTML the way the prerender does,
-indexes itself at build time with Pagefind so search needs no service, and renders React
-inside MDX, so diagrams.ts, Signal and FrameTrip are reused rather than drawn a second
-time.
-
-Three joins are where this breaks in silence. The client build empties dist, so the docs
-build runs after it or vanishes. Astro rewrites the links it generates and not the ones
-written by hand, so a hand-written absolute href drops the base and 404s in production
-alone. And robots.txt and sitemap.xml are derived from the route table, which will not
-know these pages.
-
-Each of the three is a rule in the suite rather than a paragraph here: the built tree
-carries the docs, no emitted href escapes the base, and the search index is present.

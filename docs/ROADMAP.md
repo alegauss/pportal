@@ -51,8 +51,6 @@
 
 ## Block J — Public documentation
 
-- 🛠 **PP446** (deps: —) **the site has no documentation area, so a page explaining how a frame reaches the screen has nowhere to be published** — The internals live in commit messages and three roadkeep files written for whoever does the work, so a reader outside the tree has the C to read or nothing. → §PP446
-
 ## Done when — PP33
 
 - **Every curl and json-c call site in holepunch.c has a named counterpart** The
