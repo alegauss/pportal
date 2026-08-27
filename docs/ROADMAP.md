@@ -24,7 +24,7 @@
 
 ## Block F — Managed core
 
-- ⏳ **PP27** (deps: PP23 ✅, PP25 ✅, PP44 ✅) **takion.c is 1888 lines of C over raw sockets and timers, and the whole stream rides on it** — the transport itself: the socket, the threads, the timers and the resend loop, which is where the runtime is the risk. → §PP27
+- ⏳ **PP27** (deps: PP23 ✅, PP25 ✅, PP44 ✅) **takion.c is 1888 lines of C over raw sockets and timers, and the whole stream rides on it** — the transport itself: the socket, the receive thread, the handshake and the resend loop, which is where the runtime is the risk. → §PP27
 - 📋 **PP28** (deps: PP293 ✅, PP294, PP295, PP23 ✅) **session.c 1244, ctrl.c 1763 and streamconnection.c 1531, three state machines with no oracle** — the three together, once PP293, PP294 and PP295 have each landed: what is left here is the ordering between them. → §PP28
 - ⏳ **PP29** (deps: PP23 ✅, PP26 ✅) **regist.c 918, discovery.c 492 and discoveryservice.c 384, which decide whether a console pairs** — The discovery socket and its two threads are still C; the reply parser, the broadcast packet and the PIN exchange have landed, and PP27 owns the socket's shape. → §PP29
 - 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — 13 sites and none of them arithmetic: chiaki_fec_decode has one caller left, frameprocessor.c, which PP289 is about. → §PP30

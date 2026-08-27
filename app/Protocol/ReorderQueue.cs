@@ -63,6 +63,14 @@ public sealed class ReorderQueue : IDisposable
     /// <summary>How many slots the window currently spans, set or not.</summary>
     public ulong Count => count;
 
+    /// <summary>
+    /// The sequence number at the window's start, which is the one a pull is waiting for.
+    ///
+    /// PP27: exposed because takion's AV flush reads it. Nothing in reorderqueue.h does - the C
+    /// reaches into the struct - and <see cref="AvReorderTimeout"/> is where that is stated.
+    /// </summary>
+    public ulong Begin => begin;
+
     /// <summary>Which end an overflow drops from. END by default, as the C init sets it.</summary>
     public ReorderDropStrategy DropStrategy { get; set; }
 
@@ -85,6 +93,37 @@ public sealed class ReorderQueue : IDisposable
     /// branch for the case that is neither.
     /// </summary>
     private static bool Ge(ulong a, ulong b) => a == b || Gt(a, b);
+
+    /// <summary>
+    /// The queue's own `seq_num_gt`, which takion's AV flush calls through the function pointer to
+    /// decide whether a missing head moved forward or backward.
+    ///
+    /// PP27: the video queue is <c>chiaki_reorder_queue_init_16</c>, so this is the 16-bit
+    /// comparison and inherits PP149's antipode - at half the sequence space apart it is false in
+    /// both directions, and the flush reads that as a backward move.
+    /// </summary>
+    public static bool SeqNumGt(ulong a, ulong b) => Gt(a, b);
+
+    /// <summary>
+    /// Moves the window's start forward by <paramref name="n"/> slots, dropping nothing and telling
+    /// nobody.
+    ///
+    /// PP27: this is not a queue operation. takion's AV reorder timeout writes `queue->begin` and
+    /// `queue->count` directly - reorderqueue.h exposes no function that does it - so the port needs
+    /// the same reach-in or it cannot express the skip at all. It is deliberately blunt: the slots
+    /// passed over keep their `set` flags exactly as the C leaves them, which is what decides whether
+    /// a later arrival 2^sizeExp away reads as a duplicate.
+    /// </summary>
+    public void AdvanceBegin(ulong n)
+    {
+        ObjectDisposedException.ThrowIf(disposed, this);
+
+        if (n > count)
+            throw new ArgumentOutOfRangeException(nameof(n), n, "past the window's end.");
+
+        begin = Add(begin, n);
+        count -= n;
+    }
 
     /// <summary>A packet arriving. Which of the four drop occasions it takes is the behaviour.</summary>
     public void Push(ulong seqNum, long payload)
