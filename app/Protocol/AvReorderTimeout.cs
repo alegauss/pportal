@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text.RegularExpressions;
 using ChiakiNg.Session;
 
@@ -219,25 +218,11 @@ public static partial class AvReorderTimeout
     /// the right one.
     /// </summary>
     public static long? TimeoutUsIn(string source)
-    {
-        ArgumentNullException.ThrowIfNull(source);
-
-        Match m = TimeoutDefineRegex().Match(source);
-        return m.Success
-            ? long.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture)
-            : null;
-    }
+        => CDefine.Value(source, "TAKION_AV_REORDER_TIMEOUT_US");
 
     /// <summary>TAKION_AV_VIDEO_REORDER_QUEUE_SIZE_EXP as the C defines it.</summary>
     public static int? VideoQueueSizeExpIn(string source)
-    {
-        ArgumentNullException.ThrowIfNull(source);
-
-        Match m = SizeExpDefineRegex().Match(source);
-        return m.Success
-            ? int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture)
-            : null;
-    }
+        => (int?)CDefine.Value(source, "TAKION_AV_VIDEO_REORDER_QUEUE_SIZE_EXP");
 
     /// <summary>
     /// Whether a forward move of the missing head still keeps its original budget.
@@ -355,12 +340,6 @@ public static partial class AvReorderTimeout
                 "int64_t now = chiaki_time_now_monotonic_us();", StringComparison.Ordinal)
             && flushBody.Contains("*head_wait_start_us = now;", StringComparison.Ordinal);
     }
-
-    [GeneratedRegex(@"#define\s+TAKION_AV_REORDER_TIMEOUT_US\s+(\d+)")]
-    private static partial Regex TimeoutDefineRegex();
-
-    [GeneratedRegex(@"#define\s+TAKION_AV_VIDEO_REORDER_QUEUE_SIZE_EXP\s+(\d+)")]
-    private static partial Regex SizeExpDefineRegex();
 
     [GeneratedRegex(@"if\(made_progress\)\s*\r?\n\s*\*head_wait_start_us = 0;")]
     private static partial Regex ProgressClearsRegex();

@@ -398,6 +398,31 @@ Until then PP33 is correctly blocked, and `remaining PP33` reads 420. Reading th
 number as the size of the job is what its own section warns against: it is one file, and
 the work is at the other end.
 
+### §PP451 The cookie ack's two coupled defects
+
+The two receives are five lines apart and only one of them is guarded.
+
+`takion_recv_message_cookie_ack` declares a 17-byte local, sets `received_size` to its
+length, and receives. Then, before the length check, it reads `message[0xd]` to decide
+whether the console sent a second INIT_ACK. A datagram shorter than fourteen bytes
+leaves that byte uninitialised, and 0xd is inside the array, so no sanitiser flags it:
+the branch is decided by whatever was last on the stack.
+
+If it is taken, the second receive is passed the same `received_size` - now the first
+datagram's length rather than the buffer's, because `takion_recv` writes it back. On UDP
+that is a truncating read: a genuine 17-byte cookie ack is cut to the length of the
+packet before it, fails the length check that finally runs, and costs one of the three
+cookie attempts.
+
+The intended path is unaffected, which is why this survived. A real second INIT_ACK is
+65 bytes, so `received_size` is already the full 17. Both defects need the same trigger,
+and that trigger is the case the reordered check would have rejected.
+
+The fix is two lines with no change on the working path: move the length and type checks
+above the byte read, and reset `received_size` before the second receive. PP450 asserts
+both against the source, so those assertions invert in the same commit that repairs
+them.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry

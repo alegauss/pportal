@@ -379,6 +379,7 @@
 - ✅ **PP427** **ecdh.c's eight calls are all deprecated as of OpenSSL 3.0, and they are the whole of the key agreement** — ecdh.c is written against EVP: EVP_EC_gen for the key, EVP_PKEY_fromdata for both halves, EVP_PKEY_derive for the secret - and the recorded vector agrees byte for byte.
 - ✅ **PP448** **a PIN reply over rudp is encrypted one counter behind every other ctrl message, and nothing managed models that** — The send's counter is modelled: a PIN reply over rudp encrypts one behind, a bare message spends nothing, and the zero-counter underflow is the arithmetic the C performs and unreachable.
 - ✅ **PP449** **takion's AV reorder timeout is unported, and nothing states that a loss burst costs one timeout rather than one each** — the AV reorder timeout is managed - one timeout per loss burst, a skip that jumps to the first buffered packet, and the two deadline tests that disagree at the deadline itself.
+- ✅ **PP450** **takion's handshake is unported, so nothing states that a send failure aborts it while a lost ack costs a retry** — the handshake is modelled - the send-aborts/receive-retries asymmetry, both init ack gates in order, the crossed stream check, and the tag as both initial sequence numbers.
 
 ## Block G — Test discipline
 
