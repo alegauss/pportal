@@ -357,6 +357,7 @@
 - ✅ **PP416** **the ctrl drain's failure breaks the inner loop only, so the outer loop re-enters and sends what it meant to leave** — leaving the drain now drops what is still queued, so the outer loop finds nothing to re-enter it for, and the count no longer races.
 - ✅ **PP418** **the senkusha channel's redaction set is empty on prose alone, and the first capture of it is about to be published** — both BIGs are read out of the C: senkusha's three fields still empty, and the stream's session key still the session id that earns its redaction.
 - ✅ **PP419** **the senkusha tap emits takion's data type where the recording says protobuf payload type, and redaction reads it as one** — both protobuf channels emit the payload type: senkusha's send chain threads it and its receive peeks for it, as the stream already did.
+- ✅ **PP420** **nothing says which recorded entries belong in a corpus, and the first stream capture is 566 corrupt-frame reports of 677** — the corpus selects and the recorder still records everything, with the recurring types listed per channel and the dropped counts reported.
 
 ## Block G — Test discipline
 
