@@ -19,6 +19,13 @@ public class HolepunchFlowTests
         return path is null ? null : File.ReadAllText(path);
     }
 
+    /// <summary>holepunch.c, where the getter and the punch live.</summary>
+    private static string? Holepunch()
+    {
+        string? path = NatProbeSource.Locate();
+        return path is null ? null : File.ReadAllText(path);
+    }
+
     /// <summary>
     /// FILE ORDER IS NOT EXECUTION ORDER, and the finis are the whole difference.
     ///
@@ -122,24 +129,60 @@ public class HolepunchFlowTests
     }
 
     /// <summary>
-    /// THE FINDING: the data socket is tested by nothing, and it is the only one.
+    /// The data socket is tested by nothing, it is the only one, and PP461 established that nothing
+    /// needs to.
     ///
-    /// Recorded rather than repaired - the fix is a change to lib/ and is filed on its own. The
-    /// asymmetry is the argument: the same family already cost two fixes in PP339, and the pointer
-    /// beside this one has a guard.
+    /// PP460 read this as the third member of PP339's family and filed PP461 for a check. The trace
+    /// retired it, and the two tests below are what the trace consists of - they are here so the same
+    /// reading does not produce the same filing again.
     /// </summary>
     [Fact]
     public void TheDataSocketIsTheOnlyStepNothingChecks()
     {
-        Assert.Equal(new[] { HolepunchStep.DataSocket }, HolepunchFlow.Unguarded.ToArray());
+        Assert.Equal(new[] { HolepunchStep.DataSocket }, HolepunchFlow.UncheckedByDesign.ToArray());
 
         if (Session() is not { } source)
             return;
 
         Assert.True(
             HolepunchFlow.TheDataSocketIsStillUnchecked(source),
-            "the data socket has grown a check, so this model is behind the C and the filed fix has "
-                + "already landed");
+            "the data socket has grown a check, so somebody decided the trace was wrong - which is a "
+                + "question rather than a failure");
+    }
+
+    /// <summary>
+    /// PP461, half one: the pointer cannot be null, because the getter returns the address of a field.
+    ///
+    /// Its only NULL return is the default arm for an invalid port type, and both call sites pass a
+    /// compile-time constant.
+    /// </summary>
+    [Fact]
+    public void TheGetterCannotReturnNullAtEitherCallSite()
+    {
+        if (Holepunch() is not { } source)
+            return;
+
+        Assert.True(HolepunchFlow.TheGetterStillReturnsAFieldAddress(source));
+    }
+
+    /// <summary>
+    /// PP461, half two: the socket cannot be invalid there, because the punch assigns it only after the
+    /// candidate check succeeded - and returns an error if anything after that failed.
+    ///
+    /// This is the half that would break first. If the assignment ever moved above the check, a punch
+    /// returning success could hand back the invalid socket the local starts as, and the test PP461
+    /// asked for would be needed after all.
+    /// </summary>
+    [Fact]
+    public void ThePunchAssignsTheSocketOnlyAfterTheCandidateCheck()
+    {
+        if (Holepunch() is not { } source)
+            return;
+
+        Assert.True(
+            HolepunchFlow.ThePunchStillAssignsAfterTheCandidateCheck(source),
+            "the punch now assigns data_sock before check_candidates has succeeded, so PP461's check "
+                + "has become reachable");
     }
 
     /// <summary>

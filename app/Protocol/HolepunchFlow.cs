@@ -45,8 +45,11 @@ public enum HolepunchGuard
     /// </summary>
     CaughtByWhatItFeeds,
 
-    /// <summary>Nothing tests the result at all.</summary>
-    Unchecked,
+    /// <summary>
+    /// Nothing tests the result, and nothing needs to: the failure it would test for cannot reach
+    /// this line.
+    /// </summary>
+    UncheckedAndUnreachable,
 }
 
 /// <summary>
@@ -72,8 +75,24 @@ public enum HolepunchGuard
 /// AND THE TWO POINTERS ARE NOT GUARDED THE SAME WAY. The ctrl socket is not tested either, but what
 /// it feeds is: <c>chiaki_rudp_init</c> is checked for null, and PP339 made that a QUIT after finding
 /// it had carried on with rudp NULL and reported the failure as "no address answered". The DATA socket
-/// is tested by nothing and feeds nothing that tests itself. PP339 fixed two members of this family -
-/// the second, the offer, found by the check written for the first - and this is the third.
+/// is tested by nothing and feeds nothing that tests itself.
+///
+/// THAT ASYMMETRY IS NOT A DEFECT, AND PP461 WAS FILED SAYING IT WAS. It read as the third member of
+/// PP339's family - two fixes already, the second found by the check written for the first - and the
+/// trace says otherwise, twice over:
+///
+///   the pointer cannot be null. <c>chiaki_get_holepunch_sock</c> returns
+///   <c>&amp;session-&gt;data_sock</c>, the address of a struct field, and its only NULL return is the
+///   default arm for an invalid port type - which is a compile-time constant at both call sites;
+///
+///   and the socket it points at cannot be invalid there. The punch assigns
+///   <c>session-&gt;data_sock</c> only after <c>check_candidates</c> has returned success, and it
+///   returns success only if everything after that assignment also succeeded. A punch that failed
+///   anywhere returns an error, and the line above the getter already quits on that.
+///
+/// So the check PP461 asked for would be dead code, and PP461 is retired rather than shipped. The
+/// trace is recorded here because the alternative is somebody re-filing it - which is what happened
+/// once already, from this same reading.
 /// </summary>
 public static class HolepunchFlow
 {
@@ -111,7 +130,7 @@ public static class HolepunchFlow
     {
         HolepunchStep.CreateOffer or HolepunchStep.PunchHole => HolepunchGuard.QuitsToCtrlTeardown,
         HolepunchStep.CtrlSocket => HolepunchGuard.CaughtByWhatItFeeds,
-        HolepunchStep.DataSocket => HolepunchGuard.Unchecked,
+        HolepunchStep.DataSocket => HolepunchGuard.UncheckedAndUnreachable,
         _ => HolepunchGuard.NoFailureToReport,
     };
 
@@ -120,11 +139,49 @@ public static class HolepunchFlow
         => GuardFor(step) != HolepunchGuard.NoFailureToReport;
 
     /// <summary>
-    /// The step whose failure nothing notices. One, and naming it as a value rather than as prose is
-    /// what lets a test assert there is exactly one.
+    /// The steps that test nothing because there is nothing reachable to test. One, and naming it as a
+    /// value rather than as prose is what lets a test assert there is exactly one - and record which.
     /// </summary>
-    public static IReadOnlyList<HolepunchStep> Unguarded { get; } =
-        [.. Enum.GetValues<HolepunchStep>().Where(s => GuardFor(s) == HolepunchGuard.Unchecked)];
+    public static IReadOnlyList<HolepunchStep> UncheckedByDesign { get; } =
+        [.. Enum.GetValues<HolepunchStep>()
+            .Where(s => GuardFor(s) == HolepunchGuard.UncheckedAndUnreachable)];
+
+    /// <summary>
+    /// Whether the getter still returns the ADDRESS OF A FIELD, which is the first half of why the
+    /// data socket needs no null test.
+    ///
+    /// Read from holepunch.c rather than from session.c: the reason the pointer cannot be null lives
+    /// where the pointer is made.
+    /// </summary>
+    public static bool TheGetterStillReturnsAFieldAddress(string holepunchSource)
+    {
+        ArgumentNullException.ThrowIfNull(holepunchSource);
+
+        return holepunchSource.Contains("return &session->ctrl_sock;", StringComparison.Ordinal)
+            && holepunchSource.Contains("return &session->data_sock;", StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Whether the punch still assigns the data socket only AFTER the candidate check succeeded, which
+    /// is the second half.
+    ///
+    /// If the assignment ever moved above that check, a punch returning success could hand back the
+    /// CHIAKI_INVALID_SOCKET the local variable starts as - and then the test PP461 asked for would be
+    /// needed after all.
+    /// </summary>
+    public static bool ThePunchStillAssignsAfterTheCandidateCheck(string holepunchSource)
+    {
+        ArgumentNullException.ThrowIfNull(holepunchSource);
+
+        int starts = holepunchSource.IndexOf(
+            "chiaki_socket_t sock = CHIAKI_INVALID_SOCKET;", StringComparison.Ordinal);
+        int checks = holepunchSource.IndexOf(
+            "err = check_candidates(session, session->local_candidates", StringComparison.Ordinal);
+        int assigns = holepunchSource.IndexOf(
+            "session->data_sock = sock;", StringComparison.Ordinal);
+
+        return starts >= 0 && checks > starts && assigns > checks;
+    }
 
     /// <summary>session.c, where the sequence lives.</summary>
     public static string? Locate() => HolepunchSeam.Locate();

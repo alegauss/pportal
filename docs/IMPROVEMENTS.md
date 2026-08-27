@@ -400,32 +400,6 @@ Until then PP33 is correctly blocked, and `remaining PP33` reads 420. Reading th
 number as the size of the job is what its own section warns against: it is one file, and
 the work is at the other end.
 
-### §PP461 The third socket in PP339's family
-
-Four of the nine holepunch call sites can report a failure. Two return a ChiakiErrorCode
-and both are tested; two return a pointer and only one of those is covered.
-
-The ctrl socket is not tested either, but what it feeds is. `chiaki_rudp_init(rudp_sock,
-...)` is checked for null and PP339 turned that check into a QUIT, after finding that
-the CHECK_STOP standing there had let the thread carry on with rudp NULL - skipping the
-PSN regist block, requesting a session over addresses `session_init` only fills when
-there is no holepunch session, and reporting the whole thing as "no address answered".
-The failure arrived under the one name that was not the cause.
-
-The data socket has neither half. `data_sock = chiaki_get_holepunch_sock(..., DATA)` is
-assigned and nothing between that line and the wait at the end of the block mentions the
-variable again. An invalid socket therefore travels on as if the punch had succeeded,
-and the punch immediately above it does have a guard - so this is an asymmetry within
-four lines rather than a policy.
-
-PP339 already paid for this family twice: its own comment records that the second fix,
-the offer, was "found by the check written for that one". PP460 wrote the check that
-finds the third.
-
-The repair is a null-or-invalid test after the assignment, quitting down the same ctrl
-teardown path the punch failure above it takes. PP460's `TheDataSocketIsStillUnchecked`
-asserts the gap and inverts when it closes.
-
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry
