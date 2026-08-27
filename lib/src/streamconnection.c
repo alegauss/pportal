@@ -1335,7 +1335,14 @@ static ChiakiErrorCode stream_connection_enable_microphone(ChiakiStreamConnectio
 	memset(&msg, 0, sizeof(msg));
 
 	ChiakiAudioHeader audio_header_input;
-	chiaki_audio_header_set(&audio_header_input, 16, 1, 48000, 480);
+	// PP422: (channels, bits), not (bits, channels). This passed 16 and 1, which scans as sixteen
+	// bits and one channel and IS the right format - but the parameter order is the reverse, so what
+	// went out announced sixteen channels at one bit. PP396's capture carries it: the header's first
+	// two bytes are bits then channels, and they were 01 and 10.
+	//
+	// gui/src/streamsession.cpp passes 2 then 16 to the same function. One function, two call sites,
+	// opposite orders, and only one of them can be right about what a microphone is.
+	chiaki_audio_header_set(&audio_header_input, 1, 16, 48000, 480);
 	uint8_t audio_header[CHIAKI_AUDIO_HEADER_SIZE];
 	chiaki_audio_header_save(&audio_header_input, audio_header);
 	ChiakiPBBuf audio_header_buf = { sizeof(audio_header), (uint8_t *)audio_header };
