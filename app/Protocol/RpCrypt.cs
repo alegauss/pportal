@@ -112,6 +112,9 @@ public sealed class RpCrypt : IDisposable
         return iv;
     }
 
+    /// <summary>How many bytes a PSN account id is. CHIAKI_PSN_ACCOUNT_ID_SIZE.</summary>
+    public const int AccountIdSize = 8;
+
     /// <summary>
     /// PP29: the whole registration request, which is the first thing a fresh install sends.
     ///
@@ -122,16 +125,72 @@ public sealed class RpCrypt : IDisposable
     /// </summary>
     public static byte[] RegistRequestPayload(
         ChiakiTarget target, ReadOnlySpan<byte> ambassador, string? psnOnlineId, uint pin)
+        => RegistRequestPayload(target, ambassador, psnOnlineId, null, pin);
+
+    /// <summary>
+    /// PP445: the same request with an ACCOUNT id, which is the only form a PS5 accepts.
+    ///
+    /// regist.c sets psn_online_id to NULL on that path before it chooses a form, so a PS5 asked with
+    /// an online id and no account id is refused with CHIAKI_ERR_INVALID_DATA - which is why the
+    /// four-argument overload above could only ever exercise the pre-10 path.
+    /// </summary>
+    public static byte[] RegistRequestPayload(
+        ChiakiTarget target, ReadOnlySpan<byte> ambassador, string? psnOnlineId,
+        ReadOnlySpan<byte> psnAccountId, uint pin)
     {
         RequireKeySize(ambassador, nameof(ambassador));
 
+        if (!psnAccountId.IsEmpty && psnAccountId.Length != AccountIdSize)
+        {
+            throw new ArgumentException(
+                $"an account id is exactly {AccountIdSize} bytes and this is {psnAccountId.Length}",
+                nameof(psnAccountId));
+        }
+
         var buf = new byte[0x400];
         int size = buf.Length;
-        int err = RegistRequestPayloadRaw((int)target, ambassador.ToArray(), psnOnlineId, null, pin, buf, ref size);
+        int err = RegistRequestPayloadRaw(
+            (int)target, ambassador.ToArray(), psnOnlineId,
+            psnAccountId.IsEmpty ? null : psnAccountId.ToArray(), pin, buf, ref size);
+
         if (err != (int)ChiakiError.Success)
             throw new InvalidOperationException($"chiaki_regist_request_payload_format failed: {(ChiakiError)err}.");
 
         return buf[..size];
+    }
+
+    /// <summary>The exclusive upper bound on a key offset: the key tables' stride, 0x20.</summary>
+    public const int KeyOffsetLimit = 0x20;
+
+    /// <summary>
+    /// PP445: the aeropause a PS4 from firmware 10 or a PS5 carries, which PP444 could place and
+    /// not derive.
+    ///
+    /// ONE OFFSET, NO PIN. regist.c reaches this through init_regist and so took both at first, and a
+    /// test asserting each changed the answer failed: init_regist copies the ambassador through
+    /// untouched and spends key_0_off and the pin on <c>bright</c>, which the aeropause never reads.
+    /// What DOES change the answer is <c>buf[0] &gt;&gt; 3</c>, which
+    /// <see cref="RegistRequestPayload.Key1Offset"/> reads off the head - so a different fill gives a
+    /// different aeropause, and that is PP444's claim about the fill made checkable.
+    ///
+    /// The bound is the shim's, not the C's: chiaki_rpcrypt_aeropause validates the target and not
+    /// the offset, and 0x20 indexes one past a 512-byte table.
+    /// </summary>
+    public static byte[] Aeropause(ChiakiTarget target, ReadOnlySpan<byte> ambassador, int key1Offset)
+    {
+        RequireKeySize(ambassador, nameof(ambassador));
+        ArgumentOutOfRangeException.ThrowIfNegative(key1Offset);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(key1Offset, KeyOffsetLimit);
+
+        var aeropause = new byte[KeySize];
+
+        if (!AeropauseRawGeneral((int)target, ambassador.ToArray(), key1Offset, aeropause))
+        {
+            throw new InvalidOperationException(
+                $"chiaki_rpcrypt_aeropause refused for {target} at key offset {key1Offset}.");
+        }
+
+        return aeropause;
     }
 
     /// <summary>chiaki_rpcrypt_aeropause_ps4_pre10, which the payload carries in the clear.</summary>
@@ -229,6 +288,12 @@ public sealed class RpCrypt : IDisposable
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_rpcrypt_aeropause_ps4_pre10",
         CallingConvention = CallingConvention.Cdecl)]
     private static extern void AeropauseRaw(byte[] ambassador, byte[] aeropause);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_rpcrypt_aeropause",
+        CallingConvention = CallingConvention.Cdecl)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    private static extern bool AeropauseRawGeneral(
+        int target, byte[] ambassador, int key1Off, byte[] aeropause);
 
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_rpcrypt_regist_bright_ps4_pre10",
         CallingConvention = CallingConvention.Cdecl)]

@@ -1378,6 +1378,28 @@ CHIAKI_SHIM_API int32_t chiaki_shim_video_receiver_frames_lost(void *receiver);
 CHIAKI_SHIM_API void chiaki_shim_rpcrypt_aeropause_ps4_pre10(
 		const uint8_t *ambassador, uint8_t *aeropause);
 
+/**
+ * PP445: the same derivation for a PS4 from firmware 10 and for a PS5, which is the path the
+ * console this project tests against actually takes.
+ *
+ * NO PIN AND NO key_0_off, and their absence is the surprising part. regist.c reaches this through
+ * chiaki_rpcrypt_init_regist, so the first version of this wrapper took both - and a test asserting
+ * that each changed the answer failed. init_regist copies the ambassador through UNTOUCHED and
+ * spends key_0_off and the pin entirely on `bright`; the aeropause is computed over the ambassador.
+ * So both were accepted and had no effect, which is worse than not offering them.
+ *
+ * `key_1_off` IS BOUNDED HERE, because the C does not bound it. chiaki_rpcrypt_aeropause indexes
+ * `keys_1[i * 0x20 + key_1_off]` over a 512-byte table with i running to 15, so 0x20 reads one past
+ * the end. regist.c can only pass `buf[0] >> 3`, which is 0..31 by construction - but this entry
+ * point takes an int32 from managed code, and widening the seam without the bound would open a path
+ * the C never had. Its sibling init_regist rejects `key_0_off >= 0x20`; this is the same rule.
+ *
+ * `aeropause` receives CHIAKI_RPCRYPT_KEY_SIZE bytes. False where the offset is out of range, a
+ * pointer is NULL, or the C refuses the target.
+ */
+CHIAKI_SHIM_API bool chiaki_shim_rpcrypt_aeropause(
+		int32_t target, const uint8_t *ambassador, int32_t key_1_off, uint8_t *aeropause);
+
 /** The bright key a registration PIN derives, which is what encrypts the payload below. */
 CHIAKI_SHIM_API void chiaki_shim_rpcrypt_regist_bright_ps4_pre10(
 		const uint8_t *ambassador, uint32_t pin, uint8_t *bright);

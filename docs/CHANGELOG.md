@@ -375,6 +375,7 @@
 - ✅ **PP441** **seven of ctrl.c's 22 message types appear in the only recording, and nothing says which fifteen are unwitnessed** — Seven of the 22 are witnessed by the recording and fifteen are not, read from the corpus so a new capture moves a type on its own; the eighth value seen is the one the enum cannot name.
 - ✅ **PP442** **the ctrl participant's payloads are C literals transcribed once, and nothing holds them against ctrl.c** — The five payloads copied from a C array are read back out of ctrl.c and compared whole, zero-filled to the declared size so PP383's fifteen initialisers for sixteen bytes is not a false alarm.
 - ✅ **PP444** **the registration request payload is still C behind a P/Invoke wrapper, so nothing managed lays out the PIN exchange** — The fill, both aeropause layouts and the two inner-header forms are managed and hold against the C's own payload byte for byte; the general aeropause stays C, unexported.
+- ✅ **PP445** **the shim exports no general rpcrypt aeropause, so the PS5 half of the registration payload has no oracle** — The PS5 aeropause is exported, so the managed derivation and layout reproduce the C's head byte for byte; the offset is bounded here because the C bounds only the target.
 
 ## Block G — Test discipline
 

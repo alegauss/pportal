@@ -2544,6 +2544,25 @@ CHIAKI_SHIM_API void chiaki_shim_rpcrypt_aeropause_ps4_pre10(
 		chiaki_rpcrypt_aeropause_ps4_pre10(aeropause, ambassador);
 }
 
+// PP445: the PS4-from-10 and PS5 derivation. regist.c reaches it through init_regist, and the first
+// version of this wrapper did too - taking key_0_off and the pin, because that call does. A test
+// asserting each changed the answer failed: init_regist copies the ambassador through untouched and
+// spends both on `bright`, which the aeropause never reads. Two parameters that did nothing.
+//
+// The 0x20 bound is this wrapper's own. chiaki_rpcrypt_aeropause indexes keys_1[i * 0x20 +
+// key_1_off] with i to 15 over 512 bytes, and validates the target but not the offset - so 0x20
+// reads past the end. Unreachable from regist.c, where the value is buf[0] >> 3, and reachable from
+// here the moment this takes an int32. init_regist rejects its own offset the same way.
+CHIAKI_SHIM_API bool chiaki_shim_rpcrypt_aeropause(
+		int32_t target, const uint8_t *ambassador, int32_t key_1_off, uint8_t *aeropause)
+{
+	if(!ambassador || !aeropause || key_1_off < 0 || key_1_off >= 0x20)
+		return false;
+
+	return chiaki_rpcrypt_aeropause((ChiakiTarget)target, (size_t)key_1_off,
+			aeropause, ambassador) == CHIAKI_ERR_SUCCESS;
+}
+
 CHIAKI_SHIM_API void chiaki_shim_rpcrypt_regist_bright_ps4_pre10(
 		const uint8_t *ambassador, uint32_t pin, uint8_t *bright)
 {
