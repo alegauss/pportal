@@ -197,6 +197,84 @@ public static class CtrlRudpSubtypesSource
     }
 
     /// <summary>
+    /// PP414: whether the offset helper is still file-local, like every other helper here.
+    ///
+    /// It was the only non-static function in a file of thirty-six statics, with no header
+    /// declaring it and one caller in the same translation unit.
+    /// </summary>
+    public static bool TheOffsetHelperIsStillFileLocal(string core)
+    {
+        ArgumentNullException.ThrowIfNull(core);
+
+        return OffsetHelperBody(core) is not null;
+    }
+
+    /// <summary>
+    /// PP414: whether the helper still answers no sentinel.
+    ///
+    /// Comments stripped, because the comment explaining the fix names the -1 it removed - which is
+    /// PP400's rule, and this is exactly the shape it was written for.
+    /// </summary>
+    public static bool TheOffsetHelperReturnsNoSentinel(string core)
+    {
+        ArgumentNullException.ThrowIfNull(core);
+
+        string? body = OffsetHelperBody(core);
+        if (body is null)
+            return false;
+
+        return !CCall.Compact(CCall.Code(body)).Contains("return-1", StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// PP414: whether the default arm still answers the two that <see cref="DataOffsetFor"/> gives
+    /// its own default.
+    ///
+    /// The substantive half. A default of 2 is the right answer for 0x36 and 0x02 rather than a
+    /// fallback, so this is what a port must agree with - and the managed table is checked against
+    /// it rather than against the prose that used to sit above it.
+    /// </summary>
+    public static bool TheDefaultOffsetIsStillTheTablesDefault(string core)
+    {
+        ArgumentNullException.ThrowIfNull(core);
+
+        string? body = OffsetHelperBody(core);
+        if (body is null)
+            return false;
+
+        // Both sides compacted by the same reader, rather than a needle spelled by hand: Compact
+        // keeps the space between `return` and its digit, because both sides of it are word
+        // characters, and a hand-written needle got that wrong first time.
+        return CCall.Mark(
+            CCall.Code(body),
+            $"default: return {CtrlRudpSubtypes.DataOffsetFor(0x02)};") >= 0;
+    }
+
+    /// <summary>
+    /// PP414: whether the offset helper's comment is its own rather than takion's.
+    ///
+    /// Read RAW - the claim is about prose, and stripping comments would delete the thing being
+    /// asked about. takion.c keeps the sentence, where it is true.
+    ///
+    /// ANCHORED ON THE HELPER BEING THERE, which is PP272's rule and not decoration: a bare absence
+    /// is true of an empty file, so a check written as one answers yes about a file it never read.
+    /// The first version of this was exactly that shape and the reflected sweep caught it.
+    /// </summary>
+    public static bool TheOffsetHelpersCommentIsItsOwn(string core)
+    {
+        ArgumentNullException.ThrowIfNull(core);
+
+        if (OffsetHelperBody(core) is null)
+            return false;
+
+        return !core.Contains(
+            "offset of the mac of size CHIAKI_GKCRYPT_GMAC_SIZE", StringComparison.Ordinal);
+    }
+
+    private static string? OffsetHelperBody(string core)
+        => CFunction.Body(core, "static int rudp_packet_type_data_offset(uint8_t subtype)");
+
+    /// <summary>
     /// PP413: whether the unknown arm still acknowledges no packet.
     ///
     /// Read as the absence of a <c>chiaki_rudp_ack_packet</c> between the <c>default:</c> label and

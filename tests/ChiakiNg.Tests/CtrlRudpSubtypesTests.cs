@@ -215,6 +215,78 @@ public class CtrlRudpSubtypesTests
         Assert.False(CtrlRudpSubtypesSource.TheUnknownArmStillAcksNoPacket(silent));
     }
 
+    /// <summary>
+    /// PP414: the offset helper's contract, which used to be takion's.
+    ///
+    /// The comment above it promised "the offset of the mac ... or -1 if unknown", copied verbatim
+    /// from takion_packet_type_mac_offset. Both halves were wrong here: the value is where the ctrl
+    /// header starts, and the default answers 2 rather than a sentinel.
+    ///
+    /// THE DEFAULT IS AN ANSWER, NOT A FALLBACK. The caller reaches it with 0x36 and 0x02, for which
+    /// 2 is correct - so a port written from the comment would move where the two commonest subtypes
+    /// are read from. That is the claim this asserts, against the code.
+    /// </summary>
+    [Fact]
+    public void TheOffsetHelpersContractIsItsOwn()
+    {
+        string? path = CtrlRudpSubtypesSource.Locate();
+        if (path is null)
+            return;
+
+        string core = File.ReadAllText(path);
+
+        Assert.True(
+            CtrlRudpSubtypesSource.TheOffsetHelperIsStillFileLocal(core),
+            "the offset helper is no longer static, so it has linkage nothing uses again");
+        Assert.True(
+            CtrlRudpSubtypesSource.TheOffsetHelperReturnsNoSentinel(core),
+            "the helper answers -1 now, which is a case its caller does not check for");
+        Assert.True(
+            CtrlRudpSubtypesSource.TheDefaultOffsetIsStillTheTablesDefault(core),
+            "the default arm and this port's table disagree about 0x36 and 0x02");
+        Assert.True(
+            CtrlRudpSubtypesSource.TheOffsetHelpersCommentIsItsOwn(core),
+            "takion's MAC-offset comment is back on ctrl.c's data-offset helper");
+
+        // And the two subtypes that land on the default are still the ones that make 2 an answer.
+        Assert.Equal(2, CtrlRudpSubtypes.DataOffsetFor(0x36));
+        Assert.Equal(2, CtrlRudpSubtypes.DataOffsetFor(0x02));
+    }
+
+    /// <summary>
+    /// And takion.c KEEPS the sentence, because there it is true.
+    ///
+    /// Without this the check above is satisfied by deleting the comment everywhere, which would
+    /// lose a contract that does hold - takion's helper really does answer -1.
+    /// </summary>
+    [Fact]
+    public void TakionKeepsTheCommentThatIsTrueOfIt()
+    {
+        string? path = SanitizerSource.LocateRelative(@"lib\src\takion.c");
+        if (path is null)
+            return;
+
+        string takion = File.ReadAllText(path);
+
+        Assert.Contains(
+            "offset of the mac of size CHIAKI_GKCRYPT_GMAC_SIZE", takion, StringComparison.Ordinal);
+        Assert.Contains("return -1;", takion, StringComparison.Ordinal);
+    }
+
+    /// <summary>PP414: and every new reader answers no to an empty file.</summary>
+    [Fact]
+    public void TheOffsetHelpersReadersAnswerNoToAnEmptyFile()
+    {
+        Assert.False(CtrlRudpSubtypesSource.TheOffsetHelperIsStillFileLocal(""));
+        Assert.False(CtrlRudpSubtypesSource.TheOffsetHelperReturnsNoSentinel(""));
+        Assert.False(CtrlRudpSubtypesSource.TheDefaultOffsetIsStillTheTablesDefault(""));
+
+        // PP272: the comment check is an absence, so it is anchored on the helper being present -
+        // otherwise it would answer yes about a file it never read. The reflected sweep in
+        // DriftReadsTheFileTests caught the first version of it, which was not.
+        Assert.False(CtrlRudpSubtypesSource.TheOffsetHelpersCommentIsItsOwn(""));
+    }
+
     /// <summary>And ctrl.c still has both halves the way this reproduces them.</summary>
     [Fact]
     public void CtrlStillDeclaresBoth()

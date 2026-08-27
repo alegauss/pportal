@@ -90,9 +90,22 @@ typedef struct ctrl_keyboard_text_response_t
 } CtrlKeyboardTextResponseMessage;
 
 /**
- * @return The offset of the mac of size CHIAKI_GKCRYPT_GMAC_SIZE inside a packet of type or -1 if unknown.
+ * The offset the ctrl message header starts at inside a rudp message of this subtype.
+ *
+ * PP414: the comment here used to be takion.c's, copied verbatim from
+ * takion_packet_type_mac_offset - which returns a MAC offset and really does answer -1. Both
+ * halves were wrong of this function. The value is where the ctrl header begins: the caller
+ * reads a four-byte payload size at it and memcpys from it.
+ *
+ * AND THE DEFAULT IS AN ANSWER, NOT A FALLBACK. The caller is reached with subtype 0x12, 0x26,
+ * 0x36 or 0x02; the last two land here and 2 is correct for them. So there is no unknown case
+ * and no sentinel - a reader who added `if(offset < 0)` would be writing a dead branch, and a
+ * port that returned "no offset" for the default would move where the two commonest subtypes
+ * are read from.
+ *
+ * @return The ctrl header's offset. Always a valid offset; 2 where the subtype names no other.
  */
-int rudp_packet_type_data_offset(uint8_t subtype)
+static int rudp_packet_type_data_offset(uint8_t subtype)
 {
 	switch(subtype)
 	{
