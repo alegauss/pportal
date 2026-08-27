@@ -29,7 +29,7 @@
 - ⏳ **PP29** (deps: PP23 ✅, PP26 ✅) **regist.c 918, discovery.c 492 and discoveryservice.c 384, which decide whether a console pairs** — The discovery socket and its two threads are still C; the reply parser, the broadcast packet and the PIN exchange have landed, and PP27 owns the socket's shape. → §PP29
 - 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — 13 sites and none of them arithmetic: chiaki_fec_decode has one caller left, frameprocessor.c, which PP289 is about. → §PP30
 - 📋 **PP31** (deps: PP28) **the video decoder is where 100% managed stops being achievable, and no task above says so** — There is no managed H.264 or HEVC decoder that holds 1080p60 at remote play latency, so this boundary is chosen deliberately or discovered late. → §PP31
-- 📋 **PP32** (deps: PP28) **audio decode and resampling are Opus and speexdsp, both native and both on the latency path** — Managed Opus exists and speexdsp has no equivalent, so the two halves of the audio path have different answers and only one of them is a choice. → §PP32
+- 📋 **PP32** (deps: PP28) **audio decode is Opus in lib and the microphone's noise and echo stages are speexdsp in the Qt client** — Managed Opus exists and speexdsp has none; the conversion between them is SDL_AudioCVT rather than speex, so the audio path is three dependencies and not two. → §PP32
 - ⏳ **PP33** (deps: PP24 ✅, PP293 ✅, PP340) **HTTP and JSON in the core are curl and json-c, two vendored dependencies for what the runtime already does** — the deletion: holepunch.c is the only unit needing either library, and session.c is its only caller. → §PP33
 - 📋 **PP294** (deps: PP297 ✅) **ctrl.c is 1763 lines of control channel and PP28 sizes it together with two files it does not resemble** — It is the longest of the three and the one with the most message types, and none of them are on the frame path so latency is not the measure. → §PP294
 - 📋 **PP295** (deps: PP27 ⏳, PP297 ✅) **streamconnection.c is 1531 lines and is the last C caller of the video receiver, so every deletion below waits on it** — PP286 to PP291 ported the frame path bottom-up and none of it removed C, because this is what still calls the native receiver. → §PP295
@@ -46,10 +46,12 @@
 ## Block I — NVIDIA path
 
 - 📋 **PP49** (deps: PP11 ⏳, PP47 ✅) **the console sends SDR on most titles and an HDR display shows it flat, with nothing in the client trying** — RTX Video HDR does this conversion on the presented frame, and it is the one vendor feature whose benefit is visible in a still image, not argued from a graph. → §PP49
-- 📋 **PP52** (deps: PP32) **the microphone path runs speex echo cancellation on the CPU, and speexdsp has no managed replacement** — NVIDIA ships GPU noise and echo removal for exactly this, so one task can both improve the voice sent to the console and delete a dependency the port has no answer for. → §PP52
+- 📋 **PP52** (deps: PP32) **the Qt client runs speex echo cancellation on the CPU, and speexdsp has no managed replacement** — NVIDIA ships GPU noise and echo removal for exactly this, so one task can both improve the voice sent to the console and delete a dependency the port has no answer for. → §PP52
 - 📋 **PP53** (deps: PP11 ⏳, PP41 ✅) **frames arrive with network jitter and are presented against a fixed refresh, so each waits for a vblank it missed** — A variable refresh display can show a frame when it arrives rather than when the panel next allows it, which is latency removed and not an image improved. → §PP53
 
 ## Block J — Public documentation
+
+- 🛠 **PP446** (deps: —) **the site has no documentation area, so a page explaining how a frame reaches the screen has nowhere to be published** — The internals live in commit messages and three roadkeep files written for whoever does the work, so a reader outside the tree has the C to read or nothing. → §PP446
 
 ## Done when — PP33
 

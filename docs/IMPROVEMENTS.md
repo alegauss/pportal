@@ -210,8 +210,8 @@ FEC blocks are what reconstruct them instead of asking for a retransmission that
 arrive too late to matter.
 
 The surface to port is the call sites rather than the vendored source, so that is what
-is declared here and `remaining PP30` counts it - 14 on 2026-08-16, across common.c,
-fec.c and frameprocessor.c.
+is declared here, where `remaining PP30` reads 13, across common.c, fec.c and
+frameprocessor.c.
 
 ```roadkeep-remaining
 lib/src/**/*.c :: jerasure|galois_
@@ -252,15 +252,24 @@ decoder is the counter-example, and it is better stated here than found at the e
 
 ### §PP32 Audio, where one half has a managed answer
 
-audioreceiver.c is 363 lines over Opus, and speexdsp does the resampling that keeps
-playback aligned with a stream that does not share the sound card's clock.
+audioreceiver.c is 363 lines over Opus. speexdsp is not beside it: lib references speex
+nowhere at all. Both speex families live in gui/ - speex_preprocess_* for noise
+suppression and speex_echo_* for cancellation - and both are on the MICROPHONE path, in
+the client this port replaces.
 
-Opus has a managed implementation and a native one, and the decision between them is
-measurable rather than theoretical: decode cost per packet against the extra dependency.
-speexdsp has no managed counterpart worth the name, and the alternatives are a native
-call or writing the resampler - which is a smaller job than it sounds and a worse one to
-get subtly wrong, since drift is heard as a click every few minutes rather than as a
-failure.
+THE CONVERSION IS SDL's, NOT SPEEX's. streamsession.cpp builds SDL_AudioCVT into
+mic_resampler_buf, echo_resampler_buf and haptics_resampler_buf. The variables are
+called mic_speex_cvt and echo_speex_cvt because they feed the speex stage, which is how
+the first version of this section came to call the conversion speexdsp's and to place it
+on playback. audioreceiver.c mentions no clock, no drift and no resampling.
+
+SO THE TWO HALVES ARE NOT IN ONE LAYER, and that is what changes the work. Opus decode
+is the library's, and it has a managed implementation and a native one: the decision
+between them is measurable rather than theoretical - decode cost per packet against the
+extra dependency. The speex stages are the Qt client's, and PP21 drops that client, so
+they leave with it. What is left is not a translation but a question about the managed
+host: whether it captures a microphone at all, and with what if it does. It captures
+none today.
 
 Output is the easy half: WASAPI through NAudio or the platform APIs is what the .NET
 host would use regardless of this block.
@@ -385,9 +394,9 @@ HTTP calls over HttpClient and PushSocket opens a ClientWebSocket, so what is mi
 not a counterpart but the I/O: StunMessage, NatProbe, PunchExchange and CandidateRace
 carry no socket.
 
-Until then PP33 is correctly blocked and its remaining query correctly reads 420.
-Reading that number as the size of the job is what its own section warns against: it is
-one file, and the work is at the other end.
+Until then PP33 is correctly blocked, and `remaining PP33` reads 420. Reading that
+number as the size of the job is what its own section warns against: it is one file, and
+the work is at the other end.
 
 ### §PP427 The eight in ecdh.c
 
@@ -610,3 +619,26 @@ held open inside PP48: the cost question had an answer here and this one does no
 
 ## Block J — Public documentation
 
+### §PP446 A documentation area, and why not the site's own renderer
+
+The site is a bespoke renderer: React and Vite behind a prerender, with the copy held as
+data in site-content.ts and features.ts so every claim is an array element a test can
+reach. That shape is right for eight curated pages and wrong for reference prose. There
+is no Markdown pipeline — the one script named for it converts the other way, HTML to
+the twin — and no highlighting, no sidebar, no per-page contents and no search. Writing
+the ctrl packet layout as an array of strings is the alternative, and building those
+four things is building a documentation framework.
+
+Astro with Starlight is the one taken. It emits static HTML the way the prerender does,
+indexes itself at build time with Pagefind so search needs no service, and renders React
+inside MDX, so diagrams.ts, Signal and FrameTrip are reused rather than drawn a second
+time.
+
+Three joins are where this breaks in silence. The client build empties dist, so the docs
+build runs after it or vanishes. Astro rewrites the links it generates and not the ones
+written by hand, so a hand-written absolute href drops the base and 404s in production
+alone. And robots.txt and sitemap.xml are derived from the route table, which will not
+know these pages.
+
+Each of the three is a rule in the suite rather than a paragraph here: the built tree
+carries the docs, no emitted href escapes the base, and the search index is present.

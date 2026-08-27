@@ -66,12 +66,22 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: site/package-lock.json
+          # Two npm projects: the site, and the documentation area it builds into its own dist/.
+          cache-dependency-path: |
+            site/package-lock.json
+            site/docs/package-lock.json
 
+      # `npm run build` chains the docs build last, so both projects' dependencies have to be on
+      # disk before it starts. The docs are installed here rather than from inside that script:
+      # an install inside a build is one that runs on every local rebuild too.
       - name: Build
         working-directory: site
+        env:
+          # A build machine is not a person Astro can ask.
+          ASTRO_TELEMETRY_DISABLED: "1"
         run: |
           npm ci
+          npm --prefix docs ci
           npm run build
 
       # The site's own claims: the route pair, the twin per route, the generated flag list, the

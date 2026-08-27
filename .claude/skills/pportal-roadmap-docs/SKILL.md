@@ -1,6 +1,6 @@
 ---
 name: pportal-roadmap-docs
-description: How to work a task in this port's roadmap — the three docs/ files (ROADMAP.md, CHANGELOG.md, IMPROVEMENTS.md) owned by the roadkeep CLI and never hand-edited, and above all the one-task-one-commit rule: every finished roadmap task ends with `run-commit.cmd -m "<title>"` from the repo root, code plus doc sync in that single commit. Use whenever adding a task, picking the next PP-number, marking a task shipped, retiring, linting, editing any of those files, executing a block or a list of PP ids, or finishing any task that touches this repo.
+description: How to work a task in this port's roadmap — the three docs/ files (ROADMAP.md, CHANGELOG.md, IMPROVEMENTS.md) owned by the roadkeep CLI and never hand-edited, the check that the public documentation area under site/docs still holds after the work, and above all the one-task-one-commit rule: every finished roadmap task ends with `run-commit.cmd -m "<title>"` from the repo root, code plus doc sync plus any page it made stale in that single commit. Use whenever adding a task, picking the next PP-number, marking a task shipped, retiring, linting, editing any of those files, executing a block or a list of PP ids, or finishing any task that touches this repo.
 ---
 
 # Roadmap tasks & committing
@@ -119,3 +119,37 @@ Each file has one job — never duplicate content between them:
   at input like every other line — check them before proposing new work.
 - **Order is `priority` in `roadkeep.toml`**, not opinion: `PP39` first (the baseline
   whose window closes), then Block H, then Block I.
+
+## ⛔ READ THIRD — then ask what the public documentation owes the task
+
+The port has a documentation area at [`site/docs/`](../../../site/docs), published at
+<https://alegauss.github.io/pportal/docs> (PP446, Block J). It is written for a reader
+outside this tree, and the three roadkeep files are not: `CHANGELOG.md` records that a
+task shipped and says nothing that somebody integrating against the port could act on.
+
+**So every finished task ends with one more question, asked before `run-commit.cmd`: does
+a page under `site/docs/src/content/docs/` now say something false, or is something now
+true that no page says?** Answer it in the turn — "nothing there covers this" is a
+complete answer, and a page written because the rule exists is worse than no page.
+
+| The task | The pages |
+|---|---|
+| changed a flag, an interface, a wire format or a behaviour a page describes | **update it in this commit** — a page describing the old behaviour is what this question exists to catch |
+| moved a boundary: C that is now managed, a dependency gone, a path replaced | update the page that names the boundary, where one does; otherwise nothing |
+| internal only — a test, a refactor, a build script, a rationale, a marker | nothing |
+
+Two rules the pages carry, so an edit does not break them:
+
+- **No figure is typed.** Versions, flag lists and counts are rendered from
+  `site/src/lib/product.generated.ts`, which `site/scripts/product.mjs` writes out of the
+  application's own source on every build. If a task makes a page want a number, derive
+  it; a number typed into a sentence is true the day it is typed.
+- **A page is not the rationale file.** `IMPROVEMENTS.md` argues for *unshipped* work and
+  a ship deletes it. A page explains what the port does *now*, to somebody who is not
+  doing the work — so moving a deleted `§PP<n>` section across verbatim is not the same
+  document and reads as one.
+
+The gate for a docs edit is the site's, not `compile.cmd`: `npm run build && npm test` in
+`site/`, which builds the area last and asserts the three joins between the two builds.
+`SiteDocsAreaTests` holds the same joins from the .NET side, so `test.cmd` catches a
+wiring change on a machine with no node.
