@@ -76,39 +76,60 @@ public sealed class StreamExchangeParticipant(bool dualSense = false) : IExchang
     /// Each group named by the field it is, because a byte wrong here is a message the console reads
     /// differently and the comment is what makes that reviewable.
     /// </summary>
-    public static byte[] StreamInfoAck() =>
-        // 08 0e   type = STREAMINFOACK. The whole message: an ack carries nothing.
-        [0x08, 0x0e];
+    public static byte[] StreamInfoAck()
+        // The whole message: an ack carries nothing but its type.
+        => ProtobufWriter.Varint(TypeField, StreamInfoAckType);
 
     /// <summary>
     /// The controller connection, which is the one message here that depends on a setting.
+    ///
+    /// stream_connection_send_controller_connection sets connected true and controller_type by
+    /// enable_dualsense, and leaves controller_id absent - has_controller_id is false, so the field
+    /// is not written at all rather than written as zero.
     /// </summary>
-    public static byte[] ControllerConnection(bool dualSense) =>
-    [
-        0x08, 0x15,                     // type = CONTROLLERCONNECTION
-        0xb2, 0x01, 0x04,               // field 22, 4 bytes - controller_connection_payload
-            0x10, 0x01,                 //   field 2 varint 1  - connected = true
-            0x18, dualSense ? DualSense : DualShock4,  // field 3 - controller_type
-    ];
+    public static byte[] ControllerConnection(bool dualSense)
+        => ProtobufWriter.Concat(
+            ProtobufWriter.Varint(TypeField, ControllerConnectionType),
+            ProtobufWriter.Message(
+                ControllerConnectionPayloadField,
+                ProtobufWriter.Bool(ConnectedField, true),
+                ProtobufWriter.Varint(
+                    ControllerTypeField, dualSense ? DualSense : DualShock4)));
 
     /// <summary>
     /// The microphone's STREAMINFO, wrapped round the header PP422 corrected.
     ///
-    /// Derived rather than spelled out: the fourteen header bytes come from the same place the
-    /// library's do, so the two cannot drift apart without this replay noticing.
+    /// PP425: the wrapper is written by field and the fourteen header bytes come from the same place
+    /// the library's do - so a reader checks two field numbers against takion.proto and four numbers
+    /// against the C, rather than twenty bytes against a recording of themselves.
     /// </summary>
     public static byte[] MicrophoneStreamInfo()
-    {
-        byte[] header = AudioHeaderArguments.Microphone();
+        => ProtobufWriter.Concat(
+            ProtobufWriter.Varint(TypeField, StreamInfo),
+            ProtobufWriter.Message(
+                StreamInfoPayloadField,
+                ProtobufWriter.Bytes(AudioHeaderField, AudioHeaderArguments.Microphone())));
 
-        return
-        [
-            0x08, 0x0d,                                   // type = STREAMINFO
-            0x7a, (byte)(header.Length + 2),               // field 15 - stream_info_payload
-                0x12, (byte)header.Length,                //   field 2 - audio_header
-                .. header,
-        ];
-    }
+    /// <summary>TakionMessage.type.</summary>
+    public const int TypeField = 1;
+
+    /// <summary>TakionMessage.stream_info_payload.</summary>
+    public const int StreamInfoPayloadField = 15;
+
+    /// <summary>TakionMessage.controller_connection_payload.</summary>
+    public const int ControllerConnectionPayloadField = 22;
+
+    /// <summary>StreamInfoPayload.audio_header.</summary>
+    public const int AudioHeaderField = 2;
+
+    /// <summary>ControllerConnectionPayload.connected.</summary>
+    public const int ConnectedField = 2;
+
+    /// <summary>ControllerConnectionPayload.controller_type.</summary>
+    public const int ControllerTypeField = 3;
+
+    /// <summary>tkproto_TakionMessage_PayloadType_CONTROLLERCONNECTION.</summary>
+    public const ushort ControllerConnectionType = 21;
 
     /// <summary>What the client says first, which is the BIG.</summary>
     public IReadOnlyList<string> Opening(string channel)

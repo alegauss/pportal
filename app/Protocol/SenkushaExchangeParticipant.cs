@@ -43,25 +43,55 @@ public sealed class SenkushaExchangeParticipant : IExchangeParticipant
     public static IReadOnlyDictionary<ushort, byte[]> Payloads { get; } =
         new Dictionary<ushort, byte[]>
         {
-            // senkusha_set_version: msg.type = TAKIONPROTOCOLREQUEST, and a request carrying
-            // version 9.
-            //   08 1f          field 1 varint 31   - type = TAKIONPROTOCOLREQUEST
-            //   fa 01 02       field 31, 2 bytes   - takion_protocol_request
-            //     08 09          field 1 varint 9  - version
-            [(ushort)SenkushaMessage.TakionProtocolRequest] =
-                [0x08, 0x1f, 0xfa, 0x01, 0x02, 0x08, 0x09],
+            // PP425: built rather than transcribed. senkusha_set_version sets
+            // msg.type = TAKIONPROTOCOLREQUEST and a request carrying version 9, and the field
+            // numbers are takion.proto's - which is a document a reader can check, where a run of
+            // hex out of the corpus is the corpus checking itself.
+            [(ushort)SenkushaMessage.TakionProtocolRequest] = ProtobufWriter.Concat(
+                ProtobufWriter.Varint(TypeField, (ushort)SenkushaMessage.TakionProtocolRequest),
+                ProtobufWriter.Message(
+                    TakionProtocolRequestField,
+                    ProtobufWriter.Varint(VersionField, ClientVersion))),
 
             // senkusha_send_big: client_version 9, and the three credential fields set to the
-            // empty string. PP418 holds that against senkusha.c; these are the bytes it produces.
-            //   08 00          field 1 varint 0    - type = BIG
-            //   12 08          field 2, 8 bytes    - big_payload
-            //     08 09          field 1 varint 9  - client_version
-            //     12 00          field 2, 0 bytes  - session_key   ""
-            //     1a 00          field 3, 0 bytes  - launch_spec   ""
-            //     22 00          field 4, 0 bytes  - encrypted_key ""
-            [(ushort)SenkushaMessage.Big] =
-                [0x08, 0x00, 0x12, 0x08, 0x08, 0x09, 0x12, 0x00, 0x1a, 0x00, 0x22, 0x00],
+            // EMPTY STRING - present and empty, which is not the same as absent, and is what PP418
+            // holds against senkusha.c.
+            [(ushort)SenkushaMessage.Big] = ProtobufWriter.Concat(
+                ProtobufWriter.Varint(TypeField, (ushort)SenkushaMessage.Big),
+                ProtobufWriter.Message(
+                    BigPayloadField,
+                    ProtobufWriter.Varint(ClientVersionField, ClientVersion),
+                    ProtobufWriter.Bytes(SessionKeyField, []),
+                    ProtobufWriter.Bytes(LaunchSpecField, []),
+                    ProtobufWriter.Bytes(EncryptedKeyField, []))),
         };
+
+    /// <summary>TakionMessage.type.</summary>
+    public const int TypeField = 1;
+
+    /// <summary>TakionMessage.big_payload.</summary>
+    public const int BigPayloadField = 2;
+
+    /// <summary>TakionMessage.takion_protocol_request.</summary>
+    public const int TakionProtocolRequestField = 31;
+
+    /// <summary>TakionProtocolRequestPayload.version.</summary>
+    public const int VersionField = 1;
+
+    /// <summary>BigPayload.client_version.</summary>
+    public const int ClientVersionField = 1;
+
+    /// <summary>BigPayload.session_key.</summary>
+    public const int SessionKeyField = 2;
+
+    /// <summary>BigPayload.launch_spec.</summary>
+    public const int LaunchSpecField = 3;
+
+    /// <summary>BigPayload.encrypted_key.</summary>
+    public const int EncryptedKeyField = 4;
+
+    /// <summary>The version both of senkusha's messages carry.</summary>
+    public const uint ClientVersion = 9;
 
     /// <summary>
     /// What senkusha says first, which is the version request.

@@ -363,6 +363,7 @@
 - ✅ **PP422** **the microphone's audio header is built with channels and bits swapped, so the console is told 16 channels at 1 bit** — the channel count goes where the signature wants it, both callers are held to that, and a fresh capture carries 16 (design recorded in `tests/corpus/exchange-ps5-four-channels.txt`).
 - ✅ **PP423** **the stream's BANG is redacted whole, so the console's verdict on the handshake goes with the keys beside it** — the BANG's three key fields are zeroed in place and its six others stay, so the console's verdict is in the corpus (design recorded in `tests/corpus/exchange-ps5-four-channels.txt`).
 - ✅ **PP424** **the stream connection has no replay participant, so the last of PP23's four channels replays against nothing** — the handshake replays against the capture and the BANG's four checks are read from it, with the derivation named as the boundary.
+- ✅ **PP425** **the senkusha and stream participants carry bytes copied from the capture, so the replay confirms a table not the port** — the two participants build their messages from field numbers and values, and the capture judges the encoding rather than supplying it.
 
 ## Block G — Test discipline
 
