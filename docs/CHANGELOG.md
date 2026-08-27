@@ -371,6 +371,7 @@
 - ✅ **PP428** **seventeen asserted error codes are their variable's only reader, and nothing joins that count to PP404's census** — a derived reader finds the seventeen the compiler prints, every one is in PP404's census, and only bright_ambassador can fail.
 - ✅ **PP429** **PP340's nine holepunch call sites are named only in prose, so a tenth would change what PP33 is blocked on in silence** — the nine are named by what each asks for and held in file order, and the two sockets are told apart by their port type.
 - 🗑 **PP313** **curl and json-c would leave the build today if the remote path were built off, and that trades a feature for a count** — superseded by PP430: its premise was false: CHIAKI_ENABLE_RUDP was read by nothing, so building the remote path off changed neither library and there was no door to decide about.
+- ✅ **PP440** **nothing says which of ctrl.c's message types the port already answers, so what is left of PP294 is a guess** — The 22 types ctrl.c declares, each with the managed type that answers it and a phrase saying what, compared by value and checked by reflection.
 
 ## Block G — Test discipline
 
