@@ -37,40 +37,45 @@ namespace ChiakiNg.Protocol;
 public static class NatProbe
 {
     /// <summary>Both packets are this long.</summary>
-    public const int Length = 88;
+    /// <remarks>
+    /// PP454: every constant below is DERIVED from <see cref="PunchResponse"/> rather than read out of
+    /// the C a third time. The names stay, because they are the ones this class's own prose and its
+    /// callers use; what changed is that the numbers now exist once.
+    /// </remarks>
+    public const int Length = PunchResponse.Length;
 
     /// <summary>Where the local hashed id goes.</summary>
-    public const int LocalHashedIdOffset = 0x04;
+    public const int LocalHashedIdOffset = PunchResponse.LocalIdAt;
 
     /// <summary>And the console's, twenty bytes later in a thirty-two byte slot.</summary>
-    public const int ConsoleHashedIdOffset = 0x24;
+    public const int ConsoleHashedIdOffset = PunchResponse.ConsoleIdAt;
 
     /// <summary>How long a hashed id is.</summary>
-    public const int HashedIdLength = 20;
+    public const int HashedIdLength = PunchResponse.IdLength;
 
     /// <summary>How much room each one is given.</summary>
-    public const int HashedIdSlot = 0x20;
+    public const int HashedIdSlot = PunchResponse.IdSlot;
 
     /// <summary>Where the local session id goes.</summary>
-    public const int LocalSidOffset = 0x44;
+    public const int LocalSidOffset = PunchResponse.SessionIdsAt;
 
     /// <summary>And the console's.</summary>
-    public const int ConsoleSidOffset = 0x46;
+    public const int ConsoleSidOffset = PunchResponse.SessionIdsAt + 2;
 
     /// <summary>Where the five bytes a reply is matched on go.</summary>
-    public const int RequestIdOffset = 0x4b;
+    public const int RequestIdOffset = PunchResponse.EchoAt;
 
     /// <summary>How many of them there are.</summary>
-    public const int RequestIdLength = 5;
+    public const int RequestIdLength = PunchResponse.EchoLength;
 
     /// <summary>Where the response's masked address begins.</summary>
-    public const int MaskedAddressOffset = 0x50;
+    public const int MaskedAddressOffset = PunchResponse.AddressKeyAt;
 
     /// <summary>And its masked port.</summary>
-    public const int MaskedPortOffset = 0x54;
+    public const int MaskedPortOffset = PunchResponse.PortKeyAt;
 
     /// <summary>How many address bytes the tail can hold, whatever the family.</summary>
-    public const int MaskedAddressLength = 4;
+    public const int MaskedAddressLength = PunchResponse.AddressKeyed;
 
     /// <summary>A request to one candidate.</summary>
     public static byte[] BuildRequest(

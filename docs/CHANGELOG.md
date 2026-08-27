@@ -383,6 +383,7 @@
 - ✅ **PP451** **takion's cookie ack tests byte 0xd before the length check, and the second receive inherits the first datagram's size** — one helper receives a cookie ack and refuses it before any byte is read, taking its capacity from the caller's sizeof so neither datagram can narrow the other.
 - ✅ **PP452** **the STUN exchange has never sent a datagram, so the request layout and the address reader only check each other** — one binding request crosses a loopback socket and both XOR round trips come back, and the unpadded skip is now measured: a conformant response loses its address entirely.
 - ✅ **PP453** **the STUN reader skips an attribute by 4 + length, so a conformant response with a padded attribute loses its address** — both halves round the attribute advance up to the next multiple of four, so a conformant response with a padded attribute keeps its mapped address.
+- ✅ **PP454** **three classes each read the probe packet's thirteen offsets out of holepunch.c, and all three agreeing hid it** — PunchResponse is the one place the packet's geometry is a number, the other three derive, and a fourth copy or a re-literalised constant now fails a test.
 
 ## Block G — Test discipline
 

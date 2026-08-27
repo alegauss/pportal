@@ -83,19 +83,24 @@ public sealed class CandidateRace
     public const int ExtraCandidateAddresses = 3;
 
     /// <summary>The message type this end sends.</summary>
-    public const uint RequestType = 0x06000000;
+    /// <remarks>
+    /// PP454: derived, not read again. <see cref="PunchResponse"/> is the one place the probe packet's
+    /// geometry is written down, and this class was the second of three to have read it out of the
+    /// same C independently.
+    /// </remarks>
+    public const uint RequestType = PunchResponse.RequestType;
 
     /// <summary>And the one it is waiting for.</summary>
-    public const uint ResponseType = 0x07000000;
+    public const uint ResponseType = PunchResponse.ResponseType;
 
     /// <summary>Where the request id sits in the eighty-eight byte message.</summary>
-    public const int RequestIdOffset = 0x4b;
+    public const int RequestIdOffset = PunchResponse.EchoAt;
 
     /// <summary>How long it is.</summary>
-    public const int RequestIdLength = 5;
+    public const int RequestIdLength = PunchResponse.EchoLength;
 
     /// <summary>And how long the message around it is.</summary>
-    public const int MessageLength = 88;
+    public const int MessageLength = PunchResponse.Length;
 
     /// <summary>The mapped address a taken-on candidate is given over IPv4.</summary>
     public const string DerivedMappedAddressV4 = "0.0.0.0";
