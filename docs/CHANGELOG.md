@@ -388,6 +388,7 @@
 - ✅ **PP456** **the punch answering loop has never run, so nothing shows that receiving something never returns success** — the loop runs against a stub console: every request is answered, silence after one is the only success, and an ignored response is measured not counting as one.
 - ✅ **PP457** **extra responses and failed receives both re-arm the punch loop's full timeout, so a stream of either never times out** — both discard paths count against a consecutive limit read from the C's own define, and a request gives the budget back so no legitimate flow reaches it.
 - ✅ **PP458** **PP238 and PP256 each ported the same punch loop, so two step machines model one function and neither knows it** — one enum, one decision and one source reader for the loop, with the guard counting files that name its definition rather than files that mention it.
+- ✅ **PP459** **the candidate race has never run over sockets, so its own claim that the first to answer wins cannot be shown** — the race runs over three stub sockets: the last candidate offered wins by answering first, and an answer from an unprobed port becomes a derived candidate.
 
 ## Block G — Test discipline
 
