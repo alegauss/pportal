@@ -11,8 +11,9 @@ namespace ChiakiNg.Tests;
 /// wrapper over libchiaki's own - it joins a thread libchiaki owns - so nothing managed decided where
 /// the socket binds or what the loop does with a datagram.
 ///
-/// The assertion worth the task is the bind ladder's log: both branches move the port on BEFORE
-/// naming it, so every rung reports the port it is about to try as the one that just failed.
+/// The assertion worth the task was the bind ladder's log: both branches moved the port on before
+/// naming it, so every rung reported the port it was about to try as the one that just failed. PP463
+/// fixed that, and <see cref="EachLogNamesThePortThatFailed"/> is what holds the repair.
 /// </summary>
 public class DiscoverySocketTests
 {
@@ -41,40 +42,23 @@ public class DiscoverySocketTests
     }
 
     /// <summary>
-    /// THE DEFECT: every rung's log names the NEXT port, not the one that failed.
+    /// PP463: each rung's log names the port that FAILED, which is the order of two statements and
+    /// nothing else.
     ///
-    /// A failure on 9303 reports 9304, and a failure on 9319 reports 0 - "failed to bind port 0, trying
-    /// random", which names the rung it is about to try as the one that just failed.
+    /// It used to name the next one: a failure on 9303 reported 9304, and a failure on 9319 reported
+    /// "failed to bind port 0, trying random" - the rung it was about to try. The log lines themselves
+    /// are unchanged, so this assertion is the only thing that can tell the fix from the bug.
     /// </summary>
-    [Theory]
-    [InlineData((ushort)9303, (ushort)9304)]
-    [InlineData((ushort)9318, (ushort)9319)]
-    [InlineData((ushort)9319, (ushort)0)]
-    public void EveryRungsLogNamesTheNextPort(ushort failedOn, ushort logged)
-    {
-        Assert.Equal(logged, DiscoverySocket.LoggedPortFor(failedOn));
-        Assert.False(DiscoverySocket.TheLogNamesThePortThatFailed(failedOn));
-    }
-
-    /// <summary>And not one numbered rung logs its own port.</summary>
     [Fact]
-    public void NoNumberedRungNamesItsOwnPort()
-    {
-        Assert.DoesNotContain(
-            DiscoverySocket.Ladder.Where(r => r.Port != DiscoverySocket.AnyPort),
-            r => r.Port == r.LoggedPort);
-    }
-
-    /// <summary>The order of the two statements in the C, which is the whole defect.</summary>
-    [Fact]
-    public void TheCStillMovesThePortOnBeforeLoggingIt()
+    public void EachLogNamesThePortThatFailed()
     {
         if (Init() is not { } body)
             return;
 
         Assert.True(
-            DiscoverySocket.BothLogsStillNameTheNextPort(body),
-            "one of the two branches now logs before moving the port on, so this model is behind the C");
+            DiscoverySocket.BothLogsNameThePortThatFailed(body),
+            "one of the two branches moves the port on before logging it again, which is PP463's "
+                + "defect returning");
     }
 
     /// <summary>The ports are the header's, read rather than trusted here.</summary>
@@ -202,7 +186,7 @@ public class DiscoverySocketTests
         Assert.Null(DiscoverySocket.ThreadBody(""));
         Assert.Null(DiscoverySocket.OneShotBody(""));
         Assert.Null(DiscoverySocket.PortDefineIn("", "CHIAKI_DISCOVERY_PORT_LOCAL_MIN"));
-        Assert.False(DiscoverySocket.BothLogsStillNameTheNextPort(""));
+        Assert.False(DiscoverySocket.BothLogsNameThePortThatFailed(""));
         Assert.False(DiscoverySocket.ABroadcastFailureStillOnlyLogs(""));
         Assert.False(DiscoverySocket.TheLoopStillLeavesOnAFailedReceive(""));
         Assert.False(DiscoverySocket.TheTwoThreadsStillDifferOnlyByTheBreak("", ""));

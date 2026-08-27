@@ -190,7 +190,7 @@ way the crypto does.
 
 ### §PP29 The first thing that can be proved against a console
 
-regist.c is 918 lines, discovery.c 492 and discoveryservice.c 384: the broadcast that
+regist.c is 918 lines, discovery.c 495 and discoveryservice.c 384: the broadcast that
 finds a console, the reply that describes it, the wake packet, and the PIN exchange that
 ends with key material stored.
 
@@ -399,35 +399,6 @@ between them.
 Until then PP33 is correctly blocked, and `remaining PP33` reads 420. Reading that
 number as the size of the job is what its own section warns against: it is one file, and
 the work is at the other end.
-
-### §PP463 The port a bind failure names
-
-`chiaki_discovery_init` walks a ladder of ports: 9303 to 9319, then 0 for any. Each
-failed rung logs which port it could not take. Every one of those lines names the wrong
-number, and it is two adjacent statements rather than an inference:
-
-    port++;
-    CHIAKI_LOGI(log, "Discovery failed to bind port %u, trying one higher", (unsigned int)port);
-
-The increment runs first, so a failure on 9303 reports 9304. The other branch is the
-same shape and reads worse, because it names the rung it is about to try as the one that
-failed:
-
-    port = 0;
-    CHIAKI_LOGI(log, "Discovery failed to bind port %u, trying random", (unsigned int)port);
-
-A failure on 9319 therefore reports "failed to bind port 0, trying random". Port 0 is
-not a port anything failed to bind; it is the next attempt.
-
-This is reachable rather than theoretical. The ladder only runs when the first port is
-already taken, and two instances of this client on one machine is enough - which is also
-the case where somebody reads the log to find out what happened. The reader is told a
-port is unavailable that nothing has tried yet, and is not told the one that is.
-
-The fix is to log before moving the port on, in both branches, and it changes nothing
-else: the ladder's order, its exit and its error are all untouched. PP462 models the
-wrong numbers as `BindAttempt.LoggedPort` beside the real port, and its assertions
-invert when the two agree.
 
 ## Block G — Test discipline
 

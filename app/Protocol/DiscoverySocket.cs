@@ -4,12 +4,13 @@ namespace ChiakiNg.Protocol;
 
 /// <summary>One attempt in the bind ladder.</summary>
 /// <param name="Port">The port tried. 0 is the last rung and means "any".</param>
-/// <param name="LoggedPort">
-/// The port the C's log line names for this attempt's FAILURE - which is not <paramref name="Port"/>.
-/// See <see cref="DiscoverySocket"/>.
-/// </param>
 /// <param name="Next">The port the following attempt would use, or null where this was the last.</param>
-public readonly record struct BindAttempt(ushort Port, ushort LoggedPort, ushort? Next);
+/// <remarks>
+/// PP463 removed a third field. It carried the port the C's log NAMED for this attempt's failure,
+/// which was not the port that failed; now that the two agree there is nothing for it to say, and a
+/// field always equal to <paramref name="Port"/> would read as a distinction that still exists.
+/// </remarks>
+public readonly record struct BindAttempt(ushort Port, ushort? Next);
 
 /// <summary>What the receive loop does with one turn.</summary>
 public enum DiscoveryTurn
@@ -45,12 +46,13 @@ public enum DiscoveryTurn
 /// THE BIND LADDER IS SEVENTEEN PORTS AND THEN ANY. 9303 to 9319 in order, and if every one is taken,
 /// port 0 - which the loop treats as the last rung rather than as a retry, so a failure there ends it.
 ///
-/// AND EVERY RUNG'S LOG NAMES THE WRONG PORT. The increment happens BEFORE the log, in both branches:
-/// a failure on 9303 reports "failed to bind port 9304, trying one higher", and a failure on 9319
-/// reports "failed to bind port 0, trying random" - a sentence naming the port it is about to try as
-/// the one that just failed. Reachable whenever anything else holds 9303, which two instances of this
-/// client on one machine is enough for. Reproduced here as <see cref="BindAttempt.LoggedPort"/> beside
-/// the real one, and filed as a defect rather than corrected in passing.
+/// EVERY RUNG'S LOG USED TO NAME THE WRONG PORT, AND PP463 FIXED IT. The increment happened BEFORE
+/// the log in both branches, so a failure on 9303 reported "failed to bind port 9304, trying one
+/// higher" and a failure on 9319 reported "failed to bind port 0, trying random" - a sentence naming
+/// the rung it was about to try as the one that just failed. Reachable exactly when somebody reads
+/// the log to find out why discovery did not start, since the ladder only runs once the first port is
+/// taken. The log now goes before the port moves on, and
+/// <see cref="BothLogsNameThePortThatFailed"/> is what holds that.
 ///
 /// A BROADCAST OPTION THAT FAILS IS LOGGED AND IGNORED. setsockopt's result is tested only to log it,
 /// and the function returns success either way - so discovery runs with broadcast disabled, finds
@@ -91,31 +93,14 @@ public static class DiscoverySocket
         for (var port = LocalPortMin; port <= LocalPortMax; port++)
         {
             ushort? next = port == LocalPortMax ? AnyPort : (ushort)(port + 1);
-            rungs.Add(new BindAttempt(port, LoggedPortFor(port), next));
+            rungs.Add(new BindAttempt(port, next));
         }
 
         // The last rung: any port, and nothing follows a failure there.
-        rungs.Add(new BindAttempt(AnyPort, LoggedPortFor(AnyPort), Next: null));
+        rungs.Add(new BindAttempt(AnyPort, Next: null));
 
         return rungs;
     }
-
-    /// <summary>
-    /// The port the C's log names when the attempt on <paramref name="port"/> fails.
-    ///
-    /// The defect, as arithmetic: the increment runs first, so this is the NEXT port and not the one
-    /// that failed. At the top of the numbered range it is 0, which is the random rung.
-    /// </summary>
-    public static ushort LoggedPortFor(ushort port)
-    {
-        if (port == AnyPort)
-            return AnyPort;
-
-        return port == LocalPortMax ? AnyPort : (ushort)(port + 1);
-    }
-
-    /// <summary>Whether the log for this attempt names the port that actually failed.</summary>
-    public static bool TheLogNamesThePortThatFailed(ushort port) => LoggedPortFor(port) == port;
 
     /// <summary>
     /// What one turn of the receive loop does.
@@ -192,22 +177,25 @@ public static class DiscoverySocket
     public static string? LocateHeader() => SanitizerSource.LocateRelative(HeaderRelativePath);
 
     /// <summary>
-    /// Whether both log lines still print the port AFTER moving it on - the defect, read as the order
-    /// of two statements rather than inferred.
+    /// PP463: whether both log lines print the port BEFORE moving it on, so each names the port that
+    /// failed.
+    ///
+    /// Read as the order of two statements rather than inferred, which is how the defect was found and
+    /// is the only thing that can tell the fix from the bug: the lines themselves are unchanged.
     /// </summary>
-    public static bool BothLogsStillNameTheNextPort(string initBody)
+    public static bool BothLogsNameThePortThatFailed(string initBody)
     {
         ArgumentNullException.ThrowIfNull(initBody);
 
         string text = initBody.Replace("\r\n", "\n", StringComparison.Ordinal);
 
-        int random = text.IndexOf("port = 0;", StringComparison.Ordinal);
         int randomLog = text.IndexOf("trying random", StringComparison.Ordinal);
-        int higher = text.IndexOf("port++;", StringComparison.Ordinal);
+        int random = text.IndexOf("port = 0;", StringComparison.Ordinal);
         int higherLog = text.IndexOf("trying one higher", StringComparison.Ordinal);
+        int higher = text.IndexOf("port++;", StringComparison.Ordinal);
 
-        return random >= 0 && randomLog > random
-            && higher >= 0 && higherLog > higher;
+        return randomLog >= 0 && random > randomLog
+            && higherLog >= 0 && higher > higherLog;
     }
 
     /// <summary>Whether the broadcast option's failure still only logs.</summary>

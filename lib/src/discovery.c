@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
+﻿// SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
 
 #include "utils.h"
 
@@ -184,17 +184,20 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_discovery_init(ChiakiDiscovery *discovery, 
 		r = bind(discovery->socket, (struct sockaddr *)&discovery->local_addr, len);
 		if(r >= 0 || !port)
 			break;
+		// PP463: the log names the port that FAILED, so it goes before the port moves on. Both
+		// branches used to print after, so a failure on 9303 reported 9304 and one on 9319 reported
+		// "failed to bind port 0, trying random" - naming the rung it was about to try.
 		if(port == CHIAKI_DISCOVERY_PORT_LOCAL_MAX)
 		{
-			port = 0;
 			CHIAKI_LOGI(discovery->log, "Discovery failed to bind port %u, trying random",
 					(unsigned int)port);
+			port = 0;
 		}
 		else
 		{
-			port++;
 			CHIAKI_LOGI(discovery->log, "Discovery failed to bind port %u, trying one higher",
 					(unsigned int)port);
+			port++;
 		}
 	}
 
