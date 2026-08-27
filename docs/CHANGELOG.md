@@ -412,6 +412,7 @@
 - ✅ **PP417** **every commit touching a .c file restates four counted claims by hand, from commands --recount already prints exactly** — --recount --apply runs the calls it prints through roadkeep, off one argument list, and stops on the first refusal.
 - ✅ **PP412** **a quoted example in a rationale section is read as a claim, so citing a stale number turns the gate red on the citation** — the shape is refused rather than the reader blinded, and a quoted example writes a placeholder where the number would go.
 - ✅ **PP432** **the site's generated flag list is two behind the host, and nothing joins it to the table it is derived from** — the site states the sixteen flags the host declares, and a rule in the suite that runs refuses a disagreement either way.
+- ✅ **PP433** **CI runs two of the three suites test.cmd runs, and the third is 454 runtime checks over the native seam** — the three passes are held against both files, the selftest is named local-only with PP117's hang as the reason, and a second cannot appear quietly.
 
 ## Block H — Performance and telemetry
 
