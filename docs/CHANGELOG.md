@@ -380,6 +380,7 @@
 - ✅ **PP448** **a PIN reply over rudp is encrypted one counter behind every other ctrl message, and nothing managed models that** — The send's counter is modelled: a PIN reply over rudp encrypts one behind, a bare message spends nothing, and the zero-counter underflow is the arithmetic the C performs and unreachable.
 - ✅ **PP449** **takion's AV reorder timeout is unported, and nothing states that a loss burst costs one timeout rather than one each** — the AV reorder timeout is managed - one timeout per loss burst, a skip that jumps to the first buffered packet, and the two deadline tests that disagree at the deadline itself.
 - ✅ **PP450** **takion's handshake is unported, so nothing states that a send failure aborts it while a lost ack costs a retry** — the handshake is modelled - the send-aborts/receive-retries asymmetry, both init ack gates in order, the crossed stream check, and the tag as both initial sequence numbers.
+- ✅ **PP451** **takion's cookie ack tests byte 0xd before the length check, and the second receive inherits the first datagram's size** — one helper receives a cookie ack and refuses it before any byte is read, taking its capacity from the caller's sizeof so neither datagram can narrow the other.
 
 ## Block G — Test discipline
 

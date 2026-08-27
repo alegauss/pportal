@@ -124,7 +124,7 @@ public class AnchoredTotalsTests(ITestOutputHelper output)
     /// The three PP443 restated are each anchored now, named so the fix is legible in the suite.
     /// </summary>
     [Theory]
-    [InlineData("takion.c", 1888)]
+    [InlineData("takion.c", 1910)] // PP451 added 22 lines; --recount restated the claim, this follows
     [InlineData("session.c", 1244)]
     [InlineData("streamconnection.c", 1531)]
     [InlineData("regist.c", 918)]

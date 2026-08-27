@@ -1519,26 +1519,46 @@ static ChiakiErrorCode takion_recv_message_init_ack(ChiakiTakion *takion, Takion
 	return CHIAKI_ERR_SUCCESS;
 }
 
-static ChiakiErrorCode takion_recv_message_cookie_ack(ChiakiTakion *takion)
+/**
+ * PP451: one cookie-ack-sized datagram, length-checked before the caller reads a byte of it.
+ *
+ * The capacity comes from the CALLER's sizeof and not from a variable the previous receive wrote
+ * back, which is the other half of the same defect: takion_recv's size argument is in-out, so
+ * reusing it narrows the next receive to whatever the last datagram happened to be. On a UDP
+ * socket that is a truncating read.
+ */
+static ChiakiErrorCode takion_recv_cookie_ack_datagram(ChiakiTakion *takion, uint8_t *message, size_t message_size)
 {
-	uint8_t message[1 + TAKION_MESSAGE_HEADER_SIZE];
-	size_t received_size = sizeof(message);
+	size_t received_size = message_size;
 	ChiakiErrorCode err = takion_recv(takion, message, &received_size, TAKION_EXPECT_TIMEOUT_MS);
 	if(err != CHIAKI_ERR_SUCCESS)
 		return err;
 
+	if(received_size < message_size)
+	{
+		CHIAKI_LOGE(takion->log, "Takion received packet of size %zu while expecting cookie ack packet of exactly %zu", received_size, message_size);
+		return CHIAKI_ERR_INVALID_RESPONSE;
+	}
+
+	return CHIAKI_ERR_SUCCESS;
+}
+
+static ChiakiErrorCode takion_recv_message_cookie_ack(ChiakiTakion *takion)
+{
+	uint8_t message[1 + TAKION_MESSAGE_HEADER_SIZE];
+	ChiakiErrorCode err = takion_recv_cookie_ack_datagram(takion, message, sizeof(message));
+	if(err != CHIAKI_ERR_SUCCESS)
+		return err;
+
+	// PP451: the chunk type sits at 0xd, and the length check above is now what makes reading it
+	// legitimate. Before, a datagram shorter than fourteen bytes decided this branch on
+	// uninitialised stack - inside the array, which is why no sanitiser ever pointed at it.
 	if(message[0xd] == TAKION_CHUNK_TYPE_INIT_ACK)
 	{
 		CHIAKI_LOGI(takion->log, "Received second init ack, looking for cookie ack in next message");
-		err = takion_recv(takion, message, &received_size, TAKION_EXPECT_TIMEOUT_MS);
+		err = takion_recv_cookie_ack_datagram(takion, message, sizeof(message));
 		if(err != CHIAKI_ERR_SUCCESS)
 			return err;
-	}
-
-	if(received_size < sizeof(message))
-	{
-		CHIAKI_LOGE(takion->log, "Takion received packet of size %zu while expecting cookie ack packet of exactly %zu", received_size, sizeof(message));
-		return CHIAKI_ERR_INVALID_RESPONSE;
 	}
 
 	if(message[0] != TAKION_PACKET_TYPE_CONTROL)
@@ -1547,8 +1567,10 @@ static ChiakiErrorCode takion_recv_message_cookie_ack(ChiakiTakion *takion)
 		return CHIAKI_ERR_INVALID_RESPONSE;
 	}
 
+	// sizeof and not a received length: the helper refuses anything shorter, and recv cannot
+	// return more than the capacity it was given, so the two are equal by the time this runs.
 	TakionMessage msg;
-	err = takion_parse_message(takion, message + 1, received_size - 1, &msg);
+	err = takion_parse_message(takion, message + 1, sizeof(message) - 1, &msg);
 	if(err != CHIAKI_ERR_SUCCESS)
 	{
 		CHIAKI_LOGE(takion->log, "Failed to parse message while expecting cookie ack");

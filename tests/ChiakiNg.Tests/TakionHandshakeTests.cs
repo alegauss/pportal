@@ -6,14 +6,17 @@ using Xunit;
 namespace ChiakiNg.Tests;
 
 /// <summary>
-/// PP450, PP27: takion's handshake - the four messages that have to cross before the transport
-/// exists.
+/// PP450, PP451, PP27: takion's handshake - the four messages that have to cross before the
+/// transport exists.
 ///
 /// PP449 covered the receive thread's timer, which has nothing to do until this has finished. The
 /// assertions worth having here are the asymmetries: which failure retries and which aborts, which
 /// of the two gates reports a bad init ack, and which side of the stream comparison is which. All
 /// three look arbitrary and all three are load-bearing on a lossy link or against a console that
 /// answers with numbers this one has never seen.
+///
+/// PP451 then repaired the cookie ack's two coupled defects, and the last two tests hold the repair
+/// rather than the behaviour PP450 first recorded.
 /// </summary>
 public class TakionHandshakeTests
 {
@@ -209,39 +212,35 @@ public class TakionHandshakeTests
     }
 
     /// <summary>
-    /// DEFECT: the cookie ack decides its second-init-ack branch on byte 0xd before checking that the
-    /// datagram is long enough to have one.
+    /// PP451: a datagram shorter than the whole cookie ack is refused before any byte of it is read.
     ///
-    /// Fourteen bytes is the boundary. Below it the branch reads uninitialised stack - inside the
-    /// array, which is why no sanitiser has ever pointed at it - and a value that happens to equal the
-    /// INIT_ACK chunk type consumes a datagram nobody asked for.
+    /// Seventeen is the boundary now, not fourteen. The old code only needed byte 0xd to exist to
+    /// avoid reading stack garbage; the length check demands the whole datagram, which is what the
+    /// function was asking for all along.
     /// </summary>
     [Theory]
     [InlineData(0, false)]
     [InlineData(13, false)]
-    [InlineData(14, true)]
+    [InlineData(14, false)]
+    [InlineData(16, false)]
     [InlineData(17, true)]
-    public void TheSecondInitAckTestNeedsFourteenBytesToBeReadingData(int receivedSize, bool delivered)
+    public void AShortDatagramIsRefusedBeforeAnyByteIsRead(int receivedSize, bool readable)
     {
-        Assert.Equal(delivered, TakionHandshake.SecondInitAckTestReadsDeliveredBytes(receivedSize));
+        Assert.Equal(readable, TakionHandshake.DatagramIsLongEnoughToRead(receivedSize));
     }
 
     /// <summary>
-    /// DEFECT: and the second receive inherits the first datagram's length as its capacity, so the
-    /// short datagram that made the branch fire also truncates what the branch goes to fetch.
+    /// PP451: and the second receive gets the buffer's capacity, whatever the first datagram was.
     ///
-    /// A real second init ack is 65 bytes, so on the path this was written for the capacity is already
-    /// the full 17 and nothing is narrowed - which is why it has never been noticed.
+    /// The old code passed takion_recv's own out-value to both calls, so a short first datagram
+    /// truncated the second receive to its length and lost a cookie ack that had arrived intact. The
+    /// property takes no argument at all now, which is the fix stated as a signature.
     /// </summary>
     [Fact]
-    public void TheSecondReceiveIsNarrowedByAShortFirstDatagram()
+    public void TheSecondReceiveGetsTheWholeBuffer()
     {
-        Assert.Equal(4, TakionHandshake.SecondReceiveCapacity(4));
-
-        // Not narrowed where the first datagram filled the buffer.
-        Assert.Equal(
-            TakionHandshake.CookieAckDatagramSize,
-            TakionHandshake.SecondReceiveCapacity(TakionHandshake.CookieAckDatagramSize));
+        Assert.Equal(TakionHandshake.CookieAckDatagramSize, TakionHandshake.SecondReceiveCapacity);
+        Assert.Equal(17, TakionHandshake.SecondReceiveCapacity);
     }
 
     /// <summary>The two exact datagram lengths, as the sizeof expressions compute them.</summary>
@@ -328,24 +327,34 @@ public class TakionHandshakeTests
                 + "over is no longer commented out beside it");
     }
 
-    /// <summary>Both cookie ack defects are still there, and the init ack still does it right.</summary>
+    /// <summary>
+    /// PP451: both repairs hold in the C, and the init ack still does what the cookie ack now does
+    /// too.
+    /// </summary>
     [Fact]
-    public void BothCookieAckDefectsAreStillInTheC()
+    public void BothCookieAckRepairsHoldInTheC()
     {
         if (Takion() is not { } source)
             return;
 
         if (TakionHandshake.CookieAckBody(source) is not { } cookie
+            || TakionHandshake.CookieAckDatagramBody(source) is not { } helper
             || TakionHandshake.InitAckBody(source) is not { } init)
         {
             return;
         }
 
-        Assert.True(TakionHandshake.TheSecondInitAckTestPrecedesTheSizeCheck(cookie));
-        Assert.True(TakionHandshake.TheSecondReceiveInheritsTheFirstLength(cookie));
+        Assert.True(
+            TakionHandshake.NoByteIsReadBeforeTheLengthCheck(cookie),
+            "the cookie ack reads a byte before its datagram is length-checked, which is the defect "
+                + "PP451 removed");
+        Assert.True(
+            TakionHandshake.EachReceiveGetsTheBuffersCapacity(helper),
+            "the receive takes its capacity from something other than the caller's sizeof, so one "
+                + "datagram can narrow the next again");
 
-        // The same function twenty lines up checks its length before reading a byte, which is what
-        // makes the cookie ack a slip rather than a house style.
+        // The init ack has always checked its length before reading a byte, which is what made the
+        // cookie ack a slip rather than a house style.
         Assert.True(TakionHandshake.TheInitAckChecksItsLengthFirst(init));
     }
 
@@ -378,6 +387,7 @@ public class TakionHandshakeTests
     {
         Assert.Null(TakionHandshake.HandshakeBody(""));
         Assert.Null(TakionHandshake.CookieAckBody(""));
+        Assert.Null(TakionHandshake.CookieAckDatagramBody(""));
         Assert.Null(TakionHandshake.InitAckBody(""));
         Assert.Null(TakionHandshake.DefineIn("", "MAX_CONNECT_RESEND_TRIES"));
         Assert.False(TakionHandshake.ASendFailureStillAborts(""));
@@ -386,8 +396,8 @@ public class TakionHandshakeTests
         Assert.False(TakionHandshake.TheRemoteSeqNumIsStillTheTag(""));
         Assert.False(TakionHandshake.TheZeroTagGateIsStillFirst(""));
         Assert.False(TakionHandshake.TheStreamCheckIsStillCrossed(""));
-        Assert.False(TakionHandshake.TheSecondInitAckTestPrecedesTheSizeCheck(""));
-        Assert.False(TakionHandshake.TheSecondReceiveInheritsTheFirstLength(""));
+        Assert.False(TakionHandshake.NoByteIsReadBeforeTheLengthCheck(""));
+        Assert.False(TakionHandshake.EachReceiveGetsTheBuffersCapacity(""));
         Assert.False(TakionHandshake.TheInitAckChecksItsLengthFirst(""));
     }
 }

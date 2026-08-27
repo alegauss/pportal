@@ -59,8 +59,11 @@ public readonly record struct TakionExchange(int Attempts, ChiakiError Error);
 /// takion_parse_message refuses any INBOUND message whose tag is not `tag_local`. Two fields with one
 /// name, in opposite directions.
 ///
-/// TWO DEFECTS IN THE COOKIE ACK, both reproduced and asserted rather than fixed - see
-/// <see cref="SecondInitAckTestReadsDeliveredBytes"/> and <see cref="SecondReceiveCapacity"/>.
+/// THE COOKIE ACK HAD TWO COUPLED DEFECTS AND PP451 REPAIRED BOTH. It read the chunk type at offset
+/// 0xd before checking the datagram's length, and then gave the second receive the first datagram's
+/// length as its capacity. See <see cref="DatagramIsLongEnoughToRead"/> and
+/// <see cref="SecondReceiveCapacity"/>: the assertions hold the repair, and they are written so that
+/// the old shape coming back turns them red rather than reading as a rename.
 /// </summary>
 public static class TakionHandshake
 {
@@ -202,34 +205,34 @@ public static class TakionHandshake
     }
 
     /// <summary>
-    /// Whether the cookie ack's second-init-ack test reads a byte the datagram actually delivered.
+    /// Whether a datagram of this length is read at all, or refused before any byte of it is
+    /// inspected.
     ///
-    /// DEFECT, reproduced. `message[0xd]` is read BEFORE `received_size &lt; sizeof(message)` is
-    /// checked, and `message` is an uninitialised 17-byte local. A datagram of 14 bytes or fewer
-    /// therefore decides the branch on stack garbage: if that byte happens to equal the INIT_ACK
-    /// chunk type, the function consumes a second datagram it was never told to expect - and the real
-    /// cookie ack goes to whoever reads next, which is nobody.
-    ///
-    /// It is not out of bounds - 0xd is inside a 17-byte array - which is why no sanitiser has ever
-    /// pointed at it.
+    /// PP451 FIXED THIS, and the shape of the fix is what the assertion holds: the length check now
+    /// runs first, so a short datagram is refused rather than deciding the second-init-ack branch on
+    /// whatever was last on the stack. The old order read `message[0xd]` first, and 0xd is inside a
+    /// 17-byte array, so the read was uninitialised without ever being out of bounds - which is why
+    /// no sanitiser pointed at it in the years it stood.
     /// </summary>
-    public static bool SecondInitAckTestReadsDeliveredBytes(int receivedSize)
-        => receivedSize > ChunkTypeOffsetInDatagram;
+    public static bool DatagramIsLongEnoughToRead(int receivedSize)
+        => receivedSize >= CookieAckDatagramSize;
 
     /// <summary>
-    /// The capacity the SECOND receive is given, which is the first datagram's length and not the
-    /// buffer's.
+    /// The capacity the SECOND receive is given: the buffer's own, not the first datagram's length.
     ///
-    /// DEFECT, reproduced, and the one that turns the first into a lost handshake. `received_size` is
-    /// takion_recv's in-out: the capacity going in, the received length coming back. Nothing resets
-    /// it between the two calls, so after a short first datagram the second receive asks the socket
-    /// for that many bytes - and UDP truncates the rest away. A genuine 17-byte cookie ack arriving
-    /// second is cut down, fails the size check, and costs one of the three cookie attempts.
+    /// PP451 FIXED THIS TOO, and it was the half that lost handshakes. takion_recv's size argument is
+    /// in-out - the capacity going in, the received length coming back - and the old code passed the
+    /// same variable to both calls. After a short first datagram the second receive asked the socket
+    /// for that many bytes, and UDP threw the rest away: a cookie ack that had arrived intact was
+    /// truncated, failed the length check, and cost one of the three cookie attempts.
     ///
-    /// Harmless on the path it was written for: a real second INIT_ACK is 65 bytes, so
-    /// `received_size` is already the full 17 and the second receive is not narrowed at all.
+    /// Both halves needed the same trigger, and it was exactly the datagram the reordered check now
+    /// refuses.
+    ///
+    /// It takes no argument, and that absence is the fix: the first datagram's length used to be the
+    /// answer.
     /// </summary>
-    public static int SecondReceiveCapacity(int firstReceivedSize) => firstReceivedSize;
+    public static int SecondReceiveCapacity => CookieAckDatagramSize;
 
     /// <summary>takion.c, where all of this lives.</summary>
     public const string RelativePath = @"lib\src\takion.c";
@@ -340,43 +343,42 @@ public static class TakionHandshake
     }
 
     /// <summary>
-    /// Whether the second-init-ack test still runs before the size check - the first of the two
-    /// cookie ack defects.
+    /// Whether the cookie ack still reads no byte of a datagram it has not length-checked - PP451's
+    /// first half.
+    ///
+    /// The predicate is that the body reads `message[0xd]` and does NOT length-check inside itself:
+    /// both receives go through <c>takion_recv_cookie_ack_datagram</c>, which refuses a short
+    /// datagram before returning. A `received_size` reappearing here is the old shape coming back.
     /// </summary>
-    public static bool TheSecondInitAckTestPrecedesTheSizeCheck(string cookieAckBody)
+    public static bool NoByteIsReadBeforeTheLengthCheck(string cookieAckBody)
     {
         ArgumentNullException.ThrowIfNull(cookieAckBody);
 
-        int test = cookieAckBody.IndexOf(
-            "message[0xd] == TAKION_CHUNK_TYPE_INIT_ACK", StringComparison.Ordinal);
-        int size = cookieAckBody.IndexOf(
-            "received_size < sizeof(message)", StringComparison.Ordinal);
-
-        return test >= 0 && size > test;
+        return cookieAckBody.Contains(
+                "message[0xd] == TAKION_CHUNK_TYPE_INIT_ACK", StringComparison.Ordinal)
+            && !cookieAckBody.Contains("received_size", StringComparison.Ordinal)
+            && CountOf(cookieAckBody, "takion_recv_cookie_ack_datagram(takion, message, sizeof(message))")
+                == 2;
     }
 
     /// <summary>
-    /// Whether the second receive still inherits the first datagram's length - the second defect.
+    /// Whether the helper still takes its capacity from its own parameter rather than from a length a
+    /// previous receive wrote back - PP451's second half.
     ///
-    /// Read as the ABSENCE of a reset: `received_size` is assigned `sizeof(message)` once, above the
-    /// first receive, and the branch between the two calls does not assign it again.
+    /// `received_size` is assigned from `message_size`, which is the CALLER's sizeof. Both call sites
+    /// pass it fresh, so neither receive can be narrowed by the other.
     /// </summary>
-    public static bool TheSecondReceiveInheritsTheFirstLength(string cookieAckBody)
+    public static bool EachReceiveGetsTheBuffersCapacity(string helperBody)
     {
-        ArgumentNullException.ThrowIfNull(cookieAckBody);
+        ArgumentNullException.ThrowIfNull(helperBody);
 
-        int first = cookieAckBody.IndexOf("takion_recv(takion, message", StringComparison.Ordinal);
-        if (first < 0)
-            return false;
-
-        int second = cookieAckBody.IndexOf(
-            "takion_recv(takion, message", first + 1, StringComparison.Ordinal);
-        if (second < 0)
-            return false;
-
-        return !cookieAckBody[first..second].Contains(
-            "received_size = sizeof(message)", StringComparison.Ordinal);
+        return helperBody.Contains("size_t received_size = message_size;", StringComparison.Ordinal)
+            && helperBody.Contains("received_size < message_size", StringComparison.Ordinal);
     }
+
+    /// <summary>The helper PP451 introduced, or null where it is gone.</summary>
+    public static string? CookieAckDatagramBody(string source)
+        => CFunction.Body(source, "static ChiakiErrorCode takion_recv_cookie_ack_datagram");
 
     /// <summary>
     /// Whether the init ack receive still demands the exact datagram length, which is the check the
