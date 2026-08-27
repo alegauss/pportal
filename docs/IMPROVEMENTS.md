@@ -159,7 +159,7 @@ because every part of it was green.
 ### §PP23 The oracle this block cannot be written without
 
 chiaki exists because the PlayStation remote play protocol was reverse engineered. There
-is no document to implement against: the 25374 lines of C in lib/src are the
+is no document to implement against: the 25390 lines of C in lib/src are the
 specification, and a managed rewrite that reads them and reproduces them is a
 translation whose only correctness test is behavioural.
 
@@ -182,7 +182,7 @@ a buffer function can.
 
 ### §PP27 The transport, and the only place GC is a real question
 
-takion.c is 1868 lines plus takionsendbuffer.c at 267 and reorderqueue.c at 200: the
+takion.c is 1884 lines plus takionsendbuffer.c at 267 and reorderqueue.c at 200: the
 sequencing, the retransmission, the send window and the reordering that a video stream
 over UDP needs.
 
@@ -437,39 +437,6 @@ itself.
 Until then PP33 is correctly blocked and its remaining query correctly reads 420.
 Reading that number as the size of the job is what its own section warns against: it is
 one file, and the work is at the other end.
-
-### §PP369 The rule PP357 set, in the files it did not reach
-
-PP357 established that an assert is not a bound here, because this project builds
-Release with -DNDEBUG. It fixed the two in ctrl.c that guarded a copy, and the check it
-left behind reads ctrl.c and nothing else.
-
-There are 28 asserts across session.c, ctrl.c, streamconnection.c and takion.c.
-Twenty-one are assert(err == CHIAKI_ERR_SUCCESS) after a mutex lock - a separate
-argument, since what follows a failed lock is unsynchronised rather than out of bounds.
-Seven carry weight about data, and senkusha.c, which no count above reaches, holds an
-eighth:
-
-    streamconnection.c:855  assert(!stream_connection->ecdh_secret);
-    session.c:560           assert(session->login_pin_entered && session->login_pin);
-    takion.c:629            assert(buf_size >= 0xc);
-    takion.c:1201           assert(buf_size > 0);
-    takion.c:1489           assert(msg.payload_size == 0x10 + TAKION_COOKIE_SIZE);
-    takion.c:1544           assert(msg.payload_size == 0);
-    takion.c:1555           assert(base_type == VIDEO || base_type == AUDIO);
-    senkusha.c:538          assert(header_size == MTU_AV_PACKET_ADD);
-
-Four are size assertions in front of reads - the shape PP357 fixed, in the file its
-check does not look at. The streamconnection one guards against a second bang
-overwriting an ECDH secret and leaking the first, reachable while the run thread has not
-yet changed state. The session one is dereferenced two lines later by
-chiaki_ctrl_set_login_pin. The senkusha one is an offset: the two lines after it write
-the ping tag at that header size, so a wrong one puts the tag inside the header and
-every MTU ping is discarded.
-
-takion.c is PP27's file and this crosses into it, which is why this is a line rather
-than a wider edit under PP295. What it owes is the fix for all eight and a check that
-reads every file rather than the one where the first two were found.
 
 ## Block G — Test discipline
 

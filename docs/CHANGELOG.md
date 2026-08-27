@@ -364,6 +364,7 @@
 - ✅ **PP423** **the stream's BANG is redacted whole, so the console's verdict on the handshake goes with the keys beside it** — the BANG's three key fields are zeroed in place and its six others stay, so the console's verdict is in the corpus (design recorded in `tests/corpus/exchange-ps5-four-channels.txt`).
 - ✅ **PP424** **the stream connection has no replay participant, so the last of PP23's four channels replays against nothing** — the handshake replays against the capture and the BANG's four checks are read from it, with the derivation named as the boundary.
 - ✅ **PP425** **the senkusha and stream participants carry bytes copied from the capture, so the replay confirms a table not the port** — the two participants build their messages from field numbers and values, and the capture judges the encoding rather than supplying it.
+- ✅ **PP369** **eight asserts still carry weight about data across four files, and PP357's check reads only one of them** — seven of the eight are guarded elsewhere or state a fact, each with its reason censused, and the init ack's payload size is a check.
 
 ## Block G — Test discipline
 

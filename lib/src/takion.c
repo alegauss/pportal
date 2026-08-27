@@ -1486,7 +1486,23 @@ static ChiakiErrorCode takion_recv_message_init_ack(ChiakiTakion *takion, Takion
 		return CHIAKI_ERR_INVALID_RESPONSE;
 	}
 
-	assert(msg.payload_size == 0x10 + TAKION_COOKIE_SIZE);
+	// PP369: a check and not an assert, which is the one of the eight that needed to become one.
+	// This project builds Release with -DNDEBUG, so the assert that stood here was nothing in the
+	// shipped binary - and the six reads below it run to pl + 0x30, while payload_size comes off the
+	// wire. takion_parse_message ties it to the datagram's own length, so a short INIT_ACK parsed,
+	// passed the two checks above, and was then read a further 0x2c bytes past its end.
+	//
+	// The tag is what made that hard to reach rather than impossible: parse_message refuses a
+	// message whose tag is not tag_local, so an off-path sender has 32 bits to guess. On the path,
+	// or from a console answering wrongly, it is direct.
+	if(msg.payload_size != 0x10 + TAKION_COOKIE_SIZE)
+	{
+		CHIAKI_LOGE(takion->log,
+				"Takion received init ack with payload size %u while expecting %u",
+				(unsigned int)msg.payload_size,
+				(unsigned int)(0x10 + TAKION_COOKIE_SIZE));
+		return CHIAKI_ERR_INVALID_RESPONSE;
+	}
 
 	uint8_t *pl = msg.payload;
 	payload->tag = ntohl(*((chiaki_unaligned_uint32_t *)(pl + 0)));
