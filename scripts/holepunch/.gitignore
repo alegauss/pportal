@@ -1,0 +1,12 @@
+# PP435: `go build` in either directory writes its output next to the source, and both outputs were
+# tracked for a while - 14.4 MB of unstripped Linux x86-64 that cannot run on the platform this port
+# ships to. The source is what documents the PSN token flow; a build of it is not.
+#
+# Named rather than globbed: a Go binary takes its module's name, so there is no extension to match
+# and `*` would swallow the .go files this directory exists for.
+holepunch
+refresh-token
+
+# And the same on a machine that builds them for Windows.
+holepunch.exe
+refresh-token.exe
