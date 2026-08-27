@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using ChiakiNg.Session;
 
 namespace ChiakiNg.Protocol;
@@ -19,8 +19,8 @@ namespace ChiakiNg.Protocol;
 /// THE COMPILER WAS ALREADY POINTING AT TWO OF THEM, as -Wunused-but-set-variable on an error code
 /// whose only reader is compiled out. One was a failed <c>chiaki_mutex_lock</c> in the websocket
 /// thread, which went on to enqueue a notification under a lock it did not hold, signal a condition
-/// variable, and unlock a mutex it never took. It is checked now, which is why the ceiling below is
-/// 53 and not 54.
+/// variable, and unlock a mutex it never took. It is checked now, and PP407 checked the two stop
+/// pipes beside it, which is why the ceiling below is 51 and not 54.
 ///
 /// PP406 CORRECTED WHAT THAT WAS WORTH. This class called that site load-bearing, and on Windows it
 /// is not: <c>chiaki_mutex_lock</c> is EnterCriticalSection and a single success return, so the
@@ -48,7 +48,7 @@ public static partial class AssertedErrorCodes
     /// <summary>
     /// The most error codes that may be inspected by nothing but an assert. It may fall.
     /// </summary>
-    public const int Ceiling = 53;
+    public const int Ceiling = 51;
 
     /// <summary>
     /// And the fewest, so a regex that quietly stops matching is not read as an improvement.
@@ -96,17 +96,17 @@ public static partial class AssertedErrorCodes
     /// <summary>
     /// PP406: the ones whose callee can fail at all - the number the ceiling above hides.
     ///
-    /// Thirty-three of the fifty-three assert a primitive with a single success return, and a
+    /// Thirty-three of the fifty-one assert a primitive with a single success return, and a
     /// correction to one of those adds a branch no execution reaches. What is left is the waits,
-    /// the joins and the stop pipe - calls with a timeout, a WSA_INVALID_EVENT or a join that did
-    /// not - and five that assert a function the file defines itself. See
-    /// <see cref="ThreadPrimitives"/>, which reads the primitives out of the C.
+    /// the joins - calls with a timeout or a join that did not - and five that assert a function
+    /// the file defines itself. See <see cref="ThreadPrimitives"/>, which reads the primitives out
+    /// of the C. PP407 took the two stop pipes out of this number by checking them.
     ///
-    /// Several of the twenty are <c>assert(err == SUCCESS || err == TIMEOUT)</c>, which is an assert
-    /// that a wait returned one of two expected answers rather than that it could not fail. They are
-    /// counted because the third answer is still unhandled in the shipped build.
+    /// Several of the eighteen are <c>assert(err == SUCCESS || err == TIMEOUT)</c>, which is an
+    /// assert that a wait returned one of two expected answers rather than that it could not fail.
+    /// They are counted because the third answer is still unhandled in the shipped build.
     /// </summary>
-    public const int CanFailCeiling = 20;
+    public const int CanFailCeiling = 18;
 
     /// <summary>Each assert in a file, paired with the call it inspects.</summary>
     /// <returns>The callee name and the assert text, in the order they appear.</returns>
@@ -206,3 +206,4 @@ public static partial class AssertedErrorCodes
     [GeneratedRegex(@"\b(?!if|while|for|switch|return|sizeof|assert)([A-Za-z_][A-Za-z0-9_]*)\s*\(", RegexOptions.RightToLeft)]
     private static partial Regex ChiakiCall();
 }
+

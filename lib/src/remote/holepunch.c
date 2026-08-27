@@ -753,15 +753,29 @@ CHIAKI_EXPORT Session* chiaki_holepunch_session_init(
     session->gw_status = GATEWAY_STATUS_UNKNOWN;
     session->upnp_thread_running = false;
 
+    // PP407: the two stop pipes are checked and the five primitives around them are not, and that
+    // is deliberate. On Windows a mutex or cond init is one return of CHIAKI_ERR_SUCCESS, so an
+    // assert on those inspects a value with one spelling - PP406 reads that out of thread.c. A stop
+    // pipe is WSACreateEvent, which answers WSA_INVALID_EVENT, and every one of the eight other
+    // call sites in lib/src takes a failure path. These two only ever asserted, and Release defines
+    // NDEBUG, so the session went on holding a handle every later wait would fail on.
     ChiakiErrorCode err;
     err = chiaki_mutex_init(&session->notif_mutex, false);
     assert(err == CHIAKI_ERR_SUCCESS);
     err = chiaki_cond_init(&session->notif_cond);
     assert(err == CHIAKI_ERR_SUCCESS);
     err = chiaki_stop_pipe_init(&session->notif_pipe);
-    assert(err == CHIAKI_ERR_SUCCESS);
+    if(err != CHIAKI_ERR_SUCCESS)
+    {
+        CHIAKI_LOGE(log, "chiaki_holepunch_session_init: Creating the notification pipe failed");
+        goto error_notif_cond;
+    }
     err = chiaki_stop_pipe_init(&session->select_pipe);
-    assert(err == CHIAKI_ERR_SUCCESS);
+    if(err != CHIAKI_ERR_SUCCESS)
+    {
+        CHIAKI_LOGE(log, "chiaki_holepunch_session_init: Creating the select pipe failed");
+        goto error_notif_pipe;
+    }
     err = chiaki_mutex_init(&session->state_mutex, false);
     assert(err == CHIAKI_ERR_SUCCESS);
     err = chiaki_mutex_init(&session->stop_mutex, false);
@@ -789,6 +803,19 @@ CHIAKI_EXPORT Session* chiaki_holepunch_session_init(
     chiaki_random_bytes_crypt(session->data2, sizeof(session->data2));
 
     return session;
+
+    // PP407: the first early exit this function has had past the queue. It undoes what was built
+    // before the pipe that failed and nothing after it, which is why the labels read backwards.
+error_notif_pipe:
+    chiaki_stop_pipe_fini(&session->notif_pipe);
+error_notif_cond:
+    chiaki_cond_fini(&session->notif_cond);
+    chiaki_mutex_fini(&session->notif_mutex);
+    notification_queue_free(session->ws_notification_queue);
+    free(session->ws_notification_queue);
+    free(session->oauth_header);
+    free(session);
+    return NULL;
 }
 
 #define UPNP_DISCOVER_TIMEOUT_MS 7000

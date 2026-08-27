@@ -347,6 +347,7 @@
 - ✅ **PP404** **54 asserts in lib/src inspect an error code, and PP357 established that the shipped build compiles every assert out** — a census counts every error code inspected by nothing but an assert, ratcheted so it may fall and not rise, and the websocket thread checks its notification lock.
 - ✅ **PP405** **two logs print a sized receive buffer with %s, and neither buffer is terminated at the length the caller knows** — both take %.*s with the length the caller already had, and a rule over lib/src refuses a third.
 - ✅ **PP406** **PP404 counts 53 asserted error codes without asking which callee can fail, and on Windows most of them cannot** — the census splits by whether the callee has a failure path, read out of thread.c, and the twenty that can fail carry their own ceiling.
+- ✅ **PP407** **eight stop-pipe inits in lib/src check their result and take a failure path, and the two in holepunch.c assert it** — both stop pipes take a failure path with a cleanup ladder behind them, and a rule over lib/src refuses an asserted one.
 
 ## Block G — Test discipline
 
