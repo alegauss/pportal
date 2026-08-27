@@ -20,7 +20,10 @@ namespace ChiakiNg.Tests;
 public class WarningPolicyTests(ITestOutputHelper output)
 {
     /// <summary>
-    /// THE TASK. Both projects the gate compiles turn every compiler warning into an error.
+    /// THE TASK. Every project the gate compiles turns every compiler warning into an error.
+    ///
+    /// PP438: "every" and not "both". The set is read out of ChiakiNg.slnx, which is what compile.cmd
+    /// builds, so a project added to the solution is bound by this without anybody editing a list.
     /// </summary>
     [Fact]
     public void EveryGatedProjectRefusesEveryWarning()
@@ -28,12 +31,14 @@ public class WarningPolicyTests(ITestOutputHelper output)
         IReadOnlyList<string> projects = WarningPolicy.LocateGatedProjects();
         Assert.True(projects.Count > 0, "not running out of a checkout");
 
-        Assert.Equal(WarningPolicy.GatedProjects.Count, projects.Count);
+        // Declared and present are separate failures: a solution entry naming a csproj that is not
+        // there resolves to nothing, and a policy asserted over what resolved would pass about it.
+        Assert.Equal(WarningPolicy.GatedProjects().Count, projects.Count);
 
         IReadOnlyList<string> printing =
             [.. projects.Where(path => !WarningPolicy.RefusesEveryWarning(File.ReadAllText(path)))];
 
-        output.WriteLine("gated: " + string.Join(", ", WarningPolicy.GatedProjects));
+        output.WriteLine("gated: " + string.Join(", ", WarningPolicy.GatedProjects()));
 
         Assert.True(
             printing.Count == 0,
@@ -115,7 +120,66 @@ public class WarningPolicyTests(ITestOutputHelper output)
     /// </summary>
     [Fact]
     public void TheHostIsTheProjectPP22AlreadyNames()
-        => Assert.Contains(BuildWorkflow.HostProjectRelativePath, WarningPolicy.GatedProjects);
+        => Assert.Contains(BuildWorkflow.HostProjectRelativePath, WarningPolicy.GatedProjects());
+
+    /// <summary>
+    /// PP438: the set is read out of the solution, and the three it holds today are named.
+    ///
+    /// The tool is the one that made this necessary: PP436 put it in the solution and it declared no
+    /// TreatWarningsAsErrors, so the gate compiled code whose warnings had no recipient.
+    /// </summary>
+    [Fact]
+    public void TheSolutionIsWhatDecidesWhoIsBound()
+    {
+        IReadOnlyList<string> gated = WarningPolicy.GatedProjects();
+        if (gated.Count == 0)
+            return;
+
+        // PP271: a reader that found no projects would satisfy every claim below by finding nothing.
+        Assert.True(gated.Count >= 3, $"only {gated.Count} projects read out of the solution");
+
+        Assert.Contains(WarningPolicy.TestProjectRelativePath, gated);
+        Assert.Contains(@"tools\compare-baselines\CompareBaselines.csproj", gated);
+    }
+
+    /// <summary>
+    /// PP400: the projects a solution COMMENT names are not projects it builds.
+    ///
+    /// The folder entry PP436 added names the four it deliberately leaves out - two spikes, the
+    /// alloc budget and measure-startup - so a reader of raw solution text would bind this policy to
+    /// projects no gate compiles, which is this defect facing the other way.
+    /// </summary>
+    [Fact]
+    public void AProjectNamedOnlyInACommentIsNotGated()
+    {
+        const string Solution = """
+            <Solution>
+              <!-- spike/present-path stays out. <Project Path="spike/present-path/PresentPath.csproj" /> -->
+              <Project Path="app/ChiakiNg.csproj" />
+            </Solution>
+            """;
+
+        IReadOnlyList<string> projects = WarningPolicy.ProjectsIn(Solution);
+
+        Assert.Equal([@"app\ChiakiNg.csproj"], projects);
+    }
+
+    /// <summary>The slnx spells paths with forward slashes and this port's constants do not.</summary>
+    [Fact]
+    public void TheSeparatorsAreTheOnesTheRestOfThePortUses()
+    {
+        Assert.Equal(
+            [@"tools\compare-baselines\CompareBaselines.csproj"],
+            WarningPolicy.ProjectsIn("""<Project Path="tools/compare-baselines/CompareBaselines.csproj" />"""));
+    }
+
+    /// <summary>PP272: and an empty solution builds nothing.</summary>
+    [Fact]
+    public void AnEmptySolutionBindsNobody()
+    {
+        Assert.Empty(WarningPolicy.ProjectsIn(""));
+        Assert.Empty(WarningPolicy.ProjectsIn("<Solution></Solution>"));
+    }
 
     /// <summary>
     /// PP317. No gated project asks for an assembly the framework reference already supplies.

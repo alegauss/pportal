@@ -1,8 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    PP45's harness. Not in a solution: PP24 has not made one. A plain console app so it can be run
-    from a shell today and from CI later without first choosing a runner.
+    PP45's harness. A plain console app so it can be run from a shell today and from CI later
+    without first choosing a runner.
+
+    PP436 put it in ChiakiNg.slnx, because the site's front page names this executable and says what
+    it prints while no build here compiled it. PP438 is the consequence: compile.cmd builds the
+    solution, so this project is now inside the gate and owes the gate's warning policy.
   -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -12,6 +16,10 @@
     <AssemblyName>compare-baselines</AssemblyName>
     <RootNamespace>CompareBaselines</RootNamespace>
     <InvariantGlobalization>true</InvariantGlobalization>
+
+    <!-- PP316: a warning is a message with no recipient unless something stops on it. Free right
+         now - this project builds with zero warnings - so it only ever binds what arrives later. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
 </Project>

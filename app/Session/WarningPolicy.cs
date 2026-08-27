@@ -16,9 +16,17 @@ namespace ChiakiNg.Session;
 /// through IL3002 for a reason that was specific and correct, and the list still could not have
 /// caught any of the four - which is PP279's finding about the root-file list arriving one file out.
 ///
-/// Two projects, because two are what the gate builds: the host and the test assembly that
-/// references it. spike\, gate\ and tools\ carry csproj files of their own and no gate compiles
-/// them, so asserting a policy there would be asserting something nothing enforces.
+/// PP438: WHAT THE GATE BUILDS IS THE SOLUTION, and this used to be a hardcoded pair. Its reason was
+/// written down and was true - "spike\, gate\ and tools\ carry csproj files of their own and no gate
+/// compiles them" - and PP436 made it false in the same commit that relied on it, by adding
+/// tools/compare-baselines to ChiakiNg.slnx so compile.cmd would build the tool the site names. That
+/// project declared no TreatWarningsAsErrors, so the gate compiled code whose warnings had no
+/// recipient: PP316's own defect, reintroduced by a task that was widening coverage.
+///
+/// So the list is derived. compile.cmd runs `dotnet build ChiakiNg.slnx`, which makes the solution the
+/// thing that decides, and a project added to it tomorrow obeys this policy without anybody
+/// remembering this file exists. It is PP434's lesson: a list standing for a graph is green because
+/// of what a file happened to contain.
 /// </summary>
 public static partial class WarningPolicy
 {
@@ -26,10 +34,42 @@ public static partial class WarningPolicy
     public const string TestProjectRelativePath = @"tests\ChiakiNg.Tests\ChiakiNg.Tests.csproj";
 
     /// <summary>
-    /// The projects a gate in this tree compiles, and therefore the ones this policy binds.
+    /// The solution compile.cmd builds, which is what decides who this policy binds.
     /// </summary>
-    public static IReadOnlyList<string> GatedProjects { get; } =
-        [BuildWorkflow.HostProjectRelativePath, TestProjectRelativePath];
+    public const string SolutionRelativePath = SiteProseClaims.SolutionRelativePath;
+
+    /// <summary>
+    /// Every project the solution names, as a repository-relative path with Windows separators.
+    ///
+    /// Comments stripped first: the folder entry PP436 added names the four projects it deliberately
+    /// LEAVES OUT, and a reader counting those would bind a policy to projects no gate compiles -
+    /// which is the mirror of the defect this fixes.
+    /// </summary>
+    public static IReadOnlyList<string> ProjectsIn(string solutionText)
+    {
+        ArgumentNullException.ThrowIfNull(solutionText);
+
+        return
+        [
+            .. ProjectPathRegex().Matches(WithoutComments(solutionText))
+                .Select(match => match.Groups[1].Value.Replace('/', '\\'))
+                .Distinct(StringComparer.OrdinalIgnoreCase),
+        ];
+    }
+
+    /// <summary>
+    /// The projects a gate in this tree compiles, and therefore the ones this policy binds.
+    ///
+    /// Empty outside a checkout, where there is no solution to read. A caller that would otherwise
+    /// assert over an empty set has to say so - which is what the test does.
+    /// </summary>
+    public static IReadOnlyList<string> GatedProjects()
+    {
+        if (SanitizerSource.LocateRelative(SolutionRelativePath) is not { } solution)
+            return [];
+
+        return ProjectsIn(File.ReadAllText(solution));
+    }
 
     /// <summary>
     /// The only warning code this port suppresses outright, and the project it is suppressed in.
@@ -43,7 +83,7 @@ public static partial class WarningPolicy
 
     /// <summary>The gated projects, resolved against this checkout; empty outside one.</summary>
     public static IReadOnlyList<string> LocateGatedProjects() =>
-        [.. GatedProjects.Select(SanitizerSource.LocateRelative).OfType<string>()];
+        [.. GatedProjects().Select(SanitizerSource.LocateRelative).OfType<string>()];
 
     /// <summary>
     /// PP317: a project text with its XML comments removed, which is what every reader here reads.
@@ -150,4 +190,9 @@ public static partial class WarningPolicy
 
     [GeneratedRegex(@"<NoWarn>([^<]*)</NoWarn>", RegexOptions.IgnoreCase)]
     private static partial Regex NoWarnRegex();
+
+    // <Project Path="tools/compare-baselines/CompareBaselines.csproj" /> - the slnx spells its paths
+    // with forward slashes, and the rest of this port's constants use backslashes.
+    [GeneratedRegex(@"<Project\s+Path=""([^""]+)""", RegexOptions.IgnoreCase)]
+    private static partial Regex ProjectPathRegex();
 }
