@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Sockets;
 using ChiakiNg.Protocol;
 using Xunit;
@@ -64,7 +64,7 @@ public class ProbeExchangeTests : IDisposable
         await answering;
 
         Assert.Equal(ResponseVerdict.Accepted, result.Verdict);
-        Assert.Equal(FollowupStep.Done, result.Step);
+        Assert.Equal(PunchStep.Done, result.Step);
         Assert.Equal(RequestId, result.Echo);
     }
 
@@ -111,7 +111,7 @@ public class ProbeExchangeTests : IDisposable
         await answering;
 
         Assert.Equal(ResponseVerdict.ConsoleProbing, result.Verdict);
-        Assert.Equal(FollowupStep.Answer, result.Step);
+        Assert.Equal(PunchStep.Answer, result.Step);
     }
 
     /// <summary>A datagram of the wrong length is fatal for a named candidate.</summary>
@@ -151,7 +151,7 @@ public class ProbeExchangeTests : IDisposable
             consoleAt, RequestId, Id(0xa1), Id(0xc0), 0x1111, 0x2222, TimeSpan.FromMilliseconds(300));
 
         Assert.Null(result.Verdict);
-        Assert.Equal(FollowupStep.TimedOut, result.Step);
+        Assert.Equal(PunchStep.TimedOut, result.Step);
         Assert.False(result.Faulted);
     }
 
@@ -184,12 +184,12 @@ public class ProbeExchangeTests : IDisposable
         if (result.Faulted)
         {
             // The core's own answer for this step, which is why it never leaves the loop.
-            Assert.Equal(FollowupStep.Retry, result.Step);
-            Assert.False(FollowupExchange.Leaves(FollowupStep.Retry));
+            Assert.Equal(PunchStep.WaitAgain, result.Step);
+            Assert.False(PunchExchange.Leaves(PunchStep.WaitAgain));
         }
         else
         {
-            Assert.Equal(FollowupStep.TimedOut, result.Step);
+            Assert.Equal(PunchStep.TimedOut, result.Step);
         }
     }
 

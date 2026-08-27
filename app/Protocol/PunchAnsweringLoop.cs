@@ -50,8 +50,8 @@ public readonly record struct PunchAnsweringOutcome(
 /// The bound is on CONSECUTIVE discards, not on the run: a request resets the count, so no legitimate
 /// flow reaches it however long it takes or however many extras it interleaves. PP238 named the
 /// timeout semantics and PP256 called it a spin - both about THIS loop, not two: the two tasks ported
-/// receive_request_send_response_ps separately, which is why <see cref="FollowupExchange"/> is a
-/// second step machine over the same C.
+/// receive_request_send_response_ps separately, and PP458 merged their two models into
+/// <see cref="PunchExchange"/>.
 /// </summary>
 public sealed class PunchAnsweringLoop : IDisposable
 {

@@ -112,11 +112,16 @@ public class PunchExchangeTests
         Assert.True(
             PunchExchangeSource.SuccessIsStillATimeout(core),
             "the only success is still a timeout with something answered");
+        // PP458: the merged predicate, which is PP238's ordering check and PP256's no-return check
+        // together with PP457's bound. The two halves used to be two predicates in two files.
         Assert.True(
-            PunchExchangeSource.AFailedReceiveStillCostsNothing(core),
-            "and a failed receive still continues");
+            PunchExchangeSource.AFailedReceiveContinuesUnderABound(core),
+            "and a failed receive still continues, counted against the bound above the loop");
         Assert.True(
             PunchExchangeSource.ThreeTreatmentsForABadDatagram(core),
             "with three treatments for a bad datagram");
+        Assert.True(
+            PunchExchangeSource.TheWrongSizeStillEndsIt(core),
+            "and the wrong-size one of them still ends the punch");
     }
 }

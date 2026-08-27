@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Sockets;
 
 namespace ChiakiNg.Protocol;
@@ -12,7 +12,7 @@ namespace ChiakiNg.Protocol;
 /// answer for this is to go round again - see <see cref="ProbeExchange"/>.
 /// </param>
 public readonly record struct ExchangeResult(
-    ResponseVerdict? Verdict, FollowupStep Step, byte[]? Echo, bool Faulted = false);
+    ResponseVerdict? Verdict, PunchStep Step, byte[]? Echo, bool Faulted = false);
 
 /// <summary>
 /// PP268: one probe, sent and answered, over a real socket.
@@ -90,7 +90,7 @@ public sealed class ProbeExchange : IDisposable
         {
             // Nothing came. PP256's ordinary ending, and which of the two it is depends on whether
             // anything ever had - a question this single exchange answers with "no".
-            return new ExchangeResult(null, FollowupStep.TimedOut, null);
+            return new ExchangeResult(null, PunchStep.TimedOut, null);
         }
         catch (SocketException)
         {
@@ -99,7 +99,7 @@ public sealed class ProbeExchange : IDisposable
             // condition PP256 measured the core continuing on, with no exit behind it. The step is
             // reported as the core's, and the fault is reported beside it so a caller here does not
             // have to spin to find out.
-            return new ExchangeResult(null, FollowupStep.Retry, null, Faulted: true);
+            return new ExchangeResult(null, PunchStep.WaitAgain, null, Faulted: true);
         }
 
         return Judge(buffer.AsSpan(0, received.ReceivedBytes), requestId);
@@ -120,11 +120,11 @@ public sealed class ProbeExchange : IDisposable
 
         ResponseVerdict verdict = ResponseCheck.Verdict(datagram.Length, messageType, echo, sent);
 
-        FollowupStep step = verdict switch
+        PunchStep step = verdict switch
         {
-            ResponseVerdict.Accepted => FollowupStep.Done,
-            ResponseVerdict.ConsoleProbing => FollowupStep.Answer,
-            _ => FollowupStep.Retry,
+            ResponseVerdict.Accepted => PunchStep.Done,
+            ResponseVerdict.ConsoleProbing => PunchStep.Answer,
+            _ => PunchStep.WaitAgain,
         };
 
         return new ExchangeResult(verdict, step, echo.IsEmpty ? null : echo.ToArray());

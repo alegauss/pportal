@@ -398,30 +398,6 @@ Until then PP33 is correctly blocked, and `remaining PP33` reads 420. Reading th
 number as the size of the job is what its own section warns against: it is one file, and
 the work is at the other end.
 
-### §PP458 Two step machines over one loop
-
-PP238 and PP256 each ported `receive_request_send_response_ps`. Neither knew the other
-had: PP238 called it "the loop answering punch requests" and PP256 "the last thing a
-successful punch does", and both descriptions are true of the same function.
-
-So there are two step machines over one loop. `PunchStep` and `FollowupStep` have five
-arms each that mean the same five things under different names; `PunchExchange.Next`
-takes four parameters and `FollowupExchange.Next` takes five for the same decision; and
-`PunchExchangeSource` and `FollowupExchangeSource` both cut the same body out of
-holepunch.c with their own `Body` helper and their own predicates over the same lines.
-
-This is PP454 one level up. There, three classes each read the packet's thirteen offsets
-and all three agreed, so nothing compared them. Here the two agree as well - and PP457
-showed what that costs: a fix at the top of the loop had to be chased through two sets
-of predicates, and one of them, `AFailedReceiveStillContinues`, stayed green while no
-longer describing anything. A single model would have gone red once.
-
-The consolidation is not the mechanical one PP454 did. Keeping both public surfaces and
-deriving is what worked for constants; two enums and two differently-shaped functions
-need one to become the authority and the other's callers to move. So this is sized as
-its own line rather than folded into a fix, and PP454's guard is the shape the result
-should be held to.
-
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry
