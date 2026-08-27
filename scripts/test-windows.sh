@@ -20,6 +20,9 @@ BUILD_DIR="${BUILD_DIR:-build}"
 TEST_TIMEOUT="${TEST_TIMEOUT:-120}"
 CTEST="${CTEST:-/mingw64/bin/ctest}"
 UNIT="$BUILD_DIR/test/chiaki-unit.exe"
+# PP439: how many munit cases the suite is expected to run, and its own file so the number is
+# reviewable in a diff rather than buried in a script.
+FLOOR_FILE="${FLOOR_FILE:-tests/c-suite-floor.txt}"
 # PP75 runs the .NET host's selftest, and it does so from test.cmd rather than from here. The
 # reason is the same one PP74 gave for building app\ outside build-windows.sh: this is a login
 # shell, its PATH is MSYS2's, and `dotnet` is not on it even on a machine that has the SDK - the
@@ -62,12 +65,71 @@ fi
 # presented, and both cost a session before the cause was even visible. The last name the
 # suite printed is the one that hung.
 if [[ $# -eq 0 ]]; then
-	timeout "$TEST_TIMEOUT" "$CTEST" --test-dir "$BUILD_DIR" --output-on-failure
+	# PP439: -V rather than --output-on-failure, because the number this gate needs is one
+	# ctest discards on a green run. munit prints "N of N tests successful" and ctest reports
+	# the whole suite as one test, so "100% tests passed out of 1" reads the same whether 145
+	# cases ran or seven of them stopped being compiled in.
+	#
+	# Captured to a file rather than streamed, so the count can be read - and the failure and
+	# timeout paths then print the WHOLE file. That is deliberate: --output-on-failure gave
+	# everything on a red, and a hang printing nothing at all is what PP68 and PP70 each cost
+	# a session to diagnose.
+	ctest_out=$(mktemp)
+	timeout "$TEST_TIMEOUT" "$CTEST" --test-dir "$BUILD_DIR" -V >"$ctest_out" 2>&1
 	rc=$?
+
 	if [[ $rc -eq 124 ]]; then
+		cat "$ctest_out"
 		echo "[test] TIMED OUT after ${TEST_TIMEOUT}s - a test is hanging, not slow." >&2
-		echo "[test] Run 'test.cmd <name>' to see how far the suite got." >&2
+		echo "[test] The last name above is where it stopped." >&2
+		rm -f "$ctest_out"
+		exit $rc
 	fi
+
+	if [[ $rc -ne 0 ]]; then
+		cat "$ctest_out"
+		rm -f "$ctest_out"
+		exit $rc
+	fi
+
+	# The green summary, which is what --output-on-failure used to leave on screen.
+	grep -E '^ *[0-9]+/[0-9]+ Test|^[0-9]+% tests passed|^Total Test time' "$ctest_out"
+
+	# PP439: the floor. munit's line is "1: 145 of 145 (100%) tests successful, ...", and the
+	# SECOND number is the one that matters - a skipped case still exists, and a case that
+	# stopped being compiled does not.
+	cases=$(sed -nE 's/^1: [0-9]+ of ([0-9]+) \([0-9]+%\) tests successful.*/\1/p' "$ctest_out" | tail -1)
+	floor=$(grep -vE '^[[:space:]]*#' "$FLOOR_FILE" 2>/dev/null | grep -oE '[0-9]+' | tail -1)
+	rm -f "$ctest_out"
+
+	if [[ -z "$cases" ]]; then
+		# Not a pass and not a failure of the suite: the reader stopped matching. Said out
+		# loud, because a floor nothing can read is a floor that is not there.
+		echo "[test] WARNING: could not read the case count from ctest -V output." >&2
+		echo "[test]          The floor in $FLOOR_FILE is unchecked for this run." >&2
+		exit 0
+	fi
+
+	if [[ -z "$floor" ]]; then
+		echo "[test] WARNING: no number in $FLOOR_FILE - the C suite ran $cases cases." >&2
+		exit 0
+	fi
+
+	if (( cases < floor )); then
+		echo "[test] the C suite ran $cases cases and the floor is $floor." >&2
+		echo "[test] A suite got smaller. Check whether ffmpeg was found: " >&2
+		echo "[test] CHIAKI_ENABLE_FFMPEG_DECODER is AUTO, and OFF drops seven cases." >&2
+		exit 1
+	fi
+
+	if (( cases > floor )); then
+		echo "[test] the C suite ran $cases cases and the floor is $floor." >&2
+		echo "[test] Tests were added - raise the number in $FLOOR_FILE in this commit," >&2
+		echo "[test] or the floor loosens by exactly what was just gained." >&2
+		exit 1
+	fi
+
+	echo "[test] C suite: $cases munit cases (floor $floor)"
 	exit $rc
 fi
 

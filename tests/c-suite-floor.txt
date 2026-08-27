@@ -1,0 +1,25 @@
+# PP439: the size of the oracle.
+#
+# How many munit cases the C suite runs. ctest reports the whole suite as ONE test, so
+# "100% tests passed out of 1" is the same sentence whether 145 cases ran or 7 of them
+# stopped existing. munit prints its own "N of N tests successful" and ctest throws that
+# away on a green run, which is what this file and scripts/test-windows.sh restore.
+#
+# The number below may RISE and may not FALL. test-windows.sh fails either way:
+#   below it - a suite got smaller. Something stopped compiling in, and the mechanism
+#              is real: CHIAKI_ENABLE_FFMPEG_DECODER is a tri_option defaulting to AUTO,
+#              so a configure that cannot find ffmpeg sets it OFF rather than failing,
+#              ffmpegdecoder.c is not built, and its seven cases quietly do not exist.
+#   above it - tests were added, so raise this line in the same commit, or the floor
+#              quietly loosens by exactly what was just gained. It is PP38's ratchet the
+#              other way up, and for the same reason.
+#
+# `test.cmd` prints the count on every run now, so the number to put here is the one it
+# just printed. A configure without ffmpeg legitimately runs 138: that is not a lower
+# floor, it is a different build, and lowering this line to accommodate it would delete
+# the only thing that notices the seven going missing on a machine that HAS ffmpeg.
+#
+# 145 on 2026-08-27, when the count was first taken: 16 suites, of which the parameterised
+# ones are /http/response_parse over two line endings and /fec/fec over 64 recorded frame
+# buffers - 64 of the 145, and the largest single thing the oracle knows.
+145
