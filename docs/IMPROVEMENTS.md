@@ -498,31 +498,6 @@ dep.
 
 ## Block G — Test discipline
 
-### §PP412 Whether a quotation is a claim
-
-PP410 widened the reader to catch a number separated from its filename by words.
-Applying it turned two claims red: the stale one in §PP294, and the citation of that
-stale one inside PP410's own rationale, which shipped and took the section with it.
-
-THE SECOND WAS NOT A DEFECT AND THE GATE CANNOT TELL. A section explaining a stale size
-quotes it, and the quotation is a claim by every test the reader applies - same
-filename, same shape, same number. Correcting it to the tree's number would have made
-the section state that the stale value was right, so the citation was spelled with a
-placeholder.
-
-THAT CONVENTION IS NOW LOAD-BEARING AND UNRECORDED. The next writer of a rationale about a
-file's size will quote a size, and will learn this from a red suite after the work is done
-- the failure PP304 exists to move one step earlier.
-
-TWO ANSWERS, AND THEY ARE NOT THE SAME. The reader could skip text inside double quotes:
-cheap, and it would skip a real claim somebody chose to quote. Or the convention could
-be stated and held - a rule refusing a section that puts a digit next to a filename
-inside quotes. The first changes what a claim is; the second changes what a section may
-say.
-
-FILED AS AN IDEA BECAUSE THE CHOICE IS THE WORK. Neither is hard, and picking wrong
-makes this gate either blind to a real claim or noisy about a quotation.
-
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed

@@ -41,8 +41,6 @@
 
 ## Block G — Test discipline
 
-- 💭 **PP412** (deps: —) **a quoted example in a rationale section is read as a claim, so citing a stale number turns the gate red on the citation** — PP410's own section had to spell the number as a placeholder, and nothing records that convention or decides whether a quotation is a claim. → §PP412
-
 ## Block H — Performance and telemetry
 
 - ⏳ **PP46** (deps: PP42 ✅, PP63) **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — A Chromium leaving the build should be visible in cold start and in megabytes, and stating it without measuring is how a port collects folklore. → §PP46

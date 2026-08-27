@@ -394,6 +394,7 @@
 - ✅ **PP390** **the fourth attempt to fix holepunch.c's log prefixes, and nothing in that file records the three decisions against it** — the seven carry a marker naming the decision that made them, and the rule asks whether the file still matches PP235 and PP238.
 - ✅ **PP410** **three line-count claims sit in a shape the recount reader cannot see, and one of them is stale by 139 lines** — the reader takes up to six lowercase words between a filename and its number, which brings three unscanned claims under the gate and turned the stale one red.
 - ✅ **PP417** **every commit touching a .c file restates four counted claims by hand, from commands --recount already prints exactly** — --recount --apply runs the calls it prints through roadkeep, off one argument list, and stops on the first refusal.
+- ✅ **PP412** **a quoted example in a rationale section is read as a claim, so citing a stale number turns the gate red on the citation** — the shape is refused rather than the reader blinded, and a quoted example writes a placeholder where the number would go.
 
 ## Block H — Performance and telemetry
 

@@ -10,8 +10,14 @@ namespace ChiakiNg.Session;
 /// <param name="Subject">The file or directory being sized.</param>
 /// <param name="Stated">The number the backlog states.</param>
 /// <param name="SizesADirectory">Whether the subject is a directory total rather than one file.</param>
+/// <param name="Column">
+/// PP412: where the match starts in its line, 0-based, or -1 for a claim built by hand rather than
+/// scanned. Only <see cref="CountedClaims.IsInsideQuotes"/> needs it, and it needs it because
+/// <see cref="Text"/> can occur more than once on a line.
+/// </param>
 public readonly record struct CountedClaim(
-    string Document, int Line, string Text, string Subject, int Stated, bool SizesADirectory);
+    string Document, int Line, string Text, string Subject, int Stated, bool SizesADirectory,
+    int Column = -1);
 
 /// <summary>
 /// PP280, PP285 and PP304: the sizes the backlog states, where they are stated, and how to correct
@@ -59,7 +65,7 @@ public static partial class CountedClaims
                     claims.Add(new CountedClaim(
                         document, i + 1, match.Value, match.Groups["file"].Value,
                         int.Parse(match.Groups["lines"].Value, CultureInfo.InvariantCulture),
-                        SizesADirectory: false));
+                        SizesADirectory: false, Column: match.Index));
                 }
 
                 foreach (Match match in TreeClaimRegex().Matches(lines[i]))
@@ -67,13 +73,87 @@ public static partial class CountedClaims
                     claims.Add(new CountedClaim(
                         document, i + 1, match.Value, match.Groups["dir"].Value,
                         int.Parse(match.Groups["lines"].Value, CultureInfo.InvariantCulture),
-                        SizesADirectory: true));
+                        SizesADirectory: true, Column: match.Index));
                 }
             }
         }
 
         return claims;
     }
+
+    /// <summary>
+    /// PP412: whether a position in a line sits inside a double-quoted span.
+    ///
+    /// Quote parity before it, which is all a Markdown paragraph gives. A quote is not nestable here
+    /// and nothing escapes one, so counting is the whole of it.
+    /// </summary>
+    public static bool IsInsideQuotes(string line, int column)
+    {
+        ArgumentNullException.ThrowIfNull(line);
+
+        if (column < 0 || column > line.Length)
+            return false;
+
+        var quotes = 0;
+        for (var at = 0; at < column; at++)
+        {
+            if (line[at] == '"')
+                quotes++;
+        }
+
+        return quotes % 2 == 1;
+    }
+
+    /// <summary>
+    /// PP412: every claim in the backlog that the reader finds INSIDE a quoted span.
+    ///
+    /// THE DECISION THIS ANSWERS. PP410 widened the reader and the widening turned two claims red:
+    /// the real stale one, and the citation of it inside the rationale explaining the fix. The second
+    /// was not a defect, and the reader cannot tell - same filename, same shape, same number.
+    ///
+    /// TWO ANSWERS WERE AVAILABLE AND ONLY ONE IS SAFE. Teaching the reader to skip quoted text is
+    /// cheaper and makes a whole syntactic region invisible to the gate - which is PP410's own defect
+    /// chosen deliberately, and its section says why: a claim the scan misses is worse than no claim
+    /// at all. So the shape is refused instead, and a size named inside quotes is written with a
+    /// placeholder - <c>"&lt;name&gt;.c is the longest at &lt;n&gt; lines"</c> - which the reader does
+    /// not read as a claim because it holds no digits.
+    ///
+    /// DEFINED BY THE READER RATHER THAN BY A SECOND HEURISTIC. A quoted span is offending exactly
+    /// when the claim reader would read a claim in it. That is why this returns claims rather than
+    /// matching quotes itself: PP417 had to collapse two implementations of one thing, and this is
+    /// the same trap one document over.
+    /// </summary>
+    public static IReadOnlyList<CountedClaim> QuotedClaims(string root)
+    {
+        ArgumentNullException.ThrowIfNull(root);
+
+        var quoted = new List<CountedClaim>();
+
+        foreach (CountedClaim claim in All(root))
+        {
+            if (claim.Column < 0)
+                continue;
+
+            string path = Path.Combine(
+                root, claim.Document.Replace('/', Path.DirectorySeparatorChar));
+            if (!File.Exists(path))
+                continue;
+
+            string[] lines = File.ReadAllLines(path);
+            if (claim.Line < 1 || claim.Line > lines.Length)
+                continue;
+
+            if (IsInsideQuotes(lines[claim.Line - 1], claim.Column))
+                quoted.Add(claim);
+        }
+
+        return quoted;
+    }
+
+    /// <summary>
+    /// The placeholder a quoted example writes instead of a number, named so the refusal can say it.
+    /// </summary>
+    public const string NumberPlaceholder = "<n>";
 
     /// <summary>
     /// What the tree says the claim's subject is, or -1 where the subject cannot be resolved to

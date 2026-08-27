@@ -191,6 +191,17 @@ public class CountedClaimTests(ITestOutputHelper output)
 
     /// <summary>Every file claim one line of IMPROVEMENTS.md yields, read through the real scan.</summary>
     private static IReadOnlyList<CountedClaim> ScanOf(string prose)
+        => InATemporaryRoot(prose, CountedClaims.All);
+
+    /// <summary>
+    /// One line of prose as the only content of a throwaway checkout, and whatever a reader makes
+    /// of it.
+    ///
+    /// Shared by both readers so they see the same fixture: a scan that disagreed with the quote
+    /// check about what a document contains would make one of the two meaningless.
+    /// </summary>
+    private static IReadOnlyList<CountedClaim> InATemporaryRoot(
+        string prose, Func<string, IReadOnlyList<CountedClaim>> read)
     {
         string root = Path.Combine(
             Path.GetTempPath(), "pportal-claims-" + Guid.NewGuid().ToString("N"));
@@ -201,13 +212,128 @@ public class CountedClaimTests(ITestOutputHelper output)
             File.WriteAllLines(
                 Path.Combine(root, "docs", "IMPROVEMENTS.md"), ["### §PP1 A section", "", prose]);
 
-            return CountedClaims.All(root);
+            return read(root);
         }
         finally
         {
             Directory.Delete(root, recursive: true);
         }
     }
+
+    /// <summary>
+    /// PP412: THE GUARD. No governed section states a size inside quotes.
+    ///
+    /// PP410's widening turned two claims red: the stale one, and the citation of it inside the
+    /// rationale explaining the fix. The second was not a defect, and the reader cannot tell one
+    /// from the other - same filename, same shape, same number.
+    ///
+    /// The alternative was teaching the reader to skip quoted text, which makes a whole syntactic
+    /// region invisible to this gate. That is PP410's own defect chosen on purpose, and its section
+    /// is what settles it: a claim the scan misses is worse than no claim at all. So the shape is
+    /// refused here instead, and an example writes a placeholder where the number would go.
+    /// </summary>
+    [Fact]
+    public void NoSectionStatesASizeInsideQuotes()
+    {
+        string? root = SanitizerSource.RepositoryRoot();
+        Assert.NotNull(root);
+
+        // The sweep must be finding claims at all, or this passes for PP271's reason.
+        Assert.True(
+            CountedClaims.All(root).Count(c => c.Column >= 0) >= 5,
+            "the scan is not working, so this guard is vacuous");
+
+        IReadOnlyList<CountedClaim> quoted = CountedClaims.QuotedClaims(root);
+
+        Assert.True(
+            quoted.Count == 0,
+            "a quoted example here reads as a claim, and correcting it would make the quotation say "
+                + $"something it did not. Write the number as {CountedClaims.NumberPlaceholder}:\n  "
+                + string.Join(
+                    "\n  ",
+                    quoted.Select(c => $"{c.Document}:{c.Line}  \"{c.Text}\"")));
+    }
+
+    /// <summary>
+    /// And the parity reader itself, on the shapes that matter.
+    ///
+    /// Including the one this rule exists for: a placeholder inside quotes is not a claim, so it is
+    /// not found at all - which is what makes the convention writable rather than merely stated.
+    /// </summary>
+    [Fact]
+    public void QuoteParityDecidesWhatIsInsideAQuotation()
+    {
+        const string line = "so \"ctrl.c is the longest at 1574 lines\" puts four words between";
+
+        int inside = line.IndexOf("ctrl.c", StringComparison.Ordinal);
+        Assert.True(CountedClaims.IsInsideQuotes(line, inside));
+
+        // Before the opening quote, and after the closing one, are both outside.
+        Assert.False(CountedClaims.IsInsideQuotes(line, 0));
+        Assert.False(
+            CountedClaims.IsInsideQuotes(line, line.IndexOf("puts", StringComparison.Ordinal)));
+
+        // A column outside the line is not "inside" anything.
+        Assert.False(CountedClaims.IsInsideQuotes(line, -1));
+        Assert.False(CountedClaims.IsInsideQuotes(line, line.Length + 10));
+
+        // And the placeholder form holds no digits, so the reader finds no claim to place at all.
+        IReadOnlyList<CountedClaim> none = ScanOf(
+            $"so \"ctrl.c is the longest at {CountedClaims.NumberPlaceholder} lines\" puts four words");
+        Assert.DoesNotContain(none, c => !c.SizesADirectory);
+    }
+
+    /// <summary>
+    /// PP412: a real quoted size IS found, so the guard above is not passing on a technicality.
+    ///
+    /// The scan finds it and the parity reader places it inside the quotes. Both halves, against a
+    /// synthetic document, because the governed ones are required to hold none.
+    /// </summary>
+    [Fact]
+    public void AQuotedSizeIsFoundAndPlacedInsideItsQuotes()
+    {
+        const string prose = "the comment said \"ctrl.c is the longest at 1574 lines\" and was wrong";
+
+        CountedClaim claim = Assert.Single(ScanOf(prose), c => !c.SizesADirectory);
+
+        Assert.Equal("ctrl.c", claim.Subject);
+        Assert.Equal(1574, claim.Stated);
+        Assert.True(claim.Column >= 0);
+        Assert.True(CountedClaims.IsInsideQuotes(prose, claim.Column));
+    }
+
+    /// <summary>
+    /// PP412: and QuotedClaims itself reports it, which is what the guard over the real files runs.
+    ///
+    /// Against a synthetic document rather than by putting a quoted size into the backlog and taking
+    /// it out again: the governed files are required to hold none, so they cannot be the fixture for
+    /// the positive case. Both cases here, so "reports none" cannot be passing vacuously.
+    /// </summary>
+    [Fact]
+    public void QuotedClaimsReportsAQuotedSizeAndIgnoresAPlainOne()
+    {
+        // Quoted: reported.
+        CountedClaim offending = Assert.Single(
+            QuotedClaimsOf("the comment said \"ctrl.c is the longest at 1574 lines\" and was wrong"));
+
+        Assert.Equal("ctrl.c", offending.Subject);
+        Assert.Equal(1574, offending.Stated);
+
+        // Unquoted: a claim, and not this rule's business.
+        Assert.Empty(QuotedClaimsOf("ctrl.c is the longest at 1574 lines and carries the most"));
+
+        // Quoted, but with the placeholder: not a claim at all, so nothing to report.
+        Assert.Empty(QuotedClaimsOf(
+            $"the comment said \"ctrl.c is the longest at {CountedClaims.NumberPlaceholder} lines\""));
+
+        // Quoted, but the number belongs to the next sentence - which the reader does not stitch.
+        Assert.Empty(QuotedClaimsOf(
+            "so \"http.c is not among them. It is 262 lines over rudp\" stays out"));
+    }
+
+    /// <summary>The quoted claims one line of IMPROVEMENTS.md yields, through the real function.</summary>
+    private static IReadOnlyList<CountedClaim> QuotedClaimsOf(string prose)
+        => InATemporaryRoot(prose, CountedClaims.QuotedClaims);
 
     /// <summary>
     /// PP417: the printed line IS the argument list rendered, and neither is parsed out of the other.
