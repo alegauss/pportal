@@ -366,6 +366,7 @@
 - ✅ **PP425** **the senkusha and stream participants carry bytes copied from the capture, so the replay confirms a table not the port** — the two participants build their messages from field numbers and values, and the capture judges the encoding rather than supplying it.
 - ✅ **PP369** **eight asserts still carry weight about data across four files, and PP357's check reads only one of them** — seven of the eight are guarded elsewhere or state a fact, each with its reason censused, and the init ack's payload size is a check.
 - ✅ **PP426** **two of eleven socket calls in lib/src pass an unsigned buffer uncast, and the build has printed their warnings all along** — takion's two socket calls carry the cast, and a rule over lib refuses an unsigned buffer handed over uncast, read from its declaration.
+- ✅ **PP428** **seventeen asserted error codes are their variable's only reader, and nothing joins that count to PP404's census** — a derived reader finds the seventeen the compiler prints, every one is in PP404's census, and only bright_ambassador can fail.
 
 ## Block G — Test discipline
 
