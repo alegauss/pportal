@@ -367,6 +367,7 @@
 - ✅ **PP369** **eight asserts still carry weight about data across four files, and PP357's check reads only one of them** — seven of the eight are guarded elsewhere or state a fact, each with its reason censused, and the init ack's payload size is a check.
 - ✅ **PP426** **two of eleven socket calls in lib/src pass an unsigned buffer uncast, and the build has printed their warnings all along** — takion's two socket calls carry the cast, and a rule over lib refuses an unsigned buffer handed over uncast, read from its declaration.
 - ✅ **PP428** **seventeen asserted error codes are their variable's only reader, and nothing joins that count to PP404's census** — a derived reader finds the seventeen the compiler prints, every one is in PP404's census, and only bright_ambassador can fail.
+- ✅ **PP429** **PP340's nine holepunch call sites are named only in prose, so a tenth would change what PP33 is blocked on in silence** — the nine are named by what each asks for and held in file order, and the two sockets are told apart by their port type.
 
 ## Block G — Test discipline
 
