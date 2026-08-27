@@ -413,6 +413,7 @@
 - ✅ **PP412** **a quoted example in a rationale section is read as a claim, so citing a stale number turns the gate red on the citation** — the shape is refused rather than the reader blinded, and a quoted example writes a placeholder where the number would go.
 - ✅ **PP432** **the site's generated flag list is two behind the host, and nothing joins it to the table it is derived from** — the site states the sixteen flags the host declares, and a rule in the suite that runs refuses a disagreement either way.
 - ✅ **PP433** **CI runs two of the three suites test.cmd runs, and the third is 454 runtime checks over the native seam** — the three passes are held against both files, the selftest is named local-only with PP117's hang as the reason, and a second cannot appear quietly.
+- ✅ **PP434** **PP230's manifest check reads only the root CMakeLists.txt, so an unconditional REQUIRED in lib/ is invisible** — The walk reaches lib/ and shim/ by the same column-zero rule the lookups use, so what lib/CMakeLists.txt requires is measured rather than assumed; Threads is excluded on purpose.
 
 ## Block H — Performance and telemetry
 

@@ -133,4 +133,163 @@ public class VcpkgManifestTests(ITestOutputHelper output)
             "vcpkg.json does not carry what the build requires unconditionally, so a runner with "
                 + "nothing installed cannot configure: " + string.Join(", ", missing));
     }
+
+    /// <summary>
+    /// PP434: a graph, on a reader that is not this checkout's.
+    ///
+    /// Column zero descends and indented does not, which is the same convention the lookups are read
+    /// by. The real graph has to agree with the manifest and so cannot be the fixture for a walk that
+    /// finds something the root file hid.
+    /// </summary>
+    [Fact]
+    public void TheWalkDescendsThroughColumnZeroOnly()
+    {
+        var graph = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            [@"CMakeLists.txt"] = """
+                add_subdirectory(lib)
+                if(CHIAKI_ENABLE_GUI)
+                	add_subdirectory(gui)
+                endif()
+                """,
+            [@"lib\CMakeLists.txt"] = """
+                find_package(Threads REQUIRED)
+                find_package(SomethingNobodyPackaged REQUIRED)
+                add_subdirectory(protobuf)
+                """,
+            [@"lib\protobuf\CMakeLists.txt"] = "find_package(AlsoUnpackaged REQUIRED)\n",
+
+            // Reached only behind an option, so nothing in it is the manifest's business.
+            [@"gui\CMakeLists.txt"] = "find_package(Qt6 REQUIRED COMPONENTS Core)\n",
+        };
+
+        string? Read(string relative) => graph.TryGetValue(relative, out string? text) ? text : null;
+
+        IReadOnlyList<string> reached = VcpkgManifest.Reachable(Read);
+        output.WriteLine("reached: " + string.Join(", ", reached));
+
+        Assert.Equal(
+            [@"CMakeLists.txt", @"lib\CMakeLists.txt", @"lib\protobuf\CMakeLists.txt"], reached);
+
+        IReadOnlySet<string> required = VcpkgManifest.RequiredAcrossGraph(Read);
+
+        // The whole point: found in a file the root-only reader never opens.
+        Assert.Contains("SomethingNobodyPackaged", required);
+        Assert.Contains("AlsoUnpackaged", required);
+        Assert.DoesNotContain("Qt6", required);
+
+        // And the root-only reader is where it was, which is what makes the difference the finding.
+        Assert.DoesNotContain(
+            "SomethingNobodyPackaged", VcpkgManifest.RequiredUnconditionally(graph["CMakeLists.txt"]));
+
+        Assert.Equal(
+            ["AlsoUnpackaged", "SomethingNobodyPackaged"],
+            VcpkgManifest.MissingAcrossGraph(Read, Manifest));
+    }
+
+    /// <summary>
+    /// PP434: and third-party/ is excluded by the rule, not by its name.
+    ///
+    /// Every add_subdirectory in that aggregator is indented, so the walk reads it, finds nothing
+    /// unconditional and descends no further - which is why curl's thirty REQUIRED lookups, all for
+    /// TLS backends this build does not enable, never enter the answer.
+    /// </summary>
+    [Fact]
+    public void AnAggregatorThatAddsNothingUnconditionallyEndsTheWalk()
+    {
+        var graph = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            [@"CMakeLists.txt"] = "add_subdirectory(third-party)\n",
+            [@"third-party\CMakeLists.txt"] = """
+                if(NOT CHIAKI_USE_SYSTEM_NANOPB)
+                	add_subdirectory(nanopb EXCLUDE_FROM_ALL)
+                endif()
+                """,
+            [@"third-party\nanopb\CMakeLists.txt"] = "find_package(Protobuf REQUIRED)\n",
+        };
+
+        string? Read(string relative) => graph.TryGetValue(relative, out string? text) ? text : null;
+
+        Assert.Equal(
+            [@"CMakeLists.txt", @"third-party\CMakeLists.txt"], VcpkgManifest.Reachable(Read));
+
+        Assert.Empty(VcpkgManifest.RequiredAcrossGraph(Read));
+
+        // The hyphen in the directory name is read, and EXCLUDE_FROM_ALL does not become a name.
+        Assert.Equal(
+            ["third-party"], VcpkgManifest.UnconditionalSubdirectories(graph["CMakeLists.txt"]));
+
+        Assert.Empty(VcpkgManifest.UnconditionalSubdirectories(graph[@"third-party\CMakeLists.txt"]));
+    }
+
+    /// <summary>
+    /// PP434: the real graph is more than the root file, asserted so the scope cannot quietly shrink.
+    ///
+    /// lib/CMakeLists.txt is where openssl, opus and libevent are asked for, and the root-only reader
+    /// never opened it. Threads is what proves the walk arrived: it sits at column zero there and
+    /// nowhere in the root.
+    /// </summary>
+    [Fact]
+    public void TheRealWalkReachesLibAndNotGui()
+    {
+        if (VcpkgManifest.ReadFromCheckout() is not { } read)
+            return;
+
+        IReadOnlyList<string> reached = VcpkgManifest.Reachable(read);
+        output.WriteLine("reached: " + string.Join(", ", reached));
+
+        // PP271: a walk that read nothing would satisfy every claim below by finding nothing.
+        Assert.True(reached.Count >= 3, $"the walk reached only {reached.Count} files");
+
+        Assert.Contains(@"CMakeLists.txt", reached);
+        Assert.Contains(@"lib\CMakeLists.txt", reached);
+
+        // Behind CHIAKI_ENABLE_GUI, which CI turns off. A choice is not a manifest obligation.
+        Assert.DoesNotContain(@"gui\CMakeLists.txt", reached);
+        Assert.DoesNotContain(@"test\CMakeLists.txt", reached);
+
+        IReadOnlySet<string> graph = VcpkgManifest.RequiredAcrossGraph(read);
+        Assert.Contains("Threads", graph);
+
+        if (VcpkgManifest.LocateCMake() is { } root)
+        {
+            Assert.DoesNotContain(
+                "Threads", VcpkgManifest.RequiredUnconditionally(File.ReadAllText(root)));
+        }
+    }
+
+    /// <summary>
+    /// PP434: and the assertion that now has to hold on every commit - the WHOLE graph against the
+    /// manifest, which is what a runner with nothing installed would hit.
+    /// </summary>
+    [Fact]
+    public void TheManifestCarriesWhatTheWholeGraphRequires()
+    {
+        if (VcpkgManifest.ReadFromCheckout() is not { } read)
+            return;
+        if (VcpkgManifest.LocateManifest() is not { } manifestPath)
+            return;
+
+        IReadOnlySet<string> required = VcpkgManifest.RequiredAcrossGraph(read);
+        output.WriteLine("across the graph: " + string.Join(", ", required));
+
+        IReadOnlyList<string> missing =
+            VcpkgManifest.MissingAcrossGraph(read, File.ReadAllText(manifestPath));
+
+        Assert.True(
+            missing.Count == 0,
+            "vcpkg.json does not carry what the build requires unconditionally somewhere in the "
+                + "graph, so a runner with nothing installed cannot configure: "
+                + string.Join(", ", missing));
+    }
+
+    /// <summary>PP272: and an empty file adds no subdirectory and requires nothing.</summary>
+    [Fact]
+    public void AnEmptyFileReachesNothing()
+    {
+        Assert.Empty(VcpkgManifest.UnconditionalSubdirectories(""));
+        Assert.Empty(VcpkgManifest.RequiredUnconditionally(""));
+        Assert.Empty(VcpkgManifest.Reachable(_ => null));
+        Assert.Empty(VcpkgManifest.RequiredAcrossGraph(_ => null));
+    }
 }
