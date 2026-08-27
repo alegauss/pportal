@@ -170,4 +170,97 @@ public static class MessageSecretsSource
         return code.Contains(
             "msg.big_payload.session_key.arg=session->session_id;", StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// PP419: whether every tap on a protobuf channel emits the PAYLOAD type.
+    ///
+    /// The number this column carries is what <see cref="MessageSecrets.MayRecord"/> is keyed to and
+    /// what a replay compares message for message, and PP397 settled that on these two channels it
+    /// is the protobuf payload type. Senkusha emitted takion's data type instead - 1 and 8 on send,
+    /// and 0 on every receive, which is BIG in the numbering the column claims to use.
+    ///
+    /// ASKED OF BOTH FILES AT ONCE, because the defect was the two disagreeing. A check on senkusha
+    /// alone would pass the day somebody changed the stream the other way.
+    /// </summary>
+    /// <param name="senkushaCore">senkusha.c.</param>
+    /// <param name="streamCore">streamconnection.c.</param>
+    public static bool EveryProtobufTapEmitsThePayloadType(string senkushaCore, string streamCore)
+    {
+        ArgumentNullException.ThrowIfNull(senkushaCore);
+        ArgumentNullException.ThrowIfNull(streamCore);
+
+        return TapsEmitThePayloadType(senkushaCore, "CHIAKI_MESSAGE_TAP_CHANNEL_SENKUSHA")
+            && TapsEmitThePayloadType(streamCore, "CHIAKI_MESSAGE_TAP_CHANNEL_STREAM");
+    }
+
+    /// <summary>
+    /// PP419: whether senkusha's receive still peeks, which is the only way it can know the type.
+    ///
+    /// The tap sits above the decode - PP394's rule, and PP323's before it - so the payload type is
+    /// not available unless the bytes are peeked. Under the tap's own guard, so a run that records
+    /// nothing decodes nothing extra, and falling back to UNKNOWN where the peek fails: PP397
+    /// established that a message nothing could classify is never recordable.
+    /// </summary>
+    public static bool SenkushasReceiveStillPeeksTheType(string senkushaCore)
+    {
+        ArgumentNullException.ThrowIfNull(senkushaCore);
+
+        string? body = CFunction.Body(
+            senkushaCore,
+            "static void senkusha_takion_data(ChiakiSenkusha *senkusha, "
+                + "ChiakiTakionMessageDataType data_type, uint8_t *buf, size_t buf_size)");
+        if (body is null)
+            return false;
+
+        string code = CCall.Compact(CCall.Code(body));
+
+        int guard = code.IndexOf("if(chiaki_message_tap_active())", StringComparison.Ordinal);
+        if (guard < 0)
+            return false;
+
+        int peek = code.IndexOf(
+            "pb_decode(&peek_stream,tkproto_TakionMessage_fields,&peek)", guard,
+            StringComparison.Ordinal);
+        if (peek < 0)
+            return false;
+
+        int fallback = code.IndexOf(
+            "CHIAKI_MESSAGE_TAP_TYPE_UNKNOWN", peek, StringComparison.Ordinal);
+        int emit = code.IndexOf("chiaki_message_tap_emit(", peek, StringComparison.Ordinal);
+
+        return fallback > peek && emit > fallback;
+    }
+
+    /// <summary>
+    /// Whether every tap on one channel passes a payload type rather than a data type.
+    ///
+    /// Read as the ABSENCE of the old shape alongside the presence of the new one: a file that
+    /// stopped tapping altogether must not satisfy "emits the payload type".
+    /// </summary>
+    private static bool TapsEmitThePayloadType(string core, string channel)
+    {
+        string code = CCall.Compact(CCall.Code(core));
+
+        var emits = 0;
+        for (int at = code.IndexOf(channel, StringComparison.Ordinal);
+             at >= 0;
+             at = code.IndexOf(channel, at + channel.Length, StringComparison.Ordinal))
+        {
+            // The argument after the channel is the type. Up to the closing parenthesis of the call.
+            int end = code.IndexOf(",buf", at, StringComparison.Ordinal);
+            if (end < 0)
+                return false;
+
+            string typeArgument = code[(at + channel.Length)..end];
+
+            // data_type is the number this must NOT be. A literal is equally wrong: PP419's send
+            // side passed 1 and 8 straight through.
+            if (typeArgument.Contains("data_type", StringComparison.Ordinal))
+                return false;
+
+            emits++;
+        }
+
+        return emits >= 2;
+    }
 }

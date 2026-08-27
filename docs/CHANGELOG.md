@@ -356,6 +356,7 @@
 - ✅ **PP415** **ctrl_connect_tcp is unported, and its sockaddr allocation failure reaches the user as a connect failure** — the connect is modelled with its five outcomes and its dropped mutex, and the sockaddr allocation failure now reports memory rather than the network.
 - ✅ **PP416** **the ctrl drain's failure breaks the inner loop only, so the outer loop re-enters and sends what it meant to leave** — leaving the drain now drops what is still queued, so the outer loop finds nothing to re-enter it for, and the count no longer races.
 - ✅ **PP418** **the senkusha channel's redaction set is empty on prose alone, and the first capture of it is about to be published** — both BIGs are read out of the C: senkusha's three fields still empty, and the stream's session key still the session id that earns its redaction.
+- ✅ **PP419** **the senkusha tap emits takion's data type where the recording says protobuf payload type, and redaction reads it as one** — both protobuf channels emit the payload type: senkusha's send chain threads it and its receive peeks for it, as the stream already did.
 
 ## Block G — Test discipline
 

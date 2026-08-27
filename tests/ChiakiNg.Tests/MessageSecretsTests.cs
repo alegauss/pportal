@@ -157,12 +157,98 @@ public class MessageSecretsTests
             "// msg.has_big_payload = true; msg.big_payload.session_key.arg = \"\";"));
     }
 
-    /// <summary>PP272: and both readers answer no to an empty file.</summary>
+    /// <summary>
+    /// PP419: THE PROPERTY WORTH HAVING A NAME FOR. One numbering scheme across both protobuf
+    /// channels.
+    ///
+    /// The recording's type column is what MayRecord is keyed to and what a replay compares message
+    /// for message. PP397 settled that on the stream and on senkusha it is the protobuf payload type;
+    /// senkusha emitted takion's data type - 1 and 8 on send, and 0 on every receive, which is BIG in
+    /// the numbering the column claims to use. The first capture of the channel is what showed it.
+    /// </summary>
+    [Fact]
+    public void BothProtobufChannelsEmitAPayloadType()
+    {
+        if (MessageSecretsSource.LocateSenkusha() is not { } senkusha)
+            return;
+        if (MessageSecretsSource.LocateStream() is not { } stream)
+            return;
+
+        Assert.True(
+            MessageSecretsSource.EveryProtobufTapEmitsThePayloadType(
+                File.ReadAllText(senkusha), File.ReadAllText(stream)),
+            "a tap on a protobuf channel passes takion's data type, so the recording's type column "
+                + "means a different thing there than on the other one");
+    }
+
+    /// <summary>
+    /// And senkusha's receive peeks, which is the only way a tap above the decode can know the type.
+    /// </summary>
+    [Fact]
+    public void SenkushasReceivePeeksForItsType()
+    {
+        if (MessageSecretsSource.LocateSenkusha() is not { } path)
+            return;
+
+        Assert.True(
+            MessageSecretsSource.SenkushasReceiveStillPeeksTheType(File.ReadAllText(path)),
+            "senkusha's receive no longer peeks, so it cannot know the payload type it records");
+    }
+
+    /// <summary>
+    /// PP419: and the reader refuses a tap that passes the data type, or one that is gone.
+    ///
+    /// The first is the shape this removed. The second matters as much: "emits a payload type" must
+    /// not be satisfiable by a file that stopped tapping, which is PP272's absence trap.
+    /// </summary>
+    [Fact]
+    public void TheReaderRefusesADataTypeTapAndAMissingOne()
+    {
+        const string Fixed = """
+            	chiaki_message_tap_emit(
+            			CHIAKI_MESSAGE_TAP_SENT, CHIAKI_MESSAGE_TAP_CHANNEL_SENKUSHA, payload_type, buf, buf_size);
+            	chiaki_message_tap_emit(
+            			CHIAKI_MESSAGE_TAP_RECEIVED, CHIAKI_MESSAGE_TAP_CHANNEL_SENKUSHA, payload_type, buf, buf_size);
+            """;
+
+        const string Stream = """
+            	chiaki_message_tap_emit(
+            			CHIAKI_MESSAGE_TAP_SENT, CHIAKI_MESSAGE_TAP_CHANNEL_STREAM, payload_type, buf, buf_size);
+            	chiaki_message_tap_emit(
+            			CHIAKI_MESSAGE_TAP_RECEIVED, CHIAKI_MESSAGE_TAP_CHANNEL_STREAM, payload_type, buf, buf_size);
+            """;
+
+        Assert.True(MessageSecretsSource.EveryProtobufTapEmitsThePayloadType(Fixed, Stream));
+
+        // The shape PP419 removed: takion's data type, on the send side.
+        Assert.False(MessageSecretsSource.EveryProtobufTapEmitsThePayloadType(
+            Fixed.Replace(
+                "CHIAKI_MESSAGE_TAP_CHANNEL_SENKUSHA, payload_type",
+                "CHIAKI_MESSAGE_TAP_CHANNEL_SENKUSHA, data_type",
+                StringComparison.Ordinal),
+            Stream));
+
+        // And the same defect on the other channel is refused too - the check asks both.
+        Assert.False(MessageSecretsSource.EveryProtobufTapEmitsThePayloadType(
+            Fixed,
+            Stream.Replace(
+                "CHIAKI_MESSAGE_TAP_CHANNEL_STREAM, payload_type",
+                "CHIAKI_MESSAGE_TAP_CHANNEL_STREAM, data_type",
+                StringComparison.Ordinal)));
+
+        // No taps at all is not "emits a payload type".
+        Assert.False(MessageSecretsSource.EveryProtobufTapEmitsThePayloadType("", ""));
+        Assert.False(MessageSecretsSource.EveryProtobufTapEmitsThePayloadType(Fixed, ""));
+    }
+
+    /// <summary>PP272: and every reader answers no to an empty file.</summary>
     [Fact]
     public void BothReadersAnswerNoToAnEmptyFile()
     {
         Assert.False(MessageSecretsSource.SenkushasBigStillCarriesNothing(""));
         Assert.False(MessageSecretsSource.TheStreamsBigStillCarriesTheSessionId(""));
+        Assert.False(MessageSecretsSource.SenkushasReceiveStillPeeksTheType(""));
+        Assert.False(MessageSecretsSource.EveryProtobufTapEmitsThePayloadType("", ""));
     }
 
     /// <summary>
