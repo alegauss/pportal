@@ -386,35 +386,6 @@ Until then PP33 is correctly blocked, and `remaining PP33` reads 420. Reading th
 number as the size of the job is what its own section warns against: it is one file, and
 the work is at the other end.
 
-### §PP464 The slot the drop pass steps over
-
-`discovery_service_drop_old_hosts` walks the host array with an index, removes a stale
-entry by shifting the rest down, and then steps the index back so the `for`'s increment
-lands on the slot the shift just filled:
-
-    change = true;
-    if(i > 0)
-        i--;
-    service->hosts_count--;
-
-The guard is the defect. At index 0 the decrement is skipped, so `i++` moves to 1 and
-whatever shifted into slot 0 is not examined on this pass. Two stale hosts at the front
-of the list therefore cost two passes where two anywhere else cost one.
-
-The guard looks like it is avoiding an underflow, and there is none to avoid: `i` is a
-`size_t`, an unconditional `i--` at zero wraps to SIZE_MAX, and the `i++` brings it
-straight back to zero. That is already what every other index relies on, one step
-removed.
-
-The consequence is bounded and self-correcting: the skipped host is still stale on the
-next ping, the pass starts at zero again, and it goes. So this is one ping cycle of a
-console lingering in the list after it stopped answering - visible in a console list
-that refreshes on the service's callback, and not a leak.
-
-PP29 reproduces the traversal rather than fixing it, and two tests pin it by
-construction - two stale hosts at the front take two passes, two after the first take
-one. Both invert when the guard goes.
-
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry

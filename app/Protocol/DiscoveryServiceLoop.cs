@@ -51,11 +51,12 @@ public readonly record struct ServiceHost(
 /// a host being dropped each report; a host answering again with everything the same refreshes its
 /// ping index and tells nobody. That is what keeps a console list from redrawing every ping.
 ///
-/// THE DROP TRAVERSAL SKIPS THE SLOT IT JUST FILLED, AT INDEX 0 ONLY. Removing element i shifts the
-/// rest down and then does `if(i > 0) i--` so the `i++` lands back on the same index - except at zero,
-/// where the guard skips the decrement and the host that moved into slot 0 is not examined this pass.
-/// Reproduced in <see cref="DiscoveryHostTable.DropOldHosts"/>, and filed: it is one ping cycle of
-/// delay rather than a leak, because the next pass starts at zero again.
+/// THE DROP TRAVERSAL USED TO SKIP THE SLOT IT JUST FILLED, AT INDEX 0 ONLY, AND PP464 FIXED IT.
+/// Removing element i shifts the rest down and steps the index back so the `i++` lands on the same
+/// slot; the step-back was written `if(i > 0) i--`, so at zero it did not happen and the host that
+/// moved into slot 0 waited a whole ping cycle. The guard looked like it was avoiding an underflow
+/// and there was none: `i` is a `size_t`, the decrement wraps to SIZE_MAX and the increment brings it
+/// back, which every other index already relied on one step removed.
 /// </summary>
 public static class DiscoveryServiceLoop
 {
@@ -145,19 +146,20 @@ public static class DiscoveryServiceLoop
     }
 
     /// <summary>
-    /// Whether the drop traversal still guards its step-back, which is what skips index 0.
+    /// PP464: whether the drop traversal steps back unconditionally, so index 0 is treated like every
+    /// other.
     ///
-    /// The guard is the defect: an unconditional `i--` would wrap to SIZE_MAX at zero and the `i++`
-    /// would bring it back, which is what the other indices already rely on.
+    /// Both halves: the decrement is there AND the guard is gone. Checking only for the decrement
+    /// would stay green if the guard came back around it, which is the shape the defect had.
     /// </summary>
-    public static bool TheDropStillGuardsItsStepBack(string dropBody)
+    public static bool TheDropStepsBackUnconditionally(string dropBody)
     {
         ArgumentNullException.ThrowIfNull(dropBody);
 
         string text = dropBody.Replace("\r\n", "\n", StringComparison.Ordinal);
 
-        return text.Contains("if(i > 0)", StringComparison.Ordinal)
-            && text.Contains("i--;", StringComparison.Ordinal);
+        return text.Contains("i--;", StringComparison.Ordinal)
+            && !text.Contains("if(i > 0)", StringComparison.Ordinal);
     }
 }
 
@@ -241,10 +243,9 @@ public sealed class DiscoveryHostTable
             dropped++;
             change = true;
 
-            // PP29: the guard, and the skip it causes. At any other index this puts `i` back on the
-            // slot the shift just filled; at zero it does not, so that host waits a ping.
-            if (i > 0)
-                i--;
+            // PP464: unconditional, so the increment lands back on the slot the shift just filled -
+            // at every index including zero, which a guard here used to skip.
+            i--;
         }
 
         if (change)

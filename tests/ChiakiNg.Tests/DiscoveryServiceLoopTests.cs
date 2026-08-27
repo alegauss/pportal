@@ -9,8 +9,11 @@ namespace ChiakiNg.Tests;
 ///
 /// PP462 ported the socket and the thread reading it. This is the layer above - a ping timer, a table
 /// of hosts keyed by id, and a callback that fires only when the table changes. The assertions worth
-/// having are the ones a rewrite would get wrong quietly: the first wait is a different length, an
-/// unchanged host reports nothing, and the drop pass skips whatever moves into slot 0.
+/// having are the ones a rewrite would get wrong quietly: the first wait is a different length, and an
+/// unchanged host reports nothing.
+///
+/// PP464 then fixed what PP29 had recorded here - the drop pass used to step over whatever moved into
+/// slot 0 - so the traversal tests hold the repair rather than the quirk.
 /// </summary>
 public class DiscoveryServiceLoopTests
 {
@@ -121,15 +124,14 @@ public class DiscoveryServiceLoopTests
     }
 
     /// <summary>
-    /// THE TRAVERSAL QUIRK: two stale hosts at the front cost two passes, because whatever moves into
-    /// slot 0 is not examined again this time round.
+    /// PP464: two stale hosts at the front now go in ONE pass, like two anywhere else.
     ///
-    /// At any other index the step-back puts the cursor back on the slot the shift just filled. At zero
-    /// the guard skips it. One ping of delay rather than a leak - the next pass starts at zero again -
-    /// and filed on that basis.
+    /// This test carried the defect when PP29 wrote it - the first pass dropped one, left the other in
+    /// slot 0, and a second pass was needed. The step-back is unconditional now, so the cursor lands on
+    /// the slot the shift just filled at every index including zero.
     /// </summary>
     [Fact]
-    public void TwoStaleHostsAtTheFrontTakeTwoPasses()
+    public void TwoStaleHostsAtTheFrontGoInOnePass()
     {
         var table = new DiscoveryHostTable(8);
         table.Receive("a", 200, 1, 1);
@@ -137,19 +139,13 @@ public class DiscoveryServiceLoopTests
         table.Receive("c", 200, 1, 9);
 
         // a and b are both stale at ping 9 with no grace; c answered it.
-        Assert.Equal(1, table.DropOldHosts(pingIndex: 9, dropPings: 0));
-
-        // b moved into slot 0 and was stepped over.
-        Assert.Equal(new[] { "b", "c" }, table.Hosts.Select(h => h.HostId).ToArray());
-
-        // The next pass gets it.
-        Assert.Equal(1, table.DropOldHosts(pingIndex: 9, dropPings: 0));
+        Assert.Equal(2, table.DropOldHosts(pingIndex: 9, dropPings: 0));
         Assert.Equal(new[] { "c" }, table.Hosts.Select(h => h.HostId).ToArray());
     }
 
     /// <summary>
-    /// And away from index 0 the step-back works, so two adjacent stale hosts go in one pass - which is
-    /// what makes the case above a quirk of zero rather than of the loop.
+    /// And the case away from index 0, which always worked - kept beside the one above so the fix is
+    /// shown not to have cost it.
     /// </summary>
     [Fact]
     public void TwoStaleHostsAfterTheFirstGoInOnePass()
@@ -161,6 +157,19 @@ public class DiscoveryServiceLoopTests
 
         Assert.Equal(2, table.DropOldHosts(pingIndex: 9, dropPings: 0));
         Assert.Equal(new[] { "keep" }, table.Hosts.Select(h => h.HostId).ToArray());
+    }
+
+    /// <summary>A whole table going stale at once empties it in one pass.</summary>
+    [Fact]
+    public void EveryHostGoingStaleEmptiesTheTableInOnePass()
+    {
+        var table = new DiscoveryHostTable(8);
+        table.Receive("a", 200, 1, 1);
+        table.Receive("b", 200, 1, 1);
+        table.Receive("c", 200, 1, 1);
+
+        Assert.Equal(3, table.DropOldHosts(pingIndex: 9, dropPings: 0));
+        Assert.Empty(table.Hosts);
     }
 
     /// <summary>A drop reports once for the pass, however many went.</summary>
@@ -182,17 +191,16 @@ public class DiscoveryServiceLoopTests
         Assert.Equal(before + 1, table.Reports);
     }
 
-    /// <summary>The guard that causes the skip is still in the C.</summary>
+    /// <summary>PP464: the guard that caused the skip is gone from the C.</summary>
     [Fact]
-    public void TheStepBackIsStillGuarded()
+    public void TheStepBackIsNoLongerGuarded()
     {
         if (Source() is not { } source || DiscoveryServiceLoop.DropBody(source) is not { } body)
             return;
 
         Assert.True(
-            DiscoveryServiceLoop.TheDropStillGuardsItsStepBack(body),
-            "the drop's step-back is no longer guarded, so index 0 is examined like the rest and this "
-                + "model is behind the C");
+            DiscoveryServiceLoop.TheDropStepsBackUnconditionally(body),
+            "the drop's step-back is guarded again, so index 0 is skipped and PP464's defect is back");
     }
 
     /// <summary>PP272: and the readers say no about nothing.</summary>
@@ -204,6 +212,6 @@ public class DiscoveryServiceLoopTests
         Assert.False(DiscoveryServiceLoop.TheFirstWaitStillDiffers(""));
         Assert.False(DiscoveryServiceLoop.TheLoopStillRunsOnlyOnTimeout(""));
         Assert.False(DiscoveryServiceLoop.AFailedThreadStartStillSaysNothing(""));
-        Assert.False(DiscoveryServiceLoop.TheDropStillGuardsItsStepBack(""));
+        Assert.False(DiscoveryServiceLoop.TheDropStepsBackUnconditionally(""));
     }
 }

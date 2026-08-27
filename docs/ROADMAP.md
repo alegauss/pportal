@@ -33,7 +33,6 @@
 - 📋 **PP294** (deps: PP297 ✅) **ctrl.c is 1763 lines of control channel and PP28 sizes it together with two files it does not resemble** — It is the longest of the three and the one with the most message types, and none of them are on the frame path so latency is not the measure. → §PP294
 - 📋 **PP295** (deps: PP27 ⏳, PP297 ✅) **streamconnection.c is 1531 lines and is the last C caller of the video receiver, so every deletion below waits on it** — PP286 to PP291 ported the frame path bottom-up and none of it removed C, because this is what still calls the native receiver. → §PP295
 - 📋 **PP340** (deps: —) **the PSN path lives in session.c's nine holepunch call sites, so PP33's deletion would take remote play with it** — the four sockets it named have landed; what is left is the flow - session.c's nine call sites still drive the offer, the punch, the regist info and the fini. → §PP340
-- 📋 **PP464** (deps: —) **the drop pass guards its step-back, so a stale host that moves into slot 0 is skipped and waits a whole ping cycle** — at any other index the step-back lands on the slot the shift filled; an unconditional i-- would wrap and the i++ bring it back, which is what the rest relies on. → §PP464
 
 ## Block G — Test discipline
 

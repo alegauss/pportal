@@ -287,8 +287,14 @@ static void discovery_service_drop_old_hosts(ChiakiDiscoveryService *service)
 		}
 
 		change = true;
-		if(i > 0)
-			i--;
+		// PP464: unconditional, so the `i++` lands back on the slot the shift just filled. The
+		// guard that used to stand here skipped that at index 0, and two stale hosts at the front
+		// of the list therefore cost two passes where two anywhere else cost one.
+		//
+		// At zero this wraps `i` to SIZE_MAX and the increment brings it straight back, which is
+		// defined for an unsigned type and is what every other index already relies on one step
+		// removed. There is no underflow for the guard to have been avoiding.
+		i--;
 		service->hosts_count--;
 	}
 

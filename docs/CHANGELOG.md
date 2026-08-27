@@ -393,6 +393,7 @@
 - 🗑 **PP461** **nothing tests the data socket the punch hands back, so an invalid one is used as if the punch had succeeded** — abandoned: traced, not fixed: the getter returns a field's address so the pointer cannot be null, and the punch assigns data_sock only after check_candidates succeeded.
 - ✅ **PP462** **the discovery socket's bind ladder and receive thread are unported, so nothing states where it binds or when it leaves** — the ladder is eighteen rungs with each log's port beside the real one, and the loop's six turns are stated including the failed receive that leaves.
 - ✅ **PP463** **both bind-failure logs in discovery print the port after moving it on, so each names the rung it is about to try** — both branches log before moving the port on, so a failure on 9303 says 9303 and one on 9319 says 9319 instead of naming the rung it is about to try.
+- ✅ **PP464** **the drop pass guards its step-back, so a stale host that moves into slot 0 is skipped and waits a whole ping cycle** — the step-back is unconditional, so the increment lands on the slot the shift filled at every index including zero, and a whole table going stale empties in one pass.
 
 ## Block G — Test discipline
 
