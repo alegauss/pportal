@@ -139,6 +139,76 @@ public class CountedClaimTests(ITestOutputHelper output)
         Assert.DoesNotContain("§PP293", why, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// PP410: a number separated from its filename by words is still that filename's claim.
+    ///
+    /// The pattern allowed "is" between the two and nothing else, which left three claims in the
+    /// backlog unscanned - and unscanned meant unchecked, so one of them sat 139 lines stale while
+    /// this file's own guard reported every claim holding. These are the three shapes.
+    /// </summary>
+    [Theory]
+    [InlineData("ctrl.c is the longest at 1574 lines and carries the most", "ctrl.c", 1574)]
+    [InlineData("takion.c is 1868 lines plus takionsendbuffer.c at 267 and more", "takion.c", 1868)]
+    [InlineData("regist.c sits at 918 lines, and", "regist.c", 918)]
+    public void AClaimSeparatedFromItsFilenameByWordsIsStillRead(
+        string prose, string subject, int stated)
+    {
+        CountedClaim[] claims = [.. ScanOf(prose).Where(c => c.Subject == subject)];
+
+        CountedClaim claim = Assert.Single(claims);
+        Assert.Equal(stated, claim.Stated);
+        Assert.False(claim.SizesADirectory);
+    }
+
+    /// <summary>And the list continuations on one line are read as the several claims they are.</summary>
+    [Fact]
+    public void EveryClaimOnOneLineIsRead()
+    {
+        CountedClaim[] claims =
+            [.. ScanOf("takion.c is 1868 lines plus takionsendbuffer.c at 267 and reorderqueue.c at 200: the")];
+
+        Assert.Equal(3, claims.Length);
+        Assert.Equal(
+            [("takion.c", 1868), ("takionsendbuffer.c", 267), ("reorderqueue.c", 200)],
+            claims.Select(c => (c.Subject, c.Stated)));
+    }
+
+    /// <summary>
+    /// THE BOUND, WHICH IS WHAT KEEPS THIS A READER RATHER THAN A GUESSER.
+    ///
+    /// A number in the next sentence belongs to its subject only to a person reading the prose, and
+    /// a run of words long enough to cross a clause is long enough to pick up somebody else's
+    /// number. Both stay out, and staying out is the correct answer rather than a gap.
+    /// </summary>
+    [Theory]
+    [InlineData("http.c is not among them. It is 262 lines over rudp and winsock and")]
+    [InlineData("ctrl.c is a thing this sentence keeps talking about well past any bound at 999 lines")]
+    [InlineData("session.c is described in the section above, and the tree holds 24527 lines")]
+    public void ANumberTooFarFromItsFilenameIsNotClaimedForIt(string prose)
+    {
+        Assert.DoesNotContain(ScanOf(prose), c => !c.SizesADirectory);
+    }
+
+    /// <summary>Every file claim one line of IMPROVEMENTS.md yields, read through the real scan.</summary>
+    private static IReadOnlyList<CountedClaim> ScanOf(string prose)
+    {
+        string root = Path.Combine(
+            Path.GetTempPath(), "pportal-claims-" + Guid.NewGuid().ToString("N"));
+
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(root, "docs"));
+            File.WriteAllLines(
+                Path.Combine(root, "docs", "IMPROVEMENTS.md"), ["### §PP1 A section", "", prose]);
+
+            return CountedClaims.All(root);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     /// <summary>A line that is not a task line has no remedy rather than a wrong one.</summary>
     [Fact]
     public void AShapeItDoesNotKnowIsSaidRatherThanGuessed()

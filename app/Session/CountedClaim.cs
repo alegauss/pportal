@@ -257,7 +257,19 @@ public static partial class CountedClaims
     // "<name>.c is 1845 lines" and "<name>.c 406" - the second is how a list continues one "is"
     // across several files. Deliberately not matching a bare number near a filename with nothing
     // between them, which is most of a sentence.
-    [GeneratedRegex(@"(?<file>[A-Za-z0-9_.-]+\.(?:c|h|cpp|cs|qml))\s+(?:is\s+)?(?<lines>\d{2,5})\b(?=\s*(?:lines|and|,|:|\.|$))")]
+    //
+    // PP410: up to six lowercase words may stand between the two. The pattern used to allow "is"
+    // and nothing else, which left "ctrl.c is the longest at 1574 lines" and two "<name>.c at
+    // <n>" list continuations unscanned - and unscanned meant unchecked, so the first of them was
+    // 139 lines stale while this gate reported every claim holding.
+    //
+    // THE BOUND IS WHAT KEEPS IT A READER RATHER THAN A GUESSER. Lowercase excludes a sentence
+    // start, and the word run cannot cross a full stop because a word ending in one is not
+    // [a-z]+ followed by whitespace. So "http.c is not among them. It is 262 lines" stays out:
+    // that number belongs to http.c and only a person reading the prose knows it. Diffed over
+    // both governed documents before this changed - three claims gained, none lost, nothing else
+    // matched - which is the check to repeat if the bound is ever widened again.
+    [GeneratedRegex(@"(?<file>[A-Za-z0-9_.-]+\.(?:c|h|cpp|cs|qml))\s+(?:(?![0-9])[a-z]+\s+){0,6}(?<lines>\d{2,5})\b(?=\s*(?:lines|and|,|:|\.|$))")]
     private static partial Regex FileClaimRegex();
 
     // "24527 lines of C in lib/src". The "of C in" is required and is the point: it names the
