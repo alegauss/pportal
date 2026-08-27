@@ -48,6 +48,7 @@ public static partial class HostCommandLine
         new("--selftest", "", "run the host's own assertions and exit with the verdict"),
         new("--recount", "", "check the sizes the backlog states, and print what corrects each"),
         new("--apply", "", "with --recount: run those corrections through roadkeep, stopping on a refusal"),
+        new("--select-corpus", "<in> <out>", "keep the entries a replay can expect, and report what was dropped"),
         new("--ratchet", "[id]", "list the shipped tasks no assertion names; with an id, where it is named"),
         new("--controllers", "", "print what SDL sees, for a pad that is plugged in now"),
         new("--capture-controller", "", "log presses for twenty seconds; add --analog for the sticks"),

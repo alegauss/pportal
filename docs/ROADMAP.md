@@ -37,7 +37,6 @@
 - 💭 **PP313** (deps: PP33 ⏳) **curl and json-c would leave the build today if the remote path were built off, and that trades a feature for a count** — PP33's fourth criterion otherwise waits on the managed session, and the tri_option is already there. → §PP313
 - 📋 **PP340** (deps: —) **the PSN path lives in session.c's nine holepunch call sites, so PP33's deletion would take remote play with it** — the offer, the punch, the two sockets, the regist info, the address, the port and the fini are all driven from C; nothing managed owns that flow. → §PP340
 - 📋 **PP369** (deps: PP27 ⏳) **eight asserts still carry weight about data across four files, and PP357's check reads only one of them** — four are size assertions in front of reads in takion.c, one guards an ECDH secret, one a pointer dereferenced two lines later, one an offset in senkusha.c. → §PP369
-- 📋 **PP396** (deps: —) (requires: console) **all four tap channels exist and two have never been recorded, so PP23 owes a capture and nothing else** — PP394 and PP395 built senkusha and stream; a run with --record against PS5-385 is what turns them into an oracle. → §PP396
 
 ## Block G — Test discipline
 

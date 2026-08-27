@@ -175,6 +175,77 @@ public partial class App : Application
         return 1;
     }
 
+    /// <summary>
+    /// PP396: turn a capture into a corpus, by PP420's rule, and say what was left out.
+    ///
+    /// Two paths after the flag: the capture to read and the corpus to write. It reads and writes
+    /// ordinary files rather than the governed ones, so nothing here goes near roadkeep.
+    ///
+    /// WHAT IS DROPPED IS PRINTED. A corpus that quietly kept 33 of 677 reads as full coverage of a
+    /// channel that was barely sampled, and the counts are what tell the two apart.
+    /// </summary>
+    private static int SelectCorpus(string[] args)
+    {
+        string[] paths =
+            [.. args.SkipWhile(a => !string.Equals(a, "--select-corpus", StringComparison.OrdinalIgnoreCase))
+                .Skip(1)
+                .TakeWhile(a => !a.StartsWith("--", StringComparison.Ordinal))];
+
+        if (paths.Length != 2)
+        {
+            Console.Error.WriteLine("[corpus] --select-corpus takes the capture to read and the corpus to write");
+            return 2;
+        }
+
+        if (!File.Exists(paths[0]))
+        {
+            Console.Error.WriteLine($"[corpus] no such capture: {paths[0]}");
+            return 2;
+        }
+
+        ExchangeRecording? recording = ExchangeRecording.Read(File.ReadAllText(paths[0]));
+        if (recording is null)
+        {
+            Console.Error.WriteLine($"[corpus] {paths[0]} is not a recording this understands");
+            return 2;
+        }
+
+        CorpusSelection selection = ExchangeCorpus.Select(recording);
+
+        var corpus = new ExchangeRecording();
+        foreach (ExchangeEntry entry in selection.Kept)
+            corpus.Add(entry.AtMicroseconds, entry.Direction, entry.Channel, entry.Payload);
+
+        try
+        {
+            File.WriteAllText(paths[1], corpus.Write());
+        }
+        catch (IOException ex)
+        {
+            Console.Error.WriteLine($"[corpus] could not write {paths[1]}: {ex.Message}");
+            return 1;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            Console.Error.WriteLine($"[corpus] could not write {paths[1]}: {ex.Message}");
+            return 1;
+        }
+
+        Console.WriteLine(
+            $"[corpus] {recording.Entries.Count} recorded, {selection.Kept.Count} kept -> {paths[1]}");
+
+        foreach ((string key, int count) in selection.DroppedByType.OrderByDescending(d => d.Value))
+            Console.WriteLine($"[corpus]   dropped {count,5} x {key}");
+
+        foreach (IGrouping<string, ExchangeEntry> channel in
+                 selection.Kept.GroupBy(k => k.Channel).OrderBy(g => g.Key, StringComparer.Ordinal))
+        {
+            Console.WriteLine($"[corpus]   kept    {channel.Count(),5} on {channel.Key}");
+        }
+
+        return 0;
+    }
+
     /// <summary>What one stale claim's remedy did.</summary>
     private enum RecountStep
     {
@@ -872,6 +943,16 @@ public partial class App : Application
             Environment.Exit(
                 ExchangeCapture.Run(path, HostCommandLine.ValueAfter(e.Args, "--console"))
                     == CaptureOutcome.Recorded ? 0 : 1);
+        }
+
+        // PP396: a raw capture is a diagnostic; a corpus is what a replay is held against. PP420
+        // decides which entries are which, and this is the step that applies it - so the file that
+        // lands in tests\corpus is produced by the rule rather than by somebody's judgement about
+        // which lines looked repetitive.
+        if (HostCommandLine.Has(e.Args, "--select-corpus"))
+        {
+            ReopenStdOut();
+            Environment.Exit(SelectCorpus(e.Args));
         }
 
         // PP329: the path, unless what follows is a flag - `--capture-mapping --analog` used to

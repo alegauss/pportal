@@ -471,31 +471,6 @@ takion.c is PP27's file and this crosses into it, which is why this is a line ra
 than a wider edit under PP295. What it owes is the fix for all eight and a check that
 reads every file rather than the one where the first two were found.
 
-### §PP396 Four channels, two of them never recorded
-
-PP23 named four modules with no test at all. PP391 replayed ctrl against PP297's capture
-and PP392 replayed session. PP393 measured why the other two could not be: PP323 chose
-four tap sites and all four were in the two files already done, so senkusha and the
-stream connection had no channel and no recording could hold them.
-
-PP394 and PP395 built those channels. Every senkusha protobuf goes through one
-chokepoint that taps, and the received one is tapped above the decode. The stream
-connection has the same for its eight ordinary sends, its BIG tapped whole above the
-fragmentation, and its receive tapped above the state lock.
-
-So the code half is finished and nothing is left but the recording. PP327 already turned
-the recorder on with a flag, PP297 established what a good capture looks like, and PP326
-settled which payloads are redacted on the way in - the two new channels carry protobufs
-rather than credentials, and the type list that redacts is keyed to ctrl message types,
-so what those channels record needs a reading before the first capture is published.
-
-That reading is the one piece of design left here. Everything else is a session: wake
-the console, connect with --record, play for long enough that senkusha measures an MTU
-and the stream connection walks its three states, and keep the file.
-
-Nothing in a test can do it, which is why this line carries a requirement rather than a
-dep.
-
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry

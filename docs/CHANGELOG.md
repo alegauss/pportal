@@ -358,6 +358,7 @@
 - ✅ **PP418** **the senkusha channel's redaction set is empty on prose alone, and the first capture of it is about to be published** — both BIGs are read out of the C: senkusha's three fields still empty, and the stream's session key still the session id that earns its redaction.
 - ✅ **PP419** **the senkusha tap emits takion's data type where the recording says protobuf payload type, and redaction reads it as one** — both protobuf channels emit the payload type: senkusha's send chain threads it and its receive peeks for it, as the stream already did.
 - ✅ **PP420** **nothing says which recorded entries belong in a corpus, and the first stream capture is 566 corrupt-frame reports of 677** — the corpus selects and the recorder still records everything, with the recurring types listed per channel and the dropped counts reported.
+- ✅ **PP396** **all four tap channels exist and two have never been recorded, so PP23 owes a capture and nothing else** — a run against PS5-385 recorded all four channels, and PP420's rule selected 33 entries of 677 with the dropped counts reported (design recorded in `tests/corpus/exchange-ps5-four-channels.txt`).
 
 ## Block G — Test discipline
 
