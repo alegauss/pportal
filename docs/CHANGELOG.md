@@ -391,6 +391,7 @@
 - ✅ **PP459** **the candidate race has never run over sockets, so its own claim that the first to answer wins cannot be shown** — the race runs over three stub sockets: the last candidate offered wins by answering first, and an answer from an unprobed port becomes a derived candidate.
 - ✅ **PP460** **the nine holepunch calls are recorded in file order, which is not the order they run and says nothing about failures** — execution order is held apart from PP429's file order, the finis are excluded as teardown, and each step's guard is named: two quit, one is caught indirectly, one is not.
 - 🗑 **PP461** **nothing tests the data socket the punch hands back, so an invalid one is used as if the punch had succeeded** — abandoned: traced, not fixed: the getter returns a field's address so the pointer cannot be null, and the punch assigns data_sock only after check_candidates succeeded.
+- ✅ **PP462** **the discovery socket's bind ladder and receive thread are unported, so nothing states where it binds or when it leaves** — the ladder is eighteen rungs with each log's port beside the real one, and the loop's six turns are stated including the failed receive that leaves.
 
 ## Block G — Test discipline
 
