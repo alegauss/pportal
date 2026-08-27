@@ -209,6 +209,76 @@ public class CountedClaimTests(ITestOutputHelper output)
         }
     }
 
+    /// <summary>
+    /// PP417: the printed line IS the argument list rendered, and neither is parsed out of the other.
+    ///
+    /// This is what makes --apply safe to add: what it runs is what --recount showed. A version that
+    /// re-parsed the printed line would be a second implementation of the quoting, which is exactly
+    /// where the prose fields - apostrophes, quotes, backticks - stop meaning what they say.
+    /// </summary>
+    [Fact]
+    public void ThePrintedRemedyIsTheArgumentListRendered()
+    {
+        const string line =
+            "- ⏳ **PP293** (deps: PP297 ⏳) **session.c is 1182 lines and owns the session lifetime**"
+            + " — the thread itself, over ctrl.c 1469. → §PP293";
+
+        var claim = new CountedClaim(
+            "docs/ROADMAP.md", 1, "session.c is 1182", "session.c", 1182, SizesADirectory: false);
+
+        IReadOnlyList<string>? argv =
+            CountedClaims.TaskLineRemedyArguments(line, claim, "session.c is 1192");
+        Assert.NotNull(argv);
+
+        Assert.Equal(
+            ["restate", "PP293", "--symptom", "session.c is 1192 lines and owns the session lifetime"],
+            argv);
+
+        // And the line a person reads is exactly that, rendered - not a separately built string.
+        Assert.Equal(
+            CountedClaims.Render(argv),
+            CountedClaims.TaskLineRemedy(line, claim, "session.c is 1192"));
+    }
+
+    /// <summary>Verbs, ids and flags render bare; a value after a flag renders quoted.</summary>
+    [Fact]
+    public void OnlyAValueAfterAFlagIsQuoted()
+    {
+        Assert.Equal(
+            "roadkeep section amend PP28 --replace \"ctrl.c 1713\" --with \"ctrl.c 1726\"",
+            CountedClaims.Render(
+                ["section", "amend", "PP28", "--replace", "ctrl.c 1713", "--with", "ctrl.c 1726"]));
+    }
+
+    /// <summary>
+    /// AND THE ARGUMENT CARRIES THE PROSE VERBATIM, which is the property the process call needs.
+    ///
+    /// A roadmap symptom can hold an apostrophe or a quote. As an argument it is passed through
+    /// untouched and reaches roadkeep as one value; only the rendering for a human puts quotes round
+    /// it, and that rendering is never what runs.
+    /// </summary>
+    [Fact]
+    public void AValueWithQuotesInItIsPassedThroughUntouched()
+    {
+        const string awkward = "takion's \"data offset\" is 1868 lines and `wrong but works`";
+        const string line =
+            "- ⏳ **PP293** (deps: —) **" + awkward + "** — why. → §PP293";
+
+        var claim = new CountedClaim(
+            "docs/ROADMAP.md", 1, "is 1868", "takion.c", 1868, SizesADirectory: false);
+
+        IReadOnlyList<string>? argv =
+            CountedClaims.TaskLineRemedyArguments(line, claim, "is 1870");
+        Assert.NotNull(argv);
+
+        // One argument, holding the apostrophe, the quotes and the backticks as they were.
+        Assert.Equal(4, argv.Count);
+        Assert.Equal(awkward.Replace("is 1868", "is 1870", StringComparison.Ordinal), argv[3]);
+        Assert.Contains('\'', argv[3]);
+        Assert.Contains('"', argv[3]);
+        Assert.Contains('`', argv[3]);
+    }
+
     /// <summary>A line that is not a task line has no remedy rather than a wrong one.</summary>
     [Fact]
     public void AShapeItDoesNotKnowIsSaidRatherThanGuessed()

@@ -143,6 +143,20 @@ public static partial class CountedClaims
     /// half the number is in decides between `restate` and `amend`.
     /// </summary>
     public static string? Remedy(string root, CountedClaim claim, int actual)
+        => RemedyArguments(root, claim, actual) is { } argv ? Render(argv) : null;
+
+    /// <summary>
+    /// PP417: the same call as the ARGUMENTS to pass roadkeep, rather than a line to paste.
+    ///
+    /// <see cref="Remedy"/> is now this rendered, which makes the argument list the one source of
+    /// truth: what `--apply` runs is what `--recount` showed, and neither is parsed back out of the
+    /// other. Handing a rendered line to a shell is where quoting goes wrong - prose fields here
+    /// carry apostrophes, quotes and backticks - and it went wrong twice in the session that asked
+    /// for this.
+    ///
+    /// The leading "roadkeep" is NOT in the list. It is the program, not an argument.
+    /// </summary>
+    public static IReadOnlyList<string>? RemedyArguments(string root, CountedClaim claim, int actual)
     {
         ArgumentNullException.ThrowIfNull(root);
 
@@ -158,7 +172,7 @@ public static partial class CountedClaims
         string corrected = Corrected(claim, actual);
 
         if (claim.Document.EndsWith("ROADMAP.md", StringComparison.OrdinalIgnoreCase))
-            return TaskLineRemedy(source, claim, corrected);
+            return TaskLineRemedyArguments(source, claim, corrected);
 
         string? anchor = AnchorAbove(lines, claim.Line);
         if (anchor is null)
@@ -170,7 +184,30 @@ public static partial class CountedClaims
         string replace = Occurrences(lines, claim.Text) == 1 ? claim.Text : source.Trim();
         string with = replace == claim.Text ? corrected : source.Trim().Replace(claim.Text, corrected, StringComparison.Ordinal);
 
-        return $"roadkeep section amend {anchor} --replace \"{replace}\" --with \"{with}\"";
+        return ["section", "amend", anchor, "--replace", replace, "--with", with];
+    }
+
+    /// <summary>
+    /// PP417: an argument list as the line it used to be built as.
+    ///
+    /// A value is quoted where it follows an option, which is what the printed form always did - the
+    /// verbs, the id and the flags bare, the prose in quotes. Deliberately NOT a general shell
+    /// quoter: nothing consumes this but a reader, and a value carrying a quote of its own is shown
+    /// as it is rather than escaped into something that is no longer what will run.
+    /// </summary>
+    public static string Render(IReadOnlyList<string> argv)
+    {
+        ArgumentNullException.ThrowIfNull(argv);
+
+        var rendered = new List<string>(argv.Count + 1) { "roadkeep" };
+
+        for (var at = 0; at < argv.Count; at++)
+        {
+            bool isValue = at > 0 && argv[at - 1].StartsWith("--", StringComparison.Ordinal);
+            rendered.Add(isValue ? $"\"{argv[at]}\"" : argv[at]);
+        }
+
+        return string.Join(" ", rendered);
     }
 
     /// <summary>The claim's own text with the tree's number in place of the stated one.</summary>
@@ -203,6 +240,11 @@ public static partial class CountedClaims
     /// because `restate` and `amend` write different fields and each refuses the other's text.
     /// </summary>
     public static string? TaskLineRemedy(string source, CountedClaim claim, string corrected)
+        => TaskLineRemedyArguments(source, claim, corrected) is { } argv ? Render(argv) : null;
+
+    /// <summary>PP417: the same, as the arguments to pass roadkeep.</summary>
+    public static IReadOnlyList<string>? TaskLineRemedyArguments(
+        string source, CountedClaim claim, string corrected)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(corrected);
@@ -218,13 +260,13 @@ public static partial class CountedClaims
         if (symptom.Value.Contains(claim.Text, StringComparison.Ordinal))
         {
             string fixedText = symptom.Value.Replace(claim.Text, corrected, StringComparison.Ordinal);
-            return $"roadkeep restate {id} --symptom \"{fixedText}\"";
+            return ["restate", id, "--symptom", fixedText];
         }
 
         if (why.Value.Contains(claim.Text, StringComparison.Ordinal))
         {
             string fixedText = why.Value.Replace(claim.Text, corrected, StringComparison.Ordinal).Trim();
-            return $"roadkeep amend {id} --why \"{fixedText}\"";
+            return ["amend", id, "--why", fixedText];
         }
 
         return null;

@@ -103,7 +103,12 @@ public partial class App : Application
     /// Exits 1 where anything is stale, so it answers the same question the test does and can be
     /// run before the work rather than after it.
     /// </summary>
-    private static int Recount()
+    /// <param name="apply">
+    /// PP417: run each remedy through roadkeep instead of only printing it. Off by default - a check
+    /// that silently rewrote the backlog is one nobody runs BEFORE the work, which is when it is
+    /// worth most.
+    /// </param>
+    private static int Recount(bool apply)
     {
         string? root = SanitizerSource.RepositoryRoot();
         if (root is null)
@@ -117,6 +122,7 @@ public partial class App : Application
 
         var stale = 0;
         var unresolved = 0;
+        var applied = 0;
 
         foreach (CountedClaim claim in claims)
         {
@@ -137,10 +143,19 @@ public partial class App : Application
             Console.WriteLine();
             Console.WriteLine($"  {claim.Document}:{claim.Line}  {claim.Subject} says {claim.Stated} and is {actual}");
 
-            string? remedy = CountedClaims.Remedy(root, claim, actual);
-            Console.WriteLine(remedy is null
-                ? "    (no remedy: this line is not a shape --recount knows how to address)"
-                : "    " + remedy);
+            RecountStep step = ReportOneClaim(root, claim, actual, apply);
+
+            if (step == RecountStep.Applied)
+                applied++;
+
+            // Stopping is the point. roadkeep validates, so a refusal - a section pushed past its
+            // word limit, say - is worth reading rather than something the rest of the run buries.
+            if (step == RecountStep.Refused)
+            {
+                Console.WriteLine();
+                Console.WriteLine($"[recount] {applied} applied, then stopped on a refusal. {claims.Count - stale} claim(s) not looked at.");
+                return 1;
+            }
         }
 
         Console.WriteLine();
@@ -150,8 +165,103 @@ public partial class App : Application
             return 0;
         }
 
+        if (unresolved == 0 && applied == stale)
+        {
+            Console.WriteLine($"[recount] {applied} corrected. Re-run to confirm, and commit them with the change that moved them.");
+            return 0;
+        }
+
         Console.WriteLine($"[recount] {stale} stale, {unresolved} unresolvable.");
         return 1;
+    }
+
+    /// <summary>What one stale claim's remedy did.</summary>
+    private enum RecountStep
+    {
+        /// <summary>Printed only - either --apply was off, or there was no remedy to run.</summary>
+        Reported,
+
+        /// <summary>roadkeep accepted it.</summary>
+        Applied,
+
+        /// <summary>roadkeep refused it, or could not be run. Nothing after this is attempted.</summary>
+        Refused,
+    }
+
+    /// <summary>PP417: print one claim's remedy, and run it where --apply asked for that.</summary>
+    private static RecountStep ReportOneClaim(
+        string root, CountedClaim claim, int actual, bool apply)
+    {
+        IReadOnlyList<string>? argv = CountedClaims.RemedyArguments(root, claim, actual);
+        if (argv is null)
+        {
+            Console.WriteLine("    (no remedy: this line is not a shape --recount knows how to address)");
+            return RecountStep.Reported;
+        }
+
+        // Printed from the same list that would be run, so the two cannot drift.
+        Console.WriteLine("    " + CountedClaims.Render(argv));
+
+        if (!apply)
+            return RecountStep.Reported;
+
+        if (RunRoadkeep(root, argv) is { } failure)
+        {
+            Console.WriteLine("    refused: " + failure);
+            return RecountStep.Refused;
+        }
+
+        Console.WriteLine("    applied");
+        return RecountStep.Applied;
+    }
+
+    /// <summary>
+    /// PP417: one roadkeep call, or the reason it did not go through.
+    ///
+    /// The arguments are passed as arguments - never a command line assembled by hand - because the
+    /// prose fields carry apostrophes, quotes and backticks, and a shell is exactly where those
+    /// stop meaning what they say.
+    ///
+    /// roadkeep stays the writer. That is the whole design: the governed files are its, a hook
+    /// denies a hand edit to them, and a tool that wrote them itself would have solved the
+    /// transcription by removing the gate.
+    /// </summary>
+    /// <returns>null where roadkeep accepted it; the failure to report otherwise.</returns>
+    private static string? RunRoadkeep(string root, IReadOnlyList<string> argv)
+    {
+        var start = new System.Diagnostics.ProcessStartInfo("roadkeep")
+        {
+            WorkingDirectory = root,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+
+        foreach (string argument in argv)
+            start.ArgumentList.Add(argument);
+
+        try
+        {
+            using System.Diagnostics.Process? process = System.Diagnostics.Process.Start(start);
+            if (process is null)
+                return "roadkeep did not start";
+
+            string output = process.StandardOutput.ReadToEnd();
+            string errors = process.StandardError.ReadToEnd();
+            process.WaitForExit();
+
+            if (process.ExitCode == 0)
+                return null;
+
+            string said = string.IsNullOrWhiteSpace(errors) ? output : errors;
+            return $"exit {process.ExitCode}: {said.Trim()}";
+        }
+        catch (System.ComponentModel.Win32Exception ex)
+        {
+            // Not on PATH, most likely. Said plainly rather than as a stack trace, because the
+            // remedy is printed above and can still be run by hand.
+            return $"could not run roadkeep ({ex.Message}) - the call above is still what to run";
+        }
     }
 
     /// <summary>
@@ -708,10 +818,14 @@ public partial class App : Application
         }
 
         // PP304: the sizes the backlog states, and the command that corrects each stale one.
+        // PP417: and `--apply` runs those commands, through roadkeep, rather than only printing
+        // them. Read as a separate flag rather than a value after --recount, so `--recount` alone
+        // keeps meaning exactly what it did.
         if (e.Args.Any(a => string.Equals(a, "--recount", StringComparison.OrdinalIgnoreCase)))
         {
             ReopenStdOut();
-            Environment.Exit(Recount());
+            Environment.Exit(Recount(
+                e.Args.Any(a => string.Equals(a, "--apply", StringComparison.OrdinalIgnoreCase))));
         }
 
         // PP305: the debt PP38 counts, in the form it can be paid in. PP311: with an id after it,

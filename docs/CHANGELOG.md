@@ -393,6 +393,7 @@
 - ✅ **PP388** **20 ordering predicates mix compacted call positions with raw offsets, so none can move onto CCall alone** — every ordering predicate reads one compacted space, and the raw slicer keeps its anchor without the terminator.
 - ✅ **PP390** **the fourth attempt to fix holepunch.c's log prefixes, and nothing in that file records the three decisions against it** — the seven carry a marker naming the decision that made them, and the rule asks whether the file still matches PP235 and PP238.
 - ✅ **PP410** **three line-count claims sit in a shape the recount reader cannot see, and one of them is stale by 139 lines** — the reader takes up to six lowercase words between a filename and its number, which brings three unscanned claims under the gate and turned the stale one red.
+- ✅ **PP417** **every commit touching a .c file restates four counted claims by hand, from commands --recount already prints exactly** — --recount --apply runs the calls it prints through roadkeep, off one argument list, and stops on the first refusal.
 
 ## Block H — Performance and telemetry
 
