@@ -566,7 +566,17 @@ static bool stun_get_external_address_from_server(ChiakiLog *log, StunServer *se
         }
         if (attr_type != STUN_ATTRIB_MAPPED_ADDRESS && attr_type != STUN_ATTRIB_XOR_MAPPED_ADDRESS)
         {
-            response_pos += sizeof(attr_type) + sizeof(attr_length) + attr_length;
+            // PP453: plus the padding RFC 5389 requires, which this skip used to walk into. An
+            // attribute of length five left the cursor three bytes inside its own padding, and
+            // every attribute after it was read from the wrong offset - which LOST the mapped
+            // address rather than misreading it, because the length read out of the address
+            // attribute's own bytes then failed the bounds check. Measured in PP452.
+            //
+            // A separate term rather than rounding the whole length: padding is 0 to 3 by
+            // construction, so nothing here can truncate the way (attr_length + 3) & ~3 can at
+            // the top of a uint16_t.
+            uint16_t padding = (uint16_t)((4 - (attr_length % 4)) % 4);
+            response_pos += sizeof(attr_type) + sizeof(attr_length) + attr_length + padding;
             continue;
         }
 

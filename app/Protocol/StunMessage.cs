@@ -56,11 +56,14 @@ public enum StunResult
 ///   before the XOR one is believed on the plain one, even though the plain one is exactly what NATs
 ///   are known to rewrite in flight. There is no preference and no second look.
 ///
-///   ATTRIBUTES ARE SKIPPED WITHOUT THEIR PADDING. RFC 5389 pads every attribute to a multiple of
-///   four bytes; this advances by <c>4 + length</c> with no rounding. An attribute of length five
-///   therefore leaves the cursor three bytes inside the padding, and everything after it is read
-///   from the wrong offset. It works today because the servers in the list send only aligned
-///   attributes.
+///   ATTRIBUTES USED TO BE SKIPPED WITHOUT THEIR PADDING, and PP453 repaired it in both halves.
+///   RFC 5389 pads every attribute to a multiple of four bytes and the skip advanced by
+///   <c>4 + length</c> with no rounding, so an attribute of length five left the cursor three bytes
+///   inside its own padding and everything after it was read from the wrong offset. PP200 recorded
+///   that and reasoned it was safe because the servers in the list send aligned attributes; PP452
+///   measured it over a socket and the cost was worse than the reasoning allowed for - a conformant
+///   response did not misread its address, it lost it. The list is fetched at runtime, so the
+///   alignment was never this port's to rely on.
 ///
 ///   AND THE BOUNDS CHECK PROMOTES TO UNSIGNED. <c>received - (sizeof(...) + sizeof(...) +
 ///   attr_length)</c> is size_t arithmetic, so an attribute claiming a length larger than the
@@ -263,8 +266,9 @@ public static class StunMessage
 
             if (type != AttributeMappedAddress && type != AttributeXorMappedAddress)
             {
-                // No rounding up to four, which is the core's skip and not the RFC's.
-                at += 4 + length;
+                // PP453: plus the RFC's padding. Both halves round now; see the class note for what
+                // the missing rounding cost, and PP452's aligned/unaligned pair for the measurement.
+                at += 4 + length + ((4 - (length % 4)) % 4);
                 continue;
             }
 
@@ -428,12 +432,25 @@ public static class StunMessageSource
             && core.Contains("bool xored = attr_type == STUN_ATTRIB_XOR_MAPPED_ADDRESS;", StringComparison.Ordinal);
     }
 
-    /// <summary>Whether attributes are still skipped without rounding up to four.</summary>
-    public static bool TheSkipStillIgnoresPadding(string core)
+    /// <summary>
+    /// Whether the skip rounds up to four - PP453's repair, in the half this port reads rather than
+    /// owns.
+    /// </summary>
+    /// <remarks>
+    /// Both halves are asserted: the padding term has to be there AND the unrounded expression has to
+    /// be gone. Checking only for the new term would stay green if the old line came back beside it,
+    /// which is exactly what a merge from upstream would do.
+    /// </remarks>
+    public static bool TheSkipNowRoundsUpToFour(string core)
     {
         ArgumentNullException.ThrowIfNull(core);
         return core.Contains(
-            "response_pos += sizeof(attr_type) + sizeof(attr_length) + attr_length;", StringComparison.Ordinal);
+                "response_pos += sizeof(attr_type) + sizeof(attr_length) + attr_length + padding;",
+                StringComparison.Ordinal)
+            && core.Contains("(uint16_t)((4 - (attr_length % 4)) % 4)", StringComparison.Ordinal)
+            && !core.Contains(
+                "response_pos += sizeof(attr_type) + sizeof(attr_length) + attr_length;",
+                StringComparison.Ordinal);
     }
 
     /// <summary>

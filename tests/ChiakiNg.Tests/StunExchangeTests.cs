@@ -90,6 +90,9 @@ public class StunExchangeTests
             TransactionIdOf(request), IPAddress.Parse("2001:db8::1"), 3478));
 
         Assert.Equal(StunResult.Ok, result.Result);
+        // The `!` is load-bearing: SonarLint's S8969 calls it redundant here and the compiler
+        // disagrees with CS8629, because Mapped is a nullable StunResponse and nothing above narrows
+        // it. Assert.Equal on the Result above does not count as a narrowing.
         Assert.Equal(IPAddress.Parse("2001:db8::1"), IPAddress.Parse(result.Mapped!.Value.Address));
         Assert.Equal((ushort)3478, result.Mapped?.Port);
     }
@@ -191,20 +194,16 @@ public class StunExchangeTests
     }
 
     /// <summary>
-    /// AND THE DIVERGENCE, measured rather than argued: a conformant response carrying a FIVE-byte
-    /// attribute loses its mapped address entirely.
+    /// PP453: and a conformant response carrying a FIVE-byte attribute now arrives with its address
+    /// intact.
     ///
-    /// RFC 5389 pads every attribute to a multiple of four. StunMessage advances by 4 + length with no
-    /// rounding, so the cursor lands three bytes inside the padding and every attribute after it is
-    /// read from the wrong offset - here it reads a length of 2048 out of the mapped address's own
-    /// bytes and refuses the message as overrunning.
-    ///
-    /// The address is in the datagram. It arrived intact. Nothing but the skip is wrong, and the
-    /// failure is total rather than partial - which is the argument for fixing it rather than
-    /// accepting it, and is filed as such.
+    /// This test is the reason PP453 exists. When it was written the assertion was the opposite: the
+    /// cursor landed three bytes inside the RFC's padding, read a length of 2048 out of the mapped
+    /// address's own bytes, and the message was refused as overrunning while the address sat in the
+    /// datagram. Measuring that over a socket is what turned PP200's accepted note into a repair.
     /// </summary>
     [Fact]
-    public async Task AConformantPaddedAttributeLosesTheAddressEntirely()
+    public async Task AConformantPaddedAttributeKeepsItsAddress()
     {
         StunExchangeResult result = await AgainstAsync(request => StunMessage.BuildBindingResponse(
             TransactionIdOf(request),
@@ -212,10 +211,9 @@ public class StunExchangeTests
             51234,
             leading: (Type: (ushort)0x8022, Value: [1, 2, 3, 4, 5])));
 
-        Assert.Null(result.Mapped);
-        Assert.Equal(StunResult.InvalidData, result.Result);
-
-        // And not a timeout: the answer arrived and was read, it was the reading that failed.
+        Assert.Equal(StunResult.Ok, result.Result);
+        Assert.Equal("203.0.113.7", result.Mapped?.Address);
+        Assert.Equal((ushort)51234, result.Mapped?.Port);
         Assert.False(result.TimedOut);
     }
 

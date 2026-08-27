@@ -398,30 +398,6 @@ Until then PP33 is correctly blocked, and `remaining PP33` reads 420. Reading th
 number as the size of the job is what its own section warns against: it is one file, and
 the work is at the other end.
 
-### §PP453 The attribute skip, and why the server list is not ours
-
-RFC 5389 pads every attribute to a multiple of four bytes. Both the core and this port
-advance the cursor by `4 + length` with no rounding, so an attribute whose value is not
-already aligned leaves the cursor inside its padding, and everything after it is read
-from the wrong offset.
-
-PP200 recorded that. PP452 measured what it costs, and the cost is worse than the note
-it was filed under: a response carrying a five-byte attribute before the mapped address
-does not misread the address, it loses it. The cursor lands three bytes early, reads a
-length of 2048 out of the address attribute's own bytes, and the message is refused as
-overrunning. The address arrived intact and is still in the datagram.
-
-The reason to fix this rather than accept it is that the alignment is not this project's
-to guarantee. `get_stun_servers` fetches the list at runtime, so which servers answer
-and what they put in front of the mapped address is decided outside the tree - and a
-server sending a SOFTWARE attribute of an odd length is conformant, not broken. This is
-not degraded remote play; it is an external address lookup that returns nothing, on a
-list that can change without a release.
-
-The fix is one expression in each half, rounding the advance up to the next multiple of
-four. PP452's aligned and unaligned pair is already the test: the unaligned case asserts
-InvalidData today and would assert the address once repaired.
-
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry

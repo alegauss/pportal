@@ -178,14 +178,20 @@ public class StunMessageTests
     }
 
     /// <summary>
-    /// ATTRIBUTES ARE SKIPPED WITHOUT THEIR PADDING. The RFC pads every attribute to a multiple of
-    /// four; this advances by 4 + length with no rounding, so an attribute of length five leaves the
-    /// cursor three bytes inside the padding and everything after it is read from the wrong offset.
+    /// PP453: AN UNALIGNED ATTRIBUTE IS STEPPED OVER WITH ITS PADDING, which it was not before.
     ///
-    /// It works today only because the servers in the list send aligned attributes.
+    /// RFC 5389 pads every attribute to a multiple of four. The skip advanced by 4 + length with no
+    /// rounding, so an attribute of length five left the cursor three bytes inside its own padding and
+    /// everything after it was read from the wrong offset - the type and length came out of the mapped
+    /// address's own bytes, the length read as 2048, and the message was refused as overrunning. The
+    /// address was in the datagram the whole time.
+    ///
+    /// PP200 recorded that and judged it safe because the servers in the list send aligned
+    /// attributes. PP452 measured the cost over a socket, which is what changed the judgement: the
+    /// list is fetched at runtime, so the alignment was never this port's to rely on.
     /// </summary>
     [Fact]
-    public void AnUnalignedAttributeThrowsOffEverythingAfterIt()
+    public void AnUnalignedAttributeIsSteppedOverWithItsPadding()
     {
         // Five bytes of value, padded to eight on the wire - twelve bytes of attribute in total.
         byte[] unaligned = new byte[12];
@@ -194,16 +200,44 @@ public class StunMessageTests
 
         byte[] mapped = MappedV4("203.0.113.9", 41234, xored: true);
 
-        // The cursor lands three bytes early, reads a type and a length out of the padding, and
-        // never finds the address that is sitting right there.
-        Assert.Equal(StunResult.InvalidData, Refused(Response(unaligned, mapped)));
+        Assert.Equal("203.0.113.9", Read(Response(unaligned, mapped)).Address);
 
-        // The identical bytes with the length declared as the padded eight are read straight
-        // through - so it is the rounding that is missing, not the attribute that is malformed.
+        // And the aligned form still reads, so the rounding did not cost the case that already
+        // worked - which is the whole of the regression risk here.
         byte[] aligned = [.. unaligned];
         BinaryPrimitives.WriteUInt16BigEndian(aligned.AsSpan(2), 8);
 
         Assert.Equal("203.0.113.9", Read(Response(aligned, mapped)).Address);
+    }
+
+    /// <summary>
+    /// Every remainder is padded, not just the five-byte case that found the defect.
+    ///
+    /// A length of 1, 2 or 3 past a multiple of four each leaves the cursor a different distance
+    /// inside the padding, and a rounding written as `+ 4` or as `& ~3` on a truncating type would
+    /// pass one of them and fail the others.
+    /// </summary>
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    [InlineData(5)]
+    [InlineData(6)]
+    [InlineData(7)]
+    [InlineData(8)]
+    public void EveryUnalignedLengthIsSteppedOverCorrectly(int valueLength)
+    {
+        int padded = (valueLength + 3) / 4 * 4;
+
+        byte[] attribute = new byte[4 + padded];
+        BinaryPrimitives.WriteUInt16BigEndian(attribute.AsSpan(0), 0x8022);
+        BinaryPrimitives.WriteUInt16BigEndian(attribute.AsSpan(2), (ushort)valueLength);
+
+        StunResponse read = Read(
+            Response(attribute, MappedV4("203.0.113.9", 41234, xored: true)));
+
+        Assert.Equal("203.0.113.9", read.Address);
     }
 
     /// <summary>A response shorter than a header is refused before anything is read out of it.</summary>
@@ -312,7 +346,9 @@ public class StunMessageTests
         Assert.True(StunMessageSource.TheConstantsAreStillTheseValues(core), "nine constants");
         Assert.True(StunMessageSource.TheKeyIsStillTheRequestBuffer(core), "the request is the key");
         Assert.True(StunMessageSource.TheFirstMappedAddressStillWins(core), "first one wins");
-        Assert.True(StunMessageSource.TheSkipStillIgnoresPadding(core), "no rounding to four");
+        Assert.True(
+            StunMessageSource.TheSkipNowRoundsUpToFour(core),
+            "PP453's rounding is gone from the core, or the unrounded skip came back beside it");
         Assert.True(StunMessageSource.TheBoundsCheckStillPromotes(core), "still promoted, still diverged from");
     }
 }
