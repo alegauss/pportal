@@ -82,6 +82,90 @@ public class MessageSecretsTests
     }
 
     /// <summary>
+    /// PP418: AND THE C IS WHAT SAYS SO, not the paragraph above.
+    ///
+    /// The empty set was held by prose and by an Assert.Empty that restated the constant. PP396 is
+    /// about to publish the first capture of this channel into a corpus that is a file in a public
+    /// repository, and a redaction that is right for a reason nothing checks is right until somebody
+    /// edits the other file.
+    /// </summary>
+    [Fact]
+    public void SenkushasBigStillCarriesNothingInTheCore()
+    {
+        if (MessageSecretsSource.LocateSenkusha() is not { } path)
+            return;
+
+        Assert.True(
+            MessageSecretsSource.SenkushasBigStillCarriesNothing(File.ReadAllText(path)),
+            "senkusha's BIG carries something now, and its redaction set is empty");
+    }
+
+    /// <summary>
+    /// And the stream's BIG still carries the session id, which is WHY it is redacted.
+    ///
+    /// The other direction, and not decoration: a redaction whose reason has gone sits there looking
+    /// deliberate, and the next reader cannot tell it from one that still earns its place.
+    /// </summary>
+    [Fact]
+    public void TheStreamsBigStillCarriesTheSessionId()
+    {
+        if (MessageSecretsSource.LocateStream() is not { } path)
+            return;
+
+        Assert.True(
+            MessageSecretsSource.TheStreamsBigStillCarriesTheSessionId(File.ReadAllText(path)),
+            "the stream's BIG no longer carries the session id, so BIG's redaction has no reason");
+
+        // And BIG is in fact the type that gets redacted there.
+        Assert.False(MessageSecrets.MayRecord(
+            ChiakiMessageTap.StreamChannel, MessageSecrets.StreamSecret["BIG"]));
+    }
+
+    /// <summary>
+    /// PP418: the reader refuses a BIG that carries something, and one that is gone.
+    ///
+    /// Both failure shapes, against synthetic bodies. The second matters as much: "carries nothing"
+    /// must not be satisfiable by a file that stopped building a BIG at all, which is the absence
+    /// trap PP272 exists for.
+    /// </summary>
+    [Fact]
+    public void TheReaderRefusesABigThatCarriesSomethingAndOneThatIsGone()
+    {
+        const string Empty = """
+            	msg.has_big_payload = true;
+            	msg.big_payload.session_key.arg = "";
+            	msg.big_payload.launch_spec.arg = "";
+            	msg.big_payload.encrypted_key.arg = "";
+            """;
+
+        Assert.True(MessageSecretsSource.SenkushasBigStillCarriesNothing(Empty));
+
+        // One field filled in - the copy-the-shape-that-works mistake.
+        Assert.False(MessageSecretsSource.SenkushasBigStillCarriesNothing(
+            Empty.Replace(
+                "msg.big_payload.session_key.arg = \"\";",
+                "msg.big_payload.session_key.arg = session->session_id;",
+                StringComparison.Ordinal)));
+
+        // And no BIG at all is not "carries nothing" either.
+        Assert.False(MessageSecretsSource.SenkushasBigStillCarriesNothing(""));
+        Assert.False(MessageSecretsSource.SenkushasBigStillCarriesNothing(
+            "\tmsg.big_payload.session_key.arg = \"\";"));
+
+        // A comment naming the assignment does not satisfy it - PP400's rule.
+        Assert.False(MessageSecretsSource.SenkushasBigStillCarriesNothing(
+            "// msg.has_big_payload = true; msg.big_payload.session_key.arg = \"\";"));
+    }
+
+    /// <summary>PP272: and both readers answer no to an empty file.</summary>
+    [Fact]
+    public void BothReadersAnswerNoToAnEmptyFile()
+    {
+        Assert.False(MessageSecretsSource.SenkushasBigStillCarriesNothing(""));
+        Assert.False(MessageSecretsSource.TheStreamsBigStillCarriesTheSessionId(""));
+    }
+
+    /// <summary>
     /// PP326's six still go on the channel they were decided for, unchanged.
     ///
     /// The point of making the rule channel-aware was not to revisit that decision, and a check

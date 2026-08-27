@@ -1,4 +1,5 @@
 using ChiakiNg.Native;
+using ChiakiNg.Session;
 
 namespace ChiakiNg.Protocol;
 
@@ -86,5 +87,87 @@ public static class MessageSecrets
 
         // The session channel is an HTTP head and is redacted by field, not by type (PP325).
         return true;
+    }
+}
+
+/// <summary>
+/// PP418: the two BIGs, read out of the C rather than trusted from a paragraph.
+///
+/// PP397 decided what each channel carries and wrote it down. What it did not leave behind was a
+/// reader: <see cref="MessageSecrets.SenkushaSecret"/> is the empty set, and the only assertion
+/// about it restated the constant. Every other "the C does not do this" in this port is held by a
+/// check that reddens when the C starts doing it.
+///
+/// THE ASYMMETRY IS WHY IT MATTERS. The stream's BIG sets
+/// <c>session_key.arg = session-&gt;session_id</c>, which is the leak PP397 closed. Senkusha's sets
+/// the same three fields to <c>""</c>. They are the same protobuf, built in different files, three
+/// string literals apart - so filling senkusha's in by copying the shape that works would move no
+/// test, and an empty redaction set would then record a session key whole into a corpus that is a
+/// file in a public repository.
+///
+/// BOTH DIRECTIONS, and the second is not decoration. A redaction whose reason has gone sits there
+/// looking deliberate, and the next reader has no way to tell it from one that still earns its
+/// place - which is how PP390's markers came to be needed one file over.
+/// </summary>
+public static class MessageSecretsSource
+{
+    /// <summary>Where senkusha's BIG is built.</summary>
+    public const string SenkushaRelativePath = @"lib\src\senkusha.c";
+
+    /// <summary>And the stream's.</summary>
+    public const string StreamRelativePath = @"lib\src\streamconnection.c";
+
+    /// <summary>senkusha.c, or null outside a checkout.</summary>
+    public static string? LocateSenkusha() => SanitizerSource.LocateRelative(SenkushaRelativePath);
+
+    /// <summary>streamconnection.c, or null outside a checkout.</summary>
+    public static string? LocateStream() => SanitizerSource.LocateRelative(StreamRelativePath);
+
+    /// <summary>
+    /// The three fields a BIG can carry a credential in, in the order the C sets them.
+    /// </summary>
+    public static IReadOnlyList<string> BigCredentialFields { get; } =
+        ["session_key", "launch_spec", "encrypted_key"];
+
+    /// <summary>
+    /// Whether senkusha's BIG still sets all three to the empty string.
+    ///
+    /// The whole assignment, not just the field name: the claim is about the VALUE, and a check that
+    /// only asked whether the field was mentioned would pass the moment somebody assigned it
+    /// something else.
+    /// </summary>
+    public static bool SenkushasBigStillCarriesNothing(string senkushaCore)
+    {
+        ArgumentNullException.ThrowIfNull(senkushaCore);
+
+        string code = CCall.Compact(CCall.Code(senkushaCore));
+
+        // It must be building a BIG at all, or "carries nothing" is true of a file that lost it.
+        if (!code.Contains("msg.has_big_payload=true;", StringComparison.Ordinal))
+            return false;
+
+        foreach (string field in BigCredentialFields)
+        {
+            if (!code.Contains(
+                    $"msg.big_payload.{field}.arg=\"\";", StringComparison.Ordinal))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// And whether the stream's BIG still carries the session id, which is why it is redacted.
+    /// </summary>
+    public static bool TheStreamsBigStillCarriesTheSessionId(string streamCore)
+    {
+        ArgumentNullException.ThrowIfNull(streamCore);
+
+        string code = CCall.Compact(CCall.Code(streamCore));
+
+        return code.Contains(
+            "msg.big_payload.session_key.arg=session->session_id;", StringComparison.Ordinal);
     }
 }
