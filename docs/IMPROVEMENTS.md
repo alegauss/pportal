@@ -269,7 +269,7 @@ host would use regardless of this block.
 
 holepunch.c is 5923 lines and is the only translation unit in this tree that still needs
 either library: 234 curl_easy calls, 4 curl_ws, and the json_object and json_tokener
-sites beside them. http.c is not among them. It is 262 lines over rudp and winsock and
+sites beside them. http.c is 262 lines over rudp and winsock, is not among them, and
 carries no curl symbol at all, which is not what the first version of this section said
 it was built around.
 

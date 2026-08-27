@@ -422,6 +422,7 @@
 - ✅ **PP437** **nothing holds the host's imported entry points against the shim's exports, and a mismatch is a runtime crash** — The 241 entry points the host names are held against the 242 the two shim headers declare, comments stripped, and the one export nothing imports is named with its reason.
 - ✅ **PP438** **PP436 gated a third project and WarningPolicy names two, so the gate builds code whose warnings nothing enforces** — The gated set is read out of ChiakiNg.slnx, so what compile.cmd builds is what the policy binds, and compare-baselines refuses every warning like the other two.
 - ✅ **PP439** **ctest reports the C suite as one test, so a whole munit suite can vanish and the gate still prints 100 percent passed** — The gate reads munit's own count through ctest -V and holds it against a floor of 145 that may rise and may not fall, printing the whole capture on a red or a hang.
+- ✅ **PP443** **three backlog lines state a line total no filename anchors, and all three are stale - one by 561** — Three stale totals restated as one number per file so the recount checks them, and a guard that reports any line total no claim covers - which found a fourth, correct and uncheckable.
 
 ## Block H — Performance and telemetry
 
