@@ -579,9 +579,28 @@ static void *ctrl_thread_func(void *user)
 				chiaki_mutex_lock(&ctrl->notif_mutex);
 				if(drain_err != CHIAKI_ERR_SUCCESS)
 				{
+					// PP416: the rest of the queue goes too, which is what PP385's rule above
+					// actually requires. The break alone left the inner loop only - and the outer
+					// loop's `should_stop || msg_queue || login_pin_entered` test is then true
+					// BECAUSE the queue is not empty, so it took the cancelled branch and re-entered
+					// this drain, sending the next message into the same gap. ctrl_failed does not
+					// set should_stop, so how many still went out was a race with the session thread
+					// getting round to stopping ctrl.
+					//
+					// Nothing is lost by dropping them: the node is unlinked and freed before its
+					// error is read, so there was never a retry to take. Same shape as PP355's
+					// teardown drain, for the same reason.
+					size_t dropped = 0;
+					while(ctrl->msg_queue)
+					{
+						ChiakiCtrlMessageQueue *rest = ctrl->msg_queue;
+						ctrl->msg_queue = rest->next;
+						ctrl_message_queue_free(rest);
+						dropped++;
+					}
 					CHIAKI_LOGE(ctrl->session->log,
-							"Ctrl failed to send queued message of type %#x, dropping it and leaving the drain: %s",
-							(unsigned int)drain_type, chiaki_error_string(drain_err));
+							"Ctrl failed to send queued message of type %#x, dropping it and %zu still queued, and leaving the drain: %s",
+							(unsigned int)drain_type, dropped, chiaki_error_string(drain_err));
 					chiaki_mutex_unlock(&ctrl->notif_mutex);
 					ctrl_failed(ctrl, CHIAKI_QUIT_REASON_CTRL_UNKNOWN);
 					chiaki_mutex_lock(&ctrl->notif_mutex);

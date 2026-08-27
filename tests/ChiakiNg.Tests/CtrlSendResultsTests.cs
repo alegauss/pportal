@@ -131,6 +131,64 @@ public class CtrlSendResultsTests(ITestOutputHelper output)
     }
 
     /// <summary>
+    /// PP416: AND LEAVING MEANS THE REST GO TOO, which the break alone did not achieve.
+    ///
+    /// The break above exits the inner loop only. The outer loop's test on should_stop, msg_queue
+    /// and login_pin_entered was then true BECAUSE the queue was not empty, so it took the cancelled
+    /// branch and re-entered this drain - sending the next message into the counter gap PP385's rule
+    /// forbids, one per outer iteration, until the session thread got round to stopping ctrl. The
+    /// count depended on scheduling, which is the part that makes it unreproducible rather than
+    /// merely wrong.
+    /// </summary>
+    [Fact]
+    public void LeavingTheDrainDropsWhatIsStillQueued()
+    {
+        if (Ctrl() is not { } core)
+            return;
+
+        Assert.True(
+            CtrlSendResults.TheDrainDropsWhatIsStillQueued(core),
+            "the drain leaves messages queued, so the outer loop sends them into the same gap");
+
+        // Both halves, because the break is still what ends the inner loop.
+        Assert.True(CtrlSendResults.TheDrainLeavesOnAFailedSend(core));
+    }
+
+    /// <summary>
+    /// PP416: and the reader refuses the drain as it was - a break with nothing dropped.
+    ///
+    /// The shape that passed PP385's check and still sent everything. Asserted against a synthetic
+    /// body rather than by putting the defect back.
+    /// </summary>
+    [Fact]
+    public void TheReaderRefusesABreakThatDropsNothing()
+    {
+        const string BreakOnly = """
+            				if(drain_err != CHIAKI_ERR_SUCCESS)
+            				{
+            					CHIAKI_LOGE(ctrl->session->log, "failed: %s", chiaki_error_string(drain_err));
+            					chiaki_mutex_unlock(&ctrl->notif_mutex);
+            					ctrl_failed(ctrl, CHIAKI_QUIT_REASON_CTRL_UNKNOWN);
+            					chiaki_mutex_lock(&ctrl->notif_mutex);
+            					break;
+            				}
+            """;
+
+        Assert.False(CtrlSendResults.TheDrainDropsWhatIsStillQueued(BreakOnly));
+
+        // And a comment merely NAMING the drop does not satisfy it either - PP400's rule.
+        const string CommentOnly = """
+            				if(drain_err != CHIAKI_ERR_SUCCESS)
+            				{
+            					// while(ctrl->msg_queue) ctrl_message_queue_free(rest);
+            					break;
+            				}
+            """;
+
+        Assert.False(CtrlSendResults.TheDrainDropsWhatIsStillQueued(CommentOnly));
+    }
+
+    /// <summary>
     /// And it copies the queued type before freeing the node that holds it.
     ///
     /// Asserted because the first version of this fix read msg->type in the log AFTER
@@ -221,6 +279,7 @@ public class CtrlSendResultsTests(ITestOutputHelper output)
 
         // PP385's readers, on the shapes they replaced.
         Assert.False(CtrlSendResults.TheDrainLeavesOnAFailedSend(""));
+        Assert.False(CtrlSendResults.TheDrainDropsWhatIsStillQueued(""));
         Assert.False(CtrlSendResults.TheDrainCopiesTheTypeBeforeTheFree(""));
         Assert.False(CtrlSendResults.TheFallbackIsReportedAndNotFatal(""));
         Assert.Equal(0, CtrlSendResults.FallbackCallsThroughTheGuard(""));

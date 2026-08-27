@@ -94,6 +94,46 @@ public static class CtrlSendResults
     }
 
     /// <summary>
+    /// PP416: and whether leaving the drain now drops what is still queued.
+    ///
+    /// THE BREAK ABOVE WAS NOT ENOUGH, which is why this is a second check rather than a wider
+    /// version of the first. <see cref="TheDrainLeavesOnAFailedSend"/> asserts the break, and the
+    /// break exits the INNER loop only: the outer loop's test on should_stop, msg_queue and
+    /// login_pin_entered was then true because the queue was not empty, so it took the cancelled
+    /// branch and re-entered the drain. Every message PP385 meant to hold back went out anyway, one
+    /// per outer iteration, and how many depended on when the session thread got round to stopping
+    /// ctrl - a count that changed between runs.
+    ///
+    /// Anchored on the failure test rather than on the drain's own while, because there are now two
+    /// of those inside the branch and the second one is the subject.
+    /// </summary>
+    public static bool TheDrainDropsWhatIsStillQueued(string source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        int tested = source.IndexOf("if(drain_err != CHIAKI_ERR_SUCCESS)", StringComparison.Ordinal);
+        if (tested < 0)
+            return false;
+
+        // Comments stripped: the note explaining this fix quotes the outer loop's test, and PP400's
+        // rule is that prose must not satisfy a search about code.
+        string branch = CCall.Compact(CCall.Code(source[tested..]));
+
+        int drop = branch.IndexOf("while(ctrl->msg_queue)", StringComparison.Ordinal);
+        if (drop < 0)
+            return false;
+
+        int freed = branch.IndexOf(
+            "ctrl_message_queue_free(rest)", drop, StringComparison.Ordinal);
+        if (freed < 0)
+            return false;
+
+        int left = branch.IndexOf("break;", freed, StringComparison.Ordinal);
+
+        return left > freed;
+    }
+
+    /// <summary>
     /// Whether the queued message's type is copied before the node is freed.
     ///
     /// The log wants it and ctrl_message_queue_free ends the node it lives in, so reading it after

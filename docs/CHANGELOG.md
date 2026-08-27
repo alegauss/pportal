@@ -354,6 +354,7 @@
 - ✅ **PP413** **the rudp unknown-subtype arm acks a counter it never read, and zero drops half the resend buffer** — the unknown arm acks no packet, the rule is that an arm may only ack a counter it read, and the send-ack it does make is unchanged.
 - ✅ **PP414** **the rudp offset helper carries takion's doc comment, promising a -1 nobody returns for a default that is a real answer** — the comment says what the helper returns, the default is stated as an answer rather than a sentinel, and the linkage matches its neighbours.
 - ✅ **PP415** **ctrl_connect_tcp is unported, and its sockaddr allocation failure reaches the user as a connect failure** — the connect is modelled with its five outcomes and its dropped mutex, and the sockaddr allocation failure now reports memory rather than the network.
+- ✅ **PP416** **the ctrl drain's failure breaks the inner loop only, so the outer loop re-enters and sends what it meant to leave** — leaving the drain now drops what is still queued, so the outer loop finds nothing to re-enter it for, and the count no longer races.
 
 ## Block G — Test discipline
 
