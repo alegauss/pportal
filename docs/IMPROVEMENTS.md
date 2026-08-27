@@ -380,11 +380,10 @@ local network. Delete the file today and the build breaks; make the build pass b
 deleting the callers too, and remote play over PSN goes with them.
 
 That is why this is a line of its own rather than a bullet under PP33. The deletion is a
-consequence; the work is the managed side owning the flow - a seam the session thread
-asks for a socket and an address through, with the C behind it until managed code is.
-PP266 already performs the five session HTTP calls over HttpClient, so the pattern
-exists; what has no counterpart is the websocket, the STUN exchange and the punch
-itself.
+consequence; the work is the managed side owning the flow. PP266 does the five session
+HTTP calls over HttpClient and PushSocket opens a ClientWebSocket, so what is missing is
+not a counterpart but the I/O: StunMessage, NatProbe, PunchExchange and CandidateRace
+carry no socket.
 
 Until then PP33 is correctly blocked and its remaining query correctly reads 420.
 Reading that number as the size of the job is what its own section warns against: it is
@@ -608,3 +607,6 @@ No new instrument is needed. The PP42 telemetry row already names the decoder th
 produced it, so one session per decoder against a real console answers this, and the
 work is a run rather than a build. That is why this is filed as its own line instead of
 held open inside PP48: the cost question had an answer here and this one does not.
+
+## Block J — Public documentation
+

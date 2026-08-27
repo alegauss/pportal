@@ -28,3 +28,6 @@
 - ⏸ **PP50** (deps: PP40 ✅, PP47 ✅) **frame generation would smooth a 30fps stream and cost a frame of latency to do it** — set aside (needs a live session to measure the trade): Interpolation needs the frame after the one being shown, so it buys smoothness with exactly the quantity remote play is judged on. → §PP50
 - ⏸ **PP76** (deps: —) **the decoder preference is measured on synthetic frames, and drops under network jitter are what a stream is judged by** — set aside (needs a console): Decode cost follows resolution and bitrate, which a generator carries, but drops follow the network, which no encoder here produces. → §PP76
 - ⏸ **PP72** (deps: —) **the auto decoder order prefers cuda over d3d11va on an OpenGL renderer, and the paced numbers now say the opposite** — set aside (needs real sessions): PP71 measured cuda slowest of the three at the rate a console sends, so the fallback it governs is picked against its own evidence. → §PP72
+
+## Block J — Public documentation
+
