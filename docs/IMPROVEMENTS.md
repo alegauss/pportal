@@ -188,20 +188,6 @@ a review. And it is the task that most benefits from the oracle running a full c
 session end to end, since almost nothing here has a fixed input and a fixed output the
 way the crypto does.
 
-### §PP29 The first thing that can be proved against a console
-
-regist.c is 918 lines, discovery.c 495 and discoveryservice.c 384: the broadcast that
-finds a console, the reply that describes it, the wake packet, and the PIN exchange that
-ends with key material stored.
-
-Unlike the transport, these are request and response over well-defined boundaries, and
-unlike the state machines they are short. That combination makes this the slice to run
-against real hardware first: it needs the crypto to be right, it needs nothing from the
-video path, and it either finds the console on the network or it does not.
-
-It is also what makes the rest of the block testable at all, since a session cannot be
-opened against a console the managed side has never registered with.
-
 ### §PP30 Reed-Solomon, by hand
 
 third-party/jerasure and third-party/gf-complete implement erasure coding over GF(2^8),
@@ -399,6 +385,35 @@ between them.
 Until then PP33 is correctly blocked, and `remaining PP33` reads 420. Reading that
 number as the size of the job is what its own section warns against: it is one file, and
 the work is at the other end.
+
+### §PP464 The slot the drop pass steps over
+
+`discovery_service_drop_old_hosts` walks the host array with an index, removes a stale
+entry by shifting the rest down, and then steps the index back so the `for`'s increment
+lands on the slot the shift just filled:
+
+    change = true;
+    if(i > 0)
+        i--;
+    service->hosts_count--;
+
+The guard is the defect. At index 0 the decrement is skipped, so `i++` moves to 1 and
+whatever shifted into slot 0 is not examined on this pass. Two stale hosts at the front
+of the list therefore cost two passes where two anywhere else cost one.
+
+The guard looks like it is avoiding an underflow, and there is none to avoid: `i` is a
+`size_t`, an unconditional `i--` at zero wraps to SIZE_MAX, and the `i++` brings it
+straight back to zero. That is already what every other index relies on, one step
+removed.
+
+The consequence is bounded and self-correcting: the skipped host is still stale on the
+next ping, the pass starts at zero again, and it goes. So this is one ping cycle of a
+console lingering in the list after it stopped answering - visible in a console list
+that refreshes on the service's callback, and not a leak.
+
+PP29 reproduces the traversal rather than fixing it, and two tests pin it by
+construction - two stale hosts at the front take two passes, two after the first take
+one. Both invert when the guard goes.
 
 ## Block G — Test discipline
 

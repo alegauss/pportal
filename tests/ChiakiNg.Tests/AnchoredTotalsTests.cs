@@ -121,14 +121,17 @@ public class AnchoredTotalsTests(ITestOutputHelper output)
     }
 
     /// <summary>
-    /// The three PP443 restated are each anchored now, named so the fix is legible in the suite.
+    /// The numbers PP443 restated are anchored, named so the fix is legible in the suite.
+    ///
+    /// Two rows have gone: regist.c and discoveryservice.c were PP29's, and shipping PP29 moved its
+    /// line into the ledger. A claim in the changelog is not in the backlog this reads, which is
+    /// correct - the recount checks what is still open, and a shipped number is history rather than a
+    /// promise. The rows go with the line rather than the assertion being loosened to tolerate them.
     /// </summary>
     [Theory]
     [InlineData("takion.c", 1910)] // PP451 added 22 lines; --recount restated the claim, this follows
     [InlineData("session.c", 1244)]
     [InlineData("streamconnection.c", 1531)]
-    [InlineData("regist.c", 918)]
-    [InlineData("discoveryservice.c", 384)]
     public void TheRestatedNumbersAreCheckedClaimsNow(string file, int stated)
     {
         if (SanitizerSource.RepositoryRoot() is not { } root)
