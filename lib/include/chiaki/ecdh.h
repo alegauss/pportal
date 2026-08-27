@@ -31,8 +31,13 @@ typedef struct chiaki_ecdh_t
 	// deterministic random bit generator
 	mbedtls_ctr_drbg_context drbg;
 #else
-	struct ec_group_st *group;
-	struct ec_key_st *key_local;
+	// PP427: one EVP_PKEY where an EC_GROUP and an EC_KEY used to sit. The group is no longer a
+	// field because it is no longer a handle a caller passes around - under EVP the curve is a
+	// parameter of the key, named "secp256k1" at the two places a key is built.
+	//
+	// Still an opaque forward declaration, so this header pulls in no OpenSSL header, which is what
+	// the two it replaces were for.
+	struct evp_pkey_st *key_local;
 #endif
 } ChiakiECDH;
 

@@ -8,12 +8,19 @@
 #include "mbedtls/entropy.h"
 #include "mbedtls/md.h"
 #else
+// PP427: openssl/ecdh.h is gone with ECDH_compute_key, and param_build.h and core_names.h arrive
+// with the builders EVP_PKEY_fromdata needs. ec.h stays for EVP_EC_gen, which is declared there.
 #include <openssl/evp.h>
 #include <openssl/ec.h>
 #include <openssl/hmac.h>
 #include <openssl/bn.h>
-#include <openssl/ecdh.h>
+#include <openssl/param_build.h>
+#include <openssl/core_names.h>
 #endif
+
+// PP427: the curve, named once. EC_GROUP_new_by_curve_name took NID_secp256k1; EVP takes the name,
+// and it is a parameter of every key rather than an object shared between them.
+#define CHIAKI_ECDH_CURVE "secp256k1"
 
 // memset
 #include <string.h>
@@ -56,11 +63,10 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_ecdh_init(ChiakiECDH *ecdh)
 
 #else
 #define CHECK(a) if(!(a)) { chiaki_ecdh_fini(ecdh); return CHIAKI_ERR_UNKNOWN; }
-	CHECK(ecdh->group = EC_GROUP_new_by_curve_name(NID_secp256k1));
-
-	CHECK(ecdh->key_local = EC_KEY_new());
-	CHECK(EC_KEY_set_group(ecdh->key_local, ecdh->group));
-	CHECK(EC_KEY_generate_key(ecdh->key_local));
+	// PP427: four calls become one. EVP_EC_gen names the curve, builds the key and generates it,
+	// which is what EC_GROUP_new_by_curve_name, EC_KEY_new, EC_KEY_set_group and
+	// EC_KEY_generate_key did between them.
+	CHECK(ecdh->key_local = EVP_EC_gen(CHIAKI_ECDH_CURVE));
 
 #undef CHECK
 #endif
@@ -74,8 +80,9 @@ CHIAKI_EXPORT void chiaki_ecdh_fini(ChiakiECDH *ecdh)
 	mbedtls_ecdh_free(&ecdh->ctx);
 	mbedtls_ctr_drbg_free(&ecdh->drbg);
 #else
-	EC_KEY_free(ecdh->key_local);
-	EC_GROUP_free(ecdh->group);
+	// PP427: one free, and it tolerates NULL the way both of the two it replaces did - which is what
+	// lets init's CHECK call this on a half-built struct.
+	EVP_PKEY_free(ecdh->key_local);
 #endif
 }
 
@@ -104,40 +111,53 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_ecdh_set_local_key(ChiakiECDH *ecdh, const 
 
 	return CHIAKI_ERR_SUCCESS;
 #else
-	ChiakiErrorCode err = CHIAKI_ERR_SUCCESS;
+	// PP427: EC_KEY_set_private_key and EC_KEY_set_public_key amended a key in place; EVP has no
+	// setters, so the key is BUILT from both halves and swapped in. The private half is a BIGNUM as
+	// before and the public half stays the octet string it arrives as - EC_POINT_new and
+	// EC_POINT_oct2point are gone with the point object they existed to fill.
+	ChiakiErrorCode err = CHIAKI_ERR_UNKNOWN;
+
+	OSSL_PARAM_BLD *bld = NULL;
+	OSSL_PARAM *params = NULL;
+	EVP_PKEY_CTX *ctx = NULL;
+	EVP_PKEY *key = NULL;
 
 	BIGNUM *private_key_bn = BN_bin2bn(private_key, (int)private_key_size, NULL);
 	if(!private_key_bn)
 		return CHIAKI_ERR_UNKNOWN;
 
-	EC_POINT *public_key_point = EC_POINT_new(ecdh->group);
-	if(!public_key_point)
-	{
-		err = CHIAKI_ERR_UNKNOWN;
-		goto error_priv;
-	}
+	bld = OSSL_PARAM_BLD_new();
+	if(!bld)
+		goto out;
 
-	if(!EC_POINT_oct2point(ecdh->group, public_key_point, public_key, public_key_size, NULL))
-	{
-		err = CHIAKI_ERR_UNKNOWN;
-		goto error_pub;
-	}
+	if(!OSSL_PARAM_BLD_push_utf8_string(bld, OSSL_PKEY_PARAM_GROUP_NAME, CHIAKI_ECDH_CURVE, 0)
+			|| !OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_PRIV_KEY, private_key_bn)
+			|| !OSSL_PARAM_BLD_push_octet_string(bld, OSSL_PKEY_PARAM_PUB_KEY, public_key, public_key_size))
+		goto out;
 
-	if(!EC_KEY_set_private_key(ecdh->key_local, private_key_bn))
-	{
-		err = CHIAKI_ERR_UNKNOWN;
-		goto error_pub;
-	}
+	params = OSSL_PARAM_BLD_to_param(bld);
+	if(!params)
+		goto out;
 
-	if(!EC_KEY_set_public_key(ecdh->key_local, public_key_point))
-	{
-		err = CHIAKI_ERR_UNKNOWN;
-		goto error_pub;
-	}
+	ctx = EVP_PKEY_CTX_new_from_name(NULL, "EC", NULL);
+	if(!ctx || EVP_PKEY_fromdata_init(ctx) <= 0)
+		goto out;
 
-error_pub:
-	EC_POINT_free(public_key_point);
-error_priv:
+	if(EVP_PKEY_fromdata(ctx, &key, EVP_PKEY_KEYPAIR, params) <= 0)
+		goto out;
+
+	// Only now: the key init generated is replaced wholesale, so a failure above leaves the caller
+	// with the generated one rather than with half of theirs.
+	EVP_PKEY_free(ecdh->key_local);
+	ecdh->key_local = key;
+	key = NULL;
+	err = CHIAKI_ERR_SUCCESS;
+
+out:
+	EVP_PKEY_free(key);
+	EVP_PKEY_CTX_free(ctx);
+	OSSL_PARAM_free(params);
+	OSSL_PARAM_BLD_free(bld);
 	BN_free(private_key_bn);
 	return err;
 #endif
@@ -174,13 +194,30 @@ error:
 	mbedtls_md_free(&ctx);
 	return CHIAKI_ERR_UNKNOWN;
 #else
-	const EC_POINT *point = EC_KEY_get0_public_key(ecdh->key_local);
-	if(!point)
+	// PP427: EC_KEY_get0_public_key handed back a point that EC_POINT_point2oct then encoded into
+	// the caller's buffer. EVP_PKEY_get1_encoded_public_key does both and allocates, so the copy and
+	// the room check are this function's now.
+	//
+	// UNCOMPRESSED EITHER WAY. point2oct was told POINT_CONVERSION_UNCOMPRESSED explicitly; the EVP
+	// call uses the key's point-format parameter, which is uncompressed unless something sets it
+	// otherwise, and nothing here does. The recorded vector proves the bytes rather than this
+	// comment: test_ecdh's local_public_key is asserted byte for byte.
+	unsigned char *pub = NULL;
+	size_t pub_size = EVP_PKEY_get1_encoded_public_key(ecdh->key_local, &pub);
+	if(!pub_size)
 		return CHIAKI_ERR_UNKNOWN;
 
-	*key_out_size = EC_POINT_point2oct(ecdh->group, point, POINT_CONVERSION_UNCOMPRESSED, key_out, *key_out_size, NULL);
-	if(!(*key_out_size))
+	// The same answer point2oct gave for a buffer it did not fit in: it returned 0, which this
+	// function reported as UNKNOWN. Kept rather than sharpened, so the diff is the API change.
+	if(pub_size > *key_out_size)
+	{
+		OPENSSL_free(pub);
 		return CHIAKI_ERR_UNKNOWN;
+	}
+
+	memcpy(key_out, pub, pub_size);
+	OPENSSL_free(pub);
+	*key_out_size = pub_size;
 
 	if(!HMAC(EVP_sha256(), handshake_key, CHIAKI_HANDSHAKE_KEY_SIZE, key_out, *key_out_size, sig_out, (unsigned int *)sig_out_size))
 		return CHIAKI_ERR_UNKNOWN;
@@ -218,23 +255,63 @@ error:
 	return CHIAKI_ERR_UNKNOWN;
 
 #else
-	EC_POINT *remote_public_key = EC_POINT_new(ecdh->group);
-	if(!remote_public_key)
-		return CHIAKI_ERR_UNKNOWN;
+	// PP427: ECDH_compute_key took the peer as an EC_POINT and the local key as an EC_KEY.
+	// EVP_PKEY_derive takes two EVP_PKEYs, so the remote octet string becomes a public-only key
+	// first - which is what EC_POINT_new and EC_POINT_oct2point were doing, one level down.
+	//
+	// PP105's BEHAVIOUR IS UNCHANGED, and deliberately: handshake_key and remote_sig are still
+	// taken and still unused. A port that started verifying the remote signature here would differ
+	// from the client every user already has, which is the thing PP105 asserted rather than fixed.
+	ChiakiErrorCode err = CHIAKI_ERR_UNKNOWN;
 
-	if(!EC_POINT_oct2point(ecdh->group, remote_public_key, remote_key, remote_key_size, NULL))
-	{
-		EC_POINT_free(remote_public_key);
-		return CHIAKI_ERR_UNKNOWN;
-	}
+	OSSL_PARAM_BLD *bld = NULL;
+	OSSL_PARAM *params = NULL;
+	EVP_PKEY_CTX *from = NULL;
+	EVP_PKEY *peer = NULL;
+	EVP_PKEY_CTX *derive = NULL;
+	size_t secret_size = CHIAKI_ECDH_SECRET_SIZE;
 
-	int r = ECDH_compute_key(secret_out, CHIAKI_ECDH_SECRET_SIZE, remote_public_key, ecdh->key_local, NULL);
+	bld = OSSL_PARAM_BLD_new();
+	if(!bld)
+		goto out;
 
-	EC_POINT_free(remote_public_key);
+	if(!OSSL_PARAM_BLD_push_utf8_string(bld, OSSL_PKEY_PARAM_GROUP_NAME, CHIAKI_ECDH_CURVE, 0)
+			|| !OSSL_PARAM_BLD_push_octet_string(bld, OSSL_PKEY_PARAM_PUB_KEY, remote_key, remote_key_size))
+		goto out;
 
-	if(r != CHIAKI_ECDH_SECRET_SIZE)
-		return CHIAKI_ERR_UNKNOWN;
+	params = OSSL_PARAM_BLD_to_param(bld);
+	if(!params)
+		goto out;
 
-	return CHIAKI_ERR_SUCCESS;
+	from = EVP_PKEY_CTX_new_from_name(NULL, "EC", NULL);
+	if(!from || EVP_PKEY_fromdata_init(from) <= 0)
+		goto out;
+
+	// PUBLIC_KEY and not KEYPAIR: the peer has no private half, and asking for one fails.
+	if(EVP_PKEY_fromdata(from, &peer, EVP_PKEY_PUBLIC_KEY, params) <= 0)
+		goto out;
+
+	derive = EVP_PKEY_CTX_new_from_pkey(NULL, ecdh->key_local, NULL);
+	if(!derive || EVP_PKEY_derive_init(derive) <= 0)
+		goto out;
+
+	if(EVP_PKEY_derive_set_peer(derive, peer) <= 0)
+		goto out;
+
+	// Raw X of the shared point, which is what ECDH_compute_key returned with a NULL KDF. The size
+	// is checked the way the old return value was: anything but the secret size is a failure.
+	if(EVP_PKEY_derive(derive, secret_out, &secret_size) <= 0
+			|| secret_size != CHIAKI_ECDH_SECRET_SIZE)
+		goto out;
+
+	err = CHIAKI_ERR_SUCCESS;
+
+out:
+	EVP_PKEY_CTX_free(derive);
+	EVP_PKEY_free(peer);
+	EVP_PKEY_CTX_free(from);
+	OSSL_PARAM_free(params);
+	OSSL_PARAM_BLD_free(bld);
+	return err;
 #endif
 }

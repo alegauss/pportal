@@ -376,6 +376,7 @@
 - ✅ **PP442** **the ctrl participant's payloads are C literals transcribed once, and nothing holds them against ctrl.c** — The five payloads copied from a C array are read back out of ctrl.c and compared whole, zero-filled to the declared size so PP383's fifteen initialisers for sixteen bytes is not a false alarm.
 - ✅ **PP444** **the registration request payload is still C behind a P/Invoke wrapper, so nothing managed lays out the PIN exchange** — The fill, both aeropause layouts and the two inner-header forms are managed and hold against the C's own payload byte for byte; the general aeropause stays C, unexported.
 - ✅ **PP445** **the shim exports no general rpcrypt aeropause, so the PS5 half of the registration payload has no oracle** — The PS5 aeropause is exported, so the managed derivation and layout reproduce the C's head byte for byte; the offset is bounded here because the C bounds only the target.
+- ✅ **PP427** **ecdh.c's eight calls are all deprecated as of OpenSSL 3.0, and they are the whole of the key agreement** — ecdh.c is written against EVP: EVP_EC_gen for the key, EVP_PKEY_fromdata for both halves, EVP_PKEY_derive for the secret - and the recorded vector agrees byte for byte.
 
 ## Block G — Test discipline
 

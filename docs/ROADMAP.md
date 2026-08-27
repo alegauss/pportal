@@ -34,7 +34,6 @@
 - 📋 **PP294** (deps: PP297 ✅) **ctrl.c is 1763 lines of control channel and PP28 sizes it together with two files it does not resemble** — It is the longest of the three and the one with the most message types, and none of them are on the frame path so latency is not the measure. → §PP294
 - 📋 **PP295** (deps: PP27 ⏳, PP297 ✅) **streamconnection.c is 1531 lines and is the last C caller of the video receiver, so every deletion below waits on it** — PP286 to PP291 ported the frame path bottom-up and none of it removed C, because this is what still calls the native receiver. → §PP295
 - 📋 **PP340** (deps: —) **the PSN path lives in session.c's nine holepunch call sites, so PP33's deletion would take remote play with it** — the offer, the punch, the two sockets, the regist info, the address, the port and the fini are all driven from C; nothing managed owns that flow. → §PP340
-- 💭 **PP427** (deps: —) **ecdh.c's eight calls are all deprecated as of OpenSSL 3.0, and they are the whole of the key agreement** — Deprecated still compiles, so what makes this a line is that the replacement is EVP_PKEY's shape rather than a rename. → §PP427
 
 ## Block G — Test discipline
 

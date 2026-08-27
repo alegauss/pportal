@@ -398,32 +398,6 @@ Until then PP33 is correctly blocked, and `remaining PP33` reads 420. Reading th
 number as the size of the job is what its own section warns against: it is one file, and
 the work is at the other end.
 
-### §PP427 The eight in ecdh.c
-
-PP426 counted the build's warnings and found three families. Two are accounted for:
-seventeen are the compiler restating PP357, and the two pointer-sign ones PP426 fixed.
-These eight are the third, and all of them are in one file.
-
-lib/src/ecdh.c calls EC_KEY_new, EC_KEY_free, EC_KEY_set_group, EC_KEY_generate_key,
-EC_KEY_set_private_key, EC_KEY_set_public_key, EC_KEY_get0_public_key and
-ECDH_compute_key. Every one is deprecated as of OpenSSL 3.0. Eight calls, one file, and
-no other file in lib touches the EC_KEY API.
-
-IT COMPILES AND WORKS TODAY. Deprecated is not removed, and 3.x still ships all eight.
-What is owed is not urgent; what makes it worth a line is that it is the whole of the
-key agreement the session keys derive from, so whoever does move it is rewriting the
-part of the protocol that has the least room to be nearly right.
-
-THE REPLACEMENT IS EVP, NOT A RENAME. OpenSSL 3.0's answer to EC_KEY is EVP_PKEY with
-parameter builders and EVP_PKEY_derive, which is a different shape rather than a
-different spelling - so this is a port of a file and not a sweep of eight identifiers.
-
-THE DECISION IS TAKEN: port it, on 2026-08-27. What made it answerable is an oracle that
-existed and nobody had named - the selftest reads test_ecdh's seven values out of
-test/gkcrypt.c, fixes the local private key, and asserts three things byte for byte: the
-local public key, its HMAC under the handshake key, and the derived secret. Scope is the
-OpenSSL branch; mbedtls uses none of the eight.
-
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry
