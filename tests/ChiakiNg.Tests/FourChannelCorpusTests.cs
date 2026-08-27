@@ -155,9 +155,13 @@ public class FourChannelCorpusTests
     ///
     ///   PP326 took the payloads of ctrl's LOGIN and SESSION_ID.
     ///
-    ///   PP397 took the stream's BIG and BANG - the first because it carries the session id, which
-    ///   PP418 now holds against streamconnection.c, and the second because it carries the console's
-    ///   ECDH public key and signature.
+    ///   PP397 took the stream's BIG, because it carries the session id - which PP418 now holds
+    ///   against streamconnection.c.
+    ///
+    ///   PP423 took the stream's BANG by FIELD rather than whole, so its three key-bearing fields
+    ///   are zeroed and the console's verdict on the handshake stays readable. That one is asserted
+    ///   by <see cref="TheBangsKeysAreZeroedAndItsVerdictIsNot"/>, because "carries the marker" is
+    ///   no longer what it means.
     /// </summary>
     [Fact]
     public void NothingInTheCorpusIsASecret()
@@ -170,8 +174,60 @@ public class FourChannelCorpusTests
         AssertRedacted(recording, "ctrl", "0005 ");
         AssertRedacted(recording, "ctrl", "0033 ");
         AssertRedacted(recording, "stream", "0000 ");
-        AssertRedacted(recording, "stream", "0001 ");
     }
+
+    /// <summary>
+    /// PP423: the BANG's keys are zeroed and its verdict is not.
+    ///
+    /// A stronger assertion than the marker it replaces: it reads the bytes rather than checking for
+    /// a placeholder. session_key, ecdh_pub_key and ecdh_sig keep their tags and lengths and carry
+    /// nothing; server_version and the two accepted-flags are there to be replayed against.
+    /// </summary>
+    [Fact]
+    public void TheBangsKeysAreZeroedAndItsVerdictIsNot()
+    {
+        ExchangeRecording? recording = Corpus();
+        if (recording is null)
+            return;
+
+        ExchangeEntry bang = Assert.Single(
+            recording.Entries,
+            e => e.Channel == "stream" && e.Payload.StartsWith("0001 ", StringComparison.Ordinal));
+
+        // Not the marker: the payload is bytes, and the rule is about which of them are zero.
+        Assert.DoesNotContain("<redacted", bang.Payload, StringComparison.Ordinal);
+
+        byte[] payload = Bytes(bang.Payload);
+
+        foreach (int field in MessageSecrets.BangSecretFields)
+        {
+            Assert.True(
+                ProtobufRedaction.TryFindField(
+                    payload, 0, payload.Length, MessageSecrets.BangPayloadField,
+                    out int nestedAt, out int nestedLength),
+                "the BANG's bang_payload cannot be found, so nothing here checks anything");
+
+            if (!ProtobufRedaction.TryFindField(
+                    payload, nestedAt, nestedAt + nestedLength, field, out int at, out int length))
+            {
+                // Optional, and an absent key is nothing to hide.
+                continue;
+            }
+
+            Assert.All(
+                payload[at..(at + length)],
+                b => Assert.Equal(0, b));
+        }
+
+        // And the verdict survived: encrypted_key_accepted and version_accepted, both true.
+        Assert.Contains("18-01-20-01", bang.Payload, StringComparison.Ordinal);
+    }
+
+    /// <summary>A rendered payload's bytes, past the four hex digits of its type.</summary>
+    private static byte[] Bytes(string payload)
+        => [.. payload[5..]
+            .Split('-', StringSplitOptions.RemoveEmptyEntries)
+            .Select(pair => Convert.ToByte(pair, 16))];
 
     /// <summary>
     /// AND SENKUSHA'S BIG AND BANG ARE IN THE CLEAR, WHICH IS THE ONE THAT NEEDED MEASURING.

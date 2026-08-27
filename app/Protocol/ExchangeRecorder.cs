@@ -198,12 +198,32 @@ public sealed class ExchangeRecorder : IDisposable
         // rule is asked of the channel as well as the type, because a ctrl message type and a
         // protobuf payload type are different numbering schemes and this used to consult one list
         // for both - so a BIG carrying the session id was recorded in the clear.
-        string body = MessageSecrets.MayRecord(message.Channel, message.Type)
-            ? Dashed(message.Payload)
-            : MessageSecrets.Marker;
+        // PP423: three answers now, not two. The BANG is recorded with three of its nine fields
+        // zeroed, because a whole-payload marker hid the console's verdict on the handshake along
+        // with the two optional key fields that share the message.
+        //
+        // A PAYLOAD THAT CANNOT BE WALKED FALLS BACK TO THE MARKER. Blanking nothing and recording
+        // it would publish exactly the bytes the rule exists to hide, so the refusal is the marker
+        // rather than the payload - PP326's principle, applied to a parse failure.
+        string body = MessageSecrets.DisclosureFor(message.Channel, message.Type) switch
+        {
+            PayloadDisclosure.Whole => Dashed(message.Payload),
+            PayloadDisclosure.FieldsBlanked => Blanked(message.Payload),
+            _ => MessageSecrets.Marker,
+        };
 
         return $"{message.Type:x4} {body}";
     }
+
+    /// <summary>
+    /// PP423: a BANG with its three secret fields zeroed, or the marker where it will not parse.
+    /// </summary>
+    private static string Blanked(byte[] payload)
+        => ProtobufRedaction.Blank(
+                payload, MessageSecrets.BangPayloadField, MessageSecrets.BangSecretFields)
+            is { } blanked
+            ? Dashed(blanked)
+            : MessageSecrets.Marker;
 
     private static readonly Encoding Latin1 = Encoding.Latin1;
 

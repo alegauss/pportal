@@ -3,6 +3,22 @@ using ChiakiNg.Session;
 
 namespace ChiakiNg.Protocol;
 
+/// <summary>PP423: how much of one payload reaches a recording.</summary>
+public enum PayloadDisclosure
+{
+    /// <summary>Nothing. The marker goes in its place.</summary>
+    None,
+
+    /// <summary>All of it.</summary>
+    Whole,
+
+    /// <summary>
+    /// All of it but the fields that carry a secret, which are zeroed in place. Refused - and
+    /// treated as <see cref="None"/> - where the payload cannot be walked.
+    /// </summary>
+    FieldsBlanked,
+}
+
 /// <summary>
 /// PP397: which payloads never reach a recording, asked of the CHANNEL as well as the type.
 ///
@@ -28,6 +44,11 @@ namespace ChiakiNg.Protocol;
 /// AND A MESSAGE THAT WOULD NOT DECODE IS REFUSED. PP326's principle is that a value goes because
 /// of the field it sits in; with no field identified there is no basis to record it, so
 /// <see cref="ChiakiMessageTap.UnknownType"/> is never recordable.
+///
+/// PP423: AND THE BANG IS RECORDED BY FIELD. Whole-payload redaction is right for the BIG, whose
+/// six fields are client_version and five secrets. The BANG's nine include the two flags the client
+/// acts on, so blanking three of them keeps the console's verdict on the handshake in the corpus.
+/// <see cref="DisclosureFor"/> is where the two part.
 /// </summary>
 public static class MessageSecrets
 {
@@ -62,6 +83,43 @@ public static class MessageSecrets
     /// echo commands. Stated as an empty set rather than left out, so the answer is recorded.
     /// </summary>
     public static IReadOnlySet<ushort> SenkushaSecret { get; } = new HashSet<ushort>();
+
+    /// <summary>
+    /// PP423: the field bang_payload sits at inside a TakionMessage.
+    /// </summary>
+    public const int BangPayloadField = 3;
+
+    /// <summary>
+    /// PP423: the fields of a BANG that are blanked, leaving the rest readable.
+    ///
+    /// session_key, ecdh_pub_key and ecdh_sig. What survives is server_version, token,
+    /// encrypted_key_accepted, version_accepted, extended_info and server_version_string - and the
+    /// middle two are the console's verdict on the handshake, which a whole-payload marker hid along
+    /// with the keys that share the message.
+    /// </summary>
+    public static IReadOnlySet<int> BangSecretFields { get; } = new HashSet<int> { 5, 8, 9 };
+
+    /// <summary>
+    /// PP423: how much of a payload reaches the recording.
+    ///
+    /// The BIG stays whole-redacted: five of its six fields are secret, so blanking by field would
+    /// leave one varint and buy nothing for the machinery. The BANG is the case that earns it.
+    /// </summary>
+    /// <param name="channel">Which conversation it crossed.</param>
+    /// <param name="type">A ctrl message type, or a protobuf payload type on the other two.</param>
+    public static PayloadDisclosure DisclosureFor(string channel, ushort type)
+    {
+        ArgumentNullException.ThrowIfNull(channel);
+
+        if (channel == ChiakiMessageTap.StreamChannel
+            && type == StreamSecret["BANG"]
+            && type != ChiakiMessageTap.UnknownType)
+        {
+            return PayloadDisclosure.FieldsBlanked;
+        }
+
+        return MayRecord(channel, type) ? PayloadDisclosure.Whole : PayloadDisclosure.None;
+    }
 
     /// <summary>
     /// Whether a message of this type on this channel may have its payload recorded.
