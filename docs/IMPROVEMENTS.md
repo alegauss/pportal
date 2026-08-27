@@ -398,6 +398,29 @@ Until then PP33 is correctly blocked, and `remaining PP33` reads 420. Reading th
 number as the size of the job is what its own section warns against: it is one file, and
 the work is at the other end.
 
+### §PP457 The spin, and the second loop it lives in
+
+PP238 recorded that a failed receive costs nothing: it is logged, and the `continue`
+re-enters the wait with the full timeout, so the number bounds silence rather than the
+call. PP256 named the same shape in the followup loop - "a socket error spins it with no
+way out" - and ported around it rather than repairing it.
+
+Writing this loop for PP456 made the sharper claim available. The failure is not counted
+and there is no backoff, so a receive that fails PERSISTENTLY is an unbounded busy loop
+and not merely a slow one. `chiaki_stop_pipe_select_single` on a socket in a bad state -
+closed underneath it, or the interface gone - returns its error immediately, every time.
+Nothing can leave: `continue` skips every terminal branch, and the only exits are a
+timeout, a bad datagram or a success, none of which a failing receive reaches.
+
+So the cost is not that the run outlasts its timeout. It is a thread spinning at full
+speed, one log line per iteration, until the process ends - and on the hole punch path
+that is the thread a session is waiting on.
+
+The fix has two halves and neither touches the working path: count consecutive failures
+and leave after a few with the error the receive gave, and bound the wait in total so
+silence broken only by failures cannot extend it without limit. PP456's `Faulted` count
+is the observation point.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry
