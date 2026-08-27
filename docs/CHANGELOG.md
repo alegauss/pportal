@@ -151,6 +151,7 @@
 - ✅ **PP315** **the ceiling reads 32 and none of the 32 is a task that needs a test written, so the number still is not the debt** — the index takes every file a commit carried, twenty gates and measurements say so, and the ceiling reads zero.
 - ✅ **PP330** **the executable, its window and the installer carry upstream's chiaki mark, and the site now ships a different one** — the site's mark rendered to a seven-size .ico that the executable, its window and the installer all carry, stamped with the SVG's hash so a redrawn logo turns the suite red.
 - ✅ **PP430** **CHIAKI_ENABLE_RUDP is declared and never read, so turning Remote Play over Internet off does nothing at all** — the option nothing read is gone rather than wired up, and a rule refuses any option the build declares and never reads.
+- ✅ **PP431** **the build finds Python through a module CMake removed, and its comment names a purpose the call does not serve** — FindPython3 replaces the module CMake removed, the generator runs as its interpreter, and a rule refuses both by name.
 
 ## Block F — Managed core
 

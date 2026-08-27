@@ -117,7 +117,18 @@ if(CHIAKI_ENABLE_SPEEX)
 	endif()
 endif()
 
-find_package(PythonInterp 3 REQUIRED) # Make sure nanopb doesn't find Python 2.7 because Python 2 should just die.
+# PP431: FindPython3, because CMP0148 says FindPythonInterp is REMOVED - not deprecated. The old
+# call worked only while cmake_minimum_required names 3.10 and so selects that policy's OLD
+# behaviour; on a CMake where it is NEW, configure fails rather than warns.
+#
+# The comment that stood here said this was to stop nanopb finding Python 2.7, and it was not:
+# FindPythonInterp set PYTHON_EXECUTABLE, nanopb reads Python_EXECUTABLE, and
+# third-party/nanopb/CMakeLists.txt does its own find_package(Python) with the modern module.
+# Nothing this sets reaches nanopb.
+#
+# What it IS for is lib/protobuf, which runs the nanopb generator as this interpreter and is the
+# only consumer in the tree. Interpreter alone: no headers or libraries are wanted here.
+find_package(Python3 3 REQUIRED COMPONENTS Interpreter)
 
 if(CHIAKI_USE_SYSTEM_NANOPB)
 	if(CHIAKI_USE_SYSTEM_NANOPB STREQUAL AUTO)

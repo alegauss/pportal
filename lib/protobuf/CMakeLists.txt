@@ -13,8 +13,10 @@ set(HEADER_FILES "${CMAKE_CURRENT_BINARY_DIR}/takion.pb.h")
 
 set(GEN_PREFIX "")
 
+# PP431: Python3_EXECUTABLE, which is what FindPython3 sets. This read PYTHON_EXECUTABLE from
+# FindPythonInterp, a module CMake has removed - and this is the only consumer of it in the tree.
 add_custom_command(OUTPUT ${SOURCE_FILES} ${HEADER_FILES}
-		COMMAND ${GEN_PREFIX} "${PYTHON_EXECUTABLE}" "${NANOPB_GENERATOR_PY}" "${CMAKE_CURRENT_BINARY_DIR}/takion.pb"
+		COMMAND ${GEN_PREFIX} "${Python3_EXECUTABLE}" "${NANOPB_GENERATOR_PY}" "${CMAKE_CURRENT_BINARY_DIR}/takion.pb"
 		MAIN_DEPENDENCY "${CMAKE_CURRENT_BINARY_DIR}/takion.pb")
 
 set(CHIAKI_LIB_PROTO_SOURCE_FILES "${SOURCE_FILES}" PARENT_SCOPE)
