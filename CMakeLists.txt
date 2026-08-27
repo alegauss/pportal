@@ -29,7 +29,17 @@ option(CHIAKI_ENABLE_TESTS "Enable tests for Chiaki" ON)
 option(CHIAKI_ENABLE_GUI "Enable Qt GUI" OFF)
 option(CHIAKI_LIB_ENABLE_OPUS "Use Opus as part of Chiaki Lib" ON)
 tri_option(CHIAKI_ENABLE_SPEEX "Use speex for echo cancelling mic playback" AUTO)
-tri_option(CHIAKI_ENABLE_RUDP "Enable Remote Play over Internet" AUTO)
+# PP430: CHIAKI_ENABLE_RUDP stood here and nothing read it. It appeared once in the whole build -
+# its own declaration - while every other option here is referenced between three and fourteen
+# times, so setting it OFF changed nothing: holepunch.c, rudp.c and rudpsendbuffer.c are in the
+# unconditional source list and curl and json-c link unconditionally.
+#
+# It goes rather than getting wired up, and PP340 is why. Gating those three sources without
+# gating their callers breaks the build - session.c drives the PSN path from nine call sites with
+# no conditional compilation - so a real gate is that task's work and not a line here.
+#
+# This also removes PP313's second door rather than deciding it: there was never a door, because
+# the option was inert.
 if(CHIAKI_ENABLE_GUI)
 	set(CHIAKI_FFMPEG_DEFAULT ON)
 else()

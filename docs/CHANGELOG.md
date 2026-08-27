@@ -150,6 +150,7 @@
 - ✅ **PP314** **the ceiling says 95 and the port owes about one, so the number a reader acts on overstates the debt by two orders** — an index of which assertion file each shipping commit carried, generated from git: 95 to 32.
 - ✅ **PP315** **the ceiling reads 32 and none of the 32 is a task that needs a test written, so the number still is not the debt** — the index takes every file a commit carried, twenty gates and measurements say so, and the ceiling reads zero.
 - ✅ **PP330** **the executable, its window and the installer carry upstream's chiaki mark, and the site now ships a different one** — the site's mark rendered to a seven-size .ico that the executable, its window and the installer all carry, stamped with the SVG's hash so a redrawn logo turns the suite red.
+- ✅ **PP430** **CHIAKI_ENABLE_RUDP is declared and never read, so turning Remote Play over Internet off does nothing at all** — the option nothing read is gone rather than wired up, and a rule refuses any option the build declares and never reads.
 
 ## Block F — Managed core
 
@@ -368,6 +369,7 @@
 - ✅ **PP426** **two of eleven socket calls in lib/src pass an unsigned buffer uncast, and the build has printed their warnings all along** — takion's two socket calls carry the cast, and a rule over lib refuses an unsigned buffer handed over uncast, read from its declaration.
 - ✅ **PP428** **seventeen asserted error codes are their variable's only reader, and nothing joins that count to PP404's census** — a derived reader finds the seventeen the compiler prints, every one is in PP404's census, and only bright_ambassador can fail.
 - ✅ **PP429** **PP340's nine holepunch call sites are named only in prose, so a tenth would change what PP33 is blocked on in silence** — the nine are named by what each asks for and held in file order, and the two sockets are told apart by their port type.
+- 🗑 **PP313** **curl and json-c would leave the build today if the remote path were built off, and that trades a feature for a count** — superseded by PP430: its premise was false: CHIAKI_ENABLE_RUDP was read by nothing, so building the remote path off changed neither library and there was no door to decide about.
 
 ## Block G — Test discipline
 
