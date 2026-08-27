@@ -372,6 +372,7 @@
 - ✅ **PP429** **PP340's nine holepunch call sites are named only in prose, so a tenth would change what PP33 is blocked on in silence** — the nine are named by what each asks for and held in file order, and the two sockets are told apart by their port type.
 - 🗑 **PP313** **curl and json-c would leave the build today if the remote path were built off, and that trades a feature for a count** — superseded by PP430: its premise was false: CHIAKI_ENABLE_RUDP was read by nothing, so building the remote path off changed neither library and there was no door to decide about.
 - ✅ **PP440** **nothing says which of ctrl.c's message types the port already answers, so what is left of PP294 is a guess** — The 22 types ctrl.c declares, each with the managed type that answers it and a phrase saying what, compared by value and checked by reflection.
+- ✅ **PP441** **seven of ctrl.c's 22 message types appear in the only recording, and nothing says which fifteen are unwitnessed** — Seven of the 22 are witnessed by the recording and fifteen are not, read from the corpus so a new capture moves a type on its own; the eighth value seen is the one the enum cannot name.
 
 ## Block G — Test discipline
 

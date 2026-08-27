@@ -140,8 +140,78 @@ public static partial class CtrlMessageCensus
         return apart;
     }
 
+    /// <summary>Where the one recording of a real control channel lives.</summary>
+    public const string CorpusRelativePath = @"tests\corpus\exchange-ps5-four-channels.txt";
+
+    /// <summary>The recording, or null outside a checkout.</summary>
+    public static string? LocateCorpus() => SanitizerSource.LocateRelative(CorpusRelativePath);
+
+    /// <summary>
+    /// PP441: every type a real console was actually watched sending or receiving.
+    ///
+    /// READ FROM THE CORPUS RATHER THAN LISTED. A capture that adds a type moves it out of the
+    /// unwitnessed set on its own, so the number cannot drift from the evidence the way a sentence
+    /// would.
+    ///
+    /// The format is tab-separated - offset, direction, channel, payload - and a ctrl payload opens
+    /// with the type in four hex digits. Only the ctrl channel: the same recording carries session,
+    /// senkusha and stream, and a four-hex-digit opening means something else on each.
+    /// </summary>
+    public static IReadOnlySet<ushort> Witnessed(string corpus)
+    {
+        ArgumentNullException.ThrowIfNull(corpus);
+
+        var seen = new SortedSet<ushort>();
+
+        foreach (string line in corpus.Split('\n'))
+        {
+            string[] columns = line.TrimEnd('\r').Split('\t');
+            if (columns.Length < 4 || !string.Equals(columns[2], "ctrl", StringComparison.Ordinal))
+                continue;
+
+            Match type = CorpusTypeRegex().Match(columns[3]);
+            if (type.Success)
+            {
+                seen.Add(ushort.Parse(
+                    type.Groups["type"].Value, NumberStyles.HexNumber, CultureInfo.InvariantCulture));
+            }
+        }
+
+        return seen;
+    }
+
+    /// <summary>
+    /// The rows a real console was never watched exchanging.
+    ///
+    /// These are the ones where a rewrite and this model can agree and both be wrong, because the
+    /// only thing either was checked against is the C being replaced.
+    /// </summary>
+    public static IReadOnlyList<CtrlMessageRow> Unwitnessed(string corpus)
+    {
+        IReadOnlySet<ushort> seen = Witnessed(corpus);
+
+        return [.. Rows.Where(row => !seen.Contains(row.Value))];
+    }
+
+    /// <summary>
+    /// Types the recording holds that no row names - which is how PP331's 0x41 presents.
+    ///
+    /// Not a defect and not nothing: a number on the wire that the enum has no name for is the one
+    /// thing a census of the enum cannot see, so it is reported separately rather than folded in.
+    /// </summary>
+    public static IReadOnlyList<ushort> WitnessedAndUnnamed(string corpus)
+    {
+        var named = Rows.Select(row => row.Value).ToHashSet();
+
+        return [.. Witnessed(corpus).Where(value => !named.Contains(value))];
+    }
+
     // CTRL_MESSAGE_TYPE_SESSION_ID = 0x33, - the enum's own shape. The last member carries no
     // trailing comma, so the comma is not part of the match.
     [GeneratedRegex(@"CTRL_MESSAGE_TYPE_(?<name>[A-Z0-9_]+)\s*=\s*0x(?<value>[0-9a-fA-F]+)")]
     private static partial Regex EnumMemberRegex();
+
+    // "0036 00-01-01-59" and "00fe " - the type, anchored, so a payload byte cannot be read as one.
+    [GeneratedRegex(@"^(?<type>[0-9a-fA-F]{4})(?:\s|$)")]
+    private static partial Regex CorpusTypeRegex();
 }
