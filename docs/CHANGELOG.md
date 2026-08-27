@@ -350,6 +350,7 @@
 - ✅ **PP407** **eight stop-pipe inits in lib/src check their result and take a failure path, and the two in holepunch.c assert it** — both stop pipes take a failure path with a cleanup ladder behind them, and a rule over lib/src refuses an asserted one.
 - ✅ **PP408** **the ctrl login-result handler is unported, so nothing states that an unsolicited PIN-incorrect raises no prompt** — the handler is modelled with its warn-and-carry-on size guard, and an unsolicited PIN-incorrect is stated to raise no prompt.
 - ✅ **PP409** **the three keyboard messages the console sends are unported, and an empty text arrives as no text at all** — the three arrivals are modelled with PP357's size check whole, and an empty text is stated to reach a screen as the same nothing a close carries.
+- ✅ **PP411** **the ctrl login-PIN request handler is unported, so a PIN asked for after the session id ends the session unstated** — the request is modelled with the session id test between the two flags, and a PIN asked for too late ends the session rather than prompting.
 
 ## Block G — Test discipline
 

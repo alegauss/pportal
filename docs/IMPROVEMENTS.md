@@ -496,32 +496,6 @@ and the stream connection walks its three states, and keep the file.
 Nothing in a test can do it, which is why this line carries a requirement rather than a
 dep.
 
-### §PP411 The login-PIN request, and the one that arrives too late
-
-PP408 modelled the ANSWER - what the console says about a PIN it was given. This is the
-REQUEST, and nothing had written it down.
-
-THE LATE REQUEST ENDS THE SESSION. The handler raises ctrl's own flag, takes the state
-mutex, and then asks whether the session id has already arrived. If it has, the session
-is failed with CHIAKI_QUIT_REASON_CTRL_UNKNOWN and nothing further happens - the comment
-says "this won't work" and that is the whole of the reasoning on record. A PIN request
-belongs to connecting; one arriving after the session is established is refused rather
-than prompted.
-
-THE FLAG IS RAISED BEFORE THE REFUSAL AND NOT LOWERED. login_pin_requested is set at the
-top, unconditionally, and the kill path leaves it set. Nothing reads it afterwards
-because the session is ending, so it matters only if that refusal ever becomes
-recoverable - which is exactly the kind of thing a port tidies without being asked.
-
-THE SIZE GUARD WARNS AND CARRIES ON, like the login answer's. A non-empty payload is
-logged and ignored, because the request carries nothing the handler reads. PP352's rule
-is satisfied and this is the reporting kind of guard rather than the refusing kind.
-
-THE ORDER IS THE ASSERTION WORTH HAVING. Two flags and a quit reason, with the session
-id test between them. A port that raised the session's flag before testing would put a
-PIN prompt over an established stream, and a pair table of message-in and message-out
-would not see it.
-
 ## Block G — Test discipline
 
 ### §PP412 Whether a quotation is a claim
