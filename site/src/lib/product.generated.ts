@@ -31,6 +31,16 @@ export const HOST_FLAGS: readonly HostFlag[] = [
     "summary": "check the sizes the backlog states, and print what corrects each"
   },
   {
+    "name": "--apply",
+    "argument": "",
+    "summary": "with --recount: run those corrections through roadkeep, stopping on a refusal"
+  },
+  {
+    "name": "--select-corpus",
+    "argument": "<in> <out>",
+    "summary": "keep the entries a replay can expect, and report what was dropped"
+  },
+  {
     "name": "--ratchet",
     "argument": "[id]",
     "summary": "list the shipped tasks no assertion names; with an id, where it is named"

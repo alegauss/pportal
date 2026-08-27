@@ -411,6 +411,7 @@
 - ✅ **PP410** **three line-count claims sit in a shape the recount reader cannot see, and one of them is stale by 139 lines** — the reader takes up to six lowercase words between a filename and its number, which brings three unscanned claims under the gate and turned the stale one red.
 - ✅ **PP417** **every commit touching a .c file restates four counted claims by hand, from commands --recount already prints exactly** — --recount --apply runs the calls it prints through roadkeep, off one argument list, and stops on the first refusal.
 - ✅ **PP412** **a quoted example in a rationale section is read as a claim, so citing a stale number turns the gate red on the citation** — the shape is refused rather than the reader blinded, and a quoted example writes a placeholder where the number would go.
+- ✅ **PP432** **the site's generated flag list is two behind the host, and nothing joins it to the table it is derived from** — the site states the sixteen flags the host declares, and a rule in the suite that runs refuses a disagreement either way.
 
 ## Block H — Performance and telemetry
 
