@@ -20,10 +20,15 @@
 
   <rect width="1200" height="630" fill="url(#card-bg)"/>
 
-  <!-- the same signal the page is bounded by, quieter -->
-  <path d="M0 560 c90 -46 180 46 270 0 c90 -46 180 46 270 0 c90 -46 180 46 270 0 c90 -46 180 46 270 0 V630 H0 Z"
+  <!-- the same signal the page is bounded by, quieter.
+       Each wave has to be carried PAST x=1200, not up to it: the period does not
+       divide 1200, so a whole number of periods stops short and the V630 H0 close
+       then cuts straight down mid-canvas, leaving the bottom-right corner bare.
+       270 x 5 = 1350 and 180 x 7 = 1260 both overshoot, and the viewBox clips the
+       remainder. -->
+  <path d="M0 560 c90 -46 180 46 270 0 c90 -46 180 46 270 0 c90 -46 180 46 270 0 c90 -46 180 46 270 0 c90 -46 180 46 270 0 V630 H0 Z"
         fill="#5b6cf9" opacity="0.16"/>
-  <path d="M0 588 c60 -30 120 30 180 0 c60 -30 120 30 180 0 c60 -30 120 30 180 0 c60 -30 120 30 180 0 c60 -30 120 30 180 0 c60 -30 120 30 180 0 V630 H0 Z"
+  <path d="M0 588 c60 -30 120 30 180 0 c60 -30 120 30 180 0 c60 -30 120 30 180 0 c60 -30 120 30 180 0 c60 -30 120 30 180 0 c60 -30 120 30 180 0 c60 -30 120 30 180 0 V630 H0 Z"
         fill="#8f9dff" opacity="0.2"/>
 
   <!-- the mark -->
@@ -39,8 +44,10 @@
   <text x="252" y="176" fill="#e9ecfb" font-family="DejaVu Sans" font-size="86" font-weight="bold">PPortal</text>
   <text x="256" y="236" fill="#8f9dff" font-family="DejaVu Sans" font-size="30">PlayStation Remote Play, rebuilt for Windows</text>
 
-  <text x="90" y="374" fill="#e9ecfb" font-family="DejaVu Sans" font-size="40">Ten-bit video through DirectComposition, hardware</text>
-  <text x="90" y="428" fill="#e9ecfb" font-family="DejaVu Sans" font-size="40">decode on the card you own, and no bundled browser.</text>
+  <!-- rewrapped: the old second line measured 1085px against the 1020px between
+       the gutters and ran off the right edge. 818px and 865px now. -->
+  <text x="90" y="374" fill="#e9ecfb" font-family="DejaVu Sans" font-size="40">Ten-bit video through DirectComposition,</text>
+  <text x="90" y="428" fill="#e9ecfb" font-family="DejaVu Sans" font-size="40">hardware decode, and no bundled browser.</text>
 
   <text x="90" y="502" fill="#a3aecb" font-family="DejaVu Sans" font-size="26">.NET 10 and WPF  ·  Windows 10 / 11  ·  AGPL-3.0  ·  no account, no telemetry</text>
 </svg>
