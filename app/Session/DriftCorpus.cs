@@ -55,14 +55,19 @@ public static class DriftCorpus
     /// asking the question the assertion existed to answer: a deleted root file stopped being
     /// recognised instead of being reported, and the count floor was too loose to notice one going.
     ///
-    /// Five names is a list, and PP278 deleted a list of seventeen. The difference is what the list
+    /// Six names is a list, and PP278 deleted a list of seventeen. The difference is what the list
     /// is OF: the root of a repository changes on the order of once a year, where its drift sources
     /// changed three times in three tasks. And it is not the only guard - a constant naming a root
     /// file that is missing from here is itself reported, so the list cannot quietly fall behind.
+    ///
+    /// ChiakiNg.slnx is PP436's, and it arrived by exactly that guard: SiteProseClaims named the
+    /// solution as a constant and this test reported it before the commit, which is the sixth name
+    /// getting here rather than the list falling behind.
     /// </summary>
     public static IReadOnlyList<string> RootFiles { get; } =
     [
-        ".gitignore", "CMakeLists.txt", "package.cmd", "roadkeep.toml", "vcpkg.json",
+        ".gitignore", "ChiakiNg.slnx", "CMakeLists.txt", "package.cmd", "roadkeep.toml",
+        "vcpkg.json",
     ];
 
     /// <summary>

@@ -415,6 +415,7 @@
 - ✅ **PP433** **CI runs two of the three suites test.cmd runs, and the third is 454 runtime checks over the native seam** — the three passes are held against both files, the selftest is named local-only with PP117's hang as the reason, and a second cannot appear quietly.
 - ✅ **PP434** **PP230's manifest check reads only the root CMakeLists.txt, so an unconditional REQUIRED in lib/ is invisible** — The walk reaches lib/ and shim/ by the same column-zero rule the lookups use, so what lib/CMakeLists.txt requires is measured rather than assumed; Threads is excluded on purpose.
 - ✅ **PP435** **scripts/holepunch carries the only two tracked ELF binaries, 14.4 MB nothing references, in a Windows-only port** — Two unreferenced Linux binaries and a session log gone from HEAD, the .go source kept, a .gitignore against their return, and a check that no ELF sits under this port's source.
+- ✅ **PP436** **the site's hand-written prose names a tool and two flags, and nothing holds any of the three against the tree** — compare-baselines is in the solution now, so compile.cmd builds what the front page promises, and the two flags typed into the prose are joined to the host's table.
 
 ## Block H — Performance and telemetry
 

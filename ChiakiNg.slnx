@@ -30,4 +30,14 @@
   <Folder Name="/tests/">
     <Project Path="tests/ChiakiNg.Tests/ChiakiNg.Tests.csproj" />
   </Folder>
+  <!-- PP436. The site's front page and llms.txt name this executable and say what it prints, and
+       nothing in this repo built it: seven first-party csproj files, and the solution held two. A
+       promise the copy makes about a program is gated now that compile.cmd reaches it.
+
+       The other four stay out on purpose. spike/present-path and spike/video-upscale are records of
+       an experiment's answer rather than live code, and gate/alloc-budget's answer already migrated
+       into AllocBudgetTests - none of the three is named on the site. -->
+  <Folder Name="/tools/">
+    <Project Path="tools/compare-baselines/CompareBaselines.csproj" />
+  </Folder>
 </Solution>
