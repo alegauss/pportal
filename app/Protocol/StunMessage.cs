@@ -137,6 +137,103 @@ public static class StunMessage
     }
 
     /// <summary>
+    /// A binding response carrying one mapped address, and optionally an attribute before it.
+    ///
+    /// PP452: the port had no way to PRODUCE this, only to read it - so the layout the reader believes
+    /// had never been put on a wire by anything. Building it is what lets an exchange run over a real
+    /// socket against bytes this port composed itself, which is the half of the agreement
+    /// <see cref="Read"/> alone cannot check.
+    /// </summary>
+    /// <param name="transactionId">The twelve bytes the request used; a response must echo them.</param>
+    /// <param name="address">The mapped address, v4 or v6.</param>
+    /// <param name="port">The mapped port.</param>
+    /// <param name="xored">
+    /// Whether to send XOR-MAPPED-ADDRESS rather than the plain one. The obfuscation is applied here,
+    /// so a round trip through <see cref="Read"/> proves both directions agree on the key.
+    /// </param>
+    /// <param name="leading">
+    /// An attribute to place BEFORE the mapped address, as (type, value). Used to reach the padding
+    /// question: RFC 5389 pads every attribute to a multiple of four and this port's reader does not,
+    /// so a value whose length is not a multiple of four is where the two disagree.
+    /// </param>
+    public static byte[] BuildBindingResponse(
+        byte[] transactionId,
+        IPAddress address,
+        ushort port,
+        bool xored = true,
+        (ushort Type, byte[] Value)? leading = null)
+    {
+        ArgumentNullException.ThrowIfNull(transactionId);
+        ArgumentNullException.ThrowIfNull(address);
+        if (transactionId.Length != TransactionIdLength)
+            throw new ArgumentException($"a transaction id is {TransactionIdLength} bytes", nameof(transactionId));
+
+        byte[] raw = address.GetAddressBytes();
+        bool v6 = raw.Length == 16;
+        byte[] cookie = CookieBytes();
+
+        var attributes = new List<byte>();
+
+        if (leading is { } extra)
+        {
+            ArgumentNullException.ThrowIfNull(extra.Value);
+            attributes.AddRange(BeUInt16(extra.Type));
+            attributes.AddRange(BeUInt16((ushort)extra.Value.Length));
+            attributes.AddRange(extra.Value);
+
+            // The RFC's padding, which this builder DOES write. A reader that skips by 4 + length
+            // lands inside it, and that is the divergence PP452 puts on a socket.
+            while (attributes.Count % 4 != 0)
+                attributes.Add(0);
+        }
+
+        byte[] value = raw.ToArray();
+        ushort onTheWire = port;
+
+        if (xored)
+        {
+            onTheWire = (ushort)(port ^ BinaryPrimitives.ReadUInt16BigEndian(cookie));
+
+            // v4 XORs with the cookie; v6 with the cookie followed by the transaction id, which is
+            // what the request buffer holds contiguously. See the class note.
+            if (v6)
+            {
+                Span<byte> key = stackalloc byte[16];
+                cookie.CopyTo(key);
+                transactionId.CopyTo(key[4..]);
+                Xor(value, key);
+            }
+            else
+            {
+                Xor(value, cookie);
+            }
+        }
+
+        attributes.AddRange(BeUInt16(xored ? AttributeXorMappedAddress : AttributeMappedAddress));
+        attributes.AddRange(BeUInt16((ushort)(v6 ? Ipv6AttributeLength : Ipv4AttributeLength)));
+        attributes.Add(0);
+        attributes.Add(v6 ? FamilyIpv6 : FamilyIpv4);
+        attributes.AddRange(BeUInt16(onTheWire));
+        attributes.AddRange(value);
+
+        var message = new byte[HeaderSize + attributes.Count];
+        BinaryPrimitives.WriteUInt16BigEndian(message.AsSpan(0), BindingResponse);
+        BinaryPrimitives.WriteUInt16BigEndian(message.AsSpan(2), (ushort)attributes.Count);
+        BinaryPrimitives.WriteUInt32BigEndian(message.AsSpan(4), MagicCookie);
+        transactionId.CopyTo(message, 8);
+        attributes.CopyTo(message, HeaderSize);
+
+        return message;
+    }
+
+    private static byte[] BeUInt16(ushort value)
+    {
+        var bytes = new byte[2];
+        BinaryPrimitives.WriteUInt16BigEndian(bytes, value);
+        return bytes;
+    }
+
+    /// <summary>
     /// The address a response carries, or null with a reason.
     ///
     /// <paramref name="request"/> is the request this answers, because it is the XOR key for an
