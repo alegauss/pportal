@@ -156,30 +156,6 @@ because every part of it was green.
 
 ## Block F — Managed core
 
-### §PP23 The oracle this block cannot be written without
-
-chiaki exists because the PlayStation remote play protocol was reverse engineered. There
-is no document to implement against: the 25394 lines of C in lib/src are the
-specification, and a managed rewrite that reads them and reproduces them is a
-translation whose only correctness test is behavioural.
-
-That is true of the protocol as a whole and NOT true everywhere. There are 6544 lines of
-C in test - munit cases over gkcrypt, rpcrypt, takion, bitstream, the reorder queue and
-the decoder - plus 3081 lines of recorded FEC cases in fec_test_cases.inl. Where those
-exist, the expected output is already agreed with real hardware and the rewrite is
-checked against a fixture rather than against a running console.
-
-Where they do not exist is the whole of what is left. Counted: every module this port
-has ported has a test/ counterpart - fec, frameprocessor, videoreceiver, bitstream,
-reorderqueue, rpcrypt, gkcrypt, takion, regist. Four have none at all: session.c,
-ctrl.c, streamconnection.c and senkusha.c. Those are PP28's three files and the one
-beneath them, which is to say the entire remaining translation.
-
-So the port has advanced exactly as far as the oracle reaches, and that is not a
-coincidence. What this task adds is the rest: a captured exchange replayed against both
-implementations, because a state machine cannot be compared by running it twice the way
-a buffer function can.
-
 ### §PP27 The transport, and the only place GC is a real question
 
 takion.c is 1888 lines plus takionsendbuffer.c at 267 and reorderqueue.c at 200: the

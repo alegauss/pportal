@@ -57,24 +57,47 @@ public static partial class CountedClaims
             if (!File.Exists(path))
                 continue;
 
-            string[] lines = File.ReadAllLines(path);
-            for (int i = 0; i < lines.Length; i++)
-            {
-                foreach (Match match in FileClaimRegex().Matches(lines[i]))
-                {
-                    claims.Add(new CountedClaim(
-                        document, i + 1, match.Value, match.Groups["file"].Value,
-                        int.Parse(match.Groups["lines"].Value, CultureInfo.InvariantCulture),
-                        SizesADirectory: false, Column: match.Index));
-                }
+            claims.AddRange(In(File.ReadAllLines(path), document));
+        }
 
-                foreach (Match match in TreeClaimRegex().Matches(lines[i]))
-                {
-                    claims.Add(new CountedClaim(
-                        document, i + 1, match.Value, match.Groups["dir"].Value,
-                        int.Parse(match.Groups["lines"].Value, CultureInfo.InvariantCulture),
-                        SizesADirectory: true, Column: match.Index));
-                }
+        return claims;
+    }
+
+    /// <summary>
+    /// PP23: the same read over lines the caller supplies, which is what makes the readers provable.
+    ///
+    /// The guard on the directory sweep used to be "the live backlog holds at least one, or the scan
+    /// is not working" - and that stopped being a guard the moment PP23 shipped, because §PP23 held
+    /// the only directory-sized claim in the tree. Zero is now a legitimate state, so what proves the
+    /// reader works has to be text this test controls rather than whatever the backlog happens to
+    /// say. PP271's rule with its fixture moved, not dropped.
+    /// </summary>
+    public static IReadOnlyList<CountedClaim> In(IEnumerable<string> lines, string document)
+    {
+        ArgumentNullException.ThrowIfNull(lines);
+        ArgumentNullException.ThrowIfNull(document);
+
+        var claims = new List<CountedClaim>();
+        int number = 0;
+
+        foreach (string line in lines)
+        {
+            number++;
+
+            foreach (Match match in FileClaimRegex().Matches(line))
+            {
+                claims.Add(new CountedClaim(
+                    document, number, match.Value, match.Groups["file"].Value,
+                    int.Parse(match.Groups["lines"].Value, CultureInfo.InvariantCulture),
+                    SizesADirectory: false, Column: match.Index));
+            }
+
+            foreach (Match match in TreeClaimRegex().Matches(line))
+            {
+                claims.Add(new CountedClaim(
+                    document, number, match.Value, match.Groups["dir"].Value,
+                    int.Parse(match.Groups["lines"].Value, CultureInfo.InvariantCulture),
+                    SizesADirectory: true, Column: match.Index));
             }
         }
 

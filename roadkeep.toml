@@ -26,16 +26,24 @@ ref_scheme = "id"
 #
 # The rest of the order is block order plus deps.
 #
-# On the two paths below, the decision is still nobody's:
+# The two paths below: BLOCK F, chosen 2026-08-27.
 #
 # Block B and Block F are two answers to the same question. B keeps the C core and writes the
 # interop boundary a managed UI calls through; F replaces the core with managed code and makes
-# B's boundary temporary by construction. Both are filed because both are real, and the overlap
-# is stated rather than hidden: PP4 and PP5 are work that F would eventually retire.
+# B's boundary temporary by construction. Both were filed because both were real, and the overlap
+# was stated rather than hidden: PP4 and PP5 are work that F would eventually retire.
 #
-# Running both at once is the one option that is certainly wrong - it pays for the shim twice.
-# The choice does not have to be taken yet: PP39 comes before either, and PP1 - the .NET host -
-# is needed by both, so the first two things to do are the same under both answers.
+# Running both at once is the one option that is certainly wrong - it pays for the shim twice,
+# which is why this needed answering rather than deferring. Block B holds no open line, so the
+# choice retires nothing; what it settles is which of the two the next task belongs to, and
+# every line still open under B's argument is F's now.
+#
+# What made it answerable: PP23 closed the same day. Four channels of a real PS5 exchange replay
+# against managed participants, so the oracle for the remaining translation is a recording from
+# hardware rather than the C being replaced - which is the thing F needs and B does not.
+#
+# PP294 is where F starts: ctrl.c, and it unblocks four of the open lines. A file that size
+# lands through `ship --part`, one recorded half at a time.
 #
 # what jumps the queue, in order: an id or a "Block X", and nothing else.
 # The queue itself now lives in the "## Priority" section of docs/ROADMAP.md, where the
@@ -76,19 +84,25 @@ held = 60
 # PP312: what blocks a line that is not another line.
 #
 # `brief` answered PP23 on four consecutive sessions and PP23 could not be started on any of
-# them: its remaining half needs PP297's captured exchange, which needs a console reaching the
-# stream. Deps could not say so, correctly — PP23's are satisfied and PP297's are empty, and
-# both ARE ready in the only sense a dep graph means it. What was missing is that starting
-# either one needs a thing this machine does not have, and a queue that cannot express that
+# them: its remaining half needed PP297's captured exchange, which needed a console reaching the
+# stream. Deps could not say so, correctly — PP23's were satisfied and PP297's were empty, and
+# both WERE ready in the only sense a dep graph means it. What was missing is that starting
+# either one needed a thing this machine does not have, and a queue that cannot express that
 # offers the same unstartable line every time it is asked.
 #
-# Five lines are in that state and each names a different absent thing. A requirement is not a
-# dep and does not become one: nothing here will ever satisfy `console` by shipping a task.
+# That worked: the console was declared with `--have`, the exchange was captured, and PP23
+# closed on 2026-08-27. `console` has left this list because nothing waits on it any more.
+#
+# Four lines are in that state and each names a different absent thing. A requirement is not a
+# dep and does not become one: nothing here will ever satisfy `runner` by shipping a task.
 [requirements]
 declared = [
-    # A PS5 on the LAN, reachable and able to reach the stream. PP297's recording is a thing to
-    # do rather than a thing to write, and PP23's remaining half is what the recording is for.
-    "console",
+    # `console` was here and is not any more. PP23 was the only line that waited on a PS5 - the
+    # recording is what its remaining half was for - and it closed on 2026-08-27 with four
+    # channels of a real exchange replaying against managed participants. A requirement nothing
+    # waits on says the backlog is still short of something it has, which is what
+    # BacklogRequirementsTests reported in the commit that shipped PP23.
+    #
     # Visual Studio Build Tools with the C++ workload AND Qt for msvc2022_64 carrying
     # QtWebEngine, from an installer wanting an account. Two multi-gigabyte installs, and
     # PP63 itself argues the second toolchain has to be kept away from ordinary work.

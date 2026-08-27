@@ -44,6 +44,11 @@ public class CountedClaimTests(ITestOutputHelper output)
 
     /// <summary>
     /// THE OTHER GUARD. Every directory the backlog sizes still holds that many lines of C.
+    ///
+    /// PP23: the count of such claims is now allowed to be ZERO, and that is not the guard being
+    /// dropped. §PP23 held the only directory-sized claim in the tree - "the 25394 lines of C in
+    /// lib/src" - and shipping it took the claim with it. The reader is proved on text this test
+    /// owns instead, which is what the old "at least one, or the scan is not working" line was for.
     /// </summary>
     [Fact]
     public void EveryTreeClaimMatchesTheDirectory()
@@ -51,8 +56,18 @@ public class CountedClaimTests(ITestOutputHelper output)
         string? root = SanitizerSource.RepositoryRoot();
         Assert.NotNull(root);
 
+        // The reader, proved before it is trusted. A regex that stopped matching would otherwise
+        // pass the loop below over nothing and say so about the tree.
+        CountedClaim proof = Assert.Single(CountedClaims.In(
+            ["there are 25394 lines of C in lib/src and no document to implement against"],
+            "synthetic"));
+
+        Assert.True(proof.SizesADirectory);
+        Assert.Equal("lib/src", proof.Subject);
+        Assert.Equal(25394, proof.Stated);
+
         CountedClaim[] claims = [.. CountedClaims.All(root).Where(c => c.SizesADirectory)];
-        Assert.True(claims.Length >= 1, "no directory-sized claims found - the scan is not working");
+        output.WriteLine($"{claims.Length} directory-sized claim(s) in the backlog");
 
         IReadOnlyList<string> wrong = Stale(root, claims);
 
