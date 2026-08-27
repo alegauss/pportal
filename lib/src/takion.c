@@ -401,7 +401,10 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_takion_crypt_advance_key_pos(ChiakiTakion *
 
 CHIAKI_EXPORT ChiakiErrorCode chiaki_takion_send_raw(ChiakiTakion *takion, const uint8_t *buf, size_t buf_size)
 {
-	int r = send(takion->sock, buf, buf_size, 0);
+	// PP426: cast, like the nine other socket calls in lib/src that pass an unsigned buffer.
+	// CHIAKI_SOCKET_BUF_TYPE is char* because winsock's send takes char* where POSIX takes void*,
+	// and this was one of two sites that printed a -Wpointer-sign warning on every build.
+	int r = send(takion->sock, (const CHIAKI_SOCKET_BUF_TYPE)buf, buf_size, 0);
 	if(r < 0)
 	{
 		CHIAKI_LOGE(takion->log, "Takion failed to send raw: " CHIAKI_SOCKET_ERROR_FMT, CHIAKI_SOCKET_ERROR_VALUE);
@@ -1120,7 +1123,8 @@ static ChiakiErrorCode takion_recv(ChiakiTakion *takion, uint8_t *buf, size_t *b
 		return err;
 	}
 
-	CHIAKI_SSIZET_TYPE received_sz = recv(takion->sock, buf, *buf_size, 0);
+	// PP426: and the other of the two. See chiaki_takion_send_raw.
+	CHIAKI_SSIZET_TYPE received_sz = recv(takion->sock, (CHIAKI_SOCKET_BUF_TYPE)buf, *buf_size, 0);
 	if(received_sz <= 0)
 	{
 		if(received_sz < 0)

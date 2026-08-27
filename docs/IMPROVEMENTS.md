@@ -159,7 +159,7 @@ because every part of it was green.
 ### §PP23 The oracle this block cannot be written without
 
 chiaki exists because the PlayStation remote play protocol was reverse engineered. There
-is no document to implement against: the 25390 lines of C in lib/src are the
+is no document to implement against: the 25394 lines of C in lib/src are the
 specification, and a managed rewrite that reads them and reproduces them is a
 translation whose only correctness test is behavioural.
 
@@ -182,7 +182,7 @@ a buffer function can.
 
 ### §PP27 The transport, and the only place GC is a real question
 
-takion.c is 1884 lines plus takionsendbuffer.c at 267 and reorderqueue.c at 200: the
+takion.c is 1888 lines plus takionsendbuffer.c at 267 and reorderqueue.c at 200: the
 sequencing, the retransmission, the send window and the reordering that a video stream
 over UDP needs.
 
@@ -437,6 +437,31 @@ itself.
 Until then PP33 is correctly blocked and its remaining query correctly reads 420.
 Reading that number as the size of the job is what its own section warns against: it is
 one file, and the work is at the other end.
+
+### §PP427 The eight in ecdh.c
+
+PP426 counted the build's warnings and found three families. Two are accounted for:
+seventeen are the compiler restating PP357, and the two pointer-sign ones PP426 fixed.
+These eight are the third, and all of them are in one file.
+
+lib/src/ecdh.c calls EC_KEY_new, EC_KEY_free, EC_KEY_set_group, EC_KEY_generate_key,
+EC_KEY_set_private_key, EC_KEY_set_public_key, EC_KEY_get0_public_key and
+ECDH_compute_key. Every one is deprecated as of OpenSSL 3.0. Eight calls, one file, and
+no other file in lib touches the EC_KEY API.
+
+IT COMPILES AND WORKS TODAY. Deprecated is not removed, and 3.x still ships all eight.
+What is owed is not urgent; what makes it worth a line is that it is the whole of the
+key agreement the session keys derive from, so whoever does move it is rewriting the
+part of the protocol that has the least room to be nearly right.
+
+THE REPLACEMENT IS EVP, NOT A RENAME. OpenSSL 3.0's answer to EC_KEY is EVP_PKEY with
+parameter builders and EVP_PKEY_derive, which is a different shape rather than a
+different spelling - so this is a port of a file and not a sweep of eight identifiers.
+
+AND THE PORT MAY REACH IT FIRST. PP23's tree count includes ecdh.c, and a managed key
+agreement would delete this file rather than modernise it. Whether that happens before
+an OpenSSL that has actually dropped these is the question this line exists to keep
+visible, and it is not one to answer by guessing at a release note.
 
 ## Block G — Test discipline
 
