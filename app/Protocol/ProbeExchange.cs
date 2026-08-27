@@ -131,6 +131,37 @@ public sealed class ProbeExchange : IDisposable
     }
 
     /// <summary>
+    /// Sends the reply to a console's probe, and reports the bytes that went.
+    ///
+    /// PP455: <see cref="ReplyTo"/> has always built this packet and nothing sent one, so the masked
+    /// tail - the candidate's address hidden under the session ids - had never crossed a socket in
+    /// either direction. That tail is the one part of the layout with a key in it, and a key checked
+    /// only against its own writer is the case PP268 was written about.
+    /// </summary>
+    /// <returns>The datagram sent, or null where the address would not parse and nothing went.</returns>
+    public async Task<byte[]?> AnswerAsync(
+        IPEndPoint to,
+        byte[] request,
+        byte[] localId,
+        byte[] consoleId,
+        ushort sidLocal,
+        ushort sidConsole,
+        string address,
+        ushort port,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(to);
+        ArgumentNullException.ThrowIfNull(request);
+
+        byte[]? reply = ReplyTo(request, localId, consoleId, sidLocal, sidConsole, address, port);
+        if (reply is null)
+            return null;
+
+        await socket.SendToAsync(reply, SocketFlags.None, to, cancellationToken).ConfigureAwait(false);
+        return reply;
+    }
+
+    /// <summary>
     /// The reply this side would send to a console's own probe, which is PP236's packet.
     /// </summary>
     public static byte[]? ReplyTo(

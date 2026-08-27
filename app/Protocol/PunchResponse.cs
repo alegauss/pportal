@@ -5,6 +5,32 @@ using System.Net.Sockets;
 namespace ChiakiNg.Protocol;
 
 /// <summary>
+/// PP455: what the response's masked tail actually carries, un-masked.
+/// </summary>
+/// <param name="AddressBytes">
+/// The four bytes the tail has room for. NOT an address: for a v6 candidate these are the first four
+/// of sixteen and the rest never left, so there is nothing here that says which family they belong to.
+/// </param>
+/// <param name="Port">The port, which does fit.</param>
+public readonly record struct MaskedTail(byte[] AddressBytes, ushort Port)
+{
+    /// <summary>
+    /// The four bytes as a v4 address, for the case where four bytes really are the whole of it.
+    /// </summary>
+    public IPAddress AsIpv4() => new(AddressBytes);
+
+    /// <summary>Whether these four bytes are the whole of the address that was offered.</summary>
+    /// <param name="offered">The candidate address the response was built for.</param>
+    public bool AreTheWholeAddress(IPAddress offered)
+    {
+        ArgumentNullException.ThrowIfNull(offered);
+
+        byte[] raw = offered.GetAddressBytes();
+        return raw.Length == AddressBytes.Length && raw.AsSpan().SequenceEqual(AddressBytes);
+    }
+}
+
+/// <summary>
 /// PP236: the reply this client sends a console during hole punching.
 ///
 /// Eighty-eight bytes, a layout nothing documents, and three things in it that are wrong to guess.
@@ -19,8 +45,13 @@ namespace ChiakiNg.Protocol;
 /// clear.
 ///
 /// AND FOUR BYTES OF ADDRESS ARE COVERED WHATEVER THE FAMILY. An IPv6 candidate has its first four
-/// obfuscated and its other twelve sent plain - not a decision anywhere in the file, just what a
+/// obfuscated and its other twelve NOT SENT AT ALL - not a decision anywhere in the file, just what a
 /// four does when the buffer beside it is sixteen.
+///
+/// PP455 corrected that sentence, which used to say the other twelve were "sent plain". They are not:
+/// the tail runs from 0x50 to 0x55 and the packet ends at 0x58, so there is no room for them and
+/// nothing writes them. <see cref="NatProbe"/>'s note on the same bytes had it right, and the two
+/// disagreeing is what made it worth checking - see <see cref="ReadMaskedTail"/>, which measures it.
 /// </summary>
 public static class PunchResponse
 {
@@ -80,6 +111,43 @@ public static class PunchResponse
         return address.Contains('.', StringComparison.Ordinal)
             ? AddressFamily.InterNetwork
             : AddressFamily.InterNetworkV6;
+    }
+
+    /// <summary>
+    /// The address and port back out of the masked tail, which is what the console does with it.
+    ///
+    /// PP455: the port built this tail and nothing ever read one, so the key was only ever checked
+    /// against itself. Un-masking with the two session ids is the other direction, and it is the only
+    /// way to tell a correct key from a self-consistent one.
+    ///
+    /// FOUR ADDRESS BYTES, AND NO FAMILY. The tail has room for four bytes and carries no indication
+    /// of what they are, so this returns them raw rather than as a string: a v6 candidate's response
+    /// carries its first four bytes and nothing else, and formatting those as a dotted quad would
+    /// invent a v4 address that was never sent. See <see cref="MaskedTail.AsIpv4"/> for the case where
+    /// four bytes really are the whole address.
+    /// </summary>
+    /// <param name="packet">The response, at least as long as the tail.</param>
+    /// <param name="sidLocal">This side's session id - the key over the first half and the port.</param>
+    /// <param name="sidConsole">The console's - the key over the second half.</param>
+    public static MaskedTail? ReadMaskedTail(ReadOnlySpan<byte> packet, ushort sidLocal, ushort sidConsole)
+    {
+        if (packet.Length < PortKeyAt + 2)
+            return null;
+
+        Span<byte> key = stackalloc byte[AddressKeyed + 2];
+        BinaryPrimitives.WriteUInt16BigEndian(key, sidLocal);
+        BinaryPrimitives.WriteUInt16BigEndian(key[2..], sidConsole);
+        BinaryPrimitives.WriteUInt16BigEndian(key[4..], sidLocal);
+
+        var address = new byte[AddressKeyed];
+        packet.Slice(AddressKeyAt, AddressKeyed).CopyTo(address);
+        Xor(address, key[..AddressKeyed]);
+
+        Span<byte> port = stackalloc byte[2];
+        packet.Slice(PortKeyAt, 2).CopyTo(port);
+        Xor(port, key[AddressKeyed..]);
+
+        return new MaskedTail(address, BinaryPrimitives.ReadUInt16BigEndian(port));
     }
 
     /// <summary>
