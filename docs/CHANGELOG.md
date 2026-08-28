@@ -428,6 +428,7 @@
 - ✅ **PP502** **the holepunch session creates both sockets and closes neither, so a managed owner double-closes or leaks** — The two closers are named and the creator is neither, held by an interface with no member that could close one - so the reflex to make the flow's owner IDisposable is refused.
 - ✅ **PP503** **the punch's start event is unconditional and its finish fires only on success, so a failure leaves it mid-punch** — The three runs of the punch block end in three different states, and the managed model has no finally - so the start left standing alone is reproduced rather than balanced.
 - ✅ **PP504** **a PSN session's regist key comes from the console, and the wait for it has a timeout arm that leaves it zeroed** — The fork's two arms and the wait's three endings are modelled, with the timed-out one named as the only path reaching the session request holding no key and no reason.
+- ✅ **PP505** **the session request is addressed two ways, and the local one can send Host: unknown after a failed lookup** — Both arms are managed with their four hostname sources, and the fallback is stated as a request that is built and reaches the console while naming nothing.
 
 ## Block G — Test discipline
 
