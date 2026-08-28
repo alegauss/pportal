@@ -1752,6 +1752,25 @@ static ChiakiErrorCode av_packet_parse(bool v12, ChiakiTakionAVPacket *packet, C
 	size_t av_header_size = v12
 		? (packet->is_video ? CHIAKI_TAKION_V12_AV_HEADER_SIZE_VIDEO : CHIAKI_TAKION_V12_AV_HEADER_SIZE_AUDIO)
 		: (packet->is_video ? CHIAKI_TAKION_V9_AV_HEADER_SIZE_VIDEO : CHIAKI_TAKION_V9_AV_HEADER_SIZE_AUDIO);
+	// PP499: and the three bytes the nalu-info skip below consumes, for audio only.
+	//
+	// This function checks its bound once and then advances four times without checking again, so
+	// the one check has to cover the longest walk. It does for video: 0x17 is 0x11 plus the video
+	// arm's 3 plus the skip's 3, so the flag's bytes are already in the constant. The audio
+	// constants are not - 0x12 is 0x11 plus the audio arm's 1, and 0x13 adds only v12's haptics
+	// byte. Neither reserves the skip.
+	//
+	// So an audio packet with the flag set and a length at the bound reached `av_size -= 3` holding
+	// one or two, and av_size is a size_t: data ended up three bytes past the buffer with a
+	// data_size of SIZE_MAX-1, handed to the callback as an audio frame's length. Two lengths did
+	// it, 20 and 21.
+	//
+	// chiaki_takion_v7_av_packet_parse in this same file has always added
+	// CHIAKI_TAKION_V7_AV_HEADER_SIZE_NALU_INFO_STRUCTS_ADD for exactly this, video and audio
+	// alike. This is that term, restricted to the arm whose constant lacks it - adding it for video
+	// too would reject valid packets between 24 and 26 bytes.
+	if(packet->uses_nalu_info_structs && !packet->is_video)
+		av_header_size += CHIAKI_TAKION_V7_AV_HEADER_SIZE_NALU_INFO_STRUCTS_ADD;
 	if(av_size < av_header_size + 1)
 		return CHIAKI_ERR_BUF_TOO_SMALL;
 
