@@ -112,6 +112,19 @@ public static class DatagramReplayReport
             .Append(replay.Counters.CopiedBytes.ToString(invariant))
             .Append(" byte(s) copied by the three branches that keep\n");
 
+        // PP523: the gap distribution against the reorder timeout, which no model could place.
+        GapShape gaps = Gaps(datagrams);
+        if (gaps.Count > 0)
+        {
+            text.Append("[replay] gaps: p50 ").Append(gaps.P50.ToString(invariant))
+                .Append(" p90 ").Append(gaps.P90.ToString(invariant))
+                .Append(" p99 ").Append(gaps.P99.ToString(invariant))
+                .Append(" max ").Append(gaps.Max.ToString(invariant))
+                .Append(" us; ").Append(gaps.OverTimeout.ToString(invariant))
+                .Append(" over the ").Append(AvReorderTimeout.TimeoutUs.ToString(invariant))
+                .Append("us reorder timeout\n");
+        }
+
         // The one number that is a claim rather than a description.
         text.Append("[replay] allocated ")
             .Append(replay.AllocatedBytes.ToString(invariant))
@@ -142,6 +155,50 @@ public static class DatagramReplayReport
             .Append(shape.SpuriousWraps == 0 ? "\n" : $", {shape.SpuriousWraps} SPURIOUS WRAP(S)\n");
 
         return text.ToString();
+    }
+
+    /// <summary>The arrival gaps, as a distribution rather than a mean.</summary>
+    /// <param name="Count">How many gaps there were - one fewer than the datagrams.</param>
+    /// <param name="P50">The median gap, in microseconds.</param>
+    /// <param name="P90">The ninetieth percentile.</param>
+    /// <param name="P99">The ninety-ninth, which is the one near the timeout.</param>
+    /// <param name="Max">The longest gap.</param>
+    /// <param name="OverTimeout">How many gaps exceeded the AV reorder timeout.</param>
+    public readonly record struct GapShape(
+        int Count, long P50, long P90, long P99, long Max, int OverTimeout);
+
+    /// <summary>
+    /// PP523: the arrival gaps against the timeout PP449 modelled.
+    ///
+    /// A MEAN HID THIS. The mean gap of a real capture is about 1250 microseconds against a 16000
+    /// timeout, which reads as an order of magnitude of headroom. The distribution says otherwise:
+    /// the median is under a hundred, and the tail crosses the timeout repeatedly - so the flush is
+    /// on the ordinary path rather than the exceptional one.
+    ///
+    /// WHAT IT DOES NOT SAY. The timeout governs the wait for a MISSING head packet, and an
+    /// inter-arrival gap is not that wait: a quiet link and a lost packet look alike from a capture.
+    /// What this measures is the receive thread going idle longer than the timeout, which is when
+    /// the queues flush - not a packet that was skipped.
+    /// </summary>
+    public static GapShape Gaps(IReadOnlyList<CapturedDatagram> datagrams)
+    {
+        ArgumentNullException.ThrowIfNull(datagrams);
+
+        if (datagrams.Count < 2)
+            return default;
+
+        long[] gaps =
+        [
+            .. datagrams
+                .Zip(datagrams.Skip(1), (a, b) => b.ArrivalMicroseconds - a.ArrivalMicroseconds)
+                .Order(),
+        ];
+
+        long At(int percent) => gaps[Math.Min(gaps.Length - 1, gaps.Length * percent / 100)];
+
+        return new GapShape(
+            gaps.Length, At(50), At(90), At(99), gaps[^1],
+            gaps.Count(g => g > AvReorderTimeout.TimeoutUs));
     }
 
     /// <summary>What the captured key positions look like as one stream.</summary>

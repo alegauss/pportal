@@ -290,6 +290,66 @@ public class DatagramReplayReportTests
             [new CapturedDatagram(0, 1300, TakionDispatch.Video, head)]));
     }
 
+    /// <summary>
+    /// PP523: the gaps are reported as a distribution, and the mean is what hid the tail.
+    ///
+    /// Nine gaps of a hundred microseconds and one of fifty milliseconds have a mean of five
+    /// thousand - a third of the timeout, which reads as headroom. The p99 and the max say what
+    /// actually happened.
+    /// </summary>
+    [Fact]
+    public void TheGapsAreADistributionAndNotAMean()
+    {
+        long at = 0;
+        var datagrams = new List<CapturedDatagram>();
+        foreach (long step in (long[])[0, 100, 100, 100, 100, 100, 100, 100, 100, 100, 50_000])
+        {
+            at += step;
+            datagrams.Add(Datagram(TakionDispatch.Video, at, 1300));
+        }
+
+        DatagramReplayReport.GapShape gaps = DatagramReplayReport.Gaps(datagrams);
+
+        Assert.Equal(10, gaps.Count);
+        Assert.Equal(100, gaps.P50);
+        Assert.Equal(50_000, gaps.Max);
+        Assert.Equal(1, gaps.OverTimeout);
+
+        // What a mean alone would have said, named so the difference is on the record.
+        double mean = TakionCaptureReplay.MeanGapMicroseconds(datagrams)!.Value;
+        Assert.True(mean < AvReorderTimeout.TimeoutUs, $"the mean is {mean:0} and hides the tail");
+    }
+
+    /// <summary>
+    /// PP523: the timeout the gaps are measured against is the C's, not a number typed here.
+    /// </summary>
+    [Fact]
+    public void TheTimeoutIsTheCs()
+    {
+        IReadOnlyList<CapturedDatagram> capture = Capture();
+        string report = DatagramReplayReport.Render(
+            capture, TakionCaptureReplay.Run(capture, new CountingReplaySink()));
+
+        Assert.Contains($"{AvReorderTimeout.TimeoutUs}us reorder timeout", report, StringComparison.Ordinal);
+        Assert.Equal(16000, AvReorderTimeout.TimeoutUs);
+    }
+
+    /// <summary>A capture of one datagram has no gaps, and the line is left out rather than zeroed.</summary>
+    [Fact]
+    public void OneDatagramHasNoGaps()
+    {
+        DatagramReplayReport.GapShape gaps =
+            DatagramReplayReport.Gaps([Datagram(TakionDispatch.Video, 0, 1300)]);
+
+        Assert.Equal(0, gaps.Count);
+
+        string report = DatagramReplayReport.Render(
+            [Datagram(TakionDispatch.Video, 0, 1300)],
+            TakionCaptureReplay.Run([Datagram(TakionDispatch.Video, 0, 1300)], new CountingReplaySink()));
+
+        Assert.DoesNotContain("[replay] gaps:", report, StringComparison.Ordinal);
+    }
+
     /// <summary>The capture is not rewritten by being read, because it is evidence.</summary>
     [Fact]
     public void ReplayingDoesNotTouchTheFile()
