@@ -432,6 +432,7 @@
 - ✅ **PP506** **PP33's deletion depends on PP340's object but not on PP481, which is what puts an implementation behind it** — PP481 is in PP33's deps and a reader for the group holds it there, so the deletion waits on the implementation as well as on the object PP340 delivers.
 - ✅ **PP507** **the session teardown runs ten steps in a fixed order and hands freeaddrinfo the NULL a PSN session leaves** — The nine steps are managed in order, with the mutex outliving its users and the unguarded freeaddrinfo named as a reliance rather than repaired.
 - ✅ **PP508** **the seam joins nine call sites to seven methods and nothing says the managed flow ever calls all seven** — Three runs of the flow invoke exactly the seam's seven, with both socket ports seen and Fini reached only by the failing runs - which one good run would have reported as six.
+- ✅ **PP340** **the PSN path lives in session.c's nine holepunch call sites, so PP33's deletion would take remote play with it** — The managed flow owns the PSN sequence: PP479 drives it, PP502 to PP507 settle the rules around it, and PP508 shows by running it that all seven seam methods are reached.
 
 ## Block G — Test discipline
 

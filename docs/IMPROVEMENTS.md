@@ -339,31 +339,6 @@ sends.
 Deleting is the deliverable, not just porting. The C video receiver leaving the build is
 what makes the five ports beneath it real.
 
-### §PP340 What has to be true before the file can go
-
-PP33's end state is that chiaki-lib stops compiling holepunch.c and the two link lines
-go. Its own criteria say so. What it does not say is what has to be true first, and
-reading the callers is how that became visible: session.c drives the whole PSN path from
-C, across nine call sites.
-
-They are not incidental. The two sockets, the offer, the hole punch, the registration
-info, the selected address, the ctrl port and the fini are each a step of the connect
-sequence for a session played over the internet. Delete the file today and the build
-breaks; delete the callers too and remote play over PSN goes with them.
-
-That is why this is a line of its own rather than a bullet under PP33. The deletion is a
-consequence; the work is the managed side owning the flow.
-
-THE I/O HALF IS DONE. This section used to end by naming four classes that carried no
-socket - StunMessage, NatProbe, PunchExchange and CandidateRace - and PP452, PP455,
-PP456 and PP459 gave each one. What is left is not I/O but sequence: nothing managed
-calls those pieces in order, decides what happens when one fails, or holds the state
-between them.
-
-Until then PP33 is correctly blocked, and `remaining PP33` reads 420. Reading that
-number as the size of the job is what its own section warns against: it is one file, and
-the work is at the other end.
-
 ### §PP481 The seam that cannot be faked
 
 PP479 gave the flow an interface and PP480 joined that interface to PP429's nine call

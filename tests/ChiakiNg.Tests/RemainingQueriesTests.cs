@@ -36,8 +36,15 @@ public class RemainingQueriesTests(ITestOutputHelper output)
             output.WriteLine($"{task}: {query.Glob} :: {query.Pattern} -> {RemainingQueries.Run(root, query)}");
 
         // PP271: a reader that found no queries or no counts would agree with any prose at all.
+        //
+        // The stated-count floor is 1 since PP340 shipped. It was 2 because two sections stated a
+        // count, and one of the two was §PP340's own line about `remaining PP33` reading 420 - which
+        // a ship deletes, because rationale for unshipped work is what IMPROVEMENTS.md holds. The
+        // count fell for the right reason, so the floor follows it rather than the prose being
+        // padded to keep a number up. What the floor is for is unchanged: a reader returning
+        // nothing still fails here.
         Assert.True(queries.Count >= 2, $"only {queries.Count} query fence(s) read");
-        Assert.True(stated.Count >= 2, $"only {stated.Count} stated count(s) read");
+        Assert.True(stated.Count >= 1, $"only {stated.Count} stated count(s) read");
 
         IReadOnlyList<string> apart = RemainingQueries.Disagreements(root, improvements);
 
