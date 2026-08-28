@@ -420,6 +420,7 @@
 - ✅ **PP494** **takion refuses a data ack that is not exactly 12 bytes, so a gap ack is rejected before the branch that names it** — The received ack is managed and cumulative-only by arithmetic: a payload carrying blocks is never 12 bytes, so the first check refuses it and the gap-ack branch names nothing.
 - ✅ **PP495** **advance_key_pos rounds by adding the remainder and its six callers pass four different sizes, all of it protocol** — The ledger is managed with its arithmetic unimproved, and the six call sites are read out of the C - which is what caught two of them being attributed to the wrong functions.
 - ✅ **PP496** **a data send spends a sequence number and a key position before it can fail, and neither is ever given back** — Both variants are managed with their six outcomes, and the two that leave an unresendable gap are named - one reports the error and the other reports success.
+- ✅ **PP497** **the MAC gate rewrites the packet it checks, and only control and congestion hide key_pos from the MAC** — The gate is managed as the rewrite it is, with the six offsets read out of the C and the invariant they carry - key_pos begins where the MAC ends - asserted for all four types.
 
 ## Block G — Test discipline
 
