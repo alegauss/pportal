@@ -431,6 +431,7 @@
 - ✅ **PP505** **the session request is addressed two ways, and the local one can send Host: unknown after a failed lookup** — Both arms are managed with their four hostname sources, and the fallback is stated as a request that is built and reaches the console while naming nothing.
 - ✅ **PP506** **PP33's deletion depends on PP340's object but not on PP481, which is what puts an implementation behind it** — PP481 is in PP33's deps and a reader for the group holds it there, so the deletion waits on the implementation as well as on the object PP340 delivers.
 - ✅ **PP507** **the session teardown runs ten steps in a fixed order and hands freeaddrinfo the NULL a PSN session leaves** — The nine steps are managed in order, with the mutex outliving its users and the unguarded freeaddrinfo named as a reliance rather than repaired.
+- ✅ **PP508** **the seam joins nine call sites to seven methods and nothing says the managed flow ever calls all seven** — Three runs of the flow invoke exactly the seam's seven, with both socket ports seen and Fini reached only by the failing runs - which one good run would have reported as six.
 
 ## Block G — Test discipline
 
