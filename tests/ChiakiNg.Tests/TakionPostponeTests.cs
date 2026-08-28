@@ -1,15 +1,17 @@
-using ChiakiNg.Protocol;
+﻿using ChiakiNg.Protocol;
 using Xunit;
 
 namespace ChiakiNg.Tests;
 
 /// <summary>
-/// PP473, PP27: the packets takion holds back until the cipher exists, and the three ways their
-/// buffers are lost.
+/// PP473, PP474, PP27: the packets takion holds back until the cipher exists, and who frees them.
 ///
 /// PP449 did the receive thread's timer and PP450 the handshake. This is the thread's other half, and
-/// the assertion worth having is about OWNERSHIP: takion_handle_packet's own doc comment says it takes
-/// the buffer, every branch honours that, and the one that postpones loses it on both its failures.
+/// the assertion worth having is about OWNERSHIP: takion_handle_packet's doc comment says it takes the
+/// buffer, every branch honours that, and the one that postpones used to lose it on both its failures.
+///
+/// PP474 fixed all three losses, so these tests hold the repair. The distinctions PP473 drew are kept
+/// - held versus dropped is still what a port has to get right.
 /// </summary>
 public class TakionPostponeTests
 {
@@ -50,14 +52,14 @@ public class TakionPostponeTests
     }
 
     /// <summary>
-    /// THE FINDING: two of the four outcomes lose the buffer, because the caller has already let go of
-    /// it.
+    /// Two of the four outcomes DROP the packet rather than holding it - which since PP474 is a drop
+    /// and not a leak.
     ///
-    /// A drop would be fine. This is a leak - takion_handle_packet's doc comment says ownership is
-    /// taken, and both early returns in postpone return without freeing.
+    /// The distinction is kept because it is still what a port has to get right: the caller has let go
+    /// of the buffer either way, so whoever does not hold it has to free it.
     /// </summary>
     [Fact]
-    public void TwoOutcomesLoseTheBuffer()
+    public void TwoOutcomesDropThePacket()
     {
         Assert.True(TakionPostpone.BufferIsOwned(PostponeOutcome.AllocatedAndBuffered));
         Assert.True(TakionPostpone.BufferIsOwned(PostponeOutcome.Buffered));
@@ -67,12 +69,12 @@ public class TakionPostponeTests
 
         Assert.Equal(
             new[] { PostponeOutcome.AllocationFailed, PostponeOutcome.NoSpace },
-            TakionPostpone.LosesTheBuffer.ToArray());
+            TakionPostpone.DropsThePacket.ToArray());
     }
 
-    /// <summary>An allocation that fails loses the packet that triggered it.</summary>
+    /// <summary>An allocation that fails drops the packet that triggered it, and frees it.</summary>
     [Fact]
-    public void AFailedAllocationLosesItsPacket()
+    public void AFailedAllocationDropsItsPacket()
     {
         PostponeOutcome outcome = TakionPostpone.Postpone(
             hasArray: false, count: 0, allocationSucceeds: false);
@@ -82,14 +84,17 @@ public class TakionPostponeTests
     }
 
     /// <summary>
-    /// AND A CIPHER THAT NEVER ARRIVES LOSES EVERY ONE, which is the most reachable of the three: it is
-    /// what any connect that fails before crypt does.
+    /// PP474: a cipher that never arrives no longer loses the array, which was the most reachable of
+    /// the three - it is what any connect failing before crypt does.
+    ///
+    /// The parameter is kept and ignored: asking with false is asking the question PP474 removed, and
+    /// this is where it gets the new answer.
     /// </summary>
     [Fact]
-    public void ACipherThatNeverArrivesLosesTheWholeArray()
+    public void ACipherThatNeverArrivesStillReleasesTheArray()
     {
         Assert.True(TakionPostpone.ArrayIsReleased(cryptArrived: true));
-        Assert.False(TakionPostpone.ArrayIsReleased(cryptArrived: false));
+        Assert.True(TakionPostpone.ArrayIsReleased(cryptArrived: false));
     }
 
     /// <summary>The size is the C's, read from its define.</summary>
@@ -118,29 +123,28 @@ public class TakionPostponeTests
                 + "what this models");
     }
 
-    /// <summary>Both early returns still leave without freeing.</summary>
+    /// <summary>PP474: both early returns free the buffer before leaving.</summary>
     [Fact]
-    public void BothEarlyReturnsStillLeak()
+    public void BothEarlyReturnsFreeTheBuffer()
     {
         if (Source() is not { } source || TakionPostpone.PostponeBody(source) is not { } body)
             return;
 
         Assert.True(
-            TakionPostpone.BothEarlyReturnsStillLeak(body),
-            "one of the two early returns now frees the buffer, so the filed fix has partly landed and "
-                + "this model is behind the C");
+            TakionPostpone.BothEarlyReturnsFreeTheBuffer(body),
+            "one of the two early returns stopped freeing the buffer, so PP474's leak is back");
     }
 
-    /// <summary>And the flush is still the only thing that releases the array.</summary>
+    /// <summary>PP474: and the array is released on both exits, not only the flush.</summary>
     [Fact]
-    public void OnlyTheFlushReleasesTheArray()
+    public void TheArrayIsReleasedOnBothExits()
     {
         if (Source() is not { } source || TakionPostpone.ThreadBody(source) is not { } body)
             return;
 
         Assert.True(
-            TakionPostpone.OnlyTheFlushReleasesTheArray(body),
-            "the array is freed somewhere else now, or the flush stopped being guarded on the cipher");
+            TakionPostpone.TheArrayIsReleasedOnBothExits(body),
+            "the array is no longer released on both exits, so a session dying before the cipher leaks it again");
     }
 
     /// <summary>PP272: and the readers say no about nothing.</summary>
@@ -151,7 +155,7 @@ public class TakionPostponeTests
         Assert.Null(TakionPostpone.PostponeBody(""));
         Assert.Null(TakionPostpone.HandleBody(""));
         Assert.False(TakionPostpone.TheDispatcherStillOwnsTheBuffer(""));
-        Assert.False(TakionPostpone.BothEarlyReturnsStillLeak(""));
-        Assert.False(TakionPostpone.OnlyTheFlushReleasesTheArray(""));
+        Assert.False(TakionPostpone.BothEarlyReturnsFreeTheBuffer(""));
+        Assert.False(TakionPostpone.TheArrayIsReleasedOnBothExits(""));
     }
 }

@@ -1095,6 +1095,24 @@ error_reoder_queue:
 	chiaki_reorder_queue_fini(&takion->data_queue);
 
 beach:
+	// PP474: anything still postponed is released here, which nothing used to do. The flush above is
+	// guarded on gkcrypt_remote, so a session that dies before the cipher is agreed left the array
+	// and every datagram in it behind - and that is the ordinary failure rather than an exotic one.
+	//
+	// At `beach` rather than beside the other finis, because the handshake's `goto beach` skips
+	// those; postponing cannot have happened that early, but a teardown that covers every exit is
+	// one less thing to be right about. The flush sets the pointer to NULL, so this is a no-op on
+	// the path that did flush.
+	if(takion->postponed_packets)
+	{
+		for(size_t i=0; i<takion->postponed_packets_count; i++)
+			free(takion->postponed_packets[i].buf);
+		free(takion->postponed_packets);
+		takion->postponed_packets = NULL;
+		takion->postponed_packets_size = 0;
+		takion->postponed_packets_count = 0;
+	}
+
 	if(takion->cb)
 	{
 		ChiakiTakionEvent event = { 0 };
@@ -1180,7 +1198,17 @@ static void takion_postpone_packet(ChiakiTakion *takion, uint8_t *buf, size_t bu
 	{
 		takion->postponed_packets = calloc(TAKION_POSTPONE_PACKETS_SIZE, sizeof(ChiakiTakionPostponedPacket));
 		if(!takion->postponed_packets)
+		{
+			// PP474: freed, because takion_handle_packet has already let go of it. Its doc comment
+			// says "ownership of this buf is taken", and every other branch honours that - a failed
+			// MAC frees, an unknown type frees, and the two that succeed hand the buffer on. Both
+			// early returns here used to do neither.
+			//
+			// No double free is possible: the caller does nothing with buf after this call but
+			// break, so a free here is the only one on the path.
+			free(buf);
 			return;
+		}
 		takion->postponed_packets_size = TAKION_POSTPONE_PACKETS_SIZE;
 		takion->postponed_packets_count = 0;
 	}
@@ -1188,6 +1216,9 @@ static void takion_postpone_packet(ChiakiTakion *takion, uint8_t *buf, size_t bu
 	if(takion->postponed_packets_count >= takion->postponed_packets_size)
 	{
 		CHIAKI_LOGE(takion->log, "Should postpone a packet, but there is no space left");
+		// PP474: and the same here, which is the reachable one of the two - the array is 32 entries
+		// and a console at 60fps fills it in half a second while the cipher is still being agreed.
+		free(buf);
 		return;
 	}
 

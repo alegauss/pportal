@@ -24,7 +24,7 @@
 
 ## Block F — Managed core
 
-- ⏳ **PP27** (deps: PP23 ✅, PP25 ✅, PP44 ✅) **takion.c is 1910 lines of C over raw sockets and timers, and the whole stream rides on it** — the transport itself: the socket, the receive thread, the handshake and the resend loop, which is where the runtime is the risk. → §PP27
+- ⏳ **PP27** (deps: PP23 ✅, PP25 ✅, PP44 ✅) **takion.c is 1941 lines of C over raw sockets and timers, and the whole stream rides on it** — the transport itself: the socket, the receive thread, the handshake and the resend loop, which is where the runtime is the risk. → §PP27
 - 📋 **PP28** (deps: PP293 ✅, PP294 ✅, PP295, PP23 ✅) **session.c 1263, ctrl.c 1763 and streamconnection.c 1531, three state machines with no oracle** — the three together, once PP293, PP294 and PP295 have each landed: what is left here is the ordering between them. → §PP28
 - 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — 13 sites and none of them arithmetic: chiaki_fec_decode has one caller left, frameprocessor.c, which PP289 is about. → §PP30
 - 📋 **PP31** (deps: PP28) **the video decoder is where 100% managed stops being achievable, and no task above says so** — There is no managed H.264 or HEVC decoder that holds 1080p60 at remote play latency, so this boundary is chosen deliberately or discovered late. → §PP31
@@ -32,7 +32,6 @@
 - ⏳ **PP33** (deps: PP24 ✅, PP293 ✅, PP340) **HTTP and JSON in the core are curl and json-c, two vendored dependencies for what the runtime already does** — the deletion: holepunch.c is the only unit needing either library, and session.c is its only caller. → §PP33
 - 📋 **PP295** (deps: PP27 ⏳, PP297 ✅) **streamconnection.c is 1531 lines and is the last C caller of the video receiver, so every deletion below waits on it** — PP286 to PP291 ported the frame path bottom-up and none of it removed C, because this is what still calls the native receiver. → §PP295
 - 📋 **PP340** (deps: —) **the PSN path lives in session.c's nine holepunch call sites, so PP33's deletion would take remote play with it** — the four sockets it named have landed; what is left is the flow - session.c's nine call sites still drive the offer, the punch, the regist info and the fini. → §PP340
-- 📋 **PP474** (deps: —) **three paths in takion's postpone lose a datagram it owns, and the array is never freed if the cipher never arrives** — the full-array case fills in half a second at 60fps, and the unflushed array is what any connect failing before crypt leaves behind. → §PP474
 
 ## Block G — Test discipline
 

@@ -31,19 +31,22 @@ public enum PostponeOutcome
 /// unknown type frees, a control message hands it on, and an AV packet with crypt available hands it
 /// on. The fifth branch postpones it.
 ///
-/// POSTPONING TRANSFERS OWNERSHIP INTO THE ARRAY, AND FAILING TO POSTPONE LOSES IT. Both early returns
-/// in takion_postpone_packet - the calloc that failed and the array that is full - return without
-/// freeing the buffer they were given. That is a leak of one datagram each, and the full case is
-/// reachable by arithmetic: the array is 32 entries, and a stream sending video before the cipher is
+/// POSTPONING TRANSFERS OWNERSHIP INTO THE ARRAY, AND FAILING TO POSTPONE USED TO LOSE IT. Both early
+/// returns in takion_postpone_packet - the calloc that failed and the array that is full - returned
+/// without freeing the buffer they were given. That was a leak of one datagram each, and the full case
+/// is reachable by arithmetic: the array is 32 entries, and a stream sending video before the cipher is
 /// established sends more than 32 packets in well under a second.
 ///
-/// AND A CRYPT THAT NEVER ARRIVES LOSES ALL OF THEM. The flush is guarded on gkcrypt_remote being
-/// present, and the thread's teardown frees the send buffer, both reorder queues and the socket - not
-/// this array. So a session that dies before the cipher is established leaks the array and every
-/// buffer still in it, which is the most reachable of the three: it is what any failed connect does.
+/// AND A CIPHER THAT NEVER ARRIVED LOST ALL OF THEM. The flush is guarded on gkcrypt_remote being
+/// present, and the thread's teardown freed the send buffer, both reorder queues and the socket - not
+/// this array. So a session that died before the cipher was established leaked the array and every
+/// buffer still in it, which was the most reachable of the three: it is what any failed connect does.
 ///
-/// The leaks are modelled and filed rather than fixed, because a free added in the wrong one of these
-/// three places is a double free on a path nothing here can exercise.
+/// PP474 FIXED ALL THREE, and what made that safe to do on a path nothing here can exercise was
+/// reading the caller rather than estimating the risk: takion_handle_packet does nothing with buf after
+/// the postpone call but break, so a free inside the postpone is the only one on that path and cannot
+/// be a double free. The teardown's release sits at `beach` behind a bare null test, and the flush
+/// nulls the pointer, so the two cannot both run.
 /// </summary>
 public static class TakionPostpone
 {
@@ -73,26 +76,31 @@ public static class TakionPostpone
     }
 
     /// <summary>
-    /// Whether the packet's buffer survives this outcome - which is to say, whether anything will free
-    /// it.
+    /// Whether ownership of the packet's buffer passed into the array.
     ///
-    /// True where ownership passed into the array. False is a leak, not a drop: the caller has already
-    /// let go of it.
+    /// True where it did. False no longer means the buffer is lost: PP474 gave both failing outcomes a
+    /// free, so a packet that cannot be postponed is DROPPED rather than leaked. The distinction is
+    /// kept because it is still the thing a port has to get right - the caller has let go either way.
     /// </summary>
     public static bool BufferIsOwned(PostponeOutcome outcome)
         => outcome is PostponeOutcome.AllocatedAndBuffered or PostponeOutcome.Buffered;
 
-    /// <summary>The outcomes that lose the buffer. Two of the four.</summary>
-    public static IReadOnlyList<PostponeOutcome> LosesTheBuffer { get; } =
+    /// <summary>The outcomes that drop the packet rather than holding it. Two of the four.</summary>
+    public static IReadOnlyList<PostponeOutcome> DropsThePacket { get; } =
         [.. Enum.GetValues<PostponeOutcome>().Where(o => !BufferIsOwned(o))];
 
     /// <summary>
     /// Whether the array and everything in it is released, given whether the cipher ever arrived.
     ///
-    /// Only the flush releases them, and the flush is guarded on the cipher. Nothing on the teardown
-    /// path frees the array, so a session that never establishes crypt keeps both.
+    /// TRUE EITHER WAY SINCE PP474. The flush releases them when the cipher arrives, and the thread's
+    /// teardown releases them when it does not - which nothing used to do, so a session dying before
+    /// the cipher was agreed left the array and every datagram in it behind.
     /// </summary>
-    public static bool ArrayIsReleased(bool cryptArrived) => cryptArrived;
+    /// <param name="cryptArrived">
+    /// Kept, and deliberately ignored: it used to be the answer. A caller passing false is asking the
+    /// question PP474 removed, and the parameter is what lets the test ask it.
+    /// </param>
+    public static bool ArrayIsReleased(bool cryptArrived) => true;
 
     /// <summary>takion.c.</summary>
     public const string RelativePath = @"lib\src\takion.c";
@@ -130,12 +138,13 @@ public static class TakionPostpone
     }
 
     /// <summary>
-    /// Whether both early returns in postpone still leave without freeing.
+    /// PP474: whether BOTH early returns in postpone free the buffer before leaving.
     ///
-    /// Read as the absence of a free before each return, because that absence IS the defect - a
-    /// predicate looking for a free would go green the moment somebody fixed one of the two.
+    /// Both, because either alone still leaks. Each stretch is checked for its own free rather than the
+    /// function being checked for two - a predicate counting frees would pass for one branch freeing
+    /// twice, which is the failure a fix on this path can actually have.
     /// </summary>
-    public static bool BothEarlyReturnsStillLeak(string postponeBody)
+    public static bool BothEarlyReturnsFreeTheBuffer(string postponeBody)
     {
         ArgumentNullException.ThrowIfNull(postponeBody);
 
@@ -149,21 +158,23 @@ public static class TakionPostpone
         if (allocFail < 0 || full < allocFail)
             return false;
 
-        // Neither stretch frees, and each ends in a return.
         string first = text[allocFail..full];
         string second = text[full..];
 
-        return first.Contains("return;", StringComparison.Ordinal)
-            && !first.Contains("free(", StringComparison.Ordinal)
-            && second.Contains("return;", StringComparison.Ordinal)
-            && !second.Contains("free(buf)", StringComparison.Ordinal);
+        return CountOf(first, "free(buf);") == 1
+            && first.Contains("return;", StringComparison.Ordinal)
+            && CountOf(second, "free(buf);") == 1
+            && second.Contains("return;", StringComparison.Ordinal);
     }
 
     /// <summary>
-    /// Whether the flush is still the only thing that releases the array, and is still guarded on the
-    /// cipher.
+    /// PP474: whether the array is released on BOTH exits - the flush when the cipher arrives, and the
+    /// teardown when it does not.
+    ///
+    /// Two frees now, where there was one. The flush's is inside the cipher's guard and the teardown's
+    /// is not, which is the whole of the fix: the guard is what used to make the release conditional.
     /// </summary>
-    public static bool OnlyTheFlushReleasesTheArray(string threadBody)
+    public static bool TheArrayIsReleasedOnBothExits(string threadBody)
     {
         ArgumentNullException.ThrowIfNull(threadBody);
 
@@ -174,9 +185,15 @@ public static class TakionPostpone
         if (guard < 0)
             return false;
 
-        // Exactly one free of the array, and it is inside the guarded block.
-        return CountOf(text, "free(takion->postponed_packets);") == 1
-            && text.IndexOf("free(takion->postponed_packets);", StringComparison.Ordinal) > guard;
+        if (CountOf(text, "free(takion->postponed_packets);") != 2)
+            return false;
+
+        // The teardown's release is behind a bare null test, not the cipher's, and it frees what is
+        // still buffered rather than only the array.
+        int teardown = text.LastIndexOf("if(takion->postponed_packets)", StringComparison.Ordinal);
+
+        return teardown > guard
+            && text[teardown..].Contains("free(takion->postponed_packets[i].buf);", StringComparison.Ordinal);
     }
 
     private static int CountOf(string haystack, string needle)

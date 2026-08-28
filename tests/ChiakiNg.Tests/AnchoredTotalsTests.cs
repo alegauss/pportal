@@ -129,7 +129,7 @@ public class AnchoredTotalsTests(ITestOutputHelper output)
     /// promise. The rows go with the line rather than the assertion being loosened to tolerate them.
     /// </summary>
     [Theory]
-    [InlineData("takion.c", 1910)] // PP451 added 22 lines; --recount restated the claim, this follows
+    [InlineData("takion.c", 1941)] // PP451 then PP474 added lines; --recount restated, this follows
     [InlineData("session.c", 1263)] // PP470 added 19 lines; --recount restated the claim, this follows
     [InlineData("streamconnection.c", 1531)]
     public void TheRestatedNumbersAreCheckedClaimsNow(string file, int stated)

@@ -402,6 +402,7 @@
 - ✅ **PP470** **the ctrl channel's two mutexes can deadlock, and the two fixes trade one edit against a changed atomic sequence** — the PIN is taken out of the session under state_mutex and the lock released before crossing into ctrl, so one order is left and the cycle is gone.
 - ✅ **PP294** **ctrl.c is 1763 lines of control channel and PP28 sizes it together with two files it does not resemble** — the control channel is modelled end to end: all 22 message types with their direction, the once-only state, both mutexes and the deadlock they formed, and a real PS5 capture replayed.
 - ✅ **PP473** **takion holds AV packets back until the cipher exists, and three paths lose the datagram buffers it took ownership of** — the postpone buffer is modelled with its ownership rule: two of four outcomes lose the packet, and the array is released only by a flush the cipher guards.
+- ✅ **PP474** **three paths in takion's postpone lose a datagram it owns, and the array is never freed if the cipher never arrives** — both early returns free the buffer the dispatcher let go of, and the teardown releases anything still postponed - so a session dying before the cipher leaks nothing.
 
 ## Block G — Test discipline
 
