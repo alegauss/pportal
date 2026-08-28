@@ -437,6 +437,7 @@
 - ✅ **PP510** **PP27's timing run needs takion datagrams with arrival times, and nothing in this tree records one** — The capture keeps arrival, length, base type and an 18-byte head under two bounds, with the head's length derived from the furthest offset PP497's gate reads.
 - ✅ **PP511** **the tap has four channels and none carries a datagram, so PP510's capture has nothing to fill it from** — Every arrival crosses a fifth channel above the MAC gate, guarded by the tap's active check, with the base type as its type and the head truncated at the emit.
 - ✅ **PP512** **PP511 fills a capture that lives in memory, so the session PP27 waits for would end with nothing on disk** — The capture writes and reads back as a versioned file, and a writer that owns the tap leaves one on dispose - driven end to end through lib/src's own emit.
+- ✅ **PP513** **a capture can be written and nothing replays one, so the file a session leaves has no managed number beside it** — A written capture reads back and replays through PP500's path at zero allocated bytes, reporting branches and copies - the managed half, with the C's named as the console's.
 
 ## Block G — Test discipline
 
