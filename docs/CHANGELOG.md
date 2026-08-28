@@ -399,6 +399,7 @@
 - ✅ **PP468** **ctrl.c has two mutexes on two objects and nothing states which guards what, or that one call site treats them apart** — the two mutexes are stated with the fields each guards and what wakes its waiter, and the seven ctrl_failed calls are counted with the one that releases first.
 - ✅ **PP469** **six of seven ctrl_failed calls hold notif_mutex while it takes state_mutex, and nothing has checked for reverse order** — both orders exist: the session thread holds state_mutex across the PIN call which takes notif_mutex, and the ctrl thread holds notif across ctrl_failed which takes state.
 - ✅ **PP472** **PP470 says the six-edit fix changes no sequence, and nothing has read what each of the six ctrl_failed calls relies on** — the six are read: five leave the loop at once so a release around them is unobservable, and the sixth breaks only its switch, so the fix is not uniform.
+- ✅ **PP470** **the ctrl channel's two mutexes can deadlock, and the two fixes trade one edit against a changed atomic sequence** — the PIN is taken out of the session under state_mutex and the lock released before crossing into ctrl, so one order is left and the cycle is gone.
 
 ## Block G — Test discipline
 

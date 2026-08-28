@@ -114,8 +114,18 @@ public static class LoginPinHandover
     /// Whether the PIN really is spent before the failure is read, which is what rules out a retry.
     ///
     /// Stated as an assertion rather than as prose because it is the reason the branch ends the
-    /// session: a future edit that moved the free below the check would make a retry possible again
-    /// and leave this branch looking gratuitous.
+    /// session: an edit that moved the spending below the check would make a retry possible again and
+    /// leave this branch looking gratuitous.
+    ///
+    /// PP470 CHANGED THE SHAPE AND STRENGTHENED THE PROPERTY. The session used to free its own buffer
+    /// after the handover; it now takes the PIN out of the session BEFORE the call - clearing the
+    /// pointer, the size and the flag under state_mutex - and frees a local afterwards. That was needed
+    /// to release state_mutex across the call without letting a second PIN interleave, and it means the
+    /// PIN is unretrievable from the moment the handover starts rather than from the moment it returns.
+    ///
+    /// So this checks the new order: taken out before the call, the local freed after it, the failure
+    /// read last. The old spelling - `free(session->login_pin)` after the call - would now be the
+    /// session freeing a buffer it no longer owns.
     /// </summary>
     public static bool ThePinIsSpentBeforeTheCheck(string source)
     {
@@ -127,11 +137,19 @@ public static class LoginPinHandover
         if (call < 0)
             return false;
 
-        int freed = CCall.At(compact, "free(session->login_pin)", call);
-        int cleared = CCall.Mark(compact, "session->login_pin = NULL;", call);
+        // Taken out of the session before the handover, so nothing can retry from it. Found from the
+        // start and required to be BEFORE the call, rather than searched backwards - CCall's matchers
+        // normalise the needle, and a raw LastIndexOf on compacted text does not match at all.
+        int taken = CCall.Mark(compact, "session->login_pin = NULL;");
+        int flagged = CCall.Mark(compact, "session->login_pin_entered = false;");
+
+        // And the local it was moved into is freed after, before the failure is read.
+        int freed = CCall.At(compact, "free(pin)", call);
         int check = CCall.Mark(compact, "if(pin_err != CHIAKI_ERR_SUCCESS)", call);
 
-        return freed > call && cleared > freed && check > cleared;
+        return taken >= 0 && taken < call
+            && flagged >= 0 && flagged < call
+            && freed > call && check > freed;
     }
 
     /// <summary>

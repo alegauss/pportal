@@ -130,7 +130,7 @@ public class AnchoredTotalsTests(ITestOutputHelper output)
     /// </summary>
     [Theory]
     [InlineData("takion.c", 1910)] // PP451 added 22 lines; --recount restated the claim, this follows
-    [InlineData("session.c", 1244)]
+    [InlineData("session.c", 1263)] // PP470 added 19 lines; --recount restated the claim, this follows
     [InlineData("streamconnection.c", 1531)]
     public void TheRestatedNumbersAreCheckedClaimsNow(string file, int stated)
     {

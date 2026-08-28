@@ -31,16 +31,21 @@ public readonly record struct LockAcquisition(
 /// AND THE CTRL THREAD DOES THE OPPOSITE. It holds notif_mutex across most of its loop and calls
 /// ctrl_failed from inside it, which takes state_mutex. That is notif then state.
 ///
-/// SO THE CYCLE IS COMPLETE, and both windows are real rather than instantaneous. The ctrl thread
+/// SO THE CYCLE WAS COMPLETE, and both windows were real rather than instantaneous. The ctrl thread
 /// holds notif_mutex from its relock after the select until the next unlock, and calls ctrl_failed
-/// from four places inside that stretch; the session thread holds state_mutex from the cond wait's
-/// return until it releases. A ctrl failure arriving while a user is entering a PIN is a network event
+/// from four places inside that stretch; the session thread held state_mutex from the cond wait's
+/// return until it released. A ctrl failure arriving while a user is entering a PIN is a network event
 /// meeting a human one, which is the kind of coincidence that happens.
 ///
-/// THE FIX IS NOT SHIPPED HERE. Releasing state_mutex around the PIN call is one edit and matches what
-/// the two careful sites already do, but the lines after it read and free session->login_pin under that
-/// same lock, so dropping it there changes what is atomic. Six edits in ctrl.c is the other direction.
-/// Choosing needs more than this class knows, so this states the cycle and the fix is filed apart.
+/// PP470 CUT THE SESSION END, and the shape of the cut is why it took three tasks to choose. Releasing
+/// state_mutex around the PIN call was always the one-edit option, and the objection was that the four
+/// lines after the call read and free session->login_pin under that same lock - so dropping it there
+/// changed what was atomic. Taking the PIN OUT of the session first dissolves that: the clearing moves
+/// above the release, inside the locked region, and the buffer becomes a local. Nothing is atomic that
+/// was not before, and one less lock is held across a cross-mutex call.
+///
+/// What is left is one order, the ctrl thread's, at seven sites. One order is not a deadlock, so
+/// PP472's reading of which of the six could safely release is now a fact about a fix nobody needs.
 /// </summary>
 public static class CtrlLockOrder
 {
@@ -64,17 +69,27 @@ public static class CtrlLockOrder
     public static IReadOnlyList<string> OnTheCtrlThread { get; } =
         ["ctrl_connect_tcp", "ctrl_thread_func"];
 
-    /// <summary>Both orders, as found.</summary>
+    /// <summary>
+    /// Every place two of the mutexes are held at once, after PP470.
+    ///
+    /// ONE, so there is no cycle. The session half is gone: the PIN prompt takes the PIN out of the
+    /// session under state_mutex, releases it, and only then crosses into ctrl. What is left is the
+    /// ctrl thread's own order, and one order is not a deadlock however many sites use it.
+    /// </summary>
     public static IReadOnlyList<LockAcquisition> Acquisitions { get; } =
-    [
-        new(
-            "chiaki_session_thread_func at the PIN prompt",
-            CtrlMutex.State,
-            CtrlMutex.Notif,
-            "session"),
+        [new("ctrl_thread_func via ctrl_failed", CtrlMutex.Notif, CtrlMutex.State, "ctrl")];
 
-        new("ctrl_thread_func via ctrl_failed", CtrlMutex.Notif, CtrlMutex.State, "ctrl"),
-    ];
+    /// <summary>
+    /// The acquisition PP470 removed, kept as a value so the fix has something to be measured against.
+    ///
+    /// This is what the session thread used to do, and what
+    /// <see cref="ThePinPromptReleasesStateBeforeTheCall"/> now asserts is gone.
+    /// </summary>
+    public static LockAcquisition WhatPP470Removed { get; } = new(
+        "chiaki_session_thread_func at the PIN prompt",
+        CtrlMutex.State,
+        CtrlMutex.Notif,
+        "session");
 
     /// <summary>Whether the two acquisitions form a cycle - which is to say, whether they disagree.</summary>
     public static bool IsACycle(LockAcquisition a, LockAcquisition b)
@@ -139,30 +154,43 @@ public static class CtrlLockOrder
     }
 
     /// <summary>
-    /// Whether the PIN prompt still waits on state_cond and then calls into ctrl without releasing.
+    /// PP470: whether the PIN prompt releases state_mutex before crossing into ctrl, and takes the PIN
+    /// out of the session first.
     ///
-    /// The cond wait is what makes the lock held: it returns holding the mutex. So the assertion is the
-    /// wait, then the call, with no unlock between them - which is exactly what the two careful sites
-    /// in this tree do have.
+    /// BOTH HALVES, because either alone is wrong. The release is what breaks the cycle; taking the PIN
+    /// out under the lock beforehand is what makes the release safe, since the clearing used to happen
+    /// after the call. A release without the reordering would let a second PIN arrive between the
+    /// forward and the free, which is the objection this fix was held up on for two iterations.
     /// </summary>
-    public static bool ThePinPromptStillHoldsStateAcrossTheCall(string sessionSource)
+    public static bool ThePinPromptReleasesStateBeforeTheCall(string sessionSource)
     {
         ArgumentNullException.ThrowIfNull(sessionSource);
 
         string text = sessionSource.Replace("\r\n", "\n", StringComparison.Ordinal);
 
-        int waits = text.IndexOf(
-            "chiaki_cond_timedwait_pred(&session->state_cond, &session->state_mutex, UINT64_MAX, session_check_state_pred_pin",
-            StringComparison.Ordinal);
-        if (waits < 0)
-            return false;
-
-        int call = text.IndexOf("chiaki_ctrl_set_login_pin(&session->ctrl", waits, StringComparison.Ordinal);
+        int call = text.IndexOf("chiaki_ctrl_set_login_pin(&session->ctrl", StringComparison.Ordinal);
         if (call < 0)
             return false;
 
-        return !text[waits..call].Contains(
-            "chiaki_mutex_unlock(&session->state_mutex);", StringComparison.Ordinal);
+        int unlock = text.LastIndexOf(
+            "chiaki_mutex_unlock(&session->state_mutex);", call, StringComparison.Ordinal);
+        int relock = text.IndexOf(
+            "chiaki_mutex_lock(&session->state_mutex);", call, StringComparison.Ordinal);
+        if (unlock < 0 || relock < 0)
+            return false;
+
+        // The unlock is the statement just before the call, not one from an earlier block.
+        string between = text[unlock..call];
+        if (between.Split('\n').Length > 3)
+            return false;
+
+        // And the PIN was taken out of the session before that unlock, so the clearing is inside the
+        // locked region rather than after the call.
+        string before = text[..unlock];
+
+        return before.Contains("session->login_pin_entered = false;", StringComparison.Ordinal)
+            && before.LastIndexOf("session->login_pin = NULL;", StringComparison.Ordinal)
+                > before.LastIndexOf("uint8_t *pin = session->login_pin;", StringComparison.Ordinal);
     }
 
     /// <summary>And whether the PIN setter still takes notif_mutex, which closes the cycle.</summary>

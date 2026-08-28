@@ -561,11 +561,30 @@ static void *session_thread_func(void *arg)
 
 		assert(session->login_pin_entered && session->login_pin);
 		CHIAKI_LOGI(session->log, "Session received entered Login PIN, forwarding to Ctrl");
-		ChiakiErrorCode pin_err = chiaki_ctrl_set_login_pin(&session->ctrl, session->login_pin, session->login_pin_size);
-		session->login_pin_entered = false;
-		free(session->login_pin);
+
+		// PP470: the PIN is taken OUT of the session under state_mutex, and the lock is released
+		// before crossing into ctrl - because chiaki_ctrl_set_login_pin takes notif_mutex, and the
+		// ctrl thread holds notif_mutex while calling ctrl_failed, which takes state_mutex. Holding
+		// state across this call was the second half of that cycle: two threads, opposite orders,
+		// and PP469 measured both windows as wide enough to overlap. A ctrl failure arriving while
+		// somebody is typing a PIN is a network event meeting a human one.
+		//
+		// Taking ownership first is what makes releasing safe. The four lines that used to clear the
+		// PIN AFTER the call now run before it, under the lock, so no second PIN can arrive between
+		// the forward and the free - which is the objection this fix was held up on. The buffer is a
+		// local from here, and chiaki_ctrl_set_login_pin copies it, so freeing it after the call is
+		// the same lifetime as before.
+		uint8_t *pin = session->login_pin;
+		size_t pin_size = session->login_pin_size;
 		session->login_pin = NULL;
 		session->login_pin_size = 0;
+		session->login_pin_entered = false;
+
+		chiaki_mutex_unlock(&session->state_mutex);
+		ChiakiErrorCode pin_err = chiaki_ctrl_set_login_pin(&session->ctrl, pin, pin_size);
+		free(pin);
+		chiaki_mutex_lock(&session->state_mutex);
+
 		if(pin_err != CHIAKI_ERR_SUCCESS)
 		{
 			// PP345: the PIN is already consumed and freed by here, so there is nothing left to

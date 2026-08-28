@@ -174,7 +174,7 @@ bytes.
 
 ### §PP28 The state machines
 
-session.c is 1244 lines, ctrl.c 1763 and streamconnection.c 1531. Together they are the
+session.c is 1263 lines, ctrl.c 1763 and streamconnection.c 1531. Together they are the
 connection: what is sent in which order, what is waited for, what a timeout means at
 each point, and how a session comes apart when the console stops answering.
 
@@ -385,33 +385,6 @@ between them.
 Until then PP33 is correctly blocked, and `remaining PP33` reads 420. Reading that
 number as the size of the job is what its own section warns against: it is one file, and
 the work is at the other end.
-
-### §PP470 Which end of the cycle to cut
-
-PP469 established the cycle. The session thread waits on `state_cond`, which returns
-holding `state_mutex`, and calls `chiaki_ctrl_set_login_pin`, which takes `notif_mutex`.
-The ctrl thread holds `notif_mutex` across most of its loop and calls `ctrl_failed`,
-which takes `state_mutex`. Two threads, opposite orders, both windows wide enough to
-overlap.
-
-Releasing `state_mutex` around the PIN call is one edit and matches what the two careful
-sites already do. The problem is what follows: the next four lines read
-`session->login_pin` and its size, free the buffer and clear the flag, all under the
-lock the release would drop. The PIN is set by another thread under that same lock, so
-dropping it mid-sequence lets a second PIN arrive between the forward and the free.
-PP345 recorded what a mishandled PIN costs and PP335 that a repeated prompt is the only
-signal the last one was wrong.
-
-Making the six `ctrl_failed` calls release `notif_mutex` first is six edits, and PP472
-read what each relies on. FIVE are followed immediately by leaving the loop - a return,
-or a break landing outside it - so a release around them cannot be observed. The SIXTH
-continues: its break exits `switch(message.subtype)` inside a `while(true)`, and the
-iteration carries on with the rudp submessage it was part-way through. A release there
-lets another thread touch `msg_queue` or `login_pin_entered` mid-iteration, and nothing
-establishes that is safe.
-
-So the choice is one edit that changes an atomic sequence, or five safe edits and a
-sixth needing its own argument.
 
 ## Block G — Test discipline
 
