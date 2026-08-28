@@ -386,32 +386,33 @@ Until then PP33 is correctly blocked, and `remaining PP33` reads 420. Reading th
 number as the size of the job is what its own section warns against: it is one file, and
 the work is at the other end.
 
-### §PP469 The lock order nobody has swept for
+### §PP470 Which end of the cycle to cut
 
-`ctrl_failed` takes `state_mutex`. The ctrl thread calls it seven times: six while
-holding `notif_mutex`, and one that unlocks `notif_mutex`, calls, and relocks. The
-session thread does what the seventh does - it releases `state_mutex` before calling
-`ctrl_message_set_fallback_session_id` and retakes it afterwards.
+PP469 established the cycle. The session thread waits on `state_cond`, which returns
+holding `state_mutex`, and calls `chiaki_ctrl_set_login_pin`, which takes `notif_mutex`.
+The ctrl thread holds `notif_mutex` across most of its loop and calls `ctrl_failed`,
+which takes `state_mutex`. Two threads, opposite orders, both windows wide enough to
+overlap: a ctrl failure arriving while somebody is typing a PIN is a network event
+meeting a human one.
 
-So there is a discipline that two places follow and six do not, and the question this
-line asks is whether the six can deadlock.
+Two fixes are available and they are not equivalent.
 
-A cycle needs somebody acquiring the two in the opposite order: holding `state_mutex`
-and then taking `notif_mutex`. Nothing found so far does. `chiaki_ctrl_set_login_pin`
-takes only `notif_mutex`; `ctrl_failed` takes only `state_mutex`; and the one
-session-thread path that crosses from state into ctrl releases first. On that evidence
-the six are safe and the two careful sites are belt-and-braces.
+Releasing `state_mutex` around the PIN call is one edit and matches what the two careful
+sites in this tree already do - the seventh `ctrl_failed` call and session.c's
+fallback-session-id call both drop their lock before crossing. The problem is what
+follows the call: the next four lines read `session->login_pin` and
+`session->login_pin_size`, free the buffer and clear the flag, all under the lock the
+release would have dropped. The PIN is set by another thread under that same lock, so
+dropping it mid-sequence lets a second PIN arrive between the forward and the free.
+PP345 already recorded what a mishandled PIN costs here, and PP335 that a repeated
+prompt is the only signal the last one was wrong.
 
-What makes this a line rather than a conclusion is that "nothing found so far" is not a
-sweep. The ctrl is reachable from the session thread, the UI thread and its own;
-`state_mutex` is held across large stretches of session.c; and a single call from inside
-one of those stretches into anything that takes `notif_mutex` closes the cycle.
-Establishing that none exists means reading every path into ctrl, not this file.
+Making the six `ctrl_failed` calls release `notif_mutex` first is six edits in one
+function and changes no cross-thread sequence, because `ctrl_failed` only touches
+session state. It is the larger diff and the smaller behaviour change.
 
-PP468 wrote down what such a sweep needs: which mutex guards which field, that they sit
-on different objects, the seven call sites and which one is the exception. The answer is
-either an assertion that no reverse acquisition exists, or six call sites that should
-look like the seventh.
+Neither is obviously right, and the choice wants a reading of what the ctrl thread
+relies on `notif_mutex` covering across those six stretches.
 
 ## Block G — Test discipline
 

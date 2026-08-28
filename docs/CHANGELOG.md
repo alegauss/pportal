@@ -397,6 +397,7 @@
 - ✅ **PP466** **PP440's census does not say which ctrl types arrive, so a missing handler and a type no console sends look the same** — the ten arriving types are read out of the switch and held against the census, and the remote counter is stated: a bare message spends nothing, as on the send side.
 - ✅ **PP467** **two arriving ctrl types are once-only and nothing states it, and their flags take the lock in one of four reads** — the two once-only types are stated with their different log levels, and the locking is recorded with why levelling it in either direction would break.
 - ✅ **PP468** **ctrl.c has two mutexes on two objects and nothing states which guards what, or that one call site treats them apart** — the two mutexes are stated with the fields each guards and what wakes its waiter, and the seven ctrl_failed calls are counted with the one that releases first.
+- ✅ **PP469** **six of seven ctrl_failed calls hold notif_mutex while it takes state_mutex, and nothing has checked for reverse order** — both orders exist: the session thread holds state_mutex across the PIN call which takes notif_mutex, and the ctrl thread holds notif across ctrl_failed which takes state.
 
 ## Block G — Test discipline
 
