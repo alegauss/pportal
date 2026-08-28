@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
+﻿// SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
 
 #include "chiaki/feedback.h"
 #include <chiaki/takion.h>
@@ -258,7 +258,7 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_takion_connect(ChiakiTakion *takion, Chiaki
 #ifndef NO_DONTFRAG
 			if(r < 0 && mac_dontfrag)
 			{
-				CHIAKI_LOGE(takion->log, "Takion failed to setsockopt IP_MTU_DISCOVER: " CHIAKI_SOCKET_ERROR_FMT, CHIAKI_SOCKET_ERROR_VALUE);
+				CHIAKI_LOGE(takion->log, "Takion failed to setsockopt IP_DONTFRAGMENT: " CHIAKI_SOCKET_ERROR_FMT, CHIAKI_SOCKET_ERROR_VALUE);
 				ret = CHIAKI_ERR_NETWORK;
 				goto error_sock;
 			}
@@ -273,7 +273,7 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_takion_connect(ChiakiTakion *takion, Chiaki
 #ifndef NO_DONTFRAG
 			if(r < 0 && mac_dontfrag)
 			{
-				CHIAKI_LOGE(takion->log, "Takion failed to unset setsockopt IP_MTU_DISCOVER: " CHIAKI_SOCKET_ERROR_FMT, CHIAKI_SOCKET_ERROR_VALUE);
+				CHIAKI_LOGE(takion->log, "Takion failed to unset setsockopt IP_DONTFRAGMENT: " CHIAKI_SOCKET_ERROR_FMT, CHIAKI_SOCKET_ERROR_VALUE);
 				ret = CHIAKI_ERR_NETWORK;
 				goto error_sock;
 			}
@@ -306,7 +306,7 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_takion_connect(ChiakiTakion *takion, Chiaki
 #ifndef NO_DONTFRAG
 			if(r < 0 && mac_dontfrag)
 			{
-				CHIAKI_LOGE(takion->log, "Takion failed to setsockopt IP_MTU_DISCOVER: " CHIAKI_SOCKET_ERROR_FMT, CHIAKI_SOCKET_ERROR_VALUE);
+				CHIAKI_LOGE(takion->log, "Takion failed to setsockopt IP_DONTFRAGMENT: " CHIAKI_SOCKET_ERROR_FMT, CHIAKI_SOCKET_ERROR_VALUE);
 				ret = CHIAKI_ERR_NETWORK;
 				goto error_sock;
 			}
@@ -321,7 +321,7 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_takion_connect(ChiakiTakion *takion, Chiaki
 #ifndef NO_DONTFRAG
 			if(r < 0 && mac_dontfrag)
 			{
-				CHIAKI_LOGE(takion->log, "Takion failed to unset setsockopt IP_MTU_DISCOVER: " CHIAKI_SOCKET_ERROR_FMT, CHIAKI_SOCKET_ERROR_VALUE);
+				CHIAKI_LOGE(takion->log, "Takion failed to unset setsockopt IP_DONTFRAGMENT: " CHIAKI_SOCKET_ERROR_FMT, CHIAKI_SOCKET_ERROR_VALUE);
 				ret = CHIAKI_ERR_NETWORK;
 				goto error_sock;
 			}
