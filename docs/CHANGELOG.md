@@ -451,6 +451,7 @@
 - ✅ **PP524** **nothing reads the AV head's own fields, so the FEC ratio and the codec byte a console sends are unmeasured** — A real session sends one FEC unit per video frame of 13 to 29, codec 5 on audio where the receiver demands it, and 255 in the prologue the postpone keeps from that guard.
 - ✅ **PP525** **PP523 could not tell a quiet link from a lost packet, and the capture's packet indices settle it** — The indices settle what the gaps could only raise: 1609 steps, 122 frames, zero losses and zero reorders - so the twelve timeout crossings were idle time.
 - ✅ **PP526** **the capture's bounds and the session's hold are constants, so a longer sample cannot be asked for** — --capture-seconds sets the window, the count and the hold from one asked-for length, so a longer sample is a longer file rather than the same one.
+- ✅ **PP527** **the replay calls the key stream NOT MONOTONIC and never says by how much, so 16 reorderings read as a fault** — The key position line now reports how many datagrams arrived out of send order and how far the worst one moved, which is the reordering the video indices cannot see.
 
 ## Block G — Test discipline
 

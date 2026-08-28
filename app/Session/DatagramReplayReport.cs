@@ -162,7 +162,12 @@ public static class DatagramReplayReport
             .Append(shape.NotBlockAligned == 0
                 ? "all block-aligned"
                 : $"{shape.NotBlockAligned.ToString(invariant)} NOT BLOCK-ALIGNED")
-            .Append(shape.Monotonic ? ", one monotonic stream" : ", NOT MONOTONIC")
+            // PP527: the displacement rather than the boolean. "NOT MONOTONIC" reads the same for a
+            // link working normally and a link falling apart, and shouts either way.
+            .Append(shape.Monotonic
+                ? ", one monotonic stream"
+                : $", {shape.OutOfPlace.ToString(invariant)} out of send order"
+                    + $" (worst by {shape.WorstDisplacement.ToString(invariant)})")
             .Append(shape.SpuriousWraps == 0 ? "\n" : $", {shape.SpuriousWraps} SPURIOUS WRAP(S)\n");
 
         return text.ToString();
@@ -281,6 +286,16 @@ public static class DatagramReplayReport
     /// <param name="NotBlockAligned">Advances that were not a multiple of the cipher block.</param>
     /// <param name="Monotonic">Whether the stream never went backwards.</param>
     /// <param name="SpuriousWraps">Expansions that added 2^32 where the low half did not wrap.</param>
+    /// <param name="OutOfPlace">
+    /// PP527: how many datagrams arrived somewhere other than where the key position says they were
+    /// sent. The number <see cref="Monotonic"/> was hiding.
+    /// </param>
+    /// <param name="WorstDisplacement">
+    /// PP527: and how far the furthest-travelled one moved, in places.
+    ///
+    /// The number a reorder queue is sized against: a window shorter than this drops a packet that
+    /// was going to arrive.
+    /// </param>
     public readonly record struct KeyPositionShape(
         int Advances,
         int PrologueRepeats,
@@ -288,7 +303,9 @@ public static class DatagramReplayReport
         int Prologue,
         int NotBlockAligned,
         bool Monotonic,
-        int SpuriousWraps);
+        int SpuriousWraps,
+        int OutOfPlace,
+        int WorstDisplacement);
 
     /// <summary>
     /// PP519: the captured positions, read from the heads and run through the C's expansion.
@@ -339,8 +356,14 @@ public static class DatagramReplayReport
                 if (lows[i] == lows[i - 1])
                 {
                     // PP521: which side of the prologue it is on is the whole distinction. A repeat
-                    // at zero is the opening; one after the first real position would be a counter
-                    // that stood still, which is a different and much worse thing.
+                    // at zero is the opening.
+                    //
+                    // PP527 WITHDRAWS WHAT PP521 SAID ABOUT THE OTHER SIDE. It called a running
+                    // repeat "a counter that stood still, which is a different and much worse
+                    // thing". A sixty-second capture has exactly one, between a video packet and a
+                    // control packet that arrived adjacent, and the counter did not stand still -
+                    // the two were sent at positions the network then delivered together. It is
+                    // still worth counting and it is not what that sentence claimed.
                     if (i < prologue)
                         prologueRepeats++;
                     else
@@ -368,8 +391,46 @@ public static class DatagramReplayReport
             previous = expanded;
         }
 
+        (int outOfPlace, int worst) = Displacement(lows);
+
         return new KeyPositionShape(
-            advances, prologueRepeats, runningRepeats, prologue, unaligned, monotonic, spurious);
+            advances, prologueRepeats, runningRepeats, prologue, unaligned, monotonic, spurious,
+            outOfPlace, worst);
+    }
+
+    /// <summary>
+    /// PP527: how far arrival order differs from send order, which is what "monotonic" was hiding.
+    ///
+    /// THE KEY POSITION IS THE ONLY THING IN A CAPTURE THAT ORDERS THE CHANNELS AGAINST EACH OTHER.
+    /// One counter serves all of them, so a video packet overtaken by a control packet shows here
+    /// and nowhere else - <see cref="VideoSequence"/> orders video against video and reported zero
+    /// reorders over the same capture that produced these.
+    /// </summary>
+    /// <returns>How many arrived out of send order, and how far the worst one moved.</returns>
+    /// <remarks>
+    /// The sort is stable and ties are left in arrival order, so the prologue's twenty-seven zeros
+    /// and the one running repeat are not counted as displaced. Two packets that share a position
+    /// have no send order to be out of.
+    /// </remarks>
+    private static (int OutOfPlace, int Worst) Displacement(IReadOnlyList<uint> lows)
+    {
+        int[] sent = [.. Enumerable.Range(0, lows.Count).OrderBy(i => lows[i])];
+
+        var outOfPlace = 0;
+        var worst = 0;
+
+        for (var rank = 0; rank < sent.Length; rank++)
+        {
+            int moved = Math.Abs(sent[rank] - rank);
+            if (moved == 0)
+                continue;
+
+            outOfPlace++;
+            if (moved > worst)
+                worst = moved;
+        }
+
+        return (outOfPlace, worst);
     }
 
     /// <summary>

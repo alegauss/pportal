@@ -393,6 +393,78 @@ public class DatagramReplayReportTests
         Assert.Equal(1, late.Reorders);
     }
 
+    /// <summary>
+    /// PP527: the key position sees a reordering the video index cannot, and says how far.
+    ///
+    /// ONE COUNTER SERVES ALL THE CHANNELS, so a video packet overtaken by a control packet moves
+    /// in this ordering and not in video's own. A sixty-second capture reported zero reorders from
+    /// the packet indices and sixteen datagrams out of send order from the key positions, over the
+    /// same 48300 - and this is the shape that produces that disagreement, in four.
+    ///
+    /// AND THE DISPLACEMENT IS THE NUMBER, not the boolean it replaces. "NOT MONOTONIC" reads the
+    /// same for sixteen of 48300 and for twenty thousand of them.
+    ///
+    /// THE TIE IS THE PART THAT BITES, and the last assertion here is what holds it: the ordering
+    /// must be stable, because the prologue is twenty-seven packets at position zero. An unstable
+    /// sort scatters them and reports displacements no packet made - which is what the first
+    /// measurement of this capture did, before this was written.
+    /// </summary>
+    [Fact]
+    public void TheKeyPositionSeesWhatTheVideoIndexCannot()
+    {
+        CapturedDatagram Keyed(int baseType, long at, uint keyPos, ushort packetIndex)
+        {
+            var bytes = new byte[TakionTimingCapture.HeadBytes];
+            bytes[0] = (byte)baseType;
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt16BigEndian(bytes.AsSpan(1, 2), packetIndex);
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(
+                bytes.AsSpan(TakionPacketMac.LayoutFor(baseType)!.Value.KeyPosOffset, 4), keyPos);
+            return new CapturedDatagram(at, 300, baseType, bytes);
+        }
+
+        // Sent 16, 32, 48, 64. The control packet at 48 arrived before the video packet at 32, so
+        // the two in the middle changed places - one apart, and two datagrams moved.
+        IReadOnlyList<CapturedDatagram> capture =
+        [
+            Keyed(TakionDispatch.Video, 0, 16, 10),
+            Keyed(TakionDispatch.Control, 1000, 48, 0),
+            Keyed(TakionDispatch.Video, 2000, 32, 11),
+            Keyed(TakionDispatch.Video, 3000, 64, 12),
+        ];
+
+        DatagramReplayReport.KeyPositionShape shape = DatagramReplayReport.KeyPositions(capture);
+
+        Assert.False(shape.Monotonic);
+        Assert.Equal(2, shape.OutOfPlace);
+        Assert.Equal(1, shape.WorstDisplacement);
+
+        // The video indices ran 10, 11, 12 throughout, so video's own ordering saw none of it.
+        Assert.Equal(0, DatagramReplayReport.VideoSequence(capture).Reorders);
+
+        // A stream that was never reordered has no displacement, and the line goes back to saying
+        // so rather than printing a zero nobody asked for.
+        DatagramReplayReport.KeyPositionShape ordered = DatagramReplayReport.KeyPositions(
+        [
+            Keyed(TakionDispatch.Video, 0, 16, 10),
+            Keyed(TakionDispatch.Video, 1000, 32, 11),
+        ]);
+
+        Assert.True(ordered.Monotonic);
+        Assert.Equal(0, ordered.OutOfPlace);
+
+        // And the opening, which is where an unstable ordering would invent one: twenty packets
+        // all at position zero have no send order to be out of, and every one of them would move
+        // under a sort that does not keep ties where it found them.
+        List<CapturedDatagram> opening =
+            [.. Enumerable.Range(0, 20).Select(i => Keyed(TakionDispatch.Video, i * 100, 0, (ushort)i))];
+        opening.Add(Keyed(TakionDispatch.Video, 5000, 16, 20));
+
+        DatagramReplayReport.KeyPositionShape prologue = DatagramReplayReport.KeyPositions(opening);
+
+        Assert.Equal(0, prologue.OutOfPlace);
+        Assert.Equal(0, prologue.WorstDisplacement);
+    }
+
     /// <summary>The capture is not rewritten by being read, because it is evidence.</summary>
     [Fact]
     public void ReplayingDoesNotTouchTheFile()
