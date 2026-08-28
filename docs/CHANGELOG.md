@@ -395,6 +395,7 @@
 - ✅ **PP463** **both bind-failure logs in discovery print the port after moving it on, so each names the rung it is about to try** — both branches log before moving the port on, so a failure on 9303 says 9303 and one on 9319 says 9319 instead of naming the rung it is about to try.
 - ✅ **PP464** **the drop pass guards its step-back, so a stale host that moves into slot 0 is skipped and waits a whole ping cycle** — the step-back is unconditional, so the increment lands on the slot the shift filled at every index including zero, and a whole table going stale empties in one pass.
 - ✅ **PP466** **PP440's census does not say which ctrl types arrive, so a missing handler and a type no console sends look the same** — the ten arriving types are read out of the switch and held against the census, and the remote counter is stated: a bare message spends nothing, as on the send side.
+- ✅ **PP467** **two arriving ctrl types are once-only and nothing states it, and their flags take the lock in one of four reads** — the two once-only types are stated with their different log levels, and the locking is recorded with why levelling it in either direction would break.
 
 ## Block G — Test discipline
 
