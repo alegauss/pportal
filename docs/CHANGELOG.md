@@ -448,6 +448,7 @@
 - ✅ **PP521** **PP519 counted 26 repeated key positions and all 26 are zero, in the 27 packets before the cipher exists** — All 26 repeats are at zero in the 27 packets before the cipher, and the reader now separates those from a repeat after it - of which a real capture has none.
 - ✅ **PP522** **the replay says the cipher exists from the first packet, so the postponed branch reads zero on every capture** — The cipher's arrival comes from the capture's first nonzero position, so a real opening reports 12 postponed packets and 8332 bytes where the branch had always read zero.
 - ✅ **PP523** **nothing has measured arrival gaps against the AV reorder timeout, which a healthy session's p99 reaches** — The gaps are reported as a distribution: a real session's p50 is 89us and its p99 13763, with 12 crossings of the 16000us timeout the mean of 1244 hid entirely.
+- ✅ **PP524** **nothing reads the AV head's own fields, so the FEC ratio and the codec byte a console sends are unmeasured** — A real session sends one FEC unit per video frame of 13 to 29, codec 5 on audio where the receiver demands it, and 255 in the prologue the postpone keeps from that guard.
 
 ## Block G — Test discipline
 
