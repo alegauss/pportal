@@ -417,6 +417,7 @@
 - ✅ **PP490** **takion_handle_packet's five branches each end the datagram's life, and over a pooled buffer none of them can free** — The dispatch is managed with a borrow-or-copy verdict per branch: three of the six keep the datagram past the call, and audio borrows where video, sharing its case label, copies.
 - ✅ **PP491** **takion_handle_packet_message_data drops the datagram on both early returns, and its one caller frees nothing** — Both early returns free packet_buf, so the reachable one - a tagged control datagram of 17 to 25 bytes arriving before the cipher - drops it rather than leaking it once per packet.
 - ✅ **PP493** **takion acks the data queue once per drain with the last sequence pulled, and a dropped or unnamed entry still acks** — The drain is managed with its four per-entry outcomes and one ack, whose flag is set on the pull - so a drain that delivered nothing still acks the last sequence it took.
+- ✅ **PP494** **takion refuses a data ack that is not exactly 12 bytes, so a gap ack is rejected before the branch that names it** — The received ack is managed and cumulative-only by arithmetic: a payload carrying blocks is never 12 bytes, so the first check refuses it and the gap-ack branch names nothing.
 
 ## Block G — Test discipline
 
