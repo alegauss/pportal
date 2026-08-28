@@ -58,6 +58,7 @@ public static partial class HostCommandLine
         new("--capture-exchange", "[path]", "wake a registered console, run one session and record the exchange"),
         new("--capture-datagrams", "[path]", "the same session, recording takion's arrivals and their times"),
         new("--console", "[name]", "with either capture: which registered console, by nickname"),
+        new("--replay-datagrams", "<path>", "replay a datagram capture through the managed receive path"),
         new("--map-controller", "", "open the mapping screen against a real pad"),
         new("--dcomp-demo", "", "show what one window composes, which PP163 is answered by looking at"),
         new("--topmost", "", "with --dcomp-demo: the control, asking the visual to cover WPF instead"),

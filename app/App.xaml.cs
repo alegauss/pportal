@@ -963,6 +963,29 @@ public partial class App : Application
                     SessionCaptureKind.Datagrams) == CaptureOutcome.Recorded ? 0 : 1);
         }
 
+        // PP516: and the other half of that, which needs no console - a capture on disk read back
+        // and run through the managed receive path.
+        if (HostCommandLine.Has(e.Args, "--replay-datagrams"))
+        {
+            ReopenStdOut();
+
+            string? path = HostCommandLine.ValueAfter(e.Args, "--replay-datagrams");
+            if (path is null)
+            {
+                Console.Error.WriteLine("[replay] --replay-datagrams needs the path of a capture");
+                Environment.Exit(1);
+            }
+
+            ReplayOutcome outcome = DatagramReplayReport.Run(path, out string report);
+
+            if (outcome == ReplayOutcome.Replayed)
+                Console.Write(report);
+            else
+                Console.Error.WriteLine($"[replay] {path}: {outcome}");
+
+            Environment.Exit(outcome == ReplayOutcome.Replayed ? 0 : 1);
+        }
+
         // PP396: a raw capture is a diagnostic; a corpus is what a replay is held against. PP420
         // decides which entries are which, and this is the step that applies it - so the file that
         // lands in tests\corpus is produced by the rule rather than by somebody's judgement about

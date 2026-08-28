@@ -86,6 +86,11 @@ export const HOST_FLAGS: readonly HostFlag[] = [
     "summary": "with either capture: which registered console, by nickname"
   },
   {
+    "name": "--replay-datagrams",
+    "argument": "<path>",
+    "summary": "replay a datagram capture through the managed receive path"
+  },
+  {
     "name": "--map-controller",
     "argument": "",
     "summary": "open the mapping screen against a real pad"
