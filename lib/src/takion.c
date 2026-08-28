@@ -9,6 +9,8 @@
 
 #include "takionreceive.h"
 
+#include <chiaki/messagetap.h>
+
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -1235,6 +1237,27 @@ static void takion_handle_packet(ChiakiTakion *takion, uint8_t *buf, size_t buf_
 {
 	assert(buf_size > 0);
 	uint8_t base_type = (uint8_t)(buf[0] & TAKION_PACKET_BASE_TYPE_MASK);
+
+	// PP511: every arrival crosses here, and this is ABOVE the MAC gate on purpose. PP510's capture
+	// is of arrivals, and a packet rejected for its MAC is an arrival - below this line the timing
+	// run would silently lose exactly the packets it is most interested in.
+	//
+	// The active check is what makes it free when nothing is listening: one static load and a
+	// branch per datagram, against a call whose arguments would otherwise be set up thousands of
+	// times a second for a callback that is NULL. It also means the head is not measured unless
+	// somebody is recording.
+	if(chiaki_message_tap_active())
+	{
+		size_t head = buf_size < CHIAKI_MESSAGE_TAP_TAKION_HEAD
+			? buf_size
+			: (size_t)CHIAKI_MESSAGE_TAP_TAKION_HEAD;
+		chiaki_message_tap_emit(
+				CHIAKI_MESSAGE_TAP_RECEIVED,
+				CHIAKI_MESSAGE_TAP_CHANNEL_TAKION,
+				base_type,
+				buf,
+				head);
+	}
 
 	if(takion_handle_packet_mac(takion, base_type, buf, buf_size) != CHIAKI_ERR_SUCCESS)
 	{

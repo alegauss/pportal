@@ -81,6 +81,24 @@ public sealed unsafe class ChiakiMessageTap : IDisposable
     public const string StreamChannel = "stream";
 
     /// <summary>
+    /// PP511: takion's datagrams, spelled as CHIAKI_MESSAGE_TAP_CHANNEL_TAKION spells it.
+    ///
+    /// The fifth channel and the first that does not carry a framed message. PP510 settled why the
+    /// two cannot share an artefact: a message's count belongs to the protocol, a datagram's to the
+    /// network. Its `type` is the base type - the low nibble of byte zero, which PP490's dispatch
+    /// decides on - and its payload is a head truncated at the emit, not the datagram.
+    /// </summary>
+    public const string TakionChannel = "takion";
+
+    /// <summary>
+    /// CHIAKI_MESSAGE_TAP_TAKION_HEAD - how much of a datagram crosses.
+    ///
+    /// Derived in PP510 from the furthest offset the MAC gate reads, and spelled in the C header so
+    /// the emit truncates rather than every consumer.
+    /// </summary>
+    public const int TakionHeadBytes = 18;
+
+    /// <summary>
     /// PP397: CHIAKI_MESSAGE_TAP_TYPE_UNKNOWN - a message whose protobuf would not decode.
     ///
     /// Higher than any payload type tkproto knows, so a rule naming a message by number cannot

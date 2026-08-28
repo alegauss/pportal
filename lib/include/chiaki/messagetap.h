@@ -141,6 +141,29 @@ CHIAKI_EXPORT void chiaki_message_tap_emit(
 #define CHIAKI_MESSAGE_TAP_CHANNEL_STREAM "stream"
 
 /**
+ * PP511: and for takion's datagrams, which are not framed messages and are not recorded like one.
+ *
+ * The four channels above all carry a message somebody framed. This carries what arrives on the
+ * socket, and PP510 settled why the two cannot share an artefact: a message's count belongs to the
+ * protocol, a datagram's belongs to the network, so a corpus built to be replayed message-for-
+ * message has nothing to hold these with. What they are for is PP27's timing run.
+ *
+ * THE `type` IS THE BASE TYPE - the low nibble of byte zero, which is what PP490's dispatch decides
+ * on. It follows the convention senkusha and stream set, of a takion field rather than a ctrl
+ * message type, and it costs nothing: a number needs no formatting, where a per-datagram string
+ * would allocate on the one path PP44 budgeted at zero.
+ *
+ * AND THE PAYLOAD IS A TRUNCATED HEAD, not the datagram. PP510 derived its length from the furthest
+ * offset chiaki_takion_packet_mac reads, so it answers the dispatch and the MAC layout both and
+ * carries no frame of anybody's screen. Truncating at the emit rather than in a consumer is what
+ * makes that true of every consumer.
+ */
+#define CHIAKI_MESSAGE_TAP_CHANNEL_TAKION "takion"
+
+/** PP511: how much of a datagram crosses. Derived in the port, spelled once here. */
+#define CHIAKI_MESSAGE_TAP_TAKION_HEAD 18
+
+/**
  * PP397: what a stream or senkusha message's `type` is when the protobuf would not decode.
  *
  * Not a payload type any message has - the highest tkproto knows is 25 - so a rule that names a

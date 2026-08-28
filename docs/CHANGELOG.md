@@ -435,6 +435,7 @@
 - ✅ **PP340** **the PSN path lives in session.c's nine holepunch call sites, so PP33's deletion would take remote play with it** — The managed flow owns the PSN sequence: PP479 drives it, PP502 to PP507 settle the rules around it, and PP508 shows by running it that all seven seam methods are reached.
 - ✅ **PP509** **three deferred lines are set aside for a console the project has, so nothing can offer them to a caller who has one** — PP50, PP72 and PP76 are roadmap lines declaring console, and a check refuses any set-aside reason naming a requirement this project declares.
 - ✅ **PP510** **PP27's timing run needs takion datagrams with arrival times, and nothing in this tree records one** — The capture keeps arrival, length, base type and an 18-byte head under two bounds, with the head's length derived from the furthest offset PP497's gate reads.
+- ✅ **PP511** **the tap has four channels and none carries a datagram, so PP510's capture has nothing to fill it from** — Every arrival crosses a fifth channel above the MAC gate, guarded by the tap's active check, with the base type as its type and the head truncated at the emit.
 
 ## Block G — Test discipline
 
