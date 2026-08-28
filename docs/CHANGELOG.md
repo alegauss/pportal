@@ -425,6 +425,7 @@
 - ✅ **PP499** **the v9/v12 audio bound stops before the nalu-info structs the parser then skips, so av_size underflows** — The audio bound reserves the skip's three bytes, so the two lengths that used to parse into a payload past the buffer - measured at DataSize -2 and -1 - are refused.
 - ✅ **PP500** **the takion pieces modelled so far allocate for their traces, so none is the receive path PP44's budget applies to** — One composed path from datagram to branch allocates zero bytes across 200 datagrams, with PP487's loop asserted to still allocate so the zero cannot be read as vacuous.
 - ✅ **PP501** **PP27's remaining half is a timing run needing hardware, and its line still promises a transport that shipped** — PP27 now declares the live console its timing run needs and no longer promises PP500's work, so pick stops offering a half nothing in a checkout can start.
+- ✅ **PP502** **the holepunch session creates both sockets and closes neither, so a managed owner double-closes or leaks** — The two closers are named and the creator is neither, held by an interface with no member that could close one - so the reflex to make the flow's owner IDisposable is refused.
 
 ## Block G — Test discipline
 
