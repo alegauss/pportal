@@ -99,4 +99,98 @@ public class BacklogRequirementsTests(ITestOutputHelper output)
             "these are declared and nothing waits on them, so the backlog says it is still waiting "
                 + "for something it has: " + string.Join(", ", unused));
     }
+
+    /// <summary>
+    /// PP486, THE THIRD CHECK: no open line says in its own prose that it needs something its
+    /// requires group leaves out.
+    ///
+    /// The two checks above hold each set against the other, and both were green while PP481 said
+    /// "no test can exercise one without a live console" and declared nothing at all. `pick` reads
+    /// the group and not the sentence, so it offered that line as the next ready thing to do from the
+    /// moment it was filed - and the session that filed it then reported the block as gated on a
+    /// decision rather than on hardware.
+    /// </summary>
+    [Fact]
+    public void NoOpenLineNeedsSomethingItDoesNotDeclare()
+    {
+        if (BacklogRequirements.LocateRoadmap() is not { } roadmapPath)
+            return;
+
+        IReadOnlyList<BacklogRequirements.RequirementGap> gaps =
+            BacklogRequirements.Gaps(File.ReadAllText(roadmapPath));
+
+        foreach (BacklogRequirements.RequirementGap gap in gaps)
+            output.WriteLine($"{gap.Id}: says \"{gap.Phrase}\", does not require {gap.Requirement}");
+
+        Assert.True(
+            gaps.Count == 0,
+            "these lines say in words that they need something and do not declare it, so pick offers "
+                + "them as ready: "
+                + string.Join(", ", gaps.Select(g => $"{g.Id} ({g.Requirement})")));
+    }
+
+    /// <summary>A line whose prose names hardware and whose group is empty is the gap.</summary>
+    [Fact]
+    public void AGapIsWhereTheProseSaysItAndTheGroupDoesNot()
+    {
+        IReadOnlyList<BacklogRequirements.RequirementGap> gaps = BacklogRequirements.Gaps(
+            "- 📋 **PP999** (deps: —) **no test can exercise one without a live console** — why. → §PP999");
+
+        BacklogRequirements.RequirementGap gap = Assert.Single(gaps);
+        Assert.Equal("PP999", gap.Id);
+        Assert.Equal("console", gap.Requirement);
+    }
+
+    /// <summary>And a line that declares it is not, which is what PP322 has always done.</summary>
+    [Fact]
+    public void ALineThatDeclaresWhatItNeedsIsNotAGap()
+    {
+        Assert.Empty(BacklogRequirements.Gaps(
+            "- ⏳ **PP998** (deps: —) (requires: console) **nothing without a live console** — why."));
+
+        Assert.Empty(BacklogRequirements.Gaps(
+            "- ⏳ **PP997** (deps: —) (requires: a-person-looking) **needs a person looking** — why."));
+    }
+
+    /// <summary>
+    /// The phrases are necessity and not mention, because this backlog talks about consoles
+    /// constantly and a guard that flagged every one of those would be switched off in a week.
+    /// </summary>
+    [Theory]
+    [InlineData("- 📋 **PP996** (deps: —) **the console sends SDR on most titles** — why.")]
+    [InlineData("- 📋 **PP995** (deps: —) **a console answers with its own version** — why.")]
+    public void MentioningAConsoleIsNotNeedingOne(string line)
+        => Assert.Empty(BacklogRequirements.Gaps(line));
+
+    /// <summary>
+    /// A phrase in a clause about another task is a report, not a need of this line's own.
+    ///
+    /// The line that added this check flagged itself on the first run for exactly this reason: its
+    /// symptom quotes PP481's words in order to say PP481 is missing a declaration. A guard that
+    /// cannot tell those apart flags every line written about requirements.
+    /// </summary>
+    [Fact]
+    public void APhraseAboutAnotherLineIsAReportAndNotANeed()
+        => Assert.Empty(BacklogRequirements.Gaps(
+            "- 📋 **PP994** (deps: —) **PP481 says no test runs without a live console and declares "
+                + "nothing** — why."));
+
+    /// <summary>
+    /// But only before the phrase. A line making its own claim and citing a neighbour afterwards is
+    /// still making its own claim.
+    /// </summary>
+    [Fact]
+    public void CitingAnotherLineAfterTheClaimStillLeavesTheClaim()
+    {
+        IReadOnlyList<BacklogRequirements.RequirementGap> gaps = BacklogRequirements.Gaps(
+            "- 📋 **PP993** (deps: —) **no test can run without a live console** — as PP481 found.");
+
+        Assert.Equal("console", Assert.Single(gaps).Requirement);
+    }
+
+    /// <summary>Only task lines are read - a rationale paragraph is prose about the work.</summary>
+    [Fact]
+    public void OnlyTaskLinesAreRead()
+        => Assert.Empty(BacklogRequirements.Gaps(
+            "Some paragraph explaining that this needs a live console to finish at all.\n"));
 }

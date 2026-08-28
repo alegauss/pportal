@@ -463,6 +463,7 @@
 - ✅ **PP465** **one selftest asserts a 400ms deadline within 30ms, and its design forces two waits that can each overshoot a quantum** — the wake moves to 300 of 2000 so the bound sits 150ms from a correct wait and from a per-wake one, against two scheduler quanta of jitter.
 - ✅ **PP483** **two lib/ defects are recorded not repaired because this port does not edit lib/, and 20 files in lib/src are edited** — Both rationales now say what is true, and a guard over app/ goes red on any reason resting on lib/ being untouched, with the census that falsifies it asserted.
 - ✅ **PP484** **the two dead guards in request_header_format are harmless only because the head cannot exceed 190 of its 256 bytes** — The head is 190 of 256 at the subtraction and writes 211 in all, derived from the format strings and asserted, so a longer header eats the margin loudly.
+- ✅ **PP486** **PP481 says no test can run without a live console and declares no requirement, so pick offers it as ready** — A line whose prose names a live console or a person looking must declare it, so PP481 reports as needing hardware instead of as the next ready thing, and console is declared again.
 
 ## Block H — Performance and telemetry
 

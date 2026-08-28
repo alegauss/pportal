@@ -97,6 +97,92 @@ public static partial class BacklogRequirements
         return names;
     }
 
+    /// <summary>
+    /// A phrase a line's own prose uses, and the requirement it means.
+    ///
+    /// Deliberately narrow, and shaped like necessity rather than like mention. This project's
+    /// backlog says "console" constantly - the whole port is about one - so a phrase that matched
+    /// that would flag every line and be turned off within a week. "a live console" is a line saying
+    /// it cannot be finished without hardware, which is a different sentence.
+    /// </summary>
+    public static IReadOnlyList<(string Phrase, string Requirement)> ProseNames { get; } =
+    [
+        ("live console", "console"),
+        ("a person looking", "a-person-looking"),
+    ];
+
+    /// <summary>
+    /// An open line whose prose names something it does not declare it waits on.
+    /// </summary>
+    /// <param name="Id">The line.</param>
+    /// <param name="Requirement">What it needs and did not say.</param>
+    /// <param name="Phrase">The words in its own text that say so.</param>
+    public readonly record struct RequirementGap(string Id, string Requirement, string Phrase);
+
+    /// <summary>
+    /// Every open line whose prose names a resource its <c>(requires: …)</c> group leaves out.
+    ///
+    /// PP486: the third check, and the direction the other two do not cover. Declared-against-used
+    /// and used-against-declared both hold while a line says in words that it needs hardware and
+    /// declares nothing - and `pick`, which reads the group and not the sentence, offers it as the
+    /// next ready thing to do. PP481 was offered that way from the moment it was filed.
+    ///
+    /// Only ROADMAP.md is read, so only open lines are: a delivered line's requirement has been met
+    /// by definition, and the ledger keeps the sentence for the record rather than as a claim.
+    /// </summary>
+    public static IReadOnlyList<RequirementGap> Gaps(string roadmap)
+    {
+        ArgumentNullException.ThrowIfNull(roadmap);
+
+        var gaps = new List<RequirementGap>();
+
+        foreach (string line in roadmap.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n'))
+        {
+            Match id = LineIdRegex().Match(line);
+            if (!id.Success)
+                continue;
+
+            // Reusing the same reader the used-set is built from, so the two cannot disagree about
+            // what a line declares.
+            IReadOnlySet<string> declares = Used(line);
+
+            foreach ((string phrase, string requirement) in ProseNames)
+            {
+                int at = line.IndexOf(phrase, StringComparison.OrdinalIgnoreCase);
+                if (at < 0 || declares.Contains(requirement))
+                    continue;
+
+                if (IsReportedSpeech(line, id.Groups["id"].Value, at))
+                    continue;
+
+                gaps.Add(new RequirementGap(id.Groups["id"].Value, requirement, phrase));
+            }
+        }
+
+        return gaps;
+    }
+
+    /// <summary>
+    /// Whether the phrase sits in a clause about ANOTHER task rather than about this one.
+    ///
+    /// A line filed to fix this very gap has to quote the words to say what is wrong - the line that
+    /// added this check does exactly that, and flagged itself on the first run. A guard that read a
+    /// report as a need would flag every line ever written about requirements, and a guard that
+    /// flags the honest lines is one somebody turns off.
+    ///
+    /// So an id other than the line's own, appearing BEFORE the phrase, makes it reported speech.
+    /// Before, not anywhere: a line that needs a console and cites a neighbour afterwards is still
+    /// making its own claim, and is still caught. The id reader is
+    /// <see cref="LibRepairCensus.TaskIdsIn"/> rather than a second one of this class's own.
+    /// </summary>
+    private static bool IsReportedSpeech(string line, string ownId, int phraseAt)
+        => LibRepairCensus.TaskIdsIn(line[..phraseAt])
+            .Any(id => !id.Equals(ownId, StringComparison.Ordinal));
+
+    // - 📋 **PP481** (deps: —) **symptom** — why. → §PP481
+    [GeneratedRegex(@"^-\s.*?\*\*(?<id>PP[0-9]+)\*\*")]
+    private static partial Regex LineIdRegex();
+
     // declared = [ "console", ... ]  - up to the closing bracket, comments and all.
     [GeneratedRegex(@"declared\s*=\s*\[(?<items>[^\]]*)\]", RegexOptions.Singleline)]
     private static partial Regex DeclaredArrayRegex();

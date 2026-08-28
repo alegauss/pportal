@@ -112,11 +112,20 @@ held = 60
 # dep and does not become one: nothing here will ever satisfy `runner` by shipping a task.
 [requirements]
 declared = [
-    # `console` was here and is not any more. PP23 was the only line that waited on a PS5 - the
-    # recording is what its remaining half was for - and it closed on 2026-08-27 with four
-    # channels of a real exchange replaying against managed participants. A requirement nothing
-    # waits on says the backlog is still short of something it has, which is what
-    # BacklogRequirementsTests reported in the commit that shipped PP23.
+    # `console` left this array on 2026-08-27, when PP23 closed - the recording is what its
+    # remaining half was for, and four channels of a real exchange now replay against managed
+    # participants. A requirement nothing waits on says the backlog is still short of something it
+    # has, which is what BacklogRequirementsTests reported in the commit that shipped PP23.
+    #
+    # It is back on 2026-08-28 because PP481 waits on it. PP481 implements the nine holepunch asks
+    # over the real C, and its own symptom says no test can exercise one without a live console: the
+    # nine shim wrappers and the ABI bump are mechanical, and what cannot be faked is a session that
+    # punched a hole to a machine on the internet. It leaves again the same way, when PP481 closes.
+    #
+    # PP486 is why the omission was found. The two checks either side of this array - declared
+    # against used, used against declared - were both green while that line said in words that it
+    # needed hardware and declared nothing, so `pick` offered it as the next ready thing to do.
+    "console",
     #
     # Visual Studio Build Tools with the C++ workload AND Qt for msvc2022_64 carrying
     # QtWebEngine, from an installer wanting an account. Two multi-gigabyte installs, and
