@@ -423,6 +423,7 @@
 - ✅ **PP497** **the MAC gate rewrites the packet it checks, and only control and congestion hide key_pos from the MAC** — The gate is managed as the rewrite it is, with the six offsets read out of the C and the invariant they carry - key_pos begins where the MAC ends - asserted for all four types.
 - ✅ **PP498** **the pre-start socket drain has no success return, so its normal outcome is the timeout its caller forgives** — The drain is managed with all four of its endings and none of them success, and the caller's forgiveness of exactly the timeout is asserted from the other side.
 - ✅ **PP499** **the v9/v12 audio bound stops before the nalu-info structs the parser then skips, so av_size underflows** — The audio bound reserves the skip's three bytes, so the two lengths that used to parse into a payload past the buffer - measured at DataSize -2 and -1 - are refused.
+- ✅ **PP500** **the takion pieces modelled so far allocate for their traces, so none is the receive path PP44's budget applies to** — One composed path from datagram to branch allocates zero bytes across 200 datagrams, with PP487's loop asserted to still allocate so the zero cannot be read as vacuous.
 
 ## Block G — Test discipline
 
