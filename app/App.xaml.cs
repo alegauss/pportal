@@ -945,6 +945,24 @@ public partial class App : Application
                     == CaptureOutcome.Recorded ? 0 : 1);
         }
 
+        // PP514: the same session, recording the other thing. One tap installs at a time, so this
+        // is a second flag over one run rather than a second run - and it is what fills the file
+        // PP27's timing half measures against.
+        if (HostCommandLine.Has(e.Args, "--capture-datagrams"))
+        {
+            ReopenStdOut();
+
+            string path = HostCommandLine.ValueAfter(e.Args, "--capture-datagrams")
+                ?? Path.Combine(QtPaths.LogDirectory,
+                    $"datagrams-{DateTimeOffset.Now:yyyyMMdd-HHmmss}.txt");
+
+            Environment.Exit(
+                ExchangeCapture.Run(
+                    path,
+                    HostCommandLine.ValueAfter(e.Args, "--console"),
+                    SessionCaptureKind.Datagrams) == CaptureOutcome.Recorded ? 0 : 1);
+        }
+
         // PP396: a raw capture is a diagnostic; a corpus is what a replay is held against. PP420
         // decides which entries are which, and this is the step that applies it - so the file that
         // lands in tests\corpus is produced by the rule rather than by somebody's judgement about

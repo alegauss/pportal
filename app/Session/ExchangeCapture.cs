@@ -8,6 +8,16 @@ using ChiakiNg.Settings;
 
 namespace ChiakiNg.Session;
 
+/// <summary>PP514: which recording a capture run produces. The session path is the same for both.</summary>
+public enum SessionCaptureKind
+{
+    /// <summary>PP297's: the four framed channels, redacted, in the exchange format.</summary>
+    Exchange,
+
+    /// <summary>PP510's: takion's arrivals, with their times, in the datagram format.</summary>
+    Datagrams,
+}
+
 /// <summary>What a capture attempt ended as, so a caller can say which step failed.</summary>
 public enum CaptureOutcome
 {
@@ -193,7 +203,16 @@ public static class ExchangeCapture
     /// </summary>
     /// <param name="path">Where the recording goes.</param>
     /// <param name="nickname">Which registered console, or null for the only one.</param>
-    public static CaptureOutcome Run(string path, string? nickname)
+    /// <param name="kind">
+    /// PP514: which recording. Everything from finding the console to stopping the session is the
+    /// same run - what differs is which tap is installed and what gets written at the end.
+    ///
+    /// A parameter and not a second command, because ChiakiMessageTap.Install REPLACES: two
+    /// recorders in one session is one recorder and a silence. The default is Exchange, so
+    /// --capture-exchange behaves as it did.
+    /// </param>
+    public static CaptureOutcome Run(
+        string path, string? nickname, SessionCaptureKind kind = SessionCaptureKind.Exchange)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
 
@@ -264,7 +283,12 @@ public static class ExchangeCapture
         Console.WriteLine($"[capture] {address} is ready");
 
         // 4. Armed BEFORE the session exists, so the session request is inside the recording.
-        using var recorder = ExchangeRecorder.Start();
+        // PP514: one of the two, never both - Install replaces, so a second tap is a silence.
+        using ExchangeRecorder? recorder =
+            kind == SessionCaptureKind.Exchange ? ExchangeRecorder.Start() : null;
+        using TakionCaptureWriter? datagrams = kind == SessionCaptureKind.Datagrams
+            ? new TakionCaptureWriter(path, Monotonic)
+            : null;
 
         using var connect = new ChiakiConnectInfo { Host = address, Ps5 = ps5 };
         connect.SetRegistKey(registKey);
@@ -320,8 +344,13 @@ public static class ExchangeCapture
         session.Stop();
         Thread.Sleep(1000);
 
-        // 6. What crossed.
-        if (recorder.Recording.Entries.Count == 0)
+        // 6. What crossed. PP514: two lines differ, and this is both of them.
+        if (datagrams is not null)
+            return WriteDatagrams(datagrams, path);
+
+        // Exactly one of the two is non-null, by the switch that made them - which the compiler
+        // cannot see, because `kind` is not what it is testing here.
+        if (recorder!.Recording.Entries.Count == 0)
         {
             Console.Error.WriteLine("[capture] nothing was tapped - the session never reached the wire.");
             return CaptureOutcome.NothingRecorded;
@@ -336,4 +365,50 @@ public static class ExchangeCapture
         Console.WriteLine($"[capture] {message}");
         return CaptureOutcome.Recorded;
     }
+
+    /// <summary>
+    /// PP514: the datagram run's ending - dispose to flush, then say what landed.
+    ///
+    /// Disposed here rather than left to the `using`, because the file has to exist before this
+    /// reports on it. Disposing twice is one write, which PP512 asserts.
+    /// </summary>
+    private static CaptureOutcome WriteDatagrams(TakionCaptureWriter writer, string path)
+    {
+        TakionTimingCapture capture = writer.Capture;
+        int count = capture.Datagrams.Count;
+
+        writer.Dispose();
+
+        if (count == 0)
+        {
+            Console.Error.WriteLine(
+                "[capture] no datagram was tapped - the session never reached the stream.");
+            return CaptureOutcome.NothingRecorded;
+        }
+
+        if (!File.Exists(path))
+        {
+            Console.Error.WriteLine($"[capture] the capture could not be written to {path}");
+            return CaptureOutcome.CouldNotWrite;
+        }
+
+        double? gap = TakionCaptureReplay.MeanGapMicroseconds(capture.Datagrams);
+
+        Console.WriteLine(
+            $"[capture] {count} datagram(s) over {capture.End}, "
+            + (gap is null ? "no spacing" : $"mean gap {gap:0} us")
+            + $", {capture.Missed} after the bound - written to {path}");
+
+        return CaptureOutcome.Recorded;
+    }
+
+    /// <summary>
+    /// A monotonic reading in microseconds, which is what PP510's arrivals are relative to.
+    ///
+    /// Stopwatch and not DateTime: the capture's own rule is that only differences are used, and a
+    /// wall clock can step backwards mid-session.
+    /// </summary>
+    private static long Monotonic()
+        => System.Diagnostics.Stopwatch.GetTimestamp() * 1_000_000L
+            / System.Diagnostics.Stopwatch.Frequency;
 }

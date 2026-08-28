@@ -76,9 +76,14 @@ export const HOST_FLAGS: readonly HostFlag[] = [
     "summary": "wake a registered console, run one session and record the exchange"
   },
   {
+    "name": "--capture-datagrams",
+    "argument": "[path]",
+    "summary": "the same session, recording takion's arrivals and their times"
+  },
+  {
     "name": "--console",
     "argument": "[name]",
-    "summary": "with --capture-exchange: which registered console, by nickname"
+    "summary": "with either capture: which registered console, by nickname"
   },
   {
     "name": "--map-controller",
