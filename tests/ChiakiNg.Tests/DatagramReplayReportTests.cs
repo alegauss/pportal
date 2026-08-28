@@ -350,6 +350,49 @@ public class DatagramReplayReportTests
         Assert.DoesNotContain("[replay] gaps:", report, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// PP525: a step of one is ordinary, more is a loss, and zero or less is a reorder.
+    ///
+    /// The three cases named apart, because a long arrival gap is all three from the outside and
+    /// only the packet index says which. A healthy session produced the first and nothing else.
+    /// </summary>
+    [Fact]
+    public void TheThreeSequenceCasesAreToldApart()
+    {
+        CapturedDatagram Video(long at, ushort packetIndex, ushort frameIndex)
+        {
+            var bytes = new byte[TakionTimingCapture.HeadBytes];
+            bytes[0] = (byte)TakionDispatch.Video;
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt16BigEndian(bytes.AsSpan(1, 2), packetIndex);
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt16BigEndian(bytes.AsSpan(3, 2), frameIndex);
+
+            // A nonzero key position, so nothing here is taken for the prologue.
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(
+                bytes.AsSpan(TakionPacketMac.LayoutFor(TakionDispatch.Video)!.Value.KeyPosOffset, 4),
+                16);
+
+            return new CapturedDatagram(at, 1300, TakionDispatch.Video, bytes);
+        }
+
+        DatagramReplayReport.SequenceShape clean = DatagramReplayReport.VideoSequence(
+            [Video(0, 10, 1), Video(1000, 11, 1), Video(2000, 12, 2)]);
+
+        Assert.Equal(2, clean.Steps);
+        Assert.Equal(0, clean.Losses);
+        Assert.Equal(0, clean.Reorders);
+        Assert.Equal(2, clean.Frames);
+
+        DatagramReplayReport.SequenceShape lost = DatagramReplayReport.VideoSequence(
+            [Video(0, 10, 1), Video(1000, 14, 1)]);
+        Assert.Equal(1, lost.Losses);
+        Assert.Equal(0, lost.Reorders);
+
+        DatagramReplayReport.SequenceShape late = DatagramReplayReport.VideoSequence(
+            [Video(0, 14, 1), Video(1000, 10, 1)]);
+        Assert.Equal(0, late.Losses);
+        Assert.Equal(1, late.Reorders);
+    }
+
     /// <summary>The capture is not rewritten by being read, because it is evidence.</summary>
     [Fact]
     public void ReplayingDoesNotTouchTheFile()

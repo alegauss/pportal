@@ -125,6 +125,17 @@ public static class DatagramReplayReport
                 .Append("us reorder timeout\n");
         }
 
+        // PP525: and what those gaps actually were, which the indices say and the gaps cannot.
+        SequenceShape sequence = VideoSequence(datagrams);
+        if (sequence.Steps > 0)
+        {
+            text.Append("[replay] video sequence: ").Append(sequence.Steps.ToString(invariant))
+                .Append(" step(s) over ").Append(sequence.Frames.ToString(invariant))
+                .Append(" frame(s), ").Append(sequence.Losses.ToString(invariant))
+                .Append(" loss(es), ").Append(sequence.Reorders.ToString(invariant))
+                .Append(" reorder(s)\n");
+        }
+
         // The one number that is a claim rather than a description.
         text.Append("[replay] allocated ")
             .Append(replay.AllocatedBytes.ToString(invariant))
@@ -155,6 +166,63 @@ public static class DatagramReplayReport
             .Append(shape.SpuriousWraps == 0 ? "\n" : $", {shape.SpuriousWraps} SPURIOUS WRAP(S)\n");
 
         return text.ToString();
+    }
+
+    /// <summary>What the video packet indices did.</summary>
+    /// <param name="Steps">How many consecutive pairs there were.</param>
+    /// <param name="Losses">Steps that skipped an index - a packet that never arrived.</param>
+    /// <param name="Reorders">Steps that went backwards or stood still.</param>
+    /// <param name="Frames">How many distinct frames the capture holds.</param>
+    public readonly record struct SequenceShape(int Steps, int Losses, int Reorders, int Frames);
+
+    /// <summary>
+    /// PP525: whether the video stream actually lost or reordered anything.
+    ///
+    /// PP523 measured gaps over the reorder timeout and had to leave a caveat - a quiet link and a
+    /// lost packet look alike from a capture. They do not: the head carries the packet index, and
+    /// it says which of the two a long gap was.
+    ///
+    /// THE PROLOGUE IS EXCLUDED, because its AV headers are not meaningful - PP524 measured a codec
+    /// byte of 255 and a FEC count of zero there, and its packet index is no better.
+    ///
+    /// A step of one is ordinary. A step of more is a loss. A step of zero or less is a reorder,
+    /// which is the case the whole reorder queue exists for - and a healthy session produces none.
+    /// </summary>
+    public static SequenceShape VideoSequence(IReadOnlyList<CapturedDatagram> datagrams)
+    {
+        ArgumentNullException.ThrowIfNull(datagrams);
+
+        int cipher = TakionCaptureReplay.CipherFrom(datagrams) ?? 0;
+
+        var indices = new List<int>();
+        var frames = new HashSet<int>();
+
+        for (int i = cipher; i < datagrams.Count; i++)
+        {
+            CapturedDatagram datagram = datagrams[i];
+            if (datagram.BaseType != TakionDispatch.Video || datagram.Head.Length < 5)
+                continue;
+
+            indices.Add(System.Buffers.Binary.BinaryPrimitives.ReadUInt16BigEndian(
+                datagram.Head.AsSpan(1, 2)));
+            frames.Add(System.Buffers.Binary.BinaryPrimitives.ReadUInt16BigEndian(
+                datagram.Head.AsSpan(3, 2)));
+        }
+
+        var losses = 0;
+        var reorders = 0;
+
+        for (var i = 1; i < indices.Count; i++)
+        {
+            int step = indices[i] - indices[i - 1];
+
+            if (step > 1)
+                losses++;
+            else if (step <= 0)
+                reorders++;
+        }
+
+        return new SequenceShape(Math.Max(0, indices.Count - 1), losses, reorders, frames.Count);
     }
 
     /// <summary>The arrival gaps, as a distribution rather than a mean.</summary>
