@@ -221,6 +221,75 @@ public class DatagramReplayReportTests
         Assert.NotEqual(TakionCaptureFile.HeadLengthVersion, TakionCaptureFile.FormatVersion);
     }
 
+    /// <summary>
+    /// PP522: AV packets before the cipher are postponed, and their bytes go with them.
+    ///
+    /// Both columns, because moving the counts and leaving the bytes would give a table whose two
+    /// halves covered different packets - which is the shape that reads as a measurement and is not.
+    /// </summary>
+    [Fact]
+    public void TheProloguesAvPacketsArePostponedWithTheirBytes()
+    {
+        var head = new byte[TakionTimingCapture.HeadBytes];
+
+        CapturedDatagram Zero(int baseType, long at, int length)
+        {
+            var bytes = (byte[])head.Clone();
+            bytes[0] = (byte)baseType;
+            return new CapturedDatagram(at, length, baseType, bytes);
+        }
+
+        CapturedDatagram Keyed(int baseType, long at, int length, uint keyPos)
+        {
+            var bytes = (byte[])head.Clone();
+            bytes[0] = (byte)baseType;
+            TakionMacLayout layout = TakionPacketMac.LayoutFor(baseType)!.Value;
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(
+                bytes.AsSpan(layout.KeyPosOffset, TakionPacketMac.KeyPosSize), keyPos);
+            return new CapturedDatagram(at, length, baseType, bytes);
+        }
+
+        IReadOnlyList<CapturedDatagram> capture =
+        [
+            Zero(TakionDispatch.Control, 0, 33),
+            Zero(TakionDispatch.Audio, 1000, 280),
+            Zero(TakionDispatch.Video, 2000, 1300),
+            Keyed(TakionDispatch.Video, 3000, 1400, 16),
+        ];
+
+        Assert.Equal(3, TakionCaptureReplay.CipherFrom(capture));
+
+        ReplayReport replay = TakionCaptureReplay.Run(
+            capture, new CountingReplaySink(), cipherFrom: TakionCaptureReplay.CipherFrom(capture));
+
+        Assert.Equal(2, replay.Counters.Postponed);
+        Assert.Equal(1, replay.Counters.Video);
+        Assert.Equal(0, replay.Counters.Audio);
+
+        IReadOnlyList<(string Name, int Count, long Bytes)> rows =
+            DatagramReplayReport.ByBranch(capture, replay);
+
+        Assert.Equal((2, 1580L), rows.Single(r => r.Name == "postponed") is var p ? (p.Count, p.Bytes) : default);
+        Assert.Equal(1400, rows.Single(r => r.Name == "video").Bytes);
+        Assert.Equal(0, rows.Single(r => r.Name == "audio").Bytes);
+
+        // The two columns cover the same packets: every captured byte is in exactly one row.
+        Assert.Equal(capture.Sum(d => (long)d.Length), rows.Sum(r => r.Bytes));
+    }
+
+    /// <summary>
+    /// PP522: a capture with no cipher at all has no such index, and answering zero would invert it.
+    /// </summary>
+    [Fact]
+    public void ACaptureThatNeverGotACipherHasNoIndex()
+    {
+        var head = new byte[TakionTimingCapture.HeadBytes];
+        head[0] = (byte)TakionDispatch.Video;
+
+        Assert.Null(TakionCaptureReplay.CipherFrom(
+            [new CapturedDatagram(0, 1300, TakionDispatch.Video, head)]));
+    }
+
     /// <summary>The capture is not rewritten by being read, because it is evidence.</summary>
     [Fact]
     public void ReplayingDoesNotTouchTheFile()

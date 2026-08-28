@@ -446,6 +446,7 @@
 - ✅ **PP519** **the key position expansion has never seen a console's own positions, where equal values occur 26 times in 2000** — The repeat is pinned as no wrap, and a console's own 2000 positions run through the C's expansion: 1973 advances, 26 repeats, all block-aligned, one monotonic stream.
 - ✅ **PP520** **PP515 changed what the Length column means and the version did not move, so an old capture reads as new** — The version is 2 and a version 1 file is refused by name, so the capture whose lengths were the head's cannot be replayed as a measurement - a fresh one costs one command.
 - ✅ **PP521** **PP519 counted 26 repeated key positions and all 26 are zero, in the 27 packets before the cipher exists** — All 26 repeats are at zero in the 27 packets before the cipher, and the reader now separates those from a repeat after it - of which a real capture has none.
+- ✅ **PP522** **the replay says the cipher exists from the first packet, so the postponed branch reads zero on every capture** — The cipher's arrival comes from the capture's first nonzero position, so a real opening reports 12 postponed packets and 8332 bytes where the branch had always read zero.
 
 ## Block G — Test discipline
 

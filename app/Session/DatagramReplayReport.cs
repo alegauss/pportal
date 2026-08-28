@@ -75,7 +75,13 @@ public static class DatagramReplayReport
         if (datagrams.Count == 0)
             return ReplayOutcome.Empty;
 
-        report = Render(datagrams, TakionCaptureReplay.Run(datagrams, new CountingReplaySink()));
+        // PP522: the cipher's arrival comes from the capture, so the postponed branch is reported
+        // rather than folded into Audio and Video.
+        report = Render(
+            datagrams,
+            TakionCaptureReplay.Run(
+                datagrams, new CountingReplaySink(),
+                cipherFrom: TakionCaptureReplay.CipherFrom(datagrams)));
         return ReplayOutcome.Replayed;
     }
 
@@ -289,9 +295,27 @@ public static class DatagramReplayReport
     {
         ArgumentNullException.ThrowIfNull(datagrams);
 
+        // PP522: the prologue's AV packets belong to the postponed row, so the bytes are split the
+        // same way the counts are. Attributing them to video and audio while the counts had moved
+        // would leave a table whose two columns covered different packets.
+        int cipher = TakionCaptureReplay.CipherFrom(datagrams) ?? 0;
+
         var bytes = new Dictionary<int, long>();
-        foreach (CapturedDatagram datagram in datagrams)
+        long postponed = 0;
+
+        for (var i = 0; i < datagrams.Count; i++)
         {
+            CapturedDatagram datagram = datagrams[i];
+
+            bool held = i < cipher
+                && datagram.BaseType is TakionDispatch.Video or TakionDispatch.Audio;
+
+            if (held)
+            {
+                postponed += datagram.Length;
+                continue;
+            }
+
             bytes.TryGetValue(datagram.BaseType, out long running);
             bytes[datagram.BaseType] = running + datagram.Length;
         }
@@ -303,7 +327,7 @@ public static class DatagramReplayReport
             ("control", replay.Counters.Control, Wire(TakionDispatch.Control)),
             ("video", replay.Counters.Video, Wire(TakionDispatch.Video)),
             ("audio", replay.Counters.Audio, Wire(TakionDispatch.Audio)),
-            ("postponed", replay.Counters.Postponed, 0),
+            ("postponed", replay.Counters.Postponed, postponed),
             ("unknown", replay.Counters.UnknownType, 0),
         ];
     }

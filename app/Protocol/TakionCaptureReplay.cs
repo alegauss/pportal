@@ -1,3 +1,5 @@
+using ChiakiNg.Native;
+
 namespace ChiakiNg.Protocol;
 
 /// <summary>What replaying a capture through the managed path found.</summary>
@@ -49,23 +51,35 @@ public static class TakionCaptureReplay
     /// Whether the MAC gate passed. A capture cannot say - PP511 emits above the gate - so this is
     /// the replay's assumption and is stated rather than guessed per datagram.
     /// </param>
+    /// <param name="cipherFrom">
+    /// PP522: the index at which the cipher exists, or null to say it always did.
+    ///
+    /// Before it, an AV packet is POSTPONED rather than dispatched - which is what every session
+    /// does at its opening and what a replay told the cipher existed from the first byte reported
+    /// as Video and Audio. <see cref="CipherFrom"/> derives it from the capture itself.
+    /// </param>
     public static ReplayReport Run(
-        IReadOnlyList<CapturedDatagram> datagrams, ITakionSink sink, bool macOk = true)
+        IReadOnlyList<CapturedDatagram> datagrams,
+        ITakionSink sink,
+        bool macOk = true,
+        int? cipherFrom = null)
     {
         ArgumentNullException.ThrowIfNull(datagrams);
         ArgumentNullException.ThrowIfNull(sink);
 
         var counters = default(TakionReceiveCounters);
 
+        int cipher = cipherFrom ?? 0;
+
         int warmUp = Math.Min(WarmUp, datagrams.Count);
         for (var i = 0; i < warmUp; i++)
-            Feed(datagrams[i], sink, ref counters);
+            Feed(datagrams[i], i >= cipher, sink, ref counters);
 
         // Everything before this line is paid once. Everything after is per packet.
         long before = GC.GetAllocatedBytesForCurrentThread();
 
         for (int i = warmUp; i < datagrams.Count; i++)
-            Feed(datagrams[i], sink, ref counters);
+            Feed(datagrams[i], i >= cipher, sink, ref counters);
 
         long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
@@ -75,9 +89,39 @@ public static class TakionCaptureReplay
 
         return new ReplayReport(counters, allocated, span, datagrams.Count);
 
-        void Feed(CapturedDatagram datagram, ITakionSink into, ref TakionReceiveCounters running)
+        void Feed(
+            CapturedDatagram datagram, bool cryptAvailable, ITakionSink into,
+            ref TakionReceiveCounters running)
             => TakionReceivePath.Handle(
-                datagram.Head, into, ref running, macOk, enableCrypt: true, cryptAvailable: true);
+                datagram.Head, into, ref running, macOk, enableCrypt: true, cryptAvailable);
+    }
+
+    /// <summary>
+    /// PP522: where the cipher started, read out of the capture.
+    ///
+    /// AN INFERENCE AND NOT AN OBSERVATION, which is worth saying plainly: nothing in a datagram
+    /// announces a key. What the file has is the key position, and it is zero until there is a key
+    /// stream to have a position in - chiaki_takion_crypt_advance_key_pos returns zero when there is
+    /// no gkcrypt. So the first nonzero position is where the cipher started, for a reason the C
+    /// states rather than one that seemed likely.
+    ///
+    /// Null where every position is zero: a capture that never got a cipher has no such index, and
+    /// answering zero for it would say the opposite of what it holds.
+    /// </summary>
+    public static int? CipherFrom(IReadOnlyList<CapturedDatagram> datagrams)
+    {
+        ArgumentNullException.ThrowIfNull(datagrams);
+
+        for (var i = 0; i < datagrams.Count; i++)
+        {
+            if (TakionPacketMac.ReadKeyPosition(datagrams[i].Head, out uint low) == ChiakiError.Success
+                && low != 0)
+            {
+                return i;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>
