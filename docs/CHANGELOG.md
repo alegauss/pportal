@@ -477,6 +477,7 @@
 - ✅ **PP64** **a field can be added to the baseline record without bumping the schema, and 34b10cbf already did it** — The emitted key set is pinned per schema number, so a field added without a bump and a bump with no recorded row both turn the suite red.
 - ✅ **PP66** **spike/decode-path writes a result.json naming no adapter, so two runs cannot be told apart by the file** — Every run now names the card, read out of the d3d11va device by the DXGI route video-upscale already takes, and the two committed results carry it flagged as annotated.
 - ✅ **PP61** **the startup harness labels a warm run cold, because the OS file cache outlives the process** — the caller states the cache, the report stamps it, and unknown compares with nothing.
+- ✅ **PP482** **PP303's middle option needs a size budget for this application, and nothing measures the package at all** — the payload and the installer are measured against ceilings that may fall and may not rise, on PP38's contract, needing no Qt build to produce a number.
 
 ## Block I — NVIDIA path
 

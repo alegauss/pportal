@@ -1,0 +1,26 @@
+# PP482: the package budget.
+#
+# How big this application is, as a ceiling rather than as a delta. Two numbers, in
+# mebibytes: the payload package.cmd stages, and the installer it compresses that into.
+#
+# Each number below may FALL and may not RISE. PackageBudgetTests fails either way:
+# over the ceiling is a regression, and under it means the ceiling is owed a lowering in
+# the same commit. That is the contract tests/assertion-ratchet.txt already uses, for the
+# same reason - a budget nobody lowers is a budget that stops meaning anything.
+#
+# WHY A CEILING AND NOT A DELTA. PP46 measures cold start and installer size against a Qt
+# build carrying QtWebEngine, which is what PP63's two multi-gigabyte installs exist to
+# produce. PP303 asked whether that still earns its cost now PP277 has settled that this is
+# a new application rather than upstream's next version - a delta between two products
+# being a weaker sentence than a budget for one.
+#
+# This is the budget for one, and it needs no Qt at all. It does not decide PP303: keep
+# both, re-base PP46 on this, or retire both, are all still open and all the author's call.
+# What it removes is the argument that the no-Qt option would have to be built first.
+#
+# The numbers are over whatever package.cmd produced, in whatever configuration it ran -
+# because that is the artifact a user is handed. A native tree with a different ffmpeg is a
+# legitimate reason for a rise, argued in the commit that raises it.
+
+payload_mib 198
+installer_mib 93
