@@ -408,6 +408,7 @@
 - ✅ **PP476** **PP464's guarded step-back is in takion's resend loop too, but the ack there removes an unknown number of packets** — the scan restarts after a give-up, because the ack removes every packet at or before that sequence number and the buffer is in send order.
 - ✅ **PP478** **nothing states what the PSN flow holds between its nine calls, and one piece is a pointer to a stack local** — the five pieces and their three lifetimes are stated, with the four calls that must stay inside the registration info's block and the null that means a local session.
 - ✅ **PP479** **nothing managed owns the PSN flow: the order, the guards and the state are all modelled and nothing drives them** — a managed flow drives PP460's order against the nine asks as an interface, applies each guard, and holds the four pieces that outlive the block but not the fifth.
+- ✅ **PP480** **PP479's interface is joined to nothing, so a tenth holepunch call site could arrive with no method to answer it** — the nine sites are joined to the seven methods that answer them, with the two collapses named and the socket's port-type distinction asserted.
 
 ## Block G — Test discipline
 

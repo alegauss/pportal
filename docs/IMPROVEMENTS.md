@@ -364,6 +364,31 @@ Until then PP33 is correctly blocked, and `remaining PP33` reads 420. Reading th
 number as the size of the job is what its own section warns against: it is one file, and
 the work is at the other end.
 
+### §PP481 The seam that cannot be faked
+
+PP479 gave the flow an interface and PP480 joined that interface to PP429's nine call
+sites. What has no implementation is the obvious one: a class that P/Invokes the real
+`chiaki_*` functions so the flow drives a live holepunch session.
+
+The work is nine thin wrappers in `shim/chiaki_shim.c`, an ABI bump from 34 to 35 in
+`shim/chiaki_shim.h` and `ChiakiNative.ExpectedAbi`, and a managed type implementing the
+interface over them. Mechanical, and the shim already carries one holepunch export -
+`chiaki_holepunch_generate_client_device_uid` - so the pattern is there.
+
+What stops it shipping is the tree's own non-goal: "No line ships without an assertion
+that fails without it." Every one of the nine takes a `ChiakiHolepunchSession` handle,
+and none can be obtained without PSN credentials, a network and a console answering - so
+a wrapper can be written and not exercised. A test would assert nine P/Invoke
+declarations exist, which tests the declarations and not the calls.
+
+So this waits on one of two things. Either a shim entry point that builds a holepunch
+session from a recorded exchange, which PP293's replay harness and PP297's capture are
+most of; or the decision that this seam is exercised on hardware and its line says so,
+the way PP322 says a person has to look at the compositor's output.
+
+Both are choices about how the port validates I/O it cannot fake, and neither is mine to
+make quietly inside another task.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry

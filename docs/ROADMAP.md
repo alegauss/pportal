@@ -32,6 +32,7 @@
 - ⏳ **PP33** (deps: PP24 ✅, PP293 ✅, PP340) **HTTP and JSON in the core are curl and json-c, two vendored dependencies for what the runtime already does** — the deletion: holepunch.c is the only unit needing either library, and session.c is its only caller. → §PP33
 - 📋 **PP295** (deps: PP27 ⏳, PP297 ✅) **streamconnection.c is 1531 lines and is the last C caller of the video receiver, so every deletion below waits on it** — PP286 to PP291 ported the frame path bottom-up and none of it removed C, because this is what still calls the native receiver. → §PP295
 - 📋 **PP340** (deps: —) **the PSN path lives in session.c's nine holepunch call sites, so PP33's deletion would take remote play with it** — PP460 gave the order and the guards and PP478 the state; what is left is a managed object that owns the flow, which is implementation and not another reading. → §PP340
+- 📋 **PP481** (deps: —) **nothing implements the nine asks over the real C, and no test can exercise one without a live console** — nine shim wrappers and an ABI bump are mechanical; what is missing is a way to hold a holepunch session a test can reach. → §PP481
 
 ## Block G — Test discipline
 
