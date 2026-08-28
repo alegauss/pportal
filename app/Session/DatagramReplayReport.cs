@@ -103,7 +103,94 @@ public static class DatagramReplayReport
                 ? "the model and the C agree on every head\n"
                 : $"{disagreed.ToString(invariant)} HEAD(S) DISAGREE WITH THE C\n");
 
+        // PP519: and the third - the console's own key positions through the C's expansion.
+        KeyPositionShape shape = KeyPositions(datagrams);
+        text.Append("[replay] key positions: ")
+            .Append(shape.Advances.ToString(invariant)).Append(" advance(s), ")
+            .Append(shape.Repeats.ToString(invariant)).Append(" repeat(s), ")
+            .Append(shape.NotBlockAligned == 0
+                ? "all block-aligned"
+                : $"{shape.NotBlockAligned.ToString(invariant)} NOT BLOCK-ALIGNED")
+            .Append(shape.Monotonic ? ", one monotonic stream" : ", NOT MONOTONIC")
+            .Append(shape.SpuriousWraps == 0 ? "\n" : $", {shape.SpuriousWraps} SPURIOUS WRAP(S)\n");
+
         return text.ToString();
+    }
+
+    /// <summary>What the captured key positions look like as one stream.</summary>
+    /// <param name="Advances">Steps that moved forward.</param>
+    /// <param name="Repeats">Steps where two packets carried the same position.</param>
+    /// <param name="NotBlockAligned">Advances that were not a multiple of the cipher block.</param>
+    /// <param name="Monotonic">Whether the stream never went backwards.</param>
+    /// <param name="SpuriousWraps">Expansions that added 2^32 where the low half did not wrap.</param>
+    public readonly record struct KeyPositionShape(
+        int Advances, int Repeats, int NotBlockAligned, bool Monotonic, int SpuriousWraps);
+
+    /// <summary>
+    /// PP519: the captured positions, read from the heads and run through the C's expansion.
+    ///
+    /// ONE STREAM AND NOT THREE. The field sits at a different offset for control than for AV, but
+    /// what it holds is a single counter the console advances for everything it sends - so the
+    /// positions are read per type and then ordered by ARRIVAL, which is the only order in which
+    /// they are monotonic. A port keeping one ledger per channel would see three that each jump.
+    ///
+    /// THE REPEAT IS WHY THE EXPANSION IS RUN AT ALL. Two consecutive packets can carry the same
+    /// position - twenty-six times in the first two thousand captured - and an expansion that
+    /// tested low against prev with a plain comparison would add 2^32 to each. The C uses the RFC
+    /// comparison in both branches, and neither is true of a value against itself.
+    /// </summary>
+    public static KeyPositionShape KeyPositions(IReadOnlyList<CapturedDatagram> datagrams)
+    {
+        ArgumentNullException.ThrowIfNull(datagrams);
+
+        var lows = new List<uint>();
+
+        foreach (CapturedDatagram datagram in datagrams)
+        {
+            if (TakionPacketMac.ReadKeyPosition(datagram.Head, out uint low) == ChiakiNg.Native.ChiakiError.Success)
+                lows.Add(low);
+        }
+
+        var advances = 0;
+        var repeats = 0;
+        var unaligned = 0;
+        var monotonic = true;
+        var spurious = 0;
+
+        using var state = new KeyState();
+        ulong previous = 0;
+
+        for (var i = 0; i < lows.Count; i++)
+        {
+            if (i > 0)
+            {
+                if (lows[i] == lows[i - 1])
+                {
+                    repeats++;
+                }
+                else if (lows[i] > lows[i - 1])
+                {
+                    advances++;
+                    if ((lows[i] - lows[i - 1]) % TakionKeyPosition.BlockSize != 0)
+                        unaligned++;
+                }
+                else
+                {
+                    monotonic = false;
+                }
+            }
+
+            ulong expanded = state.RequestPos(lows[i]);
+
+            // A capture spans a couple of megabytes, so no low half wraps in one - which makes any
+            // jump into the high half spurious by construction.
+            if (i > 0 && expanded >> 32 != previous >> 32)
+                spurious++;
+
+            previous = expanded;
+        }
+
+        return new KeyPositionShape(advances, repeats, unaligned, monotonic, spurious);
     }
 
     /// <summary>

@@ -443,6 +443,7 @@
 - ✅ **PP516** **the two captures on disk have no reader, so PP513's replay has never run against a datagram a console sent** — A real capture replays through the managed path and reports 0 bytes allocated over 2000 datagrams a PS5 sent, with the wire bytes per branch that PP515 made readable.
 - ✅ **PP517** **PP497's MAC gate model has never been run against the C, which exports the function it models** — The model and the C agree on all 1040 swept inputs and on 2000 real heads, once the shim stopped refusing the null crypt that made the no-cipher path unreachable.
 - ✅ **PP518** **two send buffers exist in this port, the C's and PP27's model, and nothing has ever compared them** — The same pushes and acks run through both and their counts agree after every step, including across the wrap where integer order would keep what the C releases.
+- ✅ **PP519** **the key position expansion has never seen a console's own positions, where equal values occur 26 times in 2000** — The repeat is pinned as no wrap, and a console's own 2000 positions run through the C's expansion: 1973 advances, 26 repeats, all block-aligned, one monotonic stream.
 
 ## Block G — Test discipline
 
