@@ -96,7 +96,50 @@ public static class DatagramReplayReport
             .Append(" byte(s) after the warm-up")
             .Append(replay.AllocatedBytes == 0 ? " - the budget holds\n" : " - THE BUDGET IS BROKEN\n");
 
+        // PP517: and the second claim - the gate's model against the C, over these heads.
+        int disagreed = MacDisagreements(datagrams);
+        text.Append("[replay] MAC gate: ")
+            .Append(disagreed == 0
+                ? "the model and the C agree on every head\n"
+                : $"{disagreed.ToString(invariant)} HEAD(S) DISAGREE WITH THE C\n");
+
         return text.ToString();
+    }
+
+    /// <summary>
+    /// PP517: how many captured heads the model and the C answer differently for.
+    ///
+    /// The no-cipher path, which is the one a capture can run: with no crypt the C copies the MAC
+    /// out, zeroes the field and computes nothing, and that is the whole of what PP497 calls the
+    /// rewrite. Compared three ways - the verdict, the bytes copied out, and the packet each leaves
+    /// behind - because a pair can agree on a return value and differ on which four bytes it zeroed.
+    ///
+    /// Each side gets its own copy of the head, since both mutate what they are given.
+    /// </summary>
+    public static int MacDisagreements(IReadOnlyList<CapturedDatagram> datagrams)
+    {
+        ArgumentNullException.ThrowIfNull(datagrams);
+
+        var disagreed = 0;
+
+        foreach (CapturedDatagram datagram in datagrams)
+        {
+            byte[] mine = [.. datagram.Head];
+            byte[] theirs = [.. datagram.Head];
+
+            TakionPacketMac.MacResult managed = TakionPacketMac.Apply(mine, gmac: null);
+            ChiakiNg.Native.ChiakiError native =
+                Takion.PacketMacWithoutCrypt(theirs, keyPos: 0, out byte[]? before);
+
+            if (managed.Error != native
+                || !mine.AsSpan().SequenceEqual(theirs)
+                || !(managed.MacBefore ?? []).AsSpan().SequenceEqual(before ?? []))
+            {
+                disagreed++;
+            }
+        }
+
+        return disagreed;
     }
 
     /// <summary>

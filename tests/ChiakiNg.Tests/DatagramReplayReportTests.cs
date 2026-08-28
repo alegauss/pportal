@@ -146,6 +146,32 @@ public class DatagramReplayReportTests
         }
     }
 
+    /// <summary>
+    /// PP517: the report says whether the MAC gate's model and the C agreed on these heads.
+    ///
+    /// Both halves of the sentence, because a line that could only say "agree" would say it about a
+    /// capture nothing was compared over.
+    /// </summary>
+    [Fact]
+    public void TheReportSaysWhetherTheGateAgreed()
+    {
+        IReadOnlyList<CapturedDatagram> capture = Capture();
+
+        Assert.Equal(0, DatagramReplayReport.MacDisagreements(capture));
+
+        string report = DatagramReplayReport.Render(
+            capture, TakionCaptureReplay.Run(capture, new CountingReplaySink()));
+
+        Assert.Contains("the model and the C agree on every head", report, StringComparison.Ordinal);
+
+        // A head the model and the C cannot both accept is one they still answer the same way, so
+        // the disagreement count is about behaviour rather than about acceptance.
+        IReadOnlyList<CapturedDatagram> odd =
+            [.. capture, Datagram(baseType: 6, at: 60_000, length: 40)];
+
+        Assert.Equal(0, DatagramReplayReport.MacDisagreements(odd));
+    }
+
     /// <summary>The capture is not rewritten by being read, because it is evidence.</summary>
     [Fact]
     public void ReplayingDoesNotTouchTheFile()

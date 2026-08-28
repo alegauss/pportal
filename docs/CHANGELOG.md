@@ -441,6 +441,7 @@
 - ✅ **PP514** **the datagram capture has no command: the one thing that starts a real session records the other four channels** — One session path records either kind, chosen by a flag, so --capture-datagrams wakes the console and writes PP512's file where --capture-exchange writes PP297's.
 - ✅ **PP515** **every captured datagram records length 18: the emit truncates before the capture sees the real size** — The tap's type carries the datagram's length, so a second real capture reports video at a mean of 1137 bytes and control at 33 where every packet read 18.
 - ✅ **PP516** **the two captures on disk have no reader, so PP513's replay has never run against a datagram a console sent** — A real capture replays through the managed path and reports 0 bytes allocated over 2000 datagrams a PS5 sent, with the wire bytes per branch that PP515 made readable.
+- ✅ **PP517** **PP497's MAC gate model has never been run against the C, which exports the function it models** — The model and the C agree on all 1040 swept inputs and on 2000 real heads, once the shim stopped refusing the null crypt that made the no-cipher path unreachable.
 
 ## Block G — Test discipline
 

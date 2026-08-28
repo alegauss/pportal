@@ -1684,14 +1684,23 @@ CHIAKI_SHIM_API int32_t chiaki_shim_takion_congestion_packet_size(void)
  * zeroed. A rewrite that appended it instead produces a packet of the right length that the
  * console silently ignores.
  *
- * Both out-pointers are optional here as they are in the C, and the port passes neither: what it
- * asserts is the buffer afterwards.
+ * Both out-pointers are optional here as they are in the C, and PP124's caller passes neither: what
+ * it asserts is the buffer afterwards.
+ *
+ * PP517: A NULL GKCRYPT IS PASSED THROUGH, and it used to be refused. The C tests `if(crypt)` and
+ * does the blanking either way - which is the whole of what PP497 calls the rewrite, and the only
+ * half of this function a caller with no key can run. Refusing it here made that path unreachable
+ * from managed code, so a model of it could only ever be held against the C's text.
+ *
+ * The size guard went with it. buf_size <= 0 is a case the C answers itself, with BUF_TOO_SMALL,
+ * and returning INVALID_DATA for it here replaced the C's answer with this wrapper's. Only a null
+ * buffer is still refused, because that one is a dereference rather than a disagreement.
  */
 CHIAKI_SHIM_API int32_t chiaki_shim_takion_packet_mac(
 		void *gkcrypt, uint8_t *buf, int32_t buf_size, uint64_t key_pos,
 		uint8_t *mac_out, uint8_t *mac_old_out)
 {
-	if(!gkcrypt || !buf || buf_size <= 0)
+	if(!buf)
 		return (int32_t)CHIAKI_ERR_INVALID_DATA;
 
 	return (int32_t)chiaki_takion_packet_mac((ChiakiGKCrypt *)gkcrypt, buf, (size_t)buf_size,

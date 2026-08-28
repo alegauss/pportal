@@ -195,8 +195,32 @@ public static class Takion
         CallingConvention = CallingConvention.Cdecl)]
     private static extern int TakionCongestionPacketSize();
 
+    /// <summary>
+    /// PP517: the C's gate with NO cipher, which is the path PP497 called the rewrite.
+    ///
+    /// With a null crypt the C copies the MAC out where asked, zeroes that field, computes nothing
+    /// and returns success. That is the whole of PP497's placement claim and it needs no key, so it
+    /// is the half of chiaki_takion_packet_mac a differential can actually run.
+    /// </summary>
+    /// <param name="packet">Mutated in place, as the C mutates it.</param>
+    /// <param name="macBefore">The four bytes that were in the field, or null where none were asked for.</param>
+    /// <returns>What the C returned.</returns>
+    public static ChiakiError PacketMacWithoutCrypt(byte[] packet, ulong keyPos, out byte[]? macBefore)
+    {
+        ArgumentNullException.ThrowIfNull(packet);
+
+        // The literal and not TakionPacketMac.GmacSize: inside this class that name is the
+        // DllImport below, not PP497's model. A join asserts the two agree.
+        var before = new byte[4];
+        int err = TakionPacketMac(IntPtr.Zero, packet, packet.Length, keyPos, null, before);
+
+        macBefore = err == (int)ChiakiError.Success ? before : null;
+        return (ChiakiError)err;
+    }
+
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_takion_packet_mac",
         CallingConvention = CallingConvention.Cdecl)]
     private static extern int TakionPacketMac(
         IntPtr gkcrypt, byte[] buf, int bufSize, ulong keyPos, byte[]? macOut, byte[]? macOldOut);
+
 }
