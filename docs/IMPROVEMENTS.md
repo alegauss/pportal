@@ -364,6 +364,32 @@ Until then PP33 is correctly blocked, and `remaining PP33` reads 420. Reading th
 number as the size of the job is what its own section warns against: it is one file, and
 the work is at the other end.
 
+### §PP476 The same idiom, a harder loop
+
+PP464 fixed `if(i > 0) i--` in `discovery_service_drop_old_hosts`: the step back after
+removing an element, guarded so that index 0 alone did not take it, leaving whatever
+shifted into slot 0 unexamined for a pass. The same spelling is in
+`takion_send_buffer_resend`, written `if(i > 0) i-= 1;` after giving up on a packet.
+
+PP464's reasoning carries as far as the diagnosis. `i` is a `size_t`, the decrement
+wraps to SIZE_MAX at zero and the `for`'s increment brings it straight back, so the
+guard was avoiding an underflow that is not there - and at index 0 it skips the packet
+the removal shifted down.
+
+It does not carry to the repair. The host drop removed exactly one element per step, so
+stepping back one was right. `chiaki_takion_send_buffer_ack` removes every packet at or
+before the sequence number and can take several, so one step back may leave more than
+one unexamined even away from index 0 - dropping the guard fixes the zero case and
+leaves that.
+
+A second reason to read before changing: the loop drops the mutex around the ack. The
+count is re-read each pass, but any index held across that window is a guess about a
+buffer another thread may have altered.
+
+So the question is not "remove the guard" but what the loop should do after an ack that
+removed an unknown number of entries. PP475 asserts the guard is still there, so that
+assertion inverts when it is answered.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry

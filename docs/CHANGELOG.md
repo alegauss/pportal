@@ -403,6 +403,7 @@
 - ✅ **PP294** **ctrl.c is 1763 lines of control channel and PP28 sizes it together with two files it does not resemble** — the control channel is modelled end to end: all 22 message types with their direction, the once-only state, both mutexes and the deadlock they formed, and a real PS5 capture replayed.
 - ✅ **PP473** **takion holds AV packets back until the cipher exists, and three paths lose the datagram buffers it took ownership of** — the postpone buffer is modelled with its ownership rule: two of four outcomes lose the packet, and the array is released only by a flush the cipher guards.
 - ✅ **PP474** **three paths in takion's postpone lose a datagram it owns, and the array is never freed if the cipher never arrives** — both early returns free the buffer the dispatcher let go of, and the teardown releases anything still postponed - so a session dying before the cipher leaks nothing.
+- ✅ **PP475** **takion's resend loop is unported: the two waits, the try limit, and that giving up acks the packet to itself** — the resend loop is modelled: a timeout with packets and none without, the strictly-greater due test, and the give-up that takes the console's own ack path.
 
 ## Block G — Test discipline
 
