@@ -88,7 +88,8 @@ public class KeyPositionRepeatTests
             Datagram(TakionDispatch.Video, 4000, 0x1025),
         ]);
 
-        Assert.Equal(1, shape.Repeats);
+        Assert.Equal(1, shape.RunningRepeats);
+        Assert.Equal(0, shape.PrologueRepeats);
         Assert.Equal(3, shape.Advances);
         Assert.True(shape.Monotonic);
 
@@ -115,6 +116,48 @@ public class KeyPositionRepeatTests
         ]);
 
         Assert.False(shape.Monotonic);
+    }
+
+    /// <summary>
+    /// PP521: a repeat at zero is the prologue; a repeat after the first real position is not.
+    ///
+    /// All twenty-six repeats in every capture taken so far are at position zero, in the packets
+    /// before the cipher exists - and two independent sessions produced byte-identical breakdowns,
+    /// which is what an opening does and a network does not. The reader has to tell the two apart,
+    /// because a counter that stood still mid-stream would be a different and much worse thing.
+    /// </summary>
+    [Fact]
+    public void APrologueRepeatIsNotARunningOne()
+    {
+        DatagramReplayReport.KeyPositionShape prologue = DatagramReplayReport.KeyPositions(
+        [
+            Datagram(TakionDispatch.Control, 0, 0),
+            Datagram(TakionDispatch.Control, 1000, 0),
+            Datagram(TakionDispatch.Video, 2000, 0),
+            Datagram(TakionDispatch.Video, 3000, 16),
+            Datagram(TakionDispatch.Video, 4000, 32),
+        ]);
+
+        Assert.Equal(3, prologue.Prologue);
+        Assert.Equal(2, prologue.PrologueRepeats);
+        Assert.Equal(0, prologue.RunningRepeats);
+        Assert.Equal(2, prologue.Advances);
+    }
+
+    /// <summary>And a repeat after the cipher is counted as the one that matters.</summary>
+    [Fact]
+    public void ARepeatAfterTheFirstRealPositionIsReportedApart()
+    {
+        DatagramReplayReport.KeyPositionShape running = DatagramReplayReport.KeyPositions(
+        [
+            Datagram(TakionDispatch.Video, 0, 0),
+            Datagram(TakionDispatch.Video, 1000, 16),
+            Datagram(TakionDispatch.Video, 2000, 16),
+        ]);
+
+        Assert.Equal(1, running.Prologue);
+        Assert.Equal(0, running.PrologueRepeats);
+        Assert.Equal(1, running.RunningRepeats);
     }
 
     /// <summary>

@@ -123,7 +123,12 @@ public static class DatagramReplayReport
         KeyPositionShape shape = KeyPositions(datagrams);
         text.Append("[replay] key positions: ")
             .Append(shape.Advances.ToString(invariant)).Append(" advance(s), ")
-            .Append(shape.Repeats.ToString(invariant)).Append(" repeat(s), ")
+            .Append(shape.Prologue.ToString(invariant)).Append(" before the cipher (")
+            .Append(shape.PrologueRepeats.ToString(invariant)).Append(" repeat(s) at zero), ")
+            .Append(shape.RunningRepeats == 0
+                ? "none after"
+                : $"{shape.RunningRepeats.ToString(invariant)} REPEAT(S) AFTER")
+            .Append(", ")
             .Append(shape.NotBlockAligned == 0
                 ? "all block-aligned"
                 : $"{shape.NotBlockAligned.ToString(invariant)} NOT BLOCK-ALIGNED")
@@ -135,12 +140,24 @@ public static class DatagramReplayReport
 
     /// <summary>What the captured key positions look like as one stream.</summary>
     /// <param name="Advances">Steps that moved forward.</param>
-    /// <param name="Repeats">Steps where two packets carried the same position.</param>
+    /// <param name="PrologueRepeats">
+    /// PP521: repeats at position zero, before the cipher exists. Expected and uninteresting.
+    /// </param>
+    /// <param name="RunningRepeats">
+    /// PP521: repeats AFTER the first real position. The interesting number, and it is zero.
+    /// </param>
+    /// <param name="Prologue">How many packets arrived before the first nonzero position.</param>
     /// <param name="NotBlockAligned">Advances that were not a multiple of the cipher block.</param>
     /// <param name="Monotonic">Whether the stream never went backwards.</param>
     /// <param name="SpuriousWraps">Expansions that added 2^32 where the low half did not wrap.</param>
     public readonly record struct KeyPositionShape(
-        int Advances, int Repeats, int NotBlockAligned, bool Monotonic, int SpuriousWraps);
+        int Advances,
+        int PrologueRepeats,
+        int RunningRepeats,
+        int Prologue,
+        int NotBlockAligned,
+        bool Monotonic,
+        int SpuriousWraps);
 
     /// <summary>
     /// PP519: the captured positions, read from the heads and run through the C's expansion.
@@ -168,10 +185,18 @@ public static class DatagramReplayReport
         }
 
         var advances = 0;
-        var repeats = 0;
+        var prologueRepeats = 0;
+        var runningRepeats = 0;
         var unaligned = 0;
         var monotonic = true;
         var spurious = 0;
+
+        // PP521: where the prologue ends. Before the cipher exists there is no position, so the
+        // console sends zero for the whole opening - twenty-seven packets and 122ms in the captures
+        // taken so far, identical across independent sessions because the opening is not sampled.
+        int prologue = lows.FindIndex(low => low != 0);
+        if (prologue < 0)
+            prologue = lows.Count;
 
         using var state = new KeyState();
         ulong previous = 0;
@@ -182,7 +207,13 @@ public static class DatagramReplayReport
             {
                 if (lows[i] == lows[i - 1])
                 {
-                    repeats++;
+                    // PP521: which side of the prologue it is on is the whole distinction. A repeat
+                    // at zero is the opening; one after the first real position would be a counter
+                    // that stood still, which is a different and much worse thing.
+                    if (i < prologue)
+                        prologueRepeats++;
+                    else
+                        runningRepeats++;
                 }
                 else if (lows[i] > lows[i - 1])
                 {
@@ -206,7 +237,8 @@ public static class DatagramReplayReport
             previous = expanded;
         }
 
-        return new KeyPositionShape(advances, repeats, unaligned, monotonic, spurious);
+        return new KeyPositionShape(
+            advances, prologueRepeats, runningRepeats, prologue, unaligned, monotonic, spurious);
     }
 
     /// <summary>
