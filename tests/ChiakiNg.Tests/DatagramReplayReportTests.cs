@@ -172,6 +172,55 @@ public class DatagramReplayReportTests
         Assert.Equal(0, DatagramReplayReport.MacDisagreements(odd));
     }
 
+    /// <summary>
+    /// PP520: a capture written before PP515 is refused by name rather than read.
+    ///
+    /// It IS a capture - it parses, its rows are in the right places, and every field but one still
+    /// means what it means. That is exactly what a reader cannot detect, and what a version is for.
+    /// Reading it would report every video packet as eighteen bytes and look measured.
+    /// </summary>
+    [Fact]
+    public void ACaptureFromBeforeTheLengthRepairIsRefusedByName()
+    {
+        string path = Path.Combine(Path.GetTempPath(), $"pp520-{Guid.NewGuid():N}.txt");
+
+        try
+        {
+            // The old version's own text: same columns, same rows, Length holding the head's.
+            string head = new('0', TakionTimingCapture.HeadBytes * 2);
+            File.WriteAllText(
+                path,
+                $"{TakionCaptureFile.HeadLengthVersion}\n0\t18\t2\t{head}\n");
+
+            Assert.Equal(ReplayOutcome.HeadLengthVersion, DatagramReplayReport.Run(path, out string report));
+            Assert.Equal(string.Empty, report);
+        }
+        finally
+        {
+            if (File.Exists(path))
+                File.Delete(path);
+        }
+    }
+
+    /// <summary>
+    /// PP520: and the refusal is not the one a file of another shape gets.
+    ///
+    /// Four distinct outcomes, because "this is not a capture" and "this is an older capture" are
+    /// different things to tell somebody holding a file.
+    /// </summary>
+    [Fact]
+    public void TheOldVersionIsNotTheSameRefusalAsNotACapture()
+    {
+        Assert.NotEqual(ReplayOutcome.NotACapture, ReplayOutcome.HeadLengthVersion);
+
+        Assert.True(TakionCaptureFile.IsHeadLengthVersion($"{TakionCaptureFile.HeadLengthVersion}\n"));
+        Assert.False(TakionCaptureFile.IsHeadLengthVersion($"{TakionCaptureFile.FormatVersion}\n"));
+        Assert.False(TakionCaptureFile.IsHeadLengthVersion("chiaki-exchange-1\n"));
+
+        // And the two version lines are not the same string, which is the whole of the repair.
+        Assert.NotEqual(TakionCaptureFile.HeadLengthVersion, TakionCaptureFile.FormatVersion);
+    }
+
     /// <summary>The capture is not rewritten by being read, because it is evidence.</summary>
     [Fact]
     public void ReplayingDoesNotTouchTheFile()

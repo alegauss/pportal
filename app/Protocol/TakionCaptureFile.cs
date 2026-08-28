@@ -28,7 +28,32 @@ namespace ChiakiNg.Protocol;
 public static class TakionCaptureFile
 {
     /// <summary>What the first line says.</summary>
-    public const string FormatVersion = "chiaki-datagrams-1";
+    public const string FormatVersion = "chiaki-datagrams-2";
+
+    /// <summary>
+    /// PP520: the version before PP515, whose Length column holds the HEAD's length.
+    ///
+    /// Recognised so a refusal can name it. PP512 versioned this format saying a file read months
+    /// later has to say what it is, and PP515 then changed what a column means without moving the
+    /// version - so the one file written under it replays without complaint and reports every video
+    /// packet as eighteen bytes. A number that is wrong and looks measured is worse than one that
+    /// is missing.
+    /// </summary>
+    public const string HeadLengthVersion = "chiaki-datagrams-1";
+
+    /// <summary>
+    /// Whether text is a capture written before PP515, whose lengths cannot be believed.
+    ///
+    /// Not read with a warning: the datagram's length is not recoverable from a head, so every
+    /// figure a replay prints about size would be false.
+    /// </summary>
+    public static bool IsHeadLengthVersion(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+
+        string[] lines = text.Split('\n');
+        return lines.Length > 0 && lines[0].Trim() == HeadLengthVersion;
+    }
 
     /// <summary>Writes a capture out.</summary>
     public static string Write(TakionTimingCapture capture)

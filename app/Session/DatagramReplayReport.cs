@@ -18,6 +18,16 @@ public enum ReplayOutcome
 
     /// <summary>It is a capture and holds no datagram.</summary>
     Empty,
+
+    /// <summary>
+    /// PP520: a capture written before PP515, whose Length column is the head's.
+    ///
+    /// Distinct from NotACapture, because it IS one - it parses, its rows are in the right places,
+    /// and every field but one means what it still means. Refused rather than read, because the
+    /// datagram's length cannot be recovered from a head and every size the replay printed would
+    /// be false.
+    /// </summary>
+    HeadLengthVersion,
 }
 
 /// <summary>
@@ -52,7 +62,13 @@ public static class DatagramReplayReport
         if (!File.Exists(path))
             return ReplayOutcome.NotFound;
 
-        IReadOnlyList<CapturedDatagram>? datagrams = TakionCaptureFile.Read(File.ReadAllText(path));
+        string text = File.ReadAllText(path);
+
+        // PP520: asked before the parse, so the answer names the version rather than the shape.
+        if (TakionCaptureFile.IsHeadLengthVersion(text))
+            return ReplayOutcome.HeadLengthVersion;
+
+        IReadOnlyList<CapturedDatagram>? datagrams = TakionCaptureFile.Read(text);
         if (datagrams is null)
             return ReplayOutcome.NotACapture;
 
