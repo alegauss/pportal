@@ -57,11 +57,46 @@ public static partial class AllocBudgetSource
         return m.Success ? long.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture) : -1;
     }
 
+    /// <summary>
+    /// CHIAKI_RECV_BUDGET_CALLS_PER_PACKET, or -1 where it is not declared.
+    ///
+    /// PP59's half of that file, and the one that is NOT zero: the receive step costs three
+    /// allocator calls per packet in the C - the 1500-byte buffer, the realloc down to what
+    /// arrived, and the queue entry. PP489 reads it so the managed number is stated against a
+    /// measurement rather than against a reading of takion.c.
+    /// </summary>
+    public static long RecvCallsPerPacket(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        Match m = RecvCallsRegex().Match(text);
+        return m.Success ? long.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture) : -1;
+    }
+
+    /// <summary>
+    /// CHIAKI_RECV_BUFFER_INITIAL_SIZE, or -1 - the harness's own copy of takion's 1500.
+    ///
+    /// A copy, which is the point of reading it: the harness allocates this rather than asking
+    /// takion.c, so a takion.c that moved to 2048 would leave the C's own budget passing against a
+    /// buffer size the C had stopped using.
+    /// </summary>
+    public static long RecvBufferInitialSize(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        Match m = RecvBufferRegex().Match(text);
+        return m.Success ? long.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture) : -1;
+    }
+
     [GeneratedRegex(@"#define\s+CHIAKI_ALLOC_BUDGET_BYTES_PER_PACKET\s+(\d+)")]
     private static partial Regex BytesRegex();
 
     [GeneratedRegex(@"#define\s+CHIAKI_ALLOC_BUDGET_CALLS_PER_PACKET\s+(\d+)")]
     private static partial Regex CallsRegex();
+
+    [GeneratedRegex(@"#define\s+CHIAKI_RECV_BUDGET_CALLS_PER_PACKET\s+(\d+)")]
+    private static partial Regex RecvCallsRegex();
+
+    [GeneratedRegex(@"#define\s+CHIAKI_RECV_BUFFER_INITIAL_SIZE\s+(\d+)")]
+    private static partial Regex RecvBufferRegex();
 }
 
 /// <summary>

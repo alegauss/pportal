@@ -412,6 +412,7 @@
 - ✅ **PP485** **takion.c mallocs 1500 bytes per datagram and reallocs it down, on the thread the whole stream rides on** — The receive buffer is rented once and reused, so ten thousand datagrams allocate zero where the C mallocs and reallocs each one, with a copy only where postpone keeps a packet.
 - ✅ **PP487** **nothing models takion's receive loop, where two once-only transitions and three exits decide what the thread does** — The thread's order is managed over PP485's buffer, with the MAC re-check and the postpone flush firing once each and their differing guards asserted against the C.
 - ✅ **PP488** **takion_recv's four outcomes collapse to two in the loop, and a zero-length UDP datagram is one that ends it** — The socket read is managed, with the four codes collapsed to the loop's two on purpose and an empty datagram pinned as the network error that ends the thread.
+- ✅ **PP489** **the receive step's allocation budget is measured in the C and nothing states the managed number against it** — The managed receive step costs none of PP59's measured three per packet, with the drop path stated as the exception and 1500 asserted equal in all three places.
 
 ## Block G — Test discipline
 

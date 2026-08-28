@@ -132,4 +132,132 @@ public class AllocBudgetTests
         Assert.Equal(BytesPerPacket, AllocBudgetSource.BytesPerPacket(text));
         Assert.Equal(0, AllocBudgetSource.CallsPerPacket(text));
     }
+
+    /// <summary>
+    /// PP489: and the OTHER budget in that file, which is not zero.
+    ///
+    /// PP59 measured takion's receive step at three allocator calls per packet - the 1500-byte
+    /// buffer, the realloc down to what arrived, and the queue entry. Read rather than remembered,
+    /// and asserted to be above zero, because the whole comparison below is with a number that has
+    /// something in it.
+    /// </summary>
+    [Fact]
+    public void TheReceiveStepBudgetIsTheCSuitesOwnAndIsNotZero()
+    {
+        if (AllocBudgetSource.Locate() is not { } path)
+            return;
+
+        string text = File.ReadAllText(path);
+
+        Assert.Equal(3, AllocBudgetSource.RecvCallsPerPacket(text));
+        Assert.True(AllocBudgetSource.RecvCallsPerPacket(text) > 0);
+    }
+
+    /// <summary>
+    /// PP489: the managed receive step costs none of those three, in steady state.
+    ///
+    /// The buffer is PP485's, rented once; there is no realloc because a Span carries its own
+    /// length; and the queue's window is a bool[] and a long[] sized once in its constructor, so a
+    /// push writes into them rather than allocating an entry. Measured over the same 200 packets the
+    /// C's harness replays.
+    ///
+    /// STEADY STATE MEANS NO DROPS, and that is a real qualification rather than a convenience -
+    /// see the test below, which is the case this one does not cover.
+    /// </summary>
+    [Fact]
+    public void TheManagedReceiveStepCostsNoneOfTheCsThree()
+    {
+        using var buffer = new TakionReceiveBuffer();
+        using var queue = new ReorderQueue(4, 0);
+
+        long sink = 0;
+
+        // Warm the pool, the JIT and the queue's own arrays, none of which is a per-packet cost -
+        // the C's harness exempts its first packet for the same reason.
+        for (int i = 0; i < 64; i++)
+        {
+            buffer.Received(153);
+            queue.Push((ulong)i, buffer.Length);
+            sink += queue.Pull()?.Payload ?? 0;
+        }
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+
+        for (int i = 0; i < Frames; i++)
+        {
+            buffer.Free[0] = 0x02;
+            buffer.Received(153);
+            queue.Push((ulong)(64 + i), buffer.Length);
+            sink += queue.Pull()?.Payload ?? 0;
+        }
+
+        long delta = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        Assert.True(sink > 0);
+        Assert.Equal(0, delta);
+        Assert.Empty(queue.Drops);
+    }
+
+    /// <summary>
+    /// PP489: BUT DROPS ARE RECORDED WITHOUT BOUND, and a reorder queue exists because packets drop.
+    ///
+    /// The managed queue appends every drop to a List that nothing clears, so the zero above holds on
+    /// the path where nothing is lost and not on the path the module is for. The C's drop hands the
+    /// element to a callback and forgets it: no allocation, and nothing retained.
+    ///
+    /// The cost is AMORTISED rather than per-drop - a List grows geometrically, so one drop into
+    /// spare capacity is free, which is what the first version of this test got wrong. What is not
+    /// amortised is the retention: the list only grows, for the life of the queue.
+    /// </summary>
+    [Fact]
+    public void DropsAreRecordedWithoutBoundWhereTheCsDropForgets()
+    {
+        using var queue = new ReorderQueue(4, 0);
+
+        // Sixteen slots and nothing pulling them, so the window fills and every push after that is
+        // past its end - which the default strategy drops.
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        for (int i = 1; i <= 2000; i++)
+            queue.Push((ulong)i, i);
+        long delta = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        int recorded = queue.Drops.Count;
+        Assert.True(recorded > 1000, $"only {recorded} drops were recorded");
+
+        Assert.True(
+            delta > 0,
+            $"{recorded} drops were recorded and the list grew, so something was allocated; got {delta}");
+
+        // And nothing clears it: a second pass only adds, for the life of the queue.
+        for (int i = 2001; i <= 3000; i++)
+            queue.Push((ulong)i, i);
+
+        Assert.True(
+            queue.Drops.Count > recorded,
+            "the record of drops only grows - there is no clear and no bound");
+    }
+
+    /// <summary>
+    /// PP489: 1500 is written in three places, and they are one number.
+    ///
+    /// takion.c sets received_size to it, allocbudget.c declares its own copy so the harness can
+    /// allocate the same thing, and TakionReceiveBuffer carries it as the ceiling it rents. The
+    /// harness measures its own replay, so a takion.c that moved would leave the C's budget green
+    /// against a size the C had stopped using - and PP485's buffer would be the third opinion.
+    /// </summary>
+    [Fact]
+    public void TheBufferSizeIsOneNumberInThreePlaces()
+    {
+        if (AllocBudgetSource.Locate() is not { } budgetPath
+            || TakionReceiveBuffer.LocateTakion() is not { } takionPath)
+        {
+            return;
+        }
+
+        long inTheHarness = AllocBudgetSource.RecvBufferInitialSize(File.ReadAllText(budgetPath));
+        int? inTakion = TakionReceiveBuffer.CapacityInTheC(File.ReadAllText(takionPath));
+
+        Assert.Equal(TakionReceiveBuffer.DatagramCapacity, (int)inTheHarness);
+        Assert.Equal(TakionReceiveBuffer.DatagramCapacity, inTakion);
+    }
 }
