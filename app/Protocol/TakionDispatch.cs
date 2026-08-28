@@ -165,6 +165,54 @@ public static class TakionDispatchSource
     public static string? MessageBody(string source)
         => CFunction.Body(source, "static void takion_handle_packet_message");
 
+    /// <summary>The data handler, which is what the data case hands the buffer to.</summary>
+    public static string? DataBody(string source)
+        => CFunction.Body(source, "static void takion_handle_packet_message_data");
+
+    /// <summary>
+    /// PP491: whether BOTH early returns in the data handler free the packet before leaving.
+    ///
+    /// The data case is the only arm of the message handler that does not free after its call, so
+    /// this function owns what it was given until the queue entry does. Its two early returns - a
+    /// payload under the nine-byte data header, and a failed malloc of the entry - used to return
+    /// without freeing, losing the whole datagram each time.
+    ///
+    /// Read as two stretches rather than counted, for the reason PP474 gives one level up: a count
+    /// of two is also what one branch freeing twice looks like, and that is the shape a fix on this
+    /// path can actually have.
+    /// </summary>
+    public static bool BothEarlyReturnsFreeThePacket(string dataBody)
+    {
+        ArgumentNullException.ThrowIfNull(dataBody);
+
+        string text = dataBody.Replace("\r\n", "\n", StringComparison.Ordinal);
+
+        int shortPayload = text.IndexOf("if(payload_size < 9)", StringComparison.Ordinal);
+        int noEntry = text.IndexOf("if(!entry)", StringComparison.Ordinal);
+
+        if (shortPayload < 0 || noEntry < shortPayload)
+            return false;
+
+        string first = text[shortPayload..noEntry];
+        string second = text[noEntry..];
+
+        return Frees(first) == 1 && Frees(second) == 1;
+
+        static int Frees(string stretch)
+        {
+            const string needle = "free(packet_buf);";
+            var found = 0;
+            for (int at = stretch.IndexOf(needle, StringComparison.Ordinal);
+                 at >= 0;
+                 at = stretch.IndexOf(needle, at + needle.Length, StringComparison.Ordinal))
+            {
+                found++;
+            }
+
+            return found;
+        }
+    }
+
     /// <summary>
     /// Whether the MAC gate is still ahead of the switch rather than inside a branch of it.
     ///

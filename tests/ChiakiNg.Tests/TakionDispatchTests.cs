@@ -195,6 +195,49 @@ public class TakionDispatchTests
     }
 
     /// <summary>
+    /// PP491: both early returns in the data handler free the datagram they were handed.
+    ///
+    /// The data case is the one arm of the message handler that does not free after its call, so
+    /// this function owns the buffer until the queue entry does - and its two early returns used to
+    /// leave without freeing. The reachable one is the short payload: a tagged control datagram of
+    /// 17 to 25 bytes, arriving before the cipher exists so the MAC gate waves it through.
+    ///
+    /// Two stretches rather than a count of two, because one branch freeing twice is the shape a
+    /// fix on this path can have and a count would pass it.
+    /// </summary>
+    [Fact]
+    public void BothEarlyReturnsInTheDataHandlerFreeThePacket()
+    {
+        if (TakionDispatchSource.Locate() is not { } path)
+            return;
+
+        string source = File.ReadAllText(path);
+        string data = Assert.IsType<string>(TakionDispatchSource.DataBody(source));
+
+        Assert.True(TakionDispatchSource.BothEarlyReturnsFreeThePacket(data));
+    }
+
+    /// <summary>
+    /// PP491: and the caller still frees nothing on that branch, which is what makes the two frees
+    /// above the only ones on the path.
+    ///
+    /// The same predicate PP490 uses to call the Control branch a copy. Named again here because it
+    /// is also the no-double-free argument, and if the caller ever grows a free the fix becomes
+    /// wrong rather than redundant.
+    /// </summary>
+    [Fact]
+    public void TheCallerStillFreesNothingOnTheDataBranch()
+    {
+        if (TakionDispatchSource.Locate() is not { } path)
+            return;
+
+        string source = File.ReadAllText(path);
+        string message = Assert.IsType<string>(TakionDispatchSource.MessageBody(source));
+
+        Assert.True(TakionDispatchSource.OnlyTheDataCaseKeepsTheBuffer(message));
+    }
+
+    /// <summary>
     /// The three packet types the switch names still have the values this port compiled in.
     ///
     /// The constants live in takionreceive.h rather than takion.c, so they are read from there and

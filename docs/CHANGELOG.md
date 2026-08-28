@@ -414,6 +414,7 @@
 - ✅ **PP488** **takion_recv's four outcomes collapse to two in the loop, and a zero-length UDP datagram is one that ends it** — The socket read is managed, with the four codes collapsed to the loop's two on purpose and an empty datagram pinned as the network error that ends the thread.
 - ✅ **PP489** **the receive step's allocation budget is measured in the C and nothing states the managed number against it** — The managed receive step costs none of PP59's measured three per packet, with the drop path stated as the exception and 1500 asserted equal in all three places.
 - ✅ **PP490** **takion_handle_packet's five branches each end the datagram's life, and over a pooled buffer none of them can free** — The dispatch is managed with a borrow-or-copy verdict per branch: three of the six keep the datagram past the call, and audio borrows where video, sharing its case label, copies.
+- ✅ **PP491** **takion_handle_packet_message_data drops the datagram on both early returns, and its one caller frees nothing** — Both early returns free packet_buf, so the reachable one - a tagged control datagram of 17 to 25 bytes arriving before the cipher - drops it rather than leaking it once per packet.
 
 ## Block G — Test discipline
 

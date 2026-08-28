@@ -158,7 +158,7 @@ because every part of it was green.
 
 ### §PP27 The transport, and the only place GC is a real question
 
-takion.c is 1941 lines plus takionsendbuffer.c at 277 and reorderqueue.c at 200: the
+takion.c is 1960 lines plus takionsendbuffer.c at 277 and reorderqueue.c at 200: the
 sequencing, the retransmission, the send window and the reordering that a video stream
 over UDP needs.
 

@@ -1351,12 +1351,31 @@ static void takion_handle_packet_message_data(ChiakiTakion *takion, uint8_t *pac
 	if(payload_size < 9)
 	{
 		CHIAKI_LOGE(takion->log, "Takion received data with a size less than the header size");
+		// PP491: freed, because takion_handle_packet_message's data case is the one arm of the three
+		// that does NOT free after the call - it hands packet_buf to this function, which puts it in
+		// a data_queue entry that takion_data_drop frees. Returning without freeing loses it.
+		//
+		// This is the reachable one. The parse forces buf_size == payload_size + 0xc and refuses
+		// anything under 0x10, so payload_size lands under 9 only for a tagged datagram of 17 to 25
+		// bytes - and before gkcrypt_remote exists the MAC gate passes everything, so a corrupt
+		// control packet arriving then leaks one datagram per packet.
+		//
+		// No double free: the caller does nothing after this call but break, so a free here is the
+		// only one on the path. Same argument PP474 made for the postpone array.
+		free(packet_buf);
 		return;
 	}
 
 	TakionDataPacketEntry *entry = malloc(sizeof(TakionDataPacketEntry));
 	if(!entry)
+	{
+		// PP491: and the same here, on the path where the entry that would have owned it does not
+		// exist. Unreachable short of OOM, and left symmetric with the branch above rather than
+		// argued about - a second reader would otherwise have to re-derive why one frees and one
+		// does not.
+		free(packet_buf);
 		return;
+	}
 
 	entry->type_b = type_b;
 	entry->packet_buf = packet_buf;
