@@ -144,12 +144,36 @@ if [[ ${deploy_native_only:-0} -eq 1 ]]; then
     mkdir -p "$DEPLOY_DIR"
     # Both come out of the shim directory - the render target is built beside it, not under a
     # directory of its own.
+    staged=()
     for dll in shim/chiaki-shim.dll shim/chiaki-render.dll; do
         if [[ -f "$BUILD_DIR/$dll" ]]; then
             cp -f "$BUILD_DIR/$dll" "$DEPLOY_DIR/"
             echo "note: refreshed $(basename "$dll") in $DEPLOY_DIR" >&2
+            staged+=("$DEPLOY_DIR/$(basename "$dll")")
         fi
     done
+
+    # PP492: SDL2 is the third library the .NET resolver loads out of this tree, and it is the one
+    # no walk can find - the host opens it by name at runtime, so nothing here IMPORTS it. In a Qt
+    # build it arrives as a dependency of chiaki.exe; with the client off it has to be staged, the
+    # way the Qt deploy already stages SDL3 for the same reason. package.cmd checks all three and
+    # is what reported this missing.
+    if [[ -f /mingw64/bin/SDL2.dll ]]; then
+        cp -f /mingw64/bin/SDL2.dll "$DEPLOY_DIR/"
+        echo "note: staged SDL2.dll in $DEPLOY_DIR" >&2
+        staged+=("$DEPLOY_DIR/SDL2.dll")
+    else
+        echo "warning: /mingw64/bin/SDL2.dll not found - the host has no SDL to load" >&2
+    fi
+
+    # PP492: and what all of those IMPORT, which PP269 left to the Qt deploy this branch exists
+    # because we are not running. Copying the libraries alone is enough on an incremental build,
+    # where the closure is already in the tree from the last GUI build, and produces a tree
+    # nothing can load from after a clean - the resolver finds the shim, TryLoad fails on a
+    # missing import, and the error says the DLL was not found at the path it is sitting at.
+    if [[ ${#staged[@]} -gt 0 ]]; then
+        PATH="/mingw64/bin:$PATH" ./scripts/deploy-native-deps.sh "$DEPLOY_DIR" "${staged[@]}" >&2
+    fi
 fi
 
 if [[ $do_deploy -eq 1 ]]; then

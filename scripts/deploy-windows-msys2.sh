@@ -49,76 +49,13 @@ export PATH="${tool_dir}:${msys_prefix}/share/qt6/bin:${PATH}"
 export QT_PLUGIN_PATH="${msys_prefix}/share/qt6/plugins"
 export QML2_IMPORT_PATH="${msys_prefix}/share/qt6/qml"
 
-ldd_timeout="${LDD_TIMEOUT:-10}"
-ldd_timeout_cmd=()
-if command -v timeout >/dev/null; then
-    ldd_timeout_cmd=(timeout --kill-after=5s "${ldd_timeout}s")
-else
-    echo "warning: timeout(1) not found, ldd might hang" >&2
-fi
-
-declare -A queued_paths=()
-declare -A scanned_paths=()
-
-queue=("$output_dir/$(basename "$exe_path")")
-queued_paths["$queue"]=1
-
-extract_dependencies() {
-    local binary="$1"
-
-    local ldd_output
-    local ldd_status=0
-    if [[ ${#ldd_timeout_cmd[@]} -gt 0 ]]; then
-        set +e
-        ldd_output="$(LC_ALL=C "${ldd_timeout_cmd[@]}" ldd "$binary" 2>&1)"
-        ldd_status=$?
-        set -e
-        if [[ $ldd_status -eq 124 ]]; then
-            echo "ldd timed out for $binary" >&2
-        elif [[ $ldd_status -ne 0 ]]; then
-            echo "ldd exited with status $ldd_status for $binary" >&2
-        fi
-    else
-        ldd_output="$(LC_ALL=C ldd "$binary" 2>&1)" || true
-    fi
-
-    printf '%s\n' "$ldd_output" | awk '
-        /=>/ && $(NF-1) ~ /^\// { print $(NF-1) }
-        /^\// { print $1 }
-    ' | grep -iv "system32" | grep -iv "windows" || true
-}
-
-enqueue_dependency() {
-    local dependency="$1"
-    local file_name
-
-    [[ -n "$dependency" ]] || return 0
-
-    file_name="${dependency##*/}"
-    if [[ ! -e "$output_dir/$file_name" ]]; then
-        echo "Copied $dependency"
-        cp "$dependency" "$output_dir/"
-    fi
-
-    if [[ -z "${queued_paths["$dependency"]+x}" ]]; then
-        queue+=("$dependency")
-        queued_paths["$dependency"]=1
-    fi
-}
-
-while [[ ${#queue[@]} -gt 0 ]]; do
-    current="${queue[0]}"
-    queue=("${queue[@]:1}")
-
-    if [[ -n "${scanned_paths["$current"]+x}" ]]; then
-        continue
-    fi
-    scanned_paths["$current"]=1
-
-    while IFS= read -r dependency; do
-        enqueue_dependency "$dependency"
-    done < <(extract_dependencies "$current")
-done
+# PP492: the transitive walk moved into deploy-native-deps.sh, which is what the GUI-off path
+# now calls too. It was here and only here, so a build with the client off got the two DLLs the
+# host loads and none of what they import - fine on an incremental build, unloadable after a
+# clean. The seed is the difference between the two callers and the only one: here it is the
+# deployed exe, there it is the pair of libraries. PATH is exported above so that ldd inside the
+# script can still resolve libcpp-steam-tools.dll.
+"$(dirname "$0")/deploy-native-deps.sh" "$output_dir" "$output_dir/$(basename "$exe_path")"
 
 # Ensure SDL3 is bundled even if ldd/Qt doesn't list it.
 shopt -s nullglob
