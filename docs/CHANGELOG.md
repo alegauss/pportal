@@ -411,6 +411,7 @@
 - ✅ **PP480** **PP479's interface is joined to nothing, so a tenth holepunch call site could arrive with no method to answer it** — the nine sites are joined to the seven methods that answer them, with the two collapses named and the socket's port-type distinction asserted.
 - ✅ **PP485** **takion.c mallocs 1500 bytes per datagram and reallocs it down, on the thread the whole stream rides on** — The receive buffer is rented once and reused, so ten thousand datagrams allocate zero where the C mallocs and reallocs each one, with a copy only where postpone keeps a packet.
 - ✅ **PP487** **nothing models takion's receive loop, where two once-only transitions and three exits decide what the thread does** — The thread's order is managed over PP485's buffer, with the MAC re-check and the postpone flush firing once each and their differing guards asserted against the C.
+- ✅ **PP488** **takion_recv's four outcomes collapse to two in the loop, and a zero-length UDP datagram is one that ends it** — The socket read is managed, with the four codes collapsed to the loop's two on purpose and an empty datagram pinned as the network error that ends the thread.
 
 ## Block G — Test discipline
 
