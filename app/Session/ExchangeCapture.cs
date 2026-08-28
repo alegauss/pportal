@@ -49,8 +49,14 @@ public enum CaptureOutcome
 /// </summary>
 public static class ExchangeCapture
 {
-    /// <summary>How long to hold the session open once it connects.</summary>
-    public static TimeSpan Hold { get; } = TimeSpan.FromSeconds(12);
+    /// <summary>
+    /// How long to hold the session open once it connects, for a sample nobody asked a length for.
+    ///
+    /// PP526: no longer a constant of this class. A hold has to cover the capture's window or the
+    /// window samples a session that already ended, so the two are settled together in
+    /// <see cref="SampleWindow"/> and this is what that says for the default length.
+    /// </summary>
+    public static TimeSpan Hold => SampleWindow.Default.Hold;
 
     /// <summary>How long to wait for a console to answer discovery.</summary>
     public static TimeSpan Discover { get; } = TimeSpan.FromSeconds(8);
@@ -211,10 +217,20 @@ public static class ExchangeCapture
     /// recorders in one session is one recorder and a silence. The default is Exchange, so
     /// --capture-exchange behaves as it did.
     /// </param>
+    /// <param name="sample">
+    /// PP526: how long a sample to take, or null for the default length.
+    ///
+    /// The window and the hold both come out of this, which is the whole reason it is one value:
+    /// a run holding the session for twelve seconds while capturing sixty would report a window it
+    /// never reached, and the file would not say so.
+    /// </param>
     public static CaptureOutcome Run(
-        string path, string? nickname, SessionCaptureKind kind = SessionCaptureKind.Exchange)
+        string path, string? nickname, SessionCaptureKind kind = SessionCaptureKind.Exchange,
+        SampleBounds? sample = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
+
+        SampleBounds bounds = sample ?? SampleWindow.Default;
 
         ChiakiSession.LibInit();
 
@@ -287,7 +303,7 @@ public static class ExchangeCapture
         using ExchangeRecorder? recorder =
             kind == SessionCaptureKind.Exchange ? ExchangeRecorder.Start() : null;
         using TakionCaptureWriter? datagrams = kind == SessionCaptureKind.Datagrams
-            ? new TakionCaptureWriter(path, Monotonic)
+            ? new TakionCaptureWriter(path, Monotonic, new TakionTimingCapture(bounds))
             : null;
 
         using var connect = new ChiakiConnectInfo { Host = address, Ps5 = ps5 };
@@ -333,8 +349,8 @@ public static class ExchangeCapture
         // exactly what a replay of a failure needs.
         if (WaitHandle.WaitAny([connected.WaitHandle, quit.WaitHandle], Wake) == 0)
         {
-            Console.WriteLine($"[capture] connected - holding for {Hold.TotalSeconds:0}s");
-            quit.Wait(Hold);
+            Console.WriteLine($"[capture] connected - holding for {bounds.Hold.TotalSeconds:0}s");
+            quit.Wait(bounds.Hold);
         }
         else if (quitReason is not null)
         {
@@ -395,7 +411,8 @@ public static class ExchangeCapture
         double? gap = TakionCaptureReplay.MeanGapMicroseconds(capture.Datagrams);
 
         Console.WriteLine(
-            $"[capture] {count} datagram(s) over {capture.End}, "
+            $"[capture] {count} datagram(s) over {capture.End} "
+            + $"of a {capture.WindowMicroseconds / 1_000_000.0:0.#}s sample, "
             + (gap is null ? "no spacing" : $"mean gap {gap:0} us")
             + $", {capture.Missed} after the bound - written to {path}");
 

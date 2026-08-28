@@ -930,6 +930,29 @@ public partial class App : Application
             Environment.Exit(CaptureController(TimeSpan.FromSeconds(20), analog));
         }
 
+        // PP526: how long a sample either capture takes, which sets the window, the count and the
+        // hold together. Refused rather than defaulted: a run that asked for sixty seconds and was
+        // silently given five measures the wrong thing, and the file it leaves does not say so.
+        SampleBounds sample = SampleWindow.Default;
+        if (HostCommandLine.Has(e.Args, "--capture-seconds")
+            && (HostCommandLine.Has(e.Args, "--capture-exchange")
+                || HostCommandLine.Has(e.Args, "--capture-datagrams")))
+        {
+            ReopenStdOut();
+
+            if (SampleWindow.TryParse(HostCommandLine.ValueAfter(e.Args, "--capture-seconds"))
+                is not { } asked)
+            {
+                Console.Error.WriteLine(
+                    $"[capture] --capture-seconds wants a whole number of seconds, "
+                    + $"1 to {SampleWindow.MaximumSeconds}.");
+                Environment.Exit(2);
+                return;
+            }
+
+            sample = asked;
+        }
+
         // PP297: the capture itself. Exits like every other capture flag - it drives a session
         // rather than opening one, so there is no window for StartupUri to put behind it.
         if (HostCommandLine.Has(e.Args, "--capture-exchange"))
@@ -941,8 +964,9 @@ public partial class App : Application
                     $"exchange-{DateTimeOffset.Now:yyyyMMdd-HHmmss}.txt");
 
             Environment.Exit(
-                ExchangeCapture.Run(path, HostCommandLine.ValueAfter(e.Args, "--console"))
-                    == CaptureOutcome.Recorded ? 0 : 1);
+                ExchangeCapture.Run(
+                    path, HostCommandLine.ValueAfter(e.Args, "--console"),
+                    SessionCaptureKind.Exchange, sample) == CaptureOutcome.Recorded ? 0 : 1);
         }
 
         // PP514: the same session, recording the other thing. One tap installs at a time, so this
@@ -960,7 +984,7 @@ public partial class App : Application
                 ExchangeCapture.Run(
                     path,
                     HostCommandLine.ValueAfter(e.Args, "--console"),
-                    SessionCaptureKind.Datagrams) == CaptureOutcome.Recorded ? 0 : 1);
+                    SessionCaptureKind.Datagrams, sample) == CaptureOutcome.Recorded ? 0 : 1);
         }
 
         // PP516: and the other half of that, which needs no console - a capture on disk read back

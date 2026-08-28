@@ -58,11 +58,16 @@ public sealed class TakionTimingCapture
     /// </summary>
     public const int HeadBytes = 18;
 
-    /// <summary>How many datagrams a capture takes before it stops.</summary>
-    public const int DefaultLimit = 2000;
+    /// <summary>
+    /// How many datagrams a capture takes before it stops.
+    ///
+    /// PP526: derived from the default window at the rate a real session sent, so the two bounds
+    /// describe one sample length rather than two numbers that were picked apart.
+    /// </summary>
+    public const int DefaultLimit = SampleWindow.DefaultSeconds * SampleWindow.DatagramsPerSecond;
 
     /// <summary>How long a capture runs before it stops, whichever comes first.</summary>
-    public const long DefaultWindowMicroseconds = 5_000_000;
+    public const long DefaultWindowMicroseconds = SampleWindow.DefaultSeconds * 1_000_000L;
 
     private readonly List<CapturedDatagram> datagrams = [];
     private long? firstArrival;
@@ -81,6 +86,12 @@ public sealed class TakionTimingCapture
 
         Limit = limit;
         WindowMicroseconds = windowMicroseconds;
+    }
+
+    /// <summary>PP526: a capture of an asked-for length, whose bounds were settled together.</summary>
+    public TakionTimingCapture(SampleBounds bounds)
+        : this(bounds.Limit, bounds.WindowMicroseconds)
+    {
     }
 
     /// <summary>What has been captured, in arrival order.</summary>

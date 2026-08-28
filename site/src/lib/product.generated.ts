@@ -86,6 +86,11 @@ export const HOST_FLAGS: readonly HostFlag[] = [
     "summary": "with either capture: which registered console, by nickname"
   },
   {
+    "name": "--capture-seconds",
+    "argument": "[n]",
+    "summary": "with either capture: how long a sample, which sets the hold too"
+  },
+  {
     "name": "--replay-datagrams",
     "argument": "<path>",
     "summary": "replay a datagram capture through the managed receive path"
