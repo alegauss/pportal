@@ -131,9 +131,12 @@ public static partial class RegistRequestSource
     /// own check against sizeof(request_header) - which runs after the memcpy those guards were
     /// meant to protect.
     ///
-    /// Recorded rather than repaired, for the same reason as PP107: this port does not edit lib/.
-    /// The managed side has no fixed buffer to overrun, so it inherits the bytes and not the bug -
-    /// and asserting the C still reads this way is what stops that claim going stale.
+    /// Recorded rather than repaired - and PP483 has removed the reason this used to give for that,
+    /// which was a claim about lib/ never being touched by this port. regist.c carries a PP398
+    /// marker, so the claim was false about this very file. What still holds is the narrower half:
+    /// the managed side has no fixed buffer to overrun, so it inherits the bytes and not the bug,
+    /// and asserting the C still reads this way is what stops that claim going stale. Whether the C
+    /// is repaired too is open, and the author's, under PP483.
     /// </summary>
     public static bool GuardsUseThePayloadSize(string text)
     {

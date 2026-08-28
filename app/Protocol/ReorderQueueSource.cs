@@ -9,11 +9,13 @@ namespace ChiakiNg.Protocol;
 /// chiaki_reorder_queue_drop and chiaki_reorder_queue_peek are the two functions of that module
 /// the C suite never calls, and both are broken - drop announces an element to the callback and
 /// then leaves it in the queue, and peek writes through a seq_num pointer that takion hands it as
-/// NULL. Neither is fixed here. lib/ is the half of this project that is not being ported, and
-/// every drift check in this port asserts that the managed side matches it; patching it would
-/// leave those checks asserting agreement with a libchiaki nobody else runs, which is a worse
-/// thing to be wrong about than two functions on a path that is reached only when the data queue
-/// is non-empty at the moment crypt initialises.
+/// NULL. Neither is fixed here, and PP483 narrowed the reason for that. The port does patch lib/:
+/// files under lib/src carry markers naming this port's own repairs, and the practice is to move
+/// the managed model and its assertions in the same commit, so the drift check holds the pair
+/// together rather than being broken by it. So repairing these two is not impossible, only
+/// unchosen - a local patch does still diverge from the libchiaki everyone else runs, reporting
+/// upstream is not this project's to send, and the five predicates below with PP109's five C
+/// assertions are what a repair would have to move. That call is the author's, not this file's.
 ///
 /// So the behaviour is reproduced, and the ACCEPTANCE is what gets asserted. Each fact below is
 /// a reason the port behaves as it does. If upstream repairs one, the reason is gone and the

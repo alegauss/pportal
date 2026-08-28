@@ -460,6 +460,7 @@
 - ✅ **PP443** **three backlog lines state a line total no filename anchors, and all three are stale - one by 561** — Three stale totals restated as one number per file so the recount checks them, and a guard that reports any line total no claim covers - which found a fourth, correct and uncheckable.
 - ✅ **PP447** **the two sections declaring a remaining query state its count in prose, and one of the two is stale** — Both stated counts are held against the query that answers them, run over the tree - and the count may be stated outside the section that declares the fence, as PP33's is.
 - ✅ **PP465** **one selftest asserts a 400ms deadline within 30ms, and its design forces two waits that can each overshoot a quantum** — the wake moves to 300 of 2000 so the bound sits 150ms from a correct wait and from a per-wake one, against two scheduler quanta of jitter.
+- ✅ **PP483** **two lib/ defects are recorded not repaired because this port does not edit lib/, and 20 files in lib/src are edited** — Both rationales now say what is true, and a guard over app/ goes red on any reason resting on lib/ being untouched, with the census that falsifies it asserted.
 
 ## Block H — Performance and telemetry
 
