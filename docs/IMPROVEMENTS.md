@@ -315,28 +315,6 @@ flag, its count loop is guarded by the return above it, peek writes both out-poi
 where pull guards its own, and takion still passes NULL and still drops on a bad MAC.
 Repair any upstream and the port's copy becomes the divergence, on the next run.
 
-### §PP294 The control channel, on its own
-
-The second of PP28's three. ctrl.c is the longest at 1763 lines and carries the most
-message types - the control connection a session opens alongside the stream, over which
-the console reports state changes, accepts requests and answers keepalives.
-
-None of it is on the frame path, which is the useful thing about it. PP27 is judged on
-latency because every millisecond takion adds is one the picture is late by; this is
-judged on whether the right message was sent in the right state, and a millisecond here
-costs nothing. So the measurement that matters is a recorded exchange compared message
-for message, not a timing histogram.
-
-The message types are the work rather than the line count. A control channel is a switch
-over a wire format, and the risk is a type handled in the wrong state rather than an
-algorithm translated wrongly - which means the oracle has to drive states as well as
-messages, and a table of message-in, message-out pairs would pass while missing the
-ordering entirely.
-
-It is also the file most likely to hold behaviour nobody has exercised. A control
-message that arrives once in a thousand sessions is one nobody has watched, and the C is
-the only record of what it does.
-
 ### §PP295 The file every deletion is waiting on
 
 The third of PP28's three, and the one that decides when C starts leaving this build.
