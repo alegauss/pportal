@@ -433,6 +433,7 @@
 - ✅ **PP507** **the session teardown runs ten steps in a fixed order and hands freeaddrinfo the NULL a PSN session leaves** — The nine steps are managed in order, with the mutex outliving its users and the unguarded freeaddrinfo named as a reliance rather than repaired.
 - ✅ **PP508** **the seam joins nine call sites to seven methods and nothing says the managed flow ever calls all seven** — Three runs of the flow invoke exactly the seam's seven, with both socket ports seen and Fini reached only by the failing runs - which one good run would have reported as six.
 - ✅ **PP340** **the PSN path lives in session.c's nine holepunch call sites, so PP33's deletion would take remote play with it** — The managed flow owns the PSN sequence: PP479 drives it, PP502 to PP507 settle the rules around it, and PP508 shows by running it that all seven seam methods are reached.
+- ✅ **PP509** **three deferred lines are set aside for a console the project has, so nothing can offer them to a caller who has one** — PP50, PP72 and PP76 are roadmap lines declaring console, and a check refuses any set-aside reason naming a requirement this project declares.
 
 ## Block G — Test discipline
 
