@@ -252,8 +252,18 @@ static void takion_send_buffer_resend(ChiakiTakionSendBuffer *send_buffer)
 				chiaki_mutex_unlock(&send_buffer->mutex);
 				chiaki_takion_send_buffer_ack(send_buffer, packet->seq_num, ack_seq_nums, &ack_seq_nums_count);
 				chiaki_mutex_lock(&send_buffer->mutex);
-				if(i > 0)
-					i-= 1;
+				// PP476: the scan restarts rather than stepping back one.
+				//
+				// The ack above removes every packet at or before this one's sequence number, and the
+				// buffer is in send order - so packets[i] carries the highest seq_num of the prefix and
+				// the ack takes indices 0..i, not just this entry. Stepping back one therefore left the
+				// packets that shifted down unexamined until the next wakeup, and PP464's guard made
+				// index 0 a further special case on top of that.
+				//
+				// SIZE_MAX wraps to 0 on the loop's increment, which is the trick PP464 established one
+				// step smaller. It terminates because every pass through here removes at least one
+				// packet from a buffer of at most TAKION_SEND_BUFFER_SIZE.
+				i = SIZE_MAX;
 				continue;
 			}
 			CHIAKI_LOGI(send_buffer->log, "Takion Send Buffer re-sending packet with seqnum %#llx, tries: %llu", (unsigned long long)packet->seq_num, (unsigned long long)packet->tries);

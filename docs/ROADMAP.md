@@ -32,7 +32,6 @@
 - ⏳ **PP33** (deps: PP24 ✅, PP293 ✅, PP340) **HTTP and JSON in the core are curl and json-c, two vendored dependencies for what the runtime already does** — the deletion: holepunch.c is the only unit needing either library, and session.c is its only caller. → §PP33
 - 📋 **PP295** (deps: PP27 ⏳, PP297 ✅) **streamconnection.c is 1531 lines and is the last C caller of the video receiver, so every deletion below waits on it** — PP286 to PP291 ported the frame path bottom-up and none of it removed C, because this is what still calls the native receiver. → §PP295
 - 📋 **PP340** (deps: —) **the PSN path lives in session.c's nine holepunch call sites, so PP33's deletion would take remote play with it** — the four sockets it named have landed; what is left is the flow - session.c's nine call sites still drive the offer, the punch, the regist info and the fini. → §PP340
-- 📋 **PP476** (deps: —) **PP464's guarded step-back is in takion's resend loop too, but the ack there removes an unknown number of packets** — dropping the guard fixes index 0 and leaves the multi-removal case, and the loop drops its mutex around the ack it steps back from. → §PP476
 
 ## Block G — Test discipline
 

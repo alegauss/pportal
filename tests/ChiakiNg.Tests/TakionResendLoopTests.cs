@@ -1,4 +1,4 @@
-using ChiakiNg.Native;
+﻿using ChiakiNg.Native;
 using ChiakiNg.Protocol;
 using Xunit;
 
@@ -12,7 +12,8 @@ namespace ChiakiNg.Tests;
 /// packet rather than dropping it - the one place this code lies to the rest of the transport on
 /// purpose.
 ///
-/// And it carries PP464's idiom at a second site, which is filed rather than fixed.
+/// PP476 then answered the question PP475 filed: the ack removes the whole prefix, so the step back was
+/// wrong at every index and the scan restarts instead.
 /// </summary>
 public class TakionResendLoopTests
 {
@@ -129,23 +130,26 @@ public class TakionResendLoopTests
     }
 
     /// <summary>
-    /// PP464'S IDIOM AT A SECOND SITE: the step back after a removal is guarded, so index 0 is skipped.
+    /// PP476: THE SCAN RESTARTS after a give-up, because the ack removes the whole prefix.
     ///
-    /// True means the defect is present. PP464 fixed the identical spelling in discovery's host drop, so
-    /// this asserts the pattern is still here rather than pretending it is new - and it is filed rather
-    /// than fixed, because the ack may remove more than one packet and PP464's one-step answer does not
-    /// obviously carry.
+    /// PP475 filed this as PP464's idiom at a second site. Reading the ack made the answer bigger than
+    /// the guard: it removes every packet at or before the sequence number, and the buffer is in send
+    /// order, so acking index i removes indices 0..i. A one-step back was wrong at EVERY index, not
+    /// only at zero - so PP464's unguarded decrement was never the right repair here.
     /// </summary>
     [Fact]
-    public void TheStepBackCarriesPP464sIdiom()
+    public void TheScanRestartsAfterAGiveUp()
     {
+        // The arithmetic that makes a one-step back wrong.
+        Assert.Equal(1, TakionResendLoop.AckedByGivingUpAt(0));
+        Assert.Equal(4, TakionResendLoop.AckedByGivingUpAt(3));
+
         if (Source() is not { } source || TakionResendLoop.ResendBody(source) is not { } body)
             return;
 
         Assert.True(
-            TakionResendLoop.TheStepBackIsGuardedLikePP464sWas(body),
-            "the guarded step back is gone, so the filed fix has landed and this assertion should "
-                + "invert like PP464's did");
+            TakionResendLoop.TheScanRestartsAfterAGiveUp(body),
+            "the give-up no longer restarts the scan, or the stepped-back spelling is back beside it");
     }
 
     /// <summary>PP272: and the readers say no about nothing.</summary>
@@ -157,6 +161,6 @@ public class TakionResendLoopTests
         Assert.Null(TakionResendLoop.DefineIn("", "TAKION_DATA_RESEND_TRIES_MAX"));
         Assert.False(TakionResendLoop.TheTwoWaitsAreStillDifferent(""));
         Assert.False(TakionResendLoop.GivingUpStillAcks(""));
-        Assert.False(TakionResendLoop.TheStepBackIsGuardedLikePP464sWas(""));
+        Assert.False(TakionResendLoop.TheScanRestartsAfterAGiveUp(""));
     }
 }

@@ -405,6 +405,7 @@
 - ✅ **PP474** **three paths in takion's postpone lose a datagram it owns, and the array is never freed if the cipher never arrives** — both early returns free the buffer the dispatcher let go of, and the teardown releases anything still postponed - so a session dying before the cipher leaks nothing.
 - ✅ **PP475** **takion's resend loop is unported: the two waits, the try limit, and that giving up acks the packet to itself** — the resend loop is modelled: a timeout with packets and none without, the strictly-greater due test, and the give-up that takes the console's own ack path.
 - ✅ **PP477** **takion's socket setup is unported and four of its logs name IP_MTU_DISCOVER where the call sets IP_DONTFRAGMENT** — the socket is modelled with its two branches and the window it buffers to, and all four fragment-bit logs now name the option the call sets.
+- ✅ **PP476** **PP464's guarded step-back is in takion's resend loop too, but the ack there removes an unknown number of packets** — the scan restarts after a give-up, because the ack removes every packet at or before that sequence number and the buffer is in send order.
 
 ## Block G — Test discipline
 

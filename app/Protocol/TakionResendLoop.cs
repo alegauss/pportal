@@ -158,21 +158,36 @@ public static class TakionResendLoop
     }
 
     /// <summary>
-    /// PP464's idiom, at a second site: whether the step back after a removal is still guarded, so
-    /// index 0 is skipped.
+    /// PP476: whether the scan restarts after a give-up rather than stepping back.
     ///
-    /// True means the defect is present. PP464 fixed the identical spelling in discovery's host drop and
-    /// its reasoning - a size_t decrement wraps and the increment brings it back - applies here too. Not
-    /// fixed, because the ack removes every packet at or before the sequence number and may remove more
-    /// than one, so whether ONE step back is the right repair is a question PP464 did not have to ask.
+    /// PP475 filed this as PP464's idiom at a second site and PP476 read the ack, which made the answer
+    /// bigger than the guard: the ack removes every packet at or before the sequence number, the buffer
+    /// is in send order, so acking index i removes the whole prefix 0..i. Stepping back ONE was wrong at
+    /// every index, not only at zero - so the repair is a restart and not PP464's unguarded decrement.
+    ///
+    /// Both halves: the restart is there and the old step back is gone. A predicate looking only for the
+    /// restart would pass with both spellings present.
     /// </summary>
-    public static bool TheStepBackIsGuardedLikePP464sWas(string resendBody)
+    public static bool TheScanRestartsAfterAGiveUp(string resendBody)
     {
         ArgumentNullException.ThrowIfNull(resendBody);
 
         string text = resendBody.Replace("\r\n", "\n", StringComparison.Ordinal);
 
-        return text.Contains("if(i > 0)", StringComparison.Ordinal)
-            && text.Contains("i-= 1;", StringComparison.Ordinal);
+        return text.Contains("i = SIZE_MAX;", StringComparison.Ordinal)
+            && !text.Contains("if(i > 0)", StringComparison.Ordinal)
+            && !text.Contains("i-= 1;", StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// How many packets an ack at this index removes: the whole prefix, because the buffer is in send
+    /// order and the ack takes everything at or before the sequence number.
+    ///
+    /// PP476's finding as arithmetic. It is what makes a one-step back wrong rather than merely short.
+    /// </summary>
+    public static int AckedByGivingUpAt(int index)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(index);
+        return index + 1;
     }
 }
