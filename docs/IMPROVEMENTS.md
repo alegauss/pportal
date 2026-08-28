@@ -391,6 +391,28 @@ make quietly inside another task.
 
 ## Block G — Test discipline
 
+### §PP484 The bound that makes a dead guard safe
+
+request_header_format bounds its two guards with payload_size, the size of the BODY, not
+with buf_size, the capacity it writes into. RegistRequest records that already. What
+nothing records is what happens past the guard.
+
+The caller passes a 0x100 stack array and a payload_size always 0x1e0 or more, so `cur
+>= payload_size` cannot fire for a 256-byte buffer. snprintf returns the length it WOULD
+have written, so a truncated head leaves cur above 256 and the guard waves it through.
+Line 150 then computes `size_t s = buf_size - cur`, which wraps, and line 151 writes at
+buf + cur, past the end of the array, with s bounding nothing.
+
+It is unreachable, and the arithmetic is why: the fixed template is 104 bytes,
+request_path at most 21, regist_local_addr is char[INET6_ADDRSTRLEN] so at most 45, and
+%llu at most 20. Worst case 190 of 256, with 66 bytes of slack.
+
+So nothing needs patching, and this is not filed as a defect. What is missing is that
+190 is load-bearing and written nowhere - a longer User-Agent, one more header, or a
+path that grows would eat the slack silently, and the first thing to notice would be the
+write. That bound belongs in an assertion over the format strings, beside the predicate
+that already reads this function.
+
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed

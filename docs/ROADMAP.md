@@ -36,6 +36,8 @@
 
 ## Block G — Test discipline
 
+- 📋 **PP484** (deps: —) **the two dead guards in request_header_format are harmless only because the head cannot exceed 190 of its 256 bytes** — Past 256 the size_t subtraction on line 150 wraps and the write moves off a stack array, so the bound that makes it unreachable is load-bearing and unasserted. → §PP484
+
 ## Block H — Performance and telemetry
 
 - ⏳ **PP46** (deps: PP42 ✅, PP63) **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — A Chromium leaving the build should be visible in cold start and in megabytes, and stating it without measuring is how a port collects folklore. → §PP46
