@@ -410,6 +410,7 @@
 - ✅ **PP479** **nothing managed owns the PSN flow: the order, the guards and the state are all modelled and nothing drives them** — a managed flow drives PP460's order against the nine asks as an interface, applies each guard, and holds the four pieces that outlive the block but not the fifth.
 - ✅ **PP480** **PP479's interface is joined to nothing, so a tenth holepunch call site could arrive with no method to answer it** — the nine sites are joined to the seven methods that answer them, with the two collapses named and the socket's port-type distinction asserted.
 - ✅ **PP485** **takion.c mallocs 1500 bytes per datagram and reallocs it down, on the thread the whole stream rides on** — The receive buffer is rented once and reused, so ten thousand datagrams allocate zero where the C mallocs and reallocs each one, with a copy only where postpone keeps a packet.
+- ✅ **PP487** **nothing models takion's receive loop, where two once-only transitions and three exits decide what the thread does** — The thread's order is managed over PP485's buffer, with the MAC re-check and the postpone flush firing once each and their differing guards asserted against the C.
 
 ## Block G — Test discipline
 
