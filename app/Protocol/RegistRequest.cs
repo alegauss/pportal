@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using ChiakiNg.Session;
@@ -75,6 +76,58 @@ public static partial class RegistRequest
 
         return Encoding.ASCII.GetBytes(sb.ToString());
     }
+
+    /// <summary>request_tail, without the NUL regist.c writes and then steps back over.</summary>
+    public const int TailLength = 2;
+
+    /// <summary>The longest of the three paths regist.c can POST to.</summary>
+    public static Path LongestPath()
+        => Enum.GetValues<Path>().OrderByDescending(p => PathFor(p).Length).First();
+
+    /// <summary>
+    /// The longest RP-Version value any target speaks, or null where no target has one.
+    ///
+    /// Taken from <see cref="RpVersion"/> rather than listed again here - it is the translation of
+    /// chiaki_rp_version_string, and a second copy of those four strings is a second thing to keep
+    /// right.
+    /// </summary>
+    public static string? LongestRpVersion()
+        => Enum.GetValues<ChiakiTarget>()
+            .Select(RpVersion.StringFor)
+            .Where(v => v is not null)
+            .OrderByDescending(v => v!.Length)
+            .FirstOrDefault();
+
+    /// <summary>The longest address the array regist.c declares can hold, as characters.</summary>
+    public static string LongestLocalAddress()
+        => new('f', RegistRequestSource.LocalAddressCapacity - 1);
+
+    /// <summary>
+    /// What regist.c's cursor is at its worst, at the moment line 150 subtracts it.
+    ///
+    /// PP484: THIS IS THE NUMBER THE FUNCTION IS SAFE BY. request_header_format bounds its two
+    /// guards with payload_size - the size of the body, always 0x1e0 or more - rather than with the
+    /// capacity it writes into, so `cur >= payload_size` cannot fire for a 256-byte buffer. snprintf
+    /// returns the length it WOULD have written, so a truncated head would leave cur above the
+    /// capacity and be waved through; `size_t s = buf_size - cur` would then wrap, and line 151
+    /// would write at buf + cur - off the end of a stack array - with s bounding nothing.
+    ///
+    /// It cannot happen, and this is why: the head through Content-Length is at most this long. The
+    /// bound was load-bearing and written down nowhere, which is the whole of PP484 - a longer
+    /// User-Agent, one more header or a path that grew would eat the slack silently, and the first
+    /// thing to notice would be the write.
+    /// </summary>
+    public static int WorstCaseCursorBeforeRpVersion()
+        => Head(LongestPath(), LongestLocalAddress(), ulong.MaxValue, null).Length - TailLength;
+
+    /// <summary>
+    /// How many bytes of the array regist.c touches for the longest head it can build.
+    ///
+    /// One past the head's own length, because the tail is memcpy'd with its NUL and the cursor then
+    /// steps back over it: the byte is written and not counted.
+    /// </summary>
+    public static int WorstCaseWriteExtent()
+        => Head(LongestPath(), LongestLocalAddress(), ulong.MaxValue, LongestRpVersion()).Length + 1;
 }
 
 /// <summary>
@@ -111,6 +164,42 @@ public static partial class RegistRequestSource
     {
         ArgumentNullException.ThrowIfNull(text);
         return [.. PathRegex().Matches(text).Select(m => m.Groups[1].Value)];
+    }
+
+    /// <summary>
+    /// The size of the array regist.c formats the head into, read from its declaration.
+    ///
+    /// PP484: this is the number the whole function is safe by, so it is read rather than assumed.
+    /// Null where the declaration is not there, which is a changed file and not a capacity of zero.
+    /// </summary>
+    public static int? HeaderCapacity(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+
+        Match match = HeaderCapacityRegex().Match(text);
+        if (!match.Success)
+            return null;
+
+        string digits = match.Groups[1].Value;
+        return digits.StartsWith("0x", StringComparison.OrdinalIgnoreCase)
+            ? Convert.ToInt32(digits[2..], 16)
+            : int.Parse(digits, CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>
+    /// INET6_ADDRSTRLEN, which sizes the address the head interpolates.
+    ///
+    /// A platform constant rather than a literal in regist.c, so it cannot be read out of the file -
+    /// what CAN be read is that the array is still sized by it, which
+    /// <see cref="LocalAddressIsSizedByInet6"/> checks. 46 with the terminator, so 45 characters.
+    /// </summary>
+    public const int LocalAddressCapacity = 46;
+
+    /// <summary>Whether the address the head interpolates is still sized by INET6_ADDRSTRLEN.</summary>
+    public static bool LocalAddressIsSizedByInet6(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        return text.Contains("char regist_local_addr[INET6_ADDRSTRLEN]", StringComparison.Ordinal);
     }
 
     /// <summary>Whether a header the port emits is spelled the same way in the C.</summary>
@@ -150,4 +239,7 @@ public static partial class RegistRequestSource
 
     [GeneratedRegex(@"request_path_[a-z0-9_]+\s*=\s*""([^""]+)""")]
     private static partial Regex PathRegex();
+
+    [GeneratedRegex(@"char\s+request_header\s*\[\s*(0[xX][0-9a-fA-F]+|[0-9]+)\s*\]")]
+    private static partial Regex HeaderCapacityRegex();
 }

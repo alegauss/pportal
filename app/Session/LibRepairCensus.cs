@@ -48,7 +48,25 @@ public static partial class LibRepairCensus
         "never edits lib/",
         "cannot edit lib/",
         "does not patch lib/",
+        "lib/ is not this port's to edit",
     ];
+
+    /// <summary>
+    /// Comment prose with its markers dropped and its whitespace collapsed to single spaces.
+    ///
+    /// Matching has to run over this rather than over the raw file, because doc prose WRAPS. The
+    /// copy of the premise in SelfTest.cs survived the first pass of this guard for exactly that
+    /// reason: it reads "lib/ is not" at the end of one line and "this port's to edit" at the start
+    /// of the next, behind a comment marker, so no literal search for the sentence could find it.
+    ///
+    /// This makes the guard a floor and not a proof - it still only knows the phrasings listed
+    /// above. What it no longer does is miss one because of where a line happened to break.
+    /// </summary>
+    public static string Normalise(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        return WhitespaceRegex().Replace(CommentMarkerRegex().Replace(text, " "), " ");
+    }
 
     /// <summary>lib/src, or null outside a checkout.</summary>
     public static string? LocateSource() => SanitizerSource.LocateDirectory(SourceRelativePath);
@@ -118,7 +136,9 @@ public static partial class LibRepairCensus
     public static bool StatesTheFalsePremise(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
-        return FalsePremises.Any(p => text.Contains(p, StringComparison.OrdinalIgnoreCase));
+
+        string flat = Normalise(text);
+        return FalsePremises.Any(p => flat.Contains(p, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>
@@ -146,4 +166,10 @@ public static partial class LibRepairCensus
 
     [GeneratedRegex(@"\bPP[0-9]+\b")]
     private static partial Regex TaskIdRegex();
+
+    [GeneratedRegex(@"(?m)^\s*(///|//|\*)")]
+    private static partial Regex CommentMarkerRegex();
+
+    [GeneratedRegex(@"\s+")]
+    private static partial Regex WhitespaceRegex();
 }

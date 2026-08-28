@@ -118,6 +118,35 @@ public class LibRepairCensusTests
             string.Join(' ', LibRepairCensus.FalsePremises)));
     }
 
+    /// <summary>
+    /// A premise that straddles a line break is caught. The first pass of this guard was not.
+    ///
+    /// The copy in SelfTest.cs read "lib/ is not" at the end of one line and "this port's to edit"
+    /// at the start of the next, behind a comment marker, so no literal search over the raw file
+    /// could find it - and none did, for a whole commit. Normalising first is what closed that, and
+    /// it is why the guard reads flattened prose rather than the file.
+    /// </summary>
+    [Fact]
+    public void APremiseThatWrapsAcrossLinesIsStillCaught()
+    {
+        const string wrapped =
+            "\t\t\t\t// Recorded, not repaired: lib/ is not\r\n"
+            + "\t\t\t\t// this port's to edit, and the managed side has no fixed buffer.\r\n";
+
+        Assert.True(LibRepairCensus.StatesTheFalsePremise(wrapped));
+    }
+
+    /// <summary>And the same sentence unwrapped, so it is the claim being caught and not the wrap.</summary>
+    [Fact]
+    public void TheSameClaimOnOneLineIsCaughtToo()
+        => Assert.True(LibRepairCensus.StatesTheFalsePremise(
+            "// Recorded, not repaired: lib/ is not this port's to edit."));
+
+    /// <summary>Normalising drops the comment markers and collapses runs of whitespace.</summary>
+    [Fact]
+    public void NormalisingFlattensCommentProse()
+        => Assert.Equal(" one two three", LibRepairCensus.Normalise("/// one   two\n  /// three"));
+
     /// <summary>The id reader takes each task once, in the order it first appears.</summary>
     [Fact]
     public void TheIdReaderTakesEachTaskOnce()

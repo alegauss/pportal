@@ -2599,12 +2599,35 @@ public static class SelfTest
                 Check("the head ends on a blank line",
                     headText.EndsWith("\r\n\r\n", StringComparison.Ordinal));
 
-                // And the two guards that are dead as written. Recorded, not repaired: lib/ is not
-                // this port's to edit, and the managed side has no fixed buffer to overrun - so it
-                // inherits the bytes without the bug. This is what keeps that claim from going
-                // stale if the C is ever corrected.
+                // And the two guards that are dead as written. Recorded and not repaired, because
+                // the managed side has no fixed buffer to overrun and so inherits the bytes without
+                // the bug - PP483 removed the other reason this used to give, which was a claim
+                // about lib/ never being touched by this port.
                 Check("regist.c still bounds the head with the payload size, which cannot fire",
                     RegistRequestSource.GuardsUseThePayloadSize(rc));
+
+                // PP484: what those dead guards leave load-bearing. snprintf returns the length it
+                // WOULD have written, so a cursor past the capacity would be waved through, wrap
+                // regist.c's `size_t s = buf_size - cur`, and put line 151's write off the end of a
+                // stack array with nothing bounding it. It cannot get there - and the margin that
+                // says so was arithmetic nobody had written down until this asserted it.
+                int? declared = RegistRequestSource.HeaderCapacity(rc);
+                Check("regist.c still declares the head buffer with a size that can be read",
+                    declared is not null);
+
+                Check("the address the head interpolates is still sized by INET6_ADDRSTRLEN",
+                    RegistRequestSource.LocalAddressIsSizedByInet6(rc));
+
+                if (declared is { } capacity)
+                {
+                    int cursor = RegistRequest.WorstCaseCursorBeforeRpVersion();
+                    Check("the worst-case cursor stays inside the buffer before the subtraction",
+                        cursor < capacity, $"{cursor} of {capacity}");
+
+                    int extent = RegistRequest.WorstCaseWriteExtent();
+                    Check("the worst-case head fits the buffer regist.c declares",
+                        extent <= capacity, $"{extent} of {capacity}");
+                }
             }
 
             string? registFile = SanitizerSource.LocateRelative(DriftCorpus.RegistRelativePath);
