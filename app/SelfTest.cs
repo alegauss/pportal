@@ -1996,10 +1996,22 @@ public static class SelfTest
             // that a per-wake budget still lands near the deadline, and the check passes for the
             // wrong reason. What separates the two implementations is the LAST wait - the one with
             // nothing left to wake it - and its length is the whole remaining budget or the whole
-            // original one. So the wake is at 60 of 400, and a per-wake budget ends at 460.
+            // original one. So the wake is at 300 of 2000, and a per-wake budget ends at 2300.
+            //
+            // PP465: THE NUMBERS ARE SCALED, and the scale is the assertion's whole robustness. This
+            // ran at 60 of 400 with a bound of 430, and failed twice in sixty runs at 432 and 433ms.
+            // Nothing was wrong with the wait: the design forces exactly TWO Monitor.Wait calls - the
+            // one the pulse interrupts and the one covering the remainder - and each may overshoot by
+            // a scheduler quantum, which is 15.6ms on Windows by default. Two of those is 31ms against
+            // a 30ms tolerance, so the bound sat just inside the worst case its own shape produces.
+            //
+            // Widening the bound was not available: correct ends at 400 and a per-wake budget at 460,
+            // so anything past 430 stops telling them apart. Scaling does work, because the jitter is
+            // two quanta whatever the deadline is while the gap between right and wrong grows with it.
+            // At 2000 the gap is 300 and the jitter is still about 31.
             var pulseOnce = new Thread(() =>
             {
-                Thread.Sleep(60);
+                Thread.Sleep(300);
                 lock (waitGate) Monitor.PulseAll(waitGate);   // predicate still false
             })
             { IsBackground = true };
@@ -2008,12 +2020,14 @@ public static class SelfTest
             pulseOnce.Start();
             bool held;
             lock (waitGate)
-                held = Waiting.Until(waitGate, () => open, TimeSpan.FromMilliseconds(400));
+                held = Waiting.Until(waitGate, () => open, TimeSpan.FromMilliseconds(2000));
             clock.Stop();
 
+            // 2150: 150ms above a correct wait and 150 below a per-wake one, which is five times the
+            // measured jitter in both directions.
             Check("a wait woken partway still ends at its deadline, not one timeout later",
-                !held && clock.ElapsedMilliseconds < 430,
-                $"{(held ? "predicate" : "timeout")} after {clock.ElapsedMilliseconds}ms of 400");
+                !held && clock.ElapsedMilliseconds < 2150,
+                $"{(held ? "predicate" : "timeout")} after {clock.ElapsedMilliseconds}ms of 2000");
 
             // The other direction: a predicate that comes true is not made to wait out the clock.
             open = false;
