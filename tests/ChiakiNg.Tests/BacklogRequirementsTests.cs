@@ -129,6 +129,36 @@ public class BacklogRequirementsTests(ITestOutputHelper output)
                 + string.Join(", ", gaps.Select(g => $"{g.Id} ({g.Requirement})")));
     }
 
+    /// <summary>
+    /// PP501: PP27 declares the console its remaining half needs.
+    ///
+    /// The line PP486's check was built for, arriving a second time and from further away. PP481
+    /// said "a live console" in its own prose and declared nothing; PP27 said "timed against the C
+    /// on one capture", which names no hardware at all and is the same fact - a capture of takion's
+    /// datagrams needs a session reaching the stream. So `pick` answered PP27 for twelve consecutive
+    /// iterations, rightly for eleven of them, and would have gone on answering it.
+    ///
+    /// Named on this line and not left to the sweep above, because the sweep passes the moment the
+    /// prose is reworded and this does not: the claim is that PP27 in particular is not startable
+    /// here, and it stops being true when someone plugs a console in and passes --have.
+    /// </summary>
+    [Fact]
+    public void PP27DeclaresTheConsoleItsTimingRunNeeds()
+    {
+        if (BacklogRequirements.LocateRoadmap() is not { } roadmapPath)
+            return;
+
+        string? line = File.ReadAllLines(roadmapPath)
+            .FirstOrDefault(l => l.Contains("**PP27**", StringComparison.Ordinal));
+
+        // Gone from the roadmap means shipped, and a shipped line's requirement was met.
+        if (line is null)
+            return;
+
+        Assert.Contains("console", BacklogRequirements.Used(line));
+        Assert.Empty(BacklogRequirements.Gaps(line));
+    }
+
     /// <summary>A line whose prose names hardware and whose group is empty is the gap.</summary>
     [Fact]
     public void AGapIsWhereTheProseSaysItAndTheGroupDoesNot()
