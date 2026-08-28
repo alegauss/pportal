@@ -364,6 +364,34 @@ Until then PP33 is correctly blocked, and `remaining PP33` reads 420. Reading th
 number as the size of the job is what its own section warns against: it is one file, and
 the work is at the other end.
 
+### §PP474 What the postpone forgets to free
+
+`takion_handle_packet` says what it owns: "ownership of this buf is taken". Every branch
+honours it. A failed MAC frees, an unknown type frees, a control message hands the
+buffer on, and an AV packet with the cipher available hands it on. The fifth branch
+calls `takion_postpone_packet`, which transfers ownership into an array - or returns
+without freeing.
+
+Three losses, in increasing order of reachability.
+
+The calloc that fails returns immediately. One datagram, under memory pressure only.
+
+The array that is full logs "no space left" and returns. It is 32 entries, and the
+window is the gap between the first AV packet and `gkcrypt_remote` being set - a network
+round trip, which a console sending video at 60fps fills in half a second. One datagram
+per packet after the thirty-second.
+
+And the cipher that never arrives loses all of them. The flush is guarded on
+`gkcrypt_remote`, and the thread's teardown frees the send buffer, both reorder queues
+and the socket - not this array. Any connect that fails after the first AV packet and
+before the cipher leaks the array plus everything in it. That is the ordinary failure,
+not an exotic one.
+
+The fix is a free on each early return and a flush-or-free at teardown, filed rather
+than shipped because nothing here can exercise these paths: a free in the wrong place is
+a double free only a console would find. PP473 asserts each absence, so the assertions
+invert as they land.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry
