@@ -31,7 +31,7 @@
 - 📋 **PP32** (deps: PP28) **audio decode is Opus in lib and the microphone's noise and echo stages are speexdsp in the Qt client** — Managed Opus exists and speexdsp has none; the conversion between them is SDL_AudioCVT rather than speex, so the audio path is three dependencies and not two. → §PP32
 - ⏳ **PP33** (deps: PP24 ✅, PP293 ✅, PP340) **HTTP and JSON in the core are curl and json-c, two vendored dependencies for what the runtime already does** — the deletion: holepunch.c is the only unit needing either library, and session.c is its only caller. → §PP33
 - 📋 **PP295** (deps: PP27 ⏳, PP297 ✅) **streamconnection.c is 1531 lines and is the last C caller of the video receiver, so every deletion below waits on it** — PP286 to PP291 ported the frame path bottom-up and none of it removed C, because this is what still calls the native receiver. → §PP295
-- 📋 **PP340** (deps: —) **the PSN path lives in session.c's nine holepunch call sites, so PP33's deletion would take remote play with it** — the four sockets it named have landed; what is left is the flow - session.c's nine call sites still drive the offer, the punch, the regist info and the fini. → §PP340
+- 📋 **PP340** (deps: —) **the PSN path lives in session.c's nine holepunch call sites, so PP33's deletion would take remote play with it** — PP460 gave the order and the guards and PP478 the state; what is left is a managed object that owns the flow, which is implementation and not another reading. → §PP340
 
 ## Block G — Test discipline
 
