@@ -386,6 +386,33 @@ Until then PP33 is correctly blocked, and `remaining PP33` reads 420. Reading th
 number as the size of the job is what its own section warns against: it is one file, and
 the work is at the other end.
 
+### §PP469 The lock order nobody has swept for
+
+`ctrl_failed` takes `state_mutex`. The ctrl thread calls it seven times: six while
+holding `notif_mutex`, and one that unlocks `notif_mutex`, calls, and relocks. The
+session thread does what the seventh does - it releases `state_mutex` before calling
+`ctrl_message_set_fallback_session_id` and retakes it afterwards.
+
+So there is a discipline that two places follow and six do not, and the question this
+line asks is whether the six can deadlock.
+
+A cycle needs somebody acquiring the two in the opposite order: holding `state_mutex`
+and then taking `notif_mutex`. Nothing found so far does. `chiaki_ctrl_set_login_pin`
+takes only `notif_mutex`; `ctrl_failed` takes only `state_mutex`; and the one
+session-thread path that crosses from state into ctrl releases first. On that evidence
+the six are safe and the two careful sites are belt-and-braces.
+
+What makes this a line rather than a conclusion is that "nothing found so far" is not a
+sweep. The ctrl is reachable from the session thread, the UI thread and its own;
+`state_mutex` is held across large stretches of session.c; and a single call from inside
+one of those stretches into anything that takes `notif_mutex` closes the cycle.
+Establishing that none exists means reading every path into ctrl, not this file.
+
+PP468 wrote down what such a sweep needs: which mutex guards which field, that they sit
+on different objects, the seven call sites and which one is the exception. The answer is
+either an assertion that no reverse acquisition exists, or six call sites that should
+look like the seventh.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry
