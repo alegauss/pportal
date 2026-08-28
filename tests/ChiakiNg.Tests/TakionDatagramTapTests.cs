@@ -48,24 +48,25 @@ public class TakionDatagramTapTests
         using (new TakionDatagramTap(capture, clock.Read))
         {
             byte[] head = Datagram(TakionDispatch.Video, ChiakiMessageTap.TakionHeadBytes);
+
+            // PP515: the type is the DATAGRAM'S length, and the head is all that crosses.
             ChiakiMessageTap.Emit(
-                ExchangeTapDirection.Received,
-                ChiakiMessageTap.TakionChannel,
-                (ushort)TakionDispatch.Video,
-                head);
+                ExchangeTapDirection.Received, ChiakiMessageTap.TakionChannel, 1300, head);
 
             clock.Now = 5_016_000;
             ChiakiMessageTap.Emit(
-                ExchangeTapDirection.Received,
-                ChiakiMessageTap.TakionChannel,
-                (ushort)TakionDispatch.Video,
-                head);
+                ExchangeTapDirection.Received, ChiakiMessageTap.TakionChannel, 1300, head);
         }
 
         Assert.Equal(2, capture.Datagrams.Count);
         Assert.Equal(0, capture.Datagrams[0].ArrivalMicroseconds);
         Assert.Equal(16_000, capture.Datagrams[1].ArrivalMicroseconds);
         Assert.Equal(TakionDispatch.Video, capture.Datagrams[0].BaseType);
+
+        // PP515: the length the tap carried, not the head's - which is what a real run recorded
+        // two thousand times before this arrived.
+        Assert.Equal(1300, capture.Datagrams[0].Length);
+        Assert.NotEqual(ChiakiMessageTap.TakionHeadBytes, capture.Datagrams[0].Length);
     }
 
     /// <summary>
@@ -135,6 +136,7 @@ public class TakionDatagramTapTests
         Assert.True(TakionDatagramTapSource.TheEmitIsAboveTheMacGate(handle));
         Assert.True(TakionDatagramTapSource.TheEmitIsGuardedByTheActiveCheck(handle));
         Assert.True(TakionDatagramTapSource.TheHeadIsTruncatedAtTheEmit(handle));
+        Assert.True(TakionDatagramTapSource.TheTypeCarriesTheLength(handle));
     }
 
     /// <summary>

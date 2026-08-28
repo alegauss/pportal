@@ -148,10 +148,12 @@ CHIAKI_EXPORT void chiaki_message_tap_emit(
  * protocol, a datagram's belongs to the network, so a corpus built to be replayed message-for-
  * message has nothing to hold these with. What they are for is PP27's timing run.
  *
- * THE `type` IS THE BASE TYPE - the low nibble of byte zero, which is what PP490's dispatch decides
- * on. It follows the convention senkusha and stream set, of a takion field rather than a ctrl
- * message type, and it costs nothing: a number needs no formatting, where a per-datagram string
- * would allocate on the one path PP44 budgeted at zero.
+ * THE `type` IS THE DATAGRAM'S LENGTH, and PP515 is why. PP511 put the base type there, following
+ * the convention senkusha and stream set - and the first real capture recorded a length of 18 for
+ * all two thousand of its datagrams, because the payload handed over is the truncated head and a
+ * consumer can only measure what it is given. The base type is byte zero OF that head and is read
+ * from there; the length is recoverable from nowhere else and fits a uint16, since 1500 is the
+ * buffer PP485 rents. A datagram larger than a uint16 is clamped rather than wrapped.
  *
  * AND THE PAYLOAD IS A TRUNCATED HEAD, not the datagram. PP510 derived its length from the furthest
  * offset chiaki_takion_packet_mac reads, so it answers the dispatch and the MAC layout both and

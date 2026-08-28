@@ -439,6 +439,7 @@
 - ✅ **PP512** **PP511 fills a capture that lives in memory, so the session PP27 waits for would end with nothing on disk** — The capture writes and reads back as a versioned file, and a writer that owns the tap leaves one on dispose - driven end to end through lib/src's own emit.
 - ✅ **PP513** **a capture can be written and nothing replays one, so the file a session leaves has no managed number beside it** — A written capture reads back and replays through PP500's path at zero allocated bytes, reporting branches and copies - the managed half, with the C's named as the console's.
 - ✅ **PP514** **the datagram capture has no command: the one thing that starts a real session records the other four channels** — One session path records either kind, chosen by a flag, so --capture-datagrams wakes the console and writes PP512's file where --capture-exchange writes PP297's.
+- ✅ **PP515** **every captured datagram records length 18: the emit truncates before the capture sees the real size** — The tap's type carries the datagram's length, so a second real capture reports video at a mean of 1137 bytes and control at 33 where every packet read 18.
 
 ## Block G — Test discipline
 

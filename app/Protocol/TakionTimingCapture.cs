@@ -100,8 +100,16 @@ public sealed class TakionTimingCapture
     /// A monotonic reading. The first one taken becomes the origin, so the file carries no wall
     /// clock and two captures can be compared without one.
     /// </param>
+    /// <param name="datagramLength">
+    /// PP515: the WHOLE datagram's length, which is not <paramref name="datagram"/>'s.
+    ///
+    /// The tap truncates to the head before this sees anything, so a capture measuring what it was
+    /// handed recorded 18 for every packet of its first real run. The length now arrives beside the
+    /// bytes - the tap's type field carries it - and null means "as long as what was handed over",
+    /// which is what a caller with a whole datagram in hand should pass.
+    /// </param>
     /// <returns>Whether it was taken.</returns>
-    public bool Offer(ReadOnlySpan<byte> datagram, long arrivalMicroseconds)
+    public bool Offer(ReadOnlySpan<byte> datagram, long arrivalMicroseconds, int? datagramLength = null)
     {
         if (datagram.IsEmpty)
             return false;
@@ -125,9 +133,14 @@ public sealed class TakionTimingCapture
         }
 
         int head = Math.Min(HeadBytes, datagram.Length);
+
+        // Never shorter than what was handed over: a length that undercut the head would describe a
+        // datagram smaller than the bytes recorded from it.
+        int length = Math.Max(datagramLength ?? datagram.Length, datagram.Length);
+
         datagrams.Add(new CapturedDatagram(
             since,
-            datagram.Length,
+            length,
             datagram[0] & TakionDispatch.BaseTypeMask,
             datagram[..head].ToArray()));
 

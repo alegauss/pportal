@@ -1251,10 +1251,15 @@ static void takion_handle_packet(ChiakiTakion *takion, uint8_t *buf, size_t buf_
 		size_t head = buf_size < CHIAKI_MESSAGE_TAP_TAKION_HEAD
 			? buf_size
 			: (size_t)CHIAKI_MESSAGE_TAP_TAKION_HEAD;
+		// PP515: the `type` carries the DATAGRAM'S LENGTH, not the base type. PP511 put the base
+		// type there and the first real capture showed what that costs: the payload handed over is
+		// the head, so a consumer measuring what it received recorded 18 for all two thousand of
+		// them. The base type is byte zero of that head and is read from there; the length is
+		// recoverable from nowhere else, and fits a uint16 because PP485 rents 1500.
 		chiaki_message_tap_emit(
 				CHIAKI_MESSAGE_TAP_RECEIVED,
 				CHIAKI_MESSAGE_TAP_CHANNEL_TAKION,
-				base_type,
+				(uint16_t)(buf_size > 0xffff ? 0xffff : buf_size),
 				buf,
 				head);
 	}

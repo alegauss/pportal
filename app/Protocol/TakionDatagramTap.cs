@@ -57,7 +57,11 @@ public sealed class TakionDatagramTap : IDisposable
 
         // The reading is taken when the datagram surfaces, not when it is offered: the capture's
         // bounds may refuse it, and a refused arrival still happened.
-        capture.Offer(message.Payload, clock());
+        //
+        // PP515: the type is the datagram's LENGTH, not its base type. The payload here is the
+        // truncated head, so without this every capture recorded the head's length - which is what
+        // the first real run did, two thousand times.
+        capture.Offer(message.Payload, clock(), message.Type);
     }
 
     /// <summary>Uninstalls the tap. The capture keeps what it has.</summary>
@@ -133,9 +137,39 @@ public static class TakionDatagramTapSource
     public static bool TheHeadIsTruncatedAtTheEmit(string handleBody)
     {
         ArgumentNullException.ThrowIfNull(handleBody);
+        return handleBody.Contains("CHIAKI_MESSAGE_TAP_TAKION_HEAD", StringComparison.Ordinal);
+    }
 
-        return handleBody.Contains("CHIAKI_MESSAGE_TAP_TAKION_HEAD", StringComparison.Ordinal)
-            && handleBody.Contains("base_type,", StringComparison.Ordinal);
+    /// <summary>
+    /// PP515: whether the emit's type still carries the datagram's LENGTH rather than its base type.
+    ///
+    /// The whole repair. With the base type there - PP511's shipped convention - a consumer could
+    /// only measure the head it was handed, and the first real capture recorded 18 for all two
+    /// thousand of its datagrams. The base type is byte zero of that head and is read from there.
+    ///
+    /// The clamp is asserted with it: buf_size is a size_t and the field a uint16, so a datagram
+    /// larger than 0xffff has to saturate rather than wrap into a small number that reads as real.
+    /// </summary>
+    public static bool TheTypeCarriesTheLength(string handleBody)
+    {
+        ArgumentNullException.ThrowIfNull(handleBody);
+
+        string text = handleBody.Replace("\r\n", "\n", StringComparison.Ordinal);
+
+        int channel = text.IndexOf("CHIAKI_MESSAGE_TAP_CHANNEL_TAKION,", StringComparison.Ordinal);
+        int payload = text.IndexOf("\n\t\t\t\tbuf,", StringComparison.Ordinal);
+
+        if (channel < 0 || payload < channel)
+            return false;
+
+        // The one argument between the channel and the payload is the type. It has to be the
+        // clamped size, and it has to not be the base type - which is still computed above, for the
+        // switch, so a check that only looked for its absence in the body would never pass.
+        string type = text[channel..payload];
+
+        return type.Contains("(uint16_t)(buf_size > 0xffff ? 0xffff : buf_size)", StringComparison.Ordinal)
+            && !type.Contains("base_type", StringComparison.Ordinal)
+            && text.Contains("switch(base_type)", StringComparison.Ordinal);
     }
 
     /// <summary>The channel name the header declares.</summary>
