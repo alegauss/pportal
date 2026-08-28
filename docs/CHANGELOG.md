@@ -409,6 +409,7 @@
 - ✅ **PP478** **nothing states what the PSN flow holds between its nine calls, and one piece is a pointer to a stack local** — the five pieces and their three lifetimes are stated, with the four calls that must stay inside the registration info's block and the null that means a local session.
 - ✅ **PP479** **nothing managed owns the PSN flow: the order, the guards and the state are all modelled and nothing drives them** — a managed flow drives PP460's order against the nine asks as an interface, applies each guard, and holds the four pieces that outlive the block but not the fifth.
 - ✅ **PP480** **PP479's interface is joined to nothing, so a tenth holepunch call site could arrive with no method to answer it** — the nine sites are joined to the seven methods that answer them, with the two collapses named and the socket's port-type distinction asserted.
+- ✅ **PP485** **takion.c mallocs 1500 bytes per datagram and reallocs it down, on the thread the whole stream rides on** — The receive buffer is rented once and reused, so ten thousand datagrams allocate zero where the C mallocs and reallocs each one, with a copy only where postpone keeps a packet.
 
 ## Block G — Test discipline
 
