@@ -1,4 +1,4 @@
-using ChiakiNg.Protocol;
+﻿using ChiakiNg.Protocol;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -125,6 +125,48 @@ public class CtrlMutexesTests
         Assert.True(CtrlMutexes.TheSessionThreadStillReleasesBeforeCallingCtrl(source));
     }
 
+    /// <summary>
+    /// PP472: five of the six holding calls leave the loop at once, and one does not.
+    ///
+    /// This is the column PP470's choice needs. For the five, releasing notif_mutex around the call
+    /// cannot be observed - there is no "after" inside the loop. For the sixth there is, so the
+    /// six-edit fix is not the uniform one PP470's section first described.
+    /// </summary>
+    [Fact]
+    public void FiveOfTheSixLeaveAtOnceAndOneCarriesOn()
+    {
+        Assert.Equal(6, CtrlMutexes.HoldingCalls.Count);
+        Assert.Equal(5, CtrlMutexes.LeaveImmediately);
+
+        // And every one of the six is a holding call, not the releasing one.
+        Assert.DoesNotContain(CtrlMutexes.HoldingCalls, c => c.ReleasesNotifFirst);
+
+        // The exception is single - Single() throws if the count ever stops being one.
+        CtrlFailedCall exception = CtrlMutexes.TheOneThatCarriesOn;
+        Assert.False(exception.LeavesImmediately);
+
+        // The census and this column agree on the total.
+        Assert.Equal(
+            CtrlMutexes.CtrlFailedCalls,
+            CtrlMutexes.HoldingCalls.Count + CtrlMutexes.CallsThatReleaseFirst);
+    }
+
+    /// <summary>
+    /// And the reason it carries on, read from the C: its break is inside a switch nested in a while,
+    /// so it exits the switch and the iteration continues.
+    /// </summary>
+    [Fact]
+    public void TheExceptionsBreakOnlyLeavesTheSwitch()
+    {
+        if (Ctrl() is not { } source || CtrlMutexes.ThreadBody(source) is not { } body)
+            return;
+
+        Assert.True(
+            CtrlMutexes.TheExceptionIsStillInsideASwitchInAWhile(body),
+            "the rudp submessage switch no longer wraps that ctrl_failed, so the exception may have "
+                + "become like the other five and PP470's choice is simpler than recorded");
+    }
+
     /// <summary>PP272: and the readers say no about nothing.</summary>
     [Fact]
     public void AnEmptySourceSaysNo()
@@ -134,5 +176,6 @@ public class CtrlMutexesTests
         Assert.Equal(0, CtrlMutexes.CountReleasingCallsIn(""));
         Assert.False(CtrlMutexes.CtrlFailedStillTakesStateMutex(""));
         Assert.False(CtrlMutexes.TheSessionThreadStillReleasesBeforeCallingCtrl(""));
+        Assert.False(CtrlMutexes.TheExceptionIsStillInsideASwitchInAWhile(""));
     }
 }

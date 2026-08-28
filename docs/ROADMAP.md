@@ -33,7 +33,7 @@
 - 📋 **PP294** (deps: PP297 ✅) **ctrl.c is 1763 lines of control channel and PP28 sizes it together with two files it does not resemble** — It is the longest of the three and the one with the most message types, and none of them are on the frame path so latency is not the measure. → §PP294
 - 📋 **PP295** (deps: PP27 ⏳, PP297 ✅) **streamconnection.c is 1531 lines and is the last C caller of the video receiver, so every deletion below waits on it** — PP286 to PP291 ported the frame path bottom-up and none of it removed C, because this is what still calls the native receiver. → §PP295
 - 📋 **PP340** (deps: —) **the PSN path lives in session.c's nine holepunch call sites, so PP33's deletion would take remote play with it** — the four sockets it named have landed; what is left is the flow - session.c's nine call sites still drive the offer, the punch, the regist info and the fini. → §PP340
-- 📋 **PP470** (deps: —) **the ctrl channel's two mutexes can deadlock, and the two fixes trade one edit against a changed atomic sequence** — PP469 found the cycle; releasing state around the PIN call is one edit but the four lines after it free the PIN under that lock. → §PP470
+- 📋 **PP470** (deps: —) **the ctrl channel's two mutexes can deadlock, and the two fixes trade one edit against a changed atomic sequence** — PP472 read the six: five leave the loop at once so a release is unobservable, and the sixth carries on inside a rudp switch. → §PP470
 
 ## Block G — Test discipline
 

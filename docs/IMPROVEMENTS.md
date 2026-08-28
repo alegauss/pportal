@@ -392,27 +392,26 @@ PP469 established the cycle. The session thread waits on `state_cond`, which ret
 holding `state_mutex`, and calls `chiaki_ctrl_set_login_pin`, which takes `notif_mutex`.
 The ctrl thread holds `notif_mutex` across most of its loop and calls `ctrl_failed`,
 which takes `state_mutex`. Two threads, opposite orders, both windows wide enough to
-overlap: a ctrl failure arriving while somebody is typing a PIN is a network event
-meeting a human one.
-
-Two fixes are available and they are not equivalent.
+overlap.
 
 Releasing `state_mutex` around the PIN call is one edit and matches what the two careful
-sites in this tree already do - the seventh `ctrl_failed` call and session.c's
-fallback-session-id call both drop their lock before crossing. The problem is what
-follows the call: the next four lines read `session->login_pin` and
-`session->login_pin_size`, free the buffer and clear the flag, all under the lock the
-release would have dropped. The PIN is set by another thread under that same lock, so
+sites already do. The problem is what follows: the next four lines read
+`session->login_pin` and its size, free the buffer and clear the flag, all under the
+lock the release would drop. The PIN is set by another thread under that same lock, so
 dropping it mid-sequence lets a second PIN arrive between the forward and the free.
-PP345 already recorded what a mishandled PIN costs here, and PP335 that a repeated
-prompt is the only signal the last one was wrong.
+PP345 recorded what a mishandled PIN costs and PP335 that a repeated prompt is the only
+signal the last one was wrong.
 
-Making the six `ctrl_failed` calls release `notif_mutex` first is six edits in one
-function and changes no cross-thread sequence, because `ctrl_failed` only touches
-session state. It is the larger diff and the smaller behaviour change.
+Making the six `ctrl_failed` calls release `notif_mutex` first is six edits, and PP472
+read what each relies on. FIVE are followed immediately by leaving the loop - a return,
+or a break landing outside it - so a release around them cannot be observed. The SIXTH
+continues: its break exits `switch(message.subtype)` inside a `while(true)`, and the
+iteration carries on with the rudp submessage it was part-way through. A release there
+lets another thread touch `msg_queue` or `login_pin_entered` mid-iteration, and nothing
+establishes that is safe.
 
-Neither is obviously right, and the choice wants a reading of what the ctrl thread
-relies on `notif_mutex` covering across those six stretches.
+So the choice is one edit that changes an atomic sequence, or five safe edits and a
+sixth needing its own argument.
 
 ## Block G — Test discipline
 

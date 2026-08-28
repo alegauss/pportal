@@ -1,4 +1,4 @@
-using ChiakiNg.Session;
+﻿using ChiakiNg.Session;
 
 namespace ChiakiNg.Protocol;
 
@@ -17,7 +17,13 @@ public enum CtrlMutex
 /// <param name="ReleasesNotifFirst">
 /// Whether the call site drops notif_mutex before calling and retakes it after.
 /// </param>
-public readonly record struct CtrlFailedCall(int Line, bool ReleasesNotifFirst);
+/// <param name="LeavesImmediately">
+/// Whether control leaves the thread's loop straight after the call - a return, or a break that lands
+/// outside it. PP472: five of the six holding calls do, and one does not, which is the whole reason the
+/// two fixes for PP470 are not the trade PP470 first described.
+/// </param>
+public readonly record struct CtrlFailedCall(
+    int Line, bool ReleasesNotifFirst, bool LeavesImmediately);
 
 /// <summary>
 /// PP468, under PP294: the ctrl channel's TWO mutexes, what each guards, and the one call site that
@@ -105,6 +111,67 @@ public static class CtrlMutexes
 
     /// <summary>And how many release notif_mutex around it. One.</summary>
     public const int CallsThatReleaseFirst = 1;
+
+    /// <summary>
+    /// PP472: the six that hold notif_mutex across the call, and whether control leaves the loop
+    /// immediately afterwards.
+    ///
+    /// Five leave - a return, or a break that lands outside the loop - so nothing after them depends on
+    /// notif-guarded state being unchanged, and releasing the lock around the call cannot be observed.
+    /// The sixth does not: its `break` exits the `switch(message.subtype)` inside a `while(true)`, so
+    /// the iteration carries on reading the rudp submessage it was part-way through.
+    ///
+    /// That distinction is the correction PP472 makes to PP470's own section, which described the
+    /// six-edit fix as changing no cross-thread sequence. For five of the six that holds. For the sixth
+    /// it is not established, and it is the one where a release would let another thread touch
+    /// msg_queue or login_pin_entered mid-iteration.
+    /// </summary>
+    public static IReadOnlyList<CtrlFailedCall> HoldingCalls { get; } =
+    [
+        new(495, ReleasesNotifFirst: false, LeavesImmediately: true),   // return NULL
+        new(543, ReleasesNotifFirst: false, LeavesImmediately: true),   // break, outer loop
+        new(660, ReleasesNotifFirst: false, LeavesImmediately: true),   // break, outer loop
+        new(667, ReleasesNotifFirst: false, LeavesImmediately: true),   // break, outer loop
+        new(708, ReleasesNotifFirst: false, LeavesImmediately: false),  // break, only the switch
+        new(769, ReleasesNotifFirst: false, LeavesImmediately: true),   // falls to a break
+    ];
+
+    /// <summary>How many of the holding calls leave the loop at once. Five of six.</summary>
+    public static int LeaveImmediately => HoldingCalls.Count(c => c.LeavesImmediately);
+
+    /// <summary>
+    /// And the one that does not, which any fix has to treat apart.
+    /// </summary>
+    public static CtrlFailedCall TheOneThatCarriesOn
+        => HoldingCalls.Single(c => !c.LeavesImmediately);
+
+    /// <summary>
+    /// Whether the exception's break is still inside a switch nested in a while - which is what makes
+    /// it continue rather than leave.
+    ///
+    /// Read from the C, because the claim is about control flow and a line number is not evidence.
+    /// </summary>
+    public static bool TheExceptionIsStillInsideASwitchInAWhile(string threadBody)
+    {
+        ArgumentNullException.ThrowIfNull(threadBody);
+
+        string text = threadBody.Replace("\r\n", "\n", StringComparison.Ordinal);
+
+        int loop = text.IndexOf("while(true)", StringComparison.Ordinal);
+        if (loop < 0)
+            return false;
+
+        int switched = text.IndexOf("switch(message.subtype)", loop, StringComparison.Ordinal);
+        if (switched < 0)
+            return false;
+
+        int call = text.IndexOf("ctrl_failed(ctrl,", switched, StringComparison.Ordinal);
+        if (call < 0)
+            return false;
+
+        // No closing of the switch between it and the call, so the call is inside it.
+        return !text[switched..call].Contains("\n\t\t\t\t}", StringComparison.Ordinal);
+    }
 
     /// <summary>ctrl.c.</summary>
     public static string? LocateCtrl() => CtrlMessageCensus.LocateCtrl();
