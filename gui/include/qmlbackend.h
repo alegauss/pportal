@@ -303,6 +303,16 @@ private:
     QSet<int> logged_hw_transfer_formats;
     QSet<int> logged_hw_transfer_failures;
     QAtomicInteger<int> pending_recovered_frame = 0;
+    /**
+     * PP528: losses pulled out of the decoder on a frame that never reached the presenter.
+     *
+     * chiaki_ffmpeg_decoder_pull_frame hands its count over and zeroes it in the same call, so
+     * the receiver is the only one who will ever see it. Every return between there and
+     * presentFrame used to drop it, and both of those returns are decoder dependent - an empty
+     * pull, and a hardware-to-software transfer that failed - so the counter went missing
+     * exactly where two decoders differ. Carried here to the next frame that does present.
+     */
+    QAtomicInteger<int> carried_frames_lost = 0;
     Controller *controller_mapping_controller = {};
     QMap<QString, QStringList> controller_guids_to_update = {};
     int controller_mapping_id = -1;

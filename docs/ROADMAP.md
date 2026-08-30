@@ -39,14 +39,13 @@
 
 - ⏳ **PP46** (deps: PP42 ✅, PP63) **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — A Chromium leaving the build should be visible in cold start and in megabytes, and stating it without measuring is how a port collects folklore. → §PP46
 - 💭 **PP303** (deps: PP46 ⏳) **PP46's before costs two multi-gigabyte installs for a number about an application this port is not a version of** — PP277 settled that this is a new application and not upstream's next, so a delta against a Qt build compares two products. → §PP303
-- 📋 **PP528** (deps: —) **the pulled loss count is discarded on the two returns before presentFrame, so frames_dropped under-reports** — Both returns are decoder-dependent - an empty pull and a failed hardware transfer - so the counter goes missing exactly where two decoders differ. → §PP528
 
 ## Block I — NVIDIA path
 
 - 📋 **PP49** (deps: PP11 ⏳, PP47 ✅) **the console sends SDR on most titles and an HDR display shows it flat, with nothing in the client trying** — RTX Video HDR does this conversion on the presented frame, and it is the one vendor feature whose benefit is visible in a still image, not argued from a graph. → §PP49
 - 📋 **PP52** (deps: PP32) **the Qt client runs speex echo cancellation on the CPU, and speexdsp has no managed replacement** — NVIDIA ships GPU noise and echo removal for exactly this, so one task can both improve the voice sent to the console and delete a dependency the port has no answer for. → §PP52
 - 📋 **PP53** (deps: PP11 ⏳, PP41 ✅) **frames arrive with network jitter and are presented against a fixed refresh, so each waits for a vblank it missed** — A variable refresh display can show a frame when it arrives rather than when the panel next allows it, which is latency removed and not an image improved. → §PP53
-- 📋 **PP76** (deps: PP528) (requires: console) **the decoder preference is measured on synthetic frames, and drops under network jitter are what a stream is judged by** — Decode cost follows resolution and bitrate, which a generator carries, but drops follow the network, which no encoder here produces. → §PP76
+- 📋 **PP76** (deps: PP528 ✅) (requires: console) **the decoder preference is measured on synthetic frames, and drops under network jitter are what a stream is judged by** — Decode cost follows resolution and bitrate, which a generator carries, but drops follow the network, which no encoder here produces. → §PP76
 
 ## Block J — Public documentation
 

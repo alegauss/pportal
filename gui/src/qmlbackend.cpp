@@ -995,8 +995,14 @@ void QmlBackend::createSession(const StreamSessionConnectInfo &connect_info)
         }
         int32_t frames_lost;
         ChiakiFfmpegFrame frame = chiaki_ffmpeg_decoder_pull_frame(decoder, &frames_lost);
-        if (!frame.frame)
+        // PP528: the pull zeroes the decoder's counter as it hands it over, so this is the only
+        // place the count will ever be seen. Anything returned below without carrying it is a
+        // loss the record never hears about - see carried_frames_lost.
+        frames_lost += carried_frames_lost.fetchAndStoreRelaxed(0);
+        if (!frame.frame) {
+            carried_frames_lost.fetchAndAddRelaxed(frames_lost);
             return;
+        }
         logDecoderDeliveryStats(static_cast<qint64>(chiaki_time_now_monotonic_us()), frames_lost, frame.recovered);
         logDecoderFramePtsStats(static_cast<qint64>(chiaki_time_now_monotonic_us()), frame.pts, frame.duration);
         if (frame.recovered)
@@ -1005,6 +1011,7 @@ void QmlBackend::createSession(const StreamSessionConnectInfo &connect_info)
         const qint64 prepare_begin_us = static_cast<qint64>(chiaki_time_now_monotonic_us());
         if (!prepareFrameForPresentation(frame, use_opengl_renderer))
         {
+            carried_frames_lost.fetchAndAddRelaxed(frames_lost);
             av_frame_free(&frame.frame);
             return;
         }
