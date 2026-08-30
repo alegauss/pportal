@@ -288,8 +288,8 @@ the five session calls over a real HttpClient, and the shim exposes json-c's acc
 deliberately: an oracle the managed parser is held against (PP215), not a dependency
 waiting to go.
 
-So what remains is not translation. It is session.c no longer asking, and that is a task
-nothing here names yet.
+So what remains is not translation. It is session.c no longer asking, which PP533 now
+names: PP481 gave the nine a managed driver, and a driver is not a deletion.
 
 ### §PP107 The two nobody called
 
@@ -341,6 +341,33 @@ sends.
 
 Deleting is the deliverable, not just porting. The C video receiver leaving the build is
 what makes the five ports beneath it real.
+
+### §PP533 The direction that removes something
+
+§PP33 ends by naming this and not filing it: "what remains is not translation. It is
+session.c no longer asking, and that is a task nothing here names yet." This is that
+task.
+
+session.c takes a ChiakiHolepunchSession from its connect info and asks it for nine
+things, and those nine are the only reason libchiaki links curl and json-c: all 420
+sites the remaining query counts are in holepunch.c, and session.c is its only caller.
+Nothing else in lib needs either library.
+
+PP481 built the managed side of those nine, and it drives the C rather than replacing
+it: NativeHolepunchSession P/Invokes each one, which made six testable and is the
+opposite of a deletion. The seam now exists in both directions, and the one that removes
+something is missing.
+
+What removes something is a managed holepunch that OWNS the session - its own HTTP,
+websocket and JSON - handing session.c the sockets, the address and the port. Some of
+that is here: PP266 performs the five session calls over a real HttpClient, PP231 stated
+the websocket auto-ACK. The rest is the candidate and STUN work, the notification queue
+and the state machine holepunch.c is mostly made of.
+
+Which is why this is one line and not the whole of PP33. What it decides first is the
+direction: session.c stops taking a holepunch handle and starts taking the results, or
+it keeps the handle and the managed side fills it. The first deletes holepunch.c; the
+second keeps it and buys nothing.
 
 ## Block G — Test discipline
 
