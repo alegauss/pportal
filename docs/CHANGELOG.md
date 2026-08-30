@@ -480,6 +480,7 @@
 - ✅ **PP558** **no adapter removes a handled notification, so the second punch completes on the first punch's messages having sent none** — Each wait now takes what it handled off the queue as the C's loops do, and leaves what is not its business, so the data punch cannot finish on the ctrl punch's messages.
 - ✅ **PP559** **the create's wait ends on either of the C's two notifications, leaving the client's own join for the start to find** — The wait runs until both halves have come, which also consumes the client's own join before the start looks - so PP546's departure cannot fire on it.
 - ✅ **PP560** **the punch's eleven steps are declared and nothing reads holepunch.c to check them, so five tasks rest on a belief** — The ten steps that are calls are read out of the punch's own body in order and compared with the sequence's list; the eleventh is named as a guard this cannot check.
+- ✅ **PP561** **the three sequences and the session are each joined to nothing, so eight tasks are pieces that fit and were never fitted** — The three sequences run over one queue and one stop, the stage that failed is named, and no session comes back unless every stage ran.
 
 ## Block G — Test discipline
 

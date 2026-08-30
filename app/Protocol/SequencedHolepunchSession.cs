@@ -96,6 +96,21 @@ public sealed class SequencedHolepunchSession : IHolepunchSession, IDisposable
         if (!await create().ConfigureAwait(false) || !await start().ConfigureAwait(false))
             return false;
 
+        return await TakeCtrlHoleAsync(punchCtrl).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// PP561: PP556's guarantee on its own - the ctrl punch run, and its socket recorded.
+    ///
+    /// Split out because the caller that runs the three for real does so through the sequences
+    /// rather than through delegates, and was otherwise passing two that did nothing just to reach
+    /// this. The guarantee lives in one place either way: prepared means able to answer.
+    /// </summary>
+    public async Task<bool> TakeCtrlHoleAsync(
+        Func<Task<(HolepunchPunchResult Result, object? Socket)>> punchCtrl)
+    {
+        ArgumentNullException.ThrowIfNull(punchCtrl);
+
         (HolepunchPunchResult result, object? socket) = await punchCtrl().ConfigureAwait(false);
 
         if (result.Outcome != HolepunchPunchOutcome.Punched || socket is null)
