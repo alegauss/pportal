@@ -96,6 +96,11 @@ export const HOST_FLAGS: readonly HostFlag[] = [
     "summary": "replay a datagram capture through the managed receive path"
   },
   {
+    "name": "--timed",
+    "argument": "",
+    "summary": "with --replay-datagrams: time the MAC gate against the C over the capture"
+  },
+  {
     "name": "--map-controller",
     "argument": "",
     "summary": "open the mapping screen against a real pad"

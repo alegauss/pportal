@@ -1027,7 +1027,8 @@ public partial class App : Application
                 Environment.Exit(1);
             }
 
-            ReplayOutcome outcome = DatagramReplayReport.Run(path, out string report);
+            ReplayOutcome outcome = DatagramReplayReport.Run(
+                path, out string report, HostCommandLine.Has(e.Args, "--timed"));
 
             if (outcome == ReplayOutcome.Replayed)
                 Console.Write(report);

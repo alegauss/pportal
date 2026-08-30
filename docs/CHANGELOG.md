@@ -452,6 +452,7 @@
 - ✅ **PP525** **PP523 could not tell a quiet link from a lost packet, and the capture's packet indices settle it** — The indices settle what the gaps could only raise: 1609 steps, 122 frames, zero losses and zero reorders - so the twelve timeout crossings were idle time.
 - ✅ **PP526** **the capture's bounds and the session's hold are constants, so a longer sample cannot be asked for** — --capture-seconds sets the window, the count and the hold from one asked-for length, so a longer sample is a longer file rather than the same one.
 - ✅ **PP527** **the replay calls the key stream NOT MONOTONIC and never says by how much, so 16 reorderings read as a fault** — The key position line now reports how many datagrams arrived out of send order and how far the worst one moved, which is the reordering the video indices cannot see.
+- ✅ **PP531** **nothing times the managed transport against the C, so PP27's comparison is bytes and never cost** — Over 24150 real heads the managed gate costs 0.13us against the C's 0.06us, both inside a copy of 0.04us and a mean arrival gap of 1178us.
 
 ## Block G — Test discipline
 

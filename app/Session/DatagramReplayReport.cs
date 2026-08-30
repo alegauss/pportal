@@ -53,7 +53,13 @@ public enum ReplayOutcome
 public static class DatagramReplayReport
 {
     /// <summary>Reads a capture and returns the report, or says why there is none.</summary>
-    public static ReplayOutcome Run(string path, out string report)
+    /// <param name="path">The capture to read.</param>
+    /// <param name="report">The report, where one was produced.</param>
+    /// <param name="timed">
+    /// PP27: also time the MAC gate against the C over these heads. Off by default, because the
+    /// default report is about the stream and a duration in it is about this laptop.
+    /// </param>
+    public static ReplayOutcome Run(string path, out string report, bool timed = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
 
@@ -82,6 +88,14 @@ public static class DatagramReplayReport
             TakionCaptureReplay.Run(
                 datagrams, new CountingReplaySink(),
                 cipherFrom: TakionCaptureReplay.CipherFrom(datagrams)));
+
+        // PP27: appended rather than folded in, and only when asked. The paragraph above records
+        // why no duration appears by default - one measured here is about this laptop - and that
+        // reasoning holds for the default report. What it argued was missing was the comparison,
+        // not the clock, so the clock arrives beside the C rather than alone.
+        if (timed)
+            report += MacGateTiming.Describe(MacGateTiming.Measure(datagrams));
+
         return ReplayOutcome.Replayed;
     }
 

@@ -170,7 +170,10 @@ to be chosen deliberately, which is what makes this different from the tasks abo
 
 The measurement is not opinion either: the C implementation is right there, and the
 oracle can run both against the same captured traffic and compare timing, not just
-bytes.
+bytes. PP531 did that for the MAC gate, which is the piece the shim reaches and the one
+every datagram passes through: 0.13us managed against 0.06us for the C, per head, inside
+a mean arrival gap of 1178us. What is left is the loop around it. No entry point exposes
+takion's receive, which is bound to sockets and threads a capture has neither of.
 
 ### §PP28 The state machines
 
