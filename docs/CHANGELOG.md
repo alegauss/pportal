@@ -481,6 +481,7 @@
 - ✅ **PP559** **the create's wait ends on either of the C's two notifications, leaving the client's own join for the start to find** — The wait runs until both halves have come, which also consumes the client's own join before the start looks - so PP546's departure cannot fire on it.
 - ✅ **PP560** **the punch's eleven steps are declared and nothing reads holepunch.c to check them, so five tasks rest on a belief** — The ten steps that are calls are read out of the punch's own body in order and compared with the sequence's list; the eleventh is named as a guard this cannot check.
 - ✅ **PP561** **the three sequences and the session are each joined to nothing, so eight tasks are pieces that fit and were never fitted** — The three sequences run over one queue and one stop, the stage that failed is named, and no session comes back unless every stage ran.
+- ✅ **PP563** **PP33's deletion has a third consumer nothing names: the port's own shim wraps nine holepunch exports** — The shim's nine wrappers are named beside the harness, and the deletion's three consumers are listed rather than counted - four of the nine overlap session.c's, five do not.
 
 ## Block G — Test discipline
 

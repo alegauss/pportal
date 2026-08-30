@@ -19,6 +19,11 @@ namespace ChiakiNg.Protocol;
 /// real PSN session. Whether it is ported, deleted with the C, or kept as the hardware probe that
 /// lines like PP322 and PP481 keep wanting is a decision - and the point of holding it here is that
 /// the decision was not available to make while the file was recorded as gone.
+///
+/// PP563: AND THERE IS A THIRD, which this port wrote. The shim wraps nine holepunch exports, put
+/// there by PP481 so the managed side could drive the C rather than replace it. So the deletion's
+/// blast radius is session.c, this harness, and the port's own seam - and the third arrived from
+/// inside the same block, from a task the roadmap lists among PP33's satisfied deps.
 /// </summary>
 public static class HolepunchConsumers
 {
@@ -71,4 +76,50 @@ public static class HolepunchConsumers
         return libCMake.Contains("add_executable(holepunch-test", StringComparison.Ordinal)
             && libCMake.Contains("target_link_libraries(holepunch-test chiaki-lib)", StringComparison.Ordinal);
     }
+
+    /// <summary>PP563: the third consumer, which this port wrote itself.</summary>
+    public const string ShimRelativePath = @"shim\chiaki_shim.c";
+
+    /// <summary>The shim, or null outside a checkout.</summary>
+    public static string? LocateShim() => SanitizerSource.LocateRelative(ShimRelativePath);
+
+    /// <summary>
+    /// The exports the shim wraps. Nine, and PP481 is what put them there.
+    ///
+    /// PP481 implemented the nine asks over the real C rather than replacing it, which PP533 later
+    /// named as the direction that removes nothing. That was a deliberate decision and this does
+    /// not reopen it. What it records is the consequence nobody wrote down: the port's own shim is
+    /// now a caller of the file PP33 exists to delete, so the deletion has THREE consumers - and
+    /// the third was created inside the same block, by a task listed as one of PP33's own deps.
+    /// </summary>
+    public static IReadOnlyList<string> ShimCalls { get; } =
+    [
+        "chiaki_get_holepunch_sock",
+        "chiaki_get_ps_ctrl_port",
+        "chiaki_get_ps_selected_addr",
+        "chiaki_get_regist_info",
+        "chiaki_holepunch_generate_client_device_uid",
+        "chiaki_holepunch_session_fini",
+        "chiaki_holepunch_session_init",
+        "chiaki_holepunch_session_punch_hole",
+        "chiaki_holepunch_session_set_recorded",
+    ];
+
+    /// <summary>Whether the shim still wraps every one of them.</summary>
+    public static IReadOnlyList<string> MissingFromShim(string shimSource)
+    {
+        ArgumentNullException.ThrowIfNull(shimSource);
+
+        return [.. ShimCalls.Where(call =>
+            !shimSource.Contains(call + "(", StringComparison.Ordinal))];
+    }
+
+    /// <summary>
+    /// PP563: everything the deletion has to answer for, named rather than counted.
+    ///
+    /// session.c is PP340's seam and has its own model; the other two are here. Listing them is
+    /// the point - "three" is a number, and what a deletion needs is which.
+    /// </summary>
+    public static IReadOnlyList<string> All { get; } =
+        [@"lib\src\session.c", TestHarnessRelativePath, ShimRelativePath];
 }

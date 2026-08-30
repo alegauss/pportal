@@ -12,6 +12,48 @@ namespace ChiakiNg.Tests;
 /// </summary>
 public class HolepunchConsumersTests
 {
+    /// <summary>
+    /// PP563: THE THIRD CONSUMER, which this port wrote itself.
+    ///
+    /// PP481 wrapped nine holepunch exports in the shim so the managed side could drive the C. That
+    /// was deliberate and is not reopened here. What was not written down is the consequence: the
+    /// port's own seam is a caller of the file PP33 exists to delete, and it arrived from a task the
+    /// roadmap lists among PP33's satisfied deps.
+    /// </summary>
+    [Fact]
+    public void TheShimIsTheThirdConsumer()
+    {
+        if (HolepunchConsumers.LocateShim() is not { } path)
+            return;
+
+        Assert.Empty(HolepunchConsumers.MissingFromShim(File.ReadAllText(path)));
+        Assert.Equal(9, HolepunchConsumers.ShimCalls.Count);
+    }
+
+    /// <summary>
+    /// All three are named rather than counted - "three" is a number, and a deletion needs which.
+    /// </summary>
+    [Fact]
+    public void TheDeletionHasThreeNamedConsumers()
+    {
+        Assert.Equal(
+            [@"lib\src\session.c", @"lib\src\remote\holepunch-test.c", @"shim\chiaki_shim.c"],
+            HolepunchConsumers.All);
+
+        // session.c is PP340's seam and keeps its own model; the other two are held here.
+        Assert.Contains(HolepunchConsumers.TestHarnessRelativePath, HolepunchConsumers.All);
+        Assert.Contains(HolepunchConsumers.ShimRelativePath, HolepunchConsumers.All);
+    }
+
+    /// <summary>A shim that stopped wrapping one is caught, which is how the list stays true.</summary>
+    [Fact]
+    public void AShimMissingAWrapperIsCaught()
+    {
+        IReadOnlyList<string> missing = HolepunchConsumers.MissingFromShim("int nothing(void) { return 0; }");
+
+        Assert.Equal(HolepunchConsumers.ShimCalls.Count, missing.Count);
+    }
+
     /// <summary>The harness exists, which is the whole of what PP33 got wrong.</summary>
     [Fact]
     public void TheHarnessIsInTheTree()
