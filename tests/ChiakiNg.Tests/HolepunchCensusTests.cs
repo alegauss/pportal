@@ -52,10 +52,24 @@ public class HolepunchCensusTests(ITestOutputHelper output)
         new("createNq", "NotificationQueue.cs"),
         new("http_create_session", "SessionCalls.cs"),
         new("make_oauth2_header", "PsnEndpoints.cs"),
-        new("make_session_id_header", null),
+        new("make_session_id_header", "PsnEndpoints.cs"),
         new("notification_queue_free", "NotificationQueue.cs"),
         new("session_message_get_payload", "SessionMessage.cs"),
     ];
+
+    /// <summary>
+    /// PP537: the one function in holepunch.c with no managed counterpart at all, and why.
+    ///
+    /// chiaki_holepunch_main_thread_cancel takes the stop mutex, sets ws_thread_should_stop, stops
+    /// the select pipe, sets main_should_stop and signals the notification condition. Nothing
+    /// answers it because everything it stops is what PP533 has to build: there is no managed
+    /// websocket thread to tell to stop and no managed main loop to cancel. Two drift checks read
+    /// the flag out of the C's source and assert things about it; neither is a port of the cancel.
+    ///
+    /// Kept as a named constant rather than a null in the list above so that the ONE remaining
+    /// name is a thing this suite states, not a gap a reader has to notice.
+    /// </summary>
+    public const string ArrivesWithTheLoop = "chiaki_holepunch_main_thread_cancel";
 
     private static (string Source, string Managed)? Checkout()
     {
@@ -102,14 +116,29 @@ public class HolepunchCensusTests(ITestOutputHelper output)
 
     /// <summary>
     /// And most of them DO have one, which is the correction PP536 exists for. Asserted as a floor
-    /// so that answering the last two does not fail this, and asserted at all so that quietly
+    /// so that answering the last one does not fail this, and asserted at all so that quietly
     /// emptying the annotations would.
     /// </summary>
     [Fact]
     public void MostOfTheUnquotedOnesAreAnsweredUnderAnotherName()
     {
-        Assert.True(Unnamed.Count(u => u.Counterpart is not null) >= 8,
+        Assert.True(Unnamed.Count(u => u.Counterpart is not null) >= 9,
             "the point of PP536 is that most of these are already answered");
+    }
+
+    /// <summary>
+    /// PP537: exactly one of the sixty-seven has no counterpart, and it is the cancel.
+    ///
+    /// This is the sharpest statement of what is left of holepunch.c, and it is worth an assertion
+    /// because two rounds of counting got a looser one wrong. If a second name ever joins it, the
+    /// port has lost ground somewhere and this is where that shows.
+    /// </summary>
+    [Fact]
+    public void OnlyTheCancelHasNoCounterpartAtAll()
+    {
+        var without = Unnamed.Where(u => u.Counterpart is null).Select(u => u.Function).ToList();
+
+        Assert.Equal([ArrivesWithTheLoop], without);
     }
 
     /// <summary>
