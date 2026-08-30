@@ -74,9 +74,20 @@ public sealed class SequencedHolepunchSession : IHolepunchSession, IDisposable
     ///
     /// Given as delegates rather than the sequences, so this composes what already runs instead of
     /// constructing it - the three have their own adapters and their own tests.
+    ///
+    /// PP556: AND IT RECORDS THE SOCKET, which is what makes "prepared" mean anything. The first
+    /// version returned true on a punched hole and was static, so it could not; the caller had to
+    /// know to record separately, and the first thing session.c asks for is that socket. Forgetting
+    /// left a session that had done everything right and threw on the first ask.
+    ///
+    /// A punch that punched without producing a socket is therefore not prepared either. The socket
+    /// comes back with the result because <see cref="HolepunchPunchResult"/> does not carry one -
+    /// it is the race's, and the sequence does not own it.
     /// </summary>
-    public static async Task<bool> PrepareAsync(
-        Func<Task<bool>> create, Func<Task<bool>> start, Func<Task<HolepunchPunchResult>> punchCtrl)
+    public async Task<bool> PrepareAsync(
+        Func<Task<bool>> create,
+        Func<Task<bool>> start,
+        Func<Task<(HolepunchPunchResult Result, object? Socket)>> punchCtrl)
     {
         ArgumentNullException.ThrowIfNull(create);
         ArgumentNullException.ThrowIfNull(start);
@@ -85,7 +96,13 @@ public sealed class SequencedHolepunchSession : IHolepunchSession, IDisposable
         if (!await create().ConfigureAwait(false) || !await start().ConfigureAwait(false))
             return false;
 
-        return (await punchCtrl().ConfigureAwait(false)).Outcome == HolepunchPunchOutcome.Punched;
+        (HolepunchPunchResult result, object? socket) = await punchCtrl().ConfigureAwait(false);
+
+        if (result.Outcome != HolepunchPunchOutcome.Punched || socket is null)
+            return false;
+
+        Record(HolepunchPortType.Ctrl, socket);
+        return true;
     }
 
     /// <summary>The socket the punch for this port produced.</summary>

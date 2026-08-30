@@ -475,6 +475,7 @@
 - ✅ **PP553** **the session interface has only the implementation that P/Invokes holepunch.c, so nothing answers it the other way** — The seven are answered from PP548's create, PP549's start and PP550's punch, and PP479's flow runs to the end over it with no library loaded.
 - ✅ **PP554** **a cancelled token throws out of PunchHole, whose contract is an error code and whose caller is C** — A cancellation is Canceled, the answer the one-shot would have given; anything else is Unknown and the exception is kept for a managed caller.
 - ✅ **PP555** **the offer step's guard cannot fire against the sequenced session, so a refused offer reads as an ordinary punch failure** — The session records that the punch stopped on the offer it sends, so the cause survives a failure that arrives a step later under another name.
+- ✅ **PP556** **the prepare cannot record the socket it punched, so a prepared session throws on the first ask session.c makes** — The prepare is an instance call that records the socket the ctrl punch produced, and a punch with no socket is not prepared rather than success until the first ask.
 
 ## Block G — Test discipline
 

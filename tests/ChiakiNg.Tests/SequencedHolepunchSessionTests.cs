@@ -51,34 +51,77 @@ public class SequencedHolepunchSessionTests
     public async Task PrepareRunsTheThreeAndStopsAtTheFirstFailure()
     {
         var ran = new List<string>();
+        using var session = Session();
 
         Task<bool> Create(bool ok) { ran.Add("create"); return Task.FromResult(ok); }
         Task<bool> Start(bool ok) { ran.Add("start"); return Task.FromResult(ok); }
-        Task<HolepunchPunchResult> Punch(HolepunchPunchOutcome how)
+        Task<(HolepunchPunchResult, object?)> Punch(HolepunchPunchOutcome how, object? socket)
         {
             ran.Add("punch");
-            return Task.FromResult(Result(how));
+            return Task.FromResult((Result(how), socket));
         }
 
-        Assert.True(await SequencedHolepunchSession.PrepareAsync(
-            () => Create(true), () => Start(true), () => Punch(HolepunchPunchOutcome.Punched)));
+        Assert.True(await session.PrepareAsync(
+            () => Create(true), () => Start(true),
+            () => Punch(HolepunchPunchOutcome.Punched, new object())));
         Assert.Equal(["create", "start", "punch"], ran);
 
         ran.Clear();
-        Assert.False(await SequencedHolepunchSession.PrepareAsync(
-            () => Create(false), () => Start(true), () => Punch(HolepunchPunchOutcome.Punched)));
+        Assert.False(await session.PrepareAsync(
+            () => Create(false), () => Start(true),
+            () => Punch(HolepunchPunchOutcome.Punched, new object())));
         Assert.Equal(["create"], ran);
 
         ran.Clear();
-        Assert.False(await SequencedHolepunchSession.PrepareAsync(
-            () => Create(true), () => Start(false), () => Punch(HolepunchPunchOutcome.Punched)));
+        Assert.False(await session.PrepareAsync(
+            () => Create(true), () => Start(false),
+            () => Punch(HolepunchPunchOutcome.Punched, new object())));
         Assert.Equal(["create", "start"], ran);
 
         // And a punch that did not punch is not a prepared session, whatever else went right.
         ran.Clear();
-        Assert.False(await SequencedHolepunchSession.PrepareAsync(
-            () => Create(true), () => Start(true), () => Punch(HolepunchPunchOutcome.TimedOut)));
+        Assert.False(await session.PrepareAsync(
+            () => Create(true), () => Start(true),
+            () => Punch(HolepunchPunchOutcome.TimedOut, new object())));
         Assert.Equal(["create", "start", "punch"], ran);
+    }
+
+    /// <summary>
+    /// PP556: PREPARED MEANS ABLE TO ANSWER. The prepare records the socket the ctrl punch produced,
+    /// because the first thing session.c asks for is that socket.
+    ///
+    /// Before this the prepare was static and could not record one, so a caller that did everything
+    /// right and did not know to record separately got a session that threw on the first ask.
+    /// </summary>
+    [Fact]
+    public async Task PreparingLeavesTheSessionAbleToAnswerTheFirstAsk()
+    {
+        using var session = Session();
+        object ctrl = new();
+
+        Assert.Throws<InvalidOperationException>(() => session.GetSocket(HolepunchPortType.Ctrl));
+
+        Assert.True(await session.PrepareAsync(
+            () => Task.FromResult(true), () => Task.FromResult(true),
+            () => Task.FromResult((Result(HolepunchPunchOutcome.Punched), (object?)ctrl))));
+
+        Assert.Same(ctrl, session.GetSocket(HolepunchPortType.Ctrl));
+    }
+
+    /// <summary>
+    /// And a punch that punched without producing a socket is not prepared - which is the case that
+    /// would otherwise have looked like success right up to the first ask.
+    /// </summary>
+    [Fact]
+    public async Task APunchWithNoSocketIsNotPrepared()
+    {
+        using var session = Session();
+
+        Assert.False(await session.PrepareAsync(
+            () => Task.FromResult(true), () => Task.FromResult(true),
+            () => Task.FromResult((Result(HolepunchPunchOutcome.Punched), (object?)null))));
+
+        Assert.Throws<InvalidOperationException>(() => session.GetSocket(HolepunchPortType.Ctrl));
     }
 
     /// <summary>
