@@ -549,6 +549,7 @@
 - ✅ **PP568** **the decision not to patch vendored C is argued only in a deferred section, so resolving that line deletes it** — The rule is the seventh non-goal, durable and refused at input, and an assertion holds that it is still there and still under the non-goals.
 - ✅ **PP569** **compare-baselines ships a selftest its README calls its own assertion, and neither the gate nor CI ran it** — The gate and CI both run it now, recorded as PP433's fourth pass; it is safe in CI where the host's selftest is not, so the local-only ceiling stays at one.
 - ✅ **PP570** **measure-startup ships the same selftest and is not in the solution, so no gate builds it let alone runs it** — It carries the warning policy and joins the solution, both gates run its selftest, and PP433's table names binaries so one tool wired no longer answers for two.
+- ✅ **PP571** **the no-local-patch non-goal reads as forbidding PP33's deletion, which must edit session.c and ctrl.c** — The rule names PP33 as what it does not reach, and the exemption is asserted inside its own paragraph so a check cannot pass on PP33 being named elsewhere.
 
 ## Block H — Performance and telemetry
 

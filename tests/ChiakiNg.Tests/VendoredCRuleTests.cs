@@ -39,6 +39,38 @@ public class VendoredCRuleTests
     }
 
     /// <summary>
+    /// PP571: THE RULE NAMES THE LINE IT DOES NOT REACH, because otherwise it forbids it.
+    ///
+    /// PP568 wrote this rule while PP33 sat open and ready, and PP33's whole content is deleting
+    /// holepunch.c and editing session.c and ctrl.c to stop calling it - a local change to vendored
+    /// C by any plain reading. A roadmap whose non-goals forbid a line it lists as ready is a
+    /// contradiction, and the exemption is what keeps the two consistent.
+    ///
+    /// The rule's own reason is what allows it: the drift checks would be left agreeing with a
+    /// libchiaki nobody runs, and a deletion removes what they agree with.
+    /// </summary>
+    [Fact]
+    public void TheRuleNamesTheDeletionItDoesNotReach()
+    {
+        Assert.True(VendoredCRule.NamesWhatItDoesNotReach(Roadmap()));
+        Assert.Equal("PP33", VendoredCRule.DoesNotReach);
+    }
+
+    /// <summary>
+    /// And the exemption has to be inside the rule's own paragraph. PP33 is named all over this
+    /// file, so a check that asked the whole roadmap would be green with the carve-out deleted.
+    /// </summary>
+    [Fact]
+    public void TheExemptionMustBeInTheRulesOwnParagraph()
+    {
+        Assert.False(VendoredCRule.NamesWhatItDoesNotReach(
+            $"## Non-goals\n\n- **{VendoredCRule.Lead}** no carve-out here\n- **Something else** PP33 lives here\n"));
+
+        Assert.True(VendoredCRule.NamesWhatItDoesNotReach(
+            $"## Non-goals\n\n- **{VendoredCRule.Lead}** but not PP33's deletion\n- **Something else** no\n"));
+    }
+
+    /// <summary>
     /// The deferral it points at is still there, because the non-goal carries a sentence and the
     /// argument is longer than one - they are joined by name rather than duplicated, and a pointer
     /// to a section nobody kept is worse than no pointer.

@@ -55,4 +55,40 @@ public static class VendoredCRule
     /// worse than no pointer.
     /// </summary>
     public const string ArguedIn = "PP107";
+
+    /// <summary>
+    /// PP571: the line the rule does NOT reach, named in the rule itself.
+    ///
+    /// PP568 wrote the rule and left it reading as a ban on PP33 - which is an open, ready line
+    /// whose whole content is deleting holepunch.c and editing session.c and ctrl.c to stop calling
+    /// it. That is a local change to vendored C by any plain reading.
+    ///
+    /// The reason is what settles it and was already in the rule: drift checks would be left
+    /// asserting agreement with a libchiaki nobody else runs. A deletion removes the thing they
+    /// agree with, so there is nothing left to diverge from - the rule's own argument exempts it.
+    /// Saying so is the difference between a session reading that and a session stopping.
+    /// </summary>
+    public const string DoesNotReach = "PP33";
+
+    /// <summary>
+    /// Whether the rule still names what it does not reach.
+    ///
+    /// Held against the roadmap's own text rather than this constant alone: a rule that forbids a
+    /// line the same file lists as ready is a contradiction, and the exemption is the only thing
+    /// keeping the two consistent.
+    /// </summary>
+    public static bool NamesWhatItDoesNotReach(string roadmap)
+    {
+        ArgumentNullException.ThrowIfNull(roadmap);
+
+        int lead = roadmap.IndexOf(Lead, StringComparison.Ordinal);
+        if (lead < 0)
+            return false;
+
+        // Within the rule's own paragraph, which ends at the next bullet.
+        int next = roadmap.IndexOf("\n- ", lead, StringComparison.Ordinal);
+        string rule = next < 0 ? roadmap[lead..] : roadmap[lead..next];
+
+        return rule.Contains(DoesNotReach, StringComparison.Ordinal);
+    }
 }
