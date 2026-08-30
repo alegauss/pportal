@@ -45,8 +45,10 @@ public class HolepunchCensusTests(ITestOutputHelper output)
     /// </summary>
     public static IReadOnlyList<Unquoted> Unnamed { get; } =
     [
+        // PP538 answered chiaki_holepunch_main_thread_cancel and NAMES it, so the sweep now finds
+        // it quoted and it has left this list entirely. That is the census working: the one
+        // function PP537 said had no counterpart got one, and the count moved on its own.
         new("chiaki_holepunch_list_devices", "DeviceList.cs"),
-        new("chiaki_holepunch_main_thread_cancel", null),
         new("chiaki_holepunch_session_set_recorded", "NativeHolepunchSession.cs"),
         new("chiaki_holepunch_upnp_discover", "GatewayDiscovery.cs"),
         new("createNq", "NotificationQueue.cs"),
@@ -58,18 +60,11 @@ public class HolepunchCensusTests(ITestOutputHelper output)
     ];
 
     /// <summary>
-    /// PP537: the one function in holepunch.c with no managed counterpart at all, and why.
-    ///
-    /// chiaki_holepunch_main_thread_cancel takes the stop mutex, sets ws_thread_should_stop, stops
-    /// the select pipe, sets main_should_stop and signals the notification condition. Nothing
-    /// answers it because everything it stops is what PP533 has to build: there is no managed
-    /// websocket thread to tell to stop and no managed main loop to cancel. Two drift checks read
-    /// the flag out of the C's source and assert things about it; neither is a port of the cancel.
-    ///
-    /// Kept as a named constant rather than a null in the list above so that the ONE remaining
-    /// name is a thing this suite states, not a gap a reader has to notice.
+    /// PP537 named chiaki_holepunch_main_thread_cancel as the one function with no counterpart at
+    /// all, and gave the reason: everything it stops is what PP533 has to build. PP538 built the
+    /// stop, so the name is gone from the list above and this records where it went.
     /// </summary>
-    public const string ArrivesWithTheLoop = "chiaki_holepunch_main_thread_cancel";
+    public const string TheCancelWasAnsweredBy = "HolepunchStop.cs";
 
     private static (string Source, string Managed)? Checkout()
     {
@@ -127,18 +122,22 @@ public class HolepunchCensusTests(ITestOutputHelper output)
     }
 
     /// <summary>
-    /// PP537: exactly one of the sixty-seven has no counterpart, and it is the cancel.
+    /// PP538: nothing in holepunch.c is now without a managed counterpart.
     ///
-    /// This is the sharpest statement of what is left of holepunch.c, and it is worth an assertion
-    /// because two rounds of counting got a looser one wrong. If a second name ever joins it, the
-    /// port has lost ground somewhere and this is where that shows.
+    /// PP537 left exactly one - the cancel - and said it would arrive with the loop PP533 has to
+    /// write. It did, in HolepunchStop, and the sweep noticed on its own: the name is quoted under
+    /// app/ now, so it left this list without anybody editing the list.
+    ///
+    /// Asserted as empty rather than deleted, because the interesting direction is a name ARRIVING.
+    /// One would mean holepunch.c grew a function nothing answers, and this is where that shows.
     /// </summary>
     [Fact]
-    public void OnlyTheCancelHasNoCounterpartAtAll()
+    public void NothingIsLeftWithoutACounterpart()
     {
         var without = Unnamed.Where(u => u.Counterpart is null).Select(u => u.Function).ToList();
 
-        Assert.Equal([ArrivesWithTheLoop], without);
+        Assert.Empty(without);
+        Assert.Equal("HolepunchStop.cs", TheCancelWasAnsweredBy);
     }
 
     /// <summary>
@@ -154,7 +153,8 @@ public class HolepunchCensusTests(ITestOutputHelper output)
 
         (var named, var unnamed) = HolepunchCensus.Split(checkout.Source, checkout.Managed);
 
-        Assert.True(named.Count >= 57, $"only {named.Count} of holepunch.c's functions are named");
+        // 58 since PP538 named the cancel, up from PP534's 57.
+        Assert.True(named.Count >= 58, $"only {named.Count} of holepunch.c's functions are named");
         Assert.Equal(Unnamed.Count, unnamed.Count);
     }
 

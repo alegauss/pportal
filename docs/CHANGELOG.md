@@ -457,6 +457,7 @@
 - ✅ **PP534** **nothing counts which of holepunch.c's functions app/ already answers, so PP533's scope is a sentence** — 57 of holepunch.c's 67 functions are already named under app/ and ten are not; the candidate and STUN work is among the 57, not the remainder.
 - ✅ **PP536** **the census reads a function no managed file quotes as one nothing has looked at, and eight of its ten have counterparts** — Eight of the ten are answered under names that do not quote the C symbol, each now carried beside it and checked to exist.
 - ✅ **PP537** **the census annotation says nothing builds the session-id header, and PsnEndpoints builds it** — PsnEndpoints builds the session-id header too, so nine of ten are answered and the tenth is the cancel, which arrives with the loop PP533 writes.
+- ✅ **PP538** **nothing models the holepunch stop, whose cancel is consumed by whichever of fourteen checkpoints reaches it first** — The stop is a one-shot the C consumes at all fourteen checkpoints, beside a websocket flag it never consumes, with the signal outside the lock.
 
 ## Block G — Test discipline
 
