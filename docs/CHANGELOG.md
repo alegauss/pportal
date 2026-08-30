@@ -486,6 +486,7 @@
 - ✅ **PP564** **nothing has asked the build what PP33's deletion costs, and reading the tree missed ctrl.c** — Building the library without holepunch.c names four consumers and thirty-four references: ctrl.c is the fourth, and one export carries no chiaki prefix.
 - ✅ **PP565** **PP33's done-when line about building without curl and json-c rests on a grep, and nothing has tried the build** — Built with holepunch.c out and both libraries unlinked, every other source in lib compiles and the archive is produced: the dependency is one file deep.
 - ✅ **PP566** **PP33's build criterion reads as one step and is two, so the measured half of it cannot be recorded as met** — The criterion's reason names both halves and what each waits on: compiling without either is already true, linking waits on the four callers rather than on the libraries.
+- ✅ **PP573** **PP33's own line says session.c is its only caller, which three shipped tasks have each falsified** — PP33's line names four callers and the count is asserted against HolepunchConsumers, so a line claiming one turns the suite red.
 
 ## Block G — Test discipline
 

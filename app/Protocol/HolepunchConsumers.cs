@@ -126,6 +126,27 @@ public static class HolepunchConsumers
     public static IReadOnlyList<string> All { get; } =
         [@"lib\src\session.c", CtrlRelativePath, TestHarnessRelativePath, ShimRelativePath];
 
+    /// <summary>
+    /// PP573: what PP33's own line has to say about the count, now that four tasks have moved it.
+    ///
+    /// Its `why` said "session.c is its only caller" while PP544, PP563 and PP564 each added one -
+    /// and that sentence is the first thing a session picking the ready line reads, so the scope of
+    /// the deletion was wrong at the point where somebody decides what it costs.
+    ///
+    /// Held as the count rather than the sentence: the line has 135 characters for its reason and
+    /// will be reworded, but a line claiming ONE caller when this list holds four is the defect.
+    /// </summary>
+    public static bool TheRoadmapLineAgreesOnTheCount(string roadmapLine)
+    {
+        ArgumentNullException.ThrowIfNull(roadmapLine);
+
+        // The claim that was there, in the shape it was there.
+        if (roadmapLine.Contains("only caller", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        return roadmapLine.Contains("four files call it", StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>PP564: the fourth consumer, which only the linker found.</summary>
     public const string CtrlRelativePath = @"lib\src\ctrl.c";
 

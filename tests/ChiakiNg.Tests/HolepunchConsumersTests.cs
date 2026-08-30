@@ -1,4 +1,5 @@
 using ChiakiNg.Protocol;
+using ChiakiNg.Session;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -132,6 +133,47 @@ public class HolepunchConsumersTests
             HolepunchConsumers.OnlyFileNeedingCurlAndJsonC,
             HolepunchConsumers.TestHarnessRelativePath.Replace(
                 "holepunch-test.c", "holepunch.c", StringComparison.Ordinal));
+
+    /// <summary>
+    /// PP573: PP33'S OWN LINE AGREES ON THE COUNT, and for a long time it did not.
+    ///
+    /// Its reason read "session.c is its only caller" while PP544 found the harness, PP563 the shim
+    /// and PP564 - by asking a linker - ctrl.c. Three shipped tasks each falsified it and none
+    /// changed it, because a task's models are where a finding lands and its LINE is somewhere else.
+    ///
+    /// It is the first sentence a session picking the ready line reads, so the deletion's scope was
+    /// wrong exactly where somebody decides what it costs. PP501 fixed the same shape on PP27's line.
+    /// </summary>
+    [Fact]
+    public void ThePP33LineAgreesWithThisList()
+    {
+        string? path = SanitizerSource.LocateRelative(@"docs\ROADMAP.md");
+        if (path is null)
+            return;
+
+        string? line = File.ReadLines(path)
+            .FirstOrDefault(one => one.Contains("**PP33**", StringComparison.Ordinal));
+
+        Assert.NotNull(line);
+        Assert.True(
+            HolepunchConsumers.TheRoadmapLineAgreesOnTheCount(line),
+            $"PP33's line does not name four callers: {line}");
+
+        Assert.Equal(4, HolepunchConsumers.All.Count);
+    }
+
+    /// <summary>And the old claim is what the check refuses, not merely an absent phrase.</summary>
+    [Fact]
+    public void TheOldOnlyCallerClaimIsRefused()
+    {
+        Assert.False(HolepunchConsumers.TheRoadmapLineAgreesOnTheCount(
+            "the deletion: session.c is its only caller."));
+
+        Assert.False(HolepunchConsumers.TheRoadmapLineAgreesOnTheCount("says nothing about callers"));
+
+        Assert.True(HolepunchConsumers.TheRoadmapLineAgreesOnTheCount(
+            "and four files call it - session.c, ctrl.c, the harness, the shim."));
+    }
 
     /// <summary>The harness exists, which is the whole of what PP33 got wrong.</summary>
     [Fact]
