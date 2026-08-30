@@ -51,6 +51,49 @@ public static partial class ReorderQueueSource
     public static string? BodyOf(string filePath, string function)
         => CFunction.BodyIn(filePath, function);
 
+    /// <summary>
+    /// PP562: the C suite's own test for this module - which calls both, contrary to §PP107.
+    /// </summary>
+    public const string SuiteRelativePath = @"test\reorderqueue.c";
+
+    /// <summary>test/reorderqueue.c, or null outside a checkout.</summary>
+    public static string? LocateSuite() => SanitizerSource.LocateRelative(SuiteRelativePath);
+
+    /// <summary>
+    /// PP562: THE SIXTH FACT, and the one that had gone the other way.
+    ///
+    /// §PP107 is titled "The two nobody called" and opens by saying these are the two functions of
+    /// the module the C suite never calls. It does call them - and its test names PP107 while doing
+    /// it. The decision that section reaches is untouched by this, because it rests on not forking
+    /// a vendored library rather than on nobody running the code; but the fact it opens with had
+    /// silently inverted, and five drift checks watched the C while nothing watched the claim.
+    /// </summary>
+    public static bool TheSuiteCallsBoth(string suiteText)
+    {
+        ArgumentNullException.ThrowIfNull(suiteText);
+
+        return CCall.Happens(suiteText, "chiaki_reorder_queue_peek(")
+            && CCall.Happens(suiteText, "chiaki_reorder_queue_drop(");
+    }
+
+    /// <summary>
+    /// And it pins the defect rather than merely touching it: an element is dropped, then asserted
+    /// still peekable at the same index with the count unchanged.
+    ///
+    /// That is the drop defect stated in C, which is a stronger record than the prose - a repair
+    /// upstream turns the suite red here rather than being noticed later.
+    /// </summary>
+    public static bool TheSuitePinsTheDropDefect(string suiteText)
+    {
+        ArgumentNullException.ThrowIfNull(suiteText);
+
+        return CCall.InOrder(
+            suiteText,
+            "chiaki_reorder_queue_drop(&queue, 2)",
+            "munit_assert(chiaki_reorder_queue_peek(&queue, 2, &seq_num, &user))",
+            "munit_assert_uint64(chiaki_reorder_queue_count(&queue), ==, 3)");
+    }
+
     /// <summary>The port's own seam, which is where the fini callbacks are deliberately lost.</summary>
     public const string ShimRelativePath = @"shim\chiaki_shim.c";
 

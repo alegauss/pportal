@@ -292,10 +292,10 @@ waiting to go.
 So what remains is not translation. It is session.c no longer asking, which PP533 now
 names: PP481 gave the nine a managed driver, and a driver is not a deletion.
 
-### §PP107 The two nobody called
+### §PP107 The two that were said to be uncalled
 
-chiaki_reorder_queue_drop and chiaki_reorder_queue_peek are the two functions of this
-module the C suite never calls, and both are broken.
+chiaki_reorder_queue_drop and chiaki_reorder_queue_peek are both broken. PP562: the
+suite calls both and pins the drop, contrary to this.
 
 drop announces the element to the drop callback and then does not remove it. It never
 clears entry->set, so the element stays peekable and pullable - and its own
