@@ -63,9 +63,54 @@ public class HolepunchDirectionTests
     /// </summary>
     [Fact]
     public void TheRegistrationInfoIsOneOfTheResults()
-        => Assert.Contains(
-            HolepunchDirection.Results,
-            result => result.What.Contains("registration info", StringComparison.Ordinal));
+        => Assert.Contains(HolepunchDirection.Results, result => result.Name == "hinfo");
+
+    /// <summary>
+    /// PP551: the five are PP478's five, not a second list saying the same thing.
+    ///
+    /// The first version restated them here in its own words. Two lists that agree today drift the
+    /// first time one is edited, and this one would have drifted silently - nothing compares them.
+    /// </summary>
+    [Fact]
+    public void TheResultsAreTheStatePP478Carried()
+        => Assert.Same(HolepunchState.Carried, HolepunchDirection.Results);
+
+    /// <summary>
+    /// PP551: FOUR DURABLE AND ONE SCOPED, which is what "five results" left out.
+    ///
+    /// The registration info's address is taken and handed to four calls that finish inside its
+    /// block. A replacement holding it in a field would compile, and PP479 says in as many words
+    /// that it would be the bug.
+    /// </summary>
+    [Fact]
+    public void FourResultsOutliveTheirCallAndOneDoesNot()
+    {
+        Assert.Equal(4, HolepunchDirection.Durable.Count);
+        Assert.Equal("hinfo", Assert.Single(HolepunchDirection.Scoped).Name);
+        Assert.Equal(StateLifetime.Block, HolepunchDirection.Scoped[0].Lifetime);
+
+        Assert.Equal(
+            HolepunchDirection.Results.Count,
+            HolepunchDirection.Durable.Count + HolepunchDirection.Scoped.Count);
+    }
+
+    /// <summary>
+    /// PP551: THE JOIN NOTHING HAD. PP479's outcome carries all four durable results and not the
+    /// scoped one - asserted against the record's own members, so the change PP479 warns about
+    /// fails here rather than compiling.
+    /// </summary>
+    [Fact]
+    public void TheOutcomeCarriesTheDurableResultsAndNotTheScopedOne()
+    {
+        Assert.True(HolepunchDirection.TheOutcomeCarriesTheDurableResultsOnly());
+
+        // The ctrl socket is answered by the rudp built from it, which is the one indirection.
+        Assert.True(HolepunchDirection.Answers("Rudp", HolepunchStep.CtrlSocket));
+        Assert.False(HolepunchDirection.Answers("DataSocket", HolepunchStep.CtrlSocket));
+
+        // And a field for the scoped one would be recognised, which is what makes the check bite.
+        Assert.True(HolepunchDirection.Answers("RegistInfo", HolepunchStep.RegistInfo));
+    }
 
     /// <summary>The releases are the two finis, which give the session back and produce nothing.</summary>
     [Fact]

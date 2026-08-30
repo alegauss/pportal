@@ -37,6 +37,12 @@ public enum HolepunchAskKind
 /// leaves out the registration info the session request carries. That is the one item on this list
 /// which is neither a socket nor an endpoint, and a port written to the four would have found it
 /// missing at the point where the request is built.
+///
+/// PP551: BUT FIVE FIELDS WOULD STILL BE WRONG, and saying "five results" without saying that was
+/// the half-truth this corrects. Four of them outlive the call that produced them; the registration
+/// info does not - its address is taken and handed to four calls that all finish inside its block,
+/// which PP478 read out of the C and PP479 works at. So the replacement holds
+/// <see cref="Durable"/> and produces <see cref="Scoped"/> where it is used.
 /// </summary>
 public static class HolepunchDirection
 {
@@ -66,18 +72,73 @@ public static class HolepunchDirection
     ];
 
     /// <summary>
-    /// The five values session.c would take instead of the handle, and what it puts each in.
+    /// The five values session.c would take instead of the handle, and how long each one lives.
     ///
-    /// This is the shape of PP33's replacement, read out of the C rather than designed here.
+    /// PP551: DERIVED FROM PP478, not restated. The first version of this listed the five in its
+    /// own words, which was the same five <see cref="HolepunchState.Carried"/> already held with
+    /// their lifetimes - two lists that agree today and drift apart the first time one is edited.
+    /// Reading them from there means a sixth arriving, or a lifetime changing, arrives here too.
     /// </summary>
-    public static IReadOnlyList<(string What, string Into)> Results { get; } =
-    [
-        ("the ctrl socket", "rudp_sock"),
-        ("the registration info", "hinfo"),
-        ("the data socket", "data_sock"),
-        ("the address the console was reached at", "connect_info.hostname"),
-        ("the ctrl port", "port"),
-    ];
+    public static IReadOnlyList<FlowState> Results => HolepunchState.Carried;
+
+    /// <summary>
+    /// The four that outlive the call that produced them, which is what a replacement can hold.
+    /// </summary>
+    public static IReadOnlyList<FlowState> Durable { get; } =
+        [.. HolepunchState.Carried.Where(state => state.Lifetime != StateLifetime.Block)];
+
+    /// <summary>
+    /// And the one that does not: the registration info, whose address is taken and handed to four
+    /// calls that all finish inside its block.
+    ///
+    /// PP551 IS WHY THIS DISTINCTION IS DRAWN AT ALL. PP533 settled that session.c takes five
+    /// results, and left it sounding as though five fields would do. They would not: PP479 says of
+    /// this one that keeping it on an outcome "would compile and would be the bug". So the
+    /// replacement carries four and produces the fifth inside the block that uses it.
+    /// </summary>
+    public static IReadOnlyList<FlowState> Scoped { get; } =
+        [.. HolepunchState.Carried.Where(state => state.Lifetime == StateLifetime.Block)];
+
+    /// <summary>
+    /// The join nothing had: PP479's outcome carries every durable result and not the scoped one.
+    ///
+    /// Read off the record's own members, so adding a registration info to it - the change PP479
+    /// warns about, which compiles - fails here instead of shipping.
+    /// </summary>
+    public static bool TheOutcomeCarriesTheDurableResultsOnly()
+    {
+        IReadOnlyList<string> members =
+            [.. typeof(HolepunchConnectOutcome).GetProperties().Select(one => one.Name)];
+
+        bool durableAreThere = Durable.All(
+            state => members.Any(name => Answers(name, state.FromStep)));
+
+        bool scopedIsNot = Scoped.All(
+            state => !members.Any(name => Answers(name, state.FromStep)));
+
+        return durableAreThere && scopedIsNot;
+    }
+
+    /// <summary>
+    /// Whether an outcome member is the one a step produces.
+    ///
+    /// The ctrl socket is the exception and is named as one: the outcome holds the rudp built from
+    /// it rather than the socket, because that is the only place its failure surfaces.
+    /// </summary>
+    public static bool Answers(string member, HolepunchStep? step)
+    {
+        ArgumentNullException.ThrowIfNull(member);
+
+        return step switch
+        {
+            HolepunchStep.CtrlSocket => member == "Rudp",
+            HolepunchStep.DataSocket => member == "DataSocket",
+            HolepunchStep.SelectedAddress => member == "Hostname",
+            HolepunchStep.CtrlPort => member == "CtrlPort",
+            HolepunchStep.RegistInfo => member is "RegistInfo" or "Hinfo" or "HolepunchInfo",
+            _ => false,
+        };
+    }
 
     /// <summary>
     /// Every mention of the handle, in file order: how each one uses it.
