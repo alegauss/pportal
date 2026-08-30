@@ -453,6 +453,7 @@
 - ✅ **PP526** **the capture's bounds and the session's hold are constants, so a longer sample cannot be asked for** — --capture-seconds sets the window, the count and the hold from one asked-for length, so a longer sample is a longer file rather than the same one.
 - ✅ **PP527** **the replay calls the key stream NOT MONOTONIC and never says by how much, so 16 reorderings read as a fault** — The key position line now reports how many datagrams arrived out of send order and how far the worst one moved, which is the reordering the video indices cannot see.
 - ✅ **PP531** **nothing times the managed transport against the C, so PP27's comparison is bytes and never cost** — Over 24150 real heads the managed gate costs 0.13us against the C's 0.06us, both inside a copy of 0.04us and a mean arrival gap of 1178us.
+- ✅ **PP481** **nothing implements the nine asks over the real C, and no test can exercise one without a live console** — Nine wrappers, an ABI bump to 35, and a session built from a recorded exchange: six of the seven asks now run against the real C, and only the punch needs a console.
 
 ## Block G — Test discipline
 

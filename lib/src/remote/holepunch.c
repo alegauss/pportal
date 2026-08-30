@@ -660,6 +660,23 @@ CHIAKI_EXPORT uint16_t chiaki_get_ps_ctrl_port(Session *session)
     return session->ctrl_port;
 }
 
+CHIAKI_EXPORT void chiaki_holepunch_session_set_recorded(
+    Session *session, const ChiakiHolepunchRecorded *recorded)
+{
+    if(!session || !recorded)
+        return;
+
+    // PP481: exactly the fields the five value-returning asks read, and nothing beside them. A
+    // setter that filled the struct would be a second session_init with none of its checks, and
+    // the next reader would not be able to tell which fields a recording had actually supplied.
+    memcpy(session->ps_ip, recorded->ps_ip, sizeof(session->ps_ip));
+    memcpy(session->client_local_ip, recorded->client_local_ip, sizeof(session->client_local_ip));
+    session->ctrl_port = recorded->ctrl_port;
+    memcpy(session->data1, recorded->data1, sizeof(session->data1));
+    memcpy(session->data2, recorded->data2, sizeof(session->data2));
+    memcpy(session->custom_data1, recorded->custom_data1, sizeof(session->custom_data1));
+}
+
 CHIAKI_EXPORT chiaki_socket_t *chiaki_get_holepunch_sock(ChiakiHolepunchSession session, ChiakiHolepunchPortType type)
 {
     switch(type)

@@ -3067,6 +3067,133 @@ CHIAKI_SHIM_API int32_t chiaki_shim_generate_client_device_uid(char *buf, int32_
 	return (int32_t)err;
 }
 
+/* PP481: the nine asks session.c makes of a holepunch session, as nine wrappers.
+ *
+ * PP429 wrote the nine down, PP479 gave them an interface and PP480 joined the two. What had no
+ * implementation was the obvious one - a managed type that P/Invokes the real C - and what stopped
+ * it was the tree's own non-goal: every one of the nine takes a session handle, and a handle came
+ * only from PSN credentials, a network and a console answering. A wrapper could be written and
+ * never run.
+ *
+ * chiaki_holepunch_session_set_recorded is what changed that. The five value-returning methods read
+ * fields a recorded exchange has, so with a session from the real init and those fields stamped on
+ * it they run against the real C - and create_offer, measured rather than assumed, returned success
+ * over one too. Only punch_hole needs a console. All nine are wrapped either way: the declaration
+ * is the same work, and a wrapper that exists is one a live run reaches without another task.
+ */
+/* The size both address getters write, asked rather than assumed. INET6_ADDRSTRLEN is 46 on the
+ * platforms most references quote and 65 on Windows, which reserves room for a scope id - so a
+ * managed constant of 46 makes every call here answer CHIAKI_ERR_BUF_TOO_SMALL, which is how this
+ * was found. chiaki_shim_duid_str_size is the same accessor for the same reason. */
+CHIAKI_SHIM_API int32_t chiaki_shim_holepunch_address_size(void)
+{
+	return (int32_t)INET6_ADDRSTRLEN;
+}
+
+CHIAKI_SHIM_API void *chiaki_shim_holepunch_session_init(const char *token)
+{
+	/* No log: session_init takes one only to write errors through, and a NULL log is what every
+	 * other shim entry point here hands the C. */
+	return (void *)chiaki_holepunch_session_init(token ? token : "", NULL);
+}
+
+CHIAKI_SHIM_API void chiaki_shim_holepunch_session_set_recorded(
+		void *session, const char *ps_ip, const char *client_local_ip, uint16_t ctrl_port,
+		const uint8_t *data1, const uint8_t *data2, const uint8_t *custom_data1)
+{
+	ChiakiHolepunchRecorded recorded;
+
+	if(!session)
+		return;
+
+	memset(&recorded, 0, sizeof(recorded));
+	if(ps_ip)
+		snprintf(recorded.ps_ip, sizeof(recorded.ps_ip), "%s", ps_ip);
+	if(client_local_ip)
+		snprintf(recorded.client_local_ip, sizeof(recorded.client_local_ip), "%s", client_local_ip);
+	recorded.ctrl_port = ctrl_port;
+	if(data1)
+		memcpy(recorded.data1, data1, sizeof(recorded.data1));
+	if(data2)
+		memcpy(recorded.data2, data2, sizeof(recorded.data2));
+	if(custom_data1)
+		memcpy(recorded.custom_data1, custom_data1, sizeof(recorded.custom_data1));
+
+	chiaki_holepunch_session_set_recorded((ChiakiHolepunchSession)session, &recorded);
+}
+
+CHIAKI_SHIM_API void *chiaki_shim_holepunch_get_sock(void *session, int32_t port_type)
+{
+	if(!session)
+		return NULL;
+	return (void *)chiaki_get_holepunch_sock(
+			(ChiakiHolepunchSession)session, (ChiakiHolepunchPortType)port_type);
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_holepunch_get_regist_info(
+		void *session, uint8_t *data1, uint8_t *data2, uint8_t *custom_data1,
+		char *local_ip, int32_t local_ip_size)
+{
+	ChiakiHolepunchRegistInfo info;
+
+	if(!session || !data1 || !data2 || !custom_data1 || !local_ip)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+	if(local_ip_size < (int32_t)sizeof(info.regist_local_ip))
+		return (int32_t)CHIAKI_ERR_BUF_TOO_SMALL;
+
+	/* Returned BY VALUE, which is why this copies out rather than handing back a pointer: PP478
+	 * found the C's own caller keeps it in a stack local whose lifetime is a closing brace. */
+	info = chiaki_get_regist_info((ChiakiHolepunchSession)session);
+	memcpy(data1, info.data1, sizeof(info.data1));
+	memcpy(data2, info.data2, sizeof(info.data2));
+	memcpy(custom_data1, info.custom_data1, sizeof(info.custom_data1));
+	memcpy(local_ip, info.regist_local_ip, sizeof(info.regist_local_ip));
+	return (int32_t)CHIAKI_ERR_SUCCESS;
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_holepunch_get_selected_addr(
+		void *session, char *buf, int32_t size)
+{
+	if(!session || !buf)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+	/* The C memcpys INET6_ADDRSTRLEN bytes out unconditionally, so a shorter buffer is not a
+	 * truncation here, it is a write past the end. */
+	if(size < (int32_t)INET6_ADDRSTRLEN)
+		return (int32_t)CHIAKI_ERR_BUF_TOO_SMALL;
+
+	chiaki_get_ps_selected_addr((ChiakiHolepunchSession)session, buf);
+	return (int32_t)CHIAKI_ERR_SUCCESS;
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_holepunch_get_ctrl_port(void *session)
+{
+	if(!session)
+		return 0;
+	return (int32_t)chiaki_get_ps_ctrl_port((ChiakiHolepunchSession)session);
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_holepunch_create_offer(void *session)
+{
+	if(!session)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+	return (int32_t)holepunch_session_create_offer((ChiakiHolepunchSession)session);
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_holepunch_punch_hole(void *session, int32_t port_type)
+{
+	if(!session)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+	return (int32_t)chiaki_holepunch_session_punch_hole(
+			(ChiakiHolepunchSession)session, (ChiakiHolepunchPortType)port_type);
+}
+
+CHIAKI_SHIM_API void chiaki_shim_holepunch_session_fini(void *session)
+{
+	if(!session)
+		return;
+	chiaki_holepunch_session_fini((ChiakiHolepunchSession)session);
+}
+
 CHIAKI_SHIM_API void chiaki_shim_session_free(void *session)
 {
 	chiaki_shim_session *self = (chiaki_shim_session *)session;

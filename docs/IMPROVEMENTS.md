@@ -265,7 +265,7 @@ host would use regardless of this block.
 
 ### §PP33 Two dependencies that simply leave
 
-holepunch.c is 5945 lines and is the only translation unit in this tree that still needs
+holepunch.c is 5962 lines and is the only translation unit in this tree that still needs
 either library: 234 curl_easy calls, 4 curl_ws, and the json_object and json_tokener
 sites beside them. http.c is 262 lines over rudp and winsock, is not among them, and
 carries no curl symbol at all, which is not what the first version of this section said
@@ -341,31 +341,6 @@ sends.
 
 Deleting is the deliverable, not just porting. The C video receiver leaving the build is
 what makes the five ports beneath it real.
-
-### §PP481 The seam that cannot be faked
-
-PP479 gave the flow an interface and PP480 joined that interface to PP429's nine call
-sites. What has no implementation is the obvious one: a class that P/Invokes the real
-`chiaki_*` functions so the flow drives a live holepunch session.
-
-The work is nine thin wrappers in `shim/chiaki_shim.c`, an ABI bump from 34 to 35 in
-`shim/chiaki_shim.h` and `ChiakiNative.ExpectedAbi`, and a managed type implementing the
-interface over them. Mechanical, and the shim already carries one holepunch export -
-`chiaki_holepunch_generate_client_device_uid` - so the pattern is there.
-
-What stops it shipping is the tree's own non-goal: "No line ships without an assertion
-that fails without it." Every one of the nine takes a `ChiakiHolepunchSession` handle,
-and none can be obtained without PSN credentials, a network and a console answering - so
-a wrapper can be written and not exercised. A test would assert nine P/Invoke
-declarations exist, which tests the declarations and not the calls.
-
-So this waits on one of two things. Either a shim entry point that builds a holepunch
-session from a recorded exchange, which PP293's replay harness and PP297's capture are
-most of; or the decision that this seam is exercised on hardware and its line says so,
-the way PP322 says a person has to look at the compositor's output.
-
-Both are choices about how the port validates I/O it cannot fake, and neither is mine to
-make quietly inside another task.
 
 ## Block G — Test discipline
 

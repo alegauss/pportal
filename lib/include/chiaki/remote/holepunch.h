@@ -146,6 +146,53 @@ CHIAKI_EXPORT uint16_t chiaki_get_ps_ctrl_port(ChiakiHolepunchSession session);
 CHIAKI_EXPORT chiaki_socket_t *chiaki_get_holepunch_sock(ChiakiHolepunchSession session, ChiakiHolepunchPortType type);
 
 /**
+ * PP481: everything the five value-returning asks read, as one struct a caller can supply.
+ *
+ * The port's managed flow drives nine call sites through seven methods, and none of them could be
+ * exercised: every one takes a session handle, and a handle comes only from PSN credentials, a
+ * network and a console answering. So a wrapper could be written and never run, and the assertion
+ * over it would test that a P/Invoke declaration exists.
+ *
+ * These are the fields chiaki_get_regist_info, chiaki_get_ps_selected_addr, chiaki_get_ps_ctrl_port
+ * and both chiaki_get_holepunch_sock arms actually read - nothing else, deliberately. A recorded
+ * exchange has these, so with them the five can run against the real C over a session that never
+ * touched the network.
+ *
+ * What remains is narrower than it looked. Run against a recorded session,
+ * holepunch_session_create_offer RETURNED SUCCESS - it builds the offer out of state the session
+ * already holds - and the flow went on to chiaki_holepunch_session_punch_hole, which is where a
+ * console is genuinely required. That is a return code and not a verdict on the offer: whether PSN
+ * would accept one built this way is a question only a live session answers.
+ */
+typedef struct chiaki_holepunch_recorded_t
+{
+	/** The address the console was reached at, as chiaki_get_ps_selected_addr hands back. */
+	char ps_ip[INET6_ADDRSTRLEN];
+	/** The local address the registration info carries. */
+	char client_local_ip[INET6_ADDRSTRLEN];
+	/** The control port the session connects to. */
+	uint16_t ctrl_port;
+	uint8_t data1[16];
+	uint8_t data2[16];
+	uint8_t custom_data1[16];
+} ChiakiHolepunchRecorded;
+
+/**
+ * PP481: stamp a recorded exchange's values onto a session, so the value-returning asks answer.
+ *
+ * The session must be one chiaki_holepunch_session_init produced - that call allocates, sets the
+ * defaults and creates the pipes and mutexes, and touches nothing remote, so what this stamps is a
+ * REAL session with real teardown rather than a fabricated struct that only resembles one. Its
+ * sockets are left as init set them, which is invalid-and-non-null: the socket getters return the
+ * address of the field, which is what the flow needs and what PP461 says can never be null.
+ *
+ * @param[in] session Handle from chiaki_holepunch_session_init
+ * @param[in] recorded The values, or NULL to leave the session as it was
+ */
+CHIAKI_EXPORT void chiaki_holepunch_session_set_recorded(
+	ChiakiHolepunchSession session, const ChiakiHolepunchRecorded *recorded);
+
+/**
  * Get the STUN port allocation results that were computed while creating the hole punch session.
  *
  * @param[in] session Handle to the holepunching session

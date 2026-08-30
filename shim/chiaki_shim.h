@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 34
+#define CHIAKI_SHIM_ABI 35
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -731,6 +731,29 @@ CHIAKI_SHIM_API int32_t chiaki_shim_discovery_service_host_request_port(void *ho
 CHIAKI_SHIM_API int32_t chiaki_shim_duid_str_size(void);
 
 CHIAKI_SHIM_API int32_t chiaki_shim_generate_client_device_uid(char *buf, int32_t *size);
+
+/* PP481: the nine asks PP429 wrote down, as nine wrappers over the real C.
+ *
+ * The five value-returning methods read fields a recorded exchange carries, so
+ * chiaki_shim_holepunch_session_set_recorded is what lets them run without PSN, a network or a
+ * console - and create_offer turned out to run over one too. Only punch_hole needs a console. All
+ * are declared here rather than only the reachable ones: the declaration costs the same either
+ * way, and a live run then needs no further task to reach them. */
+CHIAKI_SHIM_API int32_t chiaki_shim_holepunch_address_size(void);
+CHIAKI_SHIM_API void *chiaki_shim_holepunch_session_init(const char *token);
+CHIAKI_SHIM_API void chiaki_shim_holepunch_session_set_recorded(
+		void *session, const char *ps_ip, const char *client_local_ip, uint16_t ctrl_port,
+		const uint8_t *data1, const uint8_t *data2, const uint8_t *custom_data1);
+CHIAKI_SHIM_API void *chiaki_shim_holepunch_get_sock(void *session, int32_t port_type);
+CHIAKI_SHIM_API int32_t chiaki_shim_holepunch_get_regist_info(
+		void *session, uint8_t *data1, uint8_t *data2, uint8_t *custom_data1,
+		char *local_ip, int32_t local_ip_size);
+CHIAKI_SHIM_API int32_t chiaki_shim_holepunch_get_selected_addr(
+		void *session, char *buf, int32_t size);
+CHIAKI_SHIM_API int32_t chiaki_shim_holepunch_get_ctrl_port(void *session);
+CHIAKI_SHIM_API int32_t chiaki_shim_holepunch_create_offer(void *session);
+CHIAKI_SHIM_API int32_t chiaki_shim_holepunch_punch_hole(void *session, int32_t port_type);
+CHIAKI_SHIM_API void chiaki_shim_holepunch_session_fini(void *session);
 
 /**
  * PP23: the registration crypto, reachable so that both implementations can be run on one input.
