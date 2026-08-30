@@ -66,8 +66,11 @@ public static class DriftCorpus
     /// </summary>
     public static IReadOnlyList<string> RootFiles { get; } =
     [
-        ".gitignore", "ChiakiNg.slnx", "CMakeLists.txt", "package.cmd", "roadkeep.toml",
-        "vcpkg.json",
+        // PP532 added compile.cmd, which CompileMessages reads: the gate's own messages are now
+        // checked the way its workflow already was, and a one-segment path has no shape to be
+        // recognised by.
+        ".gitignore", "ChiakiNg.slnx", "CMakeLists.txt", "compile.cmd", "package.cmd",
+        "roadkeep.toml", "vcpkg.json",
     ];
 
     /// <summary>

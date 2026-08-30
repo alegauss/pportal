@@ -509,6 +509,7 @@
 - ✅ **PP486** **PP481 says no test can run without a live console and declares no requirement, so pick offers it as ready** — A line whose prose names a live console or a person looking must declare it, so PP481 reports as needing hardware instead of as the next ready thing, and console is declared again.
 - ✅ **PP529** **nothing compiles gui/ - the gate and CI both pass ENABLE_GUI=OFF - while the drift checks keep it edited** — compile.cmd gui builds the client nothing else compiles - the old note named a -D the script refuses - and a client older than gui/ now fails the suite.
 - ✅ **PP530** **ChiakiNg.exe exists twice, only Debug is built by the gate, and --recount and --ratchet answer from whichever was run** — --recount and --ratchet now refuse and name the source that moved, on the two flags whose whole value is being trusted; a host built before this cannot guard itself.
+- ✅ **PP532** **compile.cmd reports a Qt client it no longer builds, as the nodeploy output and in the failure line** — Four lines named a client no ordinary run builds, and a rule now refuses any that claims it without testing the flag or the file first.
 
 ## Block H — Performance and telemetry
 

@@ -164,7 +164,10 @@ if defined CONFIGURE_ONLY echo [compile] mode       : configure only (deletion c
 if not defined CONFIGURE_ONLY if defined NO_TESTS echo [compile] tests      : SKIPPED - ctest in %BUILD_DIR% will report on an older binary
 if not defined CONFIGURE_ONLY if not defined NO_TESTS echo [compile] tests      : chiaki-unit built with the client
 if not defined CONFIGURE_ONLY if defined NO_APP echo [compile] .NET host  : SKIPPED - nothing here says whether app\ still compiles
-if not defined CONFIGURE_ONLY if not defined NO_APP echo [compile] .NET host  : ChiakiNg.slnx built after the Qt client
+rem PP532: "after the native side" rather than "after the Qt client", which named something no
+rem ordinary run builds. The claim PP74 wanted here is the ORDERING - the host goes last - and
+rem that is true whether or not `gui` asked for a client.
+if not defined CONFIGURE_ONLY if not defined NO_APP echo [compile] .NET host  : ChiakiNg.slnx built after the native side
 if defined DO_DEPLOY echo [compile] portable   : %DEPLOY_DISP%
 if not defined DO_DEPLOY if not defined CONFIGURE_ONLY echo [compile] portable   : skipped
 echo.
@@ -191,8 +194,11 @@ if defined NO_APP goto app_done
 where dotnet >nul 2>&1
 if errorlevel 1 (
     echo.
-    echo [compile] note: no .NET SDK on PATH, so app\ was not built. The Qt client does
-    echo [compile]       not need one - install it only when working on the .NET host.
+    rem PP532: the reassurance is about what this run DID build. It used to name the Qt client,
+    rem which an ordinary run does not build either, so the note comforted a reader about
+    rem something that was not there in the first place.
+    echo [compile] note: no .NET SDK on PATH, so app\ was not built. The native side
+    echo [compile]       does not need one - install it only for the .NET host.
     goto app_done
 )
 echo.
@@ -203,7 +209,11 @@ echo [compile] building ChiakiNg.slnx ...
 dotnet build "%~dp0ChiakiNg.slnx" -c Debug --nologo -v quiet
 if errorlevel 1 (
     echo.
-    echo [compile] FAILED - the Qt client built, the .NET host did not.
+    rem PP532: which half built depends on the flag. Saying "the Qt client built" on a run that
+    rem did not build it credits work that never happened, in the one message a reader is
+    rem already reading closely.
+    if /I "%CHIAKI_ENABLE_GUI%"=="ON" echo [compile] FAILED - the Qt client built, the .NET host did not.
+    if /I not "%CHIAKI_ENABLE_GUI%"=="ON" echo [compile] FAILED - the native side built, the .NET host did not.
     exit /b 1
 )
 :app_done
@@ -211,8 +221,16 @@ if errorlevel 1 (
 echo.
 if defined CONFIGURE_ONLY goto ok_configure
 if defined DO_DEPLOY goto ok_deploy
-echo [compile] OK -^> %~dp0%BUILD_DIR%\gui\chiaki.exe
-echo [compile] NOTE: this binary only starts inside an MSYS2 MinGW64 shell.
+rem PP532: name what THIS run built. The Qt client is off unless `gui` asked for it, so naming
+rem it here reported a binary the run had not produced - and on a machine that has one from an
+rem earlier run the path resolves, which points a reader at a real file that is the wrong one.
+if /I "%CHIAKI_ENABLE_GUI%"=="ON" (
+    echo [compile] OK -^> %~dp0%BUILD_DIR%\gui\chiaki.exe
+    echo [compile] NOTE: this binary only starts inside an MSYS2 MinGW64 shell.
+) else (
+    echo [compile] OK -^> %~dp0app\bin\Debug\net10.0-windows\win-x64\ChiakiNg.exe
+    echo [compile] NOTE: the Qt client was not built - compile.cmd gui builds it.
+)
 if defined LOCKED echo [compile]       %DEPLOY_DISP%\chiaki.exe still holds the previous build.
 if not defined LOCKED echo [compile]       Run compile.cmd without 'nodeploy' for a clickable build.
 exit /b 0

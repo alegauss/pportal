@@ -35,8 +35,6 @@
 
 ## Block G — Test discipline
 
-- 📋 **PP532** (deps: —) **compile.cmd reports a Qt client it no longer builds, as the nodeploy output and in the failure line** — Both messages predate PP21 turning the client off; on a fresh clone the path the run prints does not exist. → §PP532
-
 ## Block H — Performance and telemetry
 
 - ⏳ **PP46** (deps: PP42 ✅, PP63) **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — A Chromium leaving the build should be visible in cold start and in megabytes, and stating it without measuring is how a port collects folklore. → §PP46
