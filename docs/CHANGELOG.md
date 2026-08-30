@@ -50,6 +50,7 @@
 - ✅ **PP320** **the log sanitiser redacts nothing in a hexdump, so RP-RegistKey and RP-Nonce survive in the bytes and the ASCII gutter** — a hexdump row is redacted whole, bytes and gutter, before any line rule runs (design §PP320 superseded: field names and grouped hex leave the tail on the next row unlabelled).
 - ✅ **PP323** **libchiaki hands a managed caller a log and nothing else, so a recording of a session has no payload to hold** — the four chokepoints where a session is still plaintext now emit a direction, a channel, a type and the bytes to an installable tap, so PP297's recording has a source the log could never be.
 - ✅ **PP577** **the managed error enum mirrors an implicitly valued C enum by hand and nothing compares them** — The header's members are read in order and compared with the enum's by letters, and an insertion in the middle is caught by index rather than by membership.
+- ✅ **PP578** **two more managed enums are cast from C values on the lines after the one PP577 held, and neither is checked** — The three mirrors are one list compared once, the error-specific copy is gone, and the count is asserted so a fourth cast cannot arrive unchecked.
 
 ## Block C — Video and input path
 
