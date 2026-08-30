@@ -131,9 +131,13 @@ public sealed class LiveHolepunchCreateSteps : IHolepunchCreateSteps, IDisposabl
             // and the start read the same queue, and what this handled is not the start's to find.
             foreach (QueuedNotification one in Queue.Items.ToArray().Where(Finishes))
             {
+                Seen |= FlagFor(one.Type);
                 Queue.Clear(one);
-                return true;
             }
+
+            // PP559: BOTH, which is what the C's loop runs until - created AND the client joined.
+            if (Finished(Seen))
+                return true;
 
             if (ChannelEnded)
                 return false;
@@ -152,7 +156,7 @@ public sealed class LiveHolepunchCreateSteps : IHolepunchCreateSteps, IDisposabl
     /// </summary>
     public static TimeSpan PollInterval { get; } = TimeSpan.FromMilliseconds(25);
 
-    /// <summary>Which notifications end the create's wait.</summary>
+    /// <summary>Which notifications the create's loop handles. Both are needed - see below.</summary>
     public static bool Finishes(QueuedNotification notification)
     {
         ArgumentNullException.ThrowIfNull(notification);
@@ -160,6 +164,34 @@ public sealed class LiveHolepunchCreateSteps : IHolepunchCreateSteps, IDisposabl
         return notification.Type is PushNotificationType.SessionCreated
             or PushNotificationType.MemberCreated;
     }
+
+    /// <summary>Which halves have arrived, which the wait runs until both have.</summary>
+    public SessionStateFlags Seen { get; private set; }
+
+    /// <summary>
+    /// PP559: what the C's create loop runs until, which is BOTH.
+    ///
+    /// `finished = (state & SESSION_STATE_CREATED) &amp;&amp; (state & SESSION_STATE_CLIENT_JOINED)`.
+    /// This wait used to end on either, which is PP557's defect one sequence earlier: the session
+    /// created and the client joined are two notifications and the create wants them both.
+    ///
+    /// AND IT IS WHY THE START CAN TRUST ITS MEMBER NOTIFICATION. The client's own join is a
+    /// MEMBER_CREATED, and it is this loop that consumes and clears it. A create that stopped at
+    /// the first of the two left the client's own notification on the queue for the start to find
+    /// and check against the console - which would have read as the wrong console on a good
+    /// session, and is the departure PP546 declared firing on nothing.
+    /// </summary>
+    public static bool Finished(SessionStateFlags state)
+        => state.HasFlag(SessionStateFlags.Created)
+        && state.HasFlag(SessionStateFlags.ClientJoined);
+
+    /// <summary>Which flag each of the two notifications sets, as the C sets them.</summary>
+    public static SessionStateFlags FlagFor(PushNotificationType type) => type switch
+    {
+        PushNotificationType.SessionCreated => SessionStateFlags.Created,
+        PushNotificationType.MemberCreated => SessionStateFlags.ClientJoined,
+        _ => SessionStateFlags.None,
+    };
 
     /// <summary>Closes the channel, which ends the read loop with it.</summary>
     public void Dispose() => channel.Dispose();

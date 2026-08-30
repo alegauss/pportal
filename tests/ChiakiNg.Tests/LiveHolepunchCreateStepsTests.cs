@@ -65,16 +65,59 @@ public class LiveHolepunchCreateStepsTests
     }
 
     /// <summary>
-    /// A notification already on the queue ends the wait at once - the queue PushChannel fills is
+    /// Notifications already on the queue end the wait at once - the queue PushChannel fills is
     /// the one the wait reads, which is the whole join this adapter exists to make.
+    ///
+    /// PP559: BOTH of them. This used to queue one, because the wait ended on either.
     /// </summary>
     [Fact]
-    public async Task ANotificationOnTheQueueEndsTheWait()
+    public async Task TheNotificationsOnTheQueueEndTheWait()
+    {
+        using var steps = Steps();
+        steps.Queue.Enqueue(new QueuedNotification(PushNotificationType.SessionCreated, "{}"));
+        steps.Queue.Enqueue(new QueuedNotification(PushNotificationType.MemberCreated, "{}"));
+
+        Assert.True(await steps.WaitForCreatedAsync(TimeSpan.FromSeconds(5), CancellationToken.None));
+        Assert.True(LiveHolepunchCreateSteps.Finished(steps.Seen));
+    }
+
+    /// <summary>
+    /// PP559: ONE OF THE TWO IS NOT A CREATED SESSION, which is what the C's loop runs until:
+    /// `finished = (state &amp; SESSION_STATE_CREATED) &amp;&amp; (state &amp; SESSION_STATE_CLIENT_JOINED)`.
+    ///
+    /// The same defect PP557 found one sequence later, and the reason it matters more here: the
+    /// client's own join is a MEMBER_CREATED, and this loop is what consumes and clears it. Ending
+    /// on the session-created alone left it on the queue for the start to find and check against
+    /// the console - reading as the wrong console on a perfectly good session.
+    /// </summary>
+    [Fact]
+    public async Task EitherNotificationAloneIsNotACreatedSession()
     {
         using var steps = Steps();
         steps.Queue.Enqueue(new QueuedNotification(PushNotificationType.SessionCreated, "{}"));
 
+        Assert.False(await steps.WaitForCreatedAsync(
+            TimeSpan.FromMilliseconds(150), CancellationToken.None));
+        Assert.Equal(SessionStateFlags.Created, steps.Seen);
+
+        // The half that arrived is remembered, so the other one finishes it.
+        steps.Queue.Enqueue(new QueuedNotification(PushNotificationType.MemberCreated, "{}"));
+
         Assert.True(await steps.WaitForCreatedAsync(TimeSpan.FromSeconds(5), CancellationToken.None));
+    }
+
+    /// <summary>The client's own join is taken off the queue, which is what the start relies on.</summary>
+    [Fact]
+    public async Task TheClientsOwnJoinIsTakenSoTheStartDoesNotFindIt()
+    {
+        using var steps = Steps();
+        steps.Queue.Enqueue(new QueuedNotification(PushNotificationType.MemberCreated, "{}"));
+        steps.Queue.Enqueue(new QueuedNotification(PushNotificationType.SessionCreated, "{}"));
+
+        Assert.True(await steps.WaitForCreatedAsync(TimeSpan.FromSeconds(5), CancellationToken.None));
+
+        Assert.DoesNotContain(
+            steps.Queue.Items, one => one.Type == PushNotificationType.MemberCreated);
     }
 
     /// <summary>
@@ -90,6 +133,7 @@ public class LiveHolepunchCreateStepsTests
     {
         using var steps = Steps();
         steps.Queue.Enqueue(new QueuedNotification(PushNotificationType.MemberCreated, "{}"));
+        steps.Queue.Enqueue(new QueuedNotification(PushNotificationType.SessionCreated, "{}"));
 
         Assert.True(await steps.WaitForCreatedAsync(TimeSpan.FromSeconds(5), CancellationToken.None));
 
@@ -103,6 +147,7 @@ public class LiveHolepunchCreateStepsTests
         using var steps = Steps();
         steps.Queue.Enqueue(new QueuedNotification(PushNotificationType.CustomData1Updated, "{}"));
         steps.Queue.Enqueue(new QueuedNotification(PushNotificationType.SessionCreated, "{}"));
+        steps.Queue.Enqueue(new QueuedNotification(PushNotificationType.MemberCreated, "{}"));
 
         Assert.True(await steps.WaitForCreatedAsync(TimeSpan.FromSeconds(5), CancellationToken.None));
 

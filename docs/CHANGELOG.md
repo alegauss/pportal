@@ -478,6 +478,7 @@
 - ✅ **PP556** **the prepare cannot record the socket it punched, so a prepared session throws on the first ask session.c makes** — The prepare is an instance call that records the socket the ctrl punch produced, and a punch with no socket is not prepared rather than success until the first ask.
 - ✅ **PP557** **the start's wait handles one of the C's two notification types, so a member joining reports a started session on its own** — The wait is the C's loop over both notification types until both halves arrive, each half checked once, and PP257's three custom data failures can happen for the first time.
 - ✅ **PP558** **no adapter removes a handled notification, so the second punch completes on the first punch's messages having sent none** — Each wait now takes what it handled off the queue as the C's loops do, and leaves what is not its business, so the data punch cannot finish on the ctrl punch's messages.
+- ✅ **PP559** **the create's wait ends on either of the C's two notifications, leaving the client's own join for the start to find** — The wait runs until both halves have come, which also consumes the client's own join before the start looks - so PP546's departure cannot fire on it.
 
 ## Block G — Test discipline
 
