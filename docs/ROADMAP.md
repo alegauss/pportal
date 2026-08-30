@@ -9,8 +9,6 @@
 
 ## Block B — Native interop
 
-- 📋 **PP585** (deps: —) **31 C timeout macros and 33 managed waits mirror each other by hand, and nothing says which are meant to agree** — PP577 to PP581 closed this question for enums, a struct, the symbol table and the callbacks; timing was left out. → §PP585
-
 ## Block C — Video and input path
 
 - ⏳ **PP11** (deps: PP9 ✅, PP163 ✅, PP322 ⏳) **fullscreen, HDR handoff and refresh-rate switching are handled by the Qt window** — the HDR half alone: PP319 chose the overlay above the video in the compositor's tree, and PP322 is the reading that has to confirm it. → §PP11

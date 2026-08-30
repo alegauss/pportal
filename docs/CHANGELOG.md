@@ -54,6 +54,7 @@
 - ✅ **PP579** **the SDL_Event size is a hand-written 56 in a StructLayout and nothing holds it against SDL's header** — The size is a named constant the layout uses, held against SDL's padding declaration and its own compile-time assert, reading the 64-bit arm rather than the digits.
 - ✅ **PP580** **nothing checks that every shim entry point the host imports is one the shim exports, or the reverse** — Both sets are read from the shim's definitions and the host's entry points and asserted equal, so a rename fails the gate instead of the call.
 - ✅ **PP581** **six function pointers cross to the shim and nothing checks a managed signature against the C typedef** — Each typedef's signature is read from the header and each thunk's from the source and compared, with bool mapped to byte because C's is one and .NET's default is four.
+- ✅ **PP585** **31 C timeout macros and 33 managed waits mirror each other by hand, and nothing says which are meant to agree** — The C names 32 timing macros, not 31: nineteen are followed by a managed constant, thirteen are unported, and four managed waits follow an inline number a same-file macro would mis-join.
 
 ## Block C — Video and input path
 

@@ -27,29 +27,6 @@ Whatever the right pair is, the dpad path and the mouse path should read it from
 same place - and the reason to write that down now is that the port has just copied all
 three, so it is the moment when the duplication is visible.
 
-### §PP585 The waits, which the seam sweep left out
-
-PP577 to PP581 closed one question across the seam: what here is a hand-written promise
-about something outside the tree? It found thirteen - three enums, a struct size, a
-symbol table and six callback signatures - all correct and none held. Timing constants
-were not part of it.
-
-THE SHAPE IS THE SAME AND THE STAKES ARE LOWER. The C names its waits as macros - 31 of
-them across lib and the shim - and the managed side carries 33, written by hand. A macro
-changed upstream leaves the port waiting a different length than the C it reproduces,
-which is not a crash and is why nothing would report it.
-
-IT IS ALREADY HELD IN PLACES AND NOT AS A RULE. SessionStart asserts its own two lengths
-and states that the timeout is unshared; PP545 recorded a deliberate departure where the
-managed wait is bounded and the C's is not. So the answer is not "make 33 equal 31":
-some are the same number by obligation, some differ on purpose, and the task is to say
-which is which.
-
-THAT IS WHY IT IS A LINE AND NOT A TICK. The sweep is one question over 31 macros and 33
-constants, and its output is a list of three kinds - mirrored, deliberately different,
-and unexplained. Only the third is work. Filed rather than done because a sweep with a
-known size can be scheduled, which is what the four things this came from were for.
-
 ## Block C — Video and input path
 
 ### §PP11 What the window owns
