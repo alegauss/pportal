@@ -458,6 +458,7 @@
 - ✅ **PP536** **the census reads a function no managed file quotes as one nothing has looked at, and eight of its ten have counterparts** — Eight of the ten are answered under names that do not quote the C symbol, each now carried beside it and checked to exist.
 - ✅ **PP537** **the census annotation says nothing builds the session-id header, and PsnEndpoints builds it** — PsnEndpoints builds the session-id header too, so nine of ten are answered and the tenth is the cancel, which arrives with the loop PP533 writes.
 - ✅ **PP538** **nothing models the holepunch stop, whose cancel is consumed by whichever of fourteen checkpoints reaches it first** — The stop is a one-shot the C consumes at all fourteen checkpoints, beside a websocket flag it never consumes, with the signal outside the lock.
+- ✅ **PP539** **nothing says where the holepunch honours a cancel, and three of the fourteen places are inside the waits** — The fourteen sit in six functions and three are the blocking waits, which is how a cancel gets out of a wait instead of serving it out.
 
 ## Block G — Test discipline
 

@@ -148,6 +148,74 @@ public static partial class HolepunchStopSource
         return ConsumeRegex().Matches(source.ReplaceLineEndings("\n")).Count;
     }
 
+    /// <summary>One function that honours a cancel, and how many times it checks.</summary>
+    /// <param name="Function">The C function.</param>
+    /// <param name="Checks">How many checkpoints it holds.</param>
+    /// <param name="IsWait">Whether it is one of the three blocking waits.</param>
+    public sealed record CancelPoint(string Function, int Checks, bool IsWait);
+
+    /// <summary>
+    /// PP539: which functions honour a cancel, and how often.
+    ///
+    /// Attribution is by walking BACK from the checkpoint to the nearest line that begins in
+    /// column zero, contains an open parenthesis and does not end in a semicolon - which is a
+    /// definition and not a declaration. Two earlier attempts walked function boundaries forwards
+    /// with a regex that misses a multi-line signature, and both put three checkpoints inside
+    /// session_message_get_payload, which does not check cancellation at all. The direction is what
+    /// fixed it: from the checkpoint, the previous definition is unambiguous.
+    /// </summary>
+    public static IReadOnlyList<CancelPoint> CancelPoints(string source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        string[] lines = source.ReplaceLineEndings("\n").Split('\n');
+        var counts = new Dictionary<string, int>(StringComparer.Ordinal);
+        var order = new List<string>();
+
+        for (int i = 0; i < lines.Length; i++)
+        {
+            if (!lines[i].Contains("if(session->main_should_stop)", StringComparison.Ordinal))
+                continue;
+
+            if (EnclosingFunction(lines, i) is not { } function)
+                continue;
+
+            if (!counts.TryGetValue(function, out int seen))
+                order.Add(function);
+
+            counts[function] = seen + 1;
+        }
+
+        return [.. order.Select(f => new CancelPoint(f, counts[f], Waits.Contains(f, StringComparer.Ordinal)))];
+    }
+
+    /// <summary>
+    /// The three blocking waits, which are the half of the answer a reader would not guess: a
+    /// cancel arriving mid-wait does not wait out the timeout, because each of these checks the
+    /// one-shot itself and answers CHIAKI_ERR_CANCELED.
+    /// </summary>
+    public static IReadOnlyList<string> Waits { get; } =
+        ["wait_for_notification", "wait_for_session_message", "wait_for_session_message_ack"];
+
+    private static string? EnclosingFunction(string[] lines, int from)
+    {
+        for (int j = from - 1; j >= 0; j--)
+        {
+            string line = lines[j];
+            if (line.Length == 0 || char.IsWhiteSpace(line[0]) || !char.IsLetter(line[0]))
+                continue;
+            if (!line.Contains('(') || line.TrimEnd().EndsWith(';'))
+                continue;
+
+            int open = line.IndexOf('(');
+            string head = line[..open];
+            int space = head.LastIndexOfAny([' ', '*', '\t']);
+            return head[(space + 1)..].Trim();
+        }
+
+        return null;
+    }
+
     /// <summary>Plain reads of the websocket flag, which do not consume.</summary>
     public static int WebsocketReads(string source)
     {

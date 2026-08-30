@@ -55,8 +55,11 @@ public class HolepunchCensusTests(ITestOutputHelper output)
         new("http_create_session", "SessionCalls.cs"),
         new("make_oauth2_header", "PsnEndpoints.cs"),
         new("make_session_id_header", "PsnEndpoints.cs"),
+        // PP539 named session_message_get_payload while explaining a misattribution, so the sweep
+        // now finds it quoted and it has left too. That is the fourth entry to leave this way, and
+        // the churn is the list's problem rather than each task's: what is worth asserting is that
+        // nothing lacks a counterpart, not which symbols a model happens to mention.
         new("notification_queue_free", "NotificationQueue.cs"),
-        new("session_message_get_payload", "SessionMessage.cs"),
     ];
 
     /// <summary>
@@ -117,7 +120,7 @@ public class HolepunchCensusTests(ITestOutputHelper output)
     [Fact]
     public void MostOfTheUnquotedOnesAreAnsweredUnderAnotherName()
     {
-        Assert.True(Unnamed.Count(u => u.Counterpart is not null) >= 9,
+        Assert.True(Unnamed.Count(u => u.Counterpart is not null) >= 8,
             "the point of PP536 is that most of these are already answered");
     }
 
@@ -154,7 +157,7 @@ public class HolepunchCensusTests(ITestOutputHelper output)
         (var named, var unnamed) = HolepunchCensus.Split(checkout.Source, checkout.Managed);
 
         // 58 since PP538 named the cancel, up from PP534's 57.
-        Assert.True(named.Count >= 58, $"only {named.Count} of holepunch.c's functions are named");
+        Assert.True(named.Count >= 59, $"only {named.Count} of holepunch.c's functions are named");
         Assert.Equal(Unnamed.Count, unnamed.Count);
     }
 

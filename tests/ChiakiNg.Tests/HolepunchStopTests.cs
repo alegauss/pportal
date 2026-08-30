@@ -126,6 +126,72 @@ public class HolepunchStopTests
     }
 
     /// <summary>
+    /// PP539: the fourteen sit in six functions, and three of the six are the blocking waits.
+    ///
+    /// That second half is the finding. A cancel arriving while the loop is blocked does not sit
+    /// there until the wait times out - each wait checks the one-shot itself and answers
+    /// CHIAKI_ERR_CANCELED, which is how session_create's "canceled" branch is ever reached. A
+    /// managed loop whose waits did not check would honour a cancel only between steps and would
+    /// look correct until somebody cancelled during a thirty-second wait.
+    /// </summary>
+    [Fact]
+    public void TheCancelIsHonouredInSixPlacesAndThreeAreWaits()
+    {
+        if (HolepunchStopSource.Locate() is not { } path)
+            return;
+
+        var points = HolepunchStopSource.CancelPoints(File.ReadAllText(path));
+
+        Assert.Equal(14, points.Sum(p => p.Checks));
+        Assert.Equal(6, points.Count);
+        Assert.Equal(3, points.Count(p => p.IsWait));
+
+        Assert.Equal(4, points.Single(p => p.Function == "chiaki_holepunch_session_create").Checks);
+        Assert.Equal(2, points.Single(p => p.Function == "chiaki_holepunch_session_start").Checks);
+        Assert.Equal(5, points.Single(p => p.Function == "chiaki_holepunch_session_punch_hole").Checks);
+        Assert.All(HolepunchStopSource.Waits, w => Assert.Equal(1, points.Single(p => p.Function == w).Checks));
+    }
+
+    /// <summary>
+    /// And the attribution walks BACKWARDS, which is what two earlier attempts got wrong: a regex
+    /// scanning forwards for function boundaries misses a multi-line signature, and every
+    /// checkpoint after one gets filed under the previous function. Written out here as the shape
+    /// that broke it - a definition whose parameters wrap.
+    /// </summary>
+    [Fact]
+    public void AMultiLineSignatureDoesNotMisattributeTheCheckpoint()
+    {
+        const string source = """
+            static ChiakiErrorCode payload_only(ChiakiLog *log, json_object *msg)
+            {
+                return CHIAKI_ERR_SUCCESS;
+            }
+
+            static ChiakiErrorCode wait_for_notification(
+                Session *session, Notification **out, uint16_t types, uint64_t timeout_ms)
+            {
+                chiaki_mutex_lock(&session->stop_mutex);
+                if(session->main_should_stop)
+                {
+                    session->main_should_stop = false;
+                    return CHIAKI_ERR_CANCELED;
+                }
+            }
+            """;
+
+        var points = HolepunchStopSource.CancelPoints(source);
+
+        CancelPointIsOnlyTheWait(points);
+
+        static void CancelPointIsOnlyTheWait(IReadOnlyList<HolepunchStopSource.CancelPoint> points)
+        {
+            HolepunchStopSource.CancelPoint only = Assert.Single(points);
+            Assert.Equal("wait_for_notification", only.Function);
+            Assert.True(only.IsWait);
+        }
+    }
+
+    /// <summary>
     /// And the reader can tell the two apart. A checkpoint that read without clearing is the
     /// difference this whole task is about, so the counter is run against one written out.
     /// </summary>
