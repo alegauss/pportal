@@ -97,6 +97,51 @@ public static partial class BacklogRequirements
         return names;
     }
 
+    /// <summary>One open line, and what it waits on where it waits on something absent.</summary>
+    /// <param name="Id">The task.</param>
+    /// <param name="Requirements">What it needs that no task can supply, or empty where it is startable.</param>
+    public readonly record struct OpenLine(string Id, IReadOnlyList<string> Requirements);
+
+    /// <summary>
+    /// PP583: every open line, with what it waits on.
+    ///
+    /// A total mixes two states a reader needs apart. "Twenty open" reads as twenty things somebody
+    /// could pick up; six of them cannot be started at all until a console, a certificate, a runner
+    /// or a second toolchain arrives, and no amount of work here supplies one. PP312 made that
+    /// distinction expressible - a requirement is not a dep and never becomes one - and then only
+    /// `pick` used it, so the count a reader meets first still says twenty.
+    /// </summary>
+    public static IReadOnlyList<OpenLine> OpenLines(string roadmap)
+    {
+        ArgumentNullException.ThrowIfNull(roadmap);
+
+        var found = new List<OpenLine>();
+
+        foreach (Match line in OpenLineRegex().Matches(roadmap))
+        {
+            string[] needs = [.. RequiresRegex().Matches(line.Value)
+                .SelectMany(one => one.Groups["names"].Value.Split(','))
+                .Select(one => one.Trim())
+                .Where(one => one.Length > 0)];
+
+            found.Add(new OpenLine(line.Groups["id"].Value, needs));
+        }
+
+        return found;
+    }
+
+    /// <summary>The open lines nothing absent is holding up.</summary>
+    public static IReadOnlyList<OpenLine> Startable(string roadmap)
+        => [.. OpenLines(roadmap).Where(one => one.Requirements.Count == 0)];
+
+    /// <summary>And the ones that cannot be begun, whatever is decided.</summary>
+    public static IReadOnlyList<OpenLine> Waiting(string roadmap)
+        => [.. OpenLines(roadmap).Where(one => one.Requirements.Count > 0)];
+
+    /// <summary>An open task line, whatever its marker.</summary>
+    [GeneratedRegex(@"^\s*-\s*(?:📋|💭|⏳|🛠)\s*\*\*(?<id>PP\d+)\*\*.*$", RegexOptions.Multiline)]
+    private static partial Regex OpenLineRegex();
+
     /// <summary>
     /// A phrase a line's own prose uses, and the requirement it means.
     ///

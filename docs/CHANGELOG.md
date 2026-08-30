@@ -559,6 +559,7 @@
 - ✅ **PP571** **the no-local-patch non-goal reads as forbidding PP33's deletion, which must edit session.c and ctrl.c** — The rule names PP33 as what it does not reach, and the exemption is asserted inside its own paragraph so a check cannot pass on PP33 being named elsewhere.
 - ✅ **PP576** **the sized-buffer names are declared in a list nothing reads and again inside the regex that does the work** — The pattern is named so its names can be compared with the list's, and a name the list carries that the pattern ignores turns the suite red.
 - ✅ **PP582** **five of the six partial lines carry no definition of done, so how much is left has no answer** — All six partial lines carry criteria derived from their own sections, and a hard assertion names any partial line that arrives without one.
+- ✅ **PP583** **the open count mixes lines somebody could start with lines that cannot be begun until hardware arrives** — A --backlog reading splits the open lines into startable and waiting, naming what each waiting line waits for, guarded against a stale host like the other two.
 
 ## Block H — Performance and telemetry
 

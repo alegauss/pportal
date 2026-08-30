@@ -371,6 +371,47 @@ public partial class App : Application
     /// <c>AssertionRatchetTests</c>, and having two things fail for one reason only ever teaches
     /// people to read one of them.
     /// </summary>
+    /// <summary>
+    /// PP583: the open lines, split into what can be started and what waits on something absent.
+    ///
+    /// A total mixes two states a reader needs apart. "Twenty open" reads as twenty things somebody
+    /// could pick up, and six of them cannot be begun at all until a console, a certificate, a
+    /// runner or a second toolchain arrives - which no work in this repository supplies. PP312 made
+    /// that expressible and only `pick` used it, so the first number a reader meets still said
+    /// twenty.
+    ///
+    /// It prints and returns 0 whatever it finds. This is a reading, not a gate: nothing here is
+    /// wrong because a line waits on hardware, and a flag that failed on it would be one nobody runs.
+    /// </summary>
+    private static int Backlog()
+    {
+        string? path = BacklogRequirements.LocateRoadmap();
+        if (path is null)
+        {
+            Console.WriteLine("[backlog] not running out of a checkout - there is no roadmap to read.");
+            return 2;
+        }
+
+        string roadmap = File.ReadAllText(path);
+        IReadOnlyList<BacklogRequirements.OpenLine> startable = BacklogRequirements.Startable(roadmap);
+        IReadOnlyList<BacklogRequirements.OpenLine> waiting = BacklogRequirements.Waiting(roadmap);
+
+        Console.WriteLine(
+            $"[backlog] {startable.Count + waiting.Count} open: {startable.Count} startable, "
+                + $"{waiting.Count} waiting on something absent");
+
+        foreach (IGrouping<string, BacklogRequirements.OpenLine> group in waiting
+            .SelectMany(one => one.Requirements.Select(need => (need, one)))
+            .GroupBy(pair => pair.need, pair => pair.one, StringComparer.Ordinal)
+            .OrderBy(one => one.Key, StringComparer.Ordinal))
+        {
+            Console.WriteLine($"[backlog]   {group.Key}: {string.Join(", ", group.Select(one => one.Id))}");
+        }
+
+        Console.WriteLine($"[backlog] startable: {string.Join(", ", startable.Select(one => one.Id))}");
+        return 0;
+    }
+
     private static int Ratchet()
     {
         string? root = SanitizerSource.RepositoryRoot();
@@ -935,6 +976,18 @@ public partial class App : Application
 
             string? id = HostCommandLine.ValueAfter(e.Args, "--ratchet");
             Environment.Exit(id is null ? Ratchet() : RatchetFor(id));
+        }
+
+        // PP583: the third backlog reading, and the one a person asks for rather than a gate.
+        // Guarded like the other two: a stale host reads the current backlog with rules the tree has
+        // moved past, which is a wrong answer that looks exactly like a right one.
+        if (HostCommandLine.Has(e.Args, "--backlog"))
+        {
+            ReopenStdOut();
+            if (RefuseIfStale())
+                Environment.Exit(3);
+
+            Environment.Exit(Backlog());
         }
 
         // PP284: the window PP163's last question is answered by looking at. Here rather than after

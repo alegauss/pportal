@@ -11,8 +11,12 @@ import { HOST_FLAGS, type HostFlag } from "../../../src/lib/product.generated";
 
 /**
  * The five the front page prints. A reader running the application is the audience there, and
- * the other eleven report on this repository's own debt - which is what this area is for, so
- * both halves are shown here and told apart.
+ * the rest report on this repository's own debt - which is what this area is for, so both
+ * halves are shown here and told apart.
+ *
+ * PP583: the count used to be written out here and had drifted - it said eleven of sixteen. The
+ * set below is the claim; how many fall the other side of it is derived, and derived is what
+ * this area's own rule asks for.
  */
 const ON_THE_FRONT_PAGE = new Set([
   "--selftest",

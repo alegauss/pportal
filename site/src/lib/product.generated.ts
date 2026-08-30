@@ -46,6 +46,11 @@ export const HOST_FLAGS: readonly HostFlag[] = [
     "summary": "list the shipped tasks no assertion names; with an id, where it is named"
   },
   {
+    "name": "--backlog",
+    "argument": "",
+    "summary": "split the open lines into what can be started and what waits on something absent"
+  },
+  {
     "name": "--controllers",
     "argument": "",
     "summary": "print what SDL sees, for a pad that is plugged in now"

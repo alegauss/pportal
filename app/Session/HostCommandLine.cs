@@ -50,6 +50,7 @@ public static partial class HostCommandLine
         new("--apply", "", "with --recount: run those corrections through roadkeep, stopping on a refusal"),
         new("--select-corpus", "<in> <out>", "keep the entries a replay can expect, and report what was dropped"),
         new("--ratchet", "[id]", "list the shipped tasks no assertion names; with an id, where it is named"),
+        new("--backlog", "", "split the open lines into what can be started and what waits on something absent"),
         new("--controllers", "", "print what SDL sees, for a pad that is plugged in now"),
         new("--capture-controller", "", "log presses for twenty seconds; add --analog for the sticks"),
         new("--analog", "", "with --capture-controller: include the axes, which flood the log"),
