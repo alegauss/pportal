@@ -62,10 +62,11 @@
   calls and the wakeup reach PSN through HttpClient, with the response codes and the
   failure paths the curl setup encodes - CURLOPT_FAILONERROR among them, which turns an
   HTTP error into a transfer error and is not the default anywhere else.
-- **libchiaki builds with neither curl nor json-c** The build configures and links
-  without either, which is the first moment the deletion is real rather than planned:
-  until then both are still fetched, still built, and still shipped beside a managed
-  replacement that duplicates them.
+- **libchiaki builds with neither curl nor json-c** Two steps, measured apart by PP565.
+  Compiling is done: with holepunch.c out of the sources and both libraries unlinked,
+  every other source in lib compiles and the archive is built. Linking waits on the four
+  callers PP563 and PP564 named - every reference the exes fail on is a holepunch
+  symbol, not curl or json-c.
 - **The remaining query reads zero** And not before. The query counts C that porting
   does not remove, so it reads its full count until the criterion above is met and then
   reads zero. It is an end state, not a progress bar, and reading it as one is what made

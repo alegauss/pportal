@@ -106,6 +106,11 @@ public class HolepunchConsumersTests
     /// test. What can is its precondition: holepunch.c still in the library's sources, and both
     /// libraries still linked. Change any of the three and the recorded result - that libchiaki.a
     /// builds with neither, once that one file is gone - is about a different tree.
+    ///
+    /// PP566: AND PP33'S BUILD CRITERION NOW CITES IT. That criterion said the build "configures
+    /// and links without either" as one step; it is two, and the compile half is already true. Its
+    /// reason names this measurement, so this assertion is what keeps the reason honest - a tree
+    /// where these three lines moved is one the criterion is describing wrongly.
     /// </summary>
     [Fact]
     public void TheMeasurementsPreconditionStillHolds()
