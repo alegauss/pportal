@@ -483,6 +483,7 @@
 - ✅ **PP561** **the three sequences and the session are each joined to nothing, so eight tasks are pieces that fit and were never fitted** — The three sequences run over one queue and one stop, the stage that failed is named, and no session comes back unless every stage ran.
 - ✅ **PP563** **PP33's deletion has a third consumer nothing names: the port's own shim wraps nine holepunch exports** — The shim's nine wrappers are named beside the harness, and the deletion's three consumers are listed rather than counted - four of the nine overlap session.c's, five do not.
 - ✅ **PP564** **nothing has asked the build what PP33's deletion costs, and reading the tree missed ctrl.c** — Building the library without holepunch.c names four consumers and thirty-four references: ctrl.c is the fourth, and one export carries no chiaki prefix.
+- ✅ **PP565** **PP33's done-when line about building without curl and json-c rests on a grep, and nothing has tried the build** — Built with holepunch.c out and both libraries unlinked, every other source in lib compiles and the archive is produced: the dependency is one file deep.
 
 ## Block G — Test discipline
 

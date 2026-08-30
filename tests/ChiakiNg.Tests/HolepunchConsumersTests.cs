@@ -99,6 +99,35 @@ public class HolepunchConsumersTests
         Assert.Equal(HolepunchConsumers.ShimCalls.Count, missing.Count);
     }
 
+    /// <summary>
+    /// PP565: the tree the curl-and-json-c measurement was taken on is the tree in front of us.
+    ///
+    /// The measurement itself needs a build with three lines commented out, so it cannot live in a
+    /// test. What can is its precondition: holepunch.c still in the library's sources, and both
+    /// libraries still linked. Change any of the three and the recorded result - that libchiaki.a
+    /// builds with neither, once that one file is gone - is about a different tree.
+    /// </summary>
+    [Fact]
+    public void TheMeasurementsPreconditionStillHolds()
+    {
+        if (HolepunchConsumers.LocateLibCMake() is not { } path)
+            return;
+
+        Assert.True(HolepunchConsumers.TheMeasuredTreeIsStillThis(File.ReadAllText(path)));
+        Assert.Equal(@"lib\src\remote\holepunch.c", HolepunchConsumers.OnlyFileNeedingCurlAndJsonC);
+    }
+
+    /// <summary>
+    /// And the file the two libraries are for is the file the deletion is about - one claim, not
+    /// two, which is what makes PP33's DoD line reachable by removing a single source.
+    /// </summary>
+    [Fact]
+    public void TheFileTheyAreForIsTheFileBeingDeleted()
+        => Assert.Contains(
+            HolepunchConsumers.OnlyFileNeedingCurlAndJsonC,
+            HolepunchConsumers.TestHarnessRelativePath.Replace(
+                "holepunch-test.c", "holepunch.c", StringComparison.Ordinal));
+
     /// <summary>The harness exists, which is the whole of what PP33 got wrong.</summary>
     [Fact]
     public void TheHarnessIsInTheTree()

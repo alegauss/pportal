@@ -157,4 +157,43 @@ public static class HolepunchConsumers
     /// which is how a reader finds these - does not see it. It is exported all the same.
     /// </summary>
     public const string UnprefixedExport = "holepunch_session_create_offer";
+
+    /// <summary>
+    /// PP565: the one file in lib/ that curl and json-c are for, measured rather than counted.
+    ///
+    /// PP33's `remaining` query counts 420 curl and json-c sites and reports them all in
+    /// holepunch.c. That is a grep, and a grep cannot see an include that a macro hides or a header
+    /// that pulls another in. The compiler can: with holepunch.c out of the source list and BOTH
+    /// libraries unlinked - so their headers are not on the include path at all - every remaining
+    /// source in lib/ compiles, and libchiaki.a is produced.
+    ///
+    /// SO THE DEPENDENCY IS EXACTLY ONE FILE DEEP. Nothing else in the library reaches for either
+    /// library, which is the DoD line "libchiaki builds with neither curl nor json-c" being true
+    /// today for the archive, waiting only on this file leaving.
+    ///
+    /// The two executables still fail, on the holepunch symbols PP564 measured - which is a
+    /// different problem, and the one the four consumers are.
+    /// </summary>
+    public const string OnlyFileNeedingCurlAndJsonC = @"lib\src\remote\holepunch.c";
+
+    /// <summary>
+    /// The library target's own name, which is what was still produced with both unlinked.
+    /// </summary>
+    public const string LibraryArchive = "libchiaki.a";
+
+    /// <summary>
+    /// Whether the CMakeLists still links both, and still builds the one file they are for.
+    ///
+    /// The measurement is not repeatable in a test - it needs a build with three lines commented
+    /// out. What a test CAN hold is that the tree it was measured on is the tree in front of it:
+    /// change any of these three and the recorded result is about something else.
+    /// </summary>
+    public static bool TheMeasuredTreeIsStillThis(string libCMake)
+    {
+        ArgumentNullException.ThrowIfNull(libCMake);
+
+        return libCMake.Contains("src/remote/holepunch.c", StringComparison.Ordinal)
+            && libCMake.Contains("target_link_libraries(chiaki-lib CURL::libcurl)", StringComparison.Ordinal)
+            && libCMake.Contains("pkg_search_module(json-c REQUIRED json-c IMPORTED_TARGET)", StringComparison.Ordinal);
+    }
 }
