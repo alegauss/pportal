@@ -564,6 +564,7 @@
 - ✅ **PP576** **the sized-buffer names are declared in a list nothing reads and again inside the regex that does the work** — The pattern is named so its names can be compared with the list's, and a name the list carries that the pattern ignores turns the suite red.
 - ✅ **PP582** **five of the six partial lines carry no definition of done, so how much is left has no answer** — All six partial lines carry criteria derived from their own sections, and a hard assertion names any partial line that arrives without one.
 - ✅ **PP583** **the open count mixes lines somebody could start with lines that cannot be begun until hardware arrives** — A --backlog reading splits the open lines into startable and waiting, naming what each waiting line waits for, guarded against a stale host like the other two.
+- ✅ **PP587** **the local gate never runs roadkeep lint, so a governed-file drift is first reported by a CI run** — test.cmd runs roadkeep lint now - a note when the tool is absent, a failure when it says so - the gate-and-CI table reads all three workflows, and a step's own banner no longer counts as running it.
 
 ## Block H — Performance and telemetry
 

@@ -44,8 +44,8 @@ public class GateAndCiAgreeTests(ITestOutputHelper output)
         if (GateAndCiAgree.ReadLocal() is { } local)
             Assert.True(GateAndCiAgree.Runs(local, pass.Name));
 
-        if (GateAndCiAgree.LocateCi() is { } ci)
-            Assert.True(GateAndCiAgree.Runs(File.ReadAllText(ci), pass.Name));
+        if (GateAndCiAgree.ReadCi() is { } ci)
+            Assert.True(GateAndCiAgree.Runs(ci, pass.Name));
     }
 
     /// <summary>
@@ -82,8 +82,8 @@ public class GateAndCiAgreeTests(ITestOutputHelper output)
         if (GateAndCiAgree.ReadLocal() is { } local)
             Assert.True(GateAndCiAgree.Runs(local, pass.Name));
 
-        if (GateAndCiAgree.LocateCi() is { } ci)
-            Assert.True(GateAndCiAgree.Runs(File.ReadAllText(ci), pass.Name));
+        if (GateAndCiAgree.ReadCi() is { } ci)
+            Assert.True(GateAndCiAgree.Runs(ci, pass.Name));
     }
 
     /// <summary>
@@ -106,14 +106,14 @@ public class GateAndCiAgreeTests(ITestOutputHelper output)
     {
         if (GateAndCiAgree.ReadLocal() is not { } local)
             return;
-        if (GateAndCiAgree.LocateCi() is not { } ci)
+        if (GateAndCiAgree.ReadCi() is not { } ci)
             return;
 
         foreach (TestPass pass in GateAndCiAgree.Passes)
             output.WriteLine($"{pass.Name}: local={pass.Locally} ci={pass.InCi}");
 
         IReadOnlyList<string> apart = GateAndCiAgree.Disagreements(
-            local, File.ReadAllText(ci));
+            local, ci);
 
         Assert.True(
             apart.Count == 0,
@@ -158,6 +158,99 @@ public class GateAndCiAgreeTests(ITestOutputHelper output)
     }
 
     /// <summary>
+    /// PP587: the pass that arrived from the CI side, run by both now.
+    ///
+    /// It is the mirror image of the host's selftest, and the direction
+    /// <see cref="NothingRunsInCiWithoutRunningLocally"/> already refused: a pass CI runs and the
+    /// gate does not is one a developer cannot reproduce before pushing. That assertion was green
+    /// only because this pass was not in the table - the workflow existed, and nothing here read it.
+    /// </summary>
+    [Fact]
+    public void RoadkeepLintIsRunByBoth()
+    {
+        TestPass pass = Assert.Single(GateAndCiAgree.Passes, one => one.Name == "roadkeep lint");
+
+        Assert.True(pass.Locally);
+        Assert.True(pass.InCi);
+        Assert.Empty(pass.Because);
+
+        if (GateAndCiAgree.ReadLocal() is { } local)
+            Assert.True(GateAndCiAgree.Runs(local, pass.Name));
+
+        if (GateAndCiAgree.ReadCi() is { } ci)
+            Assert.True(GateAndCiAgree.Runs(ci, pass.Name));
+    }
+
+    /// <summary>
+    /// PP587: CI is three workflows, and the pass that made that matter is in the second of them.
+    ///
+    /// Reading build.yml alone would report CI as not running roadkeep lint, and the disagreement
+    /// would be in the reader rather than in the tree - the failure this whole class exists to
+    /// avoid, one level up from the passes it compares.
+    /// </summary>
+    [Fact]
+    public void TheCiSideIsEveryWorkflowAndNotJustTheBuild()
+    {
+        Assert.Equal(3, GateAndCiAgree.CiRelativePaths.Count);
+        Assert.Contains(@".github\workflows\roadkeep.yml", GateAndCiAgree.CiRelativePaths);
+
+        // The build workflow alone does NOT run it, which is why the list had to widen.
+        string? build = SanitizerSource.LocateRelative(@".github\workflows\build.yml");
+        if (build is null)
+            return;
+
+        Assert.False(GateAndCiAgree.Runs(File.ReadAllText(build), "roadkeep lint"));
+    }
+
+    /// <summary>
+    /// PP587: the two spellings, and neither is the other's substring.
+    ///
+    /// The gate calls the verb and CI uses the published action, which roadkeep.yml's own comment
+    /// says is deliberate - a copied run block drifts per repository. A matcher holding only the
+    /// verb would have reported CI as not running the pass it does run.
+    /// </summary>
+    [Fact]
+    public void TheVerbAndThePublishedActionBothCount()
+    {
+        Assert.True(GateAndCiAgree.Runs("    roadkeep lint", "roadkeep lint"));
+        Assert.True(GateAndCiAgree.Runs("      - uses: alegauss/roadkeep@main", "roadkeep lint"));
+
+        // And neither spelling answers for another pass.
+        Assert.False(GateAndCiAgree.Runs("      - uses: alegauss/roadkeep@main", "the C suite (ctest)"));
+        Assert.False(GateAndCiAgree.Runs("    roadkeep lint", "the host's --selftest"));
+
+        // A comment about it is still not running it.
+        Assert.False(GateAndCiAgree.Runs(
+            "rem `roadkeep lint` exits 1 on a governed file that drifted", "roadkeep lint"));
+    }
+
+    /// <summary>
+    /// PP587: AND NEITHER IS THE BANNER. The gate echoes "[test] roadkeep lint" one line above the
+    /// call, so a check that only asked whether the file CONTAINS the verb was satisfied by the
+    /// label - green with the call deleted, which is how this was found.
+    ///
+    /// A comment is not the only line that can name a command without running it, which is the half
+    /// <see cref="ACommentNamingACommandIsNotRunningIt"/> does not cover.
+    /// </summary>
+    [Fact]
+    public void AnEchoOfTheStepIsNotRunningIt()
+    {
+        const string bannerOnly = """
+            echo.
+            echo [test] roadkeep lint
+            """;
+
+        Assert.False(GateAndCiAgree.Runs(bannerOnly, "roadkeep lint"));
+
+        // The banner AND the call is what the gate actually has, and that runs it.
+        Assert.True(GateAndCiAgree.Runs(bannerOnly + "\n    roadkeep lint", "roadkeep lint"));
+
+        // Invokes is the rule underneath, and it is about where the command sits on the line.
+        Assert.True(GateAndCiAgree.Invokes("  roadkeep lint\n", "roadkeep lint"));
+        Assert.False(GateAndCiAgree.Invokes("echo roadkeep lint\n", "roadkeep lint"));
+    }
+
+    /// <summary>
     /// A comment naming a command does not count as running it.
     ///
     /// build.yml's comments discuss test.cmd and ctest at length, and test.cmd's discuss the
@@ -187,13 +280,13 @@ public class GateAndCiAgreeTests(ITestOutputHelper output)
     [Fact]
     public void TheSelftestIsAbsentFromCi()
     {
-        if (GateAndCiAgree.LocateCi() is not { } ci)
+        if (GateAndCiAgree.ReadCi() is not { } ci)
             return;
         if (GateAndCiAgree.ReadLocal() is not { } local)
             return;
 
         Assert.False(
-            GateAndCiAgree.Runs(File.ReadAllText(ci), "the host's --selftest"),
+            GateAndCiAgree.Runs(ci, "the host's --selftest"),
             "CI runs the selftest now - update the table, and PP433 has been done");
 
         Assert.True(GateAndCiAgree.Runs(local, "the host's --selftest"));

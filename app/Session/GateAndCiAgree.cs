@@ -44,8 +44,22 @@ public static partial class GateAndCiAgree
     public static IReadOnlyList<string> LocalRelativePaths { get; } =
         ["test.cmd", @"scripts\test-windows.sh"];
 
-    /// <summary>And the workflow that gates a branch.</summary>
-    public const string CiRelativePath = @".github\workflows\build.yml";
+    /// <summary>
+    /// And the workflows that gate a branch, which are THREE and not one.
+    ///
+    /// PP587: this was build.yml alone, and it was right while every pass lived there. `roadkeep
+    /// lint` does not - PP36 gave it a workflow of its own - so a table reading build.yml would have
+    /// reported CI as not running a pass CI runs, and the disagreement would have been in the reader.
+    /// site.yml is here for the same reason rather than because it runs one: a list of "the
+    /// workflows CI has" is a fact, and a list of "the ones that happen to matter today" is a
+    /// judgement that goes stale silently.
+    /// </summary>
+    public static IReadOnlyList<string> CiRelativePaths { get; } =
+    [
+        @".github\workflows\build.yml",
+        @".github\workflows\roadkeep.yml",
+        @".github\workflows\site.yml",
+    ];
 
     /// <summary>
     /// The local gate's files, concatenated, or null outside a checkout.
@@ -53,19 +67,20 @@ public static partial class GateAndCiAgree
     /// Concatenated rather than asked one at a time: which of the two runs a given pass is their
     /// business, and the question here is whether the gate runs it at all.
     /// </summary>
-    public static string? ReadLocal()
+    public static string? ReadLocal() => Concatenate(LocalRelativePaths);
+
+    /// <summary>The workflows, concatenated, or null outside a checkout - as <see cref="ReadLocal"/>.</summary>
+    public static string? ReadCi() => Concatenate(CiRelativePaths);
+
+    private static string? Concatenate(IReadOnlyList<string> relativePaths)
     {
-        string?[] found =
-            [.. LocalRelativePaths.Select(SanitizerSource.LocateRelative)];
+        string?[] found = [.. relativePaths.Select(SanitizerSource.LocateRelative)];
 
         if (found.Any(path => path is null))
             return null;
 
         return string.Concat(found.Select(path => File.ReadAllText(path!)));
     }
-
-    /// <summary>build.yml, or null outside a checkout.</summary>
-    public static string? LocateCi() => SanitizerSource.LocateRelative(CiRelativePath);
 
     /// <summary>
     /// The three passes, and where each is run today.
@@ -97,6 +112,14 @@ public static partial class GateAndCiAgree
         // they are two binaries, and a table that said "the tools" would be green with one of them
         // wired, which is the state PP569 left and this found.
         new("measure-startup's self-test", Locally: true, InCi: true),
+
+        // PP587: the only pass that arrived from the CI side. PP36 gave `roadkeep lint` a workflow
+        // and the local gate never gained it, so a governed-file drift was first reported by a push -
+        // the mirror image of the host's selftest above, and the one direction this table had no
+        // member for. The plugin's hook validates every WRITE, which is why it was easy to leave out;
+        // what a write cannot catch is a hand-edit that went round it, a merge, or a rule the engine
+        // gained since the file was last touched.
+        new("roadkeep lint", Locally: true, InCi: true),
     ];
 
     /// <summary>How many passes run locally and not in CI. One, and it is named.</summary>
@@ -132,6 +155,19 @@ public static partial class GateAndCiAgree
             "measure-startup's self-test" => code.Contains("measure-startup", StringComparison.Ordinal)
                 && code.Contains("--self-test", StringComparison.Ordinal),
 
+            // PP587: two spellings, because the two sides invoke it differently and neither is the
+            // other's substring. The gate calls the verb; CI uses the action roadkeep publishes,
+            // which roadkeep.yml's own comment says is deliberate - a copied `run:` block drifts per
+            // repository. Matching the verb alone would report CI as not running it.
+            //
+            // AND THE VERB HAS TO BE THE COMMAND. `echo [test] roadkeep lint` announces the step one
+            // line above it, so a Contains over the whole file is satisfied by the label alone - the
+            // check was green with the call deleted. This is the same failure as counting a comment,
+            // one step along: a comment is not the only line that can name a command without running
+            // it. Hence Invokes, which asks whether a LINE starts with the verb.
+            "roadkeep lint" => Invokes(code, "roadkeep lint")
+                || code.Contains("alegauss/roadkeep", StringComparison.Ordinal),
+
             _ => false,
         };
     }
@@ -162,6 +198,21 @@ public static partial class GateAndCiAgree
         }
 
         return apart;
+    }
+
+    /// <summary>
+    /// Whether any line RUNS the command, rather than merely containing it.
+    ///
+    /// PP587: the line has to begin with it. `echo [test] roadkeep lint` contains the verb and runs
+    /// nothing, and a gate that printed its own banner and skipped the step would read as wired.
+    /// </summary>
+    public static bool Invokes(string code, string command)
+    {
+        ArgumentNullException.ThrowIfNull(code);
+        ArgumentException.ThrowIfNullOrEmpty(command);
+
+        return code.Split('\n')
+            .Any(line => line.Trim().StartsWith(command, StringComparison.Ordinal));
     }
 
     /// <summary>Every pass that runs locally and not in CI.</summary>

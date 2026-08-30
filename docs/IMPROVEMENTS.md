@@ -370,30 +370,6 @@ what makes the five ports beneath it real.
 
 ## Block G — Test discipline
 
-### §PP587 The check that is one push away
-
-The gate in this tree is compile.cmd and test.cmd, and neither names roadkeep. The three
-governed files are checked by .github/workflows/roadkeep.yml, which PP36 shipped and
-which exits 1 on a file that drifted. Both halves are deliberate. Together they mean the
-first reader of a drift is a push.
-
-THAT IS A RUN THIS REPO DOES NOT HAVE SPARE. PP572's line says so about build.yml for
-the same reason, one file along: nothing here parses it, so a syntax error costs a run
-to find. A governed-file drift costs the same run, and the difference is that this one
-is answerable locally in under a second - `roadkeep lint` is on the PATH of the machine
-that just edited the file.
-
-WHAT IT WOULD HAVE CAUGHT. install.stale, which reports that the skill, hook and
-launcher this checkout ships are behind the engine answering here - a session then reads
-rules older than the tool it calls. It has drifted at least once already; the chore
-commit that refreshed the skill by hand is in the log.
-
-AND WHY IT IS A NOTE AND NOT A REFUSAL. The gate would depend on a tool outside the
-tree, which can be absent and can be broken - during this task `roadkeep lint` crashed
-outright, from an edit in the tool's own checkout. test.cmd already has the shape for
-that: `noapp` prints that it skipped the .NET half rather than refusing, because the Qt
-client does not need one.
-
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed

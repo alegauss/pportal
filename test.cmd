@@ -137,6 +137,29 @@ if exist "%MS_EXE%" (
     echo [test] measure-startup: not built, selftest not run
 )
 
+rem ---- the governed files (PP587) ----------------------------------------
+rem PP36 put `roadkeep lint` in a workflow of its own and the local gate never gained it, so the
+rem first reader of a drift was a push - and what PP572's line says about build.yml is true here
+rem too: this repo has no green run to spare. The check itself is under a second.
+rem
+rem It was easy to leave out because the plugin's hook validates every WRITE, and nearly every drift
+rem would have to get past that. The ones that can: a hand-edit that went round the hook, a merge,
+rem and a rule the engine gained since the file was last written - the third is not hypothetical,
+rem this tree grew two lint notes and lost them again inside one session as the engine moved.
+rem
+rem A NOTE WHEN THE TOOL IS ABSENT, a failure when it says so, which is the shape the two selftests
+rem above use. roadkeep is not vendored here and a machine without it still ran everything above;
+rem its exit code is the whole contract, as .github\workflows\roadkeep.yml says of the same call.
+where roadkeep >nul 2>&1
+if errorlevel 1 (
+    echo [test] roadkeep: not on PATH, lint not run
+) else (
+    echo.
+    echo [test] roadkeep lint
+    roadkeep lint
+    if errorlevel 1 set "CRC=1"
+)
+
 rem ---- the xUnit project (PP35) ------------------------------------------
 rem Both, and not one instead of the other. The selftest above runs inside the shipped binary,
 rem which is what PP22's CI runs against the published single file; this runs against the
