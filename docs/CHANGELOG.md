@@ -465,6 +465,7 @@
 - ✅ **PP544** **PP33 records holepunch-test.c as absent, and it is a built executable calling eight holepunch exports** — holepunch-test.c is in the tree, built every time, and calls eight exports - so PP33's deletion has a second consumer its own design recorded as absent.
 - ✅ **PP545** **nothing composes the ported holepunch pieces, so the create sequence is modelled and never run** — The five steps run in the C's order over PP538's one-shot at PP539's four points, with the websocket wait bounded and that departure carried as a value.
 - ✅ **PP546** **the start is modelled and never run, so the failure the C reports as success has nowhere to be reported** — The four steps run in the C's order, the PS4 wakeup is skipped rather than ignored, and the wrong console is a failure here and success in the C.
+- ✅ **PP547** **fifteen files model parts of the punch and nothing sequences them, so its five checkpoints have no order to sit in** — The eleven steps run in the C's order, and each of the five checkpoints is reached by cancelling from inside the step before it.
 
 ## Block G — Test discipline
 
