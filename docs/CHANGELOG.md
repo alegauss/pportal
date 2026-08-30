@@ -459,6 +459,7 @@
 - ✅ **PP537** **the census annotation says nothing builds the session-id header, and PsnEndpoints builds it** — PsnEndpoints builds the session-id header too, so nine of ten are answered and the tenth is the cancel, which arrives with the loop PP533 writes.
 - ✅ **PP538** **nothing models the holepunch stop, whose cancel is consumed by whichever of fourteen checkpoints reaches it first** — The stop is a one-shot the C consumes at all fourteen checkpoints, beside a websocket flag it never consumes, with the signal outside the lock.
 - ✅ **PP539** **nothing says where the holepunch honours a cancel, and three of the fourteen places are inside the waits** — The fourteen sit in six functions and three are the blocking waits, which is how a cancel gets out of a wait instead of serving it out.
+- ✅ **PP541** **session_create waits for the websocket with no timeout, and every failure path leaves the bit it waits on unset** — Four facts hold it: the wait is untimed, one line sets its bit, the thread's cleanup sets and signals nothing, and the cancel wakes a loop that cannot leave.
 
 ## Block G — Test discipline
 
