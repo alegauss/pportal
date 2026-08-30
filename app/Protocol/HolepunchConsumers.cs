@@ -115,11 +115,46 @@ public static class HolepunchConsumers
     }
 
     /// <summary>
-    /// PP563: everything the deletion has to answer for, named rather than counted.
+    /// Everything the deletion has to answer for, named rather than counted.
     ///
-    /// session.c is PP340's seam and has its own model; the other two are here. Listing them is
-    /// the point - "three" is a number, and what a deletion needs is which.
+    /// session.c is PP340's seam and has its own model; the others are here. Listing them is
+    /// the point - "four" is a number, and what a deletion needs is which.
+    ///
+    /// PP564: ctrl.c JOINED THIS LIST FROM A LINKER, not from a reading. PP563 said three, having
+    /// read the tree; building the library without holepunch.c named a fourth in thirty seconds.
     /// </summary>
     public static IReadOnlyList<string> All { get; } =
-        [@"lib\src\session.c", TestHarnessRelativePath, ShimRelativePath];
+        [@"lib\src\session.c", CtrlRelativePath, TestHarnessRelativePath, ShimRelativePath];
+
+    /// <summary>PP564: the fourth consumer, which only the linker found.</summary>
+    public const string CtrlRelativePath = @"lib\src\ctrl.c";
+
+    /// <summary>ctrl.c, or null outside a checkout.</summary>
+    public static string? LocateCtrl() => SanitizerSource.LocateRelative(CtrlRelativePath);
+
+    /// <summary>
+    /// The one export ctrl.c calls, and the whole of its dependency: the control port, guarded by
+    /// the same handle-is-null test session.c uses, falling back to SESSION_CTRL_PORT.
+    ///
+    /// That guard is why this is the cheapest of the four to remove and the easiest to miss: the
+    /// file already has an answer for not having a holepunch session.
+    /// </summary>
+    public const string CtrlCall = "chiaki_get_ps_ctrl_port";
+
+    /// <summary>Whether ctrl.c still asks, and still has its fallback.</summary>
+    public static bool CtrlStillAsksWithAFallback(string ctrlSource)
+    {
+        ArgumentNullException.ThrowIfNull(ctrlSource);
+
+        return ctrlSource.Contains(CtrlCall + "(session->holepunch_session)", StringComparison.Ordinal)
+            && ctrlSource.Contains("SESSION_CTRL_PORT", StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// PP564: the one symbol session.c needs that is not in the nine, and is not even prefixed.
+    ///
+    /// holepunch_session_create_offer carries no chiaki_ prefix, so a sweep keyed on that prefix -
+    /// which is how a reader finds these - does not see it. It is exported all the same.
+    /// </summary>
+    public const string UnprefixedExport = "holepunch_session_create_offer";
 }

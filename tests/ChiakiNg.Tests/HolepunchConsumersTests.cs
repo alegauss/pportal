@@ -31,18 +31,63 @@ public class HolepunchConsumersTests
     }
 
     /// <summary>
-    /// All three are named rather than counted - "three" is a number, and a deletion needs which.
+    /// All four are named rather than counted - a deletion needs which, not how many.
+    ///
+    /// PP564: it was three until a linker was asked. Building chiaki-lib without holepunch.c named
+    /// ctrl.c in thirty seconds, after PP563 had read the tree and concluded three.
     /// </summary>
     [Fact]
-    public void TheDeletionHasThreeNamedConsumers()
+    public void TheDeletionHasFourNamedConsumers()
     {
         Assert.Equal(
-            [@"lib\src\session.c", @"lib\src\remote\holepunch-test.c", @"shim\chiaki_shim.c"],
+            [
+                @"lib\src\session.c",
+                @"lib\src\ctrl.c",
+                @"lib\src\remote\holepunch-test.c",
+                @"shim\chiaki_shim.c",
+            ],
             HolepunchConsumers.All);
+    }
 
-        // session.c is PP340's seam and keeps its own model; the other two are held here.
-        Assert.Contains(HolepunchConsumers.TestHarnessRelativePath, HolepunchConsumers.All);
-        Assert.Contains(HolepunchConsumers.ShimRelativePath, HolepunchConsumers.All);
+    /// <summary>
+    /// PP564: ctrl.c asks for the control port and already has an answer for not getting one.
+    ///
+    /// That fallback is why it is both the cheapest of the four to remove and the easiest to miss:
+    /// the file reads as though it does not depend on the holepunch at all.
+    /// </summary>
+    [Fact]
+    public void CtrlAsksForThePortAndHasAFallback()
+    {
+        if (HolepunchConsumers.LocateCtrl() is not { } path)
+            return;
+
+        Assert.True(HolepunchConsumers.CtrlStillAsksWithAFallback(File.ReadAllText(path)));
+    }
+
+    /// <summary>
+    /// PP564: and one export carries no chiaki_ prefix, so a prefix sweep misses it.
+    ///
+    /// session.c calls holepunch_session_create_offer, which is CHIAKI_EXPORT all the same. Every
+    /// reader that finds these by their prefix - which is how they are found - walks past it.
+    /// </summary>
+    [Fact]
+    public void OneExportCarriesNoPrefix()
+    {
+        Assert.DoesNotContain("chiaki_", HolepunchConsumers.UnprefixedExport, StringComparison.Ordinal);
+
+        if (HolepunchConsumers.LocateHarness() is null)
+            return;
+
+        string header = Path.Combine(
+            Path.GetDirectoryName(HolepunchConsumers.LocateHarness()!)!, "..", "..",
+            "include", "chiaki", "remote", "holepunch.h");
+
+        if (File.Exists(header))
+        {
+            Assert.Contains(
+                "CHIAKI_EXPORT ChiakiErrorCode " + HolepunchConsumers.UnprefixedExport,
+                File.ReadAllText(header), StringComparison.Ordinal);
+        }
     }
 
     /// <summary>A shim that stopped wrapping one is caught, which is how the list stays true.</summary>
