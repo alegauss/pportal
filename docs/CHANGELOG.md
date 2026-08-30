@@ -517,6 +517,7 @@
 - ✅ **PP530** **ChiakiNg.exe exists twice, only Debug is built by the gate, and --recount and --ratchet answer from whichever was run** — --recount and --ratchet now refuse and name the source that moved, on the two flags whose whole value is being trusted; a host built before this cannot guard itself.
 - ✅ **PP532** **compile.cmd reports a Qt client it no longer builds, as the nodeploy output and in the failure line** — Four lines named a client no ordinary run builds, and a rule now refuses any that claims it without testing the flag or the file first.
 - ✅ **PP535** **the CI configure hands cmake a literal dollar-env token, so build.yml has never once been green** — The toolchain value is quoted, so pwsh expands it instead of handing cmake the text; a rule now refuses a bare env reference in any run step.
+- ✅ **PP540** **the census list must equal the sweep's output, so a model naming a C symbol in a comment turns the suite red** — The list is no longer required to equal the sweep, so only an unquoted function nothing answers is news; entries stay when a model mentions them.
 
 ## Block H — Performance and telemetry
 
