@@ -93,3 +93,6 @@
   with no NVIDIA card keeps d3d11va decode, a neutral renderer and an SDR present, and a
   feature that is not there is not in the menu rather than explained in a dialog. The
   floor and what actually covers it are in docs/HARDWARE-CONTRACT.md.
+- **No local patch to the vendored C** Every drift check in this port asserts the
+  managed side matches lib/, so a patch would leave them asserting agreement with a
+  libchiaki nobody else runs. Argued at length in PP107.

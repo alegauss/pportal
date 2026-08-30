@@ -546,6 +546,7 @@
 - ✅ **PP535** **the CI configure hands cmake a literal dollar-env token, so build.yml has never once been green** — The toolchain value is quoted, so pwsh expands it instead of handing cmake the text; a rule now refuses a bare env reference in any run step.
 - ✅ **PP540** **the census list must equal the sweep's output, so a model naming a C symbol in a comment turns the suite red** — The list is no longer required to equal the sweep, so only an unquoted function nothing answers is news; entries stay when a model mentions them.
 - ✅ **PP562** **PP107's deferral opens by saying the C suite never calls the two broken functions, and the suite calls and pins both** — A sixth fact holds the claim: the suite calls both and pins the drop defect in C, and PP107's opening sentence and title are corrected to say so.
+- ✅ **PP568** **the decision not to patch vendored C is argued only in a deferred section, so resolving that line deletes it** — The rule is the seventh non-goal, durable and refused at input, and an assertion holds that it is still there and still under the non-goals.
 
 ## Block H — Performance and telemetry
 
