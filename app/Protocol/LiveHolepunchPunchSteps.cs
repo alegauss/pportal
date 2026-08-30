@@ -55,6 +55,15 @@ public sealed class LiveHolepunchPunchSteps : IHolepunchPunchSteps, IDisposable
     public IReadOnlySet<HolepunchPortType> Established => established;
 
     /// <summary>
+    /// PP558: how many session messages were taken off the queue without being waited for.
+    ///
+    /// The C logs each one ("Ignoring holepunch session message with action %d") and clears it.
+    /// Counted rather than logged so a test can see the clearing happened, and so a punch that
+    /// discards a great many says so.
+    /// </summary>
+    public int Ignored { get; private set; }
+
+    /// <summary>
     /// PP552: whether the socket that fills the queue has ended - PP548's own
     /// <see cref="LiveHolepunchCreateSteps.ChannelEnded"/>, wired through.
     ///
@@ -112,8 +121,21 @@ public sealed class LiveHolepunchPunchSteps : IHolepunchPunchSteps, IDisposable
 
         while (DateTimeOffset.UtcNow < deadline)
         {
-            if (queue.Items.Any(one => Carries(one, wanted)))
-                return true;
+            // PP558: a snapshot, because taking one out is what this now does.
+            foreach (QueuedNotification one in queue.Items.ToArray())
+            {
+                if (one.Type != PushNotificationType.SessionMessageCreated)
+                    continue;
+
+                // The C clears a session message whose action it is not waiting for and carries on,
+                // and clears the one it takes. Either way it does not see it twice.
+                queue.Clear(one);
+
+                if (Carries(one, wanted))
+                    return true;
+
+                Ignored++;
+            }
 
             // PP552: nothing more can arrive on a queue whose socket has ended. This matters most
             // here: three waits of thirty seconds, twice - once per port.

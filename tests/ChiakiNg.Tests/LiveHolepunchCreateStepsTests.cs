@@ -78,20 +78,37 @@ public class LiveHolepunchCreateStepsTests
     }
 
     /// <summary>
-    /// And it removes nothing, which is PP212's property: the C's wait is a cursor walk, so a
-    /// notification stays for whatever reads next. A wait that drained would take the member
-    /// notification the start is about to look for.
+    /// PP558: AND IT TAKES WHAT IT HANDLED OFF THE QUEUE, which is what the C does.
+    ///
+    /// This test used to assert the opposite, on the reasoning that the C's wait is a cursor walk
+    /// so a notification stays for whatever reads next. Half right: the wait does rescan from the
+    /// front, but every one of the C's loops calls clear_notification at the end of each pass. What
+    /// the create handled is not the start's to find.
     /// </summary>
     [Fact]
-    public async Task TheWaitRemovesNothing()
+    public async Task TheWaitTakesWhatItHandled()
     {
         using var steps = Steps();
         steps.Queue.Enqueue(new QueuedNotification(PushNotificationType.MemberCreated, "{}"));
 
-        await steps.WaitForCreatedAsync(TimeSpan.FromSeconds(5), CancellationToken.None);
+        Assert.True(await steps.WaitForCreatedAsync(TimeSpan.FromSeconds(5), CancellationToken.None));
 
+        Assert.Equal(0, steps.Queue.Count);
+    }
+
+    /// <summary>And what it did not handle is left where it was.</summary>
+    [Fact]
+    public async Task TheWaitLeavesWhatItDidNotHandle()
+    {
+        using var steps = Steps();
+        steps.Queue.Enqueue(new QueuedNotification(PushNotificationType.CustomData1Updated, "{}"));
+        steps.Queue.Enqueue(new QueuedNotification(PushNotificationType.SessionCreated, "{}"));
+
+        Assert.True(await steps.WaitForCreatedAsync(TimeSpan.FromSeconds(5), CancellationToken.None));
+
+        // The custom data is the start's, and the start is about to want it.
         Assert.Equal(1, steps.Queue.Count);
-        Assert.Equal(PushNotificationType.MemberCreated, steps.Queue.Front!.Type);
+        Assert.Equal(PushNotificationType.CustomData1Updated, steps.Queue.Front!.Type);
     }
 
     /// <summary>

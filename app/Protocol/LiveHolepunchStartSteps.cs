@@ -121,9 +121,12 @@ public sealed class LiveHolepunchStartSteps : IHolepunchStartSteps
 
         while (DateTimeOffset.UtcNow < deadline)
         {
-            foreach (QueuedNotification notification in queue.Items)
+            // PP558: a snapshot, because the C clears each notification at the end of every pass of
+            // its loop and this now does too.
+            foreach (QueuedNotification notification in queue.Items.ToArray())
             {
                 StartFailure failure = Consider(notification);
+                queue.Clear(notification);
 
                 // Any failure ends the loop, which is the C's break out of `while (!finished)`.
                 if (failure != StartFailure.None)

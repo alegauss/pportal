@@ -81,13 +81,14 @@ public class LiveHolepunchStartStepsTests
             LiveHolepunchStartSteps.MemberPointer);
 
     /// <summary>
-    /// Notifications already on the queue are read at once, and nothing is removed.
+    /// Notifications already on the queue are read at once, and PP558: taken off it.
     ///
-    /// PP557 changed what this takes: the member alone used to end the wait with None, which was
-    /// the defect - both halves are needed, so both are queued here.
+    /// This asserted that nothing was removed, which was wrong - the C's start loop clears each
+    /// notification at the end of every pass. PP557 changed what it takes to finish: the member
+    /// alone used to end the wait, and both halves are needed.
     /// </summary>
     [Fact]
-    public async Task WhatIsOnTheQueueEndsTheWaitAndStaysThere()
+    public async Task WhatIsOnTheQueueEndsTheWaitAndIsTaken()
     {
         var queue = new NotificationQueue();
         queue.Enqueue(new QueuedNotification(PushNotificationType.MemberCreated, Member(Console)));
@@ -98,7 +99,7 @@ public class LiveHolepunchStartStepsTests
             .WaitForMemberAsync(TimeSpan.FromSeconds(5), CancellationToken.None);
 
         Assert.Equal(StartFailure.None, failure);
-        Assert.Equal(2, queue.Count);
+        Assert.Equal(0, queue.Count);
     }
 
     /// <summary>

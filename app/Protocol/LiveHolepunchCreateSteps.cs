@@ -127,8 +127,13 @@ public sealed class LiveHolepunchCreateSteps : IHolepunchCreateSteps, IDisposabl
 
         while (DateTimeOffset.UtcNow < deadline)
         {
-            if (Queue.Items.Any(Finishes))
+            // PP558: cleared as the C clears, at the end of every pass of its own loop. The create
+            // and the start read the same queue, and what this handled is not the start's to find.
+            foreach (QueuedNotification one in Queue.Items.ToArray().Where(Finishes))
+            {
+                Queue.Clear(one);
                 return true;
+            }
 
             if (ChannelEnded)
                 return false;

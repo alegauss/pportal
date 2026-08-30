@@ -86,11 +86,75 @@ public class LiveHolepunchPunchStepsTests
         Assert.True(await steps.WaitForMessageAsync(
             nameof(HolepunchPunchStep.WaitForOffer), TimeSpan.FromSeconds(5), CancellationToken.None));
 
+        // PP558: and it took it, which is what the C does. This asserted the opposite, on the
+        // reasoning that the punch runs twice over the same queue - which is exactly why it must:
+        // the data punch would otherwise sail through on the ctrl punch's messages.
+        Assert.Equal(0, queue.Count);
+
         Assert.False(await steps.WaitForMessageAsync(
             nameof(HolepunchPunchStep.WaitForAccept), TimeSpan.FromMilliseconds(120), CancellationToken.None));
+    }
 
-        // And it removed nothing - the punch runs twice, once per port, over this same queue.
+    /// <summary>
+    /// PP558: THE SECOND PUNCH DOES NOT SAIL THROUGH ON THE FIRST ONE'S MESSAGES.
+    ///
+    /// The punch runs once per port over one queue. Before the clearing, the data punch's wait for
+    /// an offer found the ctrl punch's and went straight on without the console having sent
+    /// anything - which is a punch that reports success having done nothing.
+    /// </summary>
+    [Fact]
+    public async Task TheSecondPunchDoesNotReuseTheFirstsMessages()
+    {
+        var queue = new NotificationQueue();
+        queue.Enqueue(new QueuedNotification(PushNotificationType.SessionMessageCreated, Message("OFFER")));
+
+        using var ctrl = new LiveHolepunchPunchSteps(
+            "Authorization: Bearer t", "sid", queue, new CandidateRaceRun());
+        using var data = new LiveHolepunchPunchSteps(
+            "Authorization: Bearer t", "sid", queue, new CandidateRaceRun());
+
+        Assert.True(await ctrl.WaitForMessageAsync(
+            nameof(HolepunchPunchStep.WaitForOffer), TimeSpan.FromSeconds(5), CancellationToken.None));
+
+        Assert.False(await data.WaitForMessageAsync(
+            nameof(HolepunchPunchStep.WaitForOffer), TimeSpan.FromMilliseconds(150), CancellationToken.None));
+    }
+
+    /// <summary>
+    /// A session message the wait is not after is taken off too, and counted - which is the C's
+    /// "Ignoring holepunch session message with action %d" followed by a clear.
+    /// </summary>
+    [Fact]
+    public async Task AMessageItIsNotWaitingForIsTakenAndCounted()
+    {
+        var queue = new NotificationQueue();
+        queue.Enqueue(new QueuedNotification(PushNotificationType.SessionMessageCreated, Message("ACCEPT")));
+
+        using var steps = new LiveHolepunchPunchSteps(
+            "Authorization: Bearer t", "sid", queue, new CandidateRaceRun());
+
+        Assert.False(await steps.WaitForMessageAsync(
+            nameof(HolepunchPunchStep.WaitForOffer), TimeSpan.FromMilliseconds(150), CancellationToken.None));
+
+        Assert.Equal(0, queue.Count);
+        Assert.Equal(1, steps.Ignored);
+    }
+
+    /// <summary>And a notification that is not a session message is left alone.</summary>
+    [Fact]
+    public async Task ANotificationOfAnotherTypeIsLeftWhereItIs()
+    {
+        var queue = new NotificationQueue();
+        queue.Enqueue(new QueuedNotification(PushNotificationType.CustomData1Updated, "{}"));
+
+        using var steps = new LiveHolepunchPunchSteps(
+            "Authorization: Bearer t", "sid", queue, new CandidateRaceRun());
+
+        await steps.WaitForMessageAsync(
+            nameof(HolepunchPunchStep.WaitForOffer), TimeSpan.FromMilliseconds(150), CancellationToken.None);
+
         Assert.Equal(1, queue.Count);
+        Assert.Equal(0, steps.Ignored);
     }
 
     /// <summary>
