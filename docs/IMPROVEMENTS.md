@@ -366,6 +366,30 @@ make quietly inside another task.
 
 ## Block G — Test discipline
 
+### §PP530 The host that answers about a tree it does not know
+
+PP304 and PP305 put two checks in the host itself - --recount reads the sizes the
+backlog states, --ratchet lists the shipped tasks no assertion names - both to be run
+before the gate rather than by it. The skill describing them writes the command as
+ChiakiNg.exe, with no path, because for a reader there is one host.
+
+There are two. compile.cmd builds Debug and prints the Debug path; app\bin\Release holds
+whatever a publish or a package run left behind. On 2026-08-30 that copy was from
+2026-08-28, forty-four commits back, and knew neither --capture-datagrams nor
+--replay-datagrams, which PP514 and PP516 shipped in between. It answered --recount and
+--ratchet all the same, and said nothing about being two days old.
+
+Nothing was wrong in those answers, and that is the point rather than a mitigation: both
+read the docs files at run time, so their INPUT was current while their rules were not.
+PP269 is the same shape one layer down - a shim four hours behind, found only because a
+task added an entry point that was missing - and PP270 answered it with a guard that
+fails.
+
+The host has no such guard over itself. What it would take is small: the comparison
+NativeFreshness already makes, between the running assembly and app\, refused loudly on
+the two flags that exist to be trusted. What it must not become is a check that refuses
+a published host, which has no checkout beside it and is the ordinary case.
+
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed
