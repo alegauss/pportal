@@ -533,6 +533,7 @@
 - ✅ **PP72 (the record half)** **the auto decoder order prefers cuda over d3d11va on an OpenGL renderer, and the paced numbers now say the opposite** — The row now names the renderer beside the decoder, so the two OpenGL-fallback paths are comparable and the preference can be settled from real sessions.
 - ✅ **PP51** **NVIDIA first has no stated contract for what happens on an AMD or Intel machine** — The floor is written down in docs/HARDWARE-CONTRACT.md - d3d11va decode, a neutral renderer, an SDR present with no NGX - and a non-goal now binds a proposal to it.
 - ✅ **PP77** **the decoder choice that holds the non-NVIDIA floor is 70 lines inside a Qt method, so nothing can assert it** — the decode branch that holds the non-NVIDIA floor is now chiaki_decoder_choice in lib/, a pure function nine assertions cover, and dropping its d3d11va arm turns the suite red.
+- ✅ **PP50** **frame generation would smooth a 30fps stream and cost a frame of latency to do it** — No FRAME_RATE_CONVERSION under any usage, and the 2-out-per-1-in doubling returns a byte-identical copy: the 33.3ms hold buys nothing (design recorded in `spike/frame-generation/README.md`).
 
 ## Block J — Public documentation
 

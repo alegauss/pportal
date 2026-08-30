@@ -470,20 +470,6 @@ an opinion about colour the source did not express, and on some content it looks
 Whatever ships has to be a setting the user can turn off, and the fidelity mode the
 conformance work already cares about has to bypass it entirely.
 
-### §PP50 The one that trades the wrong currency
-
-NVIDIA's optical flow accelerator can interpolate between two decoded frames, and the
-driver exposes a smoothing feature built on it. Applied to a 30fps stream it produces
-60, and it does so by holding a frame back until its successor arrives.
-
-That is the trade laid bare: smoothness is bought with latency, in a client whose entire
-quality argument is latency. It is not obviously wrong - a 30fps title that streams
-smoothly may feel better to some users than a stutter-free 30 - but it is obviously not
-a default, and the only way to decide is the glass-to-glass number this depends on.
-
-Filed so the idea has an address, and filed with the cost in its own symptom so nobody
-schedules it believing it is free.
-
 ### §PP52 Where a vendor feature also pays a debt
 
 streamsession.h carries SpeexEchoState, an echo suppress level, and two conversion

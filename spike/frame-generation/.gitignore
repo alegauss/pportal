@@ -1,0 +1,7 @@
+# Build output: this spike is re-runnable from source, not from committed binaries.
+bin/
+obj/
+
+# The run's own scratch output. A committed result is a named release-*.json, taken
+# deliberately, rather than whatever the last invocation happened to leave behind.
+result.json

@@ -84,4 +84,12 @@
 #
 # From here the ratchet does what PP38 built it for: the next task that ships with nothing
 # asserting it takes this to 1, and the suite goes red on the commit that did it.
+#
+# PP50 is the first ship since PP315 to need the door PP310 opened, and it is the same kind of
+# task as the sixteen measurements above: what it produced is a reading of what this driver
+# advertises, and what a test over it could assert is that the driver still says so. The one
+# thing in it that a suite could hold - that a frame-rate conversion this card does not offer
+# cannot be scheduled - is already held by the non-goal PP51 wrote, which binds a proposal to
+# the floor in docs/HARDWARE-CONTRACT.md whether or not this line had ever been read.
+# exempt PP50 - an evaluation: no video processor here advertises FRAME_RATE_CONVERSION.
 0

@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    PP50's evaluation, as a spike rather than an argument. Like present-path and video-upscale it
+    is deliberately not in any solution: the tree has no .NET solution yet (PP24), and this exists
+    to produce two numbers - what interpolation costs and what it holds - re-runnable by whoever
+    doubts either.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <!-- For PngBitmapEncoder alone. There is no window here: the video processor writes to a
+         texture and the texture is read back, so nothing is presented and nothing is composed. -->
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <AssemblyName>frame-generation</AssemblyName>
+    <RootNamespace>FrameGeneration</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Same reasoning present-path recorded and video-upscale reused: a hand-rolled
+      ID3D11VideoContext vtable does not fail loudly when a slot is transposed, it returns a
+      plausible number. VideoProcessorSetStreamOutputRate and the rate-conversion caps sit at
+      slots this binding already knows.
+    -->
+    <PackageReference Include="Vortice.Direct3D11" Version="3.6.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Linked, not copied - the percentile convention is the thing being reused, and a second copy
+      that drifts would make two spikes' numbers quietly incomparable. It keeps its PresentPath
+      namespace because moving it would be a change to a shipped spike for this one's convenience.
+    -->
+    <Compile Include="../present-path/Stats.cs" Link="Stats.cs" />
+  </ItemGroup>
+
+</Project>
