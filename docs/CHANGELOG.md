@@ -464,6 +464,7 @@
 - ✅ **PP543** **PP541 added a second reader of a shape SessionCreateSource already checks, so one repair would turn two red** — The second reader is gone, and its one new fact - that the cancel signals both conds - moved into SessionCreateSource, which already held the other four.
 - ✅ **PP544** **PP33 records holepunch-test.c as absent, and it is a built executable calling eight holepunch exports** — holepunch-test.c is in the tree, built every time, and calls eight exports - so PP33's deletion has a second consumer its own design recorded as absent.
 - ✅ **PP545** **nothing composes the ported holepunch pieces, so the create sequence is modelled and never run** — The five steps run in the C's order over PP538's one-shot at PP539's four points, with the websocket wait bounded and that departure carried as a value.
+- ✅ **PP546** **the start is modelled and never run, so the failure the C reports as success has nowhere to be reported** — The four steps run in the C's order, the PS4 wakeup is skipped rather than ignored, and the wrong console is a failure here and success in the C.
 
 ## Block G — Test discipline
 
