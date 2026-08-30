@@ -476,6 +476,7 @@
 - ✅ **PP554** **a cancelled token throws out of PunchHole, whose contract is an error code and whose caller is C** — A cancellation is Canceled, the answer the one-shot would have given; anything else is Unknown and the exception is kept for a managed caller.
 - ✅ **PP555** **the offer step's guard cannot fire against the sequenced session, so a refused offer reads as an ordinary punch failure** — The session records that the punch stopped on the offer it sends, so the cause survives a failure that arrives a step later under another name.
 - ✅ **PP556** **the prepare cannot record the socket it punched, so a prepared session throws on the first ask session.c makes** — The prepare is an instance call that records the socket the ctrl punch produced, and a punch with no socket is not prepared rather than success until the first ask.
+- ✅ **PP557** **the start's wait handles one of the C's two notification types, so a member joining reports a started session on its own** — The wait is the C's loop over both notification types until both halves arrive, each half checked once, and PP257's three custom data failures can happen for the first time.
 
 ## Block G — Test discipline
 

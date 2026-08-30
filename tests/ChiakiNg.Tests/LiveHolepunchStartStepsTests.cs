@@ -80,18 +80,25 @@ public class LiveHolepunchStartStepsTests
             ["body", "data", "members", "0", "deviceUniqueId"],
             LiveHolepunchStartSteps.MemberPointer);
 
-    /// <summary>A member notification already on the queue is read at once, and nothing is removed.</summary>
+    /// <summary>
+    /// Notifications already on the queue are read at once, and nothing is removed.
+    ///
+    /// PP557 changed what this takes: the member alone used to end the wait with None, which was
+    /// the defect - both halves are needed, so both are queued here.
+    /// </summary>
     [Fact]
-    public async Task AMemberOnTheQueueEndsTheWaitAndStaysThere()
+    public async Task WhatIsOnTheQueueEndsTheWaitAndStaysThere()
     {
         var queue = new NotificationQueue();
         queue.Enqueue(new QueuedNotification(PushNotificationType.MemberCreated, Member(Console)));
+        queue.Enqueue(new QueuedNotification(
+            PushNotificationType.CustomData1Updated, CustomData(GoodCustomData)));
 
         StartFailure? failure = await Steps(queue)
             .WaitForMemberAsync(TimeSpan.FromSeconds(5), CancellationToken.None);
 
         Assert.Equal(StartFailure.None, failure);
-        Assert.Equal(1, queue.Count);
+        Assert.Equal(2, queue.Count);
     }
 
     /// <summary>
@@ -138,6 +145,104 @@ public class LiveHolepunchStartStepsTests
         Assert.Null(failure);
         Assert.True(clock.Elapsed < TimeSpan.FromSeconds(5),
             $"it served out the deadline: {clock.Elapsed}");
+    }
+
+    private static string CustomData(string text)
+        => "{\"body\":{\"data\":{\"customData1\":\"" + text + "\"}}}";
+
+    private const string GoodCustomData = "0123456789abcdef0123456789abcdef";
+
+    /// <summary>
+    /// PP557: BOTH HALVES, which is what the C's loop runs until.
+    ///
+    /// The C handles two notification types and this handled one, so a member joining ended the
+    /// wait and reported success - while SessionStart.Finished, which is what "started" means, also
+    /// wants the custom data. The member alone is not a started session.
+    /// </summary>
+    [Fact]
+    public async Task TheMemberAloneIsNotAStartedSession()
+    {
+        var queue = new NotificationQueue();
+        queue.Enqueue(new QueuedNotification(PushNotificationType.MemberCreated, Member(Console)));
+
+        LiveHolepunchStartSteps steps = Steps(queue);
+
+        Assert.Null(await steps.WaitForMemberAsync(
+            TimeSpan.FromMilliseconds(150), CancellationToken.None));
+
+        // The half that did arrive is remembered, so the other one finishes it.
+        Assert.True(steps.Seen.HasFlag(SessionStateFlags.ConsoleJoined));
+        Assert.False(SessionStart.Finished(steps.Seen));
+
+        queue.Enqueue(new QueuedNotification(PushNotificationType.CustomData1Updated, CustomData(GoodCustomData)));
+
+        Assert.Equal(
+            StartFailure.None,
+            await steps.WaitForMemberAsync(TimeSpan.FromSeconds(5), CancellationToken.None));
+        Assert.True(SessionStart.Finished(steps.Seen));
+    }
+
+    /// <summary>Both arriving together finishes it in one wait, in either order.</summary>
+    [Fact]
+    public async Task BothHalvesInOneWaitFinishIt()
+    {
+        var queue = new NotificationQueue();
+        queue.Enqueue(new QueuedNotification(PushNotificationType.CustomData1Updated, CustomData(GoodCustomData)));
+        queue.Enqueue(new QueuedNotification(PushNotificationType.MemberCreated, Member(Console)));
+
+        LiveHolepunchStartSteps steps = Steps(queue);
+
+        Assert.Equal(
+            StartFailure.None,
+            await steps.WaitForMemberAsync(TimeSpan.FromSeconds(5), CancellationToken.None));
+    }
+
+    /// <summary>
+    /// PP557: the three CustomData failures, each producible for the first time.
+    ///
+    /// PP257 declared them and nothing looked at this notification at all, so like PP549's HostDown
+    /// they were named and unreachable.
+    /// </summary>
+    [Theory]
+    [InlineData("{\"body\":{\"data\":{}}}", StartFailure.CustomDataFieldMissing)]
+    [InlineData("{\"body\":{\"data\":{\"customData1\":7}}}", StartFailure.CustomDataFieldMissing)]
+    [InlineData("{\"body\":{\"data\":{\"customData1\":\"abcd\"}}}", StartFailure.CustomDataWrongLength)]
+    [InlineData("{\"body\":{\"data\":{\"customData1\":\"zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz\"}}}",
+        StartFailure.CustomDataUndecodable)]
+    public void EachCustomDataFailureCanNowHappen(string payload, StartFailure expected)
+        => Assert.Equal(expected, Steps().CheckCustomData(payload));
+
+    /// <summary>A custom data failure stops the wait, which is the C's break out of its loop.</summary>
+    [Fact]
+    public async Task ACustomDataFailureStopsTheWait()
+    {
+        var queue = new NotificationQueue();
+        queue.Enqueue(new QueuedNotification(PushNotificationType.MemberCreated, Member(Console)));
+        queue.Enqueue(new QueuedNotification(
+            PushNotificationType.CustomData1Updated, CustomData("abcd")));
+
+        Assert.Equal(
+            StartFailure.CustomDataWrongLength,
+            await Steps(queue).WaitForMemberAsync(TimeSpan.FromSeconds(5), CancellationToken.None));
+    }
+
+    /// <summary>
+    /// A half already accounted for is not re-checked, which matters because the queue never
+    /// drains - the C's own queue is dequeued only at teardown.
+    /// </summary>
+    [Fact]
+    public void AHalfAlreadySeenIsNotCheckedAgain()
+    {
+        LiveHolepunchStartSteps steps = Steps();
+
+        Assert.Equal(StartFailure.None, steps.Consider(
+            new QueuedNotification(PushNotificationType.MemberCreated, Member(Console))));
+        Assert.True(steps.Seen.HasFlag(SessionStateFlags.ConsoleJoined));
+
+        // A second member notification naming someone else is skipped, not called a wrong console.
+        Assert.Equal(StartFailure.None, steps.Consider(new QueuedNotification(
+            PushNotificationType.MemberCreated,
+            Member("fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"))));
     }
 
     /// <summary>Only a member notification is read - the create's own are left for what wants them.</summary>

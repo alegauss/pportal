@@ -123,9 +123,17 @@ public sealed class LiveHolepunchStartSteps : IHolepunchStartSteps
         {
             foreach (QueuedNotification notification in queue.Items)
             {
-                if (notification.Type == PushNotificationType.MemberCreated)
-                    return CheckIdentity(notification.Payload);
+                StartFailure failure = Consider(notification);
+
+                // Any failure ends the loop, which is the C's break out of `while (!finished)`.
+                if (failure != StartFailure.None)
+                    return failure;
             }
+
+            // PP557: BOTH HALVES, which is what the C's loop runs until. The member joining is not
+            // a started session on its own - SessionStart.Finished wants the custom data too.
+            if (SessionStart.Finished(Seen))
+                return StartFailure.None;
 
             // PP552: the socket that fills this queue has ended, so nothing more can arrive. The
             // create's wait has always done this; these did not, and served out the full deadline.
@@ -138,6 +146,76 @@ public sealed class LiveHolepunchStartSteps : IHolepunchStartSteps
         // Nobody joined. Not one of PP257's failures - see the interface's note.
         return null;
     }
+
+    /// <summary>
+    /// Which halves of the start have arrived, which the loop above runs until both have.
+    /// </summary>
+    public SessionStateFlags Seen { get; private set; } = SessionStateFlags.Created;
+
+    /// <summary>
+    /// PP557: one notification, considered as the C's loop body considers it.
+    ///
+    /// The C handles TWO types and this handled one. A member joining sets ConsoleJoined; the
+    /// custom data sets CustomData1Received; the loop ends when both are set - which is exactly
+    /// what SessionStart.Finished reads, and what nothing here was ever going to satisfy.
+    ///
+    /// Each half is checked once. A notification already accounted for is skipped rather than
+    /// re-checked, so the wait does not decide the same thing twice on a queue that never drains.
+    /// </summary>
+    public StartFailure Consider(QueuedNotification notification)
+    {
+        ArgumentNullException.ThrowIfNull(notification);
+
+        switch (notification.Type)
+        {
+            case PushNotificationType.MemberCreated when !Seen.HasFlag(SessionStateFlags.ConsoleJoined):
+            {
+                StartFailure failure = CheckIdentity(notification.Payload);
+                if (failure == StartFailure.None)
+                    Seen |= SessionStateFlags.ConsoleJoined;
+
+                return failure;
+            }
+
+            case PushNotificationType.CustomData1Updated
+                when !Seen.HasFlag(SessionStateFlags.CustomData1Received):
+            {
+                StartFailure failure = CheckCustomData(notification.Payload);
+                if (failure == StartFailure.None)
+                    Seen |= SessionStateFlags.CustomData1Received;
+
+                return failure;
+            }
+
+            default:
+                return StartFailure.None;
+        }
+    }
+
+    /// <summary>
+    /// PP557: the custom data half, in the C's order - the field, its length, then the decode.
+    ///
+    /// The three CustomData failures were declared by PP257 and nothing could produce one, because
+    /// nothing looked at this notification at all.
+    /// </summary>
+    public StartFailure CheckCustomData(string payload)
+    {
+        ArgumentNullException.ThrowIfNull(payload);
+
+        string? text = ValueAt(payload, CustomDataPointer);
+        if (text is null)
+            return StartFailure.CustomDataFieldMissing;
+
+        if (text.Length != SessionStart.CustomDataTextLength)
+            return StartFailure.CustomDataWrongLength;
+
+        return HolepunchIdentifiers.HexToBytes(text, SessionStart.CustomDataTextLength / 2) is null
+            ? StartFailure.CustomDataUndecodable
+            : StartFailure.None;
+    }
+
+    /// <summary>The C's pointer to the custom data: <c>/body/data/customData1</c>.</summary>
+    public static IReadOnlyList<string> CustomDataPointer { get; } = ["body", "data", "customData1"];
 
     /// <summary>
     /// PP257's identity check, in the order the C makes it: the field, then its length, then that
@@ -173,16 +251,25 @@ public sealed class LiveHolepunchStartSteps : IHolepunchStartSteps
     /// Null covers everything the C's guard covers - no such path, and a value at it that is not a
     /// string - because both leave it without a device id and it says so with one message.
     /// </summary>
-    public static string? DeviceUidIn(string payload)
+    public static string? DeviceUidIn(string payload) => ValueAt(payload, MemberPointer);
+
+    /// <summary>
+    /// PP557: a JSON pointer followed by hand, which both halves of the start need.
+    ///
+    /// Null covers everything the C's guards cover - no such path, and a value at it that is not a
+    /// string - because both leave the caller without the field and it says so with one message.
+    /// </summary>
+    public static string? ValueAt(string payload, IReadOnlyList<string> pointer)
     {
         ArgumentNullException.ThrowIfNull(payload);
+        ArgumentNullException.ThrowIfNull(pointer);
 
         try
         {
             using var document = JsonDocument.Parse(payload);
             JsonElement element = document.RootElement;
 
-            foreach (string step in MemberPointer)
+            foreach (string step in pointer)
             {
                 if (element.ValueKind == JsonValueKind.Array)
                 {
