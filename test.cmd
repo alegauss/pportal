@@ -124,6 +124,19 @@ if exist "%CB_EXE%" (
     echo [test] compare-baselines: not built, selftest not run
 )
 
+rem PP570: the same gap one project over. measure-startup ships the same flag and was not even in
+rem the solution, so no gate built it - which is why PP569's sweep had to be finished rather than
+rem stopped at the first tool.
+set "MS_EXE=%~dp0tools\measure-startup\bin\Debug\net10.0-windows\measure-startup.exe"
+if exist "%MS_EXE%" (
+    echo.
+    echo [test] measure-startup selftest
+    "%MS_EXE%" --self-test
+    if errorlevel 1 set "CRC=1"
+) else (
+    echo [test] measure-startup: not built, selftest not run
+)
+
 rem ---- the xUnit project (PP35) ------------------------------------------
 rem Both, and not one instead of the other. The selftest above runs inside the shipped binary,
 rem which is what PP22's CI runs against the published single file; this runs against the

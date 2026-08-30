@@ -56,11 +56,49 @@ public class GateAndCiAgreeTests(ITestOutputHelper output)
     [Fact]
     public void TheTwoSelftestsAreNotTheSameFlag()
     {
-        Assert.True(GateAndCiAgree.Runs("run --self-test here", "the tool's --self-test"));
-        Assert.False(GateAndCiAgree.Runs("run --self-test here", "the host's --selftest"));
+        Assert.True(GateAndCiAgree.Runs("compare-baselines --self-test", "the tool's --self-test"));
+        Assert.False(GateAndCiAgree.Runs("compare-baselines --self-test", "the host's --selftest"));
 
         Assert.True(GateAndCiAgree.Runs("run --selftest here", "the host's --selftest"));
         Assert.False(GateAndCiAgree.Runs("run --selftest here", "the tool's --self-test"));
+    }
+
+    /// <summary>
+    /// PP570: THE SECOND TOOL, which PP569's sweep stopped short of.
+    ///
+    /// measure-startup ships the same flag and was not in the solution at all, so no gate built it,
+    /// let alone ran it - worse than the gap PP569 closed, where the project was at least compiled.
+    /// </summary>
+    [Fact]
+    public void MeasureStartupsSelfTestIsRunByBoth()
+    {
+        TestPass pass = Assert.Single(
+            GateAndCiAgree.Passes, one => one.Name == "measure-startup's self-test");
+
+        Assert.True(pass.Locally);
+        Assert.True(pass.InCi);
+        Assert.Empty(pass.Because);
+
+        if (GateAndCiAgree.ReadLocal() is { } local)
+            Assert.True(GateAndCiAgree.Runs(local, pass.Name));
+
+        if (GateAndCiAgree.LocateCi() is { } ci)
+            Assert.True(GateAndCiAgree.Runs(File.ReadAllText(ci), pass.Name));
+    }
+
+    /// <summary>
+    /// PP570: and the two tools are told apart by their binaries, not by the flag they share.
+    ///
+    /// Matching on the flag alone was the defect: wiring one tool satisfied the check for both,
+    /// which is exactly the green that let measure-startup stay unwired through PP569.
+    /// </summary>
+    [Fact]
+    public void OneToolWiredDoesNotSatisfyTheOther()
+    {
+        const string onlyOne = "compare-baselines --self-test";
+
+        Assert.True(GateAndCiAgree.Runs(onlyOne, "the tool's --self-test"));
+        Assert.False(GateAndCiAgree.Runs(onlyOne, "measure-startup's self-test"));
     }
 
     [Fact]

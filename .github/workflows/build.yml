@@ -98,8 +98,12 @@ jobs:
       #
       # Safe here in a way the host's --selftest is not: pure fixtures, no native seam, so PP117's
       # hang-on-SDL2 argument does not apply and this needs no timeout.
-      - name: the tool's selftest
-        run: dotnet run --project tools/compare-baselines/CompareBaselines.csproj -c Debug --no-build -- --self-test
+      # PP570: both of them. measure-startup ships the same flag and was not in the solution at all,
+      # so no gate built it - the sweep PP569 should have finished rather than stopping at the first.
+      - name: the tools' selftests
+        run: |
+          dotnet run --project tools/compare-baselines/CompareBaselines.csproj -c Debug --no-build -- --self-test
+          dotnet run --project tools/measure-startup/MeasureStartup.csproj -c Debug --no-build -- --self-test
 
       # PP36: always, and that is the whole of this step.
       #

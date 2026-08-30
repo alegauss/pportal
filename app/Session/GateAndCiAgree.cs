@@ -12,9 +12,9 @@ public readonly record struct TestPass(string Name, bool Locally, bool InCi, str
 /// <summary>
 /// PP433: the passes test.cmd runs and the passes CI runs, held against each other.
 ///
-/// The local gate runs four: ctest over the C suite, the .NET host's <c>--selftest</c>, the xUnit
-/// vectors, and PP569's tool selftest. build.yml runs all but the host's, which is 454 checks CI
-/// does not mention.
+/// The local gate runs five: ctest over the C suite, the .NET host's <c>--selftest</c>, the xUnit
+/// vectors, and the two tools' own self-tests (PP569, PP570). build.yml runs all but the host's,
+/// which is 454 checks CI does not mention.
 ///
 /// IT IS THE SHAPE PP75 FIXED ONE LEVEL DOWN. PP2 put assertions in app/SelfTest.cs and nothing ran
 /// them; PP75 gave them a runner. That runner is local and CI is where a branch turns red, so the
@@ -91,6 +91,12 @@ public static partial class GateAndCiAgree
         // host's selftest is not: pure fixtures, no native seam, so PP117's argument does not reach
         // it and it needs no timeout.
         new("the tool's --self-test", Locally: true, InCi: true),
+
+        // PP570: the same flag on the other tool, which was not even in the solution - so no gate
+        // built it, let alone ran it. Kept as its own pass rather than folded into the one above:
+        // they are two binaries, and a table that said "the tools" would be green with one of them
+        // wired, which is the state PP569 left and this found.
+        new("measure-startup's self-test", Locally: true, InCi: true),
     ];
 
     /// <summary>How many passes run locally and not in CI. One, and it is named.</summary>
@@ -118,7 +124,13 @@ public static partial class GateAndCiAgree
 
             // PP569: the hyphen is the whole difference from the pass above, and it is enough -
             // "--selftest" is not a substring of "--self-test".
-            "the tool's --self-test" => code.Contains("--self-test", StringComparison.Ordinal),
+            "the tool's --self-test" => code.Contains("compare-baselines", StringComparison.Ordinal)
+                && code.Contains("--self-test", StringComparison.Ordinal),
+
+            // PP570: named by its own binary, because both tools take the same flag. Matching on the
+            // flag alone made one wiring satisfy both - the green that hid this for a whole task.
+            "measure-startup's self-test" => code.Contains("measure-startup", StringComparison.Ordinal)
+                && code.Contains("--self-test", StringComparison.Ordinal),
 
             _ => false,
         };

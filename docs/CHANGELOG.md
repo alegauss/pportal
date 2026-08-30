@@ -548,6 +548,7 @@
 - ✅ **PP562** **PP107's deferral opens by saying the C suite never calls the two broken functions, and the suite calls and pins both** — A sixth fact holds the claim: the suite calls both and pins the drop defect in C, and PP107's opening sentence and title are corrected to say so.
 - ✅ **PP568** **the decision not to patch vendored C is argued only in a deferred section, so resolving that line deletes it** — The rule is the seventh non-goal, durable and refused at input, and an assertion holds that it is still there and still under the non-goals.
 - ✅ **PP569** **compare-baselines ships a selftest its README calls its own assertion, and neither the gate nor CI ran it** — The gate and CI both run it now, recorded as PP433's fourth pass; it is safe in CI where the host's selftest is not, so the local-only ceiling stays at one.
+- ✅ **PP570** **measure-startup ships the same selftest and is not in the solution, so no gate builds it let alone runs it** — It carries the warning policy and joins the solution, both gates run its selftest, and PP433's table names binaries so one tool wired no longer answers for two.
 
 ## Block H — Performance and telemetry
 

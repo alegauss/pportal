@@ -1,9 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    PP46's harness. Not in a solution (PP24). A console app so the same command produces the before
-    on a machine that has QtWebEngine and the after on the WPF build, which is the only way the two
-    numbers are comparable.
+    PP46's harness. A console app so the same command produces the before on a machine that has
+    QtWebEngine and the after on the WPF build, which is the only way the two numbers are comparable.
+
+    PP570: IN THE SOLUTION NOW, and carrying the policy because of it. It said "not in a solution
+    (PP24)" and shipped a self-test flag that nothing could run - the same gap PP569 closed for
+    compare-baselines, one project over. (Spelling that flag with its two leading dashes is what an
+    XML comment cannot contain, as ChiakiNg.slnx says of the same switch.) PP438 recorded what
+    adding a project costs: the solution is
+    what decides who TreatWarningsAsErrors binds, and PP436 added the other tool without it, so the
+    gate compiled code whose warnings had no recipient. Declared here first, for that reason.
   -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -13,6 +20,7 @@
     <AssemblyName>measure-startup</AssemblyName>
     <RootNamespace>MeasureStartup</RootNamespace>
     <InvariantGlobalization>true</InvariantGlobalization>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
 </Project>

@@ -34,10 +34,19 @@
        nothing in this repo built it: seven first-party csproj files, and the solution held two. A
        promise the copy makes about a program is gated now that compile.cmd reaches it.
 
-       The other four stay out on purpose. spike/present-path and spike/video-upscale are records of
-       an experiment's answer rather than live code, and gate/alloc-budget's answer already migrated
-       into AllocBudgetTests - none of the three is named on the site. -->
+       PP570: AND measure-startup, which was the unexplained one. This comment said four stayed out
+       and gave reasons for three; the fourth ships a self-test flag that no gate could run, because
+       no gate built it - PP569's gap one project over, and worse, since compare-baselines was at
+       least compiled. It carries TreatWarningsAsErrors, declared before it was added here for
+       PP438's reason: the solution decides who that policy binds, and PP436 added the other tool
+       without it.
+
+       The four that stay out, each with its reason: spike/present-path, spike/video-upscale and
+       spike/frame-generation are records of an experiment's answer rather than live code, and
+       gate/alloc-budget's answer already migrated into AllocBudgetTests. None is named on the site,
+       and none ships an assertion of its own. -->
   <Folder Name="/tools/">
     <Project Path="tools/compare-baselines/CompareBaselines.csproj" />
+    <Project Path="tools/measure-startup/MeasureStartup.csproj" />
   </Folder>
 </Solution>
