@@ -478,6 +478,69 @@ static MunitResult test_baseline_latency_estimate(const MunitParameter params[],
 	return MUNIT_OK;
 }
 
+/**
+ * PP76: the number a decoder comparison actually reads, and PP528, which is why it can be
+ * read at all.
+ *
+ * Neither counter in the record answers "which decoder lost the fewest" on its own.
+ * frames_lost is the video receiver's total, counted upstream of every decoder, so it is the
+ * same number whichever one ran. frames_dropped is that total as the presenter received it
+ * plus the frames the codec evicted from a full buffer - the one loss a decoder is
+ * responsible for. So the answer is the difference, and reading either field alone is how a
+ * run of one session per decoder produces a confident wrong result.
+ */
+static MunitResult test_baseline_decoder_drops_are_the_difference(const MunitParameter params[], void *user)
+{
+	ChiakiSessionBaseline baseline;
+	chiaki_session_baseline_init(&baseline);
+	munit_assert_uint64(chiaki_session_baseline_decoder_drops(&baseline), ==, 0);
+
+	// A session that lost 900 frames to the network and none to its decoder. The headline
+	// number is large and none of it belongs to the decoder being compared.
+	baseline.frames_lost = 900;
+	baseline.frames_dropped = 900;
+	munit_assert_uint64(chiaki_session_baseline_decoder_drops(&baseline), ==, 0);
+
+	// The same network, a decoder that evicted 12. That 12 is the whole of what a comparison
+	// between two decoders is entitled to look at.
+	baseline.frames_dropped = 912;
+	munit_assert_uint64(chiaki_session_baseline_decoder_drops(&baseline), ==, 12);
+
+	// And the network term does not leak into it: doubling the losses both counters share
+	// leaves the decoder's own number where it was.
+	baseline.frames_lost = 1800;
+	baseline.frames_dropped = 1812;
+	munit_assert_uint64(chiaki_session_baseline_decoder_drops(&baseline), ==, 12);
+
+	return MUNIT_OK;
+}
+
+/**
+ * The receiver ahead of the presenter reads as zero, not as eighteen quintillion.
+ *
+ * Both counters are uint64 and they are sampled by different threads at different moments -
+ * the receiver's total is polled, the presenter's is accumulated per pull - so a session can
+ * legitimately end with a few frames counted at one end and not the other. PP528's carry has
+ * the same shape: a session whose last pull failed never delivers its remainder. Unsigned
+ * subtraction would turn either into the largest number in the record, which is the one way
+ * this could report a decoder catastrophe that did not happen.
+ */
+static MunitResult test_baseline_decoder_drops_never_wrap(const MunitParameter params[], void *user)
+{
+	ChiakiSessionBaseline baseline;
+	chiaki_session_baseline_init(&baseline);
+
+	baseline.frames_lost = 900;
+	baseline.frames_dropped = 897;
+	munit_assert_uint64(chiaki_session_baseline_decoder_drops(&baseline), ==, 0);
+
+	baseline.frames_lost = UINT64_MAX;
+	baseline.frames_dropped = 0;
+	munit_assert_uint64(chiaki_session_baseline_decoder_drops(&baseline), ==, 0);
+
+	return MUNIT_OK;
+}
+
 /** The two stages are separate accumulators: a sample of one must not reach the other. */
 static MunitResult test_baseline_stages_are_separate(const MunitParameter params[], void *user)
 {
@@ -657,6 +720,20 @@ MunitTest tests_session_baseline[] = {
 	{
 		"/latency_estimate",
 		test_baseline_latency_estimate,
+		NULL, NULL,
+		MUNIT_TEST_OPTION_NONE,
+		NULL
+	},
+	{
+		"/decoder_drops_are_the_difference",
+		test_baseline_decoder_drops_are_the_difference,
+		NULL, NULL,
+		MUNIT_TEST_OPTION_NONE,
+		NULL
+	},
+	{
+		"/decoder_drops_never_wrap",
+		test_baseline_decoder_drops_never_wrap,
 		NULL, NULL,
 		MUNIT_TEST_OPTION_NONE,
 		NULL

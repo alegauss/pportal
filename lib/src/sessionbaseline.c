@@ -234,6 +234,17 @@ CHIAKI_EXPORT uint64_t chiaki_session_baseline_latency_estimate_us(const ChiakiS
 		+ chiaki_session_baseline_stat_avg(&baseline->handoff);
 }
 
+CHIAKI_EXPORT uint64_t chiaki_session_baseline_decoder_drops(const ChiakiSessionBaseline *baseline)
+{
+	// Clamped rather than wrapped, and the clamp is not defensive: the two counters are
+	// sampled by different threads at different moments, so the receiver can legitimately be
+	// ahead of the presenter at the end of a session. Subtracting unsigned would turn a few
+	// frames of skew into eighteen quintillion.
+	return baseline->frames_dropped > baseline->frames_lost
+		? baseline->frames_dropped - baseline->frames_lost
+		: 0;
+}
+
 /**
  * The line is assembled through a cursor rather than one snprintf because a record with
  * six stages in it is thirty arguments long, and a positional mistake in that list is a

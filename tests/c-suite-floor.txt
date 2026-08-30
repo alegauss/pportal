@@ -26,4 +26,8 @@
 # 147 on 2026-08-30: PP72 added the two decoderchoice cases its decision rests on - that an
 # explicit d3d11va outranks the cuda preference, and that the preference fires at three
 # arrivals rather than the one its design named.
-147
+#
+# 149 the same day: PP76's readable half added the two over chiaki_session_baseline_decoder_drops
+# - that the decoder's own loss is the difference between the record's two counters, and that
+# the difference never wraps when the receiver ends a session ahead of the presenter.
+149

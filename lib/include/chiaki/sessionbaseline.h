@@ -221,6 +221,27 @@ typedef struct chiaki_session_baseline_t
  */
 CHIAKI_EXPORT uint64_t chiaki_session_baseline_latency_estimate_us(const ChiakiSessionBaseline *baseline);
 
+/**
+ * The frames a decoder lost that the network had not already lost for it: frames_dropped
+ * less frames_lost, and never below zero.
+ *
+ * PP76 compares decoders by what they lose under jitter, and neither counter answers that
+ * on its own. frames_lost is the video receiver's own total, counted upstream of every
+ * decoder, so it reads the same whichever one runs. frames_dropped is that same total as
+ * the presenter received it, plus the frames the codec evicted from a full internal buffer
+ * to make room - and that eviction is the only loss in the path a decoder is responsible
+ * for. The difference is therefore the decoder's, and it is nowhere in the record as a
+ * field because it is not a measurement, it is a subtraction two existing ones support.
+ *
+ * It is a FLOOR and not a count, for two reasons that both point the same way. The two
+ * counters are sampled by different threads - the receiver's total is polled, the
+ * presenter's is accumulated per pull - so a session can end with the receiver ahead and
+ * the difference reading low. And PP528's carry holds a remainder that a session ending on
+ * a failed pull never delivers. Neither can make it read high, so a difference that DOES
+ * appear is real; an absent one is not evidence of a decoder that lost nothing.
+ */
+CHIAKI_EXPORT uint64_t chiaki_session_baseline_decoder_drops(const ChiakiSessionBaseline *baseline);
+
 /** Zero every counter and clear every string. */
 CHIAKI_EXPORT void chiaki_session_baseline_init(ChiakiSessionBaseline *baseline);
 

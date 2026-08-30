@@ -515,11 +515,15 @@ property of the live path rather than of the silicon. A generator can carry reso
 and bitrate; it cannot carry a congested link, and every attempt to synthesise one
 measures the synthesiser.
 
-This line said no new instrument was needed, and that was read rather than checked. The
-PP42 row does name the decoder, but neither of its loss counters can attribute a loss to
-one: frames_lost is the video receiver's own total, counted upstream of every decoder,
-and frames_dropped goes missing on the two decoder-dependent returns before
-presentFrame. PP528 is that counter, and this waits on it. Still a run rather than a
-build, once there is something to read.
+This line said no new instrument was needed, and that was read rather than checked.
+Neither loss counter attributes a loss to a decoder: frames_lost is the video receiver's
+own total, counted upstream of every one of them, and frames_dropped went missing on two
+decoder-dependent returns. PP528 repaired that counter, and
+chiaki_session_baseline_decoder_drops names the subtraction the comparison rests on - a
+floor on the decoder's own loss rather than a count of it.
+
+What is left is the run, and it is a run: sessions per decoder on a link that jitters,
+which takes a console and somebody playing on it. Reading either counter on its own is
+what this waits to prevent.
 
 ## Block J — Public documentation
