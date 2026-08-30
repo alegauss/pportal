@@ -466,6 +466,7 @@
 - ✅ **PP545** **nothing composes the ported holepunch pieces, so the create sequence is modelled and never run** — The five steps run in the C's order over PP538's one-shot at PP539's four points, with the websocket wait bounded and that departure carried as a value.
 - ✅ **PP546** **the start is modelled and never run, so the failure the C reports as success has nowhere to be reported** — The four steps run in the C's order, the PS4 wakeup is skipped rather than ignored, and the wrong console is a failure here and success in the C.
 - ✅ **PP547** **fifteen files model parts of the punch and nothing sequences them, so its five checkpoints have no order to sit in** — The eleven steps run in the C's order, and each of the five checkpoints is reached by cancelling from inside the step before it.
+- ✅ **PP548** **PP545's create interface has nothing behind it, so the sequence runs only against a test double** — SessionCalls, PushChannel and PP212's queue now sit behind the create's steps, with the connect started in one step and bounded in the next.
 
 ## Block G — Test discipline
 
