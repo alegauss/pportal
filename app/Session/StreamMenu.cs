@@ -293,11 +293,21 @@ public sealed class StreamMenuViewModel : DialogViewModel
     }
 
     /// <summary>
-    /// Whether picking this preset writes the setting as well as the window. Every one of them
-    /// does - which is what makes the video MODE's silence about the store worth noticing.
+    /// Whether picking this preset writes the setting as well as the window.
+    ///
+    /// The five with buttons do: each `onClicked` writes `Chiaki.window.videoPreset` AND
+    /// `Chiaki.settings.videoPreset`, which is what makes the video MODE's silence about the store
+    /// worth noticing. <see cref="StreamVideoPreset.Fast"/> is the exception, and it is one for the
+    /// reason the enum already names - the menu has no button for it, so no press on this screen
+    /// can store it.
+    ///
+    /// PP575: the body was `Enum.IsDefined`, which answers whether a value is a member of its enum.
+    /// That is a different question, and the input it gets wrong is exactly Fast - the one preset
+    /// this method exists to separate from the rest. It had no caller, so being wrong cost nothing;
+    /// <see cref="StreamMenuSource.EveryPresetAgreesWithTheMenu"/> is the caller and the oracle.
     /// </summary>
     public static bool PresetIsPersisted(StreamVideoPreset preset)
-        => Enum.IsDefined(preset);
+        => Enum.IsDefined(preset) && preset != StreamVideoPreset.Fast;
 
     private void RaiseAll()
     {
@@ -382,6 +392,52 @@ public static class StreamMenuSource
         ArgumentNullException.ThrowIfNull(qml);
         return qml.Contains(
             "opacity: parent.visible && Chiaki.window.droppedFrames ? 1.0 : 0.0", StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Whether the menu still stores exactly the presets <see cref="StreamMenuViewModel"/> says it
+    /// does - both writes present for each one it calls persisted, and neither write anywhere for
+    /// the one it does not.
+    ///
+    /// This is <see cref="StreamMenuViewModel.PresetIsPersisted"/>'s oracle rather than a second
+    /// copy of its rule: the model answers per preset and this holds each answer against the QML,
+    /// so the two disagree in the suite rather than in a screenshot. PP575 - the method had no
+    /// caller at all, which is what let a body answering a different question stay green.
+    /// </summary>
+    public static bool EveryPresetAgreesWithTheMenu(string qml)
+    {
+        ArgumentNullException.ThrowIfNull(qml);
+
+        foreach (StreamVideoPreset preset in Enum.GetValues<StreamVideoPreset>())
+        {
+            bool onTheMenu = Assigns(qml, "window", preset) && Assigns(qml, "settings", preset);
+            if (onTheMenu != StreamMenuViewModel.PresetIsPersisted(preset))
+                return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// One of the two writes a preset button makes, matched with the NAME ENDING where it does.
+    ///
+    /// `VideoPreset.HighQuality` is a prefix of `HighQualitySpatial` and of
+    /// `HighQualityAdvancedSpatial`, so a plain Contains would still report the HighQuality button
+    /// as present after it was deleted - three buttons answering for one.
+    /// </summary>
+    private static bool Assigns(string qml, string target, StreamVideoPreset preset)
+    {
+        string needle = $"Chiaki.{target}.videoPreset = ChiakiWindow.VideoPreset.{preset}";
+
+        for (int at = qml.IndexOf(needle, StringComparison.Ordinal); at >= 0;
+             at = qml.IndexOf(needle, at + 1, StringComparison.Ordinal))
+        {
+            int after = at + needle.Length;
+            if (after >= qml.Length || !char.IsLetterOrDigit(qml[after]))
+                return true;
+        }
+
+        return false;
     }
 
     /// <summary>

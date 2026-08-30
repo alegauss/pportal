@@ -191,6 +191,30 @@ public class StreamMenuTests
     public void WithNoSessionTheConsoleLineIsEmpty()
         => Assert.Equal("", new StreamMenuViewModel { Host = "PS5-1234" }.ConsoleCaption);
 
+    /// <summary>
+    /// PP575, PP10: the menu stores the five presets it can draw, and not the sixth.
+    ///
+    /// Fast is the whole content of this rule. It holds 0, the row of buttons starts at Default,
+    /// and no press on this screen can write it - so a check answering "is this a member of the
+    /// enum" says yes for the one preset the answer is no for. That was the body until this test
+    /// existed to disagree with it.
+    /// </summary>
+    [Fact]
+    public void OnlyThePresetsWithButtonsAreStored()
+    {
+        Assert.False(StreamMenuViewModel.PresetIsPersisted(StreamVideoPreset.Fast));
+
+        Assert.True(StreamMenuViewModel.PresetIsPersisted(StreamVideoPreset.Default));
+        Assert.True(StreamMenuViewModel.PresetIsPersisted(StreamVideoPreset.HighQuality));
+        Assert.True(StreamMenuViewModel.PresetIsPersisted(StreamVideoPreset.HighQualitySpatial));
+        Assert.True(StreamMenuViewModel.PresetIsPersisted(StreamVideoPreset.HighQualityAdvancedSpatial));
+        Assert.True(StreamMenuViewModel.PresetIsPersisted(StreamVideoPreset.Custom));
+
+        // And a value that is in neither set. `Enum.IsDefined` is still the first half of the
+        // rule, so a cast from an int off the end of the enum is not persisted either.
+        Assert.False(StreamMenuViewModel.PresetIsPersisted((StreamVideoPreset)9));
+    }
+
     /// <summary>Every rule above, still stated the same way in the QML and the header.</summary>
     [Fact]
     public void TheMenusRulesAreStillTheQtClients()
@@ -211,5 +235,11 @@ public class StreamMenuTests
         Assert.True(StreamMenuSource.TheDroppedLineNeedsANonZeroCount(qml), "non-zero only");
         Assert.True(StreamMenuSource.TheEnumsAreStillInThisOrder(File.ReadAllText(header)),
             "Stretch before Zoom, and Fast ahead of Default");
+
+        // PP575: the per-preset rule, held against the buttons rather than restated. Every preset
+        // the model calls persisted writes both `Chiaki.window.videoPreset` and
+        // `Chiaki.settings.videoPreset`; Fast writes neither, because it has no button to press.
+        Assert.True(StreamMenuSource.EveryPresetAgreesWithTheMenu(qml),
+            "five buttons write the window and the setting, and Fast has neither");
     }
 }
