@@ -361,36 +361,13 @@ something is missing.
 What removes something is a managed holepunch that OWNS the session - its own HTTP,
 websocket and JSON - handing session.c the sockets, the address and the port. Some of
 that is here: PP266 performs the five session calls over a real HttpClient, PP231 stated
-the websocket auto-ACK. The rest is the candidate and STUN work, the notification queue
-and the state machine holepunch.c is mostly made of.
+the websocket auto-ACK. PP534 counted it: most of the file is named under app/,
+candidates and STUN among them, ten functions are not.
 
 Which is why this is one line and not the whole of PP33. What it decides first is the
 direction: session.c stops taking a holepunch handle and starts taking the results, or
 it keeps the handle and the managed side fills it. The first deletes holepunch.c; the
 second keeps it and buys nothing.
-
-### §PP534 The scope that was read rather than counted
-
-§PP533 says what is left of holepunch.c in a sentence: "the candidate and STUN work, the
-notification queue and the state machine". That was written by reading the file, and
-reading a 6000-line file is how a scope becomes a guess nobody rechecks.
-
-A count is cheap and says something different. holepunch.c defines 67 functions; a
-bare-name sweep of app/ finds 57 of them named there and ten not. The candidate and STUN
-work is among the 57, so the sentence names as remaining the part that is furthest
-along.
-
-WHAT "NAMED" MEANS. The join UnreferencedExportTests already uses, for its reason: a
-bare identifier finds a name used as a callback or quoted in a comment, where a
-call-shaped match misses it. So this is an UPPER bound on coverage and not a claim that
-anything is ported. What it is good for is the other direction: a C function no managed
-file names at all is one nothing has looked at, and that is a list PP533 can work from.
-
-The ten are not the state machine either. They are the device listing, the main thread's
-cancel, the UPnP discover, the notification queue's constructor and destructor, two
-header builders, the HTTP session create, one payload getter, and the recorded-session
-setter PP481 added - which app/ reaches through its shim wrapper rather than by name,
-and is therefore honestly unanswered here.
 
 ## Block G — Test discipline
 

@@ -31,8 +31,7 @@
 - 📋 **PP32** (deps: PP28) **audio decode is Opus in lib and the microphone's noise and echo stages are speexdsp in the Qt client** — Managed Opus exists and speexdsp has none; the conversion between them is SDL_AudioCVT rather than speex, so the audio path is three dependencies and not two. → §PP32
 - ⏳ **PP33** (deps: PP24 ✅, PP293 ✅, PP340 ✅, PP481 ✅, PP533) **HTTP and JSON in the core are curl and json-c, two vendored dependencies for what the runtime already does** — the deletion: holepunch.c is the only unit needing either library, and session.c is its only caller. → §PP33
 - 📋 **PP295** (deps: PP27 ⏳, PP297 ✅) **streamconnection.c is 1531 lines and is the last C caller of the video receiver, so every deletion below waits on it** — PP286 to PP291 ported the frame path bottom-up and none of it removed C, because this is what still calls the native receiver. → §PP295
-- 📋 **PP533** (deps: PP481 ✅, PP534) **session.c asks the C holepunch for all nine, and those asks are the only reason libchiaki links curl and json-c** — PP481 drives the nine rather than replacing them, so the seam exists in both directions and neither deletes holepunch.c. → §PP533
-- 📋 **PP534** (deps: none) **nothing counts which of holepunch.c's functions app/ already answers, so PP533's scope is a sentence** — That sentence names the candidate and STUN work as what is left, and a count is what would say whether it is true. → §PP534
+- 📋 **PP533** (deps: PP481 ✅, PP534 ✅) **session.c asks the C holepunch for all nine, and those asks are the only reason libchiaki links curl and json-c** — PP481 drives the nine rather than replacing them, so the seam exists in both directions and neither deletes holepunch.c. → §PP533
 
 ## Block G — Test discipline
 
