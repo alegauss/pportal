@@ -12,6 +12,41 @@ namespace ChiakiNg.Tests;
 /// </summary>
 public class SizedBufferLogsTests(ITestOutputHelper output)
 {
+    /// <summary>
+    /// PP576: THE LIST AND THE PATTERN ARE ONE LIST, and were two.
+    ///
+    /// BufferNames said "payload", "buf", "data" and nothing read it. The regex that does the work
+    /// said the same three inside its own alternation. Two copies agree until one is edited, and
+    /// nothing compared them - so a fourth buffer name added to the list would have changed no
+    /// behaviour, failed no test, and read as covered.
+    ///
+    /// The same defect PP551 found between HolepunchDirection's results and the state PP478 carried,
+    /// one file over and pre-existing.
+    /// </summary>
+    [Fact]
+    public void ThePatternLooksForEveryNameTheListCarries()
+    {
+        IReadOnlyList<string> missed = SizedBufferLogs.NamesThePatternMisses();
+
+        Assert.True(missed.Count == 0, $"the pattern ignores: {string.Join(", ", missed)}");
+        Assert.NotEmpty(SizedBufferLogs.BufferNames);
+    }
+
+    /// <summary>
+    /// And the check bites: a name the pattern does not contain is reported. Asserted against the
+    /// real pattern with a name that is not in it, because a check that only ever saw agreement
+    /// would pass on an empty list too.
+    /// </summary>
+    [Fact]
+    public void ANameThePatternIgnoresIsReported()
+    {
+        Assert.DoesNotContain(
+            "frame", SizedBufferLogs.UnsizedLogPattern, StringComparison.Ordinal);
+
+        foreach (string name in SizedBufferLogs.BufferNames)
+            Assert.Contains(name, SizedBufferLogs.UnsizedLogPattern, StringComparison.Ordinal);
+    }
+
     /// <summary>THE TASK. Nothing in lib/src prints a sized buffer with %s.</summary>
     [Fact]
     public void NoLogPrintsASizedBufferWithoutItsSize()

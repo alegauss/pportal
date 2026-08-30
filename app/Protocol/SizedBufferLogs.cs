@@ -79,8 +79,34 @@ public static partial class SizedBufferLogs
         return code.Contains("CHIAKI_LOG", StringComparison.Ordinal) && InFile(code).Count == 0;
     }
 
+    /// <summary>
+    /// PP576: the pattern, named so the names inside it can be compared with
+    /// <see cref="BufferNames"/>.
+    ///
+    /// The two were separate copies of one list - the property said "payload", "buf", "data" and
+    /// nothing read it, while the alternation below said the same three and did all the work. They
+    /// agreed, which is what copies do until one is edited: a fourth name added to the property
+    /// would have changed no behaviour and failed no test.
+    ///
+    /// A GeneratedRegex pattern is a compile-time constant, so it cannot be built from the list.
+    /// What it can be is readable, which is enough to assert that every name the list carries is a
+    /// name this searches for.
+    /// </summary>
+    public const string UnsizedLogPattern =
+        @"CHIAKI_LOG[A-Z]+\s*\([^;]*%s[^;]*,\s*(?:payload|buf|data)\s*\)\s*;";
+
     // A log whose last argument is one of the buffer names, with %s somewhere in the format. %.*s
     // does not match: the conversion is four characters and none of its pairs is "%s".
-    [GeneratedRegex(@"CHIAKI_LOG[A-Z]+\s*\([^;]*%s[^;]*,\s*(?:payload|buf|data)\s*\)\s*;")]
+    [GeneratedRegex(UnsizedLogPattern)]
     private static partial Regex UnsizedLog();
+
+    /// <summary>
+    /// Which names the list carries that the pattern does not look for.
+    ///
+    /// One direction only, and deliberately. A pattern that searches for a name the list has not
+    /// caught up with is wider than the record, which finds more and claims nothing false. A name in
+    /// the LIST that the pattern ignores is the one that reads as covered and is not.
+    /// </summary>
+    public static IReadOnlyList<string> NamesThePatternMisses()
+        => [.. BufferNames.Where(name => !UnsizedLogPattern.Contains(name, StringComparison.Ordinal))];
 }

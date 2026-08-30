@@ -552,6 +552,7 @@
 - ✅ **PP569** **compare-baselines ships a selftest its README calls its own assertion, and neither the gate nor CI ran it** — The gate and CI both run it now, recorded as PP433's fourth pass; it is safe in CI where the host's selftest is not, so the local-only ceiling stays at one.
 - ✅ **PP570** **measure-startup ships the same selftest and is not in the solution, so no gate builds it let alone runs it** — It carries the warning policy and joins the solution, both gates run its selftest, and PP433's table names binaries so one tool wired no longer answers for two.
 - ✅ **PP571** **the no-local-patch non-goal reads as forbidding PP33's deletion, which must edit session.c and ctrl.c** — The rule names PP33 as what it does not reach, and the exemption is asserted inside its own paragraph so a check cannot pass on PP33 being named elsewhere.
+- ✅ **PP576** **the sized-buffer names are declared in a list nothing reads and again inside the regex that does the work** — The pattern is named so its names can be compared with the list's, and a name the list carries that the pattern ignores turns the suite red.
 
 ## Block H — Performance and telemetry
 
