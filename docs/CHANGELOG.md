@@ -53,6 +53,7 @@
 - ✅ **PP578** **two more managed enums are cast from C values on the lines after the one PP577 held, and neither is checked** — The three mirrors are one list compared once, the error-specific copy is gone, and the count is asserted so a fourth cast cannot arrive unchecked.
 - ✅ **PP579** **the SDL_Event size is a hand-written 56 in a StructLayout and nothing holds it against SDL's header** — The size is a named constant the layout uses, held against SDL's padding declaration and its own compile-time assert, reading the 64-bit arm rather than the digits.
 - ✅ **PP580** **nothing checks that every shim entry point the host imports is one the shim exports, or the reverse** — Both sets are read from the shim's definitions and the host's entry points and asserted equal, so a rename fails the gate instead of the call.
+- ✅ **PP581** **six function pointers cross to the shim and nothing checks a managed signature against the C typedef** — Each typedef's signature is read from the header and each thunk's from the source and compared, with bool mapped to byte because C's is one and .NET's default is four.
 
 ## Block C — Video and input path
 
