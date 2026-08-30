@@ -75,6 +75,64 @@
   reads zero. It is an end state, not a progress bar, and reading it as one is what made
   four shipped tasks look like none.
 
+## Done when — PP27
+
+- **A shim entry point exposes takion's receive loop** The half PP531 could not reach.
+  The MAC gate is timed because the shim reaches it; the loop around it is bound to
+  sockets and threads a capture has neither of, so no oracle runs until an entry point
+  exists.
+- **The managed transport is timed against the C over captured traffic** Not opinion:
+  the C is right there and PP531 showed the shape - 0.13us managed against 0.06us per
+  head, inside a 1178us mean arrival gap. The same comparison for the loop, not just the
+  gate.
+- **The transport meets PP44's allocation budget** Thousands of small packets a second,
+  each an allocation if written carelessly. Span, ArrayPool and SocketAsyncEventArgs are
+  the answer, chosen deliberately - PP44 set the budget before this line writes what has
+  to meet it.
+- **takion.c, takionsendbuffer.c and reorderqueue.c leave the build** Porting into app
+  removes no C, so this is the end state and not a progress bar - the same shape PP33's
+  own last criterion has. The three files' sizes are stated in the section, where the
+  recount reaches them.
+
+## Done when — PP11
+
+- **A container visual carries the ten-bit swapchain below and the overlay above** PP319
+  chose between the three paths D3DImage's ten-bit refusal left, and this is the one
+  that costs neither PP10's overlay nor the picture. Fullscreen and the refresh rate
+  already shipped; HDR is the half that is left.
+- **PP322's reading confirms the overlay lands above the video** A compositor accepting
+  a tree says nothing about what reaches the glass. This half is not blocked on a
+  decision any more - it waits on the pixel nobody has looked at.
+
+## Done when — PP322
+
+- **A person looks at what --dcomp-demo --layers draws** The apparatus is built and no
+  assertion in this tree can reach the answer. PP284 read a pixel none of PP281 to PP283
+  had predicted, which is why the reading is the task rather than the tree.
+- **The reading answers both questions, not only the visible one** Whether the overlay
+  draws over the video plane is visible. Whether an eight-bit premultiplied surface
+  composes over a ten-bit plane without the alpha taken twice has no error path
+  anywhere: it looks like a slightly wrong colour.
+
+## Done when — PP46
+
+- **The three numbers are recorded on the Qt build** Cold start to the console list,
+  installer size, and process working set at idle - alongside the rest of the baseline,
+  in the same record the sink already writes. This is the before, and PP63 is what makes
+  it buildable.
+- **And again on the WPF build, in the same record** A delta needs both halves written
+  the same way. These are the two numbers most likely to be quoted in a release note,
+  and a quoted number nobody measured survives long past the day it stopped being true.
+
+## Done when — PP76
+
+- **One played session per decoder against a real console** PP48 settled what a
+  generated stream can settle and PP71 reversed its ranking under pacing. Neither is the
+  number a user feels: a generator carries resolution and bitrate, not a congested link.
+- **The number read is the difference between the two counters** PP528 separated frames
+  lost from frames dropped, and PP76's own remaining half is that difference per decoder
+  under jitter - which is what makes this a reading rather than a second instrument.
+
 ## Non-goals
 
 - **No Linux, macOS, Android, FreeBSD or Switch build** Those trees are already deleted
