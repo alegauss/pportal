@@ -153,6 +153,7 @@
 - ✅ **PP430** **CHIAKI_ENABLE_RUDP is declared and never read, so turning Remote Play over Internet off does nothing at all** — the option nothing read is gone rather than wired up, and a rule refuses any option the build declares and never reads.
 - ✅ **PP431** **the build finds Python through a module CMake removed, and its comment names a purpose the call does not serve** — FindPython3 replaces the module CMake removed, the generator runs as its interpreter, and a rule refuses both by name.
 - ✅ **PP492** **compile.cmd clean with the GUI off leaves the portable tree holding two DLLs and none of what they import** — The native-only deploy stages SDL2 and walks the closure through one script the Qt path shares, so a clean GUI-off build leaves a tree the host can load from.
+- ✅ **PP567** **the CI workflow runs the managed suite with no filter, so it would run the interaction tests on a runner with no desk** — The step carries the trait expression the gate uses, and both sides are held to the same word so a rename cannot put the five back silently.
 
 ## Block F — Managed core
 

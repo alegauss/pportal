@@ -79,9 +79,15 @@ jobs:
       - name: build the solution
         run: dotnet build ChiakiNg.slnx -c Debug --nologo
 
+      # PP567: THE SAME EXCLUSION THE GATE USES, for the same reason one level along. PP227 put the
+      # interaction tests outside `test.cmd` because they open the real application and drive its
+      # window through UI Automation - `test.cmd interaction` runs them and only them. This step had
+      # no filter, so a runner with no desk would have run them and gone red on the five, having
+      # just got past the configure error that kept this job red for 39 runs.
       - name: the managed suite
         run: >
           dotnet test tests/ChiakiNg.Tests/ChiakiNg.Tests.csproj -c Debug --no-build --nologo
+          --filter "Category!=Interaction"
           --logger "trx;LogFileName=managed.trx"
 
       # PP36: always, and that is the whole of this step.

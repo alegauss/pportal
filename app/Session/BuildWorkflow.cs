@@ -149,6 +149,36 @@ public static partial class BuildWorkflow
             || workflow.Contains(@"buildsystems\vcpkg.cmake", StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// PP567: the category the local gate excludes, which CI has to exclude for the same reason.
+    ///
+    /// PP227 put the interaction tests outside test.cmd because they open the real application and
+    /// drive its window through UI Automation; `test.cmd interaction` runs them and only them. The
+    /// workflow's dotnet test step carried no filter, so a runner - which has no desk - would have
+    /// run all five and gone red, immediately after the configure fix let it get that far.
+    ///
+    /// Held as the trait expression rather than as "some filter", because a filter that excluded
+    /// something else would satisfy a looser check and still leave the five running.
+    /// </summary>
+    public const string InteractionExclusion = @"--filter ""Category!=Interaction""";
+
+    /// <summary>The name test.cmd knows the category by, which both sides must agree on.</summary>
+    public const string InteractionCategory = "Interaction";
+
+    /// <summary>
+    /// Whether the workflow still runs the managed suite without the interaction tests.
+    ///
+    /// Both halves: that it runs dotnet test at all, and that the run carries the exclusion. A
+    /// workflow that stopped testing would pass a check that only looked for the filter.
+    /// </summary>
+    public static bool ExcludesTheInteractionTests(string workflow)
+    {
+        ArgumentNullException.ThrowIfNull(workflow);
+
+        return workflow.Contains("dotnet test", StringComparison.Ordinal)
+            && workflow.Contains(InteractionExclusion, StringComparison.Ordinal);
+    }
+
     /// <summary>One $env: reference in a run: step, and whether anything will expand it.</summary>
     /// <param name="Line">Its 1-based line number.</param>
     /// <param name="Text">The line, trimmed.</param>

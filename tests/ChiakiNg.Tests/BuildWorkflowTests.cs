@@ -14,6 +14,47 @@ namespace ChiakiNg.Tests;
 /// </summary>
 public class BuildWorkflowTests(ITestOutputHelper output)
 {
+    /// <summary>
+    /// PP567: CI EXCLUDES WHAT THE GATE EXCLUDES, and had not.
+    ///
+    /// PP227 keeps the interaction tests out of test.cmd because they open the real application and
+    /// drive its window; a runner has no desk. The workflow's dotnet test step carried no filter, so
+    /// the first job to get past PP535's configure fix would have run all five and gone red - two of
+    /// them fail on a machine that DOES have a desk.
+    ///
+    /// Asserted as the trait expression, not as "some filter": one excluding something else would
+    /// pass a looser check and still leave the five running.
+    /// </summary>
+    [Fact]
+    public void TheWorkflowExcludesTheInteractionTests()
+    {
+        if (BuildWorkflow.Locate() is not { } path)
+            return;
+
+        Assert.True(BuildWorkflow.ExcludesTheInteractionTests(File.ReadAllText(path)));
+    }
+
+    /// <summary>
+    /// And both sides name the category the same way. test.cmd filters on it and the tests carry it
+    /// as a trait, so a rename touching one and not the other would put the five back into CI in
+    /// silence.
+    /// </summary>
+    [Fact]
+    public void TheCategoryIsTheOneTheGateNames()
+    {
+        Assert.Contains(
+            BuildWorkflow.InteractionCategory, BuildWorkflow.InteractionExclusion,
+            StringComparison.Ordinal);
+
+        if (SanitizerSource.LocateRelative("test.cmd") is not { } testCmd)
+            return;
+
+        // The gate's own two passes, both keyed on the same word.
+        string text = File.ReadAllText(testCmd);
+        Assert.Contains($"Category={BuildWorkflow.InteractionCategory}", text, StringComparison.Ordinal);
+        Assert.Contains($"Category!={BuildWorkflow.InteractionCategory}", text, StringComparison.Ordinal);
+    }
+
     /// <summary>A workflow in the shape this port writes them, for the parsing tests.</summary>
     private const string Workflow = """
         name: build
