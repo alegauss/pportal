@@ -35,6 +35,8 @@
 
 ## Block G — Test discipline
 
+- 📋 **PP587** (deps: —) **the local gate never runs roadkeep lint, so a governed-file drift is first reported by a CI run** — compile.cmd and test.cmd contain no roadkeep call and roadkeep.yml runs lint on push, so the first reader of a drift is a run this repo has none to spare. → §PP587
+
 ## Block H — Performance and telemetry
 
 - ⏳ **PP46** (deps: PP42 ✅, PP63) **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — A Chromium leaving the build should be visible in cold start and in megabytes, and stating it without measuring is how a port collects folklore. → §PP46
