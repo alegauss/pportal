@@ -103,6 +103,76 @@ static MunitResult test_cuda_needs_both_the_card_and_the_decoder(const MunitPara
 }
 
 /**
+ * PP72, and the branch its whole plan rests on.
+ *
+ * PP71 measured cuda last of the three at the rate a console sends, which is evidence against
+ * the preference above and not enough to reverse it: one card, one synthetic stream, one
+ * machine. What settles it is real sessions running each path on the fallback and the record
+ * naming which - and that is only possible if a machine which would automatically take cuda
+ * can be told to run d3d11va instead.
+ *
+ * So the request has to outrank prefer_cuda on exactly the machine the comparison needs: an
+ * NVIDIA card, an OpenGL renderer, cuda listed. A refactor that moved the preference ahead of
+ * the request would still start every stream, still draw a picture, and would quietly leave
+ * PP72 unanswerable for good.
+ */
+static MunitResult test_explicit_d3d11va_outranks_the_cuda_preference(const MunitParameter params[], void *user)
+{
+	ChiakiDecoderChoiceInputs inputs = plain_machine();
+	inputs.renderer = CHIAKI_DECODER_RENDERER_OPENGL;
+	inputs.nvidia_card = true;
+	inputs.cuda_listed = true;
+
+	// Left to its own judgement this machine takes cuda - one half of the comparison.
+	assert_choice(inputs, CHIAKI_DECODER_NAME_CUDA);
+
+	// Asked for d3d11va it runs d3d11va, which is the other half. Both rows reach the
+	// session record naming the renderer beside the decoder, which is what PP72 shipped
+	// first and what makes the two comparable at all.
+	inputs.requested = CHIAKI_DECODER_NAME_D3D11VA;
+	assert_choice(inputs, CHIAKI_DECODER_NAME_D3D11VA);
+	return MUNIT_OK;
+}
+
+/**
+ * PP72's design said the cuda-over-d3d11va preference "governs one case: an OpenGL renderer",
+ * and used that to argue the stakes were small. The code disagrees, and this is where the
+ * correction is written down rather than left in a deleted design section.
+ *
+ * without_vulkan is reached three ways and prefer_cuda decides all three. Two of them are
+ * Vulkan renderers: an ffmpeg build that lists no vulkan decoder, and the retry after a window
+ * handed back no vulkan device context. Only the third is the OpenGL fallback. So a reader who
+ * takes "one case" at its word looks for the disputed preference in a third of the places it
+ * actually fires, and the two it hides are the ones a driver produces rather than a setting.
+ */
+static MunitResult test_the_cuda_preference_is_not_only_the_opengl_fallback(const MunitParameter params[], void *user)
+{
+	ChiakiDecoderChoiceInputs inputs = plain_machine();
+	inputs.nvidia_card = true;
+	inputs.cuda_listed = true;
+
+	// One: the OpenGL fallback, which is the case the design named.
+	inputs.renderer = CHIAKI_DECODER_RENDERER_OPENGL;
+	assert_choice(inputs, CHIAKI_DECODER_NAME_CUDA);
+
+	// Two: a Vulkan renderer whose ffmpeg build lists no vulkan decoder. Nothing here is
+	// about OpenGL and the answer is still cuda.
+	inputs.renderer = CHIAKI_DECODER_RENDERER_VULKAN;
+	inputs.vulkan_listed = false;
+	assert_choice(inputs, CHIAKI_DECODER_NAME_CUDA);
+
+	// Three: the retry after an empty vulkan device context, on a Vulkan renderer that did
+	// list the decoder. test_vulkan_context_retry_reruns_the_same_chain covers this arrival
+	// on a machine with no NVIDIA card, where it lands on d3d11va; this is the same retry on
+	// the card that makes it land on the preference PP71 argued against.
+	inputs.vulkan_listed = true;
+	assert_choice(inputs, CHIAKI_DECODER_NAME_VULKAN);
+	inputs.vulkan_listed = false;
+	assert_choice(inputs, CHIAKI_DECODER_NAME_CUDA);
+	return MUNIT_OK;
+}
+
+/**
  * A settings file outlives the machine that wrote it. A decoder that is no longer on
  * offer is demoted to a judgement rather than honoured, so the stream still starts -
  * and the judgement lands on whatever this machine does have.
@@ -255,6 +325,16 @@ MunitTest tests_decoderchoice[] = {
 	{
 		"/cuda_needs_both_the_card_and_the_decoder",
 		test_cuda_needs_both_the_card_and_the_decoder,
+		NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL
+	},
+	{
+		"/explicit_d3d11va_outranks_the_cuda_preference",
+		test_explicit_d3d11va_outranks_the_cuda_preference,
+		NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL
+	},
+	{
+		"/the_cuda_preference_is_not_only_the_opengl_fallback",
+		test_the_cuda_preference_is_not_only_the_opengl_fallback,
 		NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL
 	},
 	{

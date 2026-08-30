@@ -28,9 +28,12 @@ extern "C" {
  * at all. Here one harness covers it, and the WPF port inherits the same decision
  * already asserted instead of re-deriving it in C# (PP37).
  *
- * This is not a change to the choice. PP72 is where the ordering is argued and it is
- * paused waiting on real sessions; this pins the branch as it stands so that argument
- * happens against a fixed baseline.
+ * This is not a change to the choice. PP72 argued the ordering against PP71's numbers -
+ * which put cuda last of the three at the rate a console sends - and left it as it stands,
+ * because one card and one synthetic stream are not evidence enough to reverse a preference.
+ * What would reopen it is real sessions on each path, and those are collectable because an
+ * explicitly requested d3d11va outranks the cuda preference on the machine that would
+ * otherwise take cuda.
  */
 
 /** The names this returns, and the names the settings surface and the ledger already use. */

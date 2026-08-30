@@ -22,4 +22,8 @@
 # 145 on 2026-08-27, when the count was first taken: 16 suites, of which the parameterised
 # ones are /http/response_parse over two line endings and /fec/fec over 64 recorded frame
 # buffers - 64 of the 145, and the largest single thing the oracle knows.
-145
+#
+# 147 on 2026-08-30: PP72 added the two decoderchoice cases its decision rests on - that an
+# explicit d3d11va outranks the cuda preference, and that the preference fires at three
+# arrivals rather than the one its design named.
+147
