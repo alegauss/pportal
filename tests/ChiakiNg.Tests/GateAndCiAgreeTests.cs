@@ -18,6 +18,51 @@ public class GateAndCiAgreeTests(ITestOutputHelper output)
     /// Both directions: a pass added to test.cmd is one CI should gain, and a pass CI stops running
     /// is one that turned local-only without anybody choosing that.
     /// </summary>
+    /// <summary>
+    /// PP569: the tool's own assertion, which NEITHER side ran.
+    ///
+    /// compare-baselines ships `--self-test` and its README calls it "the assertion this tool ships
+    /// with". The tool is in the solution, so the gate and CI both BUILT it and neither executed it -
+    /// a green build over an assertion nobody runs, which is the lie PP56, PP74 and PP75 are about.
+    /// It matters more than a spare tool would: the site's front page promises what this prints.
+    ///
+    /// Asserted on both sides, because half the fix is how it got missed the first time.
+    /// </summary>
+    [Fact]
+    public void TheToolsSelfTestIsRunByBoth()
+    {
+        TestPass pass = Assert.Single(
+            GateAndCiAgree.Passes, one => one.Name == "the tool's --self-test");
+
+        Assert.True(pass.Locally);
+        Assert.True(pass.InCi);
+
+        // Run by both, so it needs no reason - a difference with a reason is a decision, and this
+        // is not a difference.
+        Assert.Empty(pass.Because);
+
+        if (GateAndCiAgree.ReadLocal() is { } local)
+            Assert.True(GateAndCiAgree.Runs(local, pass.Name));
+
+        if (GateAndCiAgree.LocateCi() is { } ci)
+            Assert.True(GateAndCiAgree.Runs(File.ReadAllText(ci), pass.Name));
+    }
+
+    /// <summary>
+    /// PP569: and the hyphen tells the two selftests apart, which is the whole of the distinction.
+    /// A matcher that confused them would report the host's pass as the tool's and hide the gap
+    /// this closed.
+    /// </summary>
+    [Fact]
+    public void TheTwoSelftestsAreNotTheSameFlag()
+    {
+        Assert.True(GateAndCiAgree.Runs("run --self-test here", "the tool's --self-test"));
+        Assert.False(GateAndCiAgree.Runs("run --self-test here", "the host's --selftest"));
+
+        Assert.True(GateAndCiAgree.Runs("run --selftest here", "the host's --selftest"));
+        Assert.False(GateAndCiAgree.Runs("run --selftest here", "the tool's --self-test"));
+    }
+
     [Fact]
     public void TheTableMatchesBothFiles()
     {

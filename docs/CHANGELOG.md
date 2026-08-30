@@ -547,6 +547,7 @@
 - ✅ **PP540** **the census list must equal the sweep's output, so a model naming a C symbol in a comment turns the suite red** — The list is no longer required to equal the sweep, so only an unquoted function nothing answers is news; entries stay when a model mentions them.
 - ✅ **PP562** **PP107's deferral opens by saying the C suite never calls the two broken functions, and the suite calls and pins both** — A sixth fact holds the claim: the suite calls both and pins the drop defect in C, and PP107's opening sentence and title are corrected to say so.
 - ✅ **PP568** **the decision not to patch vendored C is argued only in a deferred section, so resolving that line deletes it** — The rule is the seventh non-goal, durable and refused at input, and an assertion holds that it is still there and still under the non-goals.
+- ✅ **PP569** **compare-baselines ships a selftest its README calls its own assertion, and neither the gate nor CI ran it** — The gate and CI both run it now, recorded as PP433's fourth pass; it is safe in CI where the host's selftest is not, so the local-only ceiling stays at one.
 
 ## Block H — Performance and telemetry
 

@@ -103,6 +103,27 @@ echo [test] .NET host selftest
 "%APP_EXE%" --selftest
 if errorlevel 1 set "CRC=1"
 
+rem ---- the tool's own selftest (PP569) -----------------------------------
+rem PP75's shape a second time. compare-baselines ships `--self-test` - its README calls it "the
+rem assertion this tool ships with" - and nothing ran it: not this gate, not CI. The tool is in the
+rem solution so it BUILDS in both, which is what made the gap easy to miss - a green build over an
+rem assertion nobody executes is the exact lie PP56, PP74 and PP75 are about.
+rem
+rem It matters more than a spare tool would, because the site's front page promises what this
+rem prints (PP-era SiteProseClaims holds that join), so a regression here is a page that lies.
+rem
+rem Missing binary is a note and not a failure, the way the C suite's is: the tool is not what the
+rem gate is for, and a machine that built the host but not the solution still ran everything above.
+set "CB_EXE=%~dp0tools\compare-baselines\bin\Debug\net10.0\compare-baselines.exe"
+if exist "%CB_EXE%" (
+    echo.
+    echo [test] compare-baselines selftest
+    "%CB_EXE%" --self-test
+    if errorlevel 1 set "CRC=1"
+) else (
+    echo [test] compare-baselines: not built, selftest not run
+)
+
 rem ---- the xUnit project (PP35) ------------------------------------------
 rem Both, and not one instead of the other. The selftest above runs inside the shipped binary,
 rem which is what PP22's CI runs against the published single file; this runs against the

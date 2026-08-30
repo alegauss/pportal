@@ -12,9 +12,9 @@ public readonly record struct TestPass(string Name, bool Locally, bool InCi, str
 /// <summary>
 /// PP433: the passes test.cmd runs and the passes CI runs, held against each other.
 ///
-/// The local gate runs three: ctest over the C suite, the .NET host's <c>--selftest</c>, and the
-/// xUnit vectors. build.yml runs the first and the third. The selftest is 454 checks and CI does not
-/// mention it.
+/// The local gate runs four: ctest over the C suite, the .NET host's <c>--selftest</c>, the xUnit
+/// vectors, and PP569's tool selftest. build.yml runs all but the host's, which is 454 checks CI
+/// does not mention.
 ///
 /// IT IS THE SHAPE PP75 FIXED ONE LEVEL DOWN. PP2 put assertions in app/SelfTest.cs and nothing ran
 /// them; PP75 gave them a runner. That runner is local and CI is where a branch turns red, so the
@@ -84,6 +84,13 @@ public static partial class GateAndCiAgree
                 + "failure presents as a hang with a modal dialog, so the step needs a timeout and "
                 + "one CI run to say whether SDL2 resolves on a runner - which a developer machine "
                 + "cannot answer."),
+
+        // PP569: run by both, which is the state this table exists to keep. It is here because it
+        // was run by NEITHER - the tool is in the solution, so both sides built it and neither
+        // executed the assertion its own README calls the one it ships with. Safe in CI where the
+        // host's selftest is not: pure fixtures, no native seam, so PP117's argument does not reach
+        // it and it needs no timeout.
+        new("the tool's --self-test", Locally: true, InCi: true),
     ];
 
     /// <summary>How many passes run locally and not in CI. One, and it is named.</summary>
@@ -108,6 +115,11 @@ public static partial class GateAndCiAgree
             "the xUnit vectors" => code.Contains("dotnet test", StringComparison.Ordinal)
                 || code.Contains("vstest", StringComparison.Ordinal),
             "the host's --selftest" => code.Contains("--selftest", StringComparison.Ordinal),
+
+            // PP569: the hyphen is the whole difference from the pass above, and it is enough -
+            // "--selftest" is not a substring of "--self-test".
+            "the tool's --self-test" => code.Contains("--self-test", StringComparison.Ordinal),
+
             _ => false,
         };
     }

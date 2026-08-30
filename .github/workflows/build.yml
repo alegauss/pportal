@@ -90,6 +90,17 @@ jobs:
           --filter "Category!=Interaction"
           --logger "trx;LogFileName=managed.trx"
 
+      # PP569: the assertion compare-baselines ships with, which nothing ran.
+      #
+      # It is in the solution, so both this job and the local gate BUILD it - which is what made the
+      # gap easy to miss. A green build over an assertion nobody executes is the lie PP56, PP74 and
+      # PP75 are all about, and the site's front page promises what this tool prints.
+      #
+      # Safe here in a way the host's --selftest is not: pure fixtures, no native seam, so PP117's
+      # hang-on-SDL2 argument does not apply and this needs no timeout.
+      - name: the tool's selftest
+        run: dotnet run --project tools/compare-baselines/CompareBaselines.csproj -c Debug --no-build -- --self-test
+
       # PP36: always, and that is the whole of this step.
       #
       # A results file uploaded only on success is a results file nobody ever needs. The run this
