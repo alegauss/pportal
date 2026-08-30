@@ -27,6 +27,7 @@ rem   compile.cmd clean           wipe .\build (portable tree included) first
 rem   compile.cmd nodeploy        build only, skip the portable tree (fast)
 rem   compile.cmd notests         skip chiaki-unit - leaves ctest on a stale binary
 rem   compile.cmd noapp           skip app\ - says nothing about whether the .NET host builds
+rem   compile.cmd gui             ALSO build the Qt client, which no other invocation compiles
 rem   compile.cmd clean nodeploy  both
 rem
 rem A default build now links chiaki-unit as well as chiaki (PP56) and builds the .NET
@@ -64,6 +65,11 @@ rem Windows first, `find` is the Unix one, the pipeline errors, and the flag is
 rem silently ignored - a `nodeploy` that deploys anyway. A for loop over the
 rem arguments needs no external program and cannot be shadowed.
 set "ARGS=%*"
+rem What is handed to the shell script, which is not the same list: `gui` is this file's
+rem argument and sets an environment variable, so forwarding it would only earn the shell
+rem script's own usage error. Built through a subroutine because a for body cannot append to
+rem a variable it also reads without delayed expansion.
+set "SH_ARGS="
 set "DO_DEPLOY=1"
 set "CONFIGURE_ONLY="
 set "NO_TESTS="
@@ -76,7 +82,13 @@ for %%a in (%ARGS%) do (
     if /I "%%~a"=="nodeploy"  set "DO_DEPLOY="
     if /I "%%~a"=="notests"   set "NO_TESTS=1"
     if /I "%%~a"=="noapp"     set "NO_APP=1"
-    if /I "%%~a" neq "configure" if /I "%%~a" neq "nodeploy" if /I "%%~a" neq "notests" if /I "%%~a" neq "noapp" if /I "%%~a" neq "clean" if /I "%%~a" neq "deploy" set "BAD_ARG=%%~a"
+    rem PP529: the only way to compile gui\ was an environment variable nothing named, so a
+    rem change there was committed unbuilt unless its author already knew. Here as an argument
+    rem because that is where a reader looks - the shell script reads CHIAKI_ENABLE_GUI and this
+    rem is what sets it.
+    if /I "%%~a"=="gui"       set "CHIAKI_ENABLE_GUI=ON"
+    if /I "%%~a" neq "gui" call :forward "%%~a"
+    if /I "%%~a" neq "configure" if /I "%%~a" neq "nodeploy" if /I "%%~a" neq "notests" if /I "%%~a" neq "noapp" if /I "%%~a" neq "clean" if /I "%%~a" neq "deploy" if /I "%%~a" neq "gui" set "BAD_ARG=%%~a"
 )
 rem The .NET host is not part of the cmake graph, so `configure` - which asks cmake whether
 rem every path it names still resolves - has nothing to say about it either way.
@@ -84,7 +96,7 @@ if defined CONFIGURE_ONLY set "NO_APP=1"
 if defined CONFIGURE_ONLY set "DO_DEPLOY="
 if defined BAD_ARG (
     echo [compile] unknown argument: %BAD_ARG%
-    echo [compile] usage: compile.cmd [clean] [notests] [noapp] [configure^|nodeploy]
+    echo [compile] usage: compile.cmd [clean] [notests] [noapp] [gui] [configure^|nodeploy]
     exit /b 2
 )
 
@@ -133,7 +145,7 @@ echo [compile] WARNING: chiaki.exe is running, and it locks the files in
 echo [compile]          %DEPLOY_DISP%. Building only - close chiaki-ng and
 echo [compile]          run again to refresh the portable tree.
 echo.
-set "ARGS=%ARGS% nodeploy"
+set "SH_ARGS=%SH_ARGS% nodeploy"
 set "DO_DEPLOY="
 set "LOCKED=1"
 :lock_checked
@@ -157,7 +169,7 @@ if defined DO_DEPLOY echo [compile] portable   : %DEPLOY_DISP%
 if not defined DO_DEPLOY if not defined CONFIGURE_ONLY echo [compile] portable   : skipped
 echo.
 
-"%BASH%" -l "%REPO%/scripts/build-windows.sh" %ARGS%
+"%BASH%" -l "%REPO%/scripts/build-windows.sh" %SH_ARGS%
 if errorlevel 1 (
     echo.
     echo [compile] FAILED
@@ -228,12 +240,17 @@ echo [compile] OK - run this one:
 echo [compile]   %~dp0app\bin\Debug\net10.0-windows\win-x64\ChiakiNg.exe
 echo.
 echo [compile] ^(the Qt client is off - CHIAKI_ENABLE_GUI. Its source stays in gui\ because
-echo [compile]  the port's drift checks read it; -DCHIAKI_ENABLE_GUI=ON builds it again.^)
+echo [compile]  the port's drift checks read it, so it is still edited; compile.cmd gui
+echo [compile]  builds it, and nothing else does. PP529.^)
 exit /b 0
 
 rem ---------------------------------------------------------------------------
 rem  Preflight helpers. :need is a refusal, :warn_sub is a note - the difference
 rem  is whether the build can proceed without the path, not how important it is.
+:forward
+set "SH_ARGS=%SH_ARGS% %~1"
+exit /b 0
+
 :need
 if exist "%~dp0%~1" exit /b 0
 echo [compile] MISSING  %~1

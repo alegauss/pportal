@@ -35,8 +35,6 @@
 
 ## Block G — Test discipline
 
-- 📋 **PP529** (deps: —) **nothing compiles gui/ - the gate and CI both pass ENABLE_GUI=OFF - while the drift checks keep it edited** — PP528 changed qmlbackend.cpp and only a hand-set flag proved it builds, so a syntax error there is green locally and green on push. → §PP529
-
 ## Block H — Performance and telemetry
 
 - ⏳ **PP46** (deps: PP42 ✅, PP63) **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — A Chromium leaving the build should be visible in cold start and in megabytes, and stating it without measuring is how a port collects folklore. → §PP46

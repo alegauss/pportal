@@ -366,29 +366,6 @@ make quietly inside another task.
 
 ## Block G — Test discipline
 
-### §PP529 The tree nobody compiles and everybody edits
-
-PP21 turned the Qt client off deliberately, and passes -DCHIAKI_ENABLE_GUI=OFF on every
-configure so that no stale cache can turn it back on. build.yml passes the same thing.
-Between them, no build in this repository compiles a line of gui/.
-
-That would be unremarkable if gui/ were dead. It is not: the port's drift checks read
-it, so it is edited whenever a fact they assert moves. Constants all over app/ name a
-gui/src file or a .qml, and PP528 changed qmlbackend.cpp and qmlbackend.h. The only
-reason that change is known to compile is that CHIAKI_ENABLE_GUI=ON was set by hand for
-one run, which nothing asked for and nothing records.
-
-So the failure is quiet in both of the directions a gate can be quiet in. A syntax error
-in gui/ passes compile.cmd, passes test.cmd and passes CI. And the file stays in the
-drift corpus either way, so every check that reads it goes on reporting green about a
-file that would not build.
-
-Three answers are available and they are not the same task: the gate builds gui/ again,
-restoring the Qt dependency PP21 removed it to be rid of; or the drift checks stop
-reading a tree nobody compiles, which is a much larger claim about where this port keeps
-its facts; or an unbuilt tree is accepted because it is on its way out. The third is a
-decision and not a default, which is what this line is for.
-
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed
