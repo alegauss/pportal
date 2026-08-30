@@ -468,6 +468,7 @@
 - ✅ **PP547** **fifteen files model parts of the punch and nothing sequences them, so its five checkpoints have no order to sit in** — The eleven steps run in the C's order, and each of the five checkpoints is reached by cancelling from inside the step before it.
 - ✅ **PP548** **PP545's create interface has nothing behind it, so the sequence runs only against a test double** — SessionCalls, PushChannel and PP212's queue now sit behind the create's steps, with the connect started in one step and bounded in the next.
 - ✅ **PP549** **the start sequence has no implementation behind its interface, and its HostDown outcome is unreachable** — The start runs over SessionCalls and PP212's queue, following the C's own pointer to name each way the joining console is wrong; and one that never joins answers null, the only path to HostDown.
+- ✅ **PP533** **session.c asks the C holepunch for all nine, and those asks are the only reason libchiaki links curl and json-c** — Every mention of the handle in session.c is the assignment, a guard or one of the nine, so it carries nothing between them: session.c takes five results, not four, and holepunch.c goes.
 
 ## Block G — Test discipline
 
