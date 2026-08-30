@@ -69,8 +69,13 @@ public interface IHolepunchStartSteps
     /// <summary>
     /// Waits for the console to join and identify itself, answering PP257's name for what went
     /// wrong - <see cref="StartFailure.None"/> where nothing did.
+    ///
+    /// PP549: null where nothing arrived at all, which is a different answer from every value the
+    /// enum has. Those name what was wrong with a console that DID join; a console that never joins
+    /// failed no check. It is what <see cref="HolepunchStartOutcome.HostDown"/> is for, and until
+    /// this could be said the outcome was declared and unreachable.
     /// </summary>
-    Task<StartFailure> WaitForMemberAsync(TimeSpan timeout, CancellationToken cancellationToken);
+    Task<StartFailure?> WaitForMemberAsync(TimeSpan timeout, CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -162,15 +167,20 @@ public sealed class HolepunchStart
             return Stopped(HolepunchStartOutcome.Cancelled, HolepunchStartStep.WaitForMember, ran);
 
         ran.Add(HolepunchStartStep.WaitForMember);
-        StartFailure failure = await steps
+        StartFailure? failure = await steps
             .WaitForMemberAsync(MemberTimeout, cancellationToken)
             .ConfigureAwait(false);
+
+        // PP549: nobody joined inside SESSION_START_TIMEOUT_SEC. The C's own mapping, and the only
+        // way this outcome is reached - it was declared by PP546 and nothing could produce it.
+        if (failure is null)
+            return Stopped(HolepunchStartOutcome.HostDown, HolepunchStartStep.WaitForMember, ran);
 
         if (failure != StartFailure.None)
         {
             // The departure: reported as the failure it is, including the two the C loses.
             return new HolepunchStartResult(
-                HolepunchStartOutcome.Failed, HolepunchStartStep.WaitForMember, failure, ran);
+                HolepunchStartOutcome.Failed, HolepunchStartStep.WaitForMember, failure.Value, ran);
         }
 
         // Second checkpoint: the wait itself honours a cancel, and so does the step after it.

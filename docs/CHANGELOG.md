@@ -467,6 +467,7 @@
 - ✅ **PP546** **the start is modelled and never run, so the failure the C reports as success has nowhere to be reported** — The four steps run in the C's order, the PS4 wakeup is skipped rather than ignored, and the wrong console is a failure here and success in the C.
 - ✅ **PP547** **fifteen files model parts of the punch and nothing sequences them, so its five checkpoints have no order to sit in** — The eleven steps run in the C's order, and each of the five checkpoints is reached by cancelling from inside the step before it.
 - ✅ **PP548** **PP545's create interface has nothing behind it, so the sequence runs only against a test double** — SessionCalls, PushChannel and PP212's queue now sit behind the create's steps, with the connect started in one step and bounded in the next.
+- ✅ **PP549** **the start sequence has no implementation behind its interface, and its HostDown outcome is unreachable** — The start runs over SessionCalls and PP212's queue, following the C's own pointer to name each way the joining console is wrong; and one that never joins answers null, the only path to HostDown.
 
 ## Block G — Test discipline
 

@@ -20,7 +20,8 @@ public class HolepunchStartTests
 
         public bool StartFails { get; init; }
 
-        public StartFailure MemberFailure { get; init; } = StartFailure.None;
+        /// <summary>PP549: null where nobody joined, which is not one of PP257's failures.</summary>
+        public StartFailure? MemberFailure { get; init; } = StartFailure.None;
 
         public TimeSpan? MemberTimeoutSeen { get; private set; }
 
@@ -42,7 +43,7 @@ public class HolepunchStartTests
             return Task.FromResult(!StartFails);
         }
 
-        public Task<StartFailure> WaitForMemberAsync(TimeSpan timeout, CancellationToken ct)
+        public Task<StartFailure?> WaitForMemberAsync(TimeSpan timeout, CancellationToken ct)
         {
             MemberTimeoutSeen = timeout;
             Reached.Add(HolepunchStartStep.WaitForMember);
@@ -113,6 +114,28 @@ public class HolepunchStartTests
         // rather than a disagreement nobody recorded.
         Assert.Equal("CHIAKI_ERR_SUCCESS", SessionStart.Reported(StartFailure.WrongConsole));
         Assert.True(SessionStart.IsLost(StartFailure.WrongConsole));
+    }
+
+    /// <summary>
+    /// PP549: a console that never joins is HostDown, and this is the only way there.
+    ///
+    /// PP546 declared the outcome for the C's own mapping of the start timeout and nothing could
+    /// produce it - the wait's answer was one of PP257's failures or None, and both describe a
+    /// console that DID join. Reached now because the wait can say nobody did.
+    /// </summary>
+    [Fact]
+    public async Task NobodyJoiningIsHostDown()
+    {
+        var steps = new Steps { MemberFailure = null };
+
+        HolepunchStartResult result = await new HolepunchStart(steps, new HolepunchStop()).RunAsync();
+
+        Assert.Equal(HolepunchStartOutcome.HostDown, result.Outcome);
+        Assert.Equal(HolepunchStartStep.WaitForMember, result.StoppedAt);
+
+        // Down, not failed: no check was failed, so no failure is named.
+        Assert.Equal(StartFailure.None, result.Failure);
+        Assert.Contains(HolepunchStartStep.WaitForMember, steps.Reached);
     }
 
     /// <summary>
