@@ -32,8 +32,57 @@ public static class CompileMessages
     /// <summary>The flag that decides whether there is one.</summary>
     public const string GuiFlag = "CHIAKI_ENABLE_GUI";
 
+    /// <summary>The label of the ending a default run reaches, since the deploy runs by default.</summary>
+    public const string DeployLabel = ":ok_deploy";
+
     /// <summary>The file, or null when this is not running out of a checkout.</summary>
     public static string? Locate() => SanitizerSource.LocateRelative(RelativePath);
+
+    /// <summary>
+    /// PP586: whether the deploy ending picks its recommendation from the FLAG and not from a file
+    /// being on disk.
+    ///
+    /// The claim sweep above cannot see this one. The line it recommends is
+    /// `echo [compile]   %~dp0%DEPLOY_DISP%\chiaki.exe` - the portable tree, not `\gui\chiaki.exe`
+    /// and not the words "the Qt client" - so it names neither thing <see cref="Claims"/> looks
+    /// for, and the branch above it decided which ending was reached rather than what a line said.
+    ///
+    /// PRESENCE IS NOT PROVENANCE. `if not exist` was the test, and it is a fair guard for a line
+    /// saying the client ALSO exists (that line asks exactly the question it answers). It is not a
+    /// guard for "run this one": a stale binary from an earlier `compile.cmd gui` satisfies it, so
+    /// a run that had just printed that the Qt deploy was skipped recommended the Qt client anyway,
+    /// and never named the .NET host - which is where --recount and --ratchet are.
+    /// </summary>
+    public static bool TheDeployEndingAsksTheFlag(string source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        string[] lines = source.ReplaceLineEndings("\n").Split('\n');
+        var inBlock = false;
+
+        foreach (string raw in lines)
+        {
+            string text = raw.Trim();
+
+            if (text.StartsWith(':') && text.Length > 1 && char.IsLetter(text[1]))
+            {
+                // Exactly this label. `:ok_deploy_managed` is the ending this one falls through
+                // TO, and matching it by prefix would read that block's first `if` instead.
+                inBlock = text.Equals(DeployLabel, StringComparison.OrdinalIgnoreCase);
+                continue;
+            }
+
+            if (!inBlock || text.StartsWith("rem ", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            // The FIRST decision in the block is the one that chooses the ending. A later `if exist`
+            // is free to add a note; what this holds is which question was asked first.
+            if (text.StartsWith("if ", StringComparison.OrdinalIgnoreCase))
+                return text.Contains(GuiFlag, StringComparison.Ordinal);
+        }
+
+        return false;
+    }
 
     /// <summary>One line that claims the client, and whether anything checked first.</summary>
     /// <param name="Line">Its 1-based line number.</param>
@@ -81,7 +130,12 @@ public static class CompileMessages
             {
                 // A line that names the flag is a line ABOUT the flag, and says so to the reader
                 // as plainly as a test above it would.
-                claims.Add(new Claim(i + 1, text, guardedAbove || namesFlag));
+                //
+                // PP586: and so does its own test. `if exist <path> echo <path>` is cmd's one-line
+                // form of the two-line block below, and asks the same question of the same path -
+                // so a rule that only looked ABOVE would report the tighter of the two spellings
+                // as the unguarded one.
+                claims.Add(new Claim(i + 1, text, guardedAbove || namesFlag || testsExistence));
             }
 
             if (namesFlag || testsExistence)

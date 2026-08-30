@@ -123,6 +123,80 @@ public class CompileMessagesTests
     }
 
     /// <summary>
+    /// PP586: cmd's one-line `if exist X echo X` guards itself. The two-line block already passed,
+    /// and a rule that only looked at the lines ABOVE called the tighter spelling the unguarded one.
+    /// </summary>
+    [Fact]
+    public void AnExistenceTestOnTheSameLineGuardsIt()
+    {
+        const string oneLine = """
+            :ok_deploy_managed
+            if exist "%~dp0%BUILD_DIR%\gui\chiaki.exe" echo [compile]   ^(%~dp0%BUILD_DIR%\gui\chiaki.exe is an EARLIER run's.^)
+            exit /b 0
+            """;
+
+        var claims = CompileMessages.Claims(oneLine);
+
+        Assert.Single(claims);
+        Assert.True(claims[0].Guarded);
+    }
+
+    /// <summary>
+    /// PP586, PP532: the ending a plain compile.cmd reaches decides on the flag, against this
+    /// checkout.
+    /// </summary>
+    [Fact]
+    public void TheDeployEndingDecidesOnTheFlag()
+    {
+        if (Source() is not { } source)
+            return;
+
+        Assert.True(CompileMessages.TheDeployEndingAsksTheFlag(source),
+            "compile.cmd's :ok_deploy branch recommends a binary off a file being on disk rather "
+            + "than off CHIAKI_ENABLE_GUI, so a run that skipped the Qt deploy still names the Qt "
+            + "client");
+    }
+
+    /// <summary>
+    /// PP586: the branch as it stood. An existence test passes on a stale binary, which is the
+    /// whole defect - so a rule that could not fail on this text would hold nothing.
+    /// </summary>
+    [Fact]
+    public void TheExistenceBranchThisReplacedIsReported()
+    {
+        const string before = """
+            :ok_deploy
+            rem PP21: the Qt client is off by default.
+            if not exist "%~dp0%BUILD_DIR%\gui\chiaki.exe" goto ok_deploy_managed
+            echo [compile] OK - run this one:
+            echo [compile]   %~dp0%DEPLOY_DISP%\chiaki.exe
+            exit /b 0
+            """;
+
+        Assert.False(CompileMessages.TheDeployEndingAsksTheFlag(before));
+    }
+
+    /// <summary>
+    /// And the block it falls through to is not read in its place. `:ok_deploy_managed` starts with
+    /// its own `if exist`, so a label match by prefix would answer for the wrong block.
+    /// </summary>
+    [Fact]
+    public void TheManagedEndingIsNotReadAsTheDeployOne()
+    {
+        const string both = """
+            :ok_deploy
+            if /I not "%CHIAKI_ENABLE_GUI%"=="ON" goto ok_deploy_managed
+            echo [compile]   %~dp0%DEPLOY_DISP%\chiaki.exe
+            exit /b 0
+            :ok_deploy_managed
+            if exist "%~dp0%BUILD_DIR%\gui\chiaki.exe" echo [compile]   an EARLIER run's Qt client.
+            exit /b 0
+            """;
+
+        Assert.True(CompileMessages.TheDeployEndingAsksTheFlag(both));
+    }
+
+    /// <summary>
     /// Comments are not claims. The file's own header describes the client at length and none of
     /// it is printed, so a rule that read rem lines would demand guards on prose.
     /// </summary>

@@ -245,7 +245,12 @@ exit /b 0
 rem PP21: the Qt client is off by default, so what this points at is what was actually built.
 rem Naming a path that no longer exists is the same failure as deploying a stale binary - it reads
 rem as success and sends whoever ran it to a file that is not there.
-if not exist "%~dp0%BUILD_DIR%\gui\chiaki.exe" goto ok_deploy_managed
+rem
+rem PP586: and the other half of that - a path that DOES exist and this run did not write. The test
+rem here was `if not exist`, which is presence rather than provenance, so a default run announced
+rem that the Qt deploy was skipped and then recommended the Qt client anyway, off an earlier run's
+rem binary. Ask CHIAKI_ENABLE_GUI, which is the question the :app_done ending already asks.
+if /I not "%CHIAKI_ENABLE_GUI%"=="ON" goto ok_deploy_managed
 echo [compile] OK - run this one:
 echo [compile]   %~dp0%DEPLOY_DISP%\chiaki.exe
 echo.
@@ -256,6 +261,9 @@ exit /b 0
 :ok_deploy_managed
 echo [compile] OK - run this one:
 echo [compile]   %~dp0app\bin\Debug\net10.0-windows\win-x64\ChiakiNg.exe
+rem The stale one, named as stale. True and useful exactly when the recommendation above is not:
+rem it is the file a reader would otherwise double-click, and it is not what this run produced.
+if exist "%~dp0%BUILD_DIR%\gui\chiaki.exe" echo [compile]   ^(%~dp0%BUILD_DIR%\gui\chiaki.exe is an EARLIER run's Qt client, not this one's.^)
 echo.
 echo [compile] ^(the Qt client is off - CHIAKI_ENABLE_GUI. Its source stays in gui\ because
 echo [compile]  the port's drift checks read it, so it is still edited; compile.cmd gui
