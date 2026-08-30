@@ -198,11 +198,6 @@ public static class HolepunchConsumers
     public const string OnlyFileNeedingCurlAndJsonC = @"lib\src\remote\holepunch.c";
 
     /// <summary>
-    /// The library target's own name, which is what was still produced with both unlinked.
-    /// </summary>
-    public const string LibraryArchive = "libchiaki.a";
-
-    /// <summary>
     /// Whether the CMakeLists still links both, and still builds the one file they are for.
     ///
     /// The measurement is not repeatable in a test - it needs a build with three lines commented

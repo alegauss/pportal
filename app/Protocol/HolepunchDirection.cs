@@ -264,13 +264,4 @@ public static class HolepunchDirection
                 StringComparison.Ordinal);
     }
 
-    /// <summary>
-    /// The direction, stated: session.c takes the results, and holepunch.c goes.
-    ///
-    /// The other one keeps the handle and has the managed side fill it, which means implementing
-    /// all nine over a handle that still has to exist - so holepunch.c stays and PP33's own end
-    /// state, that chiaki-lib stops compiling it, is not reached. §PP533 says it buys nothing; what
-    /// is here says why it cannot buy anything.
-    /// </summary>
-    public const bool SessionTakesTheResults = true;
 }
