@@ -51,6 +51,7 @@
 - ✅ **PP323** **libchiaki hands a managed caller a log and nothing else, so a recording of a session has no payload to hold** — the four chokepoints where a session is still plaintext now emit a direction, a channel, a type and the bytes to an installable tap, so PP297's recording has a source the log could never be.
 - ✅ **PP577** **the managed error enum mirrors an implicitly valued C enum by hand and nothing compares them** — The header's members are read in order and compared with the enum's by letters, and an insertion in the middle is caught by index rather than by membership.
 - ✅ **PP578** **two more managed enums are cast from C values on the lines after the one PP577 held, and neither is checked** — The three mirrors are one list compared once, the error-specific copy is gone, and the count is asserted so a fourth cast cannot arrive unchecked.
+- ✅ **PP579** **the SDL_Event size is a hand-written 56 in a StructLayout and nothing holds it against SDL's header** — The size is a named constant the layout uses, held against SDL's padding declaration and its own compile-time assert, reading the 64-bit arm rather than the digits.
 
 ## Block C — Video and input path
 

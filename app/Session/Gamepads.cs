@@ -356,7 +356,9 @@ public static class Gamepads
     /// makes one struct enough for the device events this slice handles. A member that needs more
     /// than the head gets read through its own overlay, not by widening this.
     /// </summary>
-    [StructLayout(LayoutKind.Explicit, Size = 56)]
+    // PP579: the size is SdlPadSource.EventSize, which a check holds against SDL's own header. It
+    // was a literal here, and the note above says what a wrong one costs.
+    [StructLayout(LayoutKind.Explicit, Size = SdlPadSource.EventSize)]
     internal struct SdlEventRaw
     {
         [FieldOffset(0)] public uint Type;

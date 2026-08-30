@@ -23,6 +23,55 @@ public static class SdlPadSource
     /// <summary>The header, under whichever MSYS2 the build is using.</summary>
     public const string HeaderRelativePath = @"mingw64\include\SDL2\SDL_gamecontroller.h";
 
+    /// <summary>Where SDL declares the event union this port reads a queue of.</summary>
+    public const string EventsHeaderRelativePath = @"mingw64\include\SDL2\SDL_events.h";
+
+    /// <summary>
+    /// PP579: the size SdlEventRaw promises, named so SDL's header can be asked about it.
+    ///
+    /// It was a literal 56 inside a StructLayout attribute, and Gamepads.cs says plainly what
+    /// getting it wrong costs: "a queue read off by whole events rather than a compiler error".
+    /// SDL asserts the size against its own union at compile time; nothing on this side did.
+    ///
+    /// ChiakiSession.cs refuses StructLayout on libchiaki's structs for exactly this reason - "a
+    /// standing promise about MinGW's padding on every future libchiaki, kept by nothing and broken
+    /// silently". The promise here is unavoidable, because the queue is read by value; what was
+    /// avoidable was nobody keeping it.
+    /// </summary>
+    public const int EventSize = 56;
+
+    /// <summary>SDL_events.h, or null where this toolchain is not installed.</summary>
+    public static string? LocateEventsHeader() => Under(EventsHeaderRelativePath);
+
+    /// <summary>
+    /// PP579: whether SDL still says an event is <see cref="EventSize"/> bytes on a 64-bit pointer.
+    ///
+    /// The header does not write the number plainly - it is the first arm of a ternary on pointer
+    /// size: <c>padding[sizeof(void *) &lt;= 8 ? 56 : ...]</c>. This port is x64 only, so that arm is
+    /// the one it takes, and it is the arm this reads. A build for a wider pointer would need the
+    /// second, which is a different question and one no non-goal here allows to arise.
+    /// </summary>
+    public static bool TheEventSizeIsStill(string eventsHeader, int size)
+    {
+        ArgumentNullException.ThrowIfNull(eventsHeader);
+
+        // The padding declaration, and the arm taken when a pointer is eight bytes.
+        return eventsHeader.Contains(
+                   $"padding[sizeof(void *) <= 8 ? {size} :", StringComparison.Ordinal)
+            && eventsHeader.Contains("SDL_COMPILE_TIME_ASSERT(SDL_Event,", StringComparison.Ordinal);
+    }
+
+    /// <summary>Either header, under whichever MSYS2 the build is using.</summary>
+    private static string? Under(string relative)
+    {
+        string root = Environment.GetEnvironmentVariable("MSYS2_ROOT") is { Length: > 0 } set
+            ? set
+            : DefaultMsys2Root;
+
+        string path = Path.Combine(root, relative);
+        return File.Exists(path) ? path : null;
+    }
+
     /// <summary>The header's path, or null where this toolchain is not installed.</summary>
     public static string? LocateHeader()
     {
