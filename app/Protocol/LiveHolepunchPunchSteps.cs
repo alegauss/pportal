@@ -55,6 +55,15 @@ public sealed class LiveHolepunchPunchSteps : IHolepunchPunchSteps, IDisposable
     public IReadOnlySet<HolepunchPortType> Established => established;
 
     /// <summary>
+    /// PP552: whether the socket that fills the queue has ended - PP548's own
+    /// <see cref="LiveHolepunchCreateSteps.ChannelEnded"/>, wired through.
+    ///
+    /// Null leaves the waits bounded only by their deadlines, which is right for a queue a test
+    /// fills by hand.
+    /// </summary>
+    public Func<bool>? ChannelEnded { get; init; }
+
+    /// <summary>
     /// Which wire action each step is about.
     ///
     /// The two offers are one action and the three acknowledgements are another; only the accept is
@@ -105,6 +114,11 @@ public sealed class LiveHolepunchPunchSteps : IHolepunchPunchSteps, IDisposable
         {
             if (queue.Items.Any(one => Carries(one, wanted)))
                 return true;
+
+            // PP552: nothing more can arrive on a queue whose socket has ended. This matters most
+            // here: three waits of thirty seconds, twice - once per port.
+            if (ChannelEnded is { } ended && ended())
+                return false;
 
             await Task.Delay(LiveHolepunchCreateSteps.PollInterval, cancellationToken).ConfigureAwait(false);
         }

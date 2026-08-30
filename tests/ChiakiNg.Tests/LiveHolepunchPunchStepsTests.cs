@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using ChiakiNg.Protocol;
 using Xunit;
 
@@ -119,6 +120,49 @@ public class LiveHolepunchPunchStepsTests
         Assert.True(LiveHolepunchPunchSteps.Carries(
             new QueuedNotification(PushNotificationType.SessionMessageCreated, Message("OFFER")),
             SessionMessageAction.Offer));
+    }
+
+    /// <summary>
+    /// PP552: A DEAD SOCKET ENDS THE WAIT. This is where the cost was worst - the punch waits three
+    /// times at thirty seconds and runs twice, once per port.
+    /// </summary>
+    [Fact]
+    public async Task ADeadChannelEndsTheWaitEarly()
+    {
+        using var steps = new LiveHolepunchPunchSteps(
+            "Authorization: Bearer t", "sid", new NotificationQueue(), new CandidateRaceRun())
+        {
+            ChannelEnded = () => true,
+        };
+
+        var clock = Stopwatch.StartNew();
+        bool arrived = await steps.WaitForMessageAsync(
+            nameof(HolepunchPunchStep.WaitForOffer), HolepunchPunch.MessageTimeout, CancellationToken.None);
+        clock.Stop();
+
+        Assert.False(arrived);
+        Assert.True(clock.Elapsed < TimeSpan.FromSeconds(5),
+            $"it served out the deadline: {clock.Elapsed}");
+    }
+
+    /// <summary>
+    /// And a message already queued is still found, so the check does not run ahead of the queue it
+    /// is meant to give up on.
+    /// </summary>
+    [Fact]
+    public async Task ADeadChannelStillDeliversWhatAlreadyArrived()
+    {
+        var queue = new NotificationQueue();
+        queue.Enqueue(new QueuedNotification(PushNotificationType.SessionMessageCreated, Message("OFFER")));
+
+        using var steps = new LiveHolepunchPunchSteps(
+            "Authorization: Bearer t", "sid", queue, new CandidateRaceRun())
+        {
+            ChannelEnded = () => true,
+        };
+
+        Assert.True(await steps.WaitForMessageAsync(
+            nameof(HolepunchPunchStep.WaitForOffer), HolepunchPunch.MessageTimeout, CancellationToken.None));
     }
 
     /// <summary>The guard is a started session and a port not already punched.</summary>

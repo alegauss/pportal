@@ -47,6 +47,15 @@ public sealed class LiveHolepunchCreateSteps : IHolepunchCreateSteps, IDisposabl
     /// <summary>The queue the channel fills, which is what the waits below read.</summary>
     public NotificationQueue Queue => channel.Queue;
 
+    /// <summary>
+    /// PP552: whether the read loop has ended, so a wait can stop instead of serving out its
+    /// deadline against a socket nothing will fill.
+    ///
+    /// Made public because the start and the punch wait on this same queue and had no way to ask.
+    /// Before the connect is started this is false: nothing has ended, it has not begun.
+    /// </summary>
+    public bool ChannelEnded => reading is { IsCompleted: true };
+
     /// <summary>PP254's lookup, performed rather than modelled.</summary>
     public async Task<bool> LookUpFqdnAsync(CancellationToken cancellationToken)
     {
@@ -121,7 +130,7 @@ public sealed class LiveHolepunchCreateSteps : IHolepunchCreateSteps, IDisposabl
             if (Queue.Items.Any(Finishes))
                 return true;
 
-            if (reading is { IsCompleted: true })
+            if (ChannelEnded)
                 return false;
 
             await Task.Delay(PollInterval, cancellationToken).ConfigureAwait(false);

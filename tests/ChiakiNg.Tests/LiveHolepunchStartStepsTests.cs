@@ -113,6 +113,33 @@ public class LiveHolepunchStartStepsTests
         Assert.True(clock.Elapsed < TimeSpan.FromSeconds(5), "the deadline was not honoured");
     }
 
+    /// <summary>
+    /// PP552: A DEAD SOCKET ENDS THE WAIT, rather than thirty seconds of polling a queue nothing
+    /// can fill.
+    ///
+    /// PP548's create wait has always checked this and PP549's did not. Asserted by the clock as
+    /// well as the answer, because the answer alone is the same either way - the bug was never a
+    /// wrong result, only a slow one.
+    /// </summary>
+    [Fact]
+    public async Task ADeadChannelEndsTheWaitEarly()
+    {
+        var steps = new LiveHolepunchStartSteps(
+            "Authorization: Bearer t", "sid", new NotificationQueue(), Console)
+        {
+            ChannelEnded = () => true,
+        };
+
+        var clock = Stopwatch.StartNew();
+        StartFailure? failure = await steps.WaitForMemberAsync(
+            TimeSpan.FromSeconds(30), CancellationToken.None);
+        clock.Stop();
+
+        Assert.Null(failure);
+        Assert.True(clock.Elapsed < TimeSpan.FromSeconds(5),
+            $"it served out the deadline: {clock.Elapsed}");
+    }
+
     /// <summary>Only a member notification is read - the create's own are left for what wants them.</summary>
     [Fact]
     public async Task OtherNotificationsDoNotEndTheWait()

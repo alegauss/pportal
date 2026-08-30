@@ -471,6 +471,7 @@
 - ✅ **PP533** **session.c asks the C holepunch for all nine, and those asks are the only reason libchiaki links curl and json-c** — Every mention of the handle in session.c is the assignment, a guard or one of the nine, so it carries nothing between them: session.c takes five results, not four, and holepunch.c goes.
 - ✅ **PP550** **PP547's punch interface has nothing behind it, so the last of the three sequences runs only against a test double** — The punch runs over the queue, SessionCalls and PP459's race; the eleven steps map to four wire actions, and the action is read from its key so a RESULT naming an OFFER is not one.
 - ✅ **PP551** **PP533 restated PP478's five carried values and said five results without saying four outlive their call** — The five are read from PP478's list rather than restated, four are marked as outliving their call, and PP479's outcome is asserted to carry those four and not the scoped one.
+- ✅ **PP552** **the start and punch waits poll on after the websocket has ended, costing minutes of deadline that cannot be met** — The channel's end is exposed by the create and given to the other two as a predicate, and the queue is read before it is asked so a message that already arrived is still delivered.
 
 ## Block G — Test discipline
 

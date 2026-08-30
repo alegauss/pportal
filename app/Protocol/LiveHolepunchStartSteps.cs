@@ -60,6 +60,15 @@ public sealed class LiveHolepunchStartSteps : IHolepunchStartSteps
     /// <summary>The account the wakeup names.</summary>
     public string? OnlineId { get; init; }
 
+    /// <summary>
+    /// PP552: whether the socket that fills the queue has ended - PP548's own
+    /// <see cref="LiveHolepunchCreateSteps.ChannelEnded"/>, wired through.
+    ///
+    /// Null leaves the wait bounded only by its deadline, which is what it was before and is right
+    /// for a queue a test fills by hand.
+    /// </summary>
+    public Func<bool>? ChannelEnded { get; init; }
+
     /// <summary>The C's two guards: created, and not already started.</summary>
     public bool PreconditionsHold(out bool created)
     {
@@ -117,6 +126,11 @@ public sealed class LiveHolepunchStartSteps : IHolepunchStartSteps
                 if (notification.Type == PushNotificationType.MemberCreated)
                     return CheckIdentity(notification.Payload);
             }
+
+            // PP552: the socket that fills this queue has ended, so nothing more can arrive. The
+            // create's wait has always done this; these did not, and served out the full deadline.
+            if (ChannelEnded is { } ended && ended())
+                return null;
 
             await Task.Delay(LiveHolepunchCreateSteps.PollInterval, cancellationToken).ConfigureAwait(false);
         }
