@@ -369,6 +369,31 @@ make quietly inside another task.
 
 ## Block G — Test discipline
 
+### §PP532 The run that describes itself wrongly
+
+Two messages in compile.cmd were written when the Qt client was always built, and PP21
+turned it off without revisiting them.
+
+The nodeploy success line reports `build\gui\chiaki.exe` as what the run produced. With
+CHIAKI_ENABLE_GUI off - every invocation but `compile.cmd gui` - the run built lib,
+chiaki-unit, the shim and the .NET host, and no such file. On this machine the path
+resolves anyway, to a client an earlier and different run left, which is the worse
+failure: it points a reader at a real binary that is not the one they just made. On a
+fresh clone it names a file that is not there.
+
+The failure line beside it says "the Qt client built, the .NET host did not". With the
+client off, what built was the native side, so the sentence credits a build that never
+happened.
+
+Neither is a wrong build; both are a run describing itself wrongly, the same family as
+PP529 and PP530. PP529 gave the file a `gui` argument, so the flag is now something a
+message can test rather than something only the shell script knows.
+
+What this needs beyond the two edits is a way to hold them: the messages are batch echo
+lines and the tree asserts shell scripts nowhere. Either a model that reads compile.cmd
+the way BuildWorkflow reads build.yml, or the judgement that a message is not worth a
+check - which is a decision and not a default.
+
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed
