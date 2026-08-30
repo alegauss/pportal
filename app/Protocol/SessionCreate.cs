@@ -244,6 +244,35 @@ public static class SessionCreateSource
     }
 
     /// <summary>
+    /// PP543: whether the cancel still signals BOTH conditions, which is why the hang reads as one
+    /// that cancelling ought to fix.
+    ///
+    /// chiaki_holepunch_main_thread_cancel signals notif_cond and state_cond, both after releasing
+    /// the stop mutex. So a cancel arriving during the websocket wait does wake it - and the wait
+    /// re-tests a bit that is still clear and waits again. Every other fact here says the wait
+    /// cannot end; this one says the most obvious escape has already been tried and does not work,
+    /// which is the part a reader otherwise spends an afternoon rediscovering.
+    /// </summary>
+    public static bool TheCancelStillSignalsBothConds(string core)
+    {
+        ArgumentNullException.ThrowIfNull(core);
+
+        string text = core.Replace("\r\n", "\n", StringComparison.Ordinal);
+
+        // The definition, not the declaration - the trap named above, met a third time.
+        int cancel = text.LastIndexOf(
+            "chiaki_holepunch_main_thread_cancel(Session *session", StringComparison.Ordinal);
+        if (cancel < 0)
+            return false;
+
+        int ends = text.IndexOf("\n}", cancel, StringComparison.Ordinal);
+        string body = ends < 0 ? text[cancel..] : text[cancel..ends];
+
+        return body.Contains("chiaki_cond_signal(&session->notif_cond);", StringComparison.Ordinal)
+            && body.Contains("chiaki_cond_signal(&session->state_cond);", StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// Whether the unshared-timeout comment still appears twice, one of the two mistyped.
     /// </summary>
     public static bool TheCommentIsStillThereTwice(string core)

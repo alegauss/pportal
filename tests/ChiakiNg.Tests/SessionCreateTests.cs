@@ -106,6 +106,13 @@ public class SessionCreateTests
             SessionCreateSource.TheCleanupStillClearsTheOtherFlag(core),
             "and its cleanup still clears the flag the waiter does not read");
 
+        // PP543: and the cancel still signals both conds, so the wait wakes and still cannot
+        // leave. The one fact PP541 added that this model did not already have, kept here rather
+        // than in the second reader it arrived in.
+        Assert.True(
+            SessionCreateSource.TheCancelStillSignalsBothConds(core),
+            "the cancel still signals both conds, so waking the wait is not ending it");
+
         Assert.True(
             SessionCreateSource.TheCommentIsStillThereTwice(core),
             "the unshared-timeout comment is still there twice, one of them mistyped");
