@@ -280,8 +280,9 @@ lib/src - the glob's reach, not the hits. Every one of the 420 is in holepunch.c
 
 What the count does not say is who calls it. session.c has NINE call sites over seven
 functions - the ctrl and data sockets, the offer, the punch, the regist info, the
-selected address, the ctrl port and the fini - the shim one and qmlbackend.cpp three. An
-earlier version of this counted a holepunch-test.c that is not in the tree.
+selected address, the ctrl port and the fini - the shim one and qmlbackend.cpp three.
+PP544: holepunch-test.c IS in the tree, and is a built executable calling eight of the
+exports.
 
 The behaviours are largely ported. PP231 stated the websocket auto-ACK, PP266 performs
 the five session calls over a real HttpClient, and the shim exposes json-c's accessors
