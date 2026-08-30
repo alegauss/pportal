@@ -108,6 +108,28 @@ public partial class App : Application
     /// that silently rewrote the backlog is one nobody runs BEFORE the work, which is when it is
     /// worth most.
     /// </param>
+    /// <summary>
+    /// PP530: refuse to answer from a host the tree has moved past, and say so on standard error.
+    ///
+    /// It guards --recount and --ratchet and nothing else. Those two are run by hand before the
+    /// gate and their whole value is being trusted without being re-derived, which is exactly what
+    /// a stale copy quietly spends. Every other flag either drives hardware, which fails visibly,
+    /// or is run BY the gate from the host the gate just built.
+    ///
+    /// Silent on <see cref="HostBuildState.NoCheckout"/> and <see cref="HostBuildState.Unknown"/>:
+    /// a published host has no app\ beside it, and a guard that refused there would be one nobody
+    /// could ship. Returns true when the caller should stop.
+    /// </summary>
+    private static bool RefuseIfStale()
+    {
+        HostBuild build = HostFreshness.Check();
+        if (build.State != HostBuildState.Stale)
+            return false;
+
+        Console.Error.WriteLine(HostFreshness.Explain(build));
+        return true;
+    }
+
     private static int Recount(bool apply)
     {
         string? root = SanitizerSource.RepositoryRoot();
@@ -895,6 +917,9 @@ public partial class App : Application
         if (e.Args.Any(a => string.Equals(a, "--recount", StringComparison.OrdinalIgnoreCase)))
         {
             ReopenStdOut();
+            if (RefuseIfStale())
+                Environment.Exit(3);
+
             Environment.Exit(Recount(
                 e.Args.Any(a => string.Equals(a, "--apply", StringComparison.OrdinalIgnoreCase))));
         }
@@ -905,6 +930,8 @@ public partial class App : Application
         if (HostCommandLine.Has(e.Args, "--ratchet"))
         {
             ReopenStdOut();
+            if (RefuseIfStale())
+                Environment.Exit(3);
 
             string? id = HostCommandLine.ValueAfter(e.Args, "--ratchet");
             Environment.Exit(id is null ? Ratchet() : RatchetFor(id));

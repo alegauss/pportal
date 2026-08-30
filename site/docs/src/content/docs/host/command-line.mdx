@@ -34,3 +34,9 @@ diagnostics you run once:
 - `--ratchet` lists the shipped tasks that no assertion mentions. The count may fall and may
   not rise, so a task shipped with no test naming its id turns the suite red in the commit that
   ships it.
+
+Both refuse rather than answer when the host running them is older than `app/`, and name the
+source that moved. There is more than one `ChiakiNg.exe` on a machine that has built this tree —
+`compile.cmd` builds one and prints where, and a publish leaves another behind — and a stale copy
+reads the current backlog with rules the tree has moved past, which is a wrong answer that looks
+exactly like a right one. Run the host `compile.cmd` names.

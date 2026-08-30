@@ -35,8 +35,6 @@
 
 ## Block G — Test discipline
 
-- 📋 **PP530** (deps: —) **ChiakiNg.exe exists twice, only Debug is built by the gate, and --recount and --ratchet answer from whichever was run** — The Release copy was forty-four commits stale on 2026-08-30, did not know the flags PP514 shipped, and answered every check without saying so. → §PP530
-
 ## Block H — Performance and telemetry
 
 - ⏳ **PP46** (deps: PP42 ✅, PP63) **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — A Chromium leaving the build should be visible in cold start and in megabytes, and stating it without measuring is how a port collects folklore. → §PP46
