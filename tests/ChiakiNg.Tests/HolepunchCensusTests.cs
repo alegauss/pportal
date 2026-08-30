@@ -18,30 +18,43 @@ namespace ChiakiNg.Tests;
 /// </summary>
 public class HolepunchCensusTests(ITestOutputHelper output)
 {
+    /// <summary>One C function the sweep did not find quoted, and what actually answers it.</summary>
+    /// <param name="Function">The C name.</param>
+    /// <param name="Counterpart">
+    /// The managed file that answers it, found by reading - or null where nothing does.
+    /// </param>
+    public sealed record Unquoted(string Function, string? Counterpart);
+
     /// <summary>
-    /// The ten, as of PP534. Kept in the tree rather than in a commit message, for the reason
-    /// PP290 gives about its own thirteen: the value of the list is that the next person sees it
-    /// without re-deriving it.
+    /// The ten the sweep does not find quoted, each with what answers it. Kept in the tree rather
+    /// than in a commit message, for the reason PP290 gives about its own thirteen: the value of
+    /// the list is that the next person sees it without re-deriving it.
     ///
-    /// chiaki_holepunch_session_set_recorded is PP481's own, and is honestly here: app/ reaches it
-    /// through the shim's wrapper, so nothing managed names the lib function.
+    /// PP536: EIGHT OF THE TEN HAVE A COUNTERPART, which is what PP534 got wrong. It read the
+    /// sweep's output as "nothing has looked at these" and shipped that sentence; eight had been
+    /// looked at and ported under names that do not quote the C symbol. The counterparts here were
+    /// found by reading each one, and the test below checks each file is really there - so the
+    /// annotation is a claim this suite keeps rather than a note that rots.
     ///
-    /// IT LIVES IN tests/ AND MUST. The census reads app/, so a list of unnamed functions kept
-    /// there would name all ten and report that nothing is left - a check answering its own
-    /// question. That this test passes with a non-empty set is the evidence it does not.
+    /// chiaki_holepunch_session_set_recorded is PP481's own: app/ reaches it through the shim's
+    /// wrapper, so the lib name is genuinely unquoted while the behaviour is driven.
+    ///
+    /// IT LIVES IN tests/ AND MUST. The census reads app/, so a list of these kept there would
+    /// quote all ten and report that nothing is left - a check answering its own question. That
+    /// this test passes with a non-empty set is the evidence it does not.
     /// </summary>
-    public static IReadOnlyList<string> Unnamed { get; } =
+    public static IReadOnlyList<Unquoted> Unnamed { get; } =
     [
-        "chiaki_holepunch_list_devices",
-        "chiaki_holepunch_main_thread_cancel",
-        "chiaki_holepunch_session_set_recorded",
-        "chiaki_holepunch_upnp_discover",
-        "createNq",
-        "http_create_session",
-        "make_oauth2_header",
-        "make_session_id_header",
-        "notification_queue_free",
-        "session_message_get_payload",
+        new("chiaki_holepunch_list_devices", "DeviceList.cs"),
+        new("chiaki_holepunch_main_thread_cancel", null),
+        new("chiaki_holepunch_session_set_recorded", "NativeHolepunchSession.cs"),
+        new("chiaki_holepunch_upnp_discover", "GatewayDiscovery.cs"),
+        new("createNq", "NotificationQueue.cs"),
+        new("http_create_session", "SessionCalls.cs"),
+        new("make_oauth2_header", "PsnEndpoints.cs"),
+        new("make_session_id_header", null),
+        new("notification_queue_free", "NotificationQueue.cs"),
+        new("session_message_get_payload", "SessionMessage.cs"),
     ];
 
     private static (string Source, string Managed)? Checkout()
@@ -63,7 +76,40 @@ public class HolepunchCensusTests(ITestOutputHelper output)
         (var named, var unnamed) = HolepunchCensus.Split(checkout.Source, checkout.Managed);
 
         output.WriteLine($"{named.Count} named, {unnamed.Count} not, of {named.Count + unnamed.Count}");
-        Assert.Equal(Unnamed, unnamed);
+        Assert.Equal([.. Unnamed.Select(u => u.Function)], unnamed);
+    }
+
+    /// <summary>
+    /// PP536: every counterpart the list claims is a file that is really there.
+    ///
+    /// Without this the annotation is prose, and prose is what PP534 shipped wrongly in the first
+    /// place. A counterpart that gets renamed or deleted has to break something, or the next reader
+    /// inherits the same confident sentence about work nobody has done.
+    /// </summary>
+    [Fact]
+    public void EveryCounterpartTheListClaimsIsInTheTree()
+    {
+        if (HolepunchCensus.LocateManaged() is not { } managed)
+            return;
+
+        foreach (Unquoted entry in Unnamed.Where(u => u.Counterpart is not null))
+        {
+            string[] found = Directory.GetFiles(managed, entry.Counterpart!, SearchOption.AllDirectories);
+            Assert.True(found.Length > 0,
+                $"{entry.Function} claims {entry.Counterpart} answers it, and no such file is under app/");
+        }
+    }
+
+    /// <summary>
+    /// And most of them DO have one, which is the correction PP536 exists for. Asserted as a floor
+    /// so that answering the last two does not fail this, and asserted at all so that quietly
+    /// emptying the annotations would.
+    /// </summary>
+    [Fact]
+    public void MostOfTheUnquotedOnesAreAnsweredUnderAnotherName()
+    {
+        Assert.True(Unnamed.Count(u => u.Counterpart is not null) >= 8,
+            "the point of PP536 is that most of these are already answered");
     }
 
     /// <summary>

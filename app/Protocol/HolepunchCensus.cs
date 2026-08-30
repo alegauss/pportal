@@ -12,15 +12,19 @@ namespace ChiakiNg.Protocol;
 /// different: the candidate and STUN work is among the part already named, and what is not named
 /// is ten functions.
 ///
-/// WHAT "NAMED" MEANS. A bare identifier anywhere under app/, which is the join
-/// UnreferencedExportTests already uses and for its reason: a name used as a callback or quoted in
-/// a comment is a reference a call-shaped match misses. So this is an UPPER bound on coverage - a
-/// managed file mentioning a C function in prose counts - and it is emphatically not a claim that
-/// anything is ported.
+/// WHAT "NAMED" MEANS: app/ quotes the C symbol somewhere. That is the join
+/// UnreferencedExportTests uses, for its reason - a name used as a callback or quoted in a comment
+/// is a reference a call-shaped match misses.
 ///
-/// What it is good for is the other direction, which is the one PP533 needs. A C function no
-/// managed file names at all is one nothing has looked at, and that list is short enough to work
-/// from.
+/// PP536: IT ERRS IN BOTH DIRECTIONS, and PP534 wrote down only one of them. A managed file
+/// mentioning a C function in prose reads as named, which over-reports. And a counterpart that
+/// does not quote the C name reads as unlooked-at, which under-reports - eight of the ten PP534
+/// found have one: http_create_session is SessionCalls.CreateAsync, the UPnP discover is
+/// GatewayDiscovery, and so on down the list HolepunchCensusTests now carries.
+///
+/// So this is not a bound on coverage in either direction. It is a cheap sweep that produces a
+/// SHORT LIST worth reading by hand, and the reading is what the test beside it records. Used that
+/// way it is useful; read as "nothing has looked at these" it is wrong, which is how PP534 read it.
 /// </summary>
 public static partial class HolepunchCensus
 {
@@ -38,6 +42,16 @@ public static partial class HolepunchCensus
 
     /// <summary>Build output, which is not the managed side saying anything.</summary>
     public static IReadOnlyList<string> ExcludedDirectories { get; } = ["bin", "obj"];
+
+    /// <summary>
+    /// This file, which the sweep must not read.
+    ///
+    /// PP536 walked into it: correcting the doc comment above to say that http_create_session is
+    /// answered by SessionCalls put that C name into app/, and the next run reported it as quoted.
+    /// A check cannot be its own evidence, and this is the second place that bites - the annotated
+    /// list lives in tests/ for the same reason.
+    /// </summary>
+    public static IReadOnlyList<string> ExcludedFiles { get; } = ["HolepunchCensus.cs"];
 
     /// <summary>
     /// Every function holepunch.c DEFINES, by its definition rather than its declaration.
@@ -94,7 +108,9 @@ public static partial class HolepunchCensus
                 .Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
                 .Any(segment => ExcludedDirectories.Contains(segment, StringComparer.OrdinalIgnoreCase));
 
-            if (!output)
+            bool itself = ExcludedFiles.Contains(Path.GetFileName(file), StringComparer.OrdinalIgnoreCase);
+
+            if (!output && !itself)
                 text.Append(File.ReadAllText(file)).Append('\n');
         }
 

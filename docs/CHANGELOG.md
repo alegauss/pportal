@@ -455,6 +455,7 @@
 - ✅ **PP531** **nothing times the managed transport against the C, so PP27's comparison is bytes and never cost** — Over 24150 real heads the managed gate costs 0.13us against the C's 0.06us, both inside a copy of 0.04us and a mean arrival gap of 1178us.
 - ✅ **PP481** **nothing implements the nine asks over the real C, and no test can exercise one without a live console** — Nine wrappers, an ABI bump to 35, and a session built from a recorded exchange: six of the seven asks now run against the real C, and only the punch needs a console.
 - ✅ **PP534** **nothing counts which of holepunch.c's functions app/ already answers, so PP533's scope is a sentence** — 57 of holepunch.c's 67 functions are already named under app/ and ten are not; the candidate and STUN work is among the 57, not the remainder.
+- ✅ **PP536** **the census reads a function no managed file quotes as one nothing has looked at, and eight of its ten have counterparts** — Eight of the ten are answered under names that do not quote the C symbol, each now carried beside it and checked to exist.
 
 ## Block G — Test discipline
 
