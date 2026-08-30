@@ -473,6 +473,7 @@
 - ✅ **PP551** **PP533 restated PP478's five carried values and said five results without saying four outlive their call** — The five are read from PP478's list rather than restated, four are marked as outliving their call, and PP479's outcome is asserted to carry those four and not the scoped one.
 - ✅ **PP552** **the start and punch waits poll on after the websocket has ended, costing minutes of deadline that cannot be met** — The channel's end is exposed by the create and given to the other two as a predicate, and the queue is read before it is asked so a message that already arrived is still delivered.
 - ✅ **PP553** **the session interface has only the implementation that P/Invokes holepunch.c, so nothing answers it the other way** — The seven are answered from PP548's create, PP549's start and PP550's punch, and PP479's flow runs to the end over it with no library loaded.
+- ✅ **PP554** **a cancelled token throws out of PunchHole, whose contract is an error code and whose caller is C** — A cancellation is Canceled, the answer the one-shot would have given; anything else is Unknown and the exception is kept for a managed caller.
 
 ## Block G — Test discipline
 

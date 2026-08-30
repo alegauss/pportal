@@ -113,13 +113,41 @@ public sealed class SequencedHolepunchSession : IHolepunchSession, IDisposable
 
     /// <summary>
     /// The punch for this port, waited on - the one blocking call, and see the note on the type.
+    ///
+    /// PP554: AND WHERE EXCEPTIONS STOP. This returns a ChiakiError to a caller written in C, which
+    /// has no way to catch anything. The sequence behind it is ordinary managed code and can throw:
+    /// a cancelled token makes the poll's Task.Delay throw, and the punch does not catch it - so
+    /// before this, cancelling by token unwound through a C stack frame instead of answering
+    /// Canceled, which is the answer the punch has a whole one-shot for.
     /// </summary>
     public ChiakiError PunchHole(HolepunchPortType type)
     {
-        HolepunchPunchResult result = punch(type).GetAwaiter().GetResult();
-
-        return Reported(result.Outcome);
+        try
+        {
+            return Reported(punch(type).GetAwaiter().GetResult());
+        }
+        catch (OperationCanceledException)
+        {
+            // The same answer PP538's one-shot gives. A token and a stop are two ways to say it.
+            return ChiakiError.Canceled;
+        }
+        catch (Exception thrown) when (thrown is not (OutOfMemoryException or StackOverflowException))
+        {
+            Thrown = thrown;
+            return ChiakiError.Unknown;
+        }
     }
+
+    /// <summary>
+    /// What was thrown, where something was.
+    ///
+    /// Kept rather than swallowed: the C gets an error code because that is all it can take, and
+    /// this is how a managed caller or a test finds out what actually happened.
+    /// </summary>
+    public Exception? Thrown { get; private set; }
+
+    /// <summary>The outcome as an error, which is what the C caller reads.</summary>
+    private static ChiakiError Reported(HolepunchPunchResult result) => Reported(result.Outcome);
 
     /// <summary>
     /// What each punch outcome is to a C caller.

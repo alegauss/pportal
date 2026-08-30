@@ -94,6 +94,55 @@ public class SequencedHolepunchSessionTests
     public void EveryPunchOutcomeHasAnError(HolepunchPunchOutcome outcome, ChiakiError expected)
         => Assert.Equal(expected, SequencedHolepunchSession.Reported(outcome));
 
+    /// <summary>
+    /// PP554: A CANCELLED TOKEN IS Canceled, NOT AN EXCEPTION THROUGH A C STACK FRAME.
+    ///
+    /// The punch has a whole one-shot for answering Canceled, and a token bypassed all of it: the
+    /// poll's Task.Delay throws, nothing on the way out catches, and PunchHole rethrew it from a
+    /// method whose contract is an error code - to a caller that cannot catch anything.
+    /// </summary>
+    [Fact]
+    public void ACancelledTokenIsAnErrorCodeNotAThrow()
+    {
+        using var session = new SequencedHolepunchSession(
+            _ => Task.FromCanceled<HolepunchPunchResult>(new CancellationToken(canceled: true)));
+
+        Assert.Equal(ChiakiError.Canceled, session.PunchHole(HolepunchPortType.Data));
+        Assert.Null(session.Thrown);
+    }
+
+    /// <summary>
+    /// And so is anything else the sequence throws - kept, so a managed caller can still find out
+    /// what happened, while the C gets the only thing it can read.
+    /// </summary>
+    [Fact]
+    public void AnythingElseThrownBecomesUnknownAndIsKept()
+    {
+        var boom = new InvalidOperationException("the socket went away");
+        using var session = new SequencedHolepunchSession(
+            _ => Task.FromException<HolepunchPunchResult>(boom));
+
+        Assert.Equal(ChiakiError.Unknown, session.PunchHole(HolepunchPortType.Ctrl));
+        Assert.Same(boom, session.Thrown);
+    }
+
+    /// <summary>
+    /// The flow survives it too, which is the point: PP479 quits at the step that failed rather
+    /// than unwinding through it.
+    /// </summary>
+    [Fact]
+    public void TheFlowQuitsRatherThanUnwinding()
+    {
+        using var session = new SequencedHolepunchSession(
+            _ => Task.FromCanceled<HolepunchPunchResult>(new CancellationToken(canceled: true)));
+        session.Record(HolepunchPortType.Ctrl, new object());
+        session.RegistInfo = new object();
+
+        HolepunchConnectOutcome outcome = new HolepunchConnect(session, socket => socket).Run();
+
+        Assert.Equal(ChiakiError.Canceled, outcome.Error);
+    }
+
     /// <summary>A punch that fails is reported to the flow, which quits at that step.</summary>
     [Fact]
     public void AFailedPunchStopsTheFlow()
