@@ -104,12 +104,34 @@ public sealed class SequencedHolepunchSession : IHolepunchSession, IDisposable
     /// Recorded rather than sent: PP550's sequence sends the offer as one of its eleven steps, so a
     /// send here would be the second one. What session.c's call means at this seam is "the punch
     /// about to run should offer", and the punch does.
+    ///
+    /// PP555: SO THIS CANNOT FAIL, AND IN THE C IT CAN. PP460 gives this step the guard
+    /// QuitsToCtrlTeardown - a real path session.c takes when the offer is refused. Against this
+    /// session that guard is unreachable, because the offer has not been sent yet when the call is
+    /// made. The failure is not lost, it MOVES: the punch's own SendOffer step carries it, and
+    /// arrives one step later. <see cref="OfferFailed"/> keeps the cause legible there.
     /// </summary>
     public ChiakiError CreateOffer()
     {
         OfferMade = true;
         return ChiakiError.Success;
     }
+
+    /// <summary>Where the offer's failure arrives instead, a step later than the C's.</summary>
+    public const HolepunchStep TheOfferFailsAt = HolepunchStep.PunchHole;
+
+    /// <summary>And which of the punch's own steps carries it.</summary>
+    public const HolepunchPunchStep TheOfferIsSentAt = HolepunchPunchStep.SendOffer;
+
+    /// <summary>
+    /// Whether the punch failed on the offer it sends - the C's create_offer failure, arriving
+    /// under the punch's name.
+    ///
+    /// Without this the departure is a punch failure like any other and the cause is gone. The
+    /// session quits to the same teardown either way, so the difference is what can be said about
+    /// it rather than what happens.
+    /// </summary>
+    public bool OfferFailed { get; private set; }
 
     /// <summary>
     /// The punch for this port, waited on - the one blocking call, and see the note on the type.
@@ -146,8 +168,19 @@ public sealed class SequencedHolepunchSession : IHolepunchSession, IDisposable
     /// </summary>
     public Exception? Thrown { get; private set; }
 
-    /// <summary>The outcome as an error, which is what the C caller reads.</summary>
-    private static ChiakiError Reported(HolepunchPunchResult result) => Reported(result.Outcome);
+    /// <summary>
+    /// The outcome as an error, noting on the way whether the offer is what failed.
+    ///
+    /// PP555: this is the only place that can tell. By the time the flow sees an error the step it
+    /// stopped at is PunchHole, whichever of the punch's eleven actually failed.
+    /// </summary>
+    private ChiakiError Reported(HolepunchPunchResult result)
+    {
+        if (result.StoppedAt == TheOfferIsSentAt)
+            OfferFailed = true;
+
+        return Reported(result.Outcome);
+    }
 
     /// <summary>
     /// What each punch outcome is to a C caller.

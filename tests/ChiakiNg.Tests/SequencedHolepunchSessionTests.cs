@@ -200,6 +200,46 @@ public class SequencedHolepunchSessionTests
         Assert.True(session.OfferMade);
     }
 
+    /// <summary>
+    /// PP555: THE OFFER'S FAILURE MOVES ONE STEP, and is not lost on the way.
+    ///
+    /// PP460 gives the C's CreateOffer step the guard QuitsToCtrlTeardown - a real path session.c
+    /// takes when the offer is refused. Against this session that guard cannot fire, because the
+    /// offer has not been sent when the call is made. It arrives as a punch failure instead, and
+    /// the flag is what stops the cause being lost with it.
+    /// </summary>
+    [Fact]
+    public void TheOffersFailureArrivesAtThePunchInstead()
+    {
+        // The C's guard on this step is real, which is what makes its absence here a departure.
+        Assert.Equal(HolepunchGuard.QuitsToCtrlTeardown, HolepunchFlow.GuardFor(HolepunchStep.CreateOffer));
+
+        using var session = new SequencedHolepunchSession(
+            _ => Task.FromResult(new HolepunchPunchResult(
+                HolepunchPunchOutcome.Failed, HolepunchPunchStep.SendOffer, [])));
+        session.Record(HolepunchPortType.Ctrl, new object());
+        session.RegistInfo = new object();
+
+        HolepunchConnectOutcome outcome = new HolepunchConnect(session, socket => socket).Run();
+
+        // A step later than the C would have stopped, and named as the offer all the same.
+        Assert.Equal(SequencedHolepunchSession.TheOfferFailsAt, outcome.FailedAt);
+        Assert.NotEqual(HolepunchStep.CreateOffer, outcome.FailedAt);
+        Assert.True(session.OfferFailed);
+    }
+
+    /// <summary>And a punch that failed at any other step is not the offer.</summary>
+    [Fact]
+    public void APunchThatFailedElsewhereIsNotTheOffer()
+    {
+        using var session = new SequencedHolepunchSession(
+            _ => Task.FromResult(new HolepunchPunchResult(
+                HolepunchPunchOutcome.TimedOut, HolepunchPunchStep.WaitForAccept, [])));
+
+        Assert.Equal(ChiakiError.HostDown, session.PunchHole(HolepunchPortType.Data));
+        Assert.False(session.OfferFailed);
+    }
+
     /// <summary>The releases are counted, which is how a teardown test sees it happened once.</summary>
     [Fact]
     public void TheReleasesAreCounted()
