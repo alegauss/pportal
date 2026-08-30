@@ -77,6 +77,32 @@ refuses it, PP319's choice falls to SDR on purpose.
 
 ## Block D — Screens
 
+### §PP575 A claim wearing an assertion's clothes
+
+app/ holds 1229 `public static bool` checks. All but one are reached: 1188 by the xUnit
+suite and 40 by the host's selftest, which PP75 gave a runner and test.cmd runs.
+StreamMenu.PresetIsPersisted is the one with no caller anywhere - one mention in the
+whole tree, its own definition.
+
+AND IT DOES NOT CHECK WHAT IT SAYS. Its summary is "whether picking this preset writes
+the setting as well as the window. Every one of them does". Its body is
+`Enum.IsDefined(preset)`, which answers whether a value is a member of its enum.
+Different questions, and the second cannot answer the first for any input.
+
+SO IT IS A CLAIM WEARING AN ASSERTION'S CLOTHES, and the two defects protect each other:
+an uncalled check is never wrong, and a check that tests the wrong thing would pass
+anyway. PP569 and PP570 found the same shape at the level of whole selftests; this is it
+at one method.
+
+WHAT IS NOT ESTABLISHED is whether the claim is true. StreamMenu.VideoPreset's setter
+raises and does not write a store, and nothing outside StreamMenu.cs reads the property
+- but the view model may be wired in XAML this did not read, so "the presets do not
+persist" is a suspicion and not a finding. Settling that is the task; deleting the
+method would take the observation with it.
+
+Found by sweeping every check method for a caller, which is the same question PP569
+asked of a whole tool.
+
 ## Block E — Windows-only build
 
 ### §PP63 One configure that exists only to be measured

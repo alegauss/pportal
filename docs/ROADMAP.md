@@ -16,6 +16,8 @@
 
 ## Block D — Screens
 
+- 📋 **PP575** (deps: —) **PresetIsPersisted is the one check method nothing calls, and its body tests a different question from its summary** — An uncalled check is never wrong and one testing the wrong thing passes anyway, so the two defects hide each other. → §PP575
+
 ## Block E — Windows-only build
 
 - 📋 **PP63** (deps: PP62 ✅) (requires: msvc-qt-webengine) **nothing in the tree can configure a Qt build carrying WebEngine, so PP46's before cannot be produced at all** — MSYS2 has no qt6-webengine and no Windows release carries Chromium, so the reference is built once with MSVC. → §PP63
