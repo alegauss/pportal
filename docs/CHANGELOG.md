@@ -493,6 +493,7 @@
 - ✅ **PP566** **PP33's build criterion reads as one step and is two, so the measured half of it cannot be recorded as met** — The criterion's reason names both halves and what each waits on: compiling without either is already true, linking waits on the four callers rather than on the libraries.
 - ✅ **PP573** **PP33's own line says session.c is its only caller, which three shipped tasks have each falsified** — PP33's line names four callers and the count is asserted against HolepunchConsumers, so a line claiming one turns the suite red.
 - ✅ **PP574** **PP30's line says fec has one caller left and it has three, the shim among them as in PP33's** — PP30's line names three callers, held against a list that names the shim, with the two declaring files excluded so a plain sweep's five is not the number.
+- ✅ **PP584** **the third deletion line understates its callers, and all three omitted the same one** — PP295's why names the shim, and a check holds that every deletion line says the seam is among what calls its target.
 
 ## Block G — Test discipline
 
