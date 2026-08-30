@@ -370,6 +370,33 @@ what makes the five ports beneath it real.
 
 ## Block G — Test discipline
 
+### §PP588 The banner that answers for the call
+
+GateAndCiAgree decides whether a file runs a pass by looking for the pass's command in
+it. For the two tools that is a pair - the binary AND `--self-test` - and neither half
+has to be on the same line as the other.
+
+THE GATE ANNOUNCES EACH STEP BEFORE RUNNING IT. `echo [test] compare-baselines selftest`
+supplies the first half and the measure-startup call below supplies the second, so
+compare-baselines' own invocation can be deleted and its pass stays green. The same
+holds the other way round.
+
+IT IS PP570's OWN DEFECT ONE STEP ALONG: that task split the rows by binary because the
+flag alone let one wiring satisfy both, and the banner names the binary too.
+
+AND PP587's FIX DOES NOT TRANSFER. `Invokes` asks whether a line STARTS WITH the
+command, which works for the roadkeep row because the gate calls that verb directly.
+Neither tool is: the gate runs `"%CB_EXE%" --self-test` after setting CB_EXE, and CI
+runs it through `dotnet run --project`. Swapping Contains for Invokes turns both rows
+false.
+
+WHAT THE ROWS NEED is the join the files make - in CI both halves on one line, locally a
+`set` naming the tool and a call through its variable. Stripping echo lines is half of
+it and leaves the flag supplied by the neighbour.
+
+WHAT SETTLES IT is deleting each call in turn and watching the pass go red, which is
+what proved the roadkeep row. These readers run against the file on disk, so no rebuild.
+
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed
