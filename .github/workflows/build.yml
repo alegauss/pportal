@@ -48,10 +48,16 @@ jobs:
 
       # Manifest mode: the toolchain file reads vcpkg.json and installs what it names before the
       # first find_package runs, so there is no separate install step to keep in step with it.
+      #
+      # PP535: THE VALUE IS QUOTED, and that is the whole of what kept this job red for 39 runs.
+      # A run: step on a windows runner is pwsh, and pwsh expands $env:X/path inside a string but
+      # NOT inside a bare argument to a native command - there the token is passed through as text,
+      # so cmake read "$env:VCPKG_INSTALLATION_ROOT/..." as a path and could not find it. Quoting
+      # the value puts it back in string context, which is where the expansion happens.
       - name: configure
         run: >
           cmake -S . -B build -G "Visual Studio 17 2022" -A x64
-          -DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake
+          -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
           -DVCPKG_TARGET_TRIPLET=x64-windows
           -DCHIAKI_ENABLE_GUI=OFF
 

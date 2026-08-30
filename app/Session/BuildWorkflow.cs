@@ -149,6 +149,55 @@ public static partial class BuildWorkflow
             || workflow.Contains(@"buildsystems\vcpkg.cmake", StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>One $env: reference in a run: step, and whether anything will expand it.</summary>
+    /// <param name="Line">Its 1-based line number.</param>
+    /// <param name="Text">The line, trimmed.</param>
+    /// <param name="Quoted">Whether it sits inside a double-quoted string.</param>
+    public sealed record EnvReference(int Line, string Text, bool Quoted);
+
+    /// <summary>
+    /// PP535: every $env: in the workflow, with whether pwsh will actually expand it.
+    ///
+    /// A run: step on a windows runner is pwsh, and pwsh expands $env:X/path inside a string but
+    /// NOT inside a bare argument to a native command - there the token reaches the program as
+    /// text. That is how the configure step handed cmake the literal
+    /// "$env:VCPKG_INSTALLATION_ROOT/..." for 39 runs, none of which was ever green.
+    ///
+    /// <see cref="ConfiguresThroughVcpkg"/> could not see it: that asks whether the text names the
+    /// toolchain file, and the text did, unexpanded. A check over what a workflow SAYS is green on
+    /// a workflow that cannot run, which is the whole reason this one asks a different question.
+    ///
+    /// The quote test is per line, because the token and its quotes are on one line in a folded
+    /// `run: >` block. A value split across two lines would be read as unquoted here - which fails
+    /// toward complaining, and is the direction a gate should be wrong in.
+    /// </summary>
+    public static IReadOnlyList<EnvReference> EnvReferencesIn(string workflow)
+    {
+        ArgumentNullException.ThrowIfNull(workflow);
+
+        string[] lines = workflow.ReplaceLineEndings("\n").Split('\n');
+        var found = new List<EnvReference>();
+
+        for (int i = 0; i < lines.Length; i++)
+        {
+            // A comment is not a run step. The note above this very step explains the rule and
+            // quotes the broken form to do it, so a sweep that read comments would fail on its own
+            // explanation - which is what CompileMessages found one task earlier about rem lines.
+            if (lines[i].TrimStart().StartsWith('#'))
+                continue;
+
+            int at = lines[i].IndexOf("$env:", StringComparison.OrdinalIgnoreCase);
+            if (at < 0)
+                continue;
+
+            // Inside a double-quoted string when an odd number of quotes stands before it.
+            int quotes = lines[i][..at].Count(c => c == '"');
+            found.Add(new EnvReference(i + 1, lines[i].Trim(), quotes % 2 == 1));
+        }
+
+        return found;
+    }
+
     /// <summary>
     /// PP36: whether both suites run in the workflow that builds.
     ///

@@ -511,6 +511,7 @@
 - ✅ **PP529** **nothing compiles gui/ - the gate and CI both pass ENABLE_GUI=OFF - while the drift checks keep it edited** — compile.cmd gui builds the client nothing else compiles - the old note named a -D the script refuses - and a client older than gui/ now fails the suite.
 - ✅ **PP530** **ChiakiNg.exe exists twice, only Debug is built by the gate, and --recount and --ratchet answer from whichever was run** — --recount and --ratchet now refuse and name the source that moved, on the two flags whose whole value is being trusted; a host built before this cannot guard itself.
 - ✅ **PP532** **compile.cmd reports a Qt client it no longer builds, as the nodeploy output and in the failure line** — Four lines named a client no ordinary run builds, and a rule now refuses any that claims it without testing the flag or the file first.
+- ✅ **PP535** **the CI configure hands cmake a literal dollar-env token, so build.yml has never once been green** — The toolchain value is quoted, so pwsh expands it instead of handing cmake the text; a rule now refuses a bare env reference in any run step.
 
 ## Block H — Performance and telemetry
 

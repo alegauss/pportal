@@ -98,6 +98,47 @@ public class BuildWorkflowTests(ITestOutputHelper output)
     }
 
     /// <summary>
+    /// PP535: every $env: in the workflow is somewhere pwsh will expand it.
+    ///
+    /// The configure step passed the vcpkg toolchain file as a bare argument, and pwsh does not
+    /// expand $env:X/path there - it hands the program the text. cmake read the literal, refused,
+    /// and the job died at its first step on all 39 runs it had ever had, none of them green.
+    ///
+    /// ConfiguresThroughVcpkg was green throughout, because it asks whether the workflow NAMES the
+    /// toolchain file and the workflow did. This asks the question that one cannot: whether the
+    /// name will still be a name by the time cmake sees it.
+    /// </summary>
+    [Fact]
+    public void EveryEnvReferenceIsSomewherePwshWillExpandIt()
+    {
+        if (BuildWorkflow.Locate() is not { } path)
+            return;
+
+        var references = BuildWorkflow.EnvReferencesIn(File.ReadAllText(path));
+
+        Assert.NotEmpty(references);
+        Assert.All(references, r => Assert.True(r.Quoted,
+            $"build.yml:{r.Line} uses $env: in a bare argument, where pwsh passes it through as "
+            + $"text rather than expanding it: {r.Text}"));
+    }
+
+    /// <summary>
+    /// And the sweep can see the shape it was written for. The line as it stood is the one case
+    /// that matters, so it is here verbatim: a rule that passed over it would hold nothing.
+    /// </summary>
+    [Fact]
+    public void TheBareArgumentThisReplacedIsReportedUnquoted()
+    {
+        const string before =
+            "          -DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake";
+        const string after =
+            "          -DCMAKE_TOOLCHAIN_FILE=\"$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake\"";
+
+        Assert.False(Assert.Single(BuildWorkflow.EnvReferencesIn(before)).Quoted);
+        Assert.True(Assert.Single(BuildWorkflow.EnvReferencesIn(after)).Quoted);
+    }
+
+    /// <summary>
     /// And the real file. Every path the workflow names is a file this checkout has - which is the
     /// assertion a rename would otherwise leave for a runner to find.
     /// </summary>
