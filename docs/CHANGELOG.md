@@ -460,6 +460,7 @@
 - ✅ **PP538** **nothing models the holepunch stop, whose cancel is consumed by whichever of fourteen checkpoints reaches it first** — The stop is a one-shot the C consumes at all fourteen checkpoints, beside a websocket flag it never consumes, with the signal outside the lock.
 - ✅ **PP539** **nothing says where the holepunch honours a cancel, and three of the fourteen places are inside the waits** — The fourteen sit in six functions and three are the blocking waits, which is how a cancel gets out of a wait instead of serving it out.
 - ✅ **PP541** **session_create waits for the websocket with no timeout, and every failure path leaves the bit it waits on unset** — Four facts hold it: the wait is untimed, one line sets its bit, the thread's cleanup sets and signals nothing, and the cancel wakes a loop that cannot leave.
+- 🗑 **PP542** **the UPnP timeout path writes gw_status after unlocking, over a FOUND the thread was waiting on that mutex to write** — superseded by PP255: PP255 found this, ported it and modelled it: GatewayDiscovery names all five writers of gw_status and which hold the lock.
 
 ## Block G — Test discipline
 
