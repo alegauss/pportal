@@ -154,6 +154,31 @@ Filed so the gap is written down rather than remembered. The workflow signs noth
 today and says nothing about it, which is the state where a release goes out unsigned
 because every part of it was green.
 
+### §PP572 Read four times, parsed never
+
+Four classes read .github/workflows/build.yml and every one of them reads it as text.
+BuildWorkflow finds runners, a dotnet version, repository paths and unexpanded `$env:`
+references with string and regex work; GateAndCiAgree strips comment lines and says so
+in as many words - "Not a parser". That is the right call for the questions they ask.
+None of them asks whether the file is YAML at all.
+
+SO A SYNTAX ERROR IS INVISIBLE UNTIL A PUSH. The runner is the first thing to read the
+file as a document. Where there is a green run to spare that is a cheap way to find out;
+this repo has 39 red and none green, and PP535 and PP567 exist to make the next push the
+first real attempt.
+
+IT WAS EDITED THREE TIMES IN ONE SESSION - PP567 added a filter, PP569 a step, PP570 a
+second command inside it - and validated by hand afterwards, with python, once. It
+parses: twelve steps in the expected order. That is luck and care, not a gate.
+
+WHAT MAKES THIS A DECISION is the dependency. The test project carries three packages,
+all test infrastructure; a YAML reader is its first of another kind, in a repo that
+argues about a transitive vcpkg pin. The alternative is a CI-side linter, which cannot
+run before the push it protects.
+
+A half-parser is the third option and the worst: PP570 has just paid for a matcher too
+loose to tell two things apart.
+
 ## Block F — Managed core
 
 ### §PP27 The transport, and the only place GC is a real question
