@@ -426,6 +426,33 @@ with a ceiling, needing no Qt at all. Or retire both, and let the browser this p
 not bundle be a fact rather than a measurement. What a number is for is the author's
 call.
 
+### §PP528 The counter that goes missing where it would have differed
+
+`presentFrame` is the only thing that adds to `frames_dropped`, and two returns above it
+never reach it.
+
+`chiaki_ffmpeg_decoder_pull_frame` hands the caller the decoder's accumulated loss count
+and zeroes it in the same call, so whoever receives that number is the only one who will
+ever see it. The frame-available handler in qmlbackend.cpp receives it and then returns
+early twice: once when the pull produced no frame at all, and once when
+prepareFrameForPresentation fails. Both returns drop the count on the floor.
+
+Neither return is rare and neither is decoder-neutral. The second is the
+hardware-to-software readback - av_hwframe_transfer_data, the per-frame copy PP48
+measured at 793us on cuda and 2253us on d3d11va - so the losses that vanish are the ones
+a slower copy path produces. The first is an empty pull, which is what a codec whose
+internal buffer is backing up gives.
+
+That is why this is filed rather than left as an accounting nit. Of the two counters in
+the record only frames_dropped could differ by decoder: frames_lost is the video
+receiver's own total, counted upstream of every decoder and identical whichever one
+runs. So the number that would carry PP76's answer is the under-reported one, and it
+under-reports hardest under the conditions PP76 asks about.
+
+The port has not reproduced it yet - nothing in app/ pulls a frame or counts a drop -
+and the non-goal that behaviour is reproduced rather than redesigned is what would carry
+it across.
+
 ## Block I — NVIDIA path
 
 ### §PP47 The right NVIDIA feature, waiting on a switch
@@ -515,9 +542,11 @@ property of the live path rather than of the silicon. A generator can carry reso
 and bitrate; it cannot carry a congested link, and every attempt to synthesise one
 measures the synthesiser.
 
-No new instrument is needed. The PP42 telemetry row already names the decoder that
-produced it, so one session per decoder against a real console answers this, and the
-work is a run rather than a build. That is why this is filed as its own line instead of
-held open inside PP48: the cost question had an answer here and this one does not.
+This line said no new instrument was needed, and that was read rather than checked. The
+PP42 row does name the decoder, but neither of its loss counters can attribute a loss to
+one: frames_lost is the video receiver's own total, counted upstream of every decoder,
+and frames_dropped goes missing on the two decoder-dependent returns before
+presentFrame. PP528 is that counter, and this waits on it. Still a run rather than a
+build, once there is something to read.
 
 ## Block J — Public documentation
