@@ -52,6 +52,7 @@
 - ✅ **PP577** **the managed error enum mirrors an implicitly valued C enum by hand and nothing compares them** — The header's members are read in order and compared with the enum's by letters, and an insertion in the middle is caught by index rather than by membership.
 - ✅ **PP578** **two more managed enums are cast from C values on the lines after the one PP577 held, and neither is checked** — The three mirrors are one list compared once, the error-specific copy is gone, and the count is asserted so a fourth cast cannot arrive unchecked.
 - ✅ **PP579** **the SDL_Event size is a hand-written 56 in a StructLayout and nothing holds it against SDL's header** — The size is a named constant the layout uses, held against SDL's padding declaration and its own compile-time assert, reading the 64-bit arm rather than the digits.
+- ✅ **PP580** **nothing checks that every shim entry point the host imports is one the shim exports, or the reverse** — Both sets are read from the shim's definitions and the host's entry points and asserted equal, so a rename fails the gate instead of the call.
 
 ## Block C — Video and input path
 
