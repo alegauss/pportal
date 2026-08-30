@@ -166,15 +166,6 @@ public static class StreamDispatch
     };
 
     /// <summary>
-    /// Whether the state lock is held across the whole protobuf handler, which it is.
-    ///
-    /// Not a detail. It is what makes "the wait returned" and "the handler finished" the same
-    /// moment for the run function, and a port that took the lock inside each handler instead would
-    /// have a window where state_finished is true and the state has not been updated.
-    /// </summary>
-    public static bool TheStateLockSpansTheHandler => true;
-
-    /// <summary>
     /// The key position an AV packet is decrypted at: the packet's, plus one block.
     ///
     /// Not the packet's own. Getting it wrong does not fail - it produces plausible garbage that
@@ -254,6 +245,11 @@ public static class StreamDispatchSource
     ///
     /// Lock, switch, unlock, and no unlock inside an arm - which is the edit that would open the
     /// window the run function relies on being closed.
+    ///
+    /// WHY THAT WINDOW MATTERS, kept here because this is what holds it: spanning the handler is
+    /// what makes "the wait returned" and "the handler finished" the same moment for the run
+    /// function. A port that took the lock inside each arm instead would have a stretch where
+    /// state_finished is true and the state has not been updated.
     /// </summary>
     public static bool TheStateLockStillSpansTheSwitch(string protobufBody)
     {
