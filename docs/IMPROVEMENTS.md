@@ -177,7 +177,7 @@ takion's receive, which is bound to sockets and threads a capture has neither of
 
 ### §PP28 The state machines
 
-session.c is 1263 lines, ctrl.c 1763 and streamconnection.c 1531. Together they are the
+session.c is 1267 lines, ctrl.c 1767 and streamconnection.c 1531. Together they are the
 connection: what is sent in which order, what is waited for, what a timeout means at
 each point, and how a session comes apart when the console stops answering.
 

@@ -122,9 +122,15 @@ public static class HolepunchConsumers
     ///
     /// PP564: ctrl.c JOINED THIS LIST FROM A LINKER, not from a reading. PP563 said three, having
     /// read the tree; building the library without holepunch.c named a fourth in thirty seconds.
+    ///
+    /// PP590: AND HAS LEFT IT AGAIN, which is the first consumer this deletion has actually removed.
+    /// Its whole dependency was one ask for the control port, and session.c reads the same value out
+    /// of the same handle a few hundred lines earlier - so the ask was a second reading of something
+    /// already known, and ctrl.c now takes what session.c recorded. Three left, and the two the port
+    /// wrote itself are the two that remain beside session.c.
     /// </summary>
     public static IReadOnlyList<string> All { get; } =
-        [@"lib\src\session.c", CtrlRelativePath, TestHarnessRelativePath, ShimRelativePath];
+        [@"lib\src\session.c", TestHarnessRelativePath, ShimRelativePath];
 
     /// <summary>
     /// PP573: what PP33's own line has to say about the count, now that four tasks have moved it.
@@ -134,7 +140,11 @@ public static class HolepunchConsumers
     /// the deletion was wrong at the point where somebody decides what it costs.
     ///
     /// Held as the count rather than the sentence: the line has 135 characters for its reason and
-    /// will be reworded, but a line claiming ONE caller when this list holds four is the defect.
+    /// will be reworded, but a line claiming ONE caller when this list holds three is the defect.
+    ///
+    /// PP590: the number it has to agree with is now THREE, because ctrl.c stopped asking. The check
+    /// still refuses "only caller" by name - the shape the claim had for four shipped tasks is worth
+    /// keeping out of the line even after the count it was wrong about has changed.
     /// </summary>
     public static bool TheRoadmapLineAgreesOnTheCount(string roadmapLine)
     {
@@ -144,31 +154,62 @@ public static class HolepunchConsumers
         if (roadmapLine.Contains("only caller", StringComparison.OrdinalIgnoreCase))
             return false;
 
-        return roadmapLine.Contains("four files call it", StringComparison.OrdinalIgnoreCase);
+        return roadmapLine.Contains("three files call it", StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>PP564: the fourth consumer, which only the linker found.</summary>
+    /// <summary>PP564: the fourth consumer, which only the linker found; PP33 removed it.</summary>
     public const string CtrlRelativePath = @"lib\src\ctrl.c";
 
     /// <summary>ctrl.c, or null outside a checkout.</summary>
     public static string? LocateCtrl() => SanitizerSource.LocateRelative(CtrlRelativePath);
 
     /// <summary>
-    /// The one export ctrl.c calls, and the whole of its dependency: the control port, guarded by
-    /// the same handle-is-null test session.c uses, falling back to SESSION_CTRL_PORT.
+    /// The one export ctrl.c used to call, and the whole of its dependency: the control port,
+    /// guarded by the same handle-is-null test session.c uses, falling back to SESSION_CTRL_PORT.
     ///
-    /// That guard is why this is the cheapest of the four to remove and the easiest to miss: the
-    /// file already has an answer for not having a holepunch session.
+    /// That guard is why this was the cheapest of the four to remove and the easiest to miss: the
+    /// file already had an answer for not having a holepunch session.
     /// </summary>
     public const string CtrlCall = "chiaki_get_ps_ctrl_port";
 
-    /// <summary>Whether ctrl.c still asks, and still has its fallback.</summary>
-    public static bool CtrlStillAsksWithAFallback(string ctrlSource)
+    /// <summary>The field session.c records the answer in, which ctrl.c reads instead.</summary>
+    public const string RecordedPortField = "ctrl_port";
+
+    /// <summary>
+    /// PP590: whether ctrl.c takes the recorded port and asks nobody.
+    ///
+    /// Both halves, and the second is the one that makes this a deletion rather than a rename. A
+    /// ctrl.c that read the field AND still carried the call would satisfy a check that only looked
+    /// for the field, and would still be linked against holepunch.c - which is the whole of what
+    /// being a consumer means here.
+    ///
+    /// The fallback is asserted too. session-&gt;ctrl_port is zero on every path with no holepunch
+    /// session, and a file that lost SESSION_CTRL_PORT would connect to port 0 on the direct path -
+    /// which is the LAN case, and the one this port is used on most.
+    /// </summary>
+    public static bool CtrlReadsTheRecordedPort(string ctrlSource)
     {
         ArgumentNullException.ThrowIfNull(ctrlSource);
 
-        return ctrlSource.Contains(CtrlCall + "(session->holepunch_session)", StringComparison.Ordinal)
+        return !ctrlSource.Contains(CtrlCall, StringComparison.Ordinal)
+            && ctrlSource.Contains("session->" + RecordedPortField, StringComparison.Ordinal)
             && ctrlSource.Contains("SESSION_CTRL_PORT", StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// PP590: and whether session.c is what records it, from the ask it was already making.
+    ///
+    /// The join the change rests on. session.c reads the port in session_thread_request_session,
+    /// which session_thread_func runs before chiaki_ctrl_start - so ctrl_connect reads a value
+    /// written at the same instant it used to ask for one. A session.c that stopped recording would
+    /// leave ctrl.c falling back to 9295 on the PSN path, silently, on hardware no test here has.
+    /// </summary>
+    public static bool SessionRecordsTheCtrlPort(string sessionSource)
+    {
+        ArgumentNullException.ThrowIfNull(sessionSource);
+
+        return sessionSource.Contains(CtrlCall + "(session->holepunch_session)", StringComparison.Ordinal)
+            && sessionSource.Contains("session->" + RecordedPortField + " =", StringComparison.Ordinal);
     }
 
     /// <summary>

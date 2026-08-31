@@ -1572,7 +1572,11 @@ static ChiakiErrorCode ctrl_connect(ChiakiCtrl *ctrl)
 	else
 		path = "/sie/ps4/rp/sess/ctrl";
 	const char *rp_version = chiaki_rp_version_string(session->target);
-	int port = session->holepunch_session ? chiaki_get_ps_ctrl_port(session->holepunch_session) : SESSION_CTRL_PORT;
+	// PP590: session.c recorded this port when it built its own request, and this reads what was
+	// recorded. It used to ask holepunch.c directly - the one call that made ctrl.c the fourth
+	// consumer of the file PP33 deletes, and the easiest of the four to miss, because the fallback
+	// below makes the file read as though it does not depend on the holepunch at all.
+	int port = session->ctrl_port ? session->ctrl_port : SESSION_CTRL_PORT;
 	char send_buf[512];
 	int request_len = snprintf(send_buf, sizeof(send_buf), request_fmt,
 			path, session->connect_info.hostname, port, auth_b64,

@@ -498,6 +498,7 @@
 - ✅ **PP573** **PP33's own line says session.c is its only caller, which three shipped tasks have each falsified** — PP33's line names four callers and the count is asserted against HolepunchConsumers, so a line claiming one turns the suite red.
 - ✅ **PP574** **PP30's line says fec has one caller left and it has three, the shim among them as in PP33's** — PP30's line names three callers, held against a list that names the shim, with the two declaring files excluded so a plain sweep's five is not the number.
 - ✅ **PP584** **the third deletion line understates its callers, and all three omitted the same one** — PP295's why names the shim, and a check holds that every deletion line says the seam is among what calls its target.
+- ✅ **PP590** **ctrl.c asks holepunch.c for a port session.c already read, and that one ask is all that makes it PP33's fourth consumer** — ctrl.c no longer calls into holepunch.c: session.c records the control port where it already reads it, and ctrl.c takes the record, keeping its own fallback for paths with none.
 
 ## Block G — Test discipline
 

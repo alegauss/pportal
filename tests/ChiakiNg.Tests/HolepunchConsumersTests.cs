@@ -32,37 +32,83 @@ public class HolepunchConsumersTests
     }
 
     /// <summary>
-    /// All four are named rather than counted - a deletion needs which, not how many.
+    /// All three are named rather than counted - a deletion needs which, not how many.
     ///
     /// PP564: it was three until a linker was asked. Building chiaki-lib without holepunch.c named
     /// ctrl.c in thirty seconds, after PP563 had read the tree and concluded three.
+    ///
+    /// PP590: and it is three again, by removal rather than by re-reading. ctrl.c is off this list
+    /// because it no longer calls into holepunch.c, which is the first consumer PP33's deletion has
+    /// actually lost - the two that remain beside session.c are both files this port wrote.
     /// </summary>
     [Fact]
-    public void TheDeletionHasFourNamedConsumers()
+    public void TheDeletionHasThreeNamedConsumers()
     {
         Assert.Equal(
             [
                 @"lib\src\session.c",
-                @"lib\src\ctrl.c",
                 @"lib\src\remote\holepunch-test.c",
                 @"shim\chiaki_shim.c",
             ],
             HolepunchConsumers.All);
+
+        Assert.DoesNotContain(HolepunchConsumers.CtrlRelativePath, HolepunchConsumers.All);
     }
 
     /// <summary>
-    /// PP564: ctrl.c asks for the control port and already has an answer for not getting one.
+    /// PP590: ctrl.c reads the port session.c recorded, and asks nobody. PP33 is what it is for.
     ///
-    /// That fallback is why it is both the cheapest of the four to remove and the easiest to miss:
-    /// the file reads as though it does not depend on the holepunch at all.
+    /// PP564 found it here by asking a linker, and its one ask was for the control port - a value
+    /// session.c reads out of the same handle a few hundred lines earlier, when it builds its own
+    /// request. So the ask was a second reading of something already known, and the fallback that
+    /// made it easy to miss is what made it cheap to remove: the file already had an answer for not
+    /// having a holepunch session, and zero is now that same answer.
     /// </summary>
     [Fact]
-    public void CtrlAsksForThePortAndHasAFallback()
+    public void CtrlTakesTheRecordedPortAndAsksNobody()
     {
         if (HolepunchConsumers.LocateCtrl() is not { } path)
             return;
 
-        Assert.True(HolepunchConsumers.CtrlStillAsksWithAFallback(File.ReadAllText(path)));
+        Assert.True(
+            HolepunchConsumers.CtrlReadsTheRecordedPort(File.ReadAllText(path)),
+            "ctrl.c is a consumer of holepunch.c again, or lost the fallback that covers the LAN path");
+    }
+
+    /// <summary>
+    /// PP590: and session.c records it, which is the half that keeps the PSN path working.
+    ///
+    /// Asserted separately because the two files fail in opposite directions. A ctrl.c that kept the
+    /// call is a consumer the deletion still has to answer for and the suite says so loudly; a
+    /// session.c that stopped recording is silent - ctrl.c falls back to 9295 and remote play over
+    /// PSN breaks on hardware nothing in this tree can reach.
+    /// </summary>
+    [Fact]
+    public void SessionIsWhatRecordsThePort()
+    {
+        if (SanitizerSource.LocateRelative(@"lib\src\session.c") is not { } path)
+            return;
+
+        Assert.True(
+            HolepunchConsumers.SessionRecordsTheCtrlPort(File.ReadAllText(path)),
+            "session.c no longer records the ctrl port, so ctrl.c's fallback is the PSN path's port");
+    }
+
+    /// <summary>
+    /// PP590: and the reader can see a ctrl.c that reads the field and kept the call, which is the
+    /// shape a half-finished removal leaves and the one that would otherwise pass.
+    /// </summary>
+    [Fact]
+    public void KeepingTheCallBesideTheFieldIsNotEnough()
+    {
+        Assert.False(HolepunchConsumers.CtrlReadsTheRecordedPort(
+            "int port = session->ctrl_port ? chiaki_get_ps_ctrl_port(h) : SESSION_CTRL_PORT;"));
+
+        Assert.False(HolepunchConsumers.CtrlReadsTheRecordedPort(
+            "int port = session->ctrl_port;"));
+
+        Assert.True(HolepunchConsumers.CtrlReadsTheRecordedPort(
+            "int port = session->ctrl_port ? session->ctrl_port : SESSION_CTRL_PORT;"));
     }
 
     /// <summary>
@@ -157,9 +203,9 @@ public class HolepunchConsumersTests
         Assert.NotNull(line);
         Assert.True(
             HolepunchConsumers.TheRoadmapLineAgreesOnTheCount(line),
-            $"PP33's line does not name four callers: {line}");
+            $"PP33's line does not name three callers: {line}");
 
-        Assert.Equal(4, HolepunchConsumers.All.Count);
+        Assert.Equal(3, HolepunchConsumers.All.Count);
     }
 
     /// <summary>And the old claim is what the check refuses, not merely an absent phrase.</summary>
@@ -171,8 +217,13 @@ public class HolepunchConsumersTests
 
         Assert.False(HolepunchConsumers.TheRoadmapLineAgreesOnTheCount("says nothing about callers"));
 
-        Assert.True(HolepunchConsumers.TheRoadmapLineAgreesOnTheCount(
+        // PP33: and the count it agreed with before ctrl.c left is refused too, so the line cannot
+        // keep a number the list has moved past.
+        Assert.False(HolepunchConsumers.TheRoadmapLineAgreesOnTheCount(
             "and four files call it - session.c, ctrl.c, the harness, the shim."));
+
+        Assert.True(HolepunchConsumers.TheRoadmapLineAgreesOnTheCount(
+            "and three files call it - session.c, the harness, the shim."));
     }
 
     /// <summary>The harness exists, which is the whole of what PP33 got wrong.</summary>

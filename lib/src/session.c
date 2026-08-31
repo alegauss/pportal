@@ -995,6 +995,10 @@ static ChiakiErrorCode session_thread_request_session(ChiakiSession *session, Ch
 	{
 		chiaki_get_ps_selected_addr(session->holepunch_session, session->connect_info.hostname);
 		port = chiaki_get_ps_ctrl_port(session->holepunch_session);
+		// PP590: recorded here so ctrl.c does not ask holepunch.c for it a second time. This runs
+		// in session_thread_func before chiaki_ctrl_start, so the value is there by the time
+		// ctrl_connect builds its request - which is the same instant it was read at before.
+		session->ctrl_port = (uint16_t)port;
 	}
 	int request_len = snprintf(send_buf, sizeof(send_buf), session_request_fmt,
 			path, session->connect_info.hostname, port, regist_key_hex, rp_version_str);

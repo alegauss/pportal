@@ -275,6 +275,10 @@ typedef struct chiaki_session_t
 
 	ChiakiCtrl ctrl;
 	ChiakiHolepunchSession holepunch_session;
+	// PP590: the ctrl port the console answered with, recorded rather than asked for a second time.
+	// Zero means nobody told us, which is every path that has no holepunch session; ctrl.c keeps its
+	// own default for that case, so the fallback stays beside the request that uses it.
+	uint16_t ctrl_port;
 	ChiakiRudp rudp;
 
 	ChiakiLog *log;
