@@ -500,6 +500,7 @@
 - ✅ **PP584** **the third deletion line understates its callers, and all three omitted the same one** — PP295's why names the shim, and a check holds that every deletion line says the seam is among what calls its target.
 - ✅ **PP590** **ctrl.c asks holepunch.c for a port session.c already read, and that one ask is all that makes it PP33's fourth consumer** — ctrl.c no longer calls into holepunch.c: session.c records the control port where it already reads it, and ctrl.c takes the record, keeping its own fallback for paths with none.
 - ✅ **PP591** **holepunch-test.c reads /tmp/token.txt on a Windows-only port, and its only live effect is to be PP33's second consumer** — holepunch-test.c and its target are deleted: PP544's three outcomes settled on removal, and PP33's deletion is down to session.c and the shim.
+- ✅ **PP592** **session.c and the shim both fini a holepunch session, and they are disjoint only because the shim never wires one in** — The Qt client creates and never destroys, so the two finis are its only destructor; the shim is a second owner, and the guard is on the shim not wiring a handle in.
 
 ## Block G — Test discipline
 
