@@ -513,6 +513,7 @@
 - ✅ **PP606** **the three handshake pieces are functions and nothing owns a socket, so the responder cannot run** — The three pieces are a peer with a state now: it answers a retried init again, refuses a wrong cookie or tag, and runs the whole exchange over loopback.
 - ✅ **PP607** **no shim entry point creates a takion, so the responder has nothing to answer and the C loop stays unreached** — A real takion connects to loopback, our responder answers, and the connected event fires - so the receive loop runs with no patch to the vendored C.
 - ✅ **PP608** **the loopback harness has no datagrams to pump, and no capture is on this machine to give it any** — A five-second capture of a live PS5 is in tests/corpus - 4025 datagrams at a 1159us mean gap, heads only - and its count and spacing are checked against the file.
+- ✅ **PP609** **the replay prints its report over the committed capture and nothing asserts a line of it** — The replay's report over the committed capture is a gate now: the MAC gate agrees on every head, no branch is unknown, and nothing allocates after the warm-up.
 
 ## Block G — Test discipline
 
