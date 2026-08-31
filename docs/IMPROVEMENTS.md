@@ -344,6 +344,31 @@ sends.
 Deleting is the deliverable, not just porting. The C video receiver leaving the build is
 what makes the five ports beneath it real.
 
+### §PP600 Fitted, and never called
+
+PP561's own line said eight tasks were "pieces that fit and were never fitted", and it
+fitted them: ManagedHolepunch runs PP548's create, PP549's start and PP550's punch over
+one queue and one stop, and hands the result to PP553's session. This is that finding
+one level up. The pieces are fitted, and nothing in the running application reaches
+them.
+
+WHAT WAS READ. IHolepunchSession has three implementations - NativeHolepunchSession over
+the C, SequencedHolepunchSession with no C, and a recording one for coverage.
+HolepunchConnect consumes the seam, and every construction of it is in its own file, in
+HolepunchFlowCoverage, or in a test; ManagedHolepunch is constructed only by its own
+tests. So neither implementation is selected by the host, and the choice PP33 exists to
+make has nowhere to be made.
+
+IT IS THE SHAPE THIS PORT KEEPS FINDING. PP2 put assertions in SelfTest.cs that nothing
+ran; PP569 and PP570 found tools whose own self-test no gate invoked; PP529 found source
+no build compiles. A green suite over code the product never enters is the same lie in a
+fourth place, and here it is the largest one: the whole PSN path.
+
+WHAT THIS IS NOT is the switch to managed. That is a separate decision and needs a
+console to confirm, because the create's HTTP and websocket need PSN and every offline
+run stops there. This is the step before it: the host has no connect path that
+constructs a holepunch session at all, so there is no seam to switch.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry
