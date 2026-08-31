@@ -30,16 +30,16 @@ namespace ChiakiNg.Protocol;
 public static class TakionInitAckDatagram
 {
     /// <summary>TAKION_PACKET_TYPE_CONTROL, which every handshake datagram opens with.</summary>
-    public const byte ControlPacketType = 0;
+    public const byte ControlPacketType = TakionMessageHeader.ControlPacketType;
 
     /// <summary>TAKION_CHUNK_TYPE_INIT_ACK.</summary>
-    public const byte InitAckChunkType = 2;
+    public const byte InitAckChunkType = TakionMessageHeader.InitAckChunkType;
 
     /// <summary>The flags an INIT_ACK carries, which takion refuses if they are anything else.</summary>
-    public const byte NoChunkFlags = 0;
+    public const byte NoChunkFlags = TakionMessageHeader.NoChunkFlags;
 
     /// <summary>Where the message header starts, the packet type being one byte.</summary>
-    public const int HeaderOffset = 1;
+    public const int HeaderOffset = TakionMessageHeader.OffsetInDatagram;
 
     /// <summary>Where the payload starts.</summary>
     public const int PayloadOffset = HeaderOffset + TakionHandshake.MessageHeaderSize;
@@ -54,7 +54,7 @@ public static class TakionInitAckDatagram
     /// result against 0x10 + TAKION_COOKIE_SIZE - so a responder that wrote the bare size would be
     /// refused four bytes short.
     /// </summary>
-    public const int SizeFieldAddend = 4;
+    public const int SizeFieldAddend = TakionMessageHeader.SizeFieldAddend;
 
     /// <summary>
     /// The INIT_ACK, written.
@@ -75,13 +75,11 @@ public static class TakionInitAckDatagram
 
         datagram[0] = ControlPacketType;
 
-        Span<byte> header = datagram.AsSpan(HeaderOffset, TakionHandshake.MessageHeaderSize);
-        BinaryPrimitives.WriteUInt32BigEndian(header, tagLocal);
-        // The four MAC bytes stay zero: the handshake runs before crypt exists.
-        BinaryPrimitives.WriteUInt32BigEndian(header[8..], 0);
-        header[0xc] = InitAckChunkType;
-        header[0xd] = NoChunkFlags;
-        BinaryPrimitives.WriteUInt16BigEndian(header[0xe..], PayloadSize + SizeFieldAddend);
+        // PP604: the one writer, not a second copy of the field placement. The four MAC bytes stay
+        // zero there for the reason they do here - the handshake runs before crypt exists.
+        TakionMessageHeader.Write(
+            datagram.AsSpan(HeaderOffset, TakionHandshake.MessageHeaderSize),
+            tagLocal, keyPos: 0, InitAckChunkType, NoChunkFlags, PayloadSize);
 
         Span<byte> body = datagram.AsSpan(PayloadOffset, PayloadSize);
         BinaryPrimitives.WriteUInt32BigEndian(body, payload.Tag);
@@ -94,28 +92,16 @@ public static class TakionInitAckDatagram
         return datagram;
     }
 
-    /// <summary>Where takion.c writes the two header fields this depends on being placed.</summary>
-    public const string ChunkTypeWrite = "*(buf + 0xc) = chunk_type;";
-
-    /// <summary>And the size field, with the addend spelled out.</summary>
-    public const string SizeFieldWrite =
-        "*((chiaki_unaligned_uint16_t *)(buf + 0xe)) = htons((uint16_t)(payload_data_size + 4));";
-
     /// <summary>takion.c, or null outside a checkout.</summary>
-    public static string? LocateSource() => SanitizerSource.LocateRelative(TakionHandshake.RelativePath);
+    public static string? LocateSource() => TakionMessageHeader.LocateSource();
 
     /// <summary>
-    /// Whether takion.c still writes the header the way this writes it.
+    /// Whether takion.c still writes the header the way this depends on.
     ///
-    /// The join, and it is worth having: every offset above was read out of that function once, and
-    /// a header whose fields moved would leave this producing a datagram the C rejects for a reason
-    /// no test here would name.
+    /// PP604 moved the check itself to <see cref="TakionMessageHeader"/>, where it belongs: both
+    /// answers are wrong together if the header moves, and a check kept beside one of them would
+    /// have said so about only that one. This forwards so the join stays reachable from here.
     /// </summary>
     public static bool TheHeaderIsStillWrittenThisWay(string takionSource)
-    {
-        ArgumentNullException.ThrowIfNull(takionSource);
-
-        return takionSource.Contains(ChunkTypeWrite, StringComparison.Ordinal)
-            && takionSource.Contains(SizeFieldWrite, StringComparison.Ordinal);
-    }
+        => TakionMessageHeader.TheCStillWritesItThisWay(takionSource);
 }
