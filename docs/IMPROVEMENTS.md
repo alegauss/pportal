@@ -159,25 +159,28 @@ because every part of it was green.
 ### §PP27 The transport, and the only place GC is a real question
 
 takion.c is 2007 lines plus takionsendbuffer.c at 277 and reorderqueue.c at 200: the
-sequencing, the retransmission, the send window and the reordering that a video stream
-over UDP needs.
+sequencing, the retransmission, the send window and the reordering a video stream over
+UDP needs.
 
 This is the one task in the block where the runtime is a genuine risk rather than a
 prejudice. A pause at the wrong moment is a dropped frame, and the traffic is thousands
-of small packets a second, each of which is an allocation if written carelessly. .NET
-has the answer - Span, ArrayPool, Socket with SocketAsyncEventArgs - but the answer has
-to be chosen deliberately, which is what makes this different from the tasks above it.
+of small packets a second, each an allocation if written carelessly. .NET has the answer
+- Span, ArrayPool, SocketAsyncEventArgs - chosen deliberately.
 
-The measurement is not opinion either: the C implementation is right there, and the
-oracle can run both against the same captured traffic and compare timing, not just
-bytes. PP531 did that for the MAC gate, which is the piece the shim reaches and the one
-every datagram passes through: 0.13us managed against 0.06us for the C, per head, inside
-a mean arrival gap of 1178us. What is left is the loop around it. No entry point exposes
-takion's receive, which is bound to sockets and threads a capture has neither of. PP601:
-every handler is static and a patch is refused by a non-goal, so the way in is
-chiaki_takion_connect's socket parameter. PP602: the tag is drawn fresh inside connect
-and the connect info carries none, so the far end must answer INIT rather than replay a
-recording.
+THE MAC GATE IS ANSWERED. PP610 took PP531's measurement over 4025 heads a PS5 sent:
+0.18us managed against 0.08us for the C, inside a 1159us mean gap. Under a fiftieth of a
+percent, and the ratio is what a second machine keeps.
+
+THE LOOP AROUND IT IS REACHABLE NOW, which this used to say it was not. Every receive
+handler is file-local and removing a `static` is the patch a non-goal refuses, so PP601
+named the door: chiaki_takion_connect takes the caller's socket. PP602 found the far end
+must answer rather than replay, the tag being drawn fresh inside connect; PP606 built
+that peer and PP607 runs a real takion against it, to the connected event.
+
+WHAT IS LEFT IS WHAT TO FEED IT. PP510 keeps eighteen bytes a datagram on purpose -
+enough for the dispatch and the MAC layout, and no frame of anybody's screen. Timing the
+whole loop wants payloads, so it wants a second decision about what to record rather
+than more code.
 
 ### §PP28 The state machines
 

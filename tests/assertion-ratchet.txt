@@ -92,4 +92,14 @@
 # cannot be scheduled - is already held by the non-goal PP51 wrote, which binds a proposal to
 # the floor in docs/HARDWARE-CONTRACT.md whether or not this line had ever been read.
 # exempt PP50 - an evaluation: no video processor here advertises FRAME_RATE_CONVERSION.
+#
+# PP611 is the second, and it is the purest case PP310 describes. Its whole output is §PP27
+# rewritten: the section said the receive loop was unreachable, PP601 to PP607 made that false,
+# and it said nothing about the eighteen-byte head that bounds what is still measurable. What a
+# test over it could assert is that a paragraph contains the words it contains, which is a check
+# on a copy of the prose rather than on the port - and the tree already has the join that
+# matters, because the facts the section now states are each held by the assertions PP601, PP602,
+# PP607 and PP610 shipped. The section is where a reader meets them; those tests are where they
+# are true.
+# exempt PP611 - a section corrected: every fact it now states is asserted under its own id.
 0
