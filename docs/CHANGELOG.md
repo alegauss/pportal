@@ -503,6 +503,7 @@
 - ✅ **PP592** **session.c and the shim both fini a holepunch session, and they are disjoint only because the shim never wires one in** — The Qt client creates and never destroys, so the two finis are its only destructor; the shim is a second owner, and the guard is on the shim not wiring a handle in.
 - ✅ **PP596** **session.c's nine holepunch asks are unreachable in everything this port builds, and PP33 is sized as if they run** — Two files call chiaki_session_init and only the unbuilt Qt client passes a handle; rudp's one assignment is inside the guard, so gui/ blocks the deletion.
 - ✅ **PP597** **deleting session.c's nine would make gui/ uncompilable, and GuiFreshness then fails forever for anyone who built it** — The join is asserted, so the commit that deletes the field goes red naming the choice it owes: retire the client's build, or give GuiFreshness a state for it.
+- ✅ **PP598** **retiring the Qt client's build touches compile.cmd, GuiFreshness and the client path, and nothing holds the three** — The decision is recorded and the argument asserted; two of the three pieces are joined by a compile-time reference, so a retirement cannot land halfway.
 
 ## Block G — Test discipline
 
