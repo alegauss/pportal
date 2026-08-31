@@ -504,6 +504,7 @@
 - ✅ **PP596** **session.c's nine holepunch asks are unreachable in everything this port builds, and PP33 is sized as if they run** — Two files call chiaki_session_init and only the unbuilt Qt client passes a handle; rudp's one assignment is inside the guard, so gui/ blocks the deletion.
 - ✅ **PP597** **deleting session.c's nine would make gui/ uncompilable, and GuiFreshness then fails forever for anyone who built it** — The join is asserted, so the commit that deletes the field goes red naming the choice it owes: retire the client's build, or give GuiFreshness a state for it.
 - ✅ **PP598** **retiring the Qt client's build touches compile.cmd, GuiFreshness and the client path, and nothing holds the three** — The decision is recorded and the argument asserted; two of the three pieces are joined by a compile-time reference, so a retirement cannot land halfway.
+- ✅ **PP599** **PP533 settled that session.c takes five results, and decision A means nothing will ask it for PSN at all** — The retiring client is the only PSN driver of the C session, held as an identity between two models, so PP533's five-result conversion has no caller left.
 
 ## Block G — Test discipline
 

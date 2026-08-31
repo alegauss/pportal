@@ -1,3 +1,4 @@
+﻿using ChiakiNg.Protocol;
 using ChiakiNg.Session;
 using Xunit;
 
@@ -68,6 +69,35 @@ public class QtClientBuildTests
     {
         Assert.Equal(GuiFreshness.ClientRelativePath, QtClientBuild.ClientRelativePath);
         Assert.Contains("chiaki.exe", QtClientBuild.ClientRelativePath, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// PP599: the client this retires is the same file that drives the C session's PSN path.
+    ///
+    /// That join is what makes PP533's conversion unnecessary. PP596 holds that the Qt client is the
+    /// only thing putting a holepunch handle into a ChiakiSession; this holds that the same file is
+    /// the one whose build is going. So after the retirement nobody can enter session.c's PSN path,
+    /// and the nine asks are removed rather than converted to the five results Â§PP533 designed.
+    ///
+    /// Written as an identity between two models rather than as a sentence, because the conclusion
+    /// only holds while both name one file. A second PSN driver arriving, or the retirement moving
+    /// to some other target, puts the conversion back on the table - and this is what would say so.
+    /// </summary>
+    [Fact]
+    public void TheClientRetiringIsTheOneThatDrivesPsn()
+    {
+        Assert.Equal(
+            HolepunchSessionOwnership.QtClientRelativePath,
+            QtClientBuild.PsnDriverRelativePath);
+
+        // And it is still the only one, which is PP596's half of the join.
+        Assert.Equal(
+            [@"gui\src\streamsession.cpp", @"shim\chiaki_shim.c"],
+            HolepunchSessionOwnership.SessionInitCallers);
+
+        Assert.Contains(
+            QtClientBuild.PsnDriverRelativePath,
+            HolepunchSessionOwnership.SessionInitCallers);
     }
 
     /// <summary>

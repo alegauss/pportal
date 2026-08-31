@@ -50,6 +50,26 @@ public static class QtClientBuild
     public static string? LocateCompile() => SanitizerSource.LocateRelative(CompileRelativePath);
 
     /// <summary>
+    /// PP599: the file that drives the C session's PSN path, which is the client this retires.
+    ///
+    /// The two facts that were separate until decision A joined them. PP596 established that the Qt
+    /// client is the ONLY thing that puts a holepunch handle into a ChiakiSession, so it is the only
+    /// thing that can enter session.c's PSN path at all. This record says that same client stops
+    /// being built. Together they say nobody will ask session.c for PSN once the retirement lands.
+    ///
+    /// WHY IT MATTERS TO PP33'S PLAN. §PP533 settled the direction as a CONVERSION - session.c stops
+    /// taking a holepunch handle and starts taking the five results it currently derives, four of
+    /// them durable and the registration info scoped to its own block (PP551). That design assumed
+    /// session.c must keep doing PSN for somebody. After A it does not: the managed flow owns the
+    /// PSN sequence (PP340), the shim never passes a handle (PP592), and the Qt client is going. So
+    /// the nine asks are REMOVED, and the five-result plumbing is work that no longer has a caller.
+    ///
+    /// This is not a contradiction of PP533 - it is its premise expiring, which is a thing a settled
+    /// design is allowed to do and a thing nobody notices unless it is written down.
+    /// </summary>
+    public static string PsnDriverRelativePath => Protocol.HolepunchSessionOwnership.QtClientRelativePath;
+
+    /// <summary>
     /// Whether compile.cmd still offers the argument that builds the client.
     ///
     /// Read as the assignment rather than as the word. `gui` appears in that file's comments and in

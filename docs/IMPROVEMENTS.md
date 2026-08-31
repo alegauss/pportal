@@ -291,7 +291,7 @@ waiting to go.
 
 So what remains is not translation. It is session.c no longer asking, which PP533 now
 names: PP481 gave the nine a managed driver, and a driver is not a deletion. PP596: no
-default build reaches them, so gui/ blocks this and not a console.
+default build reaches them; PP599: gui/ retires, so the nine are removed not converted.
 
 ### §PP107 The two that were said to be uncalled
 
