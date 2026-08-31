@@ -321,6 +321,62 @@ public class GateAndCiAgreeTests(ITestOutputHelper output)
     }
 
     /// <summary>
+    /// PP589: a temp file called ctest_out is not the C suite running.
+    ///
+    /// This was the last pass on a bare Contains, and the most important one - PP439 already found
+    /// that ctest reports the whole suite as a single test, so a suite can vanish inside a green.
+    /// Nine non-comment lines carried the string and none of them was the call, which runs the tool
+    /// through "$CTEST" because ctest is not on a plain Windows PATH (PP67).
+    /// </summary>
+    [Fact]
+    public void ATempFileNamedForTheToolIsNotTheToolRunning()
+    {
+        // The script with its invocation removed, which is exactly what was measured. Every line
+        // here is one that was answering for the call, INCLUDING the two the first version of this
+        // fix still fell for: the warning echo, and `cases=$(… "$ctest_out" …)`, whose value holds
+        // the letters of ctest inside a longer name and made `"$cases"` read as running the tool.
+        const string withoutTheCall = """
+            CTEST="${CTEST:-/mingw64/bin/ctest}"
+            ctest_out=$(mktemp)
+            cat "$ctest_out"
+            rm -f "$ctest_out"
+            grep -E '^[0-9]+% tests passed' "$ctest_out"
+            cases=$(sed -nE 's/^1: ([0-9]+).*/\1/p' "$ctest_out" | tail -1)
+            if [[ -z "$cases" ]]; then
+            echo "[test] WARNING: could not read the case count from ctest -V output." >&2
+            fi
+            """;
+
+        Assert.False(GateAndCiAgree.RunsCommand(withoutTheCall, "ctest"));
+
+        // And with it back, through the variable the gate actually uses.
+        const string withTheCall = withoutTheCall
+            + "\ntimeout \"$TEST_TIMEOUT\" \"$CTEST\" --test-dir \"$BUILD_DIR\" -V >\"$ctest_out\" 2>&1";
+
+        Assert.True(GateAndCiAgree.RunsCommand(withTheCall, "ctest"));
+    }
+
+    /// <summary>
+    /// PP589: and CI's spelling, which names the command outright rather than through a path.
+    ///
+    /// Both forms are real invocations. A rule holding only the variable one would report CI as not
+    /// running the suite, which is the mirror error and just as wrong.
+    /// </summary>
+    [Fact]
+    public void TheCommandCountsByNameOrThroughItsVariable()
+    {
+        Assert.True(GateAndCiAgree.RunsCommand(
+            "run: ctest --test-dir build -C Release --output-on-failure", "ctest"));
+
+        // An assignment is not a call, even when its value is the tool's own path.
+        Assert.False(GateAndCiAgree.RunsCommand("CTEST=\"${CTEST:-/mingw64/bin/ctest}\"", "ctest"));
+
+        // Nor is a banner.
+        Assert.False(GateAndCiAgree.RunsCommand(
+            "echo \"[test] could not read the case count from ctest -V output.\"", "ctest"));
+    }
+
+    /// <summary>
     /// A comment naming a command does not count as running it.
     ///
     /// build.yml's comments discuss test.cmd and ctest at length, and test.cmd's discuss the

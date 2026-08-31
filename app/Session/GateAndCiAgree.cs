@@ -140,7 +140,11 @@ public static partial class GateAndCiAgree
 
         return pass switch
         {
-            "the C suite (ctest)" => code.Contains("ctest", StringComparison.Ordinal),
+            // PP589: the same join as the two tools below, for a command that takes no flag to pair
+            // with. A bare Contains was answered by nine lines that run nothing - the assignment, a
+            // temp file called `ctest_out`, the five lines that cat, grep and rm it, and a warning
+            // echo - so the call could be deleted and this stayed green. Measured, not read.
+            "the C suite (ctest)" => RunsCommand(code, "ctest"),
             "the xUnit vectors" => code.Contains("dotnet test", StringComparison.Ordinal)
                 || code.Contains("vstest", StringComparison.Ordinal),
             "the host's --selftest" => code.Contains("--selftest", StringComparison.Ordinal),
@@ -254,6 +258,117 @@ public static partial class GateAndCiAgree
     }
 
     /// <summary>
+    /// PP589: whether a command is RUN, for one that carries no flag to pair it with.
+    ///
+    /// <see cref="RunsTool"/> needs a binary and a flag, and the C suite has only the binary - so
+    /// the ambiguity has to be resolved by where the word sits rather than by a second word.
+    ///
+    /// CI RUNS IT BY NAME: `run: ctest --test-dir build -C Release`. THE GATE RUNS IT THROUGH A
+    /// VARIABLE, because ctest lives in /mingw64/bin and not on a plain Windows PATH (PP67):
+    /// `CTEST="${CTEST:-/mingw64/bin/ctest}"` and then `"$CTEST"` on the call. The literal never
+    /// appears on the line that runs it.
+    ///
+    /// AN ASSIGNMENT IS NOT A CALL, which is the whole of the fix. `ctest_out=$(mktemp)` names a
+    /// temp file and `CTEST=...` names a path; both were answering for the invocation. And the word
+    /// has to stand alone - `$ctest_out` carries the letters and is a different thing.
+    /// </summary>
+    public static bool RunsCommand(string code, string command)
+    {
+        ArgumentNullException.ThrowIfNull(code);
+        ArgumentException.ThrowIfNullOrEmpty(command);
+
+        string[] lines = [.. code.Split('\n')
+            .Select(line => line.Trim())
+            .Where(line => !line.StartsWith("echo", StringComparison.OrdinalIgnoreCase))
+            .Where(line => !IsAssignment(line))];
+
+        if (lines.Any(line => NamesAWord(line, command)))
+            return true;
+
+        // The variable form. Read from the whole text, since the assignment was filtered out above:
+        // it is the one line that has to be an assignment for this to mean anything.
+        return ShellVariablesSetTo(code, command)
+            .Any(name => lines.Any(line => NamesAWord(line, $"\"${name}\"")
+                || NamesAWord(line, $"${name}")));
+    }
+
+    /// <summary>Whether a line assigns rather than runs - shell `NAME=value` or batch `set …`.</summary>
+    private static bool IsAssignment(string line)
+    {
+        if (line.StartsWith("set ", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        int at = 0;
+        while (at < line.Length && (char.IsLetterOrDigit(line[at]) || line[at] == '_'))
+            at++;
+
+        return at > 0 && at < line.Length && line[at] == '=';
+    }
+
+    /// <summary>
+    /// Whether the word stands on its own, bounded by whitespace or the ends of the line.
+    ///
+    /// `$ctest_out` carries the letters and is a temp file; `/mingw64/bin/ctest` carries them and is
+    /// a path inside an assignment. Neither is the command being run.
+    /// </summary>
+    private static bool NamesAWord(string line, string word)
+    {
+        for (int at = line.IndexOf(word, StringComparison.Ordinal); at >= 0;
+             at = line.IndexOf(word, at + 1, StringComparison.Ordinal))
+        {
+            bool leftClear = at == 0 || char.IsWhiteSpace(line[at - 1]);
+            int after = at + word.Length;
+            bool rightClear = after >= line.Length || char.IsWhiteSpace(line[after]);
+
+            if (leftClear && rightClear)
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>The shell variables whose value names the command, as `NAME=value` writes them.</summary>
+    private static IEnumerable<string> ShellVariablesSetTo(string code, string command)
+    {
+        foreach (string raw in code.Split('\n'))
+        {
+            string line = raw.Trim();
+            if (!IsAssignment(line) || line.StartsWith("set ", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            int equals = line.IndexOf('=', StringComparison.Ordinal);
+            if (NamesAToken(line[(equals + 1)..], command))
+                yield return line[..equals];
+        }
+    }
+
+    /// <summary>
+    /// Whether a value names the command as a token, with neither neighbour an identifier character.
+    ///
+    /// A plain Contains here is what made the first version of PP589's fix pass on a tree with the
+    /// call deleted: `cases=$(sed … "$ctest_out" …)` holds the letters of ctest inside `$ctest_out`,
+    /// so `cases` read as a variable holding the tool and `"$cases"` two lines later read as running
+    /// it. `/mingw64/bin/ctest}` is the real one - `/` on the left, `}` on the right.
+    /// </summary>
+    private static bool NamesAToken(string value, string command)
+    {
+        for (int at = value.IndexOf(command, StringComparison.Ordinal); at >= 0;
+             at = value.IndexOf(command, at + 1, StringComparison.Ordinal))
+        {
+            bool leftClear = at == 0 || !IsIdentifier(value[at - 1]);
+            int after = at + command.Length;
+            bool rightClear = after >= value.Length || !IsIdentifier(value[after]);
+
+            if (leftClear && rightClear)
+                return true;
+        }
+
+        return false;
+    }
+
+    private static bool IsIdentifier(char one) => char.IsLetterOrDigit(one) || one == '_';
+
+    /// <summary>
     /// The batch variables whose value names a tool, as `set "NAME=value"` writes them.
     ///
     /// The quoted form is the only one this gate uses and the only one accepted: `set NAME=value`
@@ -271,7 +386,9 @@ public static partial class GateAndCiAgree
             if (equals <= 0)
                 continue;
 
-            if (assignment[(equals + 1)..].Contains(tool, StringComparison.Ordinal))
+            // PP589: as a token, for the reason NamesAToken gives - a value holding the tool's
+            // letters inside a longer identifier is not a variable holding the tool.
+            if (NamesAToken(assignment[(equals + 1)..], tool))
                 yield return assignment[..equals];
         }
     }

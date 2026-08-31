@@ -35,8 +35,6 @@
 
 ## Block G — Test discipline
 
-- 📋 **PP589** (deps: —) **the C suite's pass is satisfied by a temp-file variable named ctest_out, so deleting the ctest call leaves it green** — PP588 joined the two tool passes to their calls and left the gate's most important one on a bare Contains, which nine unrelated lines answer. → §PP589
-
 ## Block H — Performance and telemetry
 
 - ⏳ **PP46** (deps: PP42 ✅, PP63) **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — A Chromium leaving the build should be visible in cold start and in megabytes, and stating it without measuring is how a port collects folklore. → §PP46
