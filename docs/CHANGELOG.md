@@ -162,6 +162,7 @@
 - ✅ **PP492** **compile.cmd clean with the GUI off leaves the portable tree holding two DLLs and none of what they import** — The native-only deploy stages SDL2 and walks the closure through one script the Qt path shares, so a clean GUI-off build leaves a tree the host can load from.
 - ✅ **PP567** **the CI workflow runs the managed suite with no filter, so it would run the interaction tests on a runner with no desk** — The step carries the trait expression the gate uses, and both sides are held to the same word so a rename cannot put the five back silently.
 - ✅ **PP586** **compile.cmd's deploy ending names the Qt client whenever one exists on disk, not when this run built it** — The deploy ending asks CHIAKI_ENABLE_GUI now, so a default run names the .NET host and marks a leftover Qt client as an earlier run's, and a one-line if exist guards its own claim.
+- ✅ **PP572** **nothing parses build.yml, so a syntax error in it is invisible until a push spends a run** — every .github/workflows/*.yml is parsed as a YAML document by WorkflowParseTests, so a syntax error is red in the local gate rather than on the first push that spends a run.
 
 ## Block F — Managed core
 

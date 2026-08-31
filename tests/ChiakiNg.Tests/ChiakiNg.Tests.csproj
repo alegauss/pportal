@@ -49,6 +49,19 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.0.2" />
+    <!-- PP572: a YAML reader, and it is the first package here that is not test infrastructure.
+         Four classes read .github/workflows/*.yml and every one of them reads it as text -
+         BuildWorkflow with regexes, GateAndCiAgree stripping comment lines and saying "Not a
+         parser" in as many words. That is right for the questions they ask, and none of them asks
+         whether the file is YAML at all: the runner is the first thing to read it as a document,
+         and this repo has 39 red pushes and no green one to spend finding out.
+         IT IS IN THIS PROJECT AND NOT IN app\. The port exists partly to delete dependencies, so
+         shipping a YAML parser inside a remote-play client to gate a CI file would be arguing
+         against the thing it gates. The parse lives entirely in WorkflowParseTests; app\ gains
+         nothing, and `dotnet publish` of the host still resolves the three it always did.
+         The alternative was a CI-side linter, which cannot run before the push it protects - and
+         a hand-rolled half-parser, which PP570 has just paid for once. -->
+    <PackageReference Include="YamlDotNet" Version="18.1.0" />
   </ItemGroup>
 
   <ItemGroup>
