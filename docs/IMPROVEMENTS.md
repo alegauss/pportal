@@ -345,6 +345,58 @@ what makes the five ports beneath it real.
 
 ## Block G — Test discipline
 
+### §PP594 What the recount cannot see
+
+`--recount` reads every counted claim in the backlog and prints the roadkeep call that
+corrects each, anchor resolved. It is what makes a comment added to a .c file cheap: the
+count it moves is found before the gate rather than after, as a red CountedClaimTests.
+
+WHAT IT READS IS THE BACKLOG - docs/ROADMAP.md and docs/IMPROVEMENTS.md, where a counted
+claim is declared. AnchoredTotalsTests carries the same numbers a second time, as
+InlineData rows recording which claims a past restatement fixed: takion.c 2007,
+session.c 1267, streamconnection.c 1531. Those are C# literals under tests/, which the
+recount does not read.
+
+SO ONE .C EDIT COSTS TWO FIXES AND ONLY ONE IS NAMED. PP590 added four comment lines to
+session.c and four to ctrl.c. The tool printed three calls - a restate and two section
+amends - and could not print the fourth edit, the InlineData row. The suite reported
+that one after the build, as a failure about a number rather than about the file that
+moved.
+
+PP410 is this shape from the other side: three claims sat where the reader could not see
+them. This is the reader blind to its own suite.
+
+THE FIX IS NOT OBVIOUSLY MORE READING. A recount that parsed C# literals would be a
+second parser over a file the suite owns. Deriving the rows from the claims is the other
+direction, and it costs the check: a row that read the claim would agree with it by
+construction. Two answers, so this is a decision.
+
+### §PP595 Three surfaces behind one engine
+
+`roadkeep lint` reports four surfaces in this checkout as behind the engine answering
+here: .claude/hooks/roadkeep-launch.py and the three files under
+.claude/skills/roadkeep/. Its remedy is `roadkeep install`, which rewrites the ones a
+checkout ships.
+
+WHY IT IS NOT COSMETIC. The hook denies a hand-edit to a governed file and names the
+command to call instead; the skills are what a session reads before writing one. Both
+carry rules frozen at the revision they were written from, so a session reads guidance
+the engine has moved past and its refusal is that copy's rule rather than the gate's.
+
+THE PLUGIN IS A DIFFERENT NUMBER AND A DIFFERENT FIX. `engines` reports the pen at
+0.2.63 and the plugin that judges writes at 0.1.1112, and that one moves with `/plugin
+update` - a session's action, not a commit's. This line is only the surfaces the
+repository itself carries.
+
+WHY IT IS FILED RATHER THAN DONE IN PASSING. `install` rewrites the hook that governs
+every write in the session running it, and this repository's gate reads the result.
+Doing that as a side effect of another task is how a session ends up debugging its own
+tooling. It wants its own commit and its own green gate.
+
+AND IT CLEARS FOUR OF SEVEN. The local gate prints seven notes that never change - these
+four, one engine.disagreement, and two non-goal.reaches that no write answers. Notes
+nobody can clear are notes nobody reads, which is what the next real one arrives into.
+
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed
