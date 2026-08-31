@@ -375,6 +375,32 @@ WHAT THIS IS NOT is the choice between the native seam and the managed one. That
 console to confirm, because the create's HTTP and websocket need PSN. This is the step
 before it: there is no caller for the choice to live in.
 
+### §PP608 The harness, and the traffic it has not got
+
+PP601 to PP607 built the way into takion's receive loop and it works: a real takion
+connects to loopback, PP606's responder answers its INIT and its COOKIE, and the
+connected event fires. The loop is running. It has nothing to run over.
+
+WHAT IT NEEDS IS RECORDED TRAFFIC. §PP27's remaining half is the loop's timing against
+the C, and PP531 did that for the MAC gate with real arrival gaps - 0.13us managed
+against 0.06us for the C, inside a mean gap of 1178us. Numbers like those come from
+datagrams a console sent, with the times they arrived.
+
+THE TWO CAPTURES ARE GONE. PP516's entry says two sat on disk unread, which is why
+`--replay-datagrams` exists. Neither is in the log directory now, nor anywhere else on
+this machine. So the reader, the replay and the harness are present and the input is
+not.
+
+RECORDING ONE IS `--capture-datagrams`, which ExchangeCapture runs against a live
+console - the requirement this line declares. It cannot be faked: PP516's own complaint
+is that the managed half had never run against a packet a console sent, and a harness
+fed invented datagrams would be that complaint again with more steps.
+
+WHAT IS ALREADY TRUE, so a session with a console does not re-derive it: crypt is off in
+the harness, so MACs are not checked and the capture does not need keys; the responder
+answers a retried INIT; and closing joins the C thread, so a run that goes wrong ends
+rather than hangs.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry
