@@ -572,6 +572,7 @@
 - ✅ **PP588** **either tool's pass is satisfied by its own echo plus the other tool's flag, so deleting a call leaves it green** — Each tool's pass is now the join its files make - one line in CI, a set and its variable in the gate - and an echo is excluded, so deleting either call turns that pass red.
 - ✅ **PP589** **the C suite's pass is satisfied by a temp-file variable named ctest_out, so deleting the ctest call leaves it green** — The C suite is joined to its call the way the tools are: named outright in CI, reached through $CTEST in the gate, with an assignment and a banner counting as neither.
 - ✅ **PP593** **the vendored-C rule names PP33 as what it does not reach and says nothing about PP30, which lint flags the same way** — The rule names PP30 beside PP33 and the check requires all of them, so a second line bounded by it cannot pass on the first being named.
+- ✅ **PP595** **the roadkeep skills, hook and launcher this checkout ships are older than the engine answering here, and lint says so** — install wrote all four surfaces - the launcher, SKILL.md and the two skill files that were absent - and the wiring to the committed launcher is asserted rather than assumed.
 
 ## Block H — Performance and telemetry
 

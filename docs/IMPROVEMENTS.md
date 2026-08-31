@@ -371,32 +371,6 @@ second parser over a file the suite owns. Deriving the rows from the claims is t
 direction, and it costs the check: a row that read the claim would agree with it by
 construction. Two answers, so this is a decision.
 
-### §PP595 Three surfaces behind one engine
-
-`roadkeep lint` reports four surfaces in this checkout as behind the engine answering
-here: .claude/hooks/roadkeep-launch.py and the three files under
-.claude/skills/roadkeep/. Its remedy is `roadkeep install`, which rewrites the ones a
-checkout ships.
-
-WHY IT IS NOT COSMETIC. The hook denies a hand-edit to a governed file and names the
-command to call instead; the skills are what a session reads before writing one. Both
-carry rules frozen at the revision they were written from, so a session reads guidance
-the engine has moved past and its refusal is that copy's rule rather than the gate's.
-
-THE PLUGIN IS A DIFFERENT NUMBER AND A DIFFERENT FIX. `engines` reports the pen at
-0.2.63 and the plugin that judges writes at 0.1.1112, and that one moves with `/plugin
-update` - a session's action, not a commit's. This line is only the surfaces the
-repository itself carries.
-
-WHY IT IS FILED RATHER THAN DONE IN PASSING. `install` rewrites the hook that governs
-every write in the session running it, and this repository's gate reads the result.
-Doing that as a side effect of another task is how a session ends up debugging its own
-tooling. It wants its own commit and its own green gate.
-
-AND IT CLEARS FOUR OF SEVEN. The local gate prints seven notes that never change - these
-four, one engine.disagreement, and two non-goal.reaches that no write answers. Notes
-nobody can clear are notes nobody reads, which is what the next real one arrives into.
-
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed

@@ -69,7 +69,11 @@ public static class DriftCorpus
         // PP532 added compile.cmd, which CompileMessages reads: the gate's own messages are now
         // checked the way its workflow already was, and a one-segment path has no shape to be
         // recognised by.
-        ".gitignore", "ChiakiNg.slnx", "CMakeLists.txt", "compile.cmd", "package.cmd",
+        //
+        // PP595 added .mcp.json, and it arrived by the guard below rather than by being remembered:
+        // RoadkeepSurfaces named it as a constant and UndeclaredRootFiles reported it before the
+        // commit, which is the eighth name getting here the way ChiakiNg.slnx got here for PP436.
+        ".gitignore", ".mcp.json", "ChiakiNg.slnx", "CMakeLists.txt", "compile.cmd", "package.cmd",
         "roadkeep.toml", "vcpkg.json",
     ];
 
