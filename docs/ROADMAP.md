@@ -35,8 +35,6 @@
 
 ## Block G — Test discipline
 
-- 📋 **PP588** (deps: —) **either tool's pass is satisfied by its own echo plus the other tool's flag, so deleting a call leaves it green** — PP587 gave roadkeep lint an Invokes that asks whether a line runs the command, and left PP569's and PP570's rows on a Contains the banner already answers. → §PP588
-
 ## Block H — Performance and telemetry
 
 - ⏳ **PP46** (deps: PP42 ✅, PP63) **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — A Chromium leaving the build should be visible in cold start and in megabytes, and stating it without measuring is how a port collects folklore. → §PP46

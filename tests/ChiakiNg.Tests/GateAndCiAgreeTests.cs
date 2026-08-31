@@ -251,6 +251,76 @@ public class GateAndCiAgreeTests(ITestOutputHelper output)
     }
 
     /// <summary>
+    /// PP588: THE TWO HALVES HAVE TO REACH EACH OTHER, which is what two Contains never asked.
+    ///
+    /// The gate announces each tool before running it and runs the two one after the other, so the
+    /// banner supplied the binary and the neighbour's call supplied the flag. Either invocation
+    /// could be deleted and its pass stayed green - PP570's own defect, one step along from the
+    /// split by binary that was supposed to close it.
+    /// </summary>
+    [Fact]
+    public void ABannerPlusTheOtherToolsFlagIsNotAnInvocation()
+    {
+        // Exactly the shape the gate had: compare-baselines is only ever echoed here, and the flag
+        // belongs to the call below it.
+        const string neighbourOnly = """
+            echo [test] compare-baselines selftest
+            set "MS_EXE=%~dp0tools\measure-startup\bin\Debug\measure-startup.exe"
+            "%MS_EXE%" --self-test
+            """;
+
+        Assert.False(GateAndCiAgree.RunsTool(neighbourOnly, "compare-baselines", "--self-test"));
+
+        // And the tool that IS wired is still found, through its variable.
+        Assert.True(GateAndCiAgree.RunsTool(neighbourOnly, "measure-startup", "--self-test"));
+    }
+
+    /// <summary>
+    /// PP588: both spellings of a real call count - one line in CI, a variable in the gate.
+    ///
+    /// A rule that took only the one-line form would report the gate as not running what it runs,
+    /// which is the failure in the opposite direction and just as wrong.
+    /// </summary>
+    [Fact]
+    public void AToolRunsThroughOneLineOrThroughItsVariable()
+    {
+        Assert.True(GateAndCiAgree.RunsTool(
+            "dotnet run --project tools/compare-baselines/CompareBaselines.csproj -- --self-test",
+            "compare-baselines",
+            "--self-test"));
+
+        Assert.True(GateAndCiAgree.RunsTool(
+            "set \"CB_EXE=%~dp0tools\\compare-baselines\\bin\\compare-baselines.exe\"\n"
+                + "\"%CB_EXE%\" --self-test",
+            "compare-baselines",
+            "--self-test"));
+
+        // The variable set to a DIFFERENT tool does not carry the flag across.
+        Assert.False(GateAndCiAgree.RunsTool(
+            "set \"CB_EXE=%~dp0tools\\compare-baselines\\bin\\compare-baselines.exe\"\n"
+                + "\"%CB_EXE%\" --self-test",
+            "measure-startup",
+            "--self-test"));
+    }
+
+    /// <summary>
+    /// PP588: and the pair is still not satisfied by the two words being anywhere in the file.
+    ///
+    /// This is the case the old rule passed and the new one refuses, stated on its own so the
+    /// distinction survives a later edit to either matcher.
+    /// </summary>
+    [Fact]
+    public void TheBinaryAndTheFlagOnUnrelatedLinesAreNotACall()
+    {
+        const string apart = """
+            set "CB_EXE=%~dp0tools\compare-baselines\bin\compare-baselines.exe"
+            "%OTHER_EXE%" --self-test
+            """;
+
+        Assert.False(GateAndCiAgree.RunsTool(apart, "compare-baselines", "--self-test"));
+    }
+
+    /// <summary>
     /// A comment naming a command does not count as running it.
     ///
     /// build.yml's comments discuss test.cmd and ctest at length, and test.cmd's discuss the

@@ -565,6 +565,7 @@
 - ✅ **PP582** **five of the six partial lines carry no definition of done, so how much is left has no answer** — All six partial lines carry criteria derived from their own sections, and a hard assertion names any partial line that arrives without one.
 - ✅ **PP583** **the open count mixes lines somebody could start with lines that cannot be begun until hardware arrives** — A --backlog reading splits the open lines into startable and waiting, naming what each waiting line waits for, guarded against a stale host like the other two.
 - ✅ **PP587** **the local gate never runs roadkeep lint, so a governed-file drift is first reported by a CI run** — test.cmd runs roadkeep lint now - a note when the tool is absent, a failure when it says so - the gate-and-CI table reads all three workflows, and a step's own banner no longer counts as running it.
+- ✅ **PP588** **either tool's pass is satisfied by its own echo plus the other tool's flag, so deleting a call leaves it green** — Each tool's pass is now the join its files make - one line in CI, a set and its variable in the gate - and an echo is excluded, so deleting either call turns that pass red.
 
 ## Block H — Performance and telemetry
 

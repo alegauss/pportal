@@ -147,13 +147,15 @@ public static partial class GateAndCiAgree
 
             // PP569: the hyphen is the whole difference from the pass above, and it is enough -
             // "--selftest" is not a substring of "--self-test".
-            "the tool's --self-test" => code.Contains("compare-baselines", StringComparison.Ordinal)
-                && code.Contains("--self-test", StringComparison.Ordinal),
+            //
+            // PP588: and the two halves have to reach each other. They were two Contains over the
+            // whole file, so the banner supplied the binary and the OTHER tool's call supplied the
+            // flag - either invocation could be deleted and its pass stayed green.
+            "the tool's --self-test" => RunsTool(code, "compare-baselines", "--self-test"),
 
             // PP570: named by its own binary, because both tools take the same flag. Matching on the
             // flag alone made one wiring satisfy both - the green that hid this for a whole task.
-            "measure-startup's self-test" => code.Contains("measure-startup", StringComparison.Ordinal)
-                && code.Contains("--self-test", StringComparison.Ordinal),
+            "measure-startup's self-test" => RunsTool(code, "measure-startup", "--self-test"),
 
             // PP587: two spellings, because the two sides invoke it differently and neither is the
             // other's substring. The gate calls the verb; CI uses the action roadkeep publishes,
@@ -213,6 +215,65 @@ public static partial class GateAndCiAgree
 
         return code.Split('\n')
             .Any(line => line.Trim().StartsWith(command, StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// PP588: whether a tool is run WITH a flag, rather than both words appearing somewhere.
+    ///
+    /// The two sides spell the same call two ways and neither puts the binary at the start of the
+    /// line, so <see cref="Invokes"/> does not reach this - which is why PP587's fix stopped at the
+    /// one row it was written for.
+    ///
+    /// CI PUTS BOTH HALVES ON ONE LINE: `dotnet run --project tools/compare-baselines/... --
+    /// --self-test`. THE GATE SPLITS THEM OVER A VARIABLE: `set "CB_EXE=...compare-baselines.exe"`
+    /// and then `"%CB_EXE%" --self-test` four lines later. Both are real invocations and a rule that
+    /// took only the first would report the gate as not running what it runs.
+    ///
+    /// AND AN ECHO IS NEVER ONE. `echo [test] compare-baselines selftest` names the binary and runs
+    /// nothing; leaving it in is what let the neighbour's flag finish the pair.
+    /// </summary>
+    public static bool RunsTool(string code, string tool, string flag)
+    {
+        ArgumentNullException.ThrowIfNull(code);
+        ArgumentException.ThrowIfNullOrEmpty(tool);
+        ArgumentException.ThrowIfNullOrEmpty(flag);
+
+        string[] lines = [.. code.Split('\n')
+            .Select(line => line.Trim())
+            .Where(line => !line.StartsWith("echo", StringComparison.OrdinalIgnoreCase))];
+
+        if (lines.Any(line => line.Contains(tool, StringComparison.Ordinal)
+                && line.Contains(flag, StringComparison.Ordinal)))
+        {
+            return true;
+        }
+
+        return VariablesSetTo(lines, tool).Any(
+            name => lines.Any(line => line.Contains($"%{name}%", StringComparison.Ordinal)
+                && line.Contains(flag, StringComparison.Ordinal)));
+    }
+
+    /// <summary>
+    /// The batch variables whose value names a tool, as `set "NAME=value"` writes them.
+    ///
+    /// The quoted form is the only one this gate uses and the only one accepted: `set NAME=value`
+    /// unquoted keeps trailing spaces in the value, which is why the file does not write it.
+    /// </summary>
+    private static IEnumerable<string> VariablesSetTo(IEnumerable<string> lines, string tool)
+    {
+        foreach (string line in lines)
+        {
+            if (!line.StartsWith("set ", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            string assignment = line[4..].Trim().Trim('"');
+            int equals = assignment.IndexOf('=', StringComparison.Ordinal);
+            if (equals <= 0)
+                continue;
+
+            if (assignment[(equals + 1)..].Contains(tool, StringComparison.Ordinal))
+                yield return assignment[..equals];
+        }
     }
 
     /// <summary>Every pass that runs locally and not in CI.</summary>
