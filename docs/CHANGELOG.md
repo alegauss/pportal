@@ -509,6 +509,7 @@
 - ✅ **PP602** **a recorded peer cannot drive takion's handshake, because the client's tag is fresh on every connect** — The fresh tag and the tagless connect info are both asserted, so the harness PP601 opened needs a responder on the far end and a recording cannot be one.
 - ✅ **PP603** **TakionHandshake models the handshake's rules and sizes and cannot produce a datagram, which a responder is made of** — The INIT_ACK is written from TakionHandshake's own sizes, checked field by field at the offsets the C reads, and joined to takion.c's header writer.
 - ✅ **PP604** **the cookie ack is the responder's second datagram and the header writer is sealed inside the init ack** — One writer serves both answers, the INIT_ACK's header is compared byte for byte against it, and the COOKIE_ACK is that header with the addend alone.
+- ✅ **PP605** **the responder can answer and cannot read, so nothing parses the INIT that carries the client's tag** — The INIT is read into the same record the ack is written from, the header tag is zero before the ack as the C sends it, and the cookie is compared.
 
 ## Block G — Test discipline
 
