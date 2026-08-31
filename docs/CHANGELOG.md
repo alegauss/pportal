@@ -506,6 +506,7 @@
 - ✅ **PP598** **retiring the Qt client's build touches compile.cmd, GuiFreshness and the client path, and nothing holds the three** — The decision is recorded and the argument asserted; two of the three pieces are joined by a compile-time reference, so a retirement cannot land halfway.
 - ✅ **PP599** **PP533 settled that session.c takes five results, and decision A means nothing will ask it for PSN at all** — The retiring client is the only PSN driver of the C session, held as an identity between two models, so PP533's five-result conversion has no caller left.
 - ✅ **PP601** **takion's receive is static in the C and a non-goal forbids exposing it, which PP27's section records as merely absent** — Every receive handler is asserted file-local and the header receive-free, the patch route joined to the rule that closes it, and the socket parameter held as the way in.
+- ✅ **PP602** **a recorded peer cannot drive takion's handshake, because the client's tag is fresh on every connect** — The fresh tag and the tagless connect info are both asserted, so the harness PP601 opened needs a responder on the far end and a recording cannot be one.
 
 ## Block G — Test discipline
 

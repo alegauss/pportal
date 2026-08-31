@@ -175,7 +175,9 @@ every datagram passes through: 0.13us managed against 0.06us for the C, per head
 a mean arrival gap of 1178us. What is left is the loop around it. No entry point exposes
 takion's receive, which is bound to sockets and threads a capture has neither of. PP601:
 every handler is static and a patch is refused by a non-goal, so the way in is
-chiaki_takion_connect's socket parameter and the handshake a local peer must satisfy.
+chiaki_takion_connect's socket parameter. PP602: the tag is drawn fresh inside connect
+and the connect info carries none, so the far end must answer INIT rather than replay a
+recording.
 
 ### §PP28 The state machines
 
