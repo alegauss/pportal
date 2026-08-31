@@ -290,7 +290,8 @@ deliberately: an oracle the managed parser is held against (PP215), not a depend
 waiting to go.
 
 So what remains is not translation. It is session.c no longer asking, which PP533 now
-names: PP481 gave the nine a managed driver, and a driver is not a deletion.
+names: PP481 gave the nine a managed driver, and a driver is not a deletion. PP596: no
+default build reaches them, so gui/ blocks this and not a console.
 
 ### §PP107 The two that were said to be uncalled
 

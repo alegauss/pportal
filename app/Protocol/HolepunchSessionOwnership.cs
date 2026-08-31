@@ -31,6 +31,12 @@ namespace ChiakiNg.Protocol;
 /// </summary>
 public static class HolepunchSessionOwnership
 {
+    /// <summary>Where session.c's nine asks live.</summary>
+    public const string SessionRelativePath = @"lib\src\session.c";
+
+    /// <summary>session.c, or null outside a checkout.</summary>
+    public static string? LocateSession() => SanitizerSource.LocateRelative(SessionRelativePath);
+
     /// <summary>Where the Qt client creates the session it never destroys.</summary>
     public const string QtClientRelativePath = @"gui\src\streamsession.cpp";
 
@@ -45,6 +51,24 @@ public static class HolepunchSessionOwnership
 
     /// <summary>The connect-info field that would put the two owners on one handle.</summary>
     public const string ConnectInfoField = "holepunch_session";
+
+    /// <summary>
+    /// PP596: the field the four asks that are NOT guarded on the handle are guarded on instead.
+    ///
+    /// session.c's nine sites split. Five test <c>session-&gt;holepunch_session</c> directly; the
+    /// regist info, the offer, the punch and the data socket test <c>session-&gt;rudp</c>. That reads
+    /// as a second condition and is the same one: rudp is assigned in exactly one place, inside the
+    /// handle's own guard, so a non-null rudp implies a non-null handle.
+    ///
+    /// IT IS A JOIN AND NOT A COINCIDENCE, which is why it is checked. An assignment to rudp
+    /// anywhere else makes four asks reachable with a null holepunch session -
+    /// chiaki_get_regist_info dereferences it immediately - so this is a crash the tree is one edit
+    /// away from, and nothing else in the suite is looking at it.
+    /// </summary>
+    public const string RudpField = "rudp";
+
+    /// <summary>The function whose one caller is the whole of the reachability question.</summary>
+    public const string SessionInit = "chiaki_session_init";
 
     /// <summary>The Qt client, or null outside a checkout - and Qt is not built, so it may be gone.</summary>
     public static string? LocateQtClient() => SanitizerSource.LocateRelative(QtClientRelativePath);
@@ -112,4 +136,85 @@ public static class HolepunchSessionOwnership
 
         return true;
     }
+
+    /// <summary>
+    /// PP596: whether session.c assigns rudp only inside the holepunch handle's own guard.
+    ///
+    /// The join four of the nine asks stand on. Read as the assignment's position relative to the
+    /// guard rather than as a count: what matters is that every one of them is under a line testing
+    /// the handle, and a second assignment elsewhere is the edit this exists to catch.
+    ///
+    /// The initialiser in chiaki_session_init is not an assignment for this purpose - it sets the
+    /// field to NULL, which is the state the guard protects rather than a way past it.
+    /// </summary>
+    public static IReadOnlyList<int> RudpAssignmentsOutsideTheGuard(string sessionSource)
+    {
+        ArgumentNullException.ThrowIfNull(sessionSource);
+
+        string[] lines = sessionSource.ReplaceLineEndings("\n").Split('\n');
+        var loose = new List<int>();
+        bool guarded = false;
+
+        for (int i = 0; i < lines.Length; i++)
+        {
+            string trimmed = lines[i].TrimStart();
+
+            if (trimmed.StartsWith("//", StringComparison.Ordinal) || trimmed.StartsWith('*'))
+                continue;
+
+            // A line testing the handle opens the region the assignment is allowed in. The region
+            // is left at the next line whose indentation returns to the guard's own, which is what
+            // a closing brace at that depth is.
+            if (trimmed.Contains("if(session->" + ConnectInfoField, StringComparison.Ordinal)
+                || trimmed.Contains("if (session->" + ConnectInfoField, StringComparison.Ordinal))
+            {
+                guarded = true;
+                continue;
+            }
+
+            if (guarded && trimmed.StartsWith('}') && Indent(lines[i]) <= 1)
+                guarded = false;
+
+            if (!trimmed.Contains("session->" + RudpField + " =", StringComparison.Ordinal))
+                continue;
+
+            // NULL is the guarded state, not an escape from it.
+            if (trimmed.Contains("= NULL", StringComparison.Ordinal))
+                continue;
+
+            if (!guarded)
+                loose.Add(i + 1);
+        }
+
+        return loose;
+    }
+
+    /// <summary>How many leading tabs or four-space steps a line carries.</summary>
+    private static int Indent(string line)
+    {
+        int depth = 0;
+
+        foreach (char c in line)
+        {
+            if (c == '\t')
+                depth++;
+            else if (c != ' ')
+                break;
+        }
+
+        return depth;
+    }
+
+    /// <summary>
+    /// PP596: the files that call chiaki_session_init, which is where a holepunch session can enter
+    /// one at all.
+    ///
+    /// Two, and the difference between them is the whole finding. The Qt client passes a handle and
+    /// is not compiled by a default build - PP21 turned Qt off and PP529 records that only
+    /// `compile.cmd gui` builds it. The shim passes none, which
+    /// <see cref="TheShimNeverWiresTheHandleIn"/> holds. So nothing this port BUILDS reaches the
+    /// nine asks: they are compiled, and dead.
+    /// </summary>
+    public static IReadOnlyList<string> SessionInitCallers { get; } =
+        [QtClientRelativePath, ShimRelativePath];
 }
