@@ -347,28 +347,29 @@ what makes the five ports beneath it real.
 ### §PP600 Fitted, and never called
 
 PP561's line said eight tasks were "pieces that fit and were never fitted", and it
-fitted them. This is that finding one level up, and wider than the first version of this
-section claimed: the pieces are fitted, and the application does not construct a session
-of any kind.
+fitted them. This is that one level up: the pieces are fitted, and no screen reaches
+them.
 
-WHAT WAS READ. Outside SelfTest.cs, the only app/ code building a ChiakiConnectInfo and
-calling ChiakiSession.TryCreate is ExchangeCapture - PP297's recorder, whose job is the
-oracle. HolepunchConnect, which consumes the seam, is constructed only in its own file,
-in HolepunchFlowCoverage, or in a test; ManagedHolepunch only by its own tests.
-ConsoleActions models which actions a row offers and performs none.
+WHAT THE HOST CAN DO. App.xaml.cs handles `--capture-exchange` and
+`--capture-datagrams`, and those reach ExchangeCapture, which builds a ChiakiConnectInfo
+and calls ChiakiSession.TryCreate against a real console. So the binary does start
+sessions. That path exists to record PP297's oracle, and it is spelled as a developer
+flag rather than as a feature.
 
-SO THE PORT HAS A FRONT DOOR THAT DECIDES AND NO DOOR. The console list, the settings
-screens, the mapping screen, the seam and its two implementations are all here and all
-reachable from a test. Nothing takes a user from picking a console to a session running.
+WHAT NO SCREEN DOES. MainWindow opens PP13's console list. ConsoleListViewModel carries
+Rows, HasVisibleRows and Refresh - it draws. ConsoleActions models which of connect,
+wake and remove a row offers, and performs none of them. HolepunchConnect, which
+consumes the seam, is built only in its own file, in HolepunchFlowCoverage or in a test;
+ManagedHolepunch only by its own tests. So the front door decides and does not act.
 
-IT IS THE SHAPE THIS PORT KEEPS FINDING, in the largest place yet. PP2 put assertions
-nothing ran, PP569 and PP570 found tools no gate invoked, PP529 found source no build
-compiles. A green suite over code the product never enters is that lie covering the
-whole connect path.
+THIS LINE HAS BEEN WRONG TWICE, in both directions, which the next reader should know.
+It first said the holepunch half; the whole connect path is missing. It then said the
+host constructs nothing, which the capture flags disprove. The truth sits between: no
+user-reachable path.
 
 WHAT THIS IS NOT is the choice between the native seam and the managed one. That needs a
 console to confirm, because the create's HTTP and websocket need PSN. This is the step
-before it: there is no caller to make the choice in.
+before it: there is no caller for the choice to live in.
 
 ## Block G — Test discipline
 
