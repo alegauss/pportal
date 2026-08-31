@@ -507,6 +507,7 @@
 - ✅ **PP599** **PP533 settled that session.c takes five results, and decision A means nothing will ask it for PSN at all** — The retiring client is the only PSN driver of the C session, held as an identity between two models, so PP533's five-result conversion has no caller left.
 - ✅ **PP601** **takion's receive is static in the C and a non-goal forbids exposing it, which PP27's section records as merely absent** — Every receive handler is asserted file-local and the header receive-free, the patch route joined to the rule that closes it, and the socket parameter held as the way in.
 - ✅ **PP602** **a recorded peer cannot drive takion's handshake, because the client's tag is fresh on every connect** — The fresh tag and the tagless connect info are both asserted, so the harness PP601 opened needs a responder on the far end and a recording cannot be one.
+- ✅ **PP603** **TakionHandshake models the handshake's rules and sizes and cannot produce a datagram, which a responder is made of** — The INIT_ACK is written from TakionHandshake's own sizes, checked field by field at the offsets the C reads, and joined to takion.c's header writer.
 
 ## Block G — Test discipline
 
