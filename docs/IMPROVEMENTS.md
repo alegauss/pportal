@@ -345,32 +345,6 @@ what makes the five ports beneath it real.
 
 ## Block G — Test discipline
 
-### §PP594 What the recount cannot see
-
-`--recount` reads every counted claim in the backlog and prints the roadkeep call that
-corrects each, anchor resolved. It is what makes a comment added to a .c file cheap: the
-count it moves is found before the gate rather than after, as a red CountedClaimTests.
-
-WHAT IT READS IS THE BACKLOG - docs/ROADMAP.md and docs/IMPROVEMENTS.md, where a counted
-claim is declared. AnchoredTotalsTests carries the same numbers a second time, as
-InlineData rows recording which claims a past restatement fixed: takion.c 2007,
-session.c 1267, streamconnection.c 1531. Those are C# literals under tests/, which the
-recount does not read.
-
-SO ONE .C EDIT COSTS TWO FIXES AND ONLY ONE IS NAMED. PP590 added four comment lines to
-session.c and four to ctrl.c. The tool printed three calls - a restate and two section
-amends - and could not print the fourth edit, the InlineData row. The suite reported
-that one after the build, as a failure about a number rather than about the file that
-moved.
-
-PP410 is this shape from the other side: three claims sat where the reader could not see
-them. This is the reader blind to its own suite.
-
-THE FIX IS NOT OBVIOUSLY MORE READING. A recount that parsed C# literals would be a
-second parser over a file the suite owns. Deriving the rows from the claims is the other
-direction, and it costs the check: a row that read the claim would agree with it by
-construction. Two answers, so this is a decision.
-
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed

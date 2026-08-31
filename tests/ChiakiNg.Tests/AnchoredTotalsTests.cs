@@ -1,4 +1,4 @@
-using ChiakiNg.Session;
+﻿using ChiakiNg.Session;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -72,7 +72,7 @@ public class AnchoredTotalsTests(ITestOutputHelper output)
     }
 
     /// <summary>
-    /// A directory claim anchors a total too - "the 25394 lines of C in lib/src" is the shape §PP23
+    /// A directory claim anchors a total too - "the 25394 lines of C in lib/src" is the shape Â§PP23
     /// used, and CountedClaims reads it.
     /// </summary>
     [Fact]
@@ -121,25 +121,89 @@ public class AnchoredTotalsTests(ITestOutputHelper output)
     }
 
     /// <summary>
-    /// The numbers PP443 restated are anchored, named so the fix is legible in the suite.
+    /// The files PP443 restated are claims the recount can see, which is what this class is about.
     ///
     /// Two rows have gone: regist.c and discoveryservice.c were PP29's, and shipping PP29 moved its
     /// line into the ledger. A claim in the changelog is not in the backlog this reads, which is
     /// correct - the recount checks what is still open, and a shipped number is history rather than a
     /// promise. The rows go with the line rather than the assertion being loosened to tolerate them.
+    ///
+    /// PP594: AND THE NUMBER IS GONE FROM THE ROWS, deliberately.
+    ///
+    /// It was here as `[InlineData("session.c", 1267)]`, and every comment added to one of these
+    /// files made two things stale at once. `ChiakiNg.exe --recount` reads the backlog and prints
+    /// the roadkeep call that fixes each claim it finds; it does not read tests/, so it could not
+    /// print this one. PP590 added four comment lines to session.c and four to ctrl.c: the tool
+    /// named three corrections and the fourth arrived after the build, as a failure about a number
+    /// rather than about the file that moved.
+    ///
+    /// WHAT THE NUMBER ASSERTED WAS ALREADY ASSERTED. CountedClaimTests.EveryCountedClaimMatchesTheFile
+    /// holds every counted claim in the backlog against the tree, this one included, and it is where
+    /// the arithmetic belongs. What only this row says is that the subject is still a claim the
+    /// reader RECOGNISES - PP410's finding was three totals sitting in a shape it could not see, and
+    /// all three were wrong precisely because nothing was checking them.
+    ///
+    /// So the row keeps the half that is this class's and drops the half that was a second copy. A
+    /// file whose claim disappears, or slips back into an unreadable shape, still turns this red -
+    /// and `--recount` is now the only place a .c line change is answered.
     /// </summary>
     [Theory]
-    [InlineData("takion.c", 2007)] // PP451, PP474, PP491, PP499, PP511 then PP515 added lines; --recount restated, this follows
-    [InlineData("session.c", 1267)] // PP470 then PP33 added lines; --recount restated the claim, this follows
-    [InlineData("ctrl.c", 1767)] // PP33 took ctrl.c's holepunch ask out and left four comment lines behind
-    [InlineData("streamconnection.c", 1531)]
-    public void TheRestatedNumbersAreCheckedClaimsNow(string file, int stated)
+    [InlineData("takion.c")]
+    [InlineData("session.c")]
+    [InlineData("ctrl.c")]
+    [InlineData("streamconnection.c")]
+    public void TheRestatedFilesAreCheckedClaimsNow(string file)
     {
         if (SanitizerSource.RepositoryRoot() is not { } root)
             return;
 
         IReadOnlyList<CountedClaim> claims = CountedClaims.All(root);
 
-        Assert.Contains(claims, claim => claim.Subject == file && claim.Stated == stated);
+        Assert.Contains(claims, claim => claim.Subject == file && !claim.SizesADirectory);
+    }
+
+    /// <summary>
+    /// PP594: and no row here states a number, so the double bookkeeping cannot come back quietly.
+    ///
+    /// The rule is about this file rather than about the suite: a count asserted where `--recount`
+    /// cannot read it is a correction the tool cannot print, and the next person to add a comment to
+    /// a .c file pays for it twice. Read off the attributes themselves, because a comment saying so
+    /// is what the rows already had.
+    ///
+    /// THE COMPILER CATCHES THE EASY HALF, which was measured rather than assumed: putting 2007 back
+    /// on the takion.c row is xUnit1011 - "no matching method parameter for value" - and this project
+    /// carries TreatWarningsAsErrors, so it does not build. What the analyzer cannot see is a number
+    /// arriving WITH a parameter to hold it, which is exactly how the old rows were written and how
+    /// they would be written again. That case is this one's.
+    /// </summary>
+    [Fact]
+    public void NoRowInThisFileStatesALineCount()
+    {
+        IEnumerable<InlineDataAttribute> rows = typeof(AnchoredTotalsTests)
+            .GetMethod(nameof(TheRestatedFilesAreCheckedClaimsNow))!
+            .GetCustomAttributes(typeof(InlineDataAttribute), inherit: false)
+            .Cast<InlineDataAttribute>();
+
+        var stated = new List<string>();
+        int read = 0;
+
+        foreach (InlineDataAttribute row in rows)
+        {
+            read++;
+
+            foreach (object? value in row.GetData(null!).Single())
+            {
+                if (value is int number)
+                    stated.Add(number.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            }
+        }
+
+        // PP271's shape: reflection that found nothing would report no numbers and be believed.
+        Assert.True(read >= 4, $"only {read} row(s) read - this guard is looking at the wrong method");
+
+        Assert.True(
+            stated.Count == 0,
+            "these rows state a count `--recount` cannot see, so one .c edit needs two fixes and the "
+                + "tool can only name one: " + string.Join(", ", stated));
     }
 }

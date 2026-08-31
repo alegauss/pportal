@@ -34,8 +34,6 @@
 
 ## Block G — Test discipline
 
-- 📋 **PP594** (deps: —) **--recount prints the calls that fix a stale count and cannot see the same numbers hardcoded in the suite's InlineData** — PP28's session.c and ctrl.c counts moved together and took two fixes: three calls the tool printed, and one edit it could not name. → §PP594
-
 ## Block H — Performance and telemetry
 
 - ⏳ **PP46** (deps: PP42 ✅, PP63) **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — A Chromium leaving the build should be visible in cold start and in megabytes, and stating it without measuring is how a port collects folklore. → §PP46
