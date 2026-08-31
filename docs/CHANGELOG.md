@@ -505,6 +505,7 @@
 - ✅ **PP597** **deleting session.c's nine would make gui/ uncompilable, and GuiFreshness then fails forever for anyone who built it** — The join is asserted, so the commit that deletes the field goes red naming the choice it owes: retire the client's build, or give GuiFreshness a state for it.
 - ✅ **PP598** **retiring the Qt client's build touches compile.cmd, GuiFreshness and the client path, and nothing holds the three** — The decision is recorded and the argument asserted; two of the three pieces are joined by a compile-time reference, so a retirement cannot land halfway.
 - ✅ **PP599** **PP533 settled that session.c takes five results, and decision A means nothing will ask it for PSN at all** — The retiring client is the only PSN driver of the C session, held as an identity between two models, so PP533's five-result conversion has no caller left.
+- ✅ **PP601** **takion's receive is static in the C and a non-goal forbids exposing it, which PP27's section records as merely absent** — Every receive handler is asserted file-local and the header receive-free, the patch route joined to the rule that closes it, and the socket parameter held as the way in.
 
 ## Block G — Test discipline
 

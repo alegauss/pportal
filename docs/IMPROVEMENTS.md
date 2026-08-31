@@ -173,7 +173,9 @@ oracle can run both against the same captured traffic and compare timing, not ju
 bytes. PP531 did that for the MAC gate, which is the piece the shim reaches and the one
 every datagram passes through: 0.13us managed against 0.06us for the C, per head, inside
 a mean arrival gap of 1178us. What is left is the loop around it. No entry point exposes
-takion's receive, which is bound to sockets and threads a capture has neither of.
+takion's receive, which is bound to sockets and threads a capture has neither of. PP601:
+every handler is static and a patch is refused by a non-goal, so the way in is
+chiaki_takion_connect's socket parameter and the handshake a local peer must satisfy.
 
 ### §PP28 The state machines
 
