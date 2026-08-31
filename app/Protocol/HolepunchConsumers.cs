@@ -20,6 +20,13 @@ namespace ChiakiNg.Protocol;
 /// lines like PP322 and PP481 keep wanting is a decision - and the point of holding it here is that
 /// the decision was not available to make while the file was recorded as gone.
 ///
+/// PP591 MADE IT, AND THE ANSWER IS DELETED. It read its oauth token from /tmp/token.txt, a path no
+/// Windows machine has, on a port whose first non-goal is Windows-only; it was in no ctest case and
+/// needed a console and credentials, so every build produced a binary nothing could run. The probe
+/// this port keeps is the managed one - PP479 drives the PSN sequence, PP508 reaches all seven seam
+/// methods, over the nine wrappers PP481 put in the shim. So the members below now assert the
+/// removal rather than the file, which is what stops it arriving back unnoticed.
+///
 /// PP563: AND THERE IS A THIRD, which this port wrote. The shim wraps nine holepunch exports, put
 /// there by PP481 so the managed side could drive the C rather than replace it. So the deletion's
 /// blast radius is session.c, this harness, and the port's own seam - and the third arrived from
@@ -27,21 +34,28 @@ namespace ChiakiNg.Protocol;
 /// </summary>
 public static class HolepunchConsumers
 {
-    /// <summary>The harness, relative to the repository root.</summary>
-    public const string TestHarnessRelativePath = @"lib\src\remote\holepunch-test.c";
-
-    /// <summary>Where its target is declared.</summary>
+    /// <summary>
+    /// PP591: the harness's path is NOT a constant here any more, and that is a rule rather than a
+    /// tidy-up.
+    ///
+    /// PP278's corpus sweeps every public string constant in this assembly and asserts that each
+    /// repository path it finds is on disk - so a constant naming a file this port deliberately
+    /// deleted turns that sweep red on a tree that is correct. The path lives in the test that
+    /// asserts its absence, which is where PP435 put the two binaries it removed for the same
+    /// reason: a deleted file is held by the check that says it is gone, not by the corpus of files
+    /// something reads.
+    /// </summary>
     public const string LibCMakeRelativePath = @"lib\CMakeLists.txt";
-
-    /// <summary>The file, or null when this is not running out of a checkout.</summary>
-    public static string? LocateHarness() => SanitizerSource.LocateRelative(TestHarnessRelativePath);
 
     /// <summary>Its CMakeLists, or null outside a checkout.</summary>
     public static string? LocateLibCMake() => SanitizerSource.LocateRelative(LibCMakeRelativePath);
 
     /// <summary>
-    /// The exports the harness calls. Eight, and every one of them a function PP33's deletion has
+    /// The exports the harness called. Eight, and every one of them a function PP33's deletion had
     /// to keep working or remove a caller of.
+    ///
+    /// PP591: kept as the list of what left with the file. It is what a returning harness would have
+    /// to be measured against, and it is the size of what the deletion stopped owing.
     /// </summary>
     public static IReadOnlyList<string> HarnessCalls { get; } =
     [
@@ -68,6 +82,10 @@ public static class HolepunchConsumers
     /// Whether the target is still declared and still links the library. Both halves matter: a
     /// target that stopped linking chiaki-lib would no longer be a consumer, and one that was
     /// deleted outright would settle PP544 by removal rather than by decision.
+    ///
+    /// PP591 settled it by decision AND by removal, so this reads false now. It is kept because the
+    /// question it asks is what a harness coming back would trip: a declaration alone is not a
+    /// consumer, and neither is a source file nothing builds.
     /// </summary>
     public static bool TargetStillLinksTheLibrary(string libCMake)
     {
@@ -126,11 +144,15 @@ public static class HolepunchConsumers
     /// PP590: AND HAS LEFT IT AGAIN, which is the first consumer this deletion has actually removed.
     /// Its whole dependency was one ask for the control port, and session.c reads the same value out
     /// of the same handle a few hundred lines earlier - so the ask was a second reading of something
-    /// already known, and ctrl.c now takes what session.c recorded. Three left, and the two the port
-    /// wrote itself are the two that remain beside session.c.
+    /// already known, and ctrl.c now takes what session.c recorded.
+    ///
+    /// PP591: and the harness went with the decision PP544 parked. TWO ARE LEFT, and they are the
+    /// two that are actually the work: session.c, which is PP340's seam, and the shim, which is this
+    /// port's own. Neither leaves by being read again - the four this list once held were three
+    /// findings and one file nobody could run.
     /// </summary>
     public static IReadOnlyList<string> All { get; } =
-        [@"lib\src\session.c", TestHarnessRelativePath, ShimRelativePath];
+        [@"lib\src\session.c", ShimRelativePath];
 
     /// <summary>
     /// PP573: what PP33's own line has to say about the count, now that four tasks have moved it.
@@ -142,9 +164,12 @@ public static class HolepunchConsumers
     /// Held as the count rather than the sentence: the line has 135 characters for its reason and
     /// will be reworded, but a line claiming ONE caller when this list holds three is the defect.
     ///
-    /// PP590: the number it has to agree with is now THREE, because ctrl.c stopped asking. The check
-    /// still refuses "only caller" by name - the shape the claim had for four shipped tasks is worth
-    /// keeping out of the line even after the count it was wrong about has changed.
+    /// PP591: the number it has to agree with is now TWO - ctrl.c stopped asking and the harness is
+    /// gone. The check still refuses "only caller" by name: the shape the claim had for four shipped
+    /// tasks is worth keeping out of the line even now that the count is heading back toward one.
+    ///
+    /// Written from <see cref="All"/> rather than as a literal, because the two move together and a
+    /// hand-typed word is what let the line say "only caller" through three findings.
     /// </summary>
     public static bool TheRoadmapLineAgreesOnTheCount(string roadmapLine)
     {
@@ -154,8 +179,19 @@ public static class HolepunchConsumers
         if (roadmapLine.Contains("only caller", StringComparison.OrdinalIgnoreCase))
             return false;
 
-        return roadmapLine.Contains("three files call it", StringComparison.OrdinalIgnoreCase);
+        return roadmapLine.Contains(
+            $"{CountWord(All.Count)} files call it", StringComparison.OrdinalIgnoreCase);
     }
+
+    /// <summary>The count as the line spells it. Words, because that is how a sentence carries a number.</summary>
+    public static string CountWord(int count) => count switch
+    {
+        1 => "one",
+        2 => "two",
+        3 => "three",
+        4 => "four",
+        _ => count.ToString(System.Globalization.CultureInfo.InvariantCulture),
+    };
 
     /// <summary>PP564: the fourth consumer, which only the linker found; PP33 removed it.</summary>
     public const string CtrlRelativePath = @"lib\src\ctrl.c";

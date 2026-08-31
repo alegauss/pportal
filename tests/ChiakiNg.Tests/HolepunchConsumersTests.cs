@@ -10,9 +10,25 @@ namespace ChiakiNg.Tests;
 /// The interesting failure here is a PASS that should not be: if holepunch-test.c is deleted or
 /// stops linking the library, PP544's question is settled by removal, and these say so rather than
 /// quietly going green on a tree where the file is gone again.
+///
+/// PP591 IS THAT REMOVAL, MADE DELIBERATELY. So the harness assertions here have turned over: they
+/// held that the file was in the tree and built, and they now hold that it is gone and that nothing
+/// declares its target. Turned over rather than deleted, because a harness arriving back - as a
+/// port, or as a merge from upstream - is a consumer of holepunch.c again, and PP544 exists because
+/// this one was in the tree while the record said it was not.
 /// </summary>
 public class HolepunchConsumersTests
 {
+    /// <summary>
+    /// PP591: the harness that was deleted, spelled here and not in the app assembly.
+    ///
+    /// PP278's corpus sweeps that assembly's string constants and asserts every repository path
+    /// among them is on disk, so a constant naming a deliberately deleted file reports a correct
+    /// tree as broken. PP435 put the two binaries it removed in its own test for the same reason:
+    /// a path that must NOT resolve belongs beside the assertion that says so.
+    /// </summary>
+    private const string DeletedHarness = @"lib\src\remote\holepunch-test.c";
+
     /// <summary>
     /// PP563: THE THIRD CONSUMER, which this port wrote itself.
     ///
@@ -32,27 +48,28 @@ public class HolepunchConsumersTests
     }
 
     /// <summary>
-    /// All three are named rather than counted - a deletion needs which, not how many.
+    /// Both are named rather than counted - a deletion needs which, not how many.
     ///
     /// PP564: it was three until a linker was asked. Building chiaki-lib without holepunch.c named
     /// ctrl.c in thirty seconds, after PP563 had read the tree and concluded three.
     ///
-    /// PP590: and it is three again, by removal rather than by re-reading. ctrl.c is off this list
-    /// because it no longer calls into holepunch.c, which is the first consumer PP33's deletion has
-    /// actually lost - the two that remain beside session.c are both files this port wrote.
+    /// PP590 took ctrl.c off it and PP591 the harness, so what is left is the two that are actually
+    /// the work: session.c, which is PP340's seam, and the shim, which this port wrote. Neither of
+    /// those leaves by being read again, which is the difference between the first two removals and
+    /// what PP33 still owes.
     /// </summary>
     [Fact]
-    public void TheDeletionHasThreeNamedConsumers()
+    public void TheDeletionHasTwoNamedConsumers()
     {
         Assert.Equal(
             [
                 @"lib\src\session.c",
-                @"lib\src\remote\holepunch-test.c",
                 @"shim\chiaki_shim.c",
             ],
             HolepunchConsumers.All);
 
         Assert.DoesNotContain(HolepunchConsumers.CtrlRelativePath, HolepunchConsumers.All);
+        Assert.DoesNotContain(DeletedHarness, HolepunchConsumers.All);
     }
 
     /// <summary>
@@ -122,19 +139,15 @@ public class HolepunchConsumersTests
     {
         Assert.DoesNotContain("chiaki_", HolepunchConsumers.UnprefixedExport, StringComparison.Ordinal);
 
-        if (HolepunchConsumers.LocateHarness() is null)
+        // PP591: found from the repository root, not from the harness. This used to walk up from
+        // holepunch-test.c, so deleting that file would have turned the header check off rather
+        // than red - a check that stops asking is the failure PP56 and PP226 were both filed for.
+        if (SanitizerSource.LocateRelative(@"lib\include\chiaki\remote\holepunch.h") is not { } header)
             return;
 
-        string header = Path.Combine(
-            Path.GetDirectoryName(HolepunchConsumers.LocateHarness()!)!, "..", "..",
-            "include", "chiaki", "remote", "holepunch.h");
-
-        if (File.Exists(header))
-        {
-            Assert.Contains(
-                "CHIAKI_EXPORT ChiakiErrorCode " + HolepunchConsumers.UnprefixedExport,
-                File.ReadAllText(header), StringComparison.Ordinal);
-        }
+        Assert.Contains(
+            "CHIAKI_EXPORT ChiakiErrorCode " + HolepunchConsumers.UnprefixedExport,
+            File.ReadAllText(header), StringComparison.Ordinal);
     }
 
     /// <summary>A shim that stopped wrapping one is caught, which is how the list stays true.</summary>
@@ -177,7 +190,7 @@ public class HolepunchConsumersTests
     public void TheFileTheyAreForIsTheFileBeingDeleted()
         => Assert.Contains(
             HolepunchConsumers.OnlyFileNeedingCurlAndJsonC,
-            HolepunchConsumers.TestHarnessRelativePath.Replace(
+            DeletedHarness.Replace(
                 "holepunch-test.c", "holepunch.c", StringComparison.Ordinal));
 
     /// <summary>
@@ -203,9 +216,9 @@ public class HolepunchConsumersTests
         Assert.NotNull(line);
         Assert.True(
             HolepunchConsumers.TheRoadmapLineAgreesOnTheCount(line),
-            $"PP33's line does not name three callers: {line}");
+            $"PP33's line does not name two callers: {line}");
 
-        Assert.Equal(3, HolepunchConsumers.All.Count);
+        Assert.Equal(2, HolepunchConsumers.All.Count);
     }
 
     /// <summary>And the old claim is what the check refuses, not merely an absent phrase.</summary>
@@ -217,53 +230,73 @@ public class HolepunchConsumersTests
 
         Assert.False(HolepunchConsumers.TheRoadmapLineAgreesOnTheCount("says nothing about callers"));
 
-        // PP33: and the count it agreed with before ctrl.c left is refused too, so the line cannot
-        // keep a number the list has moved past.
+        // PP591: and every count the list has moved past is refused, so the line cannot keep an
+        // older number. Both of the two it held before are here, because the line was wrong at four
+        // and would be wrong at three the same way.
         Assert.False(HolepunchConsumers.TheRoadmapLineAgreesOnTheCount(
             "and four files call it - session.c, ctrl.c, the harness, the shim."));
 
-        Assert.True(HolepunchConsumers.TheRoadmapLineAgreesOnTheCount(
+        Assert.False(HolepunchConsumers.TheRoadmapLineAgreesOnTheCount(
             "and three files call it - session.c, the harness, the shim."));
-    }
 
-    /// <summary>The harness exists, which is the whole of what PP33 got wrong.</summary>
-    [Fact]
-    public void TheHarnessIsInTheTree()
-    {
-        if (HolepunchConsumers.LocateHarness() is not { } path)
-            return;
-
-        Assert.True(File.Exists(path), $"{HolepunchConsumers.TestHarnessRelativePath} is not there");
+        Assert.True(HolepunchConsumers.TheRoadmapLineAgreesOnTheCount(
+            "and two files call it - session.c, the shim."));
     }
 
     /// <summary>
-    /// And it calls all eight, so the deletion has that many call sites to answer for beyond
-    /// session.c's nine.
+    /// PP591: the harness is NOT in the tree, which is the decision PP544 held open.
+    ///
+    /// Its own comment named the three outcomes - ported, deleted with the C, or kept as the
+    /// hardware probe - and said the point of recording the file was that the decision could not be
+    /// made while the backlog called it absent. It was deleted: it read an oauth token from
+    /// /tmp/token.txt on a port whose first non-goal is Windows-only, no ctest case ran it, and the
+    /// probe this port keeps is the managed one PP479 drives and PP508 measured.
+    ///
+    /// Held as its absence rather than dropped, because a file arriving back - ported, or carried in
+    /// by a merge from upstream - is a consumer of holepunch.c again, and silently.
     /// </summary>
     [Fact]
-    public void TheHarnessStillCallsAllEightExports()
+    public void TheHarnessIsNotInTheTree()
     {
-        if (HolepunchConsumers.LocateHarness() is not { } path)
+        if (SanitizerSource.RepositoryRoot() is not { } root)
             return;
 
-        var missing = HolepunchConsumers.MissingFromHarness(File.ReadAllText(path));
+        string path = Path.Combine(root, DeletedHarness);
 
-        Assert.True(missing.Count == 0,
-            "the harness no longer calls: " + string.Join(", ", missing));
+        Assert.False(
+            File.Exists(path),
+            $"{DeletedHarness} is back, so PP33's deletion has a "
+                + "consumer again - port it, or delete it the way PP591 did");
     }
 
     /// <summary>
-    /// And it is a real target, linked against the library. A harness nothing builds would be a
-    /// different and smaller problem than one every build produces.
+    /// And the eight exports it called are still written down, which is the size of what left.
+    ///
+    /// The list outlives the file on purpose. It is what a returning harness would be measured
+    /// against, and it is what the ledger's sentence about PP544 means by "eight".
     /// </summary>
     [Fact]
-    public void TheTargetIsDeclaredAndLinksTheLibrary()
+    public void TheEightItCalledAreStillNamed()
+    {
+        Assert.Equal(8, HolepunchConsumers.HarnessCalls.Count);
+        Assert.Equal(8, HolepunchConsumers.MissingFromHarness("int main(void) { return 0; }").Count);
+    }
+
+    /// <summary>
+    /// PP591: and nothing declares its target any more - the other half of being gone.
+    ///
+    /// Both halves, because they fail apart. A source file with no target is dead weight the build
+    /// walks past; a target with no source is a configure error. What PP33 needed removed is the
+    /// pair, and lib/CMakeLists.txt is where the pair was.
+    /// </summary>
+    [Fact]
+    public void NothingDeclaresTheTargetAnyMore()
     {
         if (HolepunchConsumers.LocateLibCMake() is not { } path)
             return;
 
-        Assert.True(HolepunchConsumers.TargetStillLinksTheLibrary(File.ReadAllText(path)),
-            "holepunch-test is no longer declared as an executable linking chiaki-lib");
+        Assert.False(HolepunchConsumers.TargetStillLinksTheLibrary(File.ReadAllText(path)),
+            "holepunch-test is declared again, and it is a consumer of the file PP33 deletes");
     }
 
     /// <summary>

@@ -195,10 +195,13 @@ if(CHIAKI_LIB_ENABLE_OPUS)
 endif()
 
 #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fanalyzer")
-if(CHIAKI_ENABLE_TESTS)
-	add_executable(holepunch-test include/chiaki/remote/holepunch.h src/remote/holepunch-test.c)
-	target_link_libraries(holepunch-test chiaki-lib)
-endif()
+# PP591: holepunch-test was declared here and is gone. It was upstream's manual PSN probe - it read
+# an oauth token from /tmp/token.txt, which no Windows machine has, and nothing in this tree ever
+# ran it: it is not a ctest case, it needs credentials and a console, and CHIAKI_ENABLE_TESTS built
+# it on every build regardless. PP544 held the choice of porting it, deleting it, or keeping it as
+# the hardware probe. The probe this port keeps is the managed one - PP479 drives the PSN sequence
+# and PP508 shows all seven seam methods reached, over the nine shim wrappers PP481 wrote - so what
+# was left here was a second consumer of the file PP33 deletes, and no reader of it.
 
 # PP44's allocation gate counts libchiaki's allocations by wrapping malloc at link time in the
 # test binary. Without this the compiler may emit builtin allocation calls the linker never sees
