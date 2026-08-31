@@ -370,6 +370,32 @@ what makes the five ports beneath it real.
 
 ## Block G — Test discipline
 
+### §PP589 The pass a temp file answers for
+
+Measured, not read. The call at scripts/test-windows.sh:78 was commented out and the
+pass stayed green.
+
+TEN NON-COMMENT LINES CARRY THE STRING "ctest" AND THE CALL IS NOT ONE OF THEM. The
+invocation runs the tool through a variable - `timeout "$TEST_TIMEOUT" "$CTEST"
+--test-dir ...` - so the literal never appears on it. What does carry it: the assignment
+`CTEST="${CTEST:-/mingw64/bin/ctest}"`, a temp file named `ctest_out`, the five lines
+that cat, grep and rm that temp file, and a warning echo. Any one of them answers a
+Contains.
+
+SO IT IS PP588's DEFECT WITH A WORSE SOURCE. There the banner named the binary, which at
+least referred to the right thing. Here the string survives in the name of an unrelated
+local variable, and `ctest_out` would keep this pass green in a script that had never
+run a test.
+
+IT IS ALSO THE PASS THAT MATTERS MOST. The other four are a host selftest, two tool
+selftests and the xUnit vectors; this one is the whole C suite, and PP439 already found
+that ctest reports it as a single test, so a suite can vanish inside a green.
+
+THE FIX IS PP588's WITH SHELL SYNTAX. RunsTool joins `set "NAME=value"` to `%NAME%`.
+This needs `NAME=value` joined to `"$NAME"`, and the value here is a default expansion
+rather than a plain path. The two are near enough to share a shape and far enough that
+copying the batch one would not run.
+
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed
