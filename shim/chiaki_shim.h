@@ -1582,6 +1582,36 @@ CHIAKI_SHIM_API int32_t chiaki_shim_base64_encode(
 		char *out,
 		int32_t out_size);
 
+/**
+ * PP607: a takion connected to a peer on loopback, which is what makes its receive loop reachable.
+ *
+ * PP601 found that every receive path in takion.c is file-local and that exposing one would be the
+ * local patch to vendored C a non-goal refuses - and that chiaki_takion_connect takes the caller's
+ * socket, which is the way in that patches nothing. This is smaller than that even: pass NULL for
+ * the socket and takion makes its own from the address, so all this owes is a loopback sockaddr and
+ * a callback.
+ *
+ * The handshake runs on takion's own thread, so this returns as soon as the thread starts and
+ * chiaki_shim_takion_connected reports whether CHIAKI_TAKION_EVENT_TYPE_CONNECTED has fired.
+ * PP606's responder is what answers on the other end.
+ *
+ * Crypt is OFF: MACs are checked once a gkcrypt exists, and a handshake harness has none.
+ */
+CHIAKI_SHIM_API void *chiaki_shim_takion_connect_loopback(
+		void *log,
+		uint16_t port,
+		uint8_t protocol_version,
+		int32_t *error_out);
+
+/** Whether the connected event has fired, which is the handshake having completed. */
+CHIAKI_SHIM_API bool chiaki_shim_takion_connected(void *takion);
+
+/** How many events the callback has seen, connected included. */
+CHIAKI_SHIM_API int32_t chiaki_shim_takion_event_count(void *takion);
+
+/** chiaki_takion_close, which joins the thread, and then the wrapper goes. */
+CHIAKI_SHIM_API void chiaki_shim_takion_close(void *takion);
+
 #ifdef __cplusplus
 }
 #endif

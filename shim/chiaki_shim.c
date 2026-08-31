@@ -3222,3 +3222,110 @@ CHIAKI_SHIM_API int32_t chiaki_shim_base64_encode(
 	   here touches it before or after. */
 	return (int32_t)chiaki_base64_encode(in, (size_t)in_size, out, (size_t)out_size);
 }
+
+/* PP607: a takion over loopback, so the receive loop PP601 could not reach has a way in.
+ *
+ * The whole of it is a sockaddr and a callback. chiaki_takion_connect takes NULL for the socket
+ * and makes its own from the address - senkusha.c does exactly that and frees its sockaddr the
+ * moment connect returns, which is what says a stack local is safe here too. */
+typedef struct chiaki_shim_takion_t
+{
+	ChiakiTakion takion;
+	/* Written on takion's thread and read on the caller's. Not a mutex: they are a flag and a
+	   counter that only ever move one way, and a harness that took a lock to read them would be
+	   measuring the lock. */
+	volatile int connected;
+	volatile int events;
+} chiaki_shim_takion;
+
+static void chiaki_shim_takion_event_cb(ChiakiTakionEvent *event, void *user)
+{
+	chiaki_shim_takion *self = (chiaki_shim_takion *)user;
+	if(!self || !event)
+		return;
+
+	self->events++;
+
+	if(event->type == CHIAKI_TAKION_EVENT_TYPE_CONNECTED)
+		self->connected = 1;
+}
+
+CHIAKI_SHIM_API void *chiaki_shim_takion_connect_loopback(
+		void *log,
+		uint16_t port,
+		uint8_t protocol_version,
+		int32_t *error_out)
+{
+	chiaki_shim_log *log_self = (chiaki_shim_log *)log;
+
+	if(error_out)
+		*error_out = (int32_t)CHIAKI_ERR_INVALID_DATA;
+
+	/* Port zero is not a peer. Without this the connect would go to whatever the OS picks. */
+	if(port == 0)
+		return NULL;
+
+	chiaki_shim_takion *self = (chiaki_shim_takion *)calloc(1, sizeof(chiaki_shim_takion));
+	if(!self)
+	{
+		if(error_out)
+			*error_out = (int32_t)CHIAKI_ERR_MEMORY;
+		return NULL;
+	}
+
+	struct sockaddr_in sa;
+	memset(&sa, 0, sizeof(sa));
+	sa.sin_family = AF_INET;
+	sa.sin_port = htons(port);
+	sa.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+
+	ChiakiTakionConnectInfo info;
+	memset(&info, 0, sizeof(info));
+	info.log = log_self ? &log_self->log : NULL;
+	info.sa = (struct sockaddr *)&sa;
+	info.sa_len = sizeof(sa);
+	info.ip_dontfrag = false;
+	/* OFF, and it is the reason this harness is possible at all: with crypt on, takion checks a
+	   MAC on every packet once a gkcrypt exists, and a handshake peer has none to give it. */
+	info.enable_crypt = false;
+	info.enable_dualsense = false;
+	info.protocol_version = protocol_version;
+	info.close_socket = true;
+	info.cb = chiaki_shim_takion_event_cb;
+	info.cb_user = self;
+
+	ChiakiErrorCode err = chiaki_takion_connect(&self->takion, &info, NULL);
+	if(error_out)
+		*error_out = (int32_t)err;
+
+	if(err != CHIAKI_ERR_SUCCESS)
+	{
+		free(self);
+		return NULL;
+	}
+
+	return self;
+}
+
+CHIAKI_SHIM_API bool chiaki_shim_takion_connected(void *takion)
+{
+	chiaki_shim_takion *self = (chiaki_shim_takion *)takion;
+	return self && self->connected != 0;
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_takion_event_count(void *takion)
+{
+	chiaki_shim_takion *self = (chiaki_shim_takion *)takion;
+	return self ? (int32_t)self->events : 0;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_takion_close(void *takion)
+{
+	chiaki_shim_takion *self = (chiaki_shim_takion *)takion;
+	if(!self)
+		return;
+
+	/* Joins the thread, so nothing below can run while the callback might. */
+	chiaki_takion_close(&self->takion);
+	free(self);
+}
