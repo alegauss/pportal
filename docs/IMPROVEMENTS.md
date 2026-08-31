@@ -346,28 +346,29 @@ what makes the five ports beneath it real.
 
 ### §PP600 Fitted, and never called
 
-PP561's own line said eight tasks were "pieces that fit and were never fitted", and it
-fitted them: ManagedHolepunch runs PP548's create, PP549's start and PP550's punch over
-one queue and one stop, and hands the result to PP553's session. This is that finding
-one level up. The pieces are fitted, and nothing in the running application reaches
-them.
+PP561's line said eight tasks were "pieces that fit and were never fitted", and it
+fitted them. This is that finding one level up, and wider than the first version of this
+section claimed: the pieces are fitted, and the application does not construct a session
+of any kind.
 
-WHAT WAS READ. IHolepunchSession has three implementations - NativeHolepunchSession over
-the C, SequencedHolepunchSession with no C, and a recording one for coverage.
-HolepunchConnect consumes the seam, and every construction of it is in its own file, in
-HolepunchFlowCoverage, or in a test; ManagedHolepunch is constructed only by its own
-tests. So neither implementation is selected by the host, and the choice PP33 exists to
-make has nowhere to be made.
+WHAT WAS READ. Outside SelfTest.cs, the only app/ code building a ChiakiConnectInfo and
+calling ChiakiSession.TryCreate is ExchangeCapture - PP297's recorder, whose job is the
+oracle. HolepunchConnect, which consumes the seam, is constructed only in its own file,
+in HolepunchFlowCoverage, or in a test; ManagedHolepunch only by its own tests.
+ConsoleActions models which actions a row offers and performs none.
 
-IT IS THE SHAPE THIS PORT KEEPS FINDING. PP2 put assertions in SelfTest.cs that nothing
-ran; PP569 and PP570 found tools whose own self-test no gate invoked; PP529 found source
-no build compiles. A green suite over code the product never enters is the same lie in a
-fourth place, and here it is the largest one: the whole PSN path.
+SO THE PORT HAS A FRONT DOOR THAT DECIDES AND NO DOOR. The console list, the settings
+screens, the mapping screen, the seam and its two implementations are all here and all
+reachable from a test. Nothing takes a user from picking a console to a session running.
 
-WHAT THIS IS NOT is the switch to managed. That is a separate decision and needs a
-console to confirm, because the create's HTTP and websocket need PSN and every offline
-run stops there. This is the step before it: the host has no connect path that
-constructs a holepunch session at all, so there is no seam to switch.
+IT IS THE SHAPE THIS PORT KEEPS FINDING, in the largest place yet. PP2 put assertions
+nothing ran, PP569 and PP570 found tools no gate invoked, PP529 found source no build
+compiles. A green suite over code the product never enters is that lie covering the
+whole connect path.
+
+WHAT THIS IS NOT is the choice between the native seam and the managed one. That needs a
+console to confirm, because the create's HTTP and websocket need PSN. This is the step
+before it: there is no caller to make the choice in.
 
 ## Block G — Test discipline
 
