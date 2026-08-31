@@ -217,4 +217,41 @@ public static class HolepunchSessionOwnership
     /// </summary>
     public static IReadOnlyList<string> SessionInitCallers { get; } =
         [QtClientRelativePath, ShimRelativePath];
+
+    /// <summary>Where the field the Qt client needs is declared.</summary>
+    public const string SessionHeaderRelativePath = @"lib\include\chiaki\session.h";
+
+    /// <summary>session.h, or null outside a checkout.</summary>
+    public static string? LocateSessionHeader()
+        => SanitizerSource.LocateRelative(SessionHeaderRelativePath);
+
+    /// <summary>
+    /// PP597: whether the Qt client still compiles against the field PP33's deletion would remove.
+    ///
+    /// This is a guard on a FUTURE change rather than on the tree as it is, which is why it is worth
+    /// writing down. PP596 established that nothing a default build compiles reaches the nine asks,
+    /// so deleting them changes no shipped behaviour - what it changes is whether gui/ can be
+    /// compiled at all, because streamsession.cpp assigns
+    /// <c>chiaki_connect_info.holepunch_session</c> and the field would be gone.
+    ///
+    /// AND THAT IS NOT A DEAD END, IT IS A PERMANENT RED. The drift checks only READ gui/, so they
+    /// survive; GuiFreshness does not. It compares the newest gui/ source against the client
+    /// somebody last built and reports Stale as a FAILURE, deliberately - PP270's argument that a
+    /// warning among four thousand passing tests is a warning nobody reads. `compile.cmd gui` is the
+    /// only thing that refreshes that binary. Take the field away and the command cannot run, so
+    /// every later edit to gui/ - which the drift checks require - leaves a client that can never be
+    /// made fresh again, for anyone who has ever built one.
+    ///
+    /// So PP33's session.c half owes a decision about gui/ in the same commit: retire the client's
+    /// build, or give GuiFreshness a state for "cannot be rebuilt". Whichever it is, this goes red
+    /// and names it.
+    /// </summary>
+    public static bool TheQtClientCompilesAgainstTheField(string qtClientSource, string sessionHeader)
+    {
+        ArgumentNullException.ThrowIfNull(qtClientSource);
+        ArgumentNullException.ThrowIfNull(sessionHeader);
+
+        return qtClientSource.Contains("." + ConnectInfoField, StringComparison.Ordinal)
+            && sessionHeader.Contains(ConnectInfoField, StringComparison.Ordinal);
+    }
 }
