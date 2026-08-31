@@ -52,8 +52,32 @@ public class VendoredCRuleTests
     [Fact]
     public void TheRuleNamesTheDeletionItDoesNotReach()
     {
-        Assert.True(VendoredCRule.NamesWhatItDoesNotReach(Roadmap()));
+        Assert.Empty(VendoredCRule.MissingExemptions(Roadmap()));
         Assert.Equal("PP33", VendoredCRule.DoesNotReach);
+    }
+
+    /// <summary>
+    /// PP593: AND PP30, which the rule was silent about while lint flagged it the same way.
+    ///
+    /// Both lines name "vendored" and `roadkeep lint` says the same thing about each - a constraint
+    /// may bound a line without forbidding it, and nothing in the file decides which. PP571 decided
+    /// it for PP33 and left PP30 reading as forbidden by a rule that does not mean to forbid it.
+    ///
+    /// §PP30 is what settles it, and it takes both of its outcomes: deleting the fec call sites
+    /// removes what the drift checks agree with, which is PP33's argument exactly, and keeping the C
+    /// - which §PP30 calls a legitimate outcome - changes nothing in lib/ at all. Neither is a patch.
+    /// </summary>
+    [Fact]
+    public void TheRuleNamesPP30Too()
+    {
+        Assert.Contains("PP30", VendoredCRule.LinesItDoesNotReach);
+        Assert.Equal(2, VendoredCRule.LinesItDoesNotReach.Count);
+
+        // Named one at a time this would pass on PP33 alone, which is the state PP571 left.
+        Assert.Equal(
+            ["PP30"],
+            VendoredCRule.MissingExemptions(
+                $"## Non-goals\n\n- **{VendoredCRule.Lead}** but not PP33's deletion\n"));
     }
 
     /// <summary>
@@ -64,10 +88,12 @@ public class VendoredCRuleTests
     public void TheExemptionMustBeInTheRulesOwnParagraph()
     {
         Assert.False(VendoredCRule.NamesWhatItDoesNotReach(
-            $"## Non-goals\n\n- **{VendoredCRule.Lead}** no carve-out here\n- **Something else** PP33 lives here\n"));
+            $"## Non-goals\n\n- **{VendoredCRule.Lead}** no carve-out here\n"
+                + "- **Something else** PP33 and PP30 live here\n"));
 
         Assert.True(VendoredCRule.NamesWhatItDoesNotReach(
-            $"## Non-goals\n\n- **{VendoredCRule.Lead}** but not PP33's deletion\n- **Something else** no\n"));
+            $"## Non-goals\n\n- **{VendoredCRule.Lead}** but not PP33's deletion or PP30's port\n"
+                + "- **Something else** no\n"));
     }
 
     /// <summary>

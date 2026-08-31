@@ -71,24 +71,62 @@ public static class VendoredCRule
     public const string DoesNotReach = "PP33";
 
     /// <summary>
-    /// Whether the rule still names what it does not reach.
+    /// PP593: and PP30, which the rule was silent about while `roadkeep lint` flagged it the same
+    /// way it flags PP33.
     ///
-    /// Held against the roadmap's own text rather than this constant alone: a rule that forbids a
+    /// Both lines name "vendored", so the note fires on both and says the same thing about each: a
+    /// constraint may bound a line without forbidding it, and nothing in the file decides which.
+    /// PP571 decided that for PP33 and left PP30 reading as forbidden by a rule that does not mean
+    /// to forbid it - the same defect one line down, and the note is not what makes it one. A
+    /// session picking PP30 up reads the rule and stops.
+    ///
+    /// WHY IT IS BOUNDED AND NOT FORBIDDEN, and it takes both of PP30's outcomes to say it. §PP30
+    /// declares the surface to port as the call sites - common.c, fec.c, frameprocessor.c - and
+    /// names keeping the C as a legitimate outcome, because the arithmetic is self-contained and
+    /// has no OS surface. Deleting the call sites removes what the drift checks agree with, which is
+    /// PP33's argument exactly; keeping the C changes nothing in lib/ at all. Neither is a patch,
+    /// which is the only thing the rule forbids.
+    ///
+    /// The note itself does not clear - it is lexical, and PP33 has been flagged since PP571 named
+    /// it. That is roadkeep's, not this repository's; what is this repository's is whether the
+    /// answer is written down where the next session reads it.
+    /// </summary>
+    public static IReadOnlyList<string> LinesItDoesNotReach { get; } = [DoesNotReach, "PP30"];
+
+    /// <summary>
+    /// Whether the rule still names every line it does not reach.
+    ///
+    /// Held against the roadmap's own text rather than these constants alone: a rule that forbids a
     /// line the same file lists as ready is a contradiction, and the exemption is the only thing
     /// keeping the two consistent.
+    ///
+    /// PP593: ALL of them, not any. Named one at a time this would go green on PP33 alone, which is
+    /// the state PP571 left and this is fixing - and it is the same shape as PP573's finding about
+    /// PP33's own line, where a claim stayed wrong through three tasks that each falsified it.
     /// </summary>
     public static bool NamesWhatItDoesNotReach(string roadmap)
     {
         ArgumentNullException.ThrowIfNull(roadmap);
 
+        return MissingExemptions(roadmap).Count == 0;
+    }
+
+    /// <summary>
+    /// The lines the rule does not reach that its own paragraph fails to name, so a failure says
+    /// which rather than that something is wrong.
+    /// </summary>
+    public static IReadOnlyList<string> MissingExemptions(string roadmap)
+    {
+        ArgumentNullException.ThrowIfNull(roadmap);
+
         int lead = roadmap.IndexOf(Lead, StringComparison.Ordinal);
         if (lead < 0)
-            return false;
+            return LinesItDoesNotReach;
 
         // Within the rule's own paragraph, which ends at the next bullet.
         int next = roadmap.IndexOf("\n- ", lead, StringComparison.Ordinal);
         string rule = next < 0 ? roadmap[lead..] : roadmap[lead..next];
 
-        return rule.Contains(DoesNotReach, StringComparison.Ordinal);
+        return [.. LinesItDoesNotReach.Where(id => !rule.Contains(id, StringComparison.Ordinal))];
     }
 }
