@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using ChiakiNg.Settings;
 using ChiakiNg.Views;
+using Winwright.InApp;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -13,24 +14,6 @@ namespace ChiakiNg.Tests;
 /// </summary>
 public class VideoSettingsViewTests
 {
-    private static void OnSta(Action body)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try { body(); }
-            catch (Exception ex) { failure = ex; }
-        })
-        { IsBackground = true };
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread did not finish");
-        if (failure is not null)
-            throw new Xunit.Sdk.XunitException(failure.ToString());
-    }
-
     private static void Realise(FrameworkElement element)
     {
         element.Measure(new Size(900, 800));
@@ -39,7 +22,7 @@ public class VideoSettingsViewTests
     }
 
     [Fact]
-    public void ItLoadsWithTheFixedListFilled() => OnSta(() =>
+    public void ItLoadsWithTheFixedListFilled() => Apartment.Run(() =>
     {
         var view = new VideoSettingsView();
         Assert.Equal(6, ((ComboBox)view.FindName("WindowTypeCombo")).Items.Count);
@@ -51,7 +34,7 @@ public class VideoSettingsViewTests
     /// assigned until the runtime list is known.
     /// </summary>
     [Fact]
-    public void TheDecoderChoiceSurvivesALateFill() => OnSta(() =>
+    public void TheDecoderChoiceSurvivesALateFill() => Apartment.Run(() =>
     {
         var model = new VideoSettingsViewModel(
             new FakePreferences().Set("settings/hw_decoder", "d3d11va"),
@@ -73,7 +56,7 @@ public class VideoSettingsViewTests
     /// the long way round - through the combo, the binding and the view model.
     /// </summary>
     [Fact]
-    public void SelectingNoneOnScreenStoresTheEmptyString() => OnSta(() =>
+    public void SelectingNoneOnScreenStoresTheEmptyString() => Apartment.Run(() =>
     {
         var model = new VideoSettingsViewModel(new FakePreferences(), ["vulkan"]);
         var view = new VideoSettingsView { DataContext = model };
@@ -95,7 +78,7 @@ public class VideoSettingsViewTests
     /// three of the six differ, so this is checked on one that does.
     /// </summary>
     [Fact]
-    public void TheWindowTypeReachesTheStoreAsItsOwnWord() => OnSta(() =>
+    public void TheWindowTypeReachesTheStoreAsItsOwnWord() => Apartment.Run(() =>
     {
         var model = new VideoSettingsViewModel(new FakePreferences(), ["vulkan"]);
         var view = new VideoSettingsView { DataContext = model };
@@ -113,7 +96,7 @@ public class VideoSettingsViewTests
 
     /// <summary>Choosing Custom Resolution reveals the two fields, and nothing else does.</summary>
     [Fact]
-    public void TheResolutionFieldsFollowTheWindowType() => OnSta(() =>
+    public void TheResolutionFieldsFollowTheWindowType() => Apartment.Run(() =>
     {
         var model = new VideoSettingsViewModel();
         var view = new VideoSettingsView { DataContext = model };
@@ -139,7 +122,7 @@ public class VideoSettingsViewTests
     /// leaving the user to find out.
     /// </summary>
     [Fact]
-    public void OnlyTheRestartingBackendWarnsAboutIt() => OnSta(() =>
+    public void OnlyTheRestartingBackendWarnsAboutIt() => Apartment.Run(() =>
     {
         var model = new VideoSettingsViewModel { RenderBackend = "vulkan" };
         var view = new VideoSettingsView { DataContext = model };
@@ -158,7 +141,7 @@ public class VideoSettingsViewTests
     /// reason typing "1920" does not store 1, then 19, then 192 on the way.
     /// </summary>
     [Fact]
-    public void TheResolutionFieldsDoNotWritePerKeystroke() => OnSta(() =>
+    public void TheResolutionFieldsDoNotWritePerKeystroke() => Apartment.Run(() =>
     {
         var model = new VideoSettingsViewModel { WindowIndex = WindowTypeChoice.CustomResolution };
         var view = new VideoSettingsView { DataContext = model };

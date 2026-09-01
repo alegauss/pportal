@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using ChiakiNg.Settings;
 using ChiakiNg.Views;
+using Winwright.InApp;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -12,24 +13,6 @@ namespace ChiakiNg.Tests;
 /// </summary>
 public class DisplaySettingsViewTests
 {
-    private static void OnSta(Action body)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try { body(); }
-            catch (Exception ex) { failure = ex; }
-        })
-        { IsBackground = true };
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread did not finish");
-        if (failure is not null)
-            throw new Xunit.Sdk.XunitException(failure.ToString());
-    }
-
     private static void Realise(FrameworkElement element)
     {
         element.Measure(new Size(900, 800));
@@ -38,7 +21,7 @@ public class DisplaySettingsViewTests
     }
 
     [Fact]
-    public void ItLoadsWithEveryListFilled() => OnSta(() =>
+    public void ItLoadsWithEveryListFilled() => Apartment.Run(() =>
     {
         var view = new DisplaySettingsView();
 
@@ -50,7 +33,7 @@ public class DisplaySettingsViewTests
 
     /// <summary>The slider bounds come from the rule, not the markup - the floor is what excludes zero.</summary>
     [Fact]
-    public void TheSliderBoundsExcludeTheSentinels() => OnSta(() =>
+    public void TheSliderBoundsExcludeTheSentinels() => Apartment.Run(() =>
     {
         var view = new DisplaySettingsView();
 
@@ -66,7 +49,7 @@ public class DisplaySettingsViewTests
 
     /// <summary>A stored choice survives the fill, including an Infinity contrast.</summary>
     [Fact]
-    public void AStoredChoiceSurvivesTheFill() => OnSta(() =>
+    public void AStoredChoiceSurvivesTheFill() => Apartment.Run(() =>
     {
         var model = new DisplaySettingsViewModel(new FakePreferences()
             .Set("settings/display_target_prim", 6)
@@ -87,7 +70,7 @@ public class DisplaySettingsViewTests
     /// Infinity hides it again, which the sentinel-carrying value has to survive.
     /// </summary>
     [Fact]
-    public void EachSliderAppearsForItsOwnModeOnly() => OnSta(() =>
+    public void EachSliderAppearsForItsOwnModeOnly() => Apartment.Run(() =>
     {
         var model = new DisplaySettingsViewModel();
         var view = new DisplaySettingsView { DataContext = model };
@@ -119,7 +102,7 @@ public class DisplaySettingsViewTests
 
     /// <summary>Moving the slider reaches the store, in nits and unitless respectively.</summary>
     [Fact]
-    public void MovingTheSliderReachesTheStore() => OnSta(() =>
+    public void MovingTheSliderReachesTheStore() => Apartment.Run(() =>
     {
         var model = new DisplaySettingsViewModel { PeakIndex = 1 };
         var view = new DisplaySettingsView { DataContext = model };

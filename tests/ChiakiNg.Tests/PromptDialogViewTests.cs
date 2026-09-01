@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using ChiakiNg.Session;
 using ChiakiNg.Views;
+using Winwright.InApp;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -13,24 +14,6 @@ namespace ChiakiNg.Tests;
 /// </summary>
 public class PromptDialogViewTests
 {
-    private static void OnSta(Action body)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try { body(); }
-            catch (Exception ex) { failure = ex; }
-        })
-        { IsBackground = true };
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread did not finish");
-        if (failure is not null)
-            throw new Xunit.Sdk.XunitException(failure.ToString());
-    }
-
     private static void Realise(FrameworkElement element)
     {
         element.Measure(new Size(600, 400));
@@ -39,7 +22,7 @@ public class PromptDialogViewTests
     }
 
     [Fact]
-    public void BothLoad() => OnSta(() =>
+    public void BothLoad() => Apartment.Run(() =>
     {
         Assert.NotNull(new ConfirmDialogView());
         Assert.NotNull(new RemindDialogView());
@@ -47,7 +30,7 @@ public class PromptDialogViewTests
 
     /// <summary>Two buttons on the confirm prompt, three on the remind one.</summary>
     [Fact]
-    public void TheRemindPromptHasAThirdButton() => OnSta(() =>
+    public void TheRemindPromptHasAThirdButton() => Apartment.Run(() =>
     {
         var confirm = new ConfirmDialogView { DataContext = new ConfirmDialogViewModel() };
         Realise(confirm);
@@ -63,7 +46,7 @@ public class PromptDialogViewTests
 
     /// <summary>The message reaches the screen, and answering takes every button out.</summary>
     [Fact]
-    public void AnsweringDisablesAllThree() => OnSta(() =>
+    public void AnsweringDisablesAllThree() => Apartment.Run(() =>
     {
         var model = new RemindDialogViewModel { Text = "Would you like to connect to PSN?" };
         var view = new RemindDialogView { DataContext = model };
@@ -89,7 +72,7 @@ public class PromptDialogViewTests
 
     /// <summary>And the confirm prompt's buttons follow the same "not yet answered" rule.</summary>
     [Fact]
-    public void TheConfirmPromptsButtonsFollowTheSameRule() => OnSta(() =>
+    public void TheConfirmPromptsButtonsFollowTheSameRule() => Apartment.Run(() =>
     {
         var model = new ConfirmDialogViewModel { Text = "Are you sure?" };
         var view = new ConfirmDialogView { DataContext = model };

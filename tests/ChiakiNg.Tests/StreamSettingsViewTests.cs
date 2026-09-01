@@ -2,6 +2,7 @@
 using System.Windows.Controls;
 using ChiakiNg.Settings;
 using ChiakiNg.Views;
+using Winwright.InApp;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -13,24 +14,6 @@ namespace ChiakiNg.Tests;
 /// </summary>
 public class StreamSettingsViewTests
 {
-    private static void OnSta(Action body)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try { body(); }
-            catch (Exception ex) { failure = ex; }
-        })
-        { IsBackground = true };
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread did not finish");
-        if (failure is not null)
-            throw new Xunit.Sdk.XunitException(failure.ToString());
-    }
-
     private static void Realise(FrameworkElement element)
     {
         element.Measure(new Size(900, 700));
@@ -39,7 +22,7 @@ public class StreamSettingsViewTests
     }
 
     [Fact]
-    public void ItLoadsWithTheFixedListsFilled() => OnSta(() =>
+    public void ItLoadsWithTheFixedListsFilled() => Apartment.Run(() =>
     {
         var view = new StreamSettingsView();
 
@@ -54,7 +37,7 @@ public class StreamSettingsViewTests
 
     /// <summary>A fresh store shows each row's own default, and the two consoles differ.</summary>
     [Fact]
-    public void EachConsoleShowsItsOwnDefaults() => OnSta(() =>
+    public void EachConsoleShowsItsOwnDefaults() => Apartment.Run(() =>
     {
         var model = new StreamSettingsViewModel(new FakePreferences());
         var view = new StreamSettingsView { DataContext = model };
@@ -85,7 +68,7 @@ public class StreamSettingsViewTests
     /// values of the other console are untouched by the trip.
     /// </summary>
     [Fact]
-    public void SwitchingConsoleSwapsTheRowsWithoutLosingThem() => OnSta(() =>
+    public void SwitchingConsoleSwapsTheRowsWithoutLosingThem() => Apartment.Run(() =>
     {
         var model = new StreamSettingsViewModel(new FakePreferences());
         var view = new StreamSettingsView { DataContext = model };
@@ -110,7 +93,7 @@ public class StreamSettingsViewTests
     /// that resolution's default, because the choice zeroed the stored value.
     /// </summary>
     [Fact]
-    public void ChoosingAResolutionMovesTheBitrateSlider() => OnSta(() =>
+    public void ChoosingAResolutionMovesTheBitrateSlider() => Apartment.Run(() =>
     {
         var model = new StreamSettingsViewModel(new FakePreferences());
         var view = new StreamSettingsView { DataContext = model };
@@ -138,7 +121,7 @@ public class StreamSettingsViewTests
 
     /// <summary>And it moves only that row's slider - the one beside it stays where it was.</summary>
     [Fact]
-    public void TheOtherColumnsSliderDoesNotMove() => OnSta(() =>
+    public void TheOtherColumnsSliderDoesNotMove() => Apartment.Run(() =>
     {
         var model = new StreamSettingsViewModel(new FakePreferences());
         var view = new StreamSettingsView { DataContext = model };
@@ -156,7 +139,7 @@ public class StreamSettingsViewTests
 
     /// <summary>The frame rate reaches the store as 30 or 60, never as the index.</summary>
     [Fact]
-    public void TheFrameRateReachesTheStoreAsARate() => OnSta(() =>
+    public void TheFrameRateReachesTheStoreAsARate() => Apartment.Run(() =>
     {
         var model = new StreamSettingsViewModel(new FakePreferences());
         var view = new StreamSettingsView { DataContext = model };

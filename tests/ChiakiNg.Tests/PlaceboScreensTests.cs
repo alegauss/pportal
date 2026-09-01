@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using ChiakiNg.Settings;
 using ChiakiNg.Views;
+using Winwright.InApp;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -12,24 +13,6 @@ namespace ChiakiNg.Tests;
 /// </summary>
 public class PlaceboScreensTests
 {
-    private static void OnSta(Action body)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try { body(); }
-            catch (Exception ex) { failure = ex; }
-        })
-        { IsBackground = true };
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread did not finish");
-        if (failure is not null)
-            throw new Xunit.Sdk.XunitException(failure.ToString());
-    }
-
     private static void Realise(FrameworkElement element)
     {
         element.Measure(new Size(1100, 900));
@@ -38,7 +21,7 @@ public class PlaceboScreensTests
     }
 
     [Fact]
-    public void BothScreensLoad() => OnSta(() =>
+    public void BothScreensLoad() => Apartment.Run(() =>
     {
         Assert.NotNull(new PlaceboColorMappingView());
         Assert.NotNull(new PlaceboTuningView());
@@ -49,7 +32,7 @@ public class PlaceboScreensTests
     /// choice a user picks and the word written for it cannot drift apart.
     /// </summary>
     [Fact]
-    public void TheCombosCarryTheStoresOwnLists() => OnSta(() =>
+    public void TheCombosCarryTheStoresOwnLists() => Apartment.Run(() =>
     {
         var colour = new PlaceboColorMappingView { DataContext = new PlaceboColorMappingViewModel() };
         Realise(colour);
@@ -75,7 +58,7 @@ public class PlaceboScreensTests
     /// the screen rather than staying in a table.
     /// </summary>
     [Fact]
-    public void TheFourScalerCombosOpenApart() => OnSta(() =>
+    public void TheFourScalerCombosOpenApart() => Apartment.Run(() =>
     {
         var view = new PlaceboTuningView { DataContext = new PlaceboTuningViewModel() };
         Realise(view);
@@ -173,7 +156,7 @@ public class PlaceboScreensTests
 
     /// <summary>And the rows really reach the screen, hidden ones collapsed.</summary>
     [Fact]
-    public void TheRowsReachTheScreen() => OnSta(() =>
+    public void TheRowsReachTheScreen() => Apartment.Run(() =>
     {
         var model = new PlaceboColorMappingViewModel();
         var view = new PlaceboColorMappingView { DataContext = model };

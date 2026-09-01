@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using ChiakiNg.Settings;
 using ChiakiNg.Views;
+using Winwright.InApp;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -12,24 +13,6 @@ namespace ChiakiNg.Tests;
 /// </summary>
 public class ConfigSettingsViewTests
 {
-    private static void OnSta(Action body)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try { body(); }
-            catch (Exception ex) { failure = ex; }
-        })
-        { IsBackground = true };
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread did not finish");
-        if (failure is not null)
-            throw new Xunit.Sdk.XunitException(failure.ToString());
-    }
-
     private static void Realise(FrameworkElement element)
     {
         element.Measure(new Size(900, 700));
@@ -38,11 +21,11 @@ public class ConfigSettingsViewTests
     }
 
     [Fact]
-    public void ItLoads() => OnSta(() => Assert.NotNull(new ConfigSettingsView()));
+    public void ItLoads() => Apartment.Run(() => Assert.NotNull(new ConfigSettingsView()));
 
     /// <summary>The profile line names the unnamed profile, and repaints when one is chosen.</summary>
     [Fact]
-    public void TheProfileLineNamesTheUnnamedOne() => OnSta(() =>
+    public void TheProfileLineNamesTheUnnamedOne() => Apartment.Run(() =>
     {
         var model = new ConfigSettingsViewModel();
         var view = new ConfigSettingsView { DataContext = model };
@@ -61,7 +44,7 @@ public class ConfigSettingsViewTests
     /// sibling label, which is the difference from the other eight tabs.
     /// </summary>
     [Fact]
-    public void TheHintsAreInsideTheCheckboxesThemselves() => OnSta(() =>
+    public void TheHintsAreInsideTheCheckboxesThemselves() => Apartment.Run(() =>
     {
         var view = new ConfigSettingsView { DataContext = new ConfigSettingsViewModel() };
         Realise(view);
@@ -79,7 +62,7 @@ public class ConfigSettingsViewTests
 
     /// <summary>The About button is built from the name the two clients share.</summary>
     [Fact]
-    public void TheAboutButtonNamesThisApplication() => OnSta(() =>
+    public void TheAboutButtonNamesThisApplication() => Apartment.Run(() =>
     {
         var view = new ConfigSettingsView { DataContext = new ConfigSettingsViewModel() };
         Realise(view);

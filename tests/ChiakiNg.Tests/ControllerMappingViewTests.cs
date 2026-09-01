@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using ChiakiNg.Session;
 using ChiakiNg.Views;
+using Winwright.InApp;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -16,24 +17,6 @@ namespace ChiakiNg.Tests;
 /// </summary>
 public class ControllerMappingViewTests
 {
-    private static void OnSta(Action body)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try { body(); }
-            catch (Exception ex) { failure = ex; }
-        })
-        { IsBackground = true };
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread did not finish");
-        if (failure is not null)
-            throw new Xunit.Sdk.XunitException(failure.ToString());
-    }
-
     private static void Realise(FrameworkElement element)
     {
         element.Measure(new Size(1000, 900));
@@ -42,7 +25,7 @@ public class ControllerMappingViewTests
     }
 
     [Fact]
-    public void ItLoads() => OnSta(() => Assert.NotNull(new ControllerMappingView()));
+    public void ItLoads() => Apartment.Run(() => Assert.NotNull(new ControllerMappingView()));
 
     /// <summary>
     /// A row is one button wide or two, and the second slot is bound to its own visibility. A slot
@@ -60,7 +43,7 @@ public class ControllerMappingViewTests
 
     /// <summary>The grid draws a row per binding, refilled in place rather than reassigned.</summary>
     [Fact]
-    public void TheGridDrawsARowPerBinding() => OnSta(() =>
+    public void TheGridDrawsARowPerBinding() => Apartment.Run(() =>
     {
         var model = new ControllerMappingViewModel { ControllerType = "DualSense" };
         model.Rows.Add(new MappingRowView(1, "Cross", "a", ""));
@@ -78,7 +61,7 @@ public class ControllerMappingViewTests
     /// string on this screen that changes with the device.
     /// </summary>
     [Fact]
-    public void TheCaptureModalCarriesThePadsName() => OnSta(() =>
+    public void TheCaptureModalCarriesThePadsName() => Apartment.Run(() =>
     {
         var model = new ControllerMappingViewModel { ControllerType = "Xbox Series Controller" };
         var view = new ControllerMappingView { DataContext = model };
@@ -99,7 +82,7 @@ public class ControllerMappingViewTests
 
     /// <summary>The Update button follows the alteration and nothing else.</summary>
     [Fact]
-    public void TheUpdateButtonFollowsTheAlteration() => OnSta(() =>
+    public void TheUpdateButtonFollowsTheAlteration() => Apartment.Run(() =>
     {
         var model = new ControllerMappingViewModel { ControllerType = "DualSense" };
         var view = new ControllerMappingView { DataContext = model };
@@ -117,7 +100,7 @@ public class ControllerMappingViewTests
 
     /// <summary>And the analog opt-in reaches the model, off to begin with.</summary>
     [Fact]
-    public void TheAnalogOptInReachesTheModel() => OnSta(() =>
+    public void TheAnalogOptInReachesTheModel() => Apartment.Run(() =>
     {
         var model = new ControllerMappingViewModel { ControllerType = "DualSense" };
         var view = new ControllerMappingView { DataContext = model };

@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using ChiakiNg.Session;
 using ChiakiNg.Views;
+using Winwright.InApp;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -19,24 +20,6 @@ namespace ChiakiNg.Tests;
 /// </summary>
 public class ConsoleListViewTests
 {
-    private static void OnSta(Action body)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try { body(); }
-            catch (Exception ex) { failure = ex; }
-        })
-        { IsBackground = true };
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread did not finish");
-        if (failure is not null)
-            throw new Xunit.Sdk.XunitException(failure.ToString());
-    }
-
     /// <summary>
     /// Forces a layout pass so bindings actually evaluate. Without it the control is constructed
     /// and nothing is bound, and the test would pass for a view whose paths are all wrong.
@@ -53,7 +36,7 @@ public class ConsoleListViewTests
             DiscoveryHostState.Ready, 9295);
 
     [Fact]
-    public void TheMarkupLoads() => OnSta(() =>
+    public void TheMarkupLoads() => Apartment.Run(() =>
     {
         var view = new ConsoleListView();
         Assert.NotNull(view);
@@ -64,7 +47,7 @@ public class ConsoleListViewTests
     /// an empty list on a network full of consoles.
     /// </summary>
     [Fact]
-    public void TheRowsBindingReachesTheViewModel() => OnSta(() =>
+    public void TheRowsBindingReachesTheViewModel() => Apartment.Run(() =>
     {
         var model = new ConsoleListViewModel();
         model.Refresh([Found("AA", "Living room")], [], [],
@@ -84,7 +67,7 @@ public class ConsoleListViewTests
     /// would leave a blank panel where the message belongs.
     /// </summary>
     [Fact]
-    public void TheEmptyMessageFollowsVisibilityAndNotCount() => OnSta(() =>
+    public void TheEmptyMessageFollowsVisibilityAndNotCount() => Apartment.Run(() =>
     {
         var model = new ConsoleListViewModel();
         var view = new ConsoleListView { DataContext = model };

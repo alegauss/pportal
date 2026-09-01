@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using ChiakiNg.Settings;
 using ChiakiNg.Views;
+using Winwright.InApp;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -12,24 +13,6 @@ namespace ChiakiNg.Tests;
 /// </summary>
 public class ControllerSettingsViewTests
 {
-    private static void OnSta(Action body)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try { body(); }
-            catch (Exception ex) { failure = ex; }
-        })
-        { IsBackground = true };
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread did not finish");
-        if (failure is not null)
-            throw new Xunit.Sdk.XunitException(failure.ToString());
-    }
-
     private static void Realise(FrameworkElement element)
     {
         element.Measure(new Size(1000, 800));
@@ -38,7 +21,7 @@ public class ControllerSettingsViewTests
     }
 
     [Fact]
-    public void ItLoadsWithEveryComboFilled() => OnSta(() =>
+    public void ItLoadsWithEveryComboFilled() => Apartment.Run(() =>
     {
         var view = new ControllerSettingsView { DataContext = new ControllerSettingsViewModel() };
         Realise(view);
@@ -60,7 +43,7 @@ public class ControllerSettingsViewTests
     /// bound each row separately would look identical until one of them was missed.
     /// </summary>
     [Fact]
-    public void TheFiveRowsMoveTogether() => OnSta(() =>
+    public void TheFiveRowsMoveTogether() => Apartment.Run(() =>
     {
         var model = new ControllerSettingsViewModel();
         var view = new ControllerSettingsView { DataContext = model };
@@ -80,7 +63,7 @@ public class ControllerSettingsViewTests
     /// millimetres and the multiplier as a word inside its band.
     /// </summary>
     [Fact]
-    public void TheTwoConvertedLabelsReachTheScreen() => OnSta(() =>
+    public void TheTwoConvertedLabelsReachTheScreen() => Apartment.Run(() =>
     {
         var model = new ControllerSettingsViewModel();
         var view = new ControllerSettingsView { DataContext = model };
@@ -99,7 +82,7 @@ public class ControllerSettingsViewTests
 
     /// <summary>And the sliders keep the store's own ranges rather than a tidier pair.</summary>
     [Fact]
-    public void TheSlidersKeepTheStoresRanges() => OnSta(() =>
+    public void TheSlidersKeepTheStoresRanges() => Apartment.Run(() =>
     {
         var view = new ControllerSettingsView { DataContext = new ControllerSettingsViewModel() };
         Realise(view);

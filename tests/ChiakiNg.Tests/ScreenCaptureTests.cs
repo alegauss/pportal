@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using ChiakiNg.Session;
 using ChiakiNg.Views;
+using Winwright.InApp;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -17,23 +18,14 @@ namespace ChiakiNg.Tests;
 /// </summary>
 public class ScreenCaptureTests
 {
-    private static void OnSta(Action body)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try { body(); }
-            catch (Exception ex) { failure = ex; }
-        })
-        { IsBackground = true };
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(60)), "the STA thread did not finish");
-        if (failure is not null)
-            throw new Xunit.Sdk.XunitException(failure.ToString());
-    }
+    /// <summary>
+    /// WW88. The runner comes from the package like everywhere else here; what stays
+    /// local is the bound. A capture waits on the compositor rather than on layout, so
+    /// this one was given sixty seconds where the other twenty-five were given thirty —
+    /// and that difference is a decision about this file, not boilerplate to inherit.
+    /// </summary>
+    private static void OnSta(Action body) =>
+        Apartment.Run(body, within: TimeSpan.FromSeconds(60), named: "a screen capture on the apartment");
 
     /// <summary>PNG's own signature, so what is written is checked rather than assumed.</summary>
     private static readonly byte[] PngMagic = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];

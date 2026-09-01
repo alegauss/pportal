@@ -2,6 +2,7 @@ using System.Windows;
 using ChiakiNg.Session;
 using ChiakiNg.Views;
 using Microsoft.Web.WebView2.Core;
+using Winwright.InApp;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -17,24 +18,6 @@ namespace ChiakiNg.Tests;
 /// </summary>
 public class PsnBrowserPanelTests
 {
-    private static void OnSta(Action body)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try { body(); }
-            catch (Exception ex) { failure = ex; }
-        })
-        { IsBackground = true };
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread did not finish");
-        if (failure is not null)
-            throw new Xunit.Sdk.XunitException(failure.ToString());
-    }
-
     /// <summary>
     /// The panel is constructible with no WebView2 runtime involved. That is the whole reason
     /// StartAsync is separate from the constructor: a screen that opens on the paste path must not
@@ -42,7 +25,7 @@ public class PsnBrowserPanelTests
     /// constructor that threw.
     /// </summary>
     [Fact]
-    public void ItBuildsWithoutStartingABrowser() => OnSta(() =>
+    public void ItBuildsWithoutStartingABrowser() => Apartment.Run(() =>
     {
         var panel = new PsnBrowserPanel();
 
@@ -52,7 +35,7 @@ public class PsnBrowserPanelTests
 
     /// <summary>The redirect completes the login, carries the code, and stops the navigation.</summary>
     [Fact]
-    public void TheRedirectCompletesAndIsNotLoaded() => OnSta(() =>
+    public void TheRedirectCompletesAndIsNotLoaded() => Apartment.Run(() =>
     {
         var panel = new PsnBrowserPanel();
         string? code = null;
@@ -71,7 +54,7 @@ public class PsnBrowserPanelTests
     /// navigation, which is the half a port is most likely to get wrong.
     /// </summary>
     [Fact]
-    public void ACodelessRedirectCancelsAndIsNotLoadedEither() => OnSta(() =>
+    public void ACodelessRedirectCancelsAndIsNotLoadedEither() => Apartment.Run(() =>
     {
         var panel = new PsnBrowserPanel();
         string? code = null;
@@ -87,7 +70,7 @@ public class PsnBrowserPanelTests
 
     /// <summary>The login's own pages load, and raise nothing at all.</summary>
     [Fact]
-    public void TheLoginsOwnPagesLoadSilently() => OnSta(() =>
+    public void TheLoginsOwnPagesLoadSilently() => Apartment.Run(() =>
     {
         var panel = new PsnBrowserPanel();
         int raised = 0;
@@ -121,7 +104,7 @@ public class PsnBrowserPanelTests
     /// rather than needing a rule of its own.
     /// </summary>
     [Fact]
-    public void TheScreensBrowserSlotHoldsThePanel() => OnSta(() =>
+    public void TheScreensBrowserSlotHoldsThePanel() => Apartment.Run(() =>
     {
         var model = new PsnLoginViewModel();
         var view = new PsnLoginView { DataContext = model };

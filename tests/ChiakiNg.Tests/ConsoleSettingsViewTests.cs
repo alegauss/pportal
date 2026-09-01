@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using ChiakiNg.Session;
 using ChiakiNg.Settings;
 using ChiakiNg.Views;
+using Winwright.InApp;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -20,23 +21,6 @@ public class ConsoleSettingsViewTests
         Target = (int)ChiakiTarget.Ps5_1,
     };
 
-    private static void OnSta(Action body)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try { body(); }
-            catch (Exception ex) { failure = ex; }
-        })
-        { IsBackground = true };
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread did not finish");
-        if (failure is not null)
-            throw new Xunit.Sdk.XunitException(failure.ToString());
-    }
 
     private static void Realise(FrameworkElement element)
     {
@@ -46,11 +30,11 @@ public class ConsoleSettingsViewTests
     }
 
     [Fact]
-    public void ItLoads() => OnSta(() => Assert.NotNull(new ConsoleSettingsView()));
+    public void ItLoads() => Apartment.Run(() => Assert.NotNull(new ConsoleSettingsView()));
 
     /// <summary>Both lists fill from the view model, and the captions are the model's.</summary>
     [Fact]
-    public void BothListsFillFromTheModel() => OnSta(() =>
+    public void BothListsFillFromTheModel() => Apartment.Run(() =>
     {
         var model = new ConsoleSettingsViewModel();
         model.Load(
@@ -75,7 +59,7 @@ public class ConsoleSettingsViewTests
     /// something.
     /// </summary>
     [Fact]
-    public void ARefillKeepsTheBoundCollection() => OnSta(() =>
+    public void ARefillKeepsTheBoundCollection() => Apartment.Run(() =>
     {
         var model = new ConsoleSettingsViewModel();
         model.Load([Host("A", 1), Host("B", 2)], []);
@@ -97,7 +81,7 @@ public class ConsoleSettingsViewTests
 
     /// <summary>Turning streamer mode on rewrites both lists' captions in place.</summary>
     [Fact]
-    public void StreamerModeRewritesBothListsOnScreen() => OnSta(() =>
+    public void StreamerModeRewritesBothListsOnScreen() => Apartment.Run(() =>
     {
         var model = new ConsoleSettingsViewModel();
         model.Load(
@@ -125,7 +109,7 @@ public class ConsoleSettingsViewTests
 
     /// <summary>An empty tab draws two empty lists rather than failing.</summary>
     [Fact]
-    public void AnEmptyTabDrawsTwoEmptyLists() => OnSta(() =>
+    public void AnEmptyTabDrawsTwoEmptyLists() => Apartment.Run(() =>
     {
         var view = new ConsoleSettingsView { DataContext = new ConsoleSettingsViewModel() };
         Realise(view);

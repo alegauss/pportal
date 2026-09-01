@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using ChiakiNg.Settings;
 using ChiakiNg.Views;
+using Winwright.InApp;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -11,24 +12,6 @@ namespace ChiakiNg.Tests;
 /// </summary>
 public class RemoteSettingsViewTests
 {
-    private static void OnSta(Action body)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try { body(); }
-            catch (Exception ex) { failure = ex; }
-        })
-        { IsBackground = true };
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread did not finish");
-        if (failure is not null)
-            throw new Xunit.Sdk.XunitException(failure.ToString());
-    }
-
     private static void Realise(FrameworkElement element)
     {
         element.Measure(new Size(900, 700));
@@ -37,7 +20,7 @@ public class RemoteSettingsViewTests
     }
 
     [Fact]
-    public void ItLoads() => OnSta(() => Assert.NotNull(new RemoteSettingsView()));
+    public void ItLoads() => Apartment.Run(() => Assert.NotNull(new RemoteSettingsView()));
 
     /// <summary>
     /// One button at a time, and the swap happens on the fourth credential rather than the first.
@@ -45,7 +28,7 @@ public class RemoteSettingsViewTests
     /// pair a port leaves half-bound.
     /// </summary>
     [Fact]
-    public void OnlyOneOfTheTwoButtonsIsEverOnScreen() => OnSta(() =>
+    public void OnlyOneOfTheTwoButtonsIsEverOnScreen() => Apartment.Run(() =>
     {
         var model = new RemoteSettingsViewModel();
         var view = new RemoteSettingsView { DataContext = model };
@@ -81,7 +64,7 @@ public class RemoteSettingsViewTests
 
     /// <summary>The two sliders keep their own ranges and their own words.</summary>
     [Fact]
-    public void TheSlidersKeepTheirRangesAndWords() => OnSta(() =>
+    public void TheSlidersKeepTheirRangesAndWords() => Apartment.Run(() =>
     {
         var model = new RemoteSettingsViewModel();
         var view = new RemoteSettingsView { DataContext = model };

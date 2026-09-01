@@ -1,6 +1,7 @@
 using System.Windows;
 using ChiakiNg.Session;
 using ChiakiNg.Views;
+using Winwright.InApp;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -14,24 +15,6 @@ namespace ChiakiNg.Tests;
 /// </summary>
 public class MappingScreenClickTests
 {
-    private static void OnSta(Action body)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try { body(); }
-            catch (Exception ex) { failure = ex; }
-        })
-        { IsBackground = true };
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread did not finish");
-        if (failure is not null)
-            throw new Xunit.Sdk.XunitException(failure.ToString());
-    }
-
     private const int Cross = 1 << 0;
     private const int Moon = 1 << 1;
 
@@ -45,7 +28,7 @@ public class MappingScreenClickTests
 
     /// <summary>A click carries the three things the session asks for, and nothing else.</summary>
     [Fact]
-    public void AClickCarriesTheButtonTheSlotAndTheRow() => OnSta(() =>
+    public void AClickCarriesTheButtonTheSlotAndTheRow() => Apartment.Run(() =>
     {
         var view = new ControllerMappingView { DataContext = Model() };
 
@@ -58,7 +41,7 @@ public class MappingScreenClickTests
 
     /// <summary>The second slot is its own capture, on the same row.</summary>
     [Fact]
-    public void TheSecondSlotIsItsOwnCapture() => OnSta(() =>
+    public void TheSecondSlotIsItsOwnCapture() => Apartment.Run(() =>
     {
         var view = new ControllerMappingView { DataContext = Model() };
 
@@ -74,7 +57,7 @@ public class MappingScreenClickTests
     /// the binding; a capture opened on it would write into a binding that does not exist.
     /// </summary>
     [Fact]
-    public void ASlotTheRowDoesNotDrawIsRefused() => OnSta(() =>
+    public void ASlotTheRowDoesNotDrawIsRefused() => Apartment.Run(() =>
     {
         var view = new ControllerMappingView { DataContext = Model() };
 
@@ -87,7 +70,7 @@ public class MappingScreenClickTests
 
     /// <summary>And a row that is not there asks for nothing rather than throwing.</summary>
     [Fact]
-    public void ARowThatIsNotThereAsksForNothing() => OnSta(() =>
+    public void ARowThatIsNotThereAsksForNothing() => Apartment.Run(() =>
     {
         var view = new ControllerMappingView { DataContext = Model() };
 
@@ -98,11 +81,11 @@ public class MappingScreenClickTests
     /// <summary>With no model behind it the screen asks for nothing at all.</summary>
     [Fact]
     public void WithNoModelItAsksForNothing()
-        => OnSta(() => Assert.False(new ControllerMappingView().ClickSlot(0, 0)));
+        => Apartment.Run(() => Assert.False(new ControllerMappingView().ClickSlot(0, 0)));
 
     /// <summary>Update and the capture's Close are their own signals, not a row's.</summary>
     [Fact]
-    public void UpdateAndCloseAreTheirOwnSignals() => OnSta(() =>
+    public void UpdateAndCloseAreTheirOwnSignals() => Apartment.Run(() =>
     {
         var view = new ControllerMappingView { DataContext = Model() };
 
@@ -125,7 +108,7 @@ public class MappingScreenClickTests
     /// The window opens empty, which is how PP1 filed it, and shows a screen when given one.
     /// </summary>
     [Fact]
-    public void TheWindowOpensEmptyAndTakesAScreen() => OnSta(() =>
+    public void TheWindowOpensEmptyAndTakesAScreen() => Apartment.Run(() =>
     {
         var window = new MainWindow();
 
@@ -144,7 +127,7 @@ public class MappingScreenClickTests
     /// failures showed the same blank window.
     /// </summary>
     [Fact]
-    public void TheWindowCanSayWhyThereIsNoScreen() => OnSta(() =>
+    public void TheWindowCanSayWhyThereIsNoScreen() => Apartment.Run(() =>
     {
         var window = new MainWindow();
 

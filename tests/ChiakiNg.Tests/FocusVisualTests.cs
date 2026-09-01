@@ -1,6 +1,7 @@
 using System.Windows.Controls;
 using System.Windows.Media;
 using ChiakiNg.Session;
+using Winwright.InApp;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -10,24 +11,6 @@ namespace ChiakiNg.Tests;
 /// </summary>
 public class FocusVisualTests
 {
-    private static void OnSta(Action body)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try { body(); }
-            catch (Exception ex) { failure = ex; }
-        })
-        { IsBackground = true };
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread did not finish");
-        if (failure is not null)
-            throw new Xunit.Sdk.XunitException(failure.ToString());
-    }
-
     /// <summary>
     /// The finding. PP12 asks for a focus visual legible from three metres; the Qt client has one
     /// on exactly one of six controls, and the other five inherit the thin default ring that
@@ -52,7 +35,7 @@ public class FocusVisualTests
     /// the reason.
     /// </summary>
     [Fact]
-    public void TheRuleIsAnAccentBackgroundWhileFocused() => OnSta(() =>
+    public void TheRuleIsAnAccentBackgroundWhileFocused() => Apartment.Run(() =>
     {
         var accent = new SolidColorBrush(Colors.DodgerBlue);
         var button = new Button();
@@ -71,7 +54,7 @@ public class FocusVisualTests
     /// binding non-goal and giving five controls a filled background is a visible redesign.
     /// </summary>
     [Fact]
-    public void AControlThatHasNotOptedInIsLeftToTheTheme() => OnSta(() =>
+    public void AControlThatHasNotOptedInIsLeftToTheTheme() => Apartment.Run(() =>
     {
         var accent = new SolidColorBrush(Colors.DodgerBlue);
 
@@ -91,7 +74,7 @@ public class FocusVisualTests
     /// so this asks the system for it the way a control style would.
     /// </summary>
     [Fact]
-    public void TheSystemAccentBrushResolves() => OnSta(() =>
+    public void TheSystemAccentBrushResolves() => Apartment.Run(() =>
     {
         Brush accent = System.Windows.SystemColors.AccentColorBrush;
 

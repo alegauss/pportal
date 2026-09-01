@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using ChiakiNg.Settings;
 using ChiakiNg.Views;
+using Winwright.InApp;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -12,24 +13,6 @@ namespace ChiakiNg.Tests;
 /// </summary>
 public class GeneralSettingsViewTests
 {
-    private static void OnSta(Action body)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try { body(); }
-            catch (Exception ex) { failure = ex; }
-        })
-        { IsBackground = true };
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread did not finish");
-        if (failure is not null)
-            throw new Xunit.Sdk.XunitException(failure.ToString());
-    }
-
     private static void Realise(FrameworkElement element)
     {
         element.Measure(new Size(900, 700));
@@ -38,7 +21,7 @@ public class GeneralSettingsViewTests
     }
 
     [Fact]
-    public void ItLoadsWithItsCombosFilled() => OnSta(() =>
+    public void ItLoadsWithItsCombosFilled() => Apartment.Run(() =>
     {
         var view = new GeneralSettingsView();
 
@@ -54,7 +37,7 @@ public class GeneralSettingsViewTests
     /// and the tab would look like a fresh install rather than the user's settings.
     /// </summary>
     [Fact]
-    public void TheStoredChoiceSurvivesTheCombosBeingFilled() => OnSta(() =>
+    public void TheStoredChoiceSurvivesTheCombosBeingFilled() => Apartment.Run(() =>
     {
         var model = new GeneralSettingsViewModel(new FakePreferences()
             .Set("settings/disconnect_action", "sleep")
@@ -73,7 +56,7 @@ public class GeneralSettingsViewTests
     /// finding, taken the long way round: through the combo, the binding and the view model.
     /// </summary>
     [Fact]
-    public void AChoiceOnScreenBecomesTheStringTheStoreHolds() => OnSta(() =>
+    public void AChoiceOnScreenBecomesTheStringTheStoreHolds() => Apartment.Run(() =>
     {
         var model = new GeneralSettingsViewModel(new FakePreferences());
         var view = new GeneralSettingsView { DataContext = model };
@@ -101,7 +84,7 @@ public class GeneralSettingsViewTests
     /// not the bool's own property, so a silent raise here is a row that never disappears.
     /// </summary>
     [Fact]
-    public void UncheckingTheStreamMenuHidesTheShortcutRow() => OnSta(() =>
+    public void UncheckingTheStreamMenuHidesTheShortcutRow() => Apartment.Run(() =>
     {
         var model = new GeneralSettingsViewModel();
         var view = new GeneralSettingsView { DataContext = model };
@@ -125,7 +108,7 @@ public class GeneralSettingsViewTests
 
     /// <summary>The log directory is shown and never typed into - a label and an Open button.</summary>
     [Fact]
-    public void TheLogDirectoryIsShownAndNotEditable() => OnSta(() =>
+    public void TheLogDirectoryIsShownAndNotEditable() => Apartment.Run(() =>
     {
         var model = new GeneralSettingsViewModel();
         var view = new GeneralSettingsView { DataContext = model };

@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using ChiakiNg.Session;
 using ChiakiNg.Views;
+using Winwright.InApp;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -19,24 +20,6 @@ namespace ChiakiNg.Tests;
 /// </summary>
 public class DialogViewTests
 {
-    private static void OnSta(Action body)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try { body(); }
-            catch (Exception ex) { failure = ex; }
-        })
-        { IsBackground = true };
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread did not finish");
-        if (failure is not null)
-            throw new Xunit.Sdk.XunitException(failure.ToString());
-    }
-
     private static void Realise(FrameworkElement element)
     {
         element.Measure(new Size(800, 600));
@@ -45,7 +28,7 @@ public class DialogViewTests
     }
 
     [Fact]
-    public void AllFourLoad() => OnSta(() =>
+    public void AllFourLoad() => Apartment.Run(() =>
     {
         Assert.NotNull(new RegistView());
         Assert.NotNull(new ManualHostView());
@@ -58,7 +41,7 @@ public class DialogViewTests
     /// than any expression in the markup.
     /// </summary>
     [Fact]
-    public void RegistrationsButtonFollowsTheViewModel() => OnSta(() =>
+    public void RegistrationsButtonFollowsTheViewModel() => Apartment.Run(() =>
     {
         var model = new RegistViewModel();
         var view = new RegistView { DataContext = model };
@@ -81,7 +64,7 @@ public class DialogViewTests
     /// enable it. Both of those are repaints, so a silent property here is a stuck button.
     /// </summary>
     [Fact]
-    public void ShowingAnIdentifierFieldDisablesTheButtonAndHidingItEnablesIt() => OnSta(() =>
+    public void ShowingAnIdentifierFieldDisablesTheButtonAndHidingItEnablesIt() => Apartment.Run(() =>
     {
         var model = new RegistViewModel { Host = "10.0.0.5", RemotePlayPin = "12345678" };
         var view = new RegistView { DataContext = model };
@@ -112,7 +95,7 @@ public class DialogViewTests
     /// would read the first row as a choice.
     /// </summary>
     [Fact]
-    public void TheManualHostComboStartsAtNothingChosen() => OnSta(() =>
+    public void TheManualHostComboStartsAtNothingChosen() => Apartment.Run(() =>
     {
         var model = new ManualHostViewModel();
         var view = new ManualHostView { DataContext = model };
@@ -143,7 +126,7 @@ public class DialogViewTests
     /// states neither rule - it asks the view model, which is the point of there being two.
     /// </summary>
     [Fact]
-    public void TheConsolePinButtonNeedsFourDigits() => OnSta(() =>
+    public void TheConsolePinButtonNeedsFourDigits() => Apartment.Run(() =>
     {
         var model = new ConsolePinViewModel();
         var view = new ConsolePinView { DataContext = model };
@@ -169,7 +152,7 @@ public class DialogViewTests
     /// different things - which is why one dialog rather than three is worth the triggers.
     /// </summary>
     [Fact]
-    public void TheProfileDialogsModeDecidesWhatIsShown() => OnSta(() =>
+    public void TheProfileDialogsModeDecidesWhatIsShown() => Apartment.Run(() =>
     {
         var model = new ProfileViewModel();
         var view = new ProfileView { DataContext = model };
@@ -197,7 +180,7 @@ public class DialogViewTests
     /// the whole of the delete condition, and typing a name is the whole of the create one.
     /// </summary>
     [Fact]
-    public void TheProfileButtonFollowsWhicheverRuleTheModeSelects() => OnSta(() =>
+    public void TheProfileButtonFollowsWhicheverRuleTheModeSelects() => Apartment.Run(() =>
     {
         var model = new ProfileViewModel { Mode = ProfileDialogMode.Delete };
         var view = new ProfileView { DataContext = model };

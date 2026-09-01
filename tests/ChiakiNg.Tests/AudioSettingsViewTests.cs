@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using ChiakiNg.Settings;
 using ChiakiNg.Views;
+using Winwright.InApp;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -12,24 +13,6 @@ namespace ChiakiNg.Tests;
 /// </summary>
 public class AudioSettingsViewTests
 {
-    private static void OnSta(Action body)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try { body(); }
-            catch (Exception ex) { failure = ex; }
-        })
-        { IsBackground = true };
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread did not finish");
-        if (failure is not null)
-            throw new Xunit.Sdk.XunitException(failure.ToString());
-    }
-
     private static void Realise(FrameworkElement element)
     {
         element.Measure(new Size(900, 900));
@@ -42,7 +25,7 @@ public class AudioSettingsViewTests
     /// "default", and the volume's ceiling of 128 is what its percentage divides by.
     /// </summary>
     [Fact]
-    public void TheSliderRangesComeFromTheRules() => OnSta(() =>
+    public void TheSliderRangesComeFromTheRules() => Apartment.Run(() =>
     {
         var view = new AudioSettingsView();
 
@@ -65,7 +48,7 @@ public class AudioSettingsViewTests
 
     /// <summary>A fresh store shows the defaults, captions included.</summary>
     [Fact]
-    public void AFreshStoreShowsTheDefaults() => OnSta(() =>
+    public void AFreshStoreShowsTheDefaults() => Apartment.Run(() =>
     {
         var model = new AudioSettingsViewModel(new FakePreferences());
         var view = new AudioSettingsView { DataContext = model };
@@ -84,7 +67,7 @@ public class AudioSettingsViewTests
     /// so a drag to 3 stores 5760 and prints 30 ms.
     /// </summary>
     [Fact]
-    public void TheBufferSliderIsInStepsAndTheStoreInFrames() => OnSta(() =>
+    public void TheBufferSliderIsInStepsAndTheStoreInFrames() => Apartment.Run(() =>
     {
         var model = new AudioSettingsViewModel(new FakePreferences());
         var view = new AudioSettingsView { DataContext = model };
@@ -103,7 +86,7 @@ public class AudioSettingsViewTests
     /// two percent sliders that converts.
     /// </summary>
     [Fact]
-    public void OnlyOneOfTheTwoPercentSlidersConverts() => OnSta(() =>
+    public void OnlyOneOfTheTwoPercentSlidersConverts() => Apartment.Run(() =>
     {
         var model = new AudioSettingsViewModel(new FakePreferences());
         var view = new AudioSettingsView { DataContext = model };
@@ -122,7 +105,7 @@ public class AudioSettingsViewTests
 
     /// <summary>The device lists are filled, and the stored choice survives the fill.</summary>
     [Fact]
-    public void TheStoredDeviceSurvivesTheFill() => OnSta(() =>
+    public void TheStoredDeviceSurvivesTheFill() => Apartment.Run(() =>
     {
         var model = new AudioSettingsViewModel(
             new FakePreferences().Set("settings/audio_out_device", "Headset"),
@@ -145,7 +128,7 @@ public class AudioSettingsViewTests
     /// binding ItemsSource got wrong on the Stream tab.
     /// </summary>
     [Fact]
-    public void ARefreshRefillsTheListAndKeepsTheSelectionVisible() => OnSta(() =>
+    public void ARefreshRefillsTheListAndKeepsTheSelectionVisible() => Apartment.Run(() =>
     {
         var model = new AudioSettingsViewModel(
             new FakePreferences().Set("settings/audio_out_device", "Headset"),
@@ -172,7 +155,7 @@ public class AudioSettingsViewTests
     /// the combo shows "Auto" rather than going blank.
     /// </summary>
     [Fact]
-    public void ADeviceThatWentAwayShowsAsAuto() => OnSta(() =>
+    public void ADeviceThatWentAwayShowsAsAuto() => Apartment.Run(() =>
     {
         var model = new AudioSettingsViewModel(
             new FakePreferences().Set("settings/audio_out_device", "Headset"),
@@ -196,7 +179,7 @@ public class AudioSettingsViewTests
     /// cannot work is better absent than greyed out.
     /// </summary>
     [Fact]
-    public void TheBuildGateHidesRatherThanDisables() => OnSta(() =>
+    public void TheBuildGateHidesRatherThanDisables() => Apartment.Run(() =>
     {
         var without = new AudioSettingsViewModel(new FakePreferences(), speechAvailable: false);
         var view = new AudioSettingsView { DataContext = without };

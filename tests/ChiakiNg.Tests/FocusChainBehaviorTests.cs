@@ -1,6 +1,7 @@
 using System.Windows.Controls;
 using System.Windows.Input;
 using ChiakiNg.Session;
+using Winwright.InApp;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -23,23 +24,6 @@ public class FocusChainBehaviorTests
     /// Runs on an STA thread, bounded. WPF controls cannot be constructed on an MTA thread, and
     /// a suite that hangs on a UI primitive reports nothing at all.
     /// </summary>
-    private static void OnSta(Action body)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try { body(); }
-            catch (Exception ex) { failure = ex; }
-        })
-        { IsBackground = true };
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread did not finish");
-        if (failure is not null)
-            throw new Xunit.Sdk.XunitException(failure.ToString());
-    }
 
     public static TheoryData<string> ControlKinds() =>
         ["Button", "CheckBox", "ComboBox", "RadioButton", "Slider", "TextBox"];
@@ -63,7 +47,7 @@ public class FocusChainBehaviorTests
     /// </summary>
     [Theory]
     [MemberData(nameof(ControlKinds))]
-    public void EveryControlNavigatesOnUpAndDown(string kind) => OnSta(() =>
+    public void EveryControlNavigatesOnUpAndDown(string kind) => Apartment.Run(() =>
     {
         Control control = Make(kind);
 
@@ -78,7 +62,7 @@ public class FocusChainBehaviorTests
     /// </summary>
     [Theory]
     [MemberData(nameof(ControlKinds))]
-    public void NoControlClaimsLeftOrRight(string kind) => OnSta(() =>
+    public void NoControlClaimsLeftOrRight(string kind) => Apartment.Run(() =>
     {
         Control control = Make(kind);
 
@@ -91,7 +75,7 @@ public class FocusChainBehaviorTests
     /// whatever contains it. Consume it and the list traps focus.
     /// </summary>
     [Fact]
-    public void ABoundaryStopsWithoutConsumingTheKey() => OnSta(() =>
+    public void ABoundaryStopsWithoutConsumingTheKey() => Apartment.Run(() =>
     {
         var control = new Button();
         FocusChainBehavior.SetFirstInChain(control, true);
@@ -106,7 +90,7 @@ public class FocusChainBehaviorTests
 
     /// <summary>sendOutput moves focus and lets the key through, which is the whole of that flag.</summary>
     [Fact]
-    public void SendOutputNavigatesWithoutConsuming() => OnSta(() =>
+    public void SendOutputNavigatesWithoutConsuming() => Apartment.Run(() =>
     {
         var control = new Button();
         FocusChainBehavior.SetSendOutput(control, true);
@@ -120,7 +104,7 @@ public class FocusChainBehaviorTests
     /// </summary>
     [Theory]
     [MemberData(nameof(ControlKinds))]
-    public void ReturnConfirmsWithoutMovingFocus(string kind) => OnSta(() =>
+    public void ReturnConfirmsWithoutMovingFocus(string kind) => Apartment.Run(() =>
     {
         Control control = Make(kind);
         Assert.Equal((null, true), FocusChainBehavior.Decide(control, Key.Return));
@@ -128,7 +112,7 @@ public class FocusChainBehaviorTests
 
     /// <summary>The defaults are the Qt client's: nothing is a boundary until a screen says so.</summary>
     [Fact]
-    public void AControlIsNotABoundaryUntilItIsToldToBe() => OnSta(() =>
+    public void AControlIsNotABoundaryUntilItIsToldToBe() => Apartment.Run(() =>
     {
         var control = new Button();
         FocusStop stop = FocusChainBehavior.StopFor(control);

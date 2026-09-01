@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using ChiakiNg.Session;
 using ChiakiNg.Views;
+using Winwright.InApp;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -17,24 +18,6 @@ namespace ChiakiNg.Tests;
 /// </summary>
 public class PsnLoginViewTests
 {
-    private static void OnSta(Action body)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try { body(); }
-            catch (Exception ex) { failure = ex; }
-        })
-        { IsBackground = true };
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread did not finish");
-        if (failure is not null)
-            throw new Xunit.Sdk.XunitException(failure.ToString());
-    }
-
     private static void Realise(FrameworkElement element)
     {
         element.Measure(new Size(800, 600));
@@ -43,7 +26,7 @@ public class PsnLoginViewTests
     }
 
     [Fact]
-    public void ItLoads() => OnSta(() => Assert.NotNull(new PsnLoginView()));
+    public void ItLoads() => Apartment.Run(() => Assert.NotNull(new PsnLoginView()));
 
     /// <summary>
     /// The screen opens on the browser slot with no button, and falling back shows the paste form
@@ -51,7 +34,7 @@ public class PsnLoginViewTests
     /// a dialog with nothing on it.
     /// </summary>
     [Fact]
-    public void FallingBackShowsThePasteFormAndItsButton() => OnSta(() =>
+    public void FallingBackShowsThePasteFormAndItsButton() => Apartment.Run(() =>
     {
         var model = new PsnLoginViewModel();
         var view = new PsnLoginView { DataContext = model };
@@ -86,7 +69,7 @@ public class PsnLoginViewTests
     /// different field - which is the point of one rule with two arms rather than two buttons.
     /// </summary>
     [Fact]
-    public void TheLookupFormReachesTheSameButton() => OnSta(() =>
+    public void TheLookupFormReachesTheSameButton() => Apartment.Run(() =>
     {
         var model = new PsnLoginViewModel { Mode = PsnLoginMode.Username };
         var view = new PsnLoginView { DataContext = model };
@@ -111,7 +94,7 @@ public class PsnLoginViewTests
     /// error appears, where the same failure on the browser path leaves the button hidden.
     /// </summary>
     [Fact]
-    public void AFailureShowsItselfAndReturnsThePastePathsButton() => OnSta(() =>
+    public void AFailureShowsItselfAndReturnsThePastePathsButton() => Apartment.Run(() =>
     {
         var model = new PsnLoginViewModel
         {

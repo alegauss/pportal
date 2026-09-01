@@ -4,6 +4,7 @@ using ChiakiNg.Native;
 using ChiakiNg.Session;
 using ChiakiNg.Settings;
 using ChiakiNg.Views;
+using Winwright.InApp;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -14,24 +15,6 @@ namespace ChiakiNg.Tests;
 /// </summary>
 public class KeySettingsViewTests
 {
-    private static void OnSta(Action body)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try { body(); }
-            catch (Exception ex) { failure = ex; }
-        })
-        { IsBackground = true };
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread did not finish");
-        if (failure is not null)
-            throw new Xunit.Sdk.XunitException(failure.ToString());
-    }
-
     private static void Realise(FrameworkElement element)
     {
         element.Measure(new Size(900, 1200));
@@ -40,11 +23,11 @@ public class KeySettingsViewTests
     }
 
     [Fact]
-    public void ItLoads() => OnSta(() => Assert.NotNull(new KeySettingsView()));
+    public void ItLoads() => Apartment.Run(() => Assert.NotNull(new KeySettingsView()));
 
     /// <summary>Every binding gets a row - the tab is never partly empty.</summary>
     [Fact]
-    public void EveryBindingIsDrawn() => OnSta(() =>
+    public void EveryBindingIsDrawn() => Apartment.Run(() =>
     {
         var model = new KeySettingsViewModel();
         var view = new KeySettingsView { DataContext = model };
@@ -61,7 +44,7 @@ public class KeySettingsViewTests
     /// half-axes are last.
     /// </summary>
     [Fact]
-    public void TheRowsAreInTheStoresOrder() => OnSta(() =>
+    public void TheRowsAreInTheStoresOrder() => Apartment.Run(() =>
     {
         var model = new KeySettingsViewModel();
         var view = new KeySettingsView { DataContext = model };
@@ -78,7 +61,7 @@ public class KeySettingsViewTests
     /// no ItemsSource was replaced.
     /// </summary>
     [Fact]
-    public void ARebindMovesTheRowWithoutReplacingTheSource() => OnSta(() =>
+    public void ARebindMovesTheRowWithoutReplacingTheSource() => Apartment.Run(() =>
     {
         var model = new KeySettingsViewModel();
         var view = new KeySettingsView { DataContext = model };
@@ -98,7 +81,7 @@ public class KeySettingsViewTests
 
     /// <summary>Clear puts every row back rather than emptying the grid.</summary>
     [Fact]
-    public void ClearRestoresTheRowsOnScreen() => OnSta(() =>
+    public void ClearRestoresTheRowsOnScreen() => Apartment.Run(() =>
     {
         var model = new KeySettingsViewModel();
         var view = new KeySettingsView { DataContext = model };
@@ -119,7 +102,7 @@ public class KeySettingsViewTests
 
     /// <summary>The two checkboxes reach the model.</summary>
     [Fact]
-    public void TheCheckboxesReachTheModel() => OnSta(() =>
+    public void TheCheckboxesReachTheModel() => Apartment.Run(() =>
     {
         var model = new KeySettingsViewModel();
         var view = new KeySettingsView { DataContext = model };
@@ -142,7 +125,7 @@ public class KeySettingsViewTests
     /// labels are on screen as the Qt client writes them.
     /// </summary>
     [Fact]
-    public void AStoredBindingAndTheInvertedLabelsAreOnScreen() => OnSta(() =>
+    public void AStoredBindingAndTheInvertedLabelsAreOnScreen() => Apartment.Run(() =>
     {
         var model = new KeySettingsViewModel(
             new FakePreferences(),

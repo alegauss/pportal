@@ -62,6 +62,25 @@
          The alternative was a CI-side linter, which cannot run before the push it protects - and
          a hand-rolled half-parser, which PP570 has just paid for once. -->
     <PackageReference Include="YamlDotNet" Version="18.1.0" />
+
+    <!-- WW88. The single-threaded runner, once, from a package instead of twenty-six times from
+         copy-paste. Every view test here opens a WPF element on its own STA thread, because a
+         control cannot be constructed off that apartment at all — so the eight lines that start
+         one, bound it and report what it threw were load-bearing in twenty-six files, each with
+         its own timeout and its own message.
+
+         What that cost was not tidiness. A thread that does not finish reports NOTHING — no pass,
+         no failure, no name — so the wrapper is the only thing standing between a hung UI
+         primitive and a suite that says nothing at all; and the copy that gets a bound wrong is
+         the one nobody notices. PP162's own comment records the shape from the other side: a
+         scheduling race that was green twice and red three times on the same source.
+
+         It also surfaces better than what it replaces. The copies rethrow as
+         `XunitException(failure.ToString())`, which flattens the exception into a string — so a
+         refusal a test wanted to assert on by type arrived as text. This rethrows the original,
+         stack intact. Nothing here asserted on the wrapper, which is why the swap is safe: the
+         one pattern that would have broken, `Assert.Throws` around the runner, appears nowhere. -->
+    <PackageReference Include="Winwright.InApp" Version="0.1.0-alpha.3" />
   </ItemGroup>
 
   <ItemGroup>

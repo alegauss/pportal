@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using ChiakiNg.Settings;
 using ChiakiNg.Views;
+using Winwright.InApp;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -12,24 +13,6 @@ namespace ChiakiNg.Tests;
 /// </summary>
 public class SettingsTabsTests
 {
-    private static void OnSta(Action body)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try { body(); }
-            catch (Exception ex) { failure = ex; }
-        })
-        { IsBackground = true };
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread did not finish");
-        if (failure is not null)
-            throw new Xunit.Sdk.XunitException(failure.ToString());
-    }
-
     /// <summary>
     /// The order IS the index, and two switches in the QML dispatch on it. Asserted as numbers
     /// rather than as a sequence of names, because the numbers are what those switches mean.
@@ -115,7 +98,7 @@ public class SettingsTabsTests
 
     /// <summary>The dialog draws the nine, in that order, each holding its own tab's screen.</summary>
     [Fact]
-    public void TheDialogDrawsTheNineInOrder() => OnSta(() =>
+    public void TheDialogDrawsTheNineInOrder() => Apartment.Run(() =>
     {
         var view = new SettingsView { DataContext = new SettingsTabsViewModel() };
         view.Measure(new Size(1200, 900));

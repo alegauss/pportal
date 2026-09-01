@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using ChiakiNg.Session;
 using ChiakiNg.Views;
+using Winwright.InApp;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -130,7 +131,7 @@ public class DialogHostTests
 
     /// <summary>The host loads, shows what the screen configured, and holds the screen.</summary>
     [Fact]
-    public void TheHostShowsWhatTheScreenConfigured() => OnSta(() =>
+    public void TheHostShowsWhatTheScreenConfigured() => Apartment.Run(() =>
     {
         var model = new DialogHostViewModel
         {
@@ -166,7 +167,7 @@ public class DialogHostTests
 
     /// <summary>Hiding the button is separate from disabling it - several screens open with it gone.</summary>
     [Fact]
-    public void HidingTheButtonIsNotDisablingIt() => OnSta(() =>
+    public void HidingTheButtonIsNotDisablingIt() => Apartment.Run(() =>
     {
         var model = new DialogHostViewModel { ButtonVisible = false, ButtonEnabled = true };
         var view = new DialogHostView { DataContext = model };
@@ -186,7 +187,7 @@ public class DialogHostTests
     /// finding taken the long way round, because the difference is invisible on screen.
     /// </summary>
     [Fact]
-    public void TheTwoDismissalsDifferThroughTheView() => OnSta(() =>
+    public void TheTwoDismissalsDifferThroughTheView() => Apartment.Run(() =>
     {
         var clicked = new DialogHostViewModel();
         var view = new DialogHostView { DataContext = clicked };
@@ -212,7 +213,7 @@ public class DialogHostTests
 
     /// <summary>And the Menu key through the same routing, refused when the button is.</summary>
     [Fact]
-    public void TheMenuKeyGoesThroughTheViewsRouting() => OnSta(() =>
+    public void TheMenuKeyGoesThroughTheViewsRouting() => Apartment.Run(() =>
     {
         var model = new DialogHostViewModel { ButtonEnabled = false };
         var view = new DialogHostView { DataContext = model };
@@ -229,23 +230,6 @@ public class DialogHostTests
         Assert.False(view.HandleKey(Key.A));
     });
 
-    private static void OnSta(Action body)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try { body(); }
-            catch (Exception ex) { failure = ex; }
-        })
-        { IsBackground = true };
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread did not finish");
-        if (failure is not null)
-            throw new Xunit.Sdk.XunitException(failure.ToString());
-    }
 
     private static void Realise(FrameworkElement element)
     {

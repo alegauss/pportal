@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using ChiakiNg.Session;
 using ChiakiNg.Views;
+using Winwright.InApp;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -11,24 +12,6 @@ namespace ChiakiNg.Tests;
 /// </summary>
 public class PsnTokenViewTests
 {
-    private static void OnSta(Action body)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try { body(); }
-            catch (Exception ex) { failure = ex; }
-        })
-        { IsBackground = true };
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread did not finish");
-        if (failure is not null)
-            throw new Xunit.Sdk.XunitException(failure.ToString());
-    }
-
     private static void Realise(FrameworkElement element)
     {
         element.Measure(new Size(900, 700));
@@ -37,11 +20,11 @@ public class PsnTokenViewTests
     }
 
     [Fact]
-    public void ItLoads() => OnSta(() => Assert.NotNull(new PsnTokenView()));
+    public void ItLoads() => Apartment.Run(() => Assert.NotNull(new PsnTokenView()));
 
     /// <summary>The heading follows the one property that changes it.</summary>
     [Fact]
-    public void TheHeadingRepaints() => OnSta(() =>
+    public void TheHeadingRepaints() => Apartment.Run(() =>
     {
         var model = new PsnTokenViewModel();
         var view = new PsnTokenView { DataContext = model };
@@ -61,7 +44,7 @@ public class PsnTokenViewTests
     /// cannot tell has finished.
     /// </summary>
     [Fact]
-    public void TheLogsButtonIsTheOnlySignItFinished() => OnSta(() =>
+    public void TheLogsButtonIsTheOnlySignItFinished() => Apartment.Run(() =>
     {
         var model = new PsnTokenViewModel { RedirectUrl = PsnAuth.RedirectPage + "?code=A" };
         var view = new PsnTokenView { DataContext = model };
@@ -94,7 +77,7 @@ public class PsnTokenViewTests
     /// screen's difference from the login screen and is asserted through the markup as well.
     /// </summary>
     [Fact]
-    public void TheSetupButtonStaysLiveWhileTheLogRuns() => OnSta(() =>
+    public void TheSetupButtonStaysLiveWhileTheLogRuns() => Apartment.Run(() =>
     {
         var model = new PsnTokenViewModel();
         var view = new PsnTokenView { DataContext = model };
@@ -115,7 +98,7 @@ public class PsnTokenViewTests
 
     /// <summary>And this screen hosts the same browser control the login screen does.</summary>
     [Fact]
-    public void ItHostsTheSameBrowserControl() => OnSta(() =>
+    public void ItHostsTheSameBrowserControl() => Apartment.Run(() =>
     {
         var view = new PsnTokenView { DataContext = new PsnTokenViewModel() };
         Realise(view);

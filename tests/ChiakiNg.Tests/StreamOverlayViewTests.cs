@@ -4,6 +4,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using ChiakiNg.Session;
 using ChiakiNg.Views;
+using Winwright.InApp;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -22,24 +23,6 @@ namespace ChiakiNg.Tests;
 /// </summary>
 public class StreamOverlayViewTests
 {
-    private static void OnSta(Action body)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try { body(); }
-            catch (Exception ex) { failure = ex; }
-        })
-        { IsBackground = true };
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread did not finish");
-        if (failure is not null)
-            throw new Xunit.Sdk.XunitException(failure.ToString());
-    }
-
     private static void Realise(FrameworkElement element)
     {
         element.Measure(new Size(1280, 720));
@@ -48,14 +31,14 @@ public class StreamOverlayViewTests
     }
 
     [Fact]
-    public void ItLoads() => OnSta(() => Assert.NotNull(new StreamOverlayView()));
+    public void ItLoads() => Apartment.Run(() => Assert.NotNull(new StreamOverlayView()));
 
     /// <summary>
     /// The renderer's own surface type is accepted as the video, which is PP10's whole answer:
     /// D3DImage is an ImageSource, so the video is a brush and the overlay is elements.
     /// </summary>
     [Fact]
-    public void TheRenderersSurfaceIsAnOrdinaryImageSource() => OnSta(() =>
+    public void TheRenderersSurfaceIsAnOrdinaryImageSource() => Apartment.Run(() =>
     {
         var model = new StreamOverlayViewModel { Video = new D3DImage() };
         var view = new StreamOverlayView { DataContext = model };
@@ -74,7 +57,7 @@ public class StreamOverlayViewTests
     /// it in any other check.
     /// </summary>
     [Fact]
-    public void TheOverlayComesAfterTheVideoInTheSameGrid() => OnSta(() =>
+    public void TheOverlayComesAfterTheVideoInTheSameGrid() => Apartment.Run(() =>
     {
         var view = new StreamOverlayView { DataContext = new StreamOverlayViewModel() };
         Realise(view);
@@ -94,7 +77,7 @@ public class StreamOverlayViewTests
     /// repaints is a stream stuck behind a black rectangle.
     /// </summary>
     [Fact]
-    public void EachOfThePanelsThreeReasonsRepaintsIt() => OnSta(() =>
+    public void EachOfThePanelsThreeReasonsRepaintsIt() => Apartment.Run(() =>
     {
         var model = new StreamOverlayViewModel { Loading = false };
         var view = new StreamOverlayView { DataContext = model };
@@ -123,7 +106,7 @@ public class StreamOverlayViewTests
     /// the loss as a percentage, both converted between the value and the label.
     /// </summary>
     [Fact]
-    public void TheReadoutsReachTheScreenConverted() => OnSta(() =>
+    public void TheReadoutsReachTheScreenConverted() => Apartment.Run(() =>
     {
         var model = new StreamOverlayViewModel
         {
@@ -144,7 +127,7 @@ public class StreamOverlayViewTests
 
     /// <summary>And the readouts are gone with no session, rather than reading zero.</summary>
     [Fact]
-    public void WithNoSessionThereAreNoReadouts() => OnSta(() =>
+    public void WithNoSessionThereAreNoReadouts() => Apartment.Run(() =>
     {
         var view = new StreamOverlayView { DataContext = new StreamOverlayViewModel() };
         Realise(view);

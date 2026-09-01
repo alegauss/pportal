@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using ChiakiNg.Session;
 using ChiakiNg.Views;
+using Winwright.InApp;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -17,24 +18,6 @@ namespace ChiakiNg.Tests;
 /// </summary>
 public class StreamMenuViewTests
 {
-    private static void OnSta(Action body)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try { body(); }
-            catch (Exception ex) { failure = ex; }
-        })
-        { IsBackground = true };
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread did not finish");
-        if (failure is not null)
-            throw new Xunit.Sdk.XunitException(failure.ToString());
-    }
-
     private static void Realise(FrameworkElement element)
     {
         element.Measure(new Size(1280, 720));
@@ -43,14 +26,14 @@ public class StreamMenuViewTests
     }
 
     [Fact]
-    public void ItLoads() => OnSta(() => Assert.NotNull(new StreamMenuView()));
+    public void ItLoads() => Apartment.Run(() => Assert.NotNull(new StreamMenuView()));
 
     /// <summary>
     /// The mic button on screen: lit for a live microphone, dark for a muted one, and disabled
     /// while the session is not connected.
     /// </summary>
     [Fact]
-    public void TheMicButtonShowsTheOppositeOfMuted() => OnSta(() =>
+    public void TheMicButtonShowsTheOppositeOfMuted() => Apartment.Run(() =>
     {
         var model = new StreamMenuViewModel { SessionActive = true, Connected = true };
         var view = new StreamMenuView { DataContext = model };
@@ -75,7 +58,7 @@ public class StreamMenuViewTests
     /// most easily got right in the model and wrong on screen.
     /// </summary>
     [Fact]
-    public void TheZoomSliderAndItsLabelFollowTheMode() => OnSta(() =>
+    public void TheZoomSliderAndItsLabelFollowTheMode() => Apartment.Run(() =>
     {
         var model = new StreamMenuViewModel();
         var view = new StreamMenuView { DataContext = model };
@@ -100,7 +83,7 @@ public class StreamMenuViewTests
 
     /// <summary>The volume slider's range is the store's, and its label is the percentage.</summary>
     [Fact]
-    public void TheVolumeSliderKeepsTheStoresRange() => OnSta(() =>
+    public void TheVolumeSliderKeepsTheStoresRange() => Apartment.Run(() =>
     {
         var model = new StreamMenuViewModel { Volume = 64 };
         var view = new StreamMenuView { DataContext = model };
@@ -116,7 +99,7 @@ public class StreamMenuViewTests
 
     /// <summary>The Placebo button appears with the Custom preset and with no other.</summary>
     [Fact]
-    public void ThePlaceboButtonAppearsOnlyForCustom() => OnSta(() =>
+    public void ThePlaceboButtonAppearsOnlyForCustom() => Apartment.Run(() =>
     {
         var model = new StreamMenuViewModel { VideoPreset = StreamVideoPreset.Default };
         var view = new StreamMenuView { DataContext = model };
@@ -132,7 +115,7 @@ public class StreamMenuViewTests
 
     /// <summary>And the dropped-frames line stays away until there is something to report.</summary>
     [Fact]
-    public void TheDroppedLineStaysAwayAtZero() => OnSta(() =>
+    public void TheDroppedLineStaysAwayAtZero() => Apartment.Run(() =>
     {
         var model = new StreamMenuViewModel { SessionActive = true, Connected = true };
         var view = new StreamMenuView { DataContext = model };
