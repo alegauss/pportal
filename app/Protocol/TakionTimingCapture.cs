@@ -1,4 +1,4 @@
-namespace ChiakiNg.Protocol;
+﻿namespace ChiakiNg.Protocol;
 
 /// <summary>One datagram as a timing run needs it.</summary>
 /// <param name="ArrivalMicroseconds">Since the first datagram of the capture, not wall clock.</param>
@@ -79,18 +79,40 @@ public sealed class TakionTimingCapture
     public long WindowMicroseconds { get; }
 
     /// <summary></summary>
-    public TakionTimingCapture(int limit = DefaultLimit, long windowMicroseconds = DefaultWindowMicroseconds)
+    public TakionTimingCapture(
+        int limit = DefaultLimit,
+        long windowMicroseconds = DefaultWindowMicroseconds,
+        int keepBytes = HeadBytes)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(limit);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(windowMicroseconds);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(keepBytes);
 
         Limit = limit;
         WindowMicroseconds = windowMicroseconds;
+        KeepBytes = keepBytes;
     }
 
+    /// <summary>
+    /// PP615: how much of each datagram this keeps, which is not always the tap's eighteen.
+    ///
+    /// <see cref="HeadBytes"/> is the right default and PP510 gives its reason - it answers the
+    /// dispatch and the MAC layout, and carries no frame of anybody's screen. It is also the width
+    /// the C hands over, so a capture fed by the tap could keep no more if it wanted to.
+    ///
+    /// PP613's relay is not the tap. It carries whole datagrams because it forwards them, and a
+    /// capture that truncated them again would throw away the only thing that recording was for -
+    /// the payloads Â§PP27's remaining half needs, which PP612 established cannot be got from the C
+    /// without the patch a non-goal refuses.
+    ///
+    /// SO THE WIDTH IS THE CALLER'S NOW, and the caller says what it is for. Whatever is above the
+    /// default is content, and a run that keeps it should be one somebody asked for.
+    /// </summary>
+    public int KeepBytes { get; private init; }
+
     /// <summary>PP526: a capture of an asked-for length, whose bounds were settled together.</summary>
-    public TakionTimingCapture(SampleBounds bounds)
-        : this(bounds.Limit, bounds.WindowMicroseconds)
+    public TakionTimingCapture(SampleBounds bounds, int keepBytes = HeadBytes)
+        : this(bounds.Limit, bounds.WindowMicroseconds, keepBytes)
     {
     }
 
@@ -143,7 +165,7 @@ public sealed class TakionTimingCapture
             return false;
         }
 
-        int head = Math.Min(HeadBytes, datagram.Length);
+        int head = Math.Min(KeepBytes, datagram.Length);
 
         // Never shorter than what was handed over: a length that undercut the head would describe a
         // datagram smaller than the bytes recorded from it.
