@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text;
 
 namespace ChiakiNg.Protocol;
@@ -133,7 +133,7 @@ public static class TakionCaptureFile
 /// </summary>
 public sealed class TakionCaptureWriter : IDisposable
 {
-    private readonly TakionDatagramTap tap;
+    private readonly TakionDatagramTap? tap;
     private readonly string path;
     private bool disposed;
 
@@ -143,14 +143,23 @@ public sealed class TakionCaptureWriter : IDisposable
     /// <param name="path">Where the capture goes. Written on dispose, once.</param>
     /// <param name="clock">Monotonic microseconds.</param>
     /// <param name="capture">The capture to fill, or null for one with the default bounds.</param>
-    public TakionCaptureWriter(string path, Func<long> clock, TakionTimingCapture? capture = null)
+    /// <param name="installTap">
+    /// PP616: whether the C's tap is what fills this.
+    ///
+    /// True is the ordinary run and the only one there was. False is a capture through PP613's
+    /// relay, where the caller offers the datagrams itself - and installing a tap as well would
+    /// record every arrival twice, once whole and once at the tap's eighteen bytes, in one file
+    /// that says nothing about which is which.
+    /// </param>
+    public TakionCaptureWriter(
+        string path, Func<long> clock, TakionTimingCapture? capture = null, bool installTap = true)
     {
         ArgumentException.ThrowIfNullOrEmpty(path);
         ArgumentNullException.ThrowIfNull(clock);
 
         this.path = path;
         Capture = capture ?? new TakionTimingCapture();
-        tap = new TakionDatagramTap(Capture, clock);
+        tap = installTap ? new TakionDatagramTap(Capture, clock) : null;
     }
 
     /// <summary>What has been captured so far.</summary>
@@ -165,8 +174,9 @@ public sealed class TakionCaptureWriter : IDisposable
         disposed = true;
 
         // The tap goes first: writing while the receive thread is still offering would race the
-        // list this is about to read.
-        tap.Dispose();
+        // list this is about to read. PP616: null where a relay is the source, and there the
+        // caller's own disposal is what stops the offering - same ordering, its to keep.
+        tap?.Dispose();
 
         File.WriteAllText(path, TakionCaptureFile.Write(Capture));
     }

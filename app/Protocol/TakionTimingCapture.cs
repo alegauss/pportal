@@ -59,6 +59,16 @@ public sealed class TakionTimingCapture
     public const int HeadBytes = 18;
 
     /// <summary>
+    /// PP616: enough to keep any datagram whole, for a capture PP613's relay fills.
+    ///
+    /// Two thousand and not a computed MTU: a takion datagram on a LAN is under 1500 and the
+    /// number here only has to be an upper bound, since <see cref="Offer"/> keeps the smaller of
+    /// this and what arrived. Deriving it from an interface's MTU would make the width depend on
+    /// which adapter a run happened to use, which is the sort of thing a capture should not carry.
+    /// </summary>
+    public const int WholeDatagramBytes = 2048;
+
+    /// <summary>
     /// How many datagrams a capture takes before it stops.
     ///
     /// PP526: derived from the default window at the rate a real session sent, so the two bounds

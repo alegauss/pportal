@@ -519,6 +519,7 @@
 - ✅ **PP614** **the capture connects to the registered host's own address, so no session can be aimed at a relay** — The capture takes an address to go through, the console still supplies the keys and the discovery, and the host passes the flag to the call rather than dropping it.
 - ✅ **PP613** **no relay sits between the console and the C, so whole datagrams are reachable only by patching the vendored C** — A TCP forwarder on 9295 and a UDP forwarder on 9296, reporting every datagram whole and telling the two directions apart by endpoint, which is what loopback needs.
 - ✅ **PP615** **the capture truncates to eighteen on the managed side too, so a relay handing it whole datagrams gains nothing** — The width is the caller's now: eighteen unasked, so every tap capture is unchanged, and whole where PP613's relay is what fed it.
+- ✅ **PP616** **the relay, the address and the wider keep are three pieces and nothing composes them into a run** — One word composes the three: the writer takes no tap, the relay offers the console's arrivals whole, and the session points at loopback.
 
 ## Block G — Test discipline
 

@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -242,6 +242,19 @@ public static class ExchangeCapture
         return string.IsNullOrWhiteSpace(via) ? discovered : via.Trim();
     }
 
+    /// <summary>
+    /// PP616: the value of <c>--via</c> that means "start a relay here and go through it".
+    ///
+    /// A word rather than an address, because the three things a relay run changes are decided
+    /// together - who fills the capture, how wide it keeps, and where the session points - and a
+    /// caller who typed a loopback address by hand would get the last of the three only.
+    /// </summary>
+    public const string RelayVia = "relay";
+
+    /// <summary>Whether a `--via` value asks for the relay rather than naming somewhere to go.</summary>
+    public static bool AsksForRelay(string? via)
+        => via is not null && string.Equals(via.Trim(), RelayVia, StringComparison.OrdinalIgnoreCase);
+
     public static CaptureOutcome Run(
         string path, string? nickname, SessionCaptureKind kind = SessionCaptureKind.Exchange,
         SampleBounds? sample = null, string? via = null)
@@ -320,9 +333,38 @@ public static class ExchangeCapture
         // PP514: one of the two, never both - Install replaces, so a second tap is a silence.
         using ExchangeRecorder? recorder =
             kind == SessionCaptureKind.Exchange ? ExchangeRecorder.Start() : null;
+        // PP616: through the relay, or through the tap. The two differ in three ways that go
+        // together - who fills the capture, how much of each datagram it keeps, and where the
+        // session is pointed - and a run that got one of the three wrong would record something
+        // nobody could tell apart afterwards.
+        bool relaying = AsksForRelay(via);
+
         using TakionCaptureWriter? datagrams = kind == SessionCaptureKind.Datagrams
-            ? new TakionCaptureWriter(path, Monotonic, new TakionTimingCapture(bounds))
+            ? new TakionCaptureWriter(
+                path,
+                Monotonic,
+                new TakionTimingCapture(
+                    bounds,
+                    relaying ? TakionTimingCapture.WholeDatagramBytes : TakionTimingCapture.HeadBytes),
+                installTap: !relaying)
             : null;
+
+        using SessionRelay? relay = relaying
+            ? new SessionRelay(
+                IPAddress.Parse(address),
+                // Arrivals only. The tap records what the C RECEIVES, so a relay that also offered
+                // the sends would produce a file the replay reads as twice the traffic.
+                (bytes, fromConsole) =>
+                {
+                    if (fromConsole)
+                        datagrams?.Capture.Offer(bytes, Monotonic(), bytes.Length);
+                })
+            : null;
+
+        relay?.Start();
+
+        if (relaying)
+            Console.WriteLine($"[capture] relaying to {address}; whole datagrams, not the tap's head");
 
         // PP614: where the session is POINTED, which is not always where the console is.
         //
@@ -330,7 +372,7 @@ public static class ExchangeCapture
         // relay forwards for a console it is told about, so a capture that could only reach the
         // discovered address had no way to sit behind one. Printed rather than assumed, because a
         // relay's far side is the address above and a session that took the wrong one is silent.
-        string target = ConnectAddress(address, via);
+        string target = relaying ? SessionRelay.Via : ConnectAddress(address, via);
 
         if (!string.Equals(target, address, StringComparison.Ordinal))
             Console.WriteLine($"[capture] going through {target}; the console is at {address}");

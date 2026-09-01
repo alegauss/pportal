@@ -97,8 +97,8 @@ export const HOST_FLAGS: readonly HostFlag[] = [
   },
   {
     "name": "--via",
-    "argument": "[address]",
-    "summary": "with --capture-datagrams: point the session through a relay, not at the console"
+    "argument": "[address|relay]",
+    "summary": "with --capture-datagrams: go through an address, or 'relay' to run one here and keep whole datagrams"
   },
   {
     "name": "--replay-datagrams",
