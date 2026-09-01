@@ -234,14 +234,17 @@ public class MappingInteractionTests(ITestOutputHelper output)
 
         output.WriteLine($"pad: {title.Current.Name}");
 
-        // A row's slot is a templated Button and carries no AutomationId; the two named buttons do,
-        // which is how the rows are told apart from them.
+        // PP619. By what they ARE, not by what they lack. This used to take every Button and keep
+        // the ones whose AutomationId was empty, which is upside down: it identified a row by the
+        // absence of the one field an application controls, so it held only while every other
+        // button on the screen kept an id and would have broken silently the first time one did
+        // not - a new unnamed button becoming row zero, with nothing to say the check had moved.
         IReadOnlyList<AutomationElement> buttons = Ui.OfType(window, ControlType.Button);
         List<AutomationElement> rows =
-            [.. buttons.Where(b => string.IsNullOrEmpty(b.Current.AutomationId))];
+            [.. buttons.Where(b => b.Current.AutomationId.StartsWith("slot.", StringComparison.Ordinal))];
 
         Assert.NotEmpty(rows);
-        output.WriteLine($"{rows.Count} row slot(s)");
+        output.WriteLine($"{rows.Count} row slot(s): {string.Join(", ", rows.Select(b => b.Current.AutomationId))}");
 
         // Not up yet, which is what makes the next assertion mean anything.
         Assert.Null(Ui.Now(window, "CapturePrompt"));

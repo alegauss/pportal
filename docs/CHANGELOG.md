@@ -522,6 +522,7 @@
 - ✅ **PP616** **the relay, the address and the wider keep are three pieces and nothing composes them into a run** — One word composes the three: the writer takes no tap, the relay offers the console's arrivals whole, and the session points at loopback.
 - ✅ **PP617** **the relay's one UDP socket is bound to loopback, so a datagram sent to the console has a source it cannot answer** — Two sockets, one facing each side: a real console answered and the capture holds whole datagrams at a 956 byte mean, where one loopback-bound socket got no init ack.
 - ✅ **PP618** **twenty-six view test files each carry their own copy of the STA runner every one of them depends on** — Deleted twenty-six times over for one package reference: 589 lines out, 178 in, and a thread that times out now names itself and rethrows what it caught.
+- ✅ **PP619** **the mapping screen's row slots are templated buttons with no automation id** — The slot carries an id built from the row's stable key, so a check addresses one by name instead of by the absence of the field an application controls.
 
 ## Block G — Test discipline
 

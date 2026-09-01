@@ -114,4 +114,35 @@ public class ControllerMappingViewTests
 
         Assert.True(model.EnableAnalogStickMapping);
     });
+    /// <summary>
+    /// PP619: a row's slot says which slot it is, in the one field this application controls.
+    ///
+    /// PP227's harness picked the first row by taking every Button and keeping the ones whose
+    /// AutomationId was EMPTY. That identifies a row by what it lacks, so it held only while every
+    /// other button on the screen kept an id and would have broken silently the first time one did
+    /// not — a new unnamed button becoming row zero, with nothing to say the check had moved.
+    ///
+    /// Read off the XAML rather than off a window, because this is a claim about the view's own
+    /// declaration and the window it draws needs a pad plugged in.
+    /// </summary>
+    [Fact]
+    public void EachRowSlotCarriesAnIdBuiltFromTheRowItBelongsTo()
+    {
+        string? view = SanitizerSource.LocateRelative(Path.Combine("app", "Views", "ControllerMappingView.xaml"));
+        Assert.True(view is not null, "no ControllerMappingView.xaml above this assembly");
+
+        string markup = File.ReadAllText(view!);
+
+        // Value and never Name: the label moves with a translation and the position moves whenever
+        // a row is added, and an id built on either addresses a different row afterwards.
+        Assert.Contains("AutomationProperties.AutomationId=\"{Binding Value, StringFormat=slot.{0}.0}\"", markup, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.AutomationId=\"{Binding Value, StringFormat=slot.{0}.1}\"", markup, StringComparison.Ordinal);
+
+        // And the context a screen reader was missing, added beside the binding rather than over it:
+        // the content is the physical button bound here, and a Name set on top would replace the
+        // value a person sees with the label of the row it sits in.
+        Assert.Contains("first slot", markup, StringComparison.Ordinal);
+        Assert.Contains("second slot", markup, StringComparison.Ordinal);
+    }
+
 }

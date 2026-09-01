@@ -36,10 +36,26 @@
                      twice and only their position tells them apart. The row itself comes from the
                      DataContext and its index from the collection, so nothing here has to know
                      where in the list it sits. -->
+                <!-- PP619: the slot says which slot it is, to a check and to a screen reader.
+                     The id is built from Value, the chiaki button, because that is the row's stable
+                     key - Name is its label and would move with a translation, and the position in
+                     the list moves whenever a row is added. Nothing outside this window could
+                     address one before: PP227's harness took every Button and kept the ones whose
+                     AutomationId was EMPTY, which held only while every other button on the screen
+                     kept an id and broke silently the first time one did not.
+
+                     HelpText and not Name, so the binding a person sees is still what a reader
+                     hears: the content is the physical button bound here, and a Name set on top of
+                     it would replace the value with the label. This adds the context that was
+                     missing rather than trading one for the other. -->
                 <Button Content="{Binding First}" Tag="0"
+                        AutomationProperties.AutomationId="{Binding Value, StringFormat=slot.{0}.0}"
+                        AutomationProperties.HelpText="{Binding Name, StringFormat='{}{0}, first slot'}"
                         Width="140" Height="52" Margin="0,0,10,0" />
 
                 <Button Content="{Binding Second}" Tag="1" Width="140" Height="52"
+                        AutomationProperties.AutomationId="{Binding Value, StringFormat=slot.{0}.1}"
+                        AutomationProperties.HelpText="{Binding Name, StringFormat='{}{0}, second slot'}"
                         Visibility="{Binding HasSecond, Converter={StaticResource BoolToVisibility}}" />
               </StackPanel>
             </DataTemplate>
