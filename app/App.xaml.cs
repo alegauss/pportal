@@ -1060,11 +1060,16 @@ public partial class App : Application
                 ?? Path.Combine(QtPaths.LogDirectory,
                     $"datagrams-{DateTimeOffset.Now:yyyyMMdd-HHmmss}.txt");
 
+            // PP614: `--via <address>` points the session at something forwarding for the console
+            // rather than at the console. The registration still selects the console - its keys are
+            // the session's - and discovery still finds it, because a relay has to be told where to
+            // forward. Only where the session CONNECTS moves.
             Environment.Exit(
                 ExchangeCapture.Run(
                     path,
                     HostCommandLine.ValueAfter(e.Args, "--console"),
-                    SessionCaptureKind.Datagrams, sample) == CaptureOutcome.Recorded ? 0 : 1);
+                    SessionCaptureKind.Datagrams, sample,
+                    HostCommandLine.ValueAfter(e.Args, "--via")) == CaptureOutcome.Recorded ? 0 : 1);
         }
 
         // PP516: and the other half of that, which needs no console - a capture on disk read back

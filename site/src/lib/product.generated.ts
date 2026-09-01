@@ -96,6 +96,11 @@ export const HOST_FLAGS: readonly HostFlag[] = [
     "summary": "with either capture: how long a sample, which sets the hold too"
   },
   {
+    "name": "--via",
+    "argument": "[address]",
+    "summary": "with --capture-datagrams: point the session through a relay, not at the console"
+  },
+  {
     "name": "--replay-datagrams",
     "argument": "<path>",
     "summary": "replay a datagram capture through the managed receive path"

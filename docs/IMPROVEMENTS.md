@@ -390,10 +390,10 @@ ways, and it sees whole datagrams because it is carrying them. Nothing in lib/ c
 It is PP607's shape with a real console on the far side instead of a handshake
 responder.
 
-WHY IT WAITS ON PP600. Something has to start a session pointed at the relay.
-ExchangeCapture builds a ChiakiConnectInfo and calls TryCreate today, so the mechanism
-exists - what does not is a caller that can be told where to point, and PP600 is the
-line about the host having no connect path a user reaches.
+WHAT IT NO LONGER WAITS ON. This was filed as needing PP600, the host having no connect
+path a user reaches. That was wrong: what it needed was a caller that takes an address,
+and ExchangeCapture already starts sessions. PP614 gave it --via, so the session can be
+aimed here.
 
 WHAT IT WOULD SETTLE. §PP27's remaining half is the loop's timing; PP610 answered the
 MAC gate. The loop around it cannot be timed from heads, because a datagram the C would

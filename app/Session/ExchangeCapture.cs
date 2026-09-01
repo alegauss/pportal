@@ -224,9 +224,27 @@ public static class ExchangeCapture
     /// a run holding the session for twelve seconds while capturing sixty would report a window it
     /// never reached, and the file would not say so.
     /// </param>
+    /// <summary>
+    /// PP614: which address the session is pointed at - the console's, or something forwarding for
+    /// it.
+    ///
+    /// Separated from <see cref="Run"/> because it is the whole of the decision and the rest of
+    /// that method needs a console to reach. Blank is the same as absent: a flag given with no
+    /// value is a caller who meant the console, and connecting to "" would fail somewhere far from
+    /// the mistake.
+    /// </summary>
+    /// <param name="discovered">Where discovery found the console.</param>
+    /// <param name="via">What to go through instead, or null for the console itself.</param>
+    public static string ConnectAddress(string discovered, string? via)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(discovered);
+
+        return string.IsNullOrWhiteSpace(via) ? discovered : via.Trim();
+    }
+
     public static CaptureOutcome Run(
         string path, string? nickname, SessionCaptureKind kind = SessionCaptureKind.Exchange,
-        SampleBounds? sample = null)
+        SampleBounds? sample = null, string? via = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
 
@@ -306,7 +324,18 @@ public static class ExchangeCapture
             ? new TakionCaptureWriter(path, Monotonic, new TakionTimingCapture(bounds))
             : null;
 
-        using var connect = new ChiakiConnectInfo { Host = address, Ps5 = ps5 };
+        // PP614: where the session is POINTED, which is not always where the console is.
+        //
+        // The registration keys are the console's and have to be; the address does not. PP613's
+        // relay forwards for a console it is told about, so a capture that could only reach the
+        // discovered address had no way to sit behind one. Printed rather than assumed, because a
+        // relay's far side is the address above and a session that took the wrong one is silent.
+        string target = ConnectAddress(address, via);
+
+        if (!string.Equals(target, address, StringComparison.Ordinal))
+            Console.WriteLine($"[capture] going through {target}; the console is at {address}");
+
+        using var connect = new ChiakiConnectInfo { Host = target, Ps5 = ps5 };
         connect.SetRegistKey(registKey);
         connect.SetMorning(morning);
         connect.SetVideoPreset(ChiakiVideoResolution.P720, ChiakiVideoFps.Fps60);

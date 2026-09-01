@@ -60,6 +60,7 @@ public static partial class HostCommandLine
         new("--capture-datagrams", "[path]", "the same session, recording takion's arrivals and their times"),
         new("--console", "[name]", "with either capture: which registered console, by nickname"),
         new("--capture-seconds", "[n]", "with either capture: how long a sample, which sets the hold too"),
+        new("--via", "[address]", "with --capture-datagrams: point the session through a relay, not at the console"),
         new("--replay-datagrams", "<path>", "replay a datagram capture through the managed receive path"),
         new("--timed", "", "with --replay-datagrams: time the MAC gate against the C over the capture"),
         new("--map-controller", "", "open the mapping screen against a real pad"),
