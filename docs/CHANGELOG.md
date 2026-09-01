@@ -520,6 +520,7 @@
 - ✅ **PP613** **no relay sits between the console and the C, so whole datagrams are reachable only by patching the vendored C** — A TCP forwarder on 9295 and a UDP forwarder on 9296, reporting every datagram whole and telling the two directions apart by endpoint, which is what loopback needs.
 - ✅ **PP615** **the capture truncates to eighteen on the managed side too, so a relay handing it whole datagrams gains nothing** — The width is the caller's now: eighteen unasked, so every tap capture is unchanged, and whole where PP613's relay is what fed it.
 - ✅ **PP616** **the relay, the address and the wider keep are three pieces and nothing composes them into a run** — One word composes the three: the writer takes no tap, the relay offers the console's arrivals whole, and the session points at loopback.
+- ✅ **PP617** **the relay's one UDP socket is bound to loopback, so a datagram sent to the console has a source it cannot answer** — Two sockets, one facing each side: a real console answered and the capture holds whole datagrams at a 956 byte mean, where one loopback-bound socket got no init ack.
 
 ## Block G — Test discipline
 

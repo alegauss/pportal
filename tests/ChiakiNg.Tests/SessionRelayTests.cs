@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Sockets;
 using ChiakiNg.Session;
 using Xunit;
@@ -18,14 +18,6 @@ namespace ChiakiNg.Tests;
 /// </summary>
 public class SessionRelayTests
 {
-    /// <summary>A free port, taken by binding and letting go.</summary>
-    private static int FreePort()
-    {
-        using var probe = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-        probe.Bind(new IPEndPoint(IPAddress.Loopback, 0));
-        return ((IPEndPoint)probe.LocalEndPoint!).Port;
-    }
-
     /// <summary>The two ports the local path uses, which is why this is a forwarder and not a proxy.</summary>
     [Fact]
     public void ThePortsAreTheOnesTheLocalPathUses()
@@ -50,20 +42,19 @@ public class SessionRelayTests
         var consoleStream = (IPEndPoint)console.Client.LocalEndPoint!;
 
         var seen = new List<(byte[] Bytes, bool FromConsole)>();
-        int streamPort = FreePort();
-
+        
         using var relay = new SessionRelay(
-            new IPEndPoint(IPAddress.Loopback, FreePort()),
+            new IPEndPoint(IPAddress.Loopback, 1),
             consoleStream,
             (bytes, fromConsole) => seen.Add((bytes, fromConsole)),
-            FreePort(),
-            streamPort);
+            0,
+            0);
 
         relay.Start();
 
         using var client = new UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
         byte[] payload = [.. Enumerable.Range(0, 1400).Select(i => (byte)(i & 0xff))];
-        client.Send(payload, payload.Length, new IPEndPoint(IPAddress.Loopback, streamPort));
+        client.Send(payload, payload.Length, new IPEndPoint(IPAddress.Loopback, relay.StreamPortInUse));
 
         var from = new IPEndPoint(IPAddress.Any, 0);
         byte[] arrived = console.Receive(ref from);
@@ -81,10 +72,11 @@ public class SessionRelayTests
     /// <summary>
     /// And the console's answer comes back to the client, marked as the console's.
     ///
-    /// The direction matters to a recorder: a capture that could not tell which way a datagram went
-    /// would be timing sends and receives together. It is read from the ENDPOINT, because on
-    /// loopback an address tells nobody apart - and there the whole relay would stall, every
-    /// datagram reading as the console's and no client ever learnt.
+    /// PP617: the direction is which SOCKET it arrived on, not which endpoint sent it. The first
+    /// version compared endpoints on one socket, and it passed here because both ends of a test are
+    /// on loopback - while a real console got datagrams from a loopback-bound socket and had
+    /// nowhere to answer. This sends the reply where a console's reply actually lands: the port the
+    /// relay used to reach it.
     /// </summary>
     [Fact]
     public void TheConsolesAnswerComesBackMarked()
@@ -94,14 +86,13 @@ public class SessionRelayTests
         var consoleStream = (IPEndPoint)console.Client.LocalEndPoint!;
 
         var seen = new List<(byte[] Bytes, bool FromConsole)>();
-        int streamPort = FreePort();
-
+        
         using var relay = new SessionRelay(
-            new IPEndPoint(IPAddress.Loopback, FreePort()),
+            new IPEndPoint(IPAddress.Loopback, 1),
             consoleStream,
             (bytes, fromConsole) => seen.Add((bytes, fromConsole)),
-            FreePort(),
-            streamPort);
+            0,
+            0);
 
         relay.Start();
 
@@ -109,10 +100,13 @@ public class SessionRelayTests
         client.Client.ReceiveTimeout = 5000;
 
         byte[] up = [0x02, 0xAA];
-        client.Send(up, up.Length, new IPEndPoint(IPAddress.Loopback, streamPort));
+        client.Send(up, up.Length, new IPEndPoint(IPAddress.Loopback, relay.StreamPortInUse));
 
         var from = new IPEndPoint(IPAddress.Any, 0);
         console.Receive(ref from);
+
+        // A console answers the source it was sent from, which is the relay's upstream socket.
+        Assert.Equal(relay.UpstreamPortInUse, from.Port);
 
         byte[] down = [0x00, 0x11, 0x22, 0x33];
         console.Send(down, down.Length, from);
@@ -121,7 +115,29 @@ public class SessionRelayTests
 
         Assert.Equal(down, backAtClient);
         Assert.Contains(seen, s => s.FromConsole && s.Bytes.SequenceEqual(down));
+        Assert.Contains(seen, s => !s.FromConsole && s.Bytes.SequenceEqual(up));
         Assert.Equal(2, relay.DatagramsForwarded);
+    }
+
+    /// <summary>
+    /// THE ONE THE FIRST VERSION COULD NOT FAIL: the two sockets are different.
+    ///
+    /// A relay whose upstream is the loopback socket sends to a console from an address it cannot
+    /// answer. Everything else here still passes in that state, because a test's console is on
+    /// loopback too - so this asserts the shape rather than the behaviour, which is the only way a
+    /// test on one machine can see it.
+    /// </summary>
+    [Fact]
+    public void TheTwoSidesAreDifferentSockets()
+    {
+        using var relay = new SessionRelay(
+            new IPEndPoint(IPAddress.Loopback, 1),
+            new IPEndPoint(IPAddress.Loopback, 1),
+            null,
+            0,
+            0);
+
+        Assert.NotEqual(relay.StreamPortInUse, relay.UpstreamPortInUse);
     }
 
     /// <summary>
@@ -139,19 +155,18 @@ public class SessionRelayTests
 
         try
         {
-            int controlPort = FreePort();
 
             using var relay = new SessionRelay(
                 consoleControl,
-                new IPEndPoint(IPAddress.Loopback, FreePort()),
+                new IPEndPoint(IPAddress.Loopback, 1),
                 null,
-                controlPort,
-                FreePort());
+                0,
+                0);
 
             relay.Start();
 
             using var near = new TcpClient();
-            near.Connect(IPAddress.Loopback, controlPort);
+            near.Connect(IPAddress.Loopback, relay.ControlPortInUse);
 
             using TcpClient far = console.AcceptTcpClient();
 
@@ -183,11 +198,11 @@ public class SessionRelayTests
     public void DisposingTwiceIsSafe()
     {
         var relay = new SessionRelay(
-            new IPEndPoint(IPAddress.Loopback, FreePort()),
-            new IPEndPoint(IPAddress.Loopback, FreePort()),
+            new IPEndPoint(IPAddress.Loopback, 1),
+            new IPEndPoint(IPAddress.Loopback, 1),
             null,
-            FreePort(),
-            FreePort());
+            0,
+            0);
 
         relay.Start();
         relay.Dispose();

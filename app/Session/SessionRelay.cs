@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Sockets;
 
 namespace ChiakiNg.Session;
@@ -37,7 +37,25 @@ public sealed class SessionRelay : IDisposable
     private readonly Action<byte[], bool>? onDatagram;
     private readonly TcpListener control;
     private readonly UdpClient stream;
+
+    /// <summary>
+    /// PP617: the socket that faces the console, which is not the one that faces the C.
+    ///
+    /// The first version forwarded both directions on <see cref="stream"/> alone, and every test
+    /// passed because both ends of a test are on loopback. A real run does not work that way: that
+    /// socket is BOUND to 127.0.0.1, so a datagram it sends to a console on the LAN carries a
+    /// loopback source address and the answer has nowhere to go. The session reached ctrl, takion
+    /// sent its INIT three times, and no ack ever came back.
+    ///
+    /// So there are two, one per side, and the pairing is the relay: what arrives on the loopback
+    /// socket goes out of this one, and what arrives here goes back to the client that spoke. The
+    /// TCP half never had the problem because ConnectAsync makes its own socket with a route the OS
+    /// chooses.
+    /// </summary>
+    private readonly UdpClient upstream;
+
     private readonly CancellationTokenSource stopping = new();
+    private IPEndPoint? client;
     private bool disposed;
 
     /// <summary>
@@ -79,6 +97,10 @@ public sealed class SessionRelay : IDisposable
 
         control = new TcpListener(IPAddress.Loopback, controlPort);
         stream = new UdpClient(new IPEndPoint(IPAddress.Loopback, streamPort));
+
+        // Any address, so the OS picks the route to the console and the source it puts on the
+        // datagram is one the console can answer.
+        upstream = new UdpClient(new IPEndPoint(IPAddress.Any, 0));
     }
 
     /// <summary>Where the session should be pointed, which is what `--via` takes.</summary>
@@ -90,6 +112,24 @@ public sealed class SessionRelay : IDisposable
     /// <summary>The port the UDP half is on, which a test needs when it did not choose one.</summary>
     public int StreamPortInUse => ((IPEndPoint)stream.Client.LocalEndPoint!).Port;
 
+    /// <summary>
+    /// The port the TCP half is on, likewise.
+    ///
+    /// Read back rather than remembered, so a caller that passed zero gets what the OS chose. A
+    /// test that picked its own port by binding and letting go races every other test doing the
+    /// same, which is what four of these did on the run that added the second socket.
+    /// </summary>
+    public int ControlPortInUse => ((IPEndPoint)control.LocalEndpoint).Port;
+
+    /// <summary>
+    /// PP617: the port facing the console, which the OS chose.
+    ///
+    /// A console answers to whatever source it was sent from, so this is where its datagrams
+    /// arrive - and a test standing in for one has to send here rather than to the loopback port,
+    /// which is the difference the first version could not tell.
+    /// </summary>
+    public int UpstreamPortInUse => ((IPEndPoint)upstream.Client.LocalEndPoint!).Port;
+
     /// <summary>Starts both halves. Returns as soon as they are listening.</summary>
     public void Start()
     {
@@ -97,23 +137,22 @@ public sealed class SessionRelay : IDisposable
 
         _ = Task.Run(() => ForwardControl(stopping.Token));
         _ = Task.Run(() => ForwardStream(stopping.Token));
+        _ = Task.Run(() => ForwardDownstream(stopping.Token));
     }
 
     /// <summary>
-    /// The UDP half, and the only one that reports.
+    /// PP617: what the C sent, out to the console - and where the client's endpoint is learnt.
     ///
-    /// One socket, two directions, told apart by who the sender is: anything from the console goes
-    /// back to the last local endpoint that spoke, and anything else goes to the console. That is
-    /// enough because a session is one client - and a second one would be a second capture anyway.
+    /// One loop per socket, not one loop deciding a direction. PP613 did the latter and it passed
+    /// every test because both ends of a test are on loopback; the sending socket is bound there,
+    /// so a real console got datagrams it could not answer.
     /// </summary>
     private void ForwardStream(CancellationToken token)
     {
-        IPEndPoint? client = null;
-
         while (!token.IsCancellationRequested)
         {
-            byte[] datagram;
             var from = new IPEndPoint(IPAddress.Any, 0);
+            byte[] datagram;
 
             try
             {
@@ -128,32 +167,56 @@ public sealed class SessionRelay : IDisposable
                 return;
             }
 
-            // PP613: by ENDPOINT and not by address. A test runs both sides on loopback, where an
-            // address tells nobody apart - and the failure is not cosmetic there: every datagram
-            // reads as the console's, so the client is never learnt and nothing is forwarded. The
-            // console answers from the port takion connected to, so the pair is what identifies it.
-            bool fromConsole = from.Equals(consoleStream);
+            client = from;
+            onDatagram?.Invoke(datagram, false);
+            Carry(upstream, datagram, consoleStream);
+        }
+    }
 
-            if (!fromConsole)
-                client = from;
-
-            onDatagram?.Invoke(datagram, fromConsole);
-            DatagramsForwarded++;
-
-            IPEndPoint? to = fromConsole ? client : consoleStream;
-            if (to is null)
-                continue;
+    /// <summary>What the console sent, back to whoever spoke first.</summary>
+    private void ForwardDownstream(CancellationToken token)
+    {
+        while (!token.IsCancellationRequested)
+        {
+            var from = new IPEndPoint(IPAddress.Any, 0);
+            byte[] datagram;
 
             try
             {
-                stream.Send(datagram, datagram.Length, to);
+                datagram = upstream.Receive(ref from);
             }
             catch (SocketException)
             {
-                // A send that fails is one datagram, and the stream is lossy by nature. Recording
-                // it as carried would be the wrong count, so this is before the increment above.
-                DatagramsForwarded--;
+                continue;
             }
+            catch (ObjectDisposedException)
+            {
+                return;
+            }
+
+            onDatagram?.Invoke(datagram, true);
+
+            if (client is { } to)
+                Carry(stream, datagram, to);
+        }
+    }
+
+    /// <summary>One datagram out of one socket, counted only where it left.</summary>
+    private void Carry(UdpClient socket, byte[] datagram, IPEndPoint to)
+    {
+        try
+        {
+            socket.Send(datagram, datagram.Length, to);
+            DatagramsForwarded++;
+        }
+        catch (SocketException)
+        {
+            // One datagram, and the stream is lossy by nature. Counting a send that failed would be
+            // the wrong number, so the increment is inside the try rather than after it.
+        }
+        catch (ObjectDisposedException)
+        {
+            // Stopping.
         }
     }
 
@@ -227,6 +290,7 @@ public sealed class SessionRelay : IDisposable
         stopping.Cancel();
         control.Stop();
         stream.Dispose();
+        upstream.Dispose();
         stopping.Dispose();
     }
 }
