@@ -515,6 +515,7 @@
 - ✅ **PP608** **the loopback harness has no datagrams to pump, and no capture is on this machine to give it any** — A five-second capture of a live PS5 is in tests/corpus - 4025 datagrams at a 1159us mean gap, heads only - and its count and spacing are checked against the file.
 - ✅ **PP609** **the replay prints its report over the committed capture and nothing asserts a line of it** — The replay's report over the committed capture is a gate now: the MAC gate agrees on every head, no branch is unknown, and nothing allocates after the warm-up.
 - ✅ **PP610** **PP531's MAC gate numbers were never taken over a console's own traffic, and nothing holds the headroom** — Both sides timed over 4025 heads a PS5 sent: 0.18us managed against 0.08us for the C, and what is asserted is the share of a 1159us gap, not the microseconds.
+- ✅ **PP612** **the tap truncates at eighteen inside the vendored C, so a full capture is the patch PP27 is not exempt from** — The constant is in messagetap.h and takion.c applies it, both asserted, and the patch route is joined to the rule that closes it - so payloads are a decision, not a task.
 
 ## Block G — Test discipline
 
