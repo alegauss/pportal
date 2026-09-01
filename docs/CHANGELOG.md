@@ -517,6 +517,7 @@
 - ✅ **PP610** **PP531's MAC gate numbers were never taken over a console's own traffic, and nothing holds the headroom** — Both sides timed over 4025 heads a PS5 sent: 0.18us managed against 0.08us for the C, and what is asserted is the share of a 1159us gap, not the microseconds.
 - ✅ **PP612** **the tap truncates at eighteen inside the vendored C, so a full capture is the patch PP27 is not exempt from** — The constant is in messagetap.h and takion.c applies it, both asserted, and the patch route is joined to the rule that closes it - so payloads are a decision, not a task.
 - ✅ **PP614** **the capture connects to the registered host's own address, so no session can be aimed at a relay** — The capture takes an address to go through, the console still supplies the keys and the discovery, and the host passes the flag to the call rather than dropping it.
+- ✅ **PP613** **no relay sits between the console and the C, so whole datagrams are reachable only by patching the vendored C** — A TCP forwarder on 9295 and a UDP forwarder on 9296, reporting every datagram whole and telling the two directions apart by endpoint, which is what loopback needs.
 
 ## Block G — Test discipline
 

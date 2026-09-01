@@ -378,31 +378,6 @@ WHAT THIS IS NOT is the choice between the native seam and the managed one. That
 console to confirm, because the create's HTTP and websocket need PSN. This is the step
 before it: there is no caller for the choice to live in.
 
-### §PP613 The relay, and what it waits on
-
-PP612 found the tap's eighteen bytes are decided in the vendored C, so a capture with
-payloads is the local patch the non-goal refuses and PP27 is not one of the two lines it
-does not reach. It named two doors; this is the one that costs no rule.
-
-WHAT IT IS. A managed UDP socket between the console and the C: the session is handed
-the relay's address instead of the console's, the relay forwards every datagram both
-ways, and it sees whole datagrams because it is carrying them. Nothing in lib/ changes.
-It is PP607's shape with a real console on the far side instead of a handshake
-responder.
-
-WHAT IT NO LONGER WAITS ON. This was filed as needing PP600, the host having no connect
-path a user reaches. That was wrong: what it needed was a caller that takes an address,
-and ExchangeCapture already starts sessions. PP614 gave it --via, so the session can be
-aimed here.
-
-WHAT IT WOULD SETTLE. §PP27's remaining half is the loop's timing; PP610 answered the
-MAC gate. The loop around it cannot be timed from heads, because a datagram the C would
-accept has a payload - and a relay is the only way to record one without editing
-libchiaki.
-
-WHAT IT IS NOT is a proxy anyone should ship. It exists to record, and a session that
-forgot to say so would be adding a hop to the product.
-
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry
