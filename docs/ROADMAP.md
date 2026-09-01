@@ -32,6 +32,7 @@
 - ⏳ **PP33** (deps: PP24 ✅, PP293 ✅, PP340 ✅, PP481 ✅, PP533 ✅) **HTTP and JSON in the core are curl and json-c, two vendored dependencies for what the runtime already does** — the deletion: holepunch.c is the only unit needing either library, and two files call it - session.c, the shim. → §PP33
 - 📋 **PP295** (deps: PP27 ⏳, PP297 ✅) **streamconnection.c is 1531 lines and calls the video receiver, so every deletion below waits on it** — PP286 to PP291 removed no C, and the shim wraps five of the receiver's exports: lib has one caller and this port's own seam is the other. → §PP295
 - 📋 **PP600** (deps: —) **the host starts a session only from the capture flags, so nothing a user can click reaches one** — MainWindow opens PP13's console list and its view model draws rows with no connect action; only ExchangeCapture builds a ChiakiConnectInfo, to record the oracle. → §PP600
+- 📋 **PP619** (deps: —) **the mapping screen's row slots are templated buttons with no automation id** — The named buttons beside them carry ids, so a check tells the rows apart by what they lack, and a screen reader gets nothing at all. → §PP619
 
 ## Block G — Test discipline
 

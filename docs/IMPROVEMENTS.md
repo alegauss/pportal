@@ -378,6 +378,28 @@ WHAT THIS IS NOT is the choice between the native seam and the managed one. That
 console to confirm, because the create's HTTP and websocket need PSN. This is the step
 before it: there is no caller for the choice to live in.
 
+### §PP619 The rows a check finds by what they are missing
+
+PP227 picks the first row slot like this: take every Button in the window, keep the ones
+whose AutomationId is empty, press the first. Its own comment says why - a row's slot is
+a templated Button and carries no AutomationId, and the two named buttons do, which is
+how the rows are told apart from them.
+
+That works and it is upside down. The check identifies a row by the absence of the one
+field an application controls, so it holds only while every other button on the screen
+keeps an id, and it breaks silently the day one is added without one: a new unnamed
+button becomes row zero, and nothing says the check moved.
+
+The accessibility side is the same defect with a person on the end of it. A templated
+Button with no id and no content of its own announces nothing a screen reader can use to
+tell one row from another - on the screen whose whole job is to say which control is
+bound to which slot.
+
+One edit fixes both: give the slot an AutomationId built from the row it belongs to, so
+a check addresses one by name and a reader hears which one it is. It also unblocks the
+migration WW88 is about, because a case addresses a control by id or by name and this
+control has neither.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry
