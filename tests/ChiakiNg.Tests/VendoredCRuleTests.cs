@@ -71,13 +71,38 @@ public class VendoredCRuleTests
     public void TheRuleNamesPP30Too()
     {
         Assert.Contains("PP30", VendoredCRule.LinesItDoesNotReach);
-        Assert.Equal(2, VendoredCRule.LinesItDoesNotReach.Count);
 
         // Named one at a time this would pass on PP33 alone, which is the state PP571 left.
         Assert.Equal(
-            ["PP30"],
+            ["PP30", "PP295"],
             VendoredCRule.MissingExemptions(
                 $"## Non-goals\n\n- **{VendoredCRule.Lead}** but not PP33's deletion\n"));
+    }
+
+    /// <summary>
+    /// PP637: AND PP295, which nothing flagged at all.
+    ///
+    /// The third of three, and the first the lint note is silent about: PP33 and PP30 carry the word
+    /// "vendored" in their own text so the note fires on them lexically, and PP295 does not. That is
+    /// what makes it worth naming rather than less - the note was never what made the other two a
+    /// defect. The reading was, and a reading is available to anybody who picks the line up.
+    ///
+    /// §PP295 says deleting IS the deliverable, so the line asks for what the rule appears to
+    /// forbid. The rule's own argument exempts it: a deletion removes what the drift checks agree
+    /// with. What stays forbidden is editing streamconnection.c to call something else while it
+    /// stays in the build, and PP295 is not asking for that.
+    /// </summary>
+    [Fact]
+    public void TheRuleNamesPP295Too()
+    {
+        Assert.Contains("PP295", VendoredCRule.LinesItDoesNotReach);
+        Assert.Equal(3, VendoredCRule.LinesItDoesNotReach.Count);
+
+        // The state PP593 left: two named, the third still reading as forbidden.
+        Assert.Equal(
+            ["PP295"],
+            VendoredCRule.MissingExemptions(
+                $"## Non-goals\n\n- **{VendoredCRule.Lead}** not PP33's deletion or PP30's port\n"));
     }
 
     /// <summary>
@@ -92,7 +117,7 @@ public class VendoredCRuleTests
                 + "- **Something else** PP33 and PP30 live here\n"));
 
         Assert.True(VendoredCRule.NamesWhatItDoesNotReach(
-            $"## Non-goals\n\n- **{VendoredCRule.Lead}** but not PP33's deletion or PP30's port\n"
+            $"## Non-goals\n\n- **{VendoredCRule.Lead}** not PP33's deletion, PP30's port or PP295's\n"
                 + "- **Something else** no\n"));
     }
 

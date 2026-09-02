@@ -541,6 +541,7 @@
 - ✅ **PP634** **PP623's third step would delete the predicates that keep session.c's nine from coming back** — The predicates stay and the prose around them is what turns, and the plan says so before PP27 follows the same three steps by reading them.
 - ✅ **PP635** **PP27's timing criterion asks for the loop against the C, and that comparison would measure the socket** — The criterion carries the reason now: the gate is comparable, the loop is not, and what answers it is a thousandth of the arrival gap with nothing allocated.
 - ✅ **PP636** **PP295 waits on the whole of PP27, whose last criterion is the deletion PP295 has to happen before** — PP295 no longer declares PP27, the six files the fourth criterion waits on are named, and an assertion holds that the criterion is still the end state.
+- ✅ **PP637** **the vendored-C rule names PP33 and PP30 as what it does not reach, and PP295's deliverable is a deletion too** — The rule names PP295 beside PP33 and PP30, and the three checks that pin the exempt list say why PP27 is still not among them.
 
 ## Block G — Test discipline
 

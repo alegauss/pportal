@@ -91,7 +91,25 @@ public static class VendoredCRule
     /// it. That is roadkeep's, not this repository's; what is this repository's is whether the
     /// answer is written down where the next session reads it.
     /// </summary>
-    public static IReadOnlyList<string> LinesItDoesNotReach { get; } = [DoesNotReach, "PP30"];
+    /// <summary>
+    /// PP637: and PP295, which nothing flagged at all.
+    ///
+    /// The third of three and the first the lint note is silent about. PP33 and PP30 both carry the
+    /// word "vendored" in their own text, so the note fires on them lexically; PP295 does not, and
+    /// was named by nothing. That is what makes it worth writing down rather than less: the note was
+    /// never what made the other two a defect - the reading was, and a reading is available to
+    /// anybody who picks the line up.
+    ///
+    /// §PP295 is explicit that deleting IS the deliverable - "the C video receiver leaving the build
+    /// is what makes the five ports beneath it real" - so a session reads a rule that appears to
+    /// forbid what the line asks for, and stops. The rule's own argument exempts it: a deletion
+    /// removes what the drift checks agree with, so there is nothing left to diverge from.
+    ///
+    /// What the rule DOES still forbid, and PP295 is not asking for, is editing streamconnection.c
+    /// to call something else while it stays in the build. That is a patch by any reading.
+    /// </summary>
+    public static IReadOnlyList<string> LinesItDoesNotReach { get; } =
+        [DoesNotReach, "PP30", "PP295"];
 
     /// <summary>
     /// Whether the rule still names every line it does not reach.

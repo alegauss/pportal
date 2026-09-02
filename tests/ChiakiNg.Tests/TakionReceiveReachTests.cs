@@ -81,8 +81,10 @@ public class TakionReceiveReachTests
     {
         Assert.DoesNotContain("PP27", VendoredCRule.LinesItDoesNotReach);
 
-        // And the two that ARE exempt are the deletions, not this.
-        Assert.Equal(["PP33", "PP30"], VendoredCRule.LinesItDoesNotReach);
+        // PP637: and the three that ARE exempt are deletions and a port, not this. Pinned as the
+        // whole list rather than a membership test, so a fourth exemption has to arrive HERE and be
+        // argued against PP27's case beside it.
+        Assert.Equal(["PP33", "PP30", "PP295"], VendoredCRule.LinesItDoesNotReach);
     }
 
     /// <summary>

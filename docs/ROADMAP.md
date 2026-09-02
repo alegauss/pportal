@@ -142,5 +142,5 @@
   floor and what actually covers it are in docs/HARDWARE-CONTRACT.md.
 - **No local patch to the vendored C** Every drift check asserts the managed side
   matches lib/, so a patch leaves them agreeing with a libchiaki nobody runs. PP107
-  argues it. Not PP33's deletion or PP30's port: one removes what they agree with, the
-  other leaves the vendored source alone.
+  argues it. Not PP33's deletion, PP30's port or PP295's: a deletion removes what they
+  agree with, and a port leaves the vendored source alone.

@@ -66,7 +66,11 @@ public class TapTruncationTests
     public void ThePatchRouteIsClosedUntilTheRuleSaysOtherwise()
     {
         Assert.DoesNotContain("PP27", VendoredCRule.LinesItDoesNotReach);
-        Assert.Equal(["PP33", "PP30"], VendoredCRule.LinesItDoesNotReach);
+
+        // PP637: PP295 joined - its deliverable is a deletion and §PP295 says so. PP27's is not:
+        // it wants a `static` removed so a capture can reach the receive loop, which is the one
+        // thing the rule forbids.
+        Assert.Equal(["PP33", "PP30", "PP295"], VendoredCRule.LinesItDoesNotReach);
     }
 
     /// <summary>And the readers see a moved constant, so neither check is green on a stale pattern.</summary>
