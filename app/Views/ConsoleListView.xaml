@@ -63,6 +63,7 @@
     <Grid.RowDefinitions>
       <RowDefinition Height="*" />
       <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
     <ItemsControl x:Name="Rows" Grid.Row="0"
@@ -74,7 +75,24 @@
       was filed because a failure written to standard error reached nobody. Every refusal this
       screen can produce is about the room rather than about the code, so all of them belong here.
     -->
-    <DockPanel Grid.Row="1" Margin="12,4">
+    <!--
+      PP627: somewhere to type, for the one event that waits for a person. The session thread sits
+      on this with no timeout at all, so a console that asks and a screen that cannot answer is a
+      connect that never finishes and never fails.
+
+      Collapsed until the console asks, and collapsed again the moment a PIN is handed over: the
+      console asking a SECOND time is the only thing that says the last one was wrong (PP335), and a
+      prompt that stayed up could not say it.
+    -->
+    <DockPanel x:Name="PinPrompt" Grid.Row="1" Margin="12,4"
+               Visibility="{Binding PinWanted, Converter={StaticResource BoolToVisibility}}">
+      <Button x:Name="PinSendButton" DockPanel.Dock="Right"
+              Content="Send PIN" Padding="12,2" Click="OnSendPin" />
+      <TextBlock Text="Login PIN:" VerticalAlignment="Center" Margin="0,0,8,0" />
+      <TextBox x:Name="PinField" VerticalContentAlignment="Center" MaxLength="8" />
+    </DockPanel>
+
+    <DockPanel Grid.Row="2" Margin="12,4">
       <!--
         PP625: the way out. A session outlives the click now, so without this the console stays
         occupied until the process does and the person who clicked Connect has no answer except

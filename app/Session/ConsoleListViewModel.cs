@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel;
 using System.Text.RegularExpressions;
+using ChiakiNg.Native;
 using ChiakiNg.Settings;
 
 namespace ChiakiNg.Session;
@@ -232,7 +233,8 @@ public sealed class ConsoleListViewModel : INotifyPropertyChanged
     private readonly Action<Action> marshal;
     private IReadOnlyList<ConsoleRow> rows = [];
     private string status = "";
-    private IDisposable? live;
+    private IHeldSession? live;
+    private bool pinWanted;
 
     /// <summary>
     /// PP600: the list as it has always been - it draws, and connecting is refused with a reason.
@@ -361,8 +363,9 @@ public sealed class ConsoleListViewModel : INotifyPropertyChanged
 
     private void Disconnect(bool say)
     {
-        IDisposable? going = live;
+        IHeldSession? going = live;
         live = null;
+        PinWanted = false;
 
         if (going is null)
             return;
@@ -373,6 +376,55 @@ public sealed class ConsoleListViewModel : INotifyPropertyChanged
             Status = QuitSentence.Ended;
 
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasSession)));
+    }
+
+    /// <summary>
+    /// PP627: whether the console is waiting for a login PIN.
+    ///
+    /// What the prompt's visibility binds to, and the only state on this screen where the session
+    /// is waiting for the PERSON rather than the other way round. It goes false again as soon as a
+    /// PIN is handed over, because the console asking a second time is what says the last one was
+    /// wrong - PP335 - and a prompt that never went away could not say that.
+    /// </summary>
+    public bool PinWanted
+    {
+        get => pinWanted;
+        private set
+        {
+            if (pinWanted == value)
+                return;
+
+            pinWanted = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PinWanted)));
+        }
+    }
+
+    /// <summary>
+    /// PP627: hands the console the PIN somebody typed.
+    ///
+    /// Answers with what libchiaki said so a caller can tell a refusal from a success, and clears
+    /// the prompt either way: the PIN is spent by the call, so PP345's rule applies here as much as
+    /// inside the C - there is nothing left to retry with, and a prompt still up would invite
+    /// somebody to type the same digits again.
+    /// </summary>
+    public ChiakiError AnswerPin(string pin)
+    {
+        ArgumentNullException.ThrowIfNull(pin);
+
+        if (live is not { } session)
+        {
+            Status = "There is no session waiting for a PIN.";
+            return ChiakiError.InvalidData;
+        }
+
+        PinWanted = false;
+
+        ChiakiError answered = session.AnswerPin(System.Text.Encoding.ASCII.GetBytes(pin));
+        Status = answered == ChiakiError.Success
+            ? "PIN sent."
+            : $"The PIN was not accepted: {answered}";
+
+        return answered;
     }
 
     /// <summary>
@@ -388,6 +440,15 @@ public sealed class ConsoleListViewModel : INotifyPropertyChanged
         {
             case ConsoleSessionState.Connected:
                 Status = "Connected.";
+                break;
+
+            // PP627: the console is waiting for a person, with no timeout of its own. The prompt is
+            // raised rather than the status alone, because a sentence on a status line is not
+            // somewhere to type - and this is the first thing in the port that asks for something
+            // mid-session.
+            case ConsoleSessionState.PinWanted:
+                Status = "This console is asking for its login PIN.";
+                PinWanted = true;
                 break;
 
             case ConsoleSessionState.Ended:

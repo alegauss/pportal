@@ -147,6 +147,101 @@ public class ConsoleSessionTests
     }
 
     /// <summary>
+    /// PP627: the console asks for a PIN, and there is now somewhere to put one.
+    ///
+    /// THE STATE THAT WAITS FOR A PERSON. session.c sits on this with `UINT64_MAX` - no timeout at
+    /// all - so before this a console that asked left the front door saying "Connecting to ..." for
+    /// as long as ctrl stayed up. The prompt is what the screen binds to, and the status is what
+    /// somebody reads while looking for it.
+    /// </summary>
+    [Fact]
+    public void AConsoleAskingForAPinRaisesThePrompt()
+    {
+        var starter = new ConsoleConnectTests.FakeStarter();
+        ConsoleListViewModel model = Wired(starter);
+
+        model.Connect(Row("Living room"));
+        Assert.False(model.PinWanted);
+
+        starter.Report!(new ConsoleSessionEvent(ConsoleSessionState.PinWanted, null));
+
+        Assert.True(model.PinWanted);
+        Assert.Contains("PIN", model.Status, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// PP627: and the PIN reaches the session it was typed for.
+    ///
+    /// The prompt goes down with it, which is PP345's rule at this level: the PIN is spent by the
+    /// call and cannot be retried, so a prompt still up would invite the same digits again. What
+    /// says the last one was wrong is the console ASKING a second time - PP335 - which raises it
+    /// again on its own.
+    /// </summary>
+    [Fact]
+    public void ThePinReachesTheSessionAndTheSecondAskRaisesItAgain()
+    {
+        var starter = new ConsoleConnectTests.FakeStarter();
+        ConsoleListViewModel model = Wired(starter);
+
+        model.Connect(Row("Living room"));
+        starter.Report!(new ConsoleSessionEvent(ConsoleSessionState.PinWanted, null));
+
+        Assert.Equal(ChiakiError.Success, model.AnswerPin("1234"));
+
+        Assert.Equal("1234", starter.Pin);
+        Assert.False(model.PinWanted);
+
+        // The console did not like it and asks again, which is the only thing that says so.
+        starter.Report(new ConsoleSessionEvent(ConsoleSessionState.PinWanted, null));
+        Assert.True(model.PinWanted);
+    }
+
+    /// <summary>
+    /// PP627: a refused PIN says so, and a PIN with no session to take it does not pretend.
+    /// </summary>
+    [Fact]
+    public void APinWithNowhereToGoIsRefusedAndSaidSo()
+    {
+        var refusing = new ConsoleConnectTests.FakeStarter { PinAnswer = ChiakiError.InvalidData };
+        ConsoleListViewModel model = Wired(refusing);
+
+        model.Connect(Row("Living room"));
+        starterReportsPin(refusing);
+
+        Assert.Equal(ChiakiError.InvalidData, model.AnswerPin("1234"));
+        Assert.Contains("not accepted", model.Status, StringComparison.Ordinal);
+
+        // And with no session at all: nothing is sent and the screen says why.
+        var alone = new ConsoleListViewModel();
+        Assert.Equal(ChiakiError.InvalidData, alone.AnswerPin("1234"));
+        Assert.Contains("no session", alone.Status, StringComparison.OrdinalIgnoreCase);
+
+        static void starterReportsPin(ConsoleConnectTests.FakeStarter starter)
+            => starter.Report!(new ConsoleSessionEvent(ConsoleSessionState.PinWanted, null));
+    }
+
+    /// <summary>
+    /// PP627: and disconnecting takes the prompt with it.
+    ///
+    /// A prompt left up over a session that is gone is a field whose Send goes nowhere, and the
+    /// person typing into it has no way to tell that from a console being slow.
+    /// </summary>
+    [Fact]
+    public void EndingTheSessionTakesThePromptDown()
+    {
+        var starter = new ConsoleConnectTests.FakeStarter();
+        ConsoleListViewModel model = Wired(starter);
+
+        model.Connect(Row("Living room"));
+        starter.Report!(new ConsoleSessionEvent(ConsoleSessionState.PinWanted, null));
+        Assert.True(model.PinWanted);
+
+        model.Disconnect();
+
+        Assert.False(model.PinWanted);
+    }
+
+    /// <summary>
     /// PP625: a quit that is not an error does not read as one.
     ///
     /// `chiaki_quit_reason_is_error` is false for STOPPED and for the console shutting down

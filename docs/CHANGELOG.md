@@ -530,6 +530,7 @@
 - ✅ **PP622** **PP33's line cannot honestly say one caller, because the check demands the phrase 'one files call it'** — The clause is chosen per count rather than assembled from a plural, so one takes a singular verb and zero says no file calls it at all.
 - ✅ **PP624** **ConsoleList keys registration and hiding on a MAC, and discovery answers with a host-id in another spelling** — The Qt client's own six-byte parse is read, so both sets are the store's bytes, the hidden one works, and a row carries the identity that tells two nicknames apart.
 - ✅ **PP625** **the front door starts a session and releases it in the same call, so a connect that succeeds ends at once** — The starter hands back a handle the list holds, a second connect releases the first, and a quit becomes the sentence qmlbackend's own dialog composes.
+- ✅ **PP627** **a console asking for a login PIN gets no answer, so the front door sits at Connecting for ever** — A shim wrapper carries the PIN to the waiting session, the prompt goes up when the console asks and down when it is spent, and the second ask raises it again.
 
 ## Block G — Test discipline
 

@@ -49,6 +49,12 @@ public class ConsoleConnectTests
         /// <summary>How many sessions it has been asked for.</summary>
         public int Starts { get; private set; }
 
+        /// <summary>PP627: the PIN it was handed, as text.</summary>
+        public string? Pin { get; private set; }
+
+        /// <summary>PP627: what to say about that PIN.</summary>
+        public ChiakiError PinAnswer { get; init; } = ChiakiError.Success;
+
         public ConsoleSessionStart Start(ConnectRequest request, Action<ConsoleSessionEvent> report)
         {
             Started = request;
@@ -61,8 +67,14 @@ public class ConsoleConnectTests
                 : new(Answer, null);
         }
 
-        private sealed class Handle(FakeStarter owner) : IDisposable
+        private sealed class Handle(FakeStarter owner) : IHeldSession
         {
+            public ChiakiError AnswerPin(ReadOnlySpan<byte> pin)
+            {
+                owner.Pin = System.Text.Encoding.ASCII.GetString(pin);
+                return owner.PinAnswer;
+            }
+
             public void Dispose() => owner.Released = true;
         }
     }

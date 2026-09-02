@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
+﻿// SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
 
 #ifndef CHIAKI_SHIM_H
 #define CHIAKI_SHIM_H
@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 35
+#define CHIAKI_SHIM_ABI 36
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -149,7 +149,7 @@ CHIAKI_SHIM_API uint32_t chiaki_shim_log_level_mask(void *log);
  */
 CHIAKI_SHIM_API void chiaki_shim_log_write(void *log, int32_t level, const char *msg);
 
-/** chiaki_log_level_char: 'I', 'W', 'E'… the letter that build's log file is written with. */
+/** chiaki_log_level_char: 'I', 'W', 'E'â€¦ the letter that build's log file is written with. */
 CHIAKI_SHIM_API char chiaki_shim_log_level_char(int32_t level);
 
 /**
@@ -363,6 +363,21 @@ CHIAKI_SHIM_API int32_t chiaki_shim_session_stop(void *session);
  * the mutex and the stop pipe the thread is still using.
  */
 CHIAKI_SHIM_API int32_t chiaki_shim_session_join(void *session);
+
+/**
+ * PP627: chiaki_session_set_login_pin - the answer to the one event that asks for one.
+ *
+ * CHIAKI_EVENT_LOGIN_PIN_REQUEST is the only event libchiaki raises that needs something back. The
+ * session thread waits on it with no timeout at all - UINT64_MAX - because a person typing is not
+ * something a network timeout should interrupt, so a session whose console asks and whose caller
+ * never answers sits there until ctrl fails or somebody stops it.
+ *
+ * A null or empty pin is refused rather than forwarded. The C mallocs pin_size bytes and sets
+ * login_pin_entered, so a zero-size call wakes the thread with nothing to read - and PP345 settled
+ * that a spent PIN cannot be retried, so the cost of an empty one is a prompt nobody sees again.
+ */
+CHIAKI_SHIM_API int32_t chiaki_shim_session_set_login_pin(
+	void *session, const uint8_t *pin, size_t pin_size);
 
 /**
  * The controller state, which is what the session sends upstream sixty times a second.

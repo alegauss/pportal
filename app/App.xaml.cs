@@ -1186,6 +1186,10 @@ public partial class App : Application
         view.ConnectRequested += row => model.Connect(row);
         view.DisconnectRequested += model.Disconnect;
 
+        // PP627: the answer to the one event that asks for one. Discarded because the model puts
+        // the outcome on the status line, which is where the person who typed it is looking.
+        view.PinEntered += pin => model.AnswerPin(pin);
+
         // PP625: and the session goes when the window does. A held session outlives the screen
         // otherwise, and the console stays occupied by a process that has nothing left to draw.
         window.Closed += (_, _) => model.Disconnect();

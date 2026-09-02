@@ -41,4 +41,23 @@ public partial class ConsoleListView : UserControl
     }
 
     private void OnDisconnect(object sender, RoutedEventArgs e) => DisconnectRequested?.Invoke();
+
+    /// <summary>
+    /// PP627: somebody typed a login PIN, and here it is.
+    ///
+    /// The field is cleared here rather than by whatever answers, and that is the same rule the C
+    /// keeps one layer down: PP345 established that a PIN is spent by the handover and cannot be
+    /// retried, so leaving the digits on screen invites somebody to send them again.
+    /// </summary>
+    private void OnSendPin(object sender, RoutedEventArgs e)
+    {
+        string typed = PinField.Text;
+        PinField.Clear();
+
+        if (!string.IsNullOrWhiteSpace(typed))
+            PinEntered?.Invoke(typed.Trim());
+    }
+
+    /// <summary>PP627: somebody typed a login PIN for the session being held.</summary>
+    public event Action<string>? PinEntered;
 }

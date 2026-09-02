@@ -11,6 +11,15 @@ public enum ConsoleSessionState
     /// <summary>The control conversation finished. This is what connecting means.</summary>
     Connected,
 
+    /// <summary>
+    /// PP627: the console is asking for a login PIN, and will wait for one indefinitely.
+    ///
+    /// The only state that needs something back. session.c waits on it with `UINT64_MAX` - no
+    /// timeout at all - because a person typing is not something a network timeout should
+    /// interrupt, so a session in this state goes nowhere until somebody answers or ctrl fails.
+    /// </summary>
+    PinWanted,
+
     /// <summary>Over, for a reason - which is <see cref="ConsoleSessionEvent.Sentence"/>.</summary>
     Ended,
 }
@@ -71,10 +80,23 @@ public static class QuitSentence
     }
 }
 
+/// <summary>
+/// PP627: a session that is being held, and the one thing that can be said back to it.
+///
+/// An interface rather than <see cref="IDisposable"/> alone, because the PIN is the only answer a
+/// session takes and it has to reach the same object the list is holding. Ending it is still
+/// <see cref="IDisposable.Dispose"/>.
+/// </summary>
+public interface IHeldSession : IDisposable
+{
+    /// <summary>Answers a <see cref="ConsoleSessionState.PinWanted"/>, and says what libchiaki said.</summary>
+    ChiakiError AnswerPin(ReadOnlySpan<byte> pin);
+}
+
 /// <summary>What starting a session produced: a live one, or the error that stopped it.</summary>
 /// <param name="Error">What libchiaki said.</param>
 /// <param name="Session">The handle that keeps it alive, disposed to end it.</param>
-public readonly record struct ConsoleSessionStart(ChiakiError Error, IDisposable? Session)
+public readonly record struct ConsoleSessionStart(ChiakiError Error, IHeldSession? Session)
 {
     /// <summary>Whether there is a session to hold.</summary>
     public bool Running => Error == ChiakiError.Success && Session is not null;
@@ -151,6 +173,7 @@ public sealed class NativeConsoleSessionStarter : IConsoleSessionStarter
     private static ConsoleSessionEvent Translate(ChiakiSessionEvent e) => e.Type switch
     {
         ChiakiEventType.Connected => new(ConsoleSessionState.Connected, null),
+        ChiakiEventType.LoginPinRequest => new(ConsoleSessionState.PinWanted, null),
         ChiakiEventType.Quit => new(
             ConsoleSessionState.Ended, QuitSentence.For(e.QuitReason, e.QuitReasonString)),
         _ => new(ConsoleSessionState.Starting, null),
@@ -160,9 +183,13 @@ public sealed class NativeConsoleSessionStarter : IConsoleSessionStarter
     /// The handle. Stops before it disposes, because a session thread still running when the
     /// object goes is the one shape of teardown that takes the process with it.
     /// </summary>
-    private sealed class Handle(ChiakiSession session) : IDisposable
+    private sealed class Handle(ChiakiSession session) : IHeldSession
     {
         private ChiakiSession? held = session;
+
+        /// <inheritdoc />
+        public ChiakiError AnswerPin(ReadOnlySpan<byte> pin)
+            => held is { } running ? running.SetLoginPin(pin) : ChiakiError.InvalidData;
 
         public void Dispose()
         {

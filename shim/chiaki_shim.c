@@ -478,6 +478,22 @@ CHIAKI_SHIM_API int32_t chiaki_shim_session_join(void *session)
 	return self ? (int32_t)chiaki_session_join(&self->session) : (int32_t)CHIAKI_ERR_INVALID_DATA;
 }
 
+/* PP627: the answer to the one event that asks for one.
+ *
+ * A null or empty pin is refused here rather than passed on. chiaki_session_set_login_pin mallocs
+ * pin_size bytes and sets login_pin_entered, so a zero-size call wakes the session thread with a
+ * buffer it will read nothing out of - and PP345 settled that a spent PIN cannot be retried, so the
+ * cost of the empty one is a prompt the user never sees again. */
+CHIAKI_SHIM_API int32_t chiaki_shim_session_set_login_pin(
+	void *session, const uint8_t *pin, size_t pin_size)
+{
+	chiaki_shim_session *self = (chiaki_shim_session *)session;
+	if(!self || !pin || pin_size == 0)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+
+	return (int32_t)chiaki_session_set_login_pin(&self->session, pin, pin_size);
+}
+
 CHIAKI_SHIM_API void *chiaki_shim_controller_state_create(void)
 {
 	ChiakiControllerState *state = (ChiakiControllerState *)calloc(1, sizeof(ChiakiControllerState));

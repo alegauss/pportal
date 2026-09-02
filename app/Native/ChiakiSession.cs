@@ -390,6 +390,29 @@ public sealed unsafe class ChiakiSession : IDisposable
         return SessionControllerStateMatches(_handle, state.Handle);
     }
 
+    /// <summary>
+    /// PP627: chiaki_session_set_login_pin - the answer to the one event that asks for one.
+    ///
+    /// <see cref="ChiakiEventType.LoginPinRequest"/> is the only event libchiaki raises that needs
+    /// something back, and the session thread waits on it with no timeout at all: a person typing is
+    /// not something a network timeout should interrupt. So a caller that never answers is a session
+    /// that sits there until ctrl fails.
+    ///
+    /// An empty PIN is refused by the shim rather than forwarded, and PP345 is why it matters: the C
+    /// takes ownership of what it is given and a spent PIN cannot be retried, so an empty one costs
+    /// the prompt as well as the attempt.
+    /// </summary>
+    public ChiakiError SetLoginPin(ReadOnlySpan<byte> pin)
+    {
+        ObjectDisposedException.ThrowIf(_handle == IntPtr.Zero, this);
+
+        if (pin.IsEmpty)
+            return ChiakiError.InvalidData;
+
+        fixed (byte* first = pin)
+            return (ChiakiError)SessionSetLoginPin(_handle, first, (nuint)pin.Length);
+    }
+
     /// <summary>chiaki_session_join: waits for the session thread to end.</summary>
     public ChiakiError Join()
     {
@@ -484,6 +507,10 @@ public sealed unsafe class ChiakiSession : IDisposable
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_session_join",
         CallingConvention = CallingConvention.Cdecl)]
     private static extern int SessionJoin(IntPtr session);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_session_set_login_pin",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern int SessionSetLoginPin(IntPtr session, byte* pin, nuint pinSize);
 
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_session_set_controller_state",
         CallingConvention = CallingConvention.Cdecl)]
