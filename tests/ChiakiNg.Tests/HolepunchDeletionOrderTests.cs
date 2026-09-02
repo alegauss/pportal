@@ -53,6 +53,30 @@ public class HolepunchDeletionOrderTests
     }
 
     /// <summary>
+    /// PP634: the third step does not delete the guard the second one installed.
+    ///
+    /// It used to say "the models drop the first of their two states", written before either of the
+    /// first two had landed. PP631 kept those predicates on purpose - a session.c that grew the
+    /// calls back goes red again - so following the step as written would have removed the thing
+    /// that notices. What is stale is the prose around them, not the predicates.
+    ///
+    /// Asserted because the plan is about to be READ rather than derived: PP27 owes the same shape
+    /// of deletion, and a wrong instruction that is reused is a wrong instruction twice.
+    /// </summary>
+    [Fact]
+    public void TheLastStepKeepsWhatTheSecondInstalled()
+    {
+        DeletionStage last = HolepunchDeletionOrder.Stages[^1];
+
+        Assert.False(last.TouchesTheC);
+        Assert.DoesNotContain("drop", last.Detail, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("STAY", last.Detail, StringComparison.Ordinal);
+
+        // And it is the step still ahead of us, which is what makes the correction worth making.
+        Assert.Equal(HolepunchDeletionOrder.Stages.Count, HolepunchDeletionOrder.Landed + 1);
+    }
+
+    /// <summary>
     /// PP623: and the orders that are not landable are refused, so the property is a rule and not a
     /// description of the list beside it.
     /// </summary>

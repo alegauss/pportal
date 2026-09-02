@@ -34,6 +34,11 @@ public readonly record struct DeletionStage(string Name, string Detail, bool Tou
 /// This is a plan and not a promise about effort. What it buys is that a session picking PP33 meets
 /// three landable commits instead of one diff it cannot finish, and that the one commit which must
 /// be atomic is named rather than discovered.
+///
+/// PP634: AND THE PLAN IS REUSABLE, which is why its third step being wrong mattered. PP27 owes the
+/// same shape of deletion - takion.c, takionsendbuffer.c and reorderqueue.c leaving a build whose
+/// models quote them - so the steps below are about to be followed a second time by somebody
+/// reading them rather than deriving them.
 /// </summary>
 public static class HolepunchDeletionOrder
 {
@@ -59,10 +64,16 @@ public static class HolepunchDeletionOrder
             "the nine asks, both holepunch_session fields and the Qt client's build, in one commit "
                 + "that edits no test file because every assertion it moves already accepts where it lands",
             TouchesTheC: true),
+        // PP634: this said "the models drop the first of their two states", written before either of
+        // the steps above had landed. It is wrong in the way only their landing makes visible - the
+        // predicates ARE the guard PP631 installed, and each is a different shape session.c could
+        // come back in. PP630's counterpart catches the handle returning wholesale and nothing
+        // finer, which is a tripwire's granularity rather than a guard's.
         new(
-            "Delete the shape that can no longer occur",
-            "the models drop the first of their two states, which is a deletion with a green tree "
-                + "either side of it",
+            "Turn the models' prose",
+            "the predicates STAY - they are what notices the calls coming back - and what is stale "
+                + "is the present tense around them, which reads as though the port still has the "
+                + "shape they describe",
             TouchesTheC: false),
     ];
 

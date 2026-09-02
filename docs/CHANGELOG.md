@@ -538,6 +538,7 @@
 - ✅ **PP631** **the census's tests read session.c directly, so PP33's flip would turn every one of them red** — Ten test files read session.c through the pair now, so the flip makes them decline rather than fail, and a drift check catches any that go back to reading it themselves.
 - ✅ **PP632** **nothing has taken PP623's middle step, so session.c still asks and the Qt client's build still stands** — The nine and both fields are gone, the Qt client's build retired with them, and GuiFreshness answers Retired so no checkout is left permanently stale.
 - ✅ **PP633** **PP44's budget is measured over heads, and the copy the keeping branches do needs a payload to exist** — Over 3.69MB a PS5 sent, the keeping branches copied 3693956 bytes and the loop allocated nothing, and the gate's share is unchanged because it stops at eighteen.
+- ✅ **PP634** **PP623's third step would delete the predicates that keep session.c's nine from coming back** — The predicates stay and the prose around them is what turns, and the plan says so before PP27 follows the same three steps by reading them.
 
 ## Block G — Test discipline
 
