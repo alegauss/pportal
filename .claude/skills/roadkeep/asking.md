@@ -19,9 +19,12 @@ is a **UTF-16 code unit**, which every payload declares and every refusal names 
 differs from what an editor shows — the stricter of the two counts, so a line this accepts
 is one a gate written in Java, C# or JavaScript accepts too, and a status marker costs two
 of them where `✅` costs one. `budget --block
-<x> --dep <id> [--symptom "…"]` is the line an `add` is about to write, and `budget <id>`
+<x> --dep <id> [--requires <word>] [--symptom "…"]` is the line an `add` is about to write,
+and `budget <id>`
 the one an `amend` is about to rewrite; the field's own `maxLength` is the ceiling, and
-what comes back is the lower number that actually binds. Where `ref_scheme = "outline"`
+what comes back is the lower number that actually binds. **Pass every flag the write will
+carry**: a `(requires: upstream)` group is 21 characters of structure, so a sentence priced
+without one is refused by the `add` for exactly its width. Where `ref_scheme = "outline"`
 the pointer is structure the caller chooses, so **pass the same `--ref` you will pass
 `add`** — unnamed, the answer assumes the widest anchor on file and says so, which is
 never more room than the `add` will allow. **It answers for the whole transaction, not the
@@ -61,7 +64,12 @@ limits are the list's own and not the task line's. **And `budget <id> --ship` pr
 sentence a *ship* writes**, which is a different number from the line's — the ledger drops
 the deps and the pointer, so there is more room and a draft written to the line's figure
 throws characters away; `--retire` is the same question for the other departure, where a
-derived `abandoned:` or `superseded by <id>:` prefix is inside the field and counted.
+derived `abandoned:` or `superseded by <id>:` prefix is inside the field and counted; and
+`--defer` is the third, where the reason is *wrapped* around the design the store carries
+forward — so the row that matters is `carried`, naming what the line leaves your sentence,
+the field's own limit measuring the carry and never the reason. One departure per call, and
+each takes the words its own write uses: `--superseded-by` for the retirement's id and
+`--reason` for the sentence, so a call priced here is a call you can type.
 **`budget --file <p>` is the fourth
 subject**, and the one that is not about prose at all: what an every-turn file `[budgets]`
 declares costs in lines and bytes and what is left — bare, every declared budget. Read it
@@ -80,8 +88,11 @@ sentence to a description stops looking free, which is the argument `[budgets]` 
 a file that loads every turn. **`cost --brief [<id>]`** is the one about
 a *read*: what the answer that replaces reading the file costs a tool result, per open line and
 widest first, against `[reads] brief`. Declared, that ceiling is the gate's — `read.over` names
-the task whose brief does not fit. **`cost --session`** is both halves against their cadences —
-the served schema once at connect and every `[budgets]` file each turn — which is what a
+the task whose brief does not fit — and each row says how much of the figure is the **graph**:
+the deps, the ships that settled them and the chains, which grow with the backlog's shape and
+not with anything you wrote, so an overrun is answerable without guessing which half to cut.
+**`cost --session`** is both halves against their cadences — the served schema once at connect
+and every `[budgets]` file each turn — which is what a
 session pays before it calls anything, and the one figure neither of the other two can give.
 **`cost --skill`** is the fourth cadence: what this file costs the turns that load it, beside
 the served schema and with the sections it went to — no ceiling, because none is declared and
@@ -169,8 +180,11 @@ from**: `block list` is, with each block's title, what it holds open and what th
 records under it, and it is the first call of a session that has to place something.
 Reach for it before an unscoped `list` over a ledger, which prints the file — measured at
 117,815 characters on one project, refused by the transport, and what a caller did next
-was grep the governed file. Where `[requirements]` is declared the count
-splits into what nothing absent is holding up and what the rest wait for, `--have <word>`
+was grep the governed file. Where the project declares `[reads] list`, that listing comes
+back as its blocks and counts instead, exit 1, with the largest `--block` that fits named:
+a bound the verb applies to itself, because the transport that refuses one cannot say so.
+Where `[requirements]` is declared the count splits into what nothing absent is holding up
+and what the rest wait for, `--have <word>`
 moving a line across and a line naming two requirements counted once. **Two of those three
 are yours only at a terminal**: nothing serves the counting verb or the auditing one, and
 both answers ride `list --json` instead — `startable` is the split, computed over exactly
@@ -188,7 +202,9 @@ that entry owns — which is the count `record amend --lines` asks you to have r
 <id>` walks the graph both ways; `gaps` resolves an id in neither file against the commit
 that removed it, and `unclosed` is that question pointed the other way — an **open**
 line whose work a commit already names, which is what a session that shipped the code
-and forgot the line leaves behind; `origin <id> --why` reads it out of history, and `origin §<anchor>`
+and forgot the line leaves behind — a commit touching only governed files is *this tool
+writing* and is not counted, so an amended `why` or a corrected rationale never reads as
+work that landed; `origin <id> --why` reads it out of history, and `origin §<anchor>`
 answers the other end of a pointer — a rationale address somebody's prose still cites
 after a ship deleted the section, which no file records, so the three answers are the
 commit that wrote it, the one that took it, and "searched and nobody ever wrote it", which
@@ -196,7 +212,9 @@ is what a typo looks like. `anchors [--family <x>]` is that question about the
 **addresses**: which a heading declares now, which a ship retired while every entry citing
 them stayed, and the next child nothing ever used — the read to make before reopening a
 shipped family, since an outline anchor is spent once a heading used it and `section add`
-refuses the reuse by name. **You know the block, not the numeral**: a prose file under an
+refuses the reuse by name. The retired half is **counted and withheld** — one per shipped
+task and nothing prunes them — and `anchors --retired` is what prints it. **You know the
+block, not the numeral**: a prose file under an
 outline declares no block heading, so `anchors --block <x>` is the way in — it names the
 family that block's pointers already use and narrows to it, or names both where the block
 spans two and leaves the choice with you. And **never restate a count in prose**: `export

@@ -17,6 +17,9 @@ tool list rather than typing it: the whole write path and the reads a task needs
 `section_add`, `section_amend`, `section_move`, `section_drop`, `budget`,
 `brief`, `pick`, `list`, `deps`, `lint`, `config`, `govern`, `engines`, `merge_check` — same engine and same
 refusals, with the fields arriving as a schema instead of flag names typed from memory.
+**The CLI takes these spellings too**: `roadkeep next_id` and `--replacement` run as `next-id`
+and `--with`, with a note on stderr naming the CLI's own — so a name remembered from either
+surface works, and a verb this CLI has is never respelled into another act.
 `init`, `adopt` and `install` run *before* a project is governed, or on its wiring, and want
 the CLI — `declare` above is the one write on a configured tree, which is why it is served
 and they are not. **It takes two vocabularies**: a *role* writes that file and the `[files]`
@@ -35,13 +38,20 @@ type it, because **the gate now asks**: a vendored launcher, hook or skill behin
 roadkeep answering here is `install.stale`, filed at that file, and `install` is what closes
 it. A project holding its version on purpose says `[install] pinned = true` and the finding
 stops; the check and `engines` still answer, a pin being a decision and not a claim that the
-files agree. **`install --vendor` pins the engine itself**, which nothing else here does:
+files agree. **And the write knows which side is newer**: `install` records `[install]
+wired = "<version>"`, so a project whose surfaces came from a *later* engine is refused
+rather than downgraded — the gate says nothing there and `install --check` names the
+direction, `--vendor` being what moves the engine forward instead.
+**`install --vendor` pins the engine itself**, which nothing else here does:
 it copies the highest-versioned roadkeep this machine can reach into `.roadkeep/` and the
 launcher resolves that ahead of any sibling checkout. By version and never by search order,
 so every machine pins the same one; a *working* checkout is skipped unless `ROADKEEP_SRC`
 names it, a tree mid-refactor being the thing a pin exists to stop running; `.git` is
 excluded so the copy is an artefact and not a second repository; and what landed is asked
-its version, a disagreement being a refusal that leaves the tree there to look at. Add
+its version, a disagreement being a refusal that leaves the tree there to look at. The pin
+lands **first** and the surfaces are then written from it, so one run is enough and what it
+leaves is a tree its own `--check` passes; every later `install` keeps that engine unless
+you name a `--source`. Add
 `.roadkeep/` to `.gitignore` — the command says so and does not write it. `install
 --committed`
 wires a launcher committed to the repository instead of a path into a checkout, which is
@@ -70,7 +80,10 @@ write the command you just ran would have made, because then the refusal is that
 rule and not this one's. **And `engines --invoke` prints, on one line and alone, the
 command that reaches the copy wired to this project** — reach for it before composing any
 shell call, because the tools here always find the right copy and a shell does not: a
-stale one in another plugins root does not fail, it agrees with a rule that has moved. On a
+stale one in another plugins root does not fail, it agrees with a rule that has moved. It is
+**read off this project's own `.mcp.json`** and not derived, so a `$ROADKEEP_HOME` pin, a
+vendored copy and a committed bridge all answer correctly — whatever the harness runs is
+what it prints, up to the program and never the `mcp` after it. On a
 project that declared `[install] enforced`, it no longer only agrees: a write from a copy
 `behind` the registered plugin is **refused before the lock**, and the refusal names that
 read. Only `behind` and only where that key was declared — a modified checkout is where a
@@ -163,9 +176,15 @@ why one replaced another is the argument in the entry that replaced it, one line
 decision is superseded once, and what replaces the replacement supersedes that one.
 **A typo in one is `revise <id> --decides "…"`**, not a second decision: the entry keeps its
 line, its id and its marker, and a `(superseded by <id>)` clause is carried through rather
-than retyped. And `--why` is **required**, because the roadmap's sentence states a problem and
+than retyped. **The claim beside it is respellable and never rewordable** — `revise --symptom`
+and `record amend --symptom` take a correction only where it folds to the one on record, so
+bytes that never arrived are fixable and a claim that turned out wrong is still `retire`.
+And `--why` is **required**, because the roadmap's sentence states a problem and
 the ledger's states an outcome, so inheriting it files a defect report under a heading
-meaning "done" (`record amend <id> --why` is the repair where one already did). **A path
+meaning "done" (`record amend <id> --why` is the repair where one already did). That repair
+asks `--lines <n>` only where the entry's continuation is prose **nobody parsed**: an entry
+wrapped by `--checked` alone is corrected in one call, the carried lines staying where the
+ship wrote them, because re-supplying a derivation is not what the count is for. **A path
 ledger prose names has to resolve**: `ship`, `retire` and both `record` verbs refuse a
 sentence citing a file this repository does not have, because an entry there claims the
 work is done — the gate's own `path.missing`, asked before the prose exists rather than
@@ -176,7 +195,14 @@ transaction, two more doors
 the retirement is the one line in that file to carry a marker, a departure being the one
 status a ledger of shipped work does not state about itself. `ship` is not the way round
 it either way: an outcome filed under ✅ is a shipment, and `Backlog.retired` reads the
-marker. **The `symptom` is not one of `amend`'s fields** — it is the falsifiable claim the
+marker. **`amend <id> --add-dep <d>` and `--drop-dep <d>` are the narrow doors on the group**, and
+what to reach for whenever one dep changes: `--dep` given at all replaces the whole group,
+so a seventh dep means naming all seven, six of them to say nothing changed. Drop by the
+spelling the file shows or the bare id — the `✅` is derived and is not yours to reproduce
+— and one of the two forms per call, never both. A dep renders *into* the line and the
+line's ceiling is shared with the `why`, so an addition that does not fit is refused
+**naming the dep** rather than the sentence that did not move.
+**The `symptom` is not one of `amend`'s fields** — it is the falsifiable claim the
 line is, so a different one is a different task — and where the premise itself turned out
 false, `restate <id> --symptom "…"` is that correction and the only door to it: the id,
 the deps, the marker and the section all stay, because the work never changed and only the
@@ -216,7 +242,10 @@ A **second** `--part` is refused and says why: one id carries one partial and th
 completion, so work arriving in more halves than that files each delivered step as its own
 line, and the refusal spells the id that line takes under this project's `[ids]`. **A
 pause is none of those three**: `defer <id> --reason "…"` moves the line to the deferred
-store, keeping the id, the deps, the symptom and the section a departure deletes — refused
+store, keeping the id, the deps, the symptom and the section a departure deletes. The reason
+is *wrapped* around the design carried forward, so what bounds it is the **line** and not the
+`why` limit — `budget <id> --defer` is that number before you compose one, and a reason past
+it is refused. Refused too
 where `[files]` declares no `deferred` path, and never scaffolding one on the way past, a
 store invented at the moment one is needed being a format decided by a verb; `init
 --deferred` writes the key and the skeleton together on a project being *created*, and
@@ -260,9 +289,10 @@ impossible rather than unreliable. So you read the list, and the alternative is
 discovering the collision after a claim, a brief and a retirement. **`delivered <block>
 --near "<the symptom you are about to propose>"` is that read bounded by the question**
 — the five entries nearest it, ranked by word overlap, instead of a whole block's ledger
-(103 lines and 9,773 bytes here). Reach for it by default: measured on the four pairs
-this ledger knows the answer to, the true partner is inside those five every time. The
-order is the answer and no score is printed, for the reason above. **And the `add` hands
+(103 lines and 9,773 bytes here). Reach for it by default: measured on the eleven pairs
+this ledger knows the answer to, the true partner is inside those five for nine, worst
+rank three — the entries are ranked on **both** their prose fields, the `why` being where
+two authors of one defect agree. The order is the answer and no score is printed. **And the `add` hands
 that read back whether or not you made it**: every insertion names the three entries of its
 block nearest the symptom it just filed, because that is the moment nothing is spent but an
 id and `restate` and `retire` are one call away. Same order, same silence about scores, and
@@ -405,8 +435,11 @@ address, so a constraint whose lead changes is one dropped and one written. **Ca
 `non-goal list` before an `add`** — the list binds what may be proposed, so reading it
 after the line exists is reading it too late; it prints on a project that never opted in,
 and nothing checks a proposal against it for you, that being a judgement about meaning and
-this tool having no model (L4). **That list's positive twin is `criterion`**, where
-`[criteria]` declares it governed: a non-goal says what is not built and this says what must
+this tool having no model (L4). A `settled` row under a constraint names the open lines
+whose design quotes its lead — the `non-goal.reaches` note answered, read from the rule's
+side, so a clause somebody is about to tidy away is one a command already named. **That
+list's positive twin is `criterion`**, where `[criteria]` declares it governed: a non-goal
+says what is not built and this says what must
 be **true** for a block to be finished, which nothing else states — a definition of done
 written into a rationale section is one `ship` correctly deletes, and then a block closes on
 emptiness. `criterion add --block <x> --lead "…" --why "…"` writes one, **opening that
@@ -421,7 +454,10 @@ an agent about to execute one wants — the spec is the symptom, the non-goals, 
 this, and only this was written one altitude up. The id has to be a line the roadmap still
 carries, naming both addresses is refused, and the list **leaves with the line**: a ship or a
 retirement takes the whole `## Done when — <id>` region in its own transaction, where a
-block's list stays, that one outliving its lines. `brief`
+block's list stays, that one outliving its lines. **Say which of them you checked**:
+`ship --checked "<lead>"`, repeatable, moves that criterion's own sentence under the ledger
+entry, so a claim somebody verified is told from one nobody looked at — a lead the list does
+not carry is refused, and a partial keeps its list and so takes none. `brief`
 prints both, each carrying its address, so a task started through it never has to ask, and
 `criterion list [--block <x>|--task <id>]` is the read across them — it says which empty it
 found. **The

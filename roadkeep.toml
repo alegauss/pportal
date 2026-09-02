@@ -165,3 +165,6 @@ declared = [
 # nothing. A number that only leaves zero at the finish cannot tell half done from not started,
 # which is the failure this list exists to answer. The limits are left at their defaults.
 [criteria]
+
+[install]
+wired = "0.2.148"
