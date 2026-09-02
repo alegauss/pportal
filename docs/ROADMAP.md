@@ -32,6 +32,7 @@
 - ⏳ **PP33** (deps: PP24 ✅, PP293 ✅, PP340 ✅, PP481 ✅, PP533 ✅) **HTTP and JSON in the core are curl and json-c, two vendored dependencies for what the runtime already does** — the deletion: holepunch.c is the only unit needing either library, and two files call it - session.c, the shim. → §PP33
 - 📋 **PP295** (deps: PP27 ⏳, PP297 ✅) **streamconnection.c is 1531 lines and calls the video receiver, so every deletion below waits on it** — PP286 to PP291 removed no C, and the shim wraps five of the receiver's exports: lib has one caller and this port's own seam is the other. → §PP295
 - 📋 **PP626** (deps: PP600 ✅, PP624 ✅) **ConsoleActions models a wake and three removals, and the row draws a Connect button and nothing else** — PP600 wired one of the four and PP624 made the identity the others key on readable, so three modelled actions are now reachable and offered by no screen. → §PP626
+- 📋 **PP627** (deps: PP625 ✅) **a console asking for a login PIN gets no answer, so the front door sits at Connecting for ever** — PP625 translates the events the screen has words for and drops the rest, and this is the one that needs something back before the session can go on. → §PP627
 
 ## Block G — Test discipline
 

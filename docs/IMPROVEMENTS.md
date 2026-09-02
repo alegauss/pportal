@@ -376,6 +376,33 @@ nothing, which no control offers by default.
 Waking also has two rules that disagree on purpose: what the screen offers, and what the
 backend would send.
 
+### §PP627 The one event that needs an answer
+
+`ChiakiEventType.LoginPinRequest` is the second event libchiaki raises and the only one
+that needs something back. session.c waits on it: the thread sits in
+`chiaki_cond_timedwait_pred` with no timeout at all - `UINT64_MAX` - until a PIN arrives
+or ctrl fails, because a person typing is not something a network timeout should
+interrupt.
+
+PP625 translates the events the front door has words for and drops the rest, so this one
+becomes `Starting` and the screen goes on saying "Connecting to ...". Nothing is wrong
+except that nothing will ever happen: the session is waiting for this port and this port
+is waiting for the console.
+
+The C half is ported and asserted. PP470 moved the PIN out of the session under the lock
+before crossing into ctrl, because `chiaki_ctrl_set_login_pin` takes `notif_mutex` while
+the ctrl thread holds it - two threads, opposite orders, both windows wide enough to
+overlap. PP345 settled the failed handover: the PIN is spent, so looping would prompt a
+third time.
+
+So what is missing is the screen and the way back to it. `ChiakiSession` needs the
+setter exposed, the event needs a state of its own with the "that PIN was wrong" flag it
+carries, and the list needs somewhere to type - which is the first place this port asks
+a person for something mid-session.
+
+The flag matters: a second prompt with no word about the first is how a correct PIN gets
+typed twice.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry
