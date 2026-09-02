@@ -350,32 +350,6 @@ sends.
 Deleting is the deliverable, not just porting. The C video receiver leaving the build is
 what makes the five ports beneath it real.
 
-### §PP626 Three actions with no button
-
-`ConsoleActions` is PP13's model of what a row offers - "three questions with a wrong
-obvious answer each". Waking is offered only for a console that is neither discovered
-nor reachable through PSN. Removing has THREE outcomes and the third is silence: a
-discovered console that IS registered offers neither, and filling that branch in loses
-the user their registration.
-
- All of it is asserted and none of it is on a screen. PP600 put one button on the row -
-Connect - and the other three are a model with no caller, which is the shape PP600 was
-filed for one level up.
-
-THE TWO HALVES ARE NOT THE SAME SIZE. Waking sends a datagram, and both pieces exist:
-`ExchangeCapture.TryWakeCredential` derives the credential and `Discovery.Packet` builds
-the packet. Hiding and deleting WRITE the Qt client's own settings, and `QSettingsStore`
-has only ever read them - so they need the inverse of `QSettingsValue`, and a byte array
-encoded wrongly is a console list the client reads as corrupt. That is somebody's real
-registration on a store this port shares rather than owns, and it wants a temporary key
-and assertions first.
-
-The second half's other care is the silent branch. A menu offering Delete for everything
-is the port filling in what the model deliberately leaves empty; the screen has to draw
-an entry that does nothing, which no control offers by default.
-
-Waking has two rules that disagree on purpose: what the screen offers, and what is sent.
-
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry

@@ -1177,12 +1177,45 @@ public partial class App : Application
         var model = new ConsoleListViewModel(
             new NativeConsoleSessionStarter(),
             store.RegisteredHosts,
-            run => Dispatcher.BeginInvoke(run));
+            run => Dispatcher.BeginInvoke(run),
+            new NativeConsoleWaker(),
+            new QSettingsConsoleRemover(store));
 
         var view = new Views.ConsoleListView { DataContext = model };
 
+        // What the last sweep answered, so a removal can rebuild the rows without waiting for a
+        // console to speak again - which a hidden one never will.
+        IReadOnlyList<DiscoveredConsole> seen = [];
+
+        void Rebuild()
+        {
+            IReadOnlyList<RegisteredHost> hosts = store.RegisteredHosts();
+
+            model.Refresh(
+                seen,
+                ConsoleListSources.Manual(store.ManualHosts()),
+                // PSN hosts need a token and a relay, which is the choice PP600 says it is the step
+                // before. An empty list is what "not wired" looks like to the merge.
+                [],
+                // PP624: both sets are the store's own bytes now. PP600 passed nothing here and a
+                // nickname join there, because the reply's host-id and the stored MAC are two
+                // spellings of one thing and nothing in this port converted between them.
+                ConsoleListSources.HiddenMacs(store.HiddenHosts()),
+                ConsoleListSources.RegisteredMacs(hosts));
+        }
+
         view.ConnectRequested += row => model.Connect(row);
         view.DisconnectRequested += model.Disconnect;
+
+        // PP626: the other two the row has always offered. A removal changes the store the list is
+        // built from, so the rows are rebuilt from it at once - the sweep's own callback would not
+        // fire until a console next answered, and a hidden one is a console that no longer will.
+        view.WakeRequested += row => model.Wake(row);
+        view.RemoveRequested += row =>
+        {
+            model.Remove(row);
+            Rebuild();
+        };
 
         // PP627: the answer to the one event that asks for one. Discarded because the model puts
         // the outcome on the status line, which is where the person who typed it is looking.
@@ -1199,19 +1232,8 @@ public partial class App : Application
         // same shape the mapping screen uses.
         consoles = new ConsoleDiscovery(found => Dispatcher.BeginInvoke(() =>
         {
-            IReadOnlyList<RegisteredHost> hosts = store.RegisteredHosts();
-
-            model.Refresh(
-                found,
-                ConsoleListSources.Manual(store.ManualHosts()),
-                // PSN hosts need a token and a relay, which is the choice PP600 says it is the step
-                // before. An empty list is what "not wired" looks like to the merge.
-                [],
-                // PP624: both sets are the store's own bytes now. PP600 passed nothing here and a
-                // nickname join there, because the reply's host-id and the stored MAC are two
-                // spellings of one thing and nothing in this port converted between them.
-                ConsoleListSources.HiddenMacs(store.HiddenHosts()),
-                ConsoleListSources.RegisteredMacs(hosts));
+            seen = found;
+            Rebuild();
         }));
 
         if (!consoles.Sweeping)

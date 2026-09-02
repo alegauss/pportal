@@ -30,6 +30,19 @@
               console must be paired and have an address is stated once, in code that is asserted,
               rather than as a pair of triggers here.
             -->
+            <!--
+              PP626: the other two the model has always answered and no screen performed. The
+              removal's LABEL is bound rather than its presence: a discovered, registered console
+              offers neither Delete nor Hide, and PP13 records that the entry is there and does
+              nothing - a button that vanished would be this port filling in the branch the client
+              deliberately leaves empty.
+            -->
+            <Button x:Name="RemoveButton" DockPanel.Dock="Right"
+                    Content="{Binding RemoveLabel}" Padding="12,2" Margin="4,0,0,0"
+                    Click="OnRemove" />
+            <Button x:Name="WakeButton" DockPanel.Dock="Right"
+                    Content="Wake" Padding="12,2" Margin="4,0,0,0"
+                    Click="OnWake" IsEnabled="{Binding Wakeable}" />
             <Button x:Name="ConnectButton" DockPanel.Dock="Right"
                     Content="Connect" Padding="12,2" Click="OnConnect"
                     IsEnabled="{Binding Connectable}" />

@@ -100,6 +100,25 @@ public static class HostId
         return length == kept.Length ? new string(kept) : null;
     }
 
+    /// <summary>
+    /// PP626: the bytes behind a key, for the one direction that writes.
+    ///
+    /// Hiding a console stores its MAC, and what a row carries is the key. Null for anything that is
+    /// not an identity, so a store never gains an entry keyed on something unreadable - which would
+    /// hide nothing and could not be undone from any screen.
+    /// </summary>
+    public static byte[]? ToBytes(string? id)
+    {
+        if (Key(id) is not { } key)
+            return null;
+
+        var bytes = new byte[Bytes];
+        for (var i = 0; i < Bytes; i++)
+            bytes[i] = Convert.ToByte(key.Substring(i * 2, 2), 16);
+
+        return bytes;
+    }
+
     /// <summary>The same key from the bytes the store holds, which is `HostMAC::ToString`.</summary>
     public static string? Key(byte[]? mac)
     {

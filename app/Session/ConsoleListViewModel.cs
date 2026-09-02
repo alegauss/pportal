@@ -41,6 +41,18 @@ public readonly record struct ConsoleRow(
     /// cannot call a static method, and a converter would put the rule in markup.
     /// </summary>
     public bool Connectable => ConsoleConnect.CanConnect(this);
+
+    /// <summary>PP626: whether the row offers the wake, which its button's enabled state binds to.</summary>
+    public bool Wakeable => ConsoleRowActions.CanWake(this);
+
+    /// <summary>
+    /// PP626: what the removal button says.
+    ///
+    /// Always a word, including for the row that offers no removal at all: PP13 records that the
+    /// entry is there and does nothing, and a button that vanished would be this port filling in
+    /// the branch the client deliberately leaves empty.
+    /// </summary>
+    public string RemoveLabel => ConsoleRowActions.RemovalLabel(ConsoleRowActions.RemovalFor(this));
 }
 
 /// <summary>
@@ -266,13 +278,78 @@ public sealed class ConsoleListViewModel : INotifyPropertyChanged
     public ConsoleListViewModel(
         IConsoleSessionStarter? starter,
         Func<IReadOnlyList<RegisteredHost>> registrations,
-        Action<Action>? marshal = null)
+        Action<Action>? marshal = null,
+        IConsoleWaker? waker = null,
+        IConsoleRemover? remover = null)
     {
         ArgumentNullException.ThrowIfNull(registrations);
 
         this.starter = starter;
         this.registrations = registrations;
         this.marshal = marshal ?? (static run => run());
+        this.waker = waker;
+        this.remover = remover;
+    }
+
+    private readonly IConsoleWaker? waker;
+    private readonly IConsoleRemover? remover;
+
+    /// <summary>
+    /// PP626: sends the magic packet, for a row that offers one.
+    ///
+    /// Nothing is waited for. A wake packet is unacknowledged UDP, and the sweep behind this list is
+    /// already running - so the console appearing as Ready IS the answer, and it arrives on its own.
+    /// What the status says is therefore what was SENT, which is the only thing this knows.
+    /// </summary>
+    public WakeRefusal Wake(ConsoleRow row)
+    {
+        if (waker is null)
+        {
+            Status = "This list has no way to wake a console.";
+            return WakeRefusal.None;
+        }
+
+        WakePlan plan = ConsoleRowActions.PrepareWake(row, registrations());
+        if (plan.Request is not { } request)
+        {
+            Status = ConsoleRowActions.Explain(plan.Refusal);
+            return plan.Refusal;
+        }
+
+        waker.Wake(request);
+        Status = $"Woke {row.Name}. It takes a moment to answer.";
+        return WakeRefusal.None;
+    }
+
+    /// <summary>
+    /// PP626: removes the row the way <see cref="ConsoleActions.RemovalFor"/> says, and no other.
+    ///
+    /// THE THIRD OUTCOME IS SILENCE AND IT IS KEPT. A discovered console that IS registered offers
+    /// neither Delete nor Hide - the entry is there and does nothing - and filling that branch in
+    /// loses the user their registration. So a row whose action is None is answered with a sentence
+    /// and no write.
+    /// </summary>
+    public RemoveAction Remove(ConsoleRow row)
+    {
+        RemoveAction action = ConsoleRowActions.RemovalFor(row);
+
+        if (action == RemoveAction.None)
+        {
+            Status = "A registered console on the network cannot be removed from here.";
+            return action;
+        }
+
+        if (remover is null)
+        {
+            Status = "This list has no way to change the stored consoles.";
+            return action;
+        }
+
+        Status = remover.Remove(row, action)
+            ? $"{row.Name} {(action == RemoveAction.Delete ? "deleted" : "hidden")}."
+            : $"{row.Name} was already gone.";
+
+        return action;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

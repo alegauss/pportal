@@ -141,6 +141,59 @@ public class ConsoleListViewTests
     });
 
     /// <summary>
+    /// PP626: the row's other two buttons are there, and each says what its rule says.
+    ///
+    /// A discovered console is awake, so Wake is offered and disabled; it is not registered, so its
+    /// removal is Hide. Both are read off the realised template, because the label is a binding and
+    /// the enabled state is another one - the two things markup gets wrong silently.
+    /// </summary>
+    [Fact]
+    public void TheWakeAndTheRemovalFollowTheRowsRules() => Apartment.Run(() =>
+    {
+        var model = new ConsoleListViewModel();
+        model.Refresh([Found("0011223344556677", "Living room")], [], [],
+            new HashSet<string>(), new HashSet<string>());
+
+        var view = new ConsoleListView { DataContext = model };
+        Realise(view);
+
+        Assert.False(FirstButton(view, "Wake").IsEnabled, "a discovered console is already awake");
+
+        // Discovered and not registered: hidden, because deleting it would not remove it.
+        Button removal = FirstButton(view, "Hide");
+        Assert.True(removal.IsEnabled);
+    });
+
+    /// <summary>
+    /// PP626: and the silent branch draws a button that does nothing.
+    ///
+    /// A discovered console that IS registered offers neither removal. PP13 records that the entry
+    /// is there and does nothing at all, so the label is a word and the button is live - a control
+    /// that vanished or greyed out would be this port filling in the branch the client leaves
+    /// empty, and the cost of filling it in is somebody's registration.
+    /// </summary>
+    [Fact]
+    public void TheRemovalThatDoesNothingIsStillDrawn() => Apartment.Run(() =>
+    {
+        var model = new ConsoleListViewModel();
+        model.Refresh([Found("0011223344556677", "Living room")], [], [],
+            new HashSet<string>(), new HashSet<string> { "0011223344556677" });
+
+        var view = new ConsoleListView { DataContext = model };
+        Realise(view);
+
+        Button removal = FirstButton(view, "Remove");
+        Assert.True(removal.IsEnabled);
+
+        ConsoleRow? asked = null;
+        view.RemoveRequested += row => asked = row;
+        removal.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+
+        // It reaches the model, which is what refuses it - not the markup, which cannot explain.
+        Assert.Equal("Living room", asked?.Name);
+    });
+
+    /// <summary>
     /// PP600: what the last attempt said, bound where the person is looking - PP224's rule.
     /// </summary>
     [Fact]
@@ -157,14 +210,26 @@ public class ConsoleListViewTests
         Assert.NotEqual("", model.Status);
     });
 
-    /// <summary>The first row's connect button, out of the realised template.</summary>
-    private static Button FirstButton(ConsoleListView view)
+    /// <summary>
+    /// One of the first row's buttons, by what it says.
+    ///
+    /// PP626: by LABEL and not by position. The row grew a Wake and a Remove beside the Connect,
+    /// and the three are docked right - so the first in visual-tree order is not the first one a
+    /// reader would name, and a test that took it was asserting about whichever button the markup
+    /// happened to declare first.
+    ///
+    /// x:Name is no use here either: a name inside a DataTemplate lives in the template's own
+    /// namescope, not the view's, so FindName on the control does not reach it.
+    /// </summary>
+    private static Button FirstButton(ConsoleListView view, string says = "Connect")
     {
         var items = (ItemsControl)view.FindName("Rows");
         DependencyObject container = items.ItemContainerGenerator.ContainerFromIndex(0);
 
         Assert.NotNull(container);
-        return Descendants(container).OfType<Button>().First();
+
+        return Descendants(container).OfType<Button>()
+            .First(one => string.Equals(one.Content as string, says, StringComparison.Ordinal));
     }
 
     private static IEnumerable<DependencyObject> Descendants(DependencyObject root)

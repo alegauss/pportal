@@ -34,10 +34,31 @@ public partial class ConsoleListView : UserControl
     /// </summary>
     public event Action? DisconnectRequested;
 
+    /// <summary>PP626: somebody asked to wake a console, and which one.</summary>
+    public event Action<ConsoleRow>? WakeRequested;
+
+    /// <summary>PP626: somebody asked to remove a console, and which one.</summary>
+    public event Action<ConsoleRow>? RemoveRequested;
+
     private void OnConnect(object sender, RoutedEventArgs e)
+        => Raise(sender, ConnectRequested);
+
+    private void OnWake(object sender, RoutedEventArgs e)
+        => Raise(sender, WakeRequested);
+
+    private void OnRemove(object sender, RoutedEventArgs e)
+        => Raise(sender, RemoveRequested);
+
+    /// <summary>
+    /// The row a button is about, which is its own DataContext.
+    ///
+    /// The one thing markup cannot say, and the reason these handlers exist at all: the row is a
+    /// fact of the realised template, so it comes from neither the view model nor the XAML.
+    /// </summary>
+    private static void Raise(object sender, Action<ConsoleRow>? asked)
     {
         if (sender is FrameworkElement { DataContext: ConsoleRow row })
-            ConnectRequested?.Invoke(row);
+            asked?.Invoke(row);
     }
 
     private void OnDisconnect(object sender, RoutedEventArgs e) => DisconnectRequested?.Invoke();

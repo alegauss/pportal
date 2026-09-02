@@ -269,6 +269,64 @@ public sealed class QSettingsStore
     }
 
     /// <summary>
+    /// PP626: replaces the hidden list - the write behind <c>RemoveAction.Hide</c>.
+    ///
+    /// Hiding is what a discovered console that is not registered offers instead of deleting,
+    /// because deleting a console that is on the network does not remove it: it comes back on the
+    /// next discovery reply. So this is the only way the port can honour that answer.
+    ///
+    /// A nickname is written where there is one and left out where there is not, which is what the
+    /// reader expects - it keys on the MAC and treats the name as decoration.
+    /// </summary>
+    public void WriteHiddenHosts(IReadOnlyList<HiddenHost> hosts)
+    {
+        ArgumentNullException.ThrowIfNull(hosts);
+
+        using RegistryKey store = Registry.CurrentUser.CreateSubKey(KeyPath, writable: true);
+
+        QSettingsWriter.ReplaceArray(store, "hidden_hosts",
+        [
+            .. hosts.Select<HiddenHost, Action<RegistryKey>>(host => entry =>
+            {
+                QSettingsWriter.WriteByteArray(entry, "server_mac", host.ServerMac);
+                if (host.ServerNickname is { } nickname)
+                    QSettingsWriter.WriteString(entry, "server_nickname", nickname);
+            })
+        ]);
+    }
+
+    /// <summary>
+    /// PP626: replaces the manual list - the write behind <c>RemoveAction.Delete</c>.
+    ///
+    /// A manual console exists only because the user typed it in, so deleting the entry is the
+    /// whole of removing it. The id is kept as it was rather than renumbered with the entries: the
+    /// Qt client uses it to pick the next one, and re-using an id a console is still remembered
+    /// under elsewhere is a collision this port would have introduced.
+    /// </summary>
+    public void WriteManualHosts(IReadOnlyList<ManualHost> hosts)
+    {
+        ArgumentNullException.ThrowIfNull(hosts);
+
+        using RegistryKey store = Registry.CurrentUser.CreateSubKey(KeyPath, writable: true);
+
+        QSettingsWriter.ReplaceArray(store, "manual_hosts",
+        [
+            .. hosts.Select<ManualHost, Action<RegistryKey>>(host => entry =>
+            {
+                QSettingsWriter.WriteInt(entry, "id", host.Id);
+                if (host.Host is { } address)
+                    QSettingsWriter.WriteString(entry, "host", address);
+
+                entry.SetValue(
+                    "registered", host.Registered ? "true" : "false", RegistryValueKind.String);
+
+                if (host.RegisteredMac is { } mac)
+                    QSettingsWriter.WriteByteArray(entry, "registered_mac", mac);
+            })
+        ]);
+    }
+
+    /// <summary>
     /// Controller mappings, keyed by vid:pid.
     ///
     /// The key is read as `vidpid` AND as `guid`, because a store written before the Qt client's
