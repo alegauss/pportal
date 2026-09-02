@@ -350,6 +350,33 @@ sends.
 Deleting is the deliverable, not just porting. The C video receiver leaving the build is
 what makes the five ports beneath it real.
 
+### §PP629 Two writers, one store
+
+PP2 read the Qt client's settings and PP626 wrote them, and the second is a different
+relationship with the same store. Two applications now edit one registry tree, and
+neither knows the other is there.
+
+The client's own writes are not incremental. `Settings::SaveHiddenHosts` does
+`settings->remove("hidden_hosts")` and then `beginWriteArray` over its in-memory list -
+the same shape as `SaveRegisteredHosts` and `SaveManualHosts` - so a client that was
+already running when this port hid a console will, on its next save, write the list it
+loaded at startup back over the change. Nothing errors and nothing warns; the console is
+simply visible again.
+
+THE DIRECTION MATTERS. This port re-reads the store on every rebuild, so a change the
+client makes arrives here on its own. A change made HERE survives only until the client
+next saves anything in that array. So the loss is one-way, and it is the way that looks
+like the port not working.
+
+Two answers are available and they are not the same size. The small one is to say so - a
+note beside the removal, so somebody who has both open knows which wins. The larger one
+is to re-read immediately before writing and to re-read after, which narrows the window
+without closing it, because the client's write is not a read-modify-write at all.
+
+What is NOT available is locking: QSettings has no lock this port can take, and the
+client would not take one either. This is a question about which application owns the
+store.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry
