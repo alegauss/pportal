@@ -174,6 +174,26 @@ public static class DcompDemo
     /// taken twice - which is not an error anywhere, is invisible to every assertion PP319 wrote,
     /// and means an overlay would have to be drawn straight rather than premultiplied. The choice
     /// still holds in that case; the drawing changes.
+    ///
+    /// What was actually read, 2026-09-02
+    /// ----------------------------------
+    /// PP322: THE FIRST READING, of the four above, and both halves of it are the good answer.
+    ///
+    /// A green block inside the red, offset from the corner, with red surrounding it on every side.
+    /// No blue anywhere. So two visuals of different formats compose in the order they were given,
+    /// the plane below composes underneath - which is PP284's reading taken again from the other
+    /// direction - and WPF's content did not get above the tree. PP319's choice holds.
+    ///
+    /// AND THE HALF THAT IS NOT A YES OR A NO CAME BACK YES. The right half read as olive: green
+    /// over red, visibly green and visibly not the left half's pure green. Half alpha over the red
+    /// plane is the blend it should be, so the alpha is taken ONCE and an overlay is drawn
+    /// premultiplied, as PP319 assumed. Had it been taken twice the same block would have read at a
+    /// quarter alpha - a red-orange, nearer the surround than the left half.
+    ///
+    /// HOW IT WAS READ, because §PP322 warns that a composed window does not screenshot reliably:
+    /// a person put it on a screen, captured it themselves, and confirmed that the capture and the
+    /// screen agreed. That is the narrower boundary the requirement names - not "a person looks",
+    /// but a person capturing what a session cannot.
     /// </summary>
     /// <returns>0 where the two-layer tree attached, 2 where it did not.</returns>
     public static int RunLayers()

@@ -51,30 +51,6 @@ It stays a separate line from PP9 for the reason it always was: this is Win32 an
 work that does not depend on which of the renderer shapes wins, only on there being a
 window.
 
-### §PP322 The reading the two-layer choice still owes
-
-PP319 measured that a container visual takes a ten-bit swapchain below and an eight-bit
-premultiplied surface above it, ordered by reference rather than by call order, all the
-way to Commit. That is the same depth PP281 to PP283 reached one layer down, and PP284
-then read a pixel none of them had predicted.
-
-So the shape of the risk is known exactly: a compositor accepting a tree says nothing
-about what lands on the glass. What is unread is whether the overlay visual draws OVER
-the video plane rather than under it or not at all, and whether an eight-bit
-premultiplied surface composes over a ten-bit plane without the alpha being taken twice.
-The second is the one with no error path anywhere: it looks like a slightly wrong
-colour.
-
-The apparatus is built. `--dcomp-demo --layers` puts both planes on a real WPF window -
-the video filled red, a green overlay offset in from the corner so the plane surrounds
-it, its right half at half alpha - and DcompDemo writes down what each possible reading
-decides. It shares the builder the assertion calls, so what is looked at is what was
-measured.
-
-What is left is the looking, and that is why this stays open. A composed window does not
-screenshot reliably, so a session can run this and cannot read it. If the reading
-refuses it, PP319's choice falls to SDR on purpose.
-
 ## Block D — Screens
 
 ## Block E — Windows-only build

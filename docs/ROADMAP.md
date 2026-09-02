@@ -11,8 +11,7 @@
 
 ## Block C — Video and input path
 
-- ⏳ **PP11** (deps: PP9 ✅, PP163 ✅, PP322 ⏳) **fullscreen, HDR handoff and refresh-rate switching are handled by the Qt window** — the HDR half alone: PP319 chose the overlay above the video in the compositor's tree, and PP322 is the reading that has to confirm it. → §PP11
-- ⏳ **PP322** (deps: —) (requires: a-person-looking) **the two-layer tree commits and nobody has looked at it, which is the mistake PP163 made one layer down** — the reading itself: a person looking once at what --dcomp-demo --layers draws, which no assertion in this tree can reach. → §PP322
+- ⏳ **PP11** (deps: PP9 ✅, PP163 ✅, PP322 ✅) **fullscreen, HDR handoff and refresh-rate switching are handled by the Qt window** — the HDR half alone: PP319 chose the overlay above the video in the compositor's tree, and PP322 is the reading that has to confirm it. → §PP11
 
 ## Block D — Screens
 
@@ -100,16 +99,6 @@
 - **PP322's reading confirms the overlay lands above the video** A compositor accepting
   a tree says nothing about what reaches the glass. This half is not blocked on a
   decision any more - it waits on the pixel nobody has looked at.
-
-## Done when — PP322
-
-- **A person looks at what --dcomp-demo --layers draws** The apparatus is built and no
-  assertion in this tree can reach the answer. PP284 read a pixel none of PP281 to PP283
-  had predicted, which is why the reading is the task rather than the tree.
-- **The reading answers both questions, not only the visible one** Whether the overlay
-  draws over the video plane is visible. Whether an eight-bit premultiplied surface
-  composes over a ten-bit plane without the alpha taken twice has no error path
-  anywhere: it looks like a slightly wrong colour.
 
 ## Done when — PP46
 

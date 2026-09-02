@@ -529,7 +529,51 @@ public class RenderProbeTests
     /// It does NOT show the window, so this stays in the gate. What the demo is for - whether the
     /// green block is there, and whether its half-alpha half blends once or twice - is the part no
     /// assertion here can reach, and saying so is the whole of why PP322 is a line of its own.
+    ///
+    /// PP322 was read on 2026-09-02 and both halves came back the good answer. The reading is in
+    /// DcompDemo's own docstring, beside PP284's, and <see cref="TheReadingsApparatusIsUnchanged"/>
+    /// is what keeps it about this window.
     /// </summary>
+    /// <summary>
+    /// PP322: the window the reading was taken on is the window still in the tree.
+    ///
+    /// A pixel cannot be asserted - that is the whole reason this line existed - so what a test CAN
+    /// hold is PP565's half: the apparatus the recorded reading was made against has not moved. The
+    /// four outcomes the demo prints are what "a green block" MEANS, and the two formats are what
+    /// makes the half-alpha half a question at all. Change any of them and the dated entry in
+    /// DcompDemo is a reading of something else, still sitting there looking authoritative.
+    ///
+    /// The date is asserted too. An undated reading is one nobody can tell from a prediction.
+    /// </summary>
+    [Fact]
+    public void TheReadingsApparatusIsUnchanged()
+    {
+        if (SanitizerSource.LocateRelative(@"app\Views\DcompDemo.cs") is not { } path)
+            return;
+
+        string source = File.ReadAllText(path);
+
+        Assert.Contains("What was actually read, 2026-09-02", source, StringComparison.Ordinal);
+
+        // The four outcomes the person chose between, in the demo's own words.
+        foreach (string decides in (string[])
+        [
+            "the overlay composes above the plane",
+            "the overlay does not compose",
+            "the plane below is not composing",
+            "WPF got above the tree after all",
+            "the alpha is taken twice",
+        ])
+        {
+            Assert.Contains(decides, source, StringComparison.Ordinal);
+        }
+
+        // And the pairing that makes the half-alpha half worth looking at: ten bits below, eight
+        // above. One format twice would put a window on screen demonstrating something easier.
+        Assert.Contains(
+            "hwnd, SwapchainFormat.Rgb10A2, SwapchainFormat.Bgra8", source, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void TheTwoLayerTreeAttachesToAWpfWindowAndDetaches()
     {
