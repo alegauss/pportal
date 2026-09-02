@@ -35,32 +35,41 @@ public class GuiFreshnessTests : IDisposable
     {
         GuiBuild build = GuiFreshness.Check();
 
-        if (build.State is GuiBuildState.NeverBuilt or GuiBuildState.NoCheckout)
-        {
-            Assert.Null(build.Newest);
-            return;
-        }
+        // PP632: the only two answers left. Nothing builds the client, so nothing about it can be
+        // stale - and a binary found here is one somebody built before the retirement, named as
+        // such rather than compared against sources it can never be rebuilt from.
+        Assert.True(
+            build.State is GuiBuildState.NeverBuilt or GuiBuildState.NoCheckout
+                or GuiBuildState.Retired,
+            $"the freshness check answered {build.State} on a tree where nothing builds a client");
 
-        Assert.NotNull(build.Client);
-        Assert.NotNull(build.Newest);
+        Assert.Null(build.Newest);
 
-        if (build.State == GuiBuildState.Stale)
-            Assert.Fail(GuiFreshness.Explain(build));
-
-        Assert.Equal(GuiBuildState.Fresh, build.State);
+        if (build.State == GuiBuildState.Retired)
+            Assert.Contains("retired", GuiFreshness.Explain(build), StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>A source written after the client is what this exists to catch.</summary>
+    /// <summary>
+    /// PP632: a source written after the client used to be what this caught, and the comparison is
+    /// kept where it can still be exercised.
+    ///
+    /// `WouldHaveCheckedIn` is that comparison. It is not called by anything that gates a commit -
+    /// there is no client to rebuild - and it is not deleted, because a gui/ that becomes buildable
+    /// again needs exactly this rule, and the two details it carries each took a task: equal stamps
+    /// count as fresh, and the parent directory is out of scope.
+    /// </summary>
     [Fact]
-    public void ASourceNewerThanTheClientIsStale()
+    public void TheComparisonItUsedToMakeIsStillRight()
     {
         Arrange(clientAt: DateTime.UtcNow.AddHours(-4), sourceAt: DateTime.UtcNow);
 
-        GuiBuild build = GuiFreshness.CheckIn(root);
+        GuiBuild build = GuiFreshness.WouldHaveCheckedIn(root);
 
         Assert.Equal(GuiBuildState.Stale, build.State);
         Assert.EndsWith("qmlbackend.cpp", build.Newest);
-        Assert.Contains("compile.cmd gui", GuiFreshness.Explain(build));
+
+        // And the live check answers Retired on the same arrangement, which is the change.
+        Assert.Equal(GuiBuildState.Retired, GuiFreshness.CheckIn(root).State);
     }
 
     /// <summary>
@@ -72,7 +81,8 @@ public class GuiFreshnessTests : IDisposable
     {
         Arrange(clientAt: DateTime.UtcNow, sourceAt: DateTime.UtcNow.AddHours(-4));
 
-        Assert.Equal(GuiBuildState.Fresh, GuiFreshness.CheckIn(root).State);
+        // PP632: through the comparison that is kept, because the live one answers Retired now.
+        Assert.Equal(GuiBuildState.Fresh, GuiFreshness.WouldHaveCheckedIn(root).State);
     }
 
     /// <summary>
@@ -106,7 +116,8 @@ public class GuiFreshnessTests : IDisposable
         File.WriteAllText(cmake, "project(chiaki)\n");
         File.SetLastWriteTimeUtc(cmake, DateTime.UtcNow);
 
-        Assert.Equal(GuiBuildState.Fresh, GuiFreshness.CheckIn(root).State);
+        // PP632: through the kept comparison, for the reason above.
+        Assert.Equal(GuiBuildState.Fresh, GuiFreshness.WouldHaveCheckedIn(root).State);
     }
 
     /// <summary>

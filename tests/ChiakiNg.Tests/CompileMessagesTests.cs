@@ -34,17 +34,20 @@ public class CompileMessagesTests
     }
 
     /// <summary>
-    /// Both halves of the failure line are there, so the message tells the truth either way
-    /// rather than by being vague enough to survive both.
+    /// PP632: ONE half now, and it is the true one.
+    ///
+    /// PP532 wrote two spellings because which half built depended on the flag, and saying "the Qt
+    /// client built" on a run that had not built it credited work that never happened. There is no
+    /// run that builds it any more, so the other half would be the same defect the other way round.
     /// </summary>
     [Fact]
-    public void TheFailureLineHasAHalfForEachKindOfBuild()
+    public void TheFailureLineNamesTheOnlyBuildThereIs()
     {
         if (Source() is not { } source)
             return;
 
-        Assert.Contains("the Qt client built, the .NET host did not", source, StringComparison.Ordinal);
         Assert.Contains("the native side built, the .NET host did not", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("the Qt client built, the .NET host did not", source, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -142,19 +145,27 @@ public class CompileMessagesTests
     }
 
     /// <summary>
-    /// PP586, PP532: the ending a plain compile.cmd reaches decides on the flag, against this
-    /// checkout.
+    /// PP632: there is one deploy ending now, so there is nothing left to decide.
+    ///
+    /// PP586's defect was a branch that recommended the Qt client off a file being on disk rather
+    /// than off the flag - presence rather than provenance - and PP532's answer was to ask the flag.
+    /// No run produces a Qt client at all now, so the managed ending is the only ending and the
+    /// branch that could get it wrong is gone.
     /// </summary>
     [Fact]
-    public void TheDeployEndingDecidesOnTheFlag()
+    public void ThereIsOneDeployEndingLeft()
     {
         if (Source() is not { } source)
             return;
 
-        Assert.True(CompileMessages.TheDeployEndingAsksTheFlag(source),
-            "compile.cmd's :ok_deploy branch recommends a binary off a file being on disk rather "
-            + "than off CHIAKI_ENABLE_GUI, so a run that skipped the Qt deploy still names the Qt "
-            + "client");
+        Assert.Contains(":ok_deploy_managed", source, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "if /I not \"%CHIAKI_ENABLE_GUI%\"==\"ON\" goto ok_deploy_managed",
+            source, StringComparison.Ordinal);
+
+        // And the rule that caught PP586 still works, which is what says the branch was removed
+        // rather than the check being weakened.
+        Assert.False(CompileMessages.TheDeployEndingAsksTheFlag(source));
     }
 
     /// <summary>

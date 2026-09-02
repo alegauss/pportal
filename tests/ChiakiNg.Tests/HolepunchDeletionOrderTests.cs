@@ -31,6 +31,28 @@ public class HolepunchDeletionOrderTests
     }
 
     /// <summary>
+    /// PP632: the plan says how far it has got, and the flip is behind it.
+    ///
+    /// A plan that could not say this would be a description of work rather than a record of it -
+    /// and the reader who needs it most is the next session, which otherwise reads three steps and
+    /// has to work out from the tree which one it is on.
+    /// </summary>
+    [Fact]
+    public void TheFlipIsBehindUs()
+    {
+        Assert.Equal(2, HolepunchDeletionOrder.Landed);
+
+        // The flip is the second, so "two landed" means it has. Read from the list rather than
+        // asserted as an index, because the list is what would move if the order ever changed.
+        int flip = 1 + HolepunchDeletionOrder.Stages
+            .TakeWhile(one => !one.TouchesTheC)
+            .Count();
+
+        Assert.Equal(flip, HolepunchDeletionOrder.Landed);
+        Assert.True(HolepunchDeletionOrder.Landed < HolepunchDeletionOrder.Stages.Count);
+    }
+
+    /// <summary>
     /// PP623: and the orders that are not landable are refused, so the property is a rule and not a
     /// description of the list beside it.
     /// </summary>

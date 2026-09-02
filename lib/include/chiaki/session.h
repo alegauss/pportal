@@ -84,7 +84,9 @@ typedef struct chiaki_connect_info_t
 	bool enable_dualsense;
 	ChiakiDisableAudioVideo audio_video_disabled;
 	bool auto_regist;
-	ChiakiHolepunchSession holepunch_session;
+	// PP632: holepunch_session stood here and is gone. Only the Qt client ever set it (PP596), and
+	// PP598 retired that client's build - so the field named a path with no caller and session.c
+	// asked nine questions nothing could reach.
 	chiaki_socket_t *rudp_sock;
 	uint8_t psn_account_id[CHIAKI_PSN_ACCOUNT_ID_SIZE];
 	double packet_loss_max;
@@ -274,10 +276,10 @@ typedef struct chiaki_session_t
 	size_t login_pin_size;
 
 	ChiakiCtrl ctrl;
-	ChiakiHolepunchSession holepunch_session;
 	// PP590: the ctrl port the console answered with, recorded rather than asked for a second time.
-	// Zero means nobody told us, which is every path that has no holepunch session; ctrl.c keeps its
-	// own default for that case, so the fallback stays beside the request that uses it.
+	// PP632: nothing records it now - the ask it was read from was one of the nine - so it is zero
+	// on every path and ctrl.c's own default is what answers. Kept rather than deleted: the field
+	// is what a future PSN path would fill in, and ctrl.c already reads it correctly.
 	uint16_t ctrl_port;
 	ChiakiRudp rudp;
 

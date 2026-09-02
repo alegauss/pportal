@@ -53,21 +53,23 @@ public class HolepunchConsumersTests
     /// PP564: it was three until a linker was asked. Building chiaki-lib without holepunch.c named
     /// ctrl.c in thirty seconds, after PP563 had read the tree and concluded three.
     ///
-    /// PP590 took ctrl.c off it and PP591 the harness, so what is left is the two that are actually
-    /// the work: session.c, which is PP340's seam, and the shim, which this port wrote. Neither of
-    /// those leaves by being read again, which is the difference between the first two removals and
-    /// what PP33 still owes.
+    /// PP590 took ctrl.c off it and PP591 the harness. PP632 took session.c, which is the one that
+    /// was actually the work: its nine went with the `holepunch_session` field, and the Qt client's
+    /// build - the only thing that ever set that field - retired in the same commit.
+    ///
+    /// ONE IS LEFT and it is this port's own seam. It does not leave by being read again either: the
+    /// shim wraps nine exports as the oracle PP481 put there, so removing it is a decision about
+    /// what holds the managed holepunch flow honest, not a deletion.
     /// </summary>
     [Fact]
-    public void TheDeletionHasTwoNamedConsumers()
+    public void TheDeletionHasOneNamedConsumer()
     {
-        Assert.Equal(
-            [
-                @"lib\src\session.c",
-                @"shim\chiaki_shim.c",
-            ],
-            HolepunchConsumers.All);
+        // PP632: session.c left with its nine, and the Qt client's build - the only thing that ever
+        // put a holepunch handle into a ChiakiSession - retired in the same commit. What is left is
+        // the one this port wrote itself.
+        Assert.Equal([@"shim\chiaki_shim.c"], HolepunchConsumers.All);
 
+        Assert.DoesNotContain(@"lib\src\session.c", HolepunchConsumers.All);
         Assert.DoesNotContain(HolepunchConsumers.CtrlRelativePath, HolepunchConsumers.All);
         Assert.DoesNotContain(DeletedHarness, HolepunchConsumers.All);
     }
@@ -101,14 +103,20 @@ public class HolepunchConsumersTests
     /// PSN breaks on hardware nothing in this tree can reach.
     /// </summary>
     [Fact]
-    public void SessionIsWhatRecordsThePort()
+    public void NothingRecordsThePortAndCtrlFallsBack()
     {
-        if (SanitizerSource.LocateRelative(@"lib\src\session.c") is not { } path)
+        if (SessionHolepunchShape.Locate() is not { } path)
+            return;
+        if (HolepunchConsumers.LocateCtrl() is not { } ctrl)
             return;
 
+        // PP632: the ask session.c recorded FROM was one of the nine, so this turned over. PP590's
+        // arrangement has one half left and it is the half that matters: ctrl.c reads the field,
+        // finds zero, and uses SESSION_CTRL_PORT - which is what its fallback was written for.
         Assert.True(
-            HolepunchConsumers.SessionRecordsTheCtrlPort(File.ReadAllText(path)),
-            "session.c no longer records the ctrl port, so ctrl.c's fallback is the PSN path's port");
+            HolepunchConsumers.NothingRecordsTheCtrlPortAndCtrlStillFallsBack(
+                File.ReadAllText(path), File.ReadAllText(ctrl)),
+            "session.c asks for the ctrl port again, or ctrl.c lost the fallback that covers the LAN path");
     }
 
     /// <summary>
@@ -216,9 +224,11 @@ public class HolepunchConsumersTests
         Assert.NotNull(line);
         Assert.True(
             HolepunchConsumers.TheRoadmapLineAgreesOnTheCount(line),
-            $"PP33's line does not name two callers: {line}");
+            $"PP33's line does not name one caller: {line}");
 
-        Assert.Equal(2, HolepunchConsumers.All.Count);
+        // PP622 is why this reads at all: the clause used to be a count word and a fixed plural, so
+        // the demand at one would have been "one files call it" - the very count PP632 arrived at.
+        Assert.Single(HolepunchConsumers.All);
     }
 
     /// <summary>And the old claim is what the check refuses, not merely an absent phrase.</summary>
@@ -239,8 +249,12 @@ public class HolepunchConsumersTests
         Assert.False(HolepunchConsumers.TheRoadmapLineAgreesOnTheCount(
             "and three files call it - session.c, the harness, the shim."));
 
-        Assert.True(HolepunchConsumers.TheRoadmapLineAgreesOnTheCount(
+        // PP632: and the one it held until this commit.
+        Assert.False(HolepunchConsumers.TheRoadmapLineAgreesOnTheCount(
             "and two files call it - session.c, the shim."));
+
+        Assert.True(HolepunchConsumers.TheRoadmapLineAgreesOnTheCount(
+            "and one file calls it - the shim, which wraps nine of its exports."));
     }
 
     /// <summary>

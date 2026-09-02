@@ -1,4 +1,4 @@
-﻿using ChiakiNg.Protocol;
+using ChiakiNg.Protocol;
 using ChiakiNg.Session;
 using Xunit;
 
@@ -7,14 +7,14 @@ namespace ChiakiNg.Tests;
 /// <summary>
 /// PP598: the Qt client's build retires in one piece, whenever it retires.
 ///
-/// The decision is made - gui/ stops being a build target, because PP597 showed that PP33's
-/// deletion and a compilable client cannot both continue. What is NOT made is the change: the
-/// client builds today, and removing the affordance before the deletion that breaks it would take
-/// away something that works for nothing.
+/// The decision was made by PP598 - gui/ stops being a build target, because PP597 showed that
+/// PP33's deletion and a compilable client cannot both continue. PP632 made the change, in the same
+/// commit that stopped session.c asking, which is what "rides in PP33's own commit" meant.
 ///
-/// So these hold the shape until then. The expensive mistake is not doing it late - it is doing
-/// half of it: an argument removed while GuiFreshness stays leaves every checkout that ever built a
-/// client permanently red, with nothing able to clear it.
+/// SO THESE HAVE TURNED OVER, the way PP591's did when the harness it described was deleted. They
+/// held that the affordance was real and must not go early; they hold that it is gone and must not
+/// come back. The expensive mistake was never doing it late - it was doing half of it, and the half
+/// that would have been left is answered by <see cref="GuiBuildState.Retired"/>.
 /// </summary>
 public class QtClientBuildTests
 {
@@ -25,17 +25,18 @@ public class QtClientBuildTests
     /// check without deleting the record does not build. This is the one that could go silently.
     /// </summary>
     [Fact]
-    public void TheGateStillOffersTheArgument()
+    public void TheGateNoLongerOffersTheArgument()
     {
         if (QtClientBuild.LocateCompile() is not { } path)
             return;
 
-        Assert.True(
+        // PP632: turned over. The argument went in the commit that stopped session.c asking, which
+        // is what PP598 meant by "rides in PP33's own commit" - gui/ calls eleven holepunch
+        // exports, so it stopped compiling in the same instant.
+        Assert.False(
             QtClientBuild.CompileStillBuildsTheClient(File.ReadAllText(path)),
-            $"compile.cmd no longer sets {QtClientBuild.EnableFlag}. If that is PP33's deletion "
-                + "landing, the retirement is three pieces: this argument, GuiFreshness, and the "
-                + "client path they share - delete GuiFreshness and QtClientBuild in the same "
-                + "commit, or a checkout that built a client can never clear Stale again");
+            $"compile.cmd sets {QtClientBuild.EnableFlag} again, and gui/ does not compile - the "
+                + "argument would produce a wall of errors rather than a client");
     }
 
     /// <summary>
@@ -101,23 +102,27 @@ public class QtClientBuildTests
     }
 
     /// <summary>
-    /// And the client is still a thing this checkout can build, which is why the retirement waits.
+    /// PP632: the argument is not parsed any more, which is the half no compiler reads.
     ///
-    /// Held as the argument being offered rather than by running it: a test that built the Qt client
-    /// would be a second build system in the suite, and PP22's line about what a runner answers
-    /// applies here too. What this records is that the affordance is real today, so removing it now
-    /// would be a loss rather than a tidy-up.
+    /// Kept as an assertion rather than deleted with the affordance, and for PP591's reason: what
+    /// a removal leaves behind is nothing to check unless somebody writes the absence down. An
+    /// argument arriving back - a port of gui/, a merge from upstream - would be a build target for
+    /// source that calls eleven exports the library no longer reaches from session.c.
+    ///
+    /// The NAME is still here on purpose. It is what a returning argument would be spelled, and it
+    /// is what the message above has to be able to say.
     /// </summary>
     [Fact]
-    public void TheAffordanceIsRealAndNotAlreadyGone()
+    public void TheAffordanceIsGoneAndTheNameRemembersIt()
     {
         Assert.Equal("gui", QtClientBuild.CompileArgument);
 
         if (QtClientBuild.LocateCompile() is not { } path)
             return;
 
-        // The argument is parsed, not merely documented: compile.cmd matches it token by token.
+        // The token-by-token match compile.cmd used to make. Its absence is the retirement.
         string text = File.ReadAllText(path);
-        Assert.Contains($"\"%%~a\"==\"{QtClientBuild.CompileArgument}\"", text, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            $"\"%%~a\"==\"{QtClientBuild.CompileArgument}\"", text, StringComparison.Ordinal);
     }
 }

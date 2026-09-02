@@ -536,6 +536,7 @@
 - ✅ **PP629** **this port writes the Qt client's settings now, and a running client saves its own cache back over them** — The client owns the store and the person is told: a removal made while one is running says so, by both the built name and the released one, and locking was never available.
 - ✅ **PP630** **PP623's first step has no mechanism, so ten models would each hold two shapes of session.c their own way** — One reading answers while session.c asks and a counterpart answers once it stops, so exactly one side runs on any tree and neither is a check that declined to look.
 - ✅ **PP631** **the census's tests read session.c directly, so PP33's flip would turn every one of them red** — Ten test files read session.c through the pair now, so the flip makes them decline rather than fail, and a drift check catches any that go back to reading it themselves.
+- ✅ **PP632** **nothing has taken PP623's middle step, so session.c still asks and the Qt client's build still stands** — The nine and both fields are gone, the Qt client's build retired with them, and GuiFreshness answers Retired so no checkout is left permanently stale.
 
 ## Block G — Test discipline
 

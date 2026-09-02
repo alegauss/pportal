@@ -66,18 +66,26 @@ public class SessionHolepunchShapeTests
     }
 
     /// <summary>
-    /// PP630: today's tree is the asking one, which is the premise every model here was written on.
+    /// PP632: this tree is the SILENT one now, and this is the assertion that turned over to say so.
     ///
-    /// It turns over when PP33's flip lands, and that is the point: the assertion below is what
-    /// says which side of the conversion this checkout is on, so a reader is never guessing.
+    /// It was a tripwire on purpose. PP630 asserted that session.c still asked, so the commit that
+    /// stopped it had to come here and say so rather than sliding past - which is why PP623's "the
+    /// flip edits no test file" was approximate by exactly one, and this is the one.
+    ///
+    /// What it asserts now is the deletion itself: the handle is gone from session.c and so is the
+    /// export that carries no `chiaki_` prefix, which PP564 found because a sweep keyed on that
+    /// prefix walks straight past it.
     /// </summary>
     [Fact]
-    public void TodayThisTreeStillAsks()
+    public void ThisTreeHasStoppedAsking()
     {
         if (SessionHolepunchShape.Locate() is null)
             return;
 
-        Assert.NotNull(SessionHolepunchShape.AskingSource());
+        string? silent = SessionHolepunchShape.SilentSource();
+
+        Assert.True(silent is not null, "session.c names the holepunch handle again");
+        Assert.Empty(SessionHolepunchShape.StillPresentIn(silent!));
     }
 
     /// <summary>

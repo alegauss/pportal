@@ -14,6 +14,19 @@ public enum GuiBuildState
 
     /// <summary>There is no checkout beside this host, which is an ordinary way to run.</summary>
     NoCheckout,
+
+    /// <summary>
+    /// PP632: nothing can rebuild the client, so nothing about it can be stale.
+    ///
+    /// This is the state PP597 asked for by name. It established that PP33's deletion and a
+    /// buildable Qt client are mutually exclusive, and that the commit removing the field owed one
+    /// of two things - "retire the client's build, or give GuiFreshness a state for it". PP598 chose
+    /// the retirement and it turns out to owe this state anyway: the binary is still on disk for
+    /// anybody who ever built one, so a check that went on comparing timestamps would be
+    /// permanently red with nothing able to clear it. That is the failure PP597 was filed to
+    /// prevent, reached from the other side.
+    /// </summary>
+    Retired,
 }
 
 /// <summary>What a check found.</summary>
@@ -82,6 +95,29 @@ public static class GuiFreshness
         ArgumentNullException.ThrowIfNull(root);
 
         string client = Path.Combine(root, ClientRelativePath);
+
+        // PP632: asked before anything is compared, and it is the answer on every tree from here.
+        // gui/ calls eleven holepunch exports and session.c has stopped asking, so no argument
+        // builds a client and no comparison against gui/ can mean anything. A binary found here is
+        // one somebody built before the retirement.
+        if (!File.Exists(client))
+            return new GuiBuild(GuiBuildState.NeverBuilt, null, null);
+
+        return new GuiBuild(GuiBuildState.Retired, client, null);
+    }
+
+    /// <summary>
+    /// PP632: the comparison this used to make, kept for what it says about the state that is gone.
+    ///
+    /// Not called any more, and not deleted: a client that becomes buildable again - a port of gui/,
+    /// or a PSN path that comes back - needs exactly this, and reconstructing it from the ledger is
+    /// how a rule loses the two details that took a task each. Both are in the last four lines.
+    /// </summary>
+    public static GuiBuild WouldHaveCheckedIn(string root)
+    {
+        ArgumentNullException.ThrowIfNull(root);
+
+        string client = Path.Combine(root, ClientRelativePath);
         if (!File.Exists(client))
             return new GuiBuild(GuiBuildState.NeverBuilt, null, null);
 
@@ -121,12 +157,19 @@ public static class GuiFreshness
     }
 
     /// <summary>
-    /// What to say when it is stale, which names the command rather than the variable: the
-    /// environment variable is what PP529 found nobody knew, and naming it here would reproduce
-    /// exactly the thing this line was filed against.
+    /// What to say about an answer.
+    ///
+    /// PP529 wrote the stale sentence and named the COMMAND rather than the environment variable,
+    /// because the variable was what nobody knew about. PP632 took the command away, so the stale
+    /// sentence now names something that does not exist - and the retired one says what happened
+    /// instead of what to run.
     /// </summary>
     public static string Explain(GuiBuild build)
-        => $"{build.Newest} is newer than {build.Client}, so gui/ was edited and the Qt client "
-            + "was not rebuilt - and no ordinary build compiles it, so nothing else would have "
-            + "said so. Run: compile.cmd gui";
+        => build.State == GuiBuildState.Retired
+            ? $"{build.Client} is from before the Qt client's build was retired (PP598, PP632). "
+                + "gui/ calls eleven holepunch exports and session.c has stopped asking, so nothing "
+                + "builds it - the source stays because the port's drift checks read it."
+            : $"{build.Newest} is newer than {build.Client}, so gui/ was edited and the Qt client "
+                + "was not rebuilt - and no ordinary build compiles it, so nothing else would have "
+                + "said so.";
 }

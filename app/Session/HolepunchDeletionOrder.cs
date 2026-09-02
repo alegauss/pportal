@@ -37,6 +37,15 @@ public readonly record struct DeletionStage(string Name, string Detail, bool Tou
 /// </summary>
 public static class HolepunchDeletionOrder
 {
+    /// <summary>
+    /// PP632: how far the order has got, which is the one thing a plan has to be able to say.
+    ///
+    /// The first two steps landed - PP630 and PP631 taught the tests both shapes, and PP632 edited
+    /// the C and the build. What is left is the third: the models still carry predicates written
+    /// against a shape session.c no longer has, and they decline rather than assert.
+    /// </summary>
+    public static int Landed { get; } = 2;
+
     /// <summary>The steps, in the order they land.</summary>
     public static IReadOnlyList<DeletionStage> Stages { get; } =
     [

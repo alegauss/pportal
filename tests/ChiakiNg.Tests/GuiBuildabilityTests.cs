@@ -97,12 +97,17 @@ public class GuiBuildabilityTests
             File.WriteAllText(source, "// edited after the client was built");
             File.SetLastWriteTimeUtc(source, DateTime.UtcNow);
 
+            // PP632: Retired, not Stale. This arrangement - a client older than a source beside it
+            // - is exactly the one PP597 said would be permanently red once nothing could rebuild
+            // it, and the state PP597 asked for by name is what answers instead.
             GuiBuild answer = GuiFreshness.CheckIn(root);
 
-            Assert.Equal(GuiBuildState.Stale, answer.State);
+            Assert.Equal(GuiBuildState.Retired, answer.State);
+            Assert.Contains("retired", GuiFreshness.Explain(answer), StringComparison.OrdinalIgnoreCase);
 
-            // And it explains itself as an edit nobody rebuilt, which is what a failure has to say.
-            Assert.Contains("newer than", GuiFreshness.Explain(answer), StringComparison.Ordinal);
+            // The comparison it used to make is kept and still right, which is what says the state
+            // changed rather than the rule being lost.
+            Assert.Equal(GuiBuildState.Stale, GuiFreshness.WouldHaveCheckedIn(root).State);
         }
         finally
         {
@@ -120,9 +125,9 @@ public class GuiBuildabilityTests
         GuiBuild answer = GuiFreshness.Check();
 
         Assert.True(
-            answer.State is GuiBuildState.Fresh or GuiBuildState.Stale
-                or GuiBuildState.NeverBuilt or GuiBuildState.NoCheckout,
-            $"GuiFreshness answered {answer.State}, which this file does not know about");
+            answer.State is GuiBuildState.NeverBuilt or GuiBuildState.NoCheckout
+                or GuiBuildState.Retired,
+            $"GuiFreshness answered {answer.State}, and PP632 left it three answers");
 
         // The property that matters: never having built one is answerable, so a fresh clone reads
         // gui/ without owning a compiler for it.

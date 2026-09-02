@@ -150,9 +150,14 @@ public static class HolepunchConsumers
     /// two that are actually the work: session.c, which is PP340's seam, and the shim, which is this
     /// port's own. Neither leaves by being read again - the four this list once held were three
     /// findings and one file nobody could run.
+    ///
+    /// PP632: AND SESSION.C HAS LEFT IT, which is the removal all of this was for. Its nine asks
+    /// went with the `holepunch_session` field, and the Qt client's build - the only thing that ever
+    /// set that field - retired in the same commit, because gui/ calls eleven of these exports
+    /// directly. ONE IS LEFT, and it is the port's own seam: the nine wrappers PP481 put in the shim
+    /// so the managed side could drive the C rather than replace it.
     /// </summary>
-    public static IReadOnlyList<string> All { get; } =
-        [@"lib\src\session.c", ShimRelativePath];
+    public static IReadOnlyList<string> All { get; } = [ShimRelativePath];
 
     /// <summary>
     /// PP573: what PP33's own line has to say about the count, now that four tasks have moved it.
@@ -269,6 +274,28 @@ public static class HolepunchConsumers
 
         return sessionSource.Contains(CtrlCall + "(session->holepunch_session)", StringComparison.Ordinal)
             && sessionSource.Contains("session->" + RecordedPortField + " =", StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// PP632: and nothing records it now, which is the other side of the same removal.
+    ///
+    /// The ask session.c recorded FROM was one of the nine, so PP590's arrangement has one half
+    /// left: ctrl.c reads <c>session-&gt;ctrl_port</c> and falls back to SESSION_CTRL_PORT, and the
+    /// field is zero on every path. That is not a regression - PP590's fallback was written for
+    /// exactly the case where nobody told us, and every case is now that case.
+    ///
+    /// Asserted rather than assumed, because a ctrl.c that lost the fallback would connect to port
+    /// zero on the LAN path, which is the path this port is used on.
+    /// </summary>
+    public static bool NothingRecordsTheCtrlPortAndCtrlStillFallsBack(
+        string sessionSource, string ctrlSource)
+    {
+        ArgumentNullException.ThrowIfNull(sessionSource);
+        ArgumentNullException.ThrowIfNull(ctrlSource);
+
+        return !sessionSource.Contains(CtrlCall, StringComparison.Ordinal)
+            && !sessionSource.Contains("session->" + RecordedPortField + " =", StringComparison.Ordinal)
+            && CtrlReadsTheRecordedPort(ctrlSource);
     }
 
     /// <summary>

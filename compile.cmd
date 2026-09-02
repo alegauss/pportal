@@ -27,7 +27,7 @@ rem   compile.cmd clean           wipe .\build (portable tree included) first
 rem   compile.cmd nodeploy        build only, skip the portable tree (fast)
 rem   compile.cmd notests         skip chiaki-unit - leaves ctest on a stale binary
 rem   compile.cmd noapp           skip app\ - says nothing about whether the .NET host builds
-rem   compile.cmd gui             ALSO build the Qt client, which no other invocation compiles
+rem
 rem   compile.cmd clean nodeploy  both
 rem
 rem A default build now links chiaki-unit as well as chiaki (PP56) and builds the .NET
@@ -82,13 +82,16 @@ for %%a in (%ARGS%) do (
     if /I "%%~a"=="nodeploy"  set "DO_DEPLOY="
     if /I "%%~a"=="notests"   set "NO_TESTS=1"
     if /I "%%~a"=="noapp"     set "NO_APP=1"
-    rem PP529: the only way to compile gui\ was an environment variable nothing named, so a
-    rem change there was committed unbuilt unless its author already knew. Here as an argument
-    rem because that is where a reader looks - the shell script reads CHIAKI_ENABLE_GUI and this
-    rem is what sets it.
-    if /I "%%~a"=="gui"       set "CHIAKI_ENABLE_GUI=ON"
-    if /I "%%~a" neq "gui" call :forward "%%~a"
-    if /I "%%~a" neq "configure" if /I "%%~a" neq "nodeploy" if /I "%%~a" neq "notests" if /I "%%~a" neq "noapp" if /I "%%~a" neq "clean" if /I "%%~a" neq "deploy" if /I "%%~a" neq "gui" set "BAD_ARG=%%~a"
+    rem PP529 put `gui` here, because the only way to compile gui\ was an environment
+    rem variable nothing named. PP632 took it away again: gui\ calls eleven holepunch exports
+    rem directly, so it stopped compiling the moment session.c stopped asking - and an argument
+    rem that produces a wall of errors is worse than no argument at all. PP598 decided that on
+    rem 2026-08-31 and said it would ride in this commit.
+    rem
+    rem gui\ stays as SOURCE. The port's drift checks read it to hold this port against what it
+    rem was ported from, so it is still edited - it is just no longer built by anything.
+    call :forward "%%~a"
+    if /I "%%~a" neq "configure" if /I "%%~a" neq "nodeploy" if /I "%%~a" neq "notests" if /I "%%~a" neq "noapp" if /I "%%~a" neq "clean" if /I "%%~a" neq "deploy" set "BAD_ARG=%%~a"
 )
 rem The .NET host is not part of the cmake graph, so `configure` - which asks cmake whether
 rem every path it names still resolves - has nothing to say about it either way.
@@ -96,7 +99,7 @@ if defined CONFIGURE_ONLY set "NO_APP=1"
 if defined CONFIGURE_ONLY set "DO_DEPLOY="
 if defined BAD_ARG (
     echo [compile] unknown argument: %BAD_ARG%
-    echo [compile] usage: compile.cmd [clean] [notests] [noapp] [gui] [configure^|nodeploy]
+    echo [compile] usage: compile.cmd [clean] [notests] [noapp] [configure^|nodeploy]
     exit /b 2
 )
 
@@ -209,11 +212,9 @@ echo [compile] building ChiakiNg.slnx ...
 dotnet build "%~dp0ChiakiNg.slnx" -c Debug --nologo -v quiet
 if errorlevel 1 (
     echo.
-    rem PP532: which half built depends on the flag. Saying "the Qt client built" on a run that
-    rem did not build it credits work that never happened, in the one message a reader is
-    rem already reading closely.
-    if /I "%CHIAKI_ENABLE_GUI%"=="ON" echo [compile] FAILED - the Qt client built, the .NET host did not.
-    if /I not "%CHIAKI_ENABLE_GUI%"=="ON" echo [compile] FAILED - the native side built, the .NET host did not.
+    rem PP532 had two spellings of this, one per half of the flag. PP632 left one: nothing
+    rem builds the Qt client any more, so "the native side built" is the only true half.
+    echo [compile] FAILED - the native side built, the .NET host did not.
     exit /b 1
 )
 :app_done
@@ -221,16 +222,9 @@ if errorlevel 1 (
 echo.
 if defined CONFIGURE_ONLY goto ok_configure
 if defined DO_DEPLOY goto ok_deploy
-rem PP532: name what THIS run built. The Qt client is off unless `gui` asked for it, so naming
-rem it here reported a binary the run had not produced - and on a machine that has one from an
-rem earlier run the path resolves, which points a reader at a real file that is the wrong one.
-if /I "%CHIAKI_ENABLE_GUI%"=="ON" (
-    echo [compile] OK -^> %~dp0%BUILD_DIR%\gui\chiaki.exe
-    echo [compile] NOTE: this binary only starts inside an MSYS2 MinGW64 shell.
-) else (
-    echo [compile] OK -^> %~dp0app\bin\Debug\net10.0-windows\win-x64\ChiakiNg.exe
-    echo [compile] NOTE: the Qt client was not built - compile.cmd gui builds it.
-)
+rem PP532: name what THIS run built. PP632: there is only one thing it can be now - the Qt
+rem client has no argument that builds it and gui\ no longer compiles at all.
+echo [compile] OK -^> %~dp0app\bin\Debug\net10.0-windows\win-x64\ChiakiNg.exe
 if defined LOCKED echo [compile]       %DEPLOY_DISP%\chiaki.exe still holds the previous build.
 if not defined LOCKED echo [compile]       Run compile.cmd without 'nodeploy' for a clickable build.
 exit /b 0
@@ -249,14 +243,7 @@ rem
 rem PP586: and the other half of that - a path that DOES exist and this run did not write. The test
 rem here was `if not exist`, which is presence rather than provenance, so a default run announced
 rem that the Qt deploy was skipped and then recommended the Qt client anyway, off an earlier run's
-rem binary. Ask CHIAKI_ENABLE_GUI, which is the question the :app_done ending already asks.
-if /I not "%CHIAKI_ENABLE_GUI%"=="ON" goto ok_deploy_managed
-echo [compile] OK - run this one:
-echo [compile]   %~dp0%DEPLOY_DISP%\chiaki.exe
-echo.
-echo [compile] ^(%~dp0%BUILD_DIR%\gui\chiaki.exe also exists, but it needs the
-echo [compile]  MSYS2 MinGW64 shell - double-clicking it fails on missing DLLs.^)
-exit /b 0
+rem binary. PP632: no run builds one at all now, so the managed ending is the only ending.
 
 :ok_deploy_managed
 echo [compile] OK - run this one:
@@ -265,9 +252,9 @@ rem The stale one, named as stale. True and useful exactly when the recommendati
 rem it is the file a reader would otherwise double-click, and it is not what this run produced.
 if exist "%~dp0%BUILD_DIR%\gui\chiaki.exe" echo [compile]   ^(%~dp0%BUILD_DIR%\gui\chiaki.exe is an EARLIER run's Qt client, not this one's.^)
 echo.
-echo [compile] ^(the Qt client is off - CHIAKI_ENABLE_GUI. Its source stays in gui\ because
-echo [compile]  the port's drift checks read it, so it is still edited; compile.cmd gui
-echo [compile]  builds it, and nothing else does. PP529.^)
+echo [compile] ^(the Qt client is RETIRED - PP598 decided it and PP632 did it, because gui\ calls
+echo [compile]  eleven holepunch exports and session.c has stopped asking. Its source stays in
+echo [compile]  gui\ because the port's drift checks read it, and nothing builds it.^)
 exit /b 0
 
 rem ---------------------------------------------------------------------------

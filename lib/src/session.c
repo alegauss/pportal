@@ -177,7 +177,9 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_session_init(ChiakiSession *session, Chiaki
 	session->quit_reason = CHIAKI_QUIT_REASON_NONE;
 	session->target = connect_info->ps5 ? CHIAKI_TARGET_PS5_1 : CHIAKI_TARGET_PS4_10;
 	session->auto_regist = connect_info->auto_regist;
-	session->holepunch_session = connect_info->holepunch_session;
+	// PP632: rudp has no producer any more. Its only assignment was inside the holepunch guard
+	// below, so every `if(session->rudp)` in this file and in ctrl.c is now false - left in place
+	// because ctrl.c and regist.c still read it, and converting them is not this task.
 	session->rudp = NULL;
 	session->dontfrag = true;
 
@@ -218,30 +220,28 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_session_init(ChiakiSession *session, Chiaki
 		goto error_ctrl;
 	}
 
-	if(session->holepunch_session)
-	{
-		memcpy(session->connect_info.psn_account_id, connect_info->psn_account_id, sizeof(connect_info->psn_account_id));
-	}
+	// PP632: the PSN half of this fork is gone with the handle, so what was the `else` is the whole
+	// of it. The account id it used to copy is set on the connect info by nobody: PP596 established
+	// that the Qt client was the only thing that ever passed a holepunch session, and PP598 retired
+	// its build.
+	//
+	// make hostname use ipv4 for now
+	struct addrinfo hints;
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_socktype = SOCK_DGRAM;
+	char *ipv6 = strchr(connect_info->host, ':');
+	if(ipv6)
+		hints.ai_family = AF_INET6;
 	else
+		hints.ai_family = AF_INET;
+	int r = getaddrinfo(connect_info->host, NULL, &hints, &session->connect_info.host_addrinfos);
+	if(r != 0)
 	{
-		// make hostname use ipv4 for now
-		struct addrinfo hints;
-		memset(&hints, 0, sizeof(hints));
-		hints.ai_socktype = SOCK_DGRAM;
-		char *ipv6 = strchr(connect_info->host, ':');
-		if(ipv6)
-			hints.ai_family = AF_INET6;
-		else
-			hints.ai_family = AF_INET;
-		int r = getaddrinfo(connect_info->host, NULL, &hints, &session->connect_info.host_addrinfos);
-		if(r != 0)
-		{
-			chiaki_session_fini(session);
-			return CHIAKI_ERR_PARSE_ADDR;
-		}
-		memcpy(session->connect_info.regist_key, connect_info->regist_key, sizeof(session->connect_info.regist_key));
-		memcpy(session->connect_info.morning, connect_info->morning, sizeof(session->connect_info.morning));
+		chiaki_session_fini(session);
+		return CHIAKI_ERR_PARSE_ADDR;
 	}
+	memcpy(session->connect_info.regist_key, connect_info->regist_key, sizeof(session->connect_info.regist_key));
+	memcpy(session->connect_info.morning, connect_info->morning, sizeof(session->connect_info.morning));
 
 	chiaki_controller_state_set_idle(&session->controller_state);
 
@@ -273,8 +273,6 @@ error_state_mutex:
 error_state_cond:
 	chiaki_cond_fini(&session->state_cond);
 error:
-	if(session->holepunch_session)
-		chiaki_holepunch_session_fini(session->holepunch_session);
 	return err;
 }
 
@@ -289,10 +287,11 @@ CHIAKI_EXPORT void chiaki_session_fini(ChiakiSession *session)
 	chiaki_mutex_unlock(&session->state_mutex);
 	chiaki_stream_connection_fini(&session->stream_connection);
 	chiaki_ctrl_fini(&session->ctrl);
+	// PP632: the holepunch fini stood here and is gone with the handle. The rudp one is kept: the
+	// field is still declared and still read by ctrl.c, so a teardown that stopped releasing it
+	// would be wrong the day anything produces one again.
 	if(session->rudp)
 		chiaki_rudp_fini(session->rudp);
-	if(session->holepunch_session)
-		chiaki_holepunch_session_fini(session->holepunch_session);
 	chiaki_stop_pipe_fini(&session->stop_pipe);
 	chiaki_cond_fini(&session->state_cond);
 	chiaki_mutex_fini(&session->state_mutex);
@@ -444,46 +443,11 @@ static void *session_thread_func(void *arg)
 
 	CHECK_STOP(quit);
 
-	if(session->holepunch_session)
-	{
-		chiaki_socket_t *rudp_sock = chiaki_get_holepunch_sock(session->holepunch_session, CHIAKI_HOLEPUNCH_PORT_TYPE_CTRL);
-		session->rudp = chiaki_rudp_init(rudp_sock, session->log);
-		if(!session->rudp)
-		{
-			CHIAKI_LOGE(session->log, "Initializing rudp failed");
-			// PP339: QUIT and not CHECK_STOP. CHECK_STOP returns unless somebody asked to stop, so
-			// this logged an error and then carried on with rudp NULL - skipping the PSN regist
-			// block, then requesting a session over host_addrinfos, which session_init only fills
-			// for a session that has NO holepunch session. The loop ran zero times and the failure
-			// arrived as "no address answered", which is the one failure that was not the cause.
-			//
-			// The reason is left alone rather than invented: every other error exit in this
-			// function that has no reason of its own quits without setting one, and a reason
-			// naming the session request would be as wrong as the ending it replaced.
-			QUIT(quit);
-		}
-	}
-	// PSN Connection
-	if(session->rudp)
-	{
-		ChiakiRegist regist;
-		ChiakiRegistInfo info;
-		ChiakiHolepunchRegistInfo hinfo = chiaki_get_regist_info(session->holepunch_session);
-		info.holepunch_info = &hinfo;
-		info.host = NULL;
-		info.broadcast = false;
-		info.psn_online_id = NULL;
-		info.pin = 0;
-		info.console_pin = 0;
-		memcpy(info.psn_account_id, session->connect_info.psn_account_id, CHIAKI_PSN_ACCOUNT_ID_SIZE);
-		info.rudp = session->rudp;
-		info.target = session->connect_info.ps5 ? CHIAKI_TARGET_PS5_1 : CHIAKI_TARGET_PS4_10;
-		chiaki_regist_start(&regist, session->log, &info, regist_cb, session);
-		chiaki_cond_timedwait_pred(&session->state_cond, &session->state_mutex, 10000, session_check_state_pred_regist, session);
-		chiaki_regist_stop(&regist);
-		chiaki_regist_fini(&regist);
-		CHECK_STOP(quit);
-	}
+	// PP632: the rudp init and the PSN registration that followed it are gone. Both were reached
+	// only through the holepunch handle - the socket came from it, and the registration info was
+	// read out of it - so neither has an entry point left. PP339's swap of CHECK_STOP for QUIT went
+	// with the block it guarded; the reasoning is in the ledger, and a path that comes back needs
+	// it again.
 	if(session->auto_regist)
 	{
 		CHIAKI_LOGI(session->log, "Console auto registered successfully");
@@ -599,39 +563,10 @@ static void *session_thread_func(void *arg)
 		CHECK_STOP(quit_ctrl);
 	}
 
+	// PP632: NULL and no longer assigned. The offer, the punch and the data socket were three of the
+	// nine, and PP461's note stands: a null data socket means a local session using the ordinary
+	// socket, which is now every session this library starts.
 	chiaki_socket_t *data_sock = NULL;
-	if(session->rudp)
-	{
-		ChiakiErrorCode err = holepunch_session_create_offer(session->holepunch_session);
-		if (err != CHIAKI_ERR_SUCCESS)
-		{
-			CHIAKI_LOGE(session->log, "!! Failed to create offer msg for data connection");
-			// PP339: the same swap as the rudp init above, and found by the check written for that
-			// one. CHECK_STOP returned unless a stop was pending, so a failed offer fell through
-			// and the thread punched a hole for a data connection it had never offered. The punch
-			// failure on the next lines already uses QUIT, which is what this was meant to be.
-			QUIT(quit_ctrl);
-		}
-		CHIAKI_LOGI(session->log, "Punching hole for data connection");
-		ChiakiEvent event_start = { 0 };
-		event_start.type = CHIAKI_EVENT_HOLEPUNCH;
-		event_start.data_holepunch.finished = false;
-		chiaki_session_send_event(session, &event_start);
-		err = chiaki_holepunch_session_punch_hole(session->holepunch_session, CHIAKI_HOLEPUNCH_PORT_TYPE_DATA);
-		if (err != CHIAKI_ERR_SUCCESS)
-		{
-			CHIAKI_LOGE(session->log, "!! Failed to punch hole for data connection.");
-			QUIT(quit_ctrl);
-		}
-		CHIAKI_LOGI(session->log, ">> Punched hole for data connection!");
-		data_sock = chiaki_get_holepunch_sock(session->holepunch_session, CHIAKI_HOLEPUNCH_PORT_TYPE_DATA);
-		ChiakiEvent event_finish = { 0 };
-		event_finish.type = CHIAKI_EVENT_HOLEPUNCH;
-		event_finish.data_holepunch.finished = true;
-		chiaki_session_send_event(session, &event_finish);
-		err = chiaki_cond_timedwait_pred(&session->state_cond, &session->state_mutex, SESSION_EXPECT_TIMEOUT_MS, session_check_state_pred_ctrl_start, session);
-		CHECK_STOP(quit_ctrl);
-	}
 
 	if(!session->ctrl_session_id_received)
 	{
@@ -990,16 +925,10 @@ static ChiakiErrorCode session_thread_request_session(ChiakiSession *session, Ch
 	}
 
 	char send_buf[512];
+	// PP632: SESSION_PORT, always. The selected address and the control port were the last two of
+	// the nine, and session->ctrl_port is left at zero - which is the value ctrl.c's own fallback
+	// was written for, and is now what every path gives it.
 	int port = SESSION_PORT;
-	if(session->holepunch_session)
-	{
-		chiaki_get_ps_selected_addr(session->holepunch_session, session->connect_info.hostname);
-		port = chiaki_get_ps_ctrl_port(session->holepunch_session);
-		// PP590: recorded here so ctrl.c does not ask holepunch.c for it a second time. This runs
-		// in session_thread_func before chiaki_ctrl_start, so the value is there by the time
-		// ctrl_connect builds its request - which is the same instant it was read at before.
-		session->ctrl_port = (uint16_t)port;
-	}
 	int request_len = snprintf(send_buf, sizeof(send_buf), session_request_fmt,
 			path, session->connect_info.hostname, port, regist_key_hex, rp_version_str);
 	if(request_len < 0 || request_len >= sizeof(send_buf))

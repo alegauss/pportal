@@ -9,11 +9,15 @@ namespace ChiakiNg.Session;
 /// the file PP33 removes is one gui/ links against. The choice was between letting the client go
 /// and holding PP33 back; it is the first. gui/ stays as source and stops being a build target.
 ///
-/// IT DOES NOT HAPPEN YET, AND THAT IS THE POINT. The client builds today - configure resolves,
-/// WebEngine is optional in gui/CMakeLists.txt, and `compile.cmd gui` links gui\chiaki.exe in
-/// thirteen steps. Taking the affordance away before the deletion that breaks it would remove
-/// something that works and buy nothing, so the retirement rides in PP33's own commit. This holds
-/// the shape of it until then.
+/// IT HAS HAPPENED. PP632 took the argument away in the same commit that stopped session.c asking,
+/// which is what "rides in PP33's own commit" meant. What this class held was the shape of the
+/// decision until then; what it holds now is the shape of the retirement, so a `gui` argument
+/// arriving back is caught rather than welcomed - the same turn PP591 gave the harness it deleted.
+///
+/// The affordance was real until that commit: configure resolved, WebEngine was optional in
+/// gui/CMakeLists.txt, and `compile.cmd gui` linked gui\chiaki.exe in thirteen steps. It stopped
+/// working the instant the field went, because gui/ calls eleven holepunch exports directly - which
+/// is why the two could never have been separate commits.
 ///
 /// PP623 SAYS WHICH COMMIT THAT IS. "PP33's own commit" was reasoned about a change understood as
 /// nine calls plus this wiring; PP621 measured the oracle in the same transaction. The retirement
@@ -21,12 +25,12 @@ namespace ChiakiNg.Session;
 /// is three commits, and this is the middle one. <see cref="HolepunchDeletionOrder"/> is where that
 /// order lives, and it names the pieces below through this type rather than copying them.
 ///
-/// THREE PIECES, AND THE HALF-DONE RETIREMENT IS THE EXPENSIVE ONE. `compile.cmd`'s `gui` argument
-/// sets CHIAKI_ENABLE_GUI=ON; <see cref="GuiFreshness"/> compares the built client against gui/ and
-/// fails on Stale; <see cref="GuiFreshness.ClientRelativePath"/> is the binary both mean. Remove the
-/// argument and leave the check, and every checkout that ever built a client is permanently red
-/// with nothing able to clear it - which is what PP597 was filed to prevent, reached from the other
-/// side.
+/// THREE PIECES, AND THE HALF-DONE RETIREMENT WAS THE EXPENSIVE ONE. `compile.cmd`'s `gui` argument
+/// set CHIAKI_ENABLE_GUI=ON; <see cref="GuiFreshness"/> compared the built client against gui/ and
+/// failed on Stale; <see cref="GuiFreshness.ClientRelativePath"/> is the binary both meant. Removing
+/// the argument and leaving the check would have left every checkout that ever built a client
+/// permanently red with nothing able to clear it - so PP632 took the argument AND gave the check
+/// <see cref="GuiBuildState.Retired"/>, which is what PP597 asked for by name.
 ///
 /// TWO OF THE THREE ARE HELD BY THE COMPILER, not by a test, and deliberately: this type names
 /// GuiFreshness below, so deleting that class without deleting this one does not build. Only the

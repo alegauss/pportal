@@ -86,13 +86,17 @@ public class NativeWaitsTests
     }
 
     /// <summary>
-    /// And the four are genuinely a trap: each one's file defines a macro holding the SAME number for
+    /// And they are genuinely a trap: each one's file defines a macro holding the SAME number for
     /// something else. Stated as an assertion so that if upstream ever separates them, this stops
     /// claiming a hazard that has gone.
+    ///
+    /// PP632: session.c's row went with the registration wait it named, so this is one case now.
+    /// SESSION_EXPECT_CTRL_START_MS is still 10000 and still waits on the ctrl start - what left is
+    /// the OTHER wait that shared the number, so there is nothing left for a reader to confuse it
+    /// with in that file.
     /// </summary>
     [Theory]
     [InlineData(@"lib\src\ctrl.c", "CTRL_EXPECT_TIMEOUT", 5000.0)]
-    [InlineData(@"lib\src\session.c", "SESSION_EXPECT_CTRL_START_MS", 10000.0)]
     public void AMacroInTheSameFileHoldsTheSameNumberForSomethingElse(
         string relativePath, string macro, double shared)
     {
@@ -147,12 +151,16 @@ public class NativeWaitsTests
     ///
     /// Written as the split rather than as a total, because "31 and 33" was the reading this task
     /// started from and the two numbers never joined to each other.
+    ///
+    /// PP632: three literals, not four. session.c's registration wait was reached only through the
+    /// holepunch handle, so it went with the nine - and a row for a wait that is not in the file
+    /// could not be joined to anything, which is what this list is for.
     /// </summary>
     [Fact]
-    public void TheGroupsAreNineteenFourOneAndThirteen()
+    public void TheGroupsAreNineteenThreeOneAndThirteen()
     {
         Assert.Equal(19, NativeWaits.Mirrored.Count);
-        Assert.Equal(4, NativeWaits.Literals.Count);
+        Assert.Equal(3, NativeWaits.Literals.Count);
         Assert.Single(NativeWaits.Departures);
         Assert.Equal(13, NativeWaits.Unported.Count);
 

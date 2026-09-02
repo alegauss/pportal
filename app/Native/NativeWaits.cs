@@ -166,9 +166,15 @@ public static class NativeWaits
         new("chiaki_stop_pipe_connect(&ctrl->stop_pipe, sock, sa, addr->ai_addrlen, 5000)",
             Ctrl, WaitKind.MirrorsALiteral, "", CtrlTcpConnect.ConnectTimeoutMs,
             "CTRL_EXPECT_TIMEOUT is also 5000 and is the SEND timeout, not this"),
-        new("&session->state_mutex, 10000, session_check_state_pred_regist",
-            SessionSource, WaitKind.MirrorsALiteral, "", SessionRegistFork.RegistWaitMs,
-            "SESSION_EXPECT_CTRL_START_MS is also 10000 and waits on the ctrl start, not this"),
+        // PP632: session.c's registration wait stood here and went with the PSN block. It was
+        // reached only through the holepunch handle - the registration info was read out of it - so
+        // it has no entry point left. Kept OUT of the list rather than kept in it: this list is
+        // what a reader matching values against macros would join wrongly, and a wait that is not
+        // in the file cannot be joined to anything.
+        //
+        // What it said is worth keeping and is why it was here: SESSION_EXPECT_CTRL_START_MS is
+        // also 10000 and waits on the ctrl start, which is a different wait with the same number.
+
         new("chiaki_rudp_select_recv(rudp, 1500, message)",
             Rudp, WaitKind.MirrorsALiteral, "", RudpExchange.SelectTimeoutMs,
             "the same file's RUDP_EXPECT_TIMEOUT_MS is 1000 and is a different wait"),
