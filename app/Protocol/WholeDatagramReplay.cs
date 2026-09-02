@@ -89,4 +89,30 @@ public static class WholeDatagramReplay
     /// microseconds - a second machine keeps the ratio and not the clock.
     /// </summary>
     public static double GateShareOfGap => GateManagedMicros / MeanGapMicros;
+
+    /// <summary>
+    /// PP635: why the loop has no ratio of its own, and what stands instead.
+    ///
+    /// PP27's criterion asked for "the same comparison for the loop, not just the gate". The gate
+    /// is comparable because <c>chiaki_takion_packet_mac</c> is a pure function of eighteen bytes -
+    /// both sides do identical work and the difference is the runtimes. The loop is not that kind of
+    /// thing: PP601 established that takion.c's receive handlers are file-local, and removing a
+    /// `static` is the patch a non-goal refuses, so the only C loop that runs is the whole one from
+    /// its own socket. Timing that against a managed loop reading a file compares two I/O paths.
+    ///
+    /// WHAT ANSWERS IT IS HEADROOM. §PP27 called the runtime "a genuine risk rather than a
+    /// prejudice" and named what would make it real - a pause at the wrong moment, and thousands of
+    /// small packets a second each an allocation if written carelessly. Zero allocated and a
+    /// thousandth of the arrival gap spent is that risk measured rather than argued.
+    /// </summary>
+    public const string WhyTheLoopHasNoRatio =
+        "takion's receive handlers are file-local, so the only C loop that runs is bound to a socket";
+
+    /// <summary>
+    /// How much of the arrival gap the whole per-datagram job could take and still be nothing.
+    ///
+    /// A ceiling rather than the measurement, because the measurement is the gate's and the loop's
+    /// copy is not separately timed. What the reading supports is the ORDER: under a thousandth.
+    /// </summary>
+    public const double WorkShareOfGapCeiling = 0.001;
 }

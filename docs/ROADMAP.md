@@ -77,10 +77,10 @@
   The MAC gate is timed because the shim reaches it; the loop around it is bound to
   sockets and threads a capture has neither of, so no oracle runs until an entry point
   exists.
-- **The managed transport is timed against the C over captured traffic** Not opinion:
-  the C is right there and PP531 showed the shape - 0.13us managed against 0.06us per
-  head, inside a 1178us mean arrival gap. The same comparison for the loop, not just the
-  gate.
+- **The managed transport is timed against the C over captured traffic** PP635: the gate
+  is comparable and the loop is not - takion's handlers are file-local, so the only C
+  loop that runs is bound to a socket. PP610 timed the gate at 0.165us against 0.101us;
+  PP633 replayed the loop over whole datagrams for the half a ratio cannot give.
 - **The transport meets PP44's allocation budget** Thousands of small packets a second,
   each an allocation if written carelessly. Span, ArrayPool and SocketAsyncEventArgs are
   the answer, chosen deliberately - PP44 set the budget before this line writes what has

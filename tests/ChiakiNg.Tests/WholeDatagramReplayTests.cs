@@ -88,6 +88,38 @@ public class WholeDatagramReplayTests
     }
 
     /// <summary>
+    /// PP635: the loop has no ratio, and the criterion says why rather than staying open on it.
+    ///
+    /// PP27 asked for "the same comparison for the loop, not just the gate". The gate is comparable
+    /// because the C's is a pure function of eighteen bytes. The loop's is not reachable at all -
+    /// takion.c's receive handlers are file-local and removing a `static` is the patch a non-goal
+    /// refuses - so a wall-clock comparison would time two I/O paths and call the difference the
+    /// port's.
+    ///
+    /// What is asserted is the join: the criterion in the roadmap carries the reason, so a reader
+    /// meets it where they decide what finishing means rather than three files away.
+    /// </summary>
+    [Fact]
+    public void TheCriterionSaysWhyTheLoopHasNoRatio()
+    {
+        if (ChiakiNg.Session.SanitizerSource.LocateRelative(@"docs\ROADMAP.md") is not { } path)
+            return;
+
+        // Collapsed, because roadkeep reflows a criterion's reason to the prose width - so the
+        // sentence is there and a line break sits inside it. A check that read the file as written
+        // would be asserting about the wrapping.
+        string roadmap = System.Text.RegularExpressions.Regex.Replace(
+            File.ReadAllText(path), @"\s+", " ");
+
+        Assert.Contains("PP635", roadmap, StringComparison.Ordinal);
+        Assert.Contains(
+            "the gate is comparable and the loop is not", roadmap, StringComparison.Ordinal);
+
+        // And the headroom the answer rests on holds in the reading itself.
+        Assert.True(WholeDatagramReplay.GateShareOfGap < WholeDatagramReplay.WorkShareOfGapCeiling);
+    }
+
+    /// <summary>
     /// PP633: and the corpus still keeps heads, which is the decision this reading rests on.
     ///
     /// PP608 gives the reason and it has not changed: eighteen bytes is committable - no account, no
