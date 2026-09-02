@@ -534,6 +534,7 @@
 - ✅ **PP628** **the console list connects, holds a session and answers a PIN, and only a flag opens it** — A run with no flag opens the list, one screen is chosen rather than two queued, and two screen flags are answered by order so both spellings still mean something.
 - ✅ **PP626** **ConsoleActions models a wake and three removals, and the row draws a Connect button and nothing else** — The wake sends the client's own credential, hiding and deleting write the store through the inverse of the reader's rules, and the silent third outcome stays silent.
 - ✅ **PP629** **this port writes the Qt client's settings now, and a running client saves its own cache back over them** — The client owns the store and the person is told: a removal made while one is running says so, by both the built name and the released one, and locking was never available.
+- ✅ **PP630** **PP623's first step has no mechanism, so ten models would each hold two shapes of session.c their own way** — One reading answers while session.c asks and a counterpart answers once it stops, so exactly one side runs on any tree and neither is a check that declined to look.
 
 ## Block G — Test discipline
 
