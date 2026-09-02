@@ -179,46 +179,6 @@ public static class ConsoleConnect
     };
 }
 
-/// <summary>
-/// Where a prepared request becomes a session.
-///
-/// A seam and not a static call, for the reason every other seam here is one: the real thing needs
-/// a console on the network, and the rules above are what a test can hold. What crosses it is the
-/// request, so a fake starter asserts the assembling and the real one asserts nothing.
-/// </summary>
-public interface IConsoleSessionStarter
-{
-    /// <summary>Starts a session, and answers with what libchiaki said.</summary>
-    ChiakiError Start(ConnectRequest request);
-}
-
-/// <summary>
-/// The real one: the four calls <see cref="ExchangeCapture"/> makes, without the recording.
-///
-/// The session is created, started and released here. THAT IS THE LIMIT OF THIS TASK and it is
-/// deliberate: there is no screen to hand a running session to, and a session held open behind a
-/// window that cannot show it is worse than one that reports what it managed and stops. PP600 is
-/// the caller; the screen it hands to is Block C's.
-/// </summary>
-public sealed class NativeConsoleSessionStarter : IConsoleSessionStarter
-{
-    /// <inheritdoc />
-    public ChiakiError Start(ConnectRequest request)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-
-        ChiakiSession.LibInit();
-
-        using var info = new ChiakiConnectInfo { Host = request.Host, Ps5 = request.Ps5 };
-        info.SetRegistKey(request.RegistKey);
-        info.SetMorning(request.Morning);
-        info.SetVideoPreset(ChiakiVideoResolution.P720, ChiakiVideoFps.Fps60);
-        info.SetFlags(autoDowngrade: true, keyboard: false, dualSense: false, idrOnFecFailure: false);
-
-        using ChiakiSession? session = ChiakiSession.TryCreate(info, null, out ChiakiError created);
-        if (session is null)
-            return created;
-
-        return session.Start();
-    }
-}
+// PP625: the seam and its real implementation moved to ConsoleSession.cs, where the session's own
+// lifetime and the sentence a quit becomes live together. PP600 had them here because a session
+// that was released on the way out had no lifetime to model.

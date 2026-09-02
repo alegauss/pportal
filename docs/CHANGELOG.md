@@ -529,6 +529,7 @@
 - ✅ **PP600** **the host starts a session only from the capture flags, so nothing a user can click reaches one** — --consoles opens the list against real discovery and a row's button reaches a session through a seam, so every refusal is a named sentence on the screen rather than silence.
 - ✅ **PP622** **PP33's line cannot honestly say one caller, because the check demands the phrase 'one files call it'** — The clause is chosen per count rather than assembled from a plural, so one takes a singular verb and zero says no file calls it at all.
 - ✅ **PP624** **ConsoleList keys registration and hiding on a MAC, and discovery answers with a host-id in another spelling** — The Qt client's own six-byte parse is read, so both sets are the store's bytes, the hidden one works, and a row carries the identity that tells two nicknames apart.
+- ✅ **PP625** **the front door starts a session and releases it in the same call, so a connect that succeeds ends at once** — The starter hands back a handle the list holds, a second connect releases the first, and a quit becomes the sentence qmlbackend's own dialog composes.
 
 ## Block G — Test discipline
 

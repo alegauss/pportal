@@ -25,9 +25,20 @@ public partial class ConsoleListView : UserControl
     /// <summary>Somebody asked to connect to a console, and which one.</summary>
     public event Action<ConsoleRow>? ConnectRequested;
 
+    /// <summary>
+    /// PP625: somebody asked to end the session this list is holding.
+    ///
+    /// No row, because there is only one: a console accepts one remote play session, so the way out
+    /// is about the list rather than about a row - and a per-row Disconnect would ask which console
+    /// the user meant when the answer is always the one that is running.
+    /// </summary>
+    public event Action? DisconnectRequested;
+
     private void OnConnect(object sender, RoutedEventArgs e)
     {
         if (sender is FrameworkElement { DataContext: ConsoleRow row })
             ConnectRequested?.Invoke(row);
     }
+
+    private void OnDisconnect(object sender, RoutedEventArgs e) => DisconnectRequested?.Invoke();
 }

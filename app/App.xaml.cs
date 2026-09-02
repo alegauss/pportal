@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Threading;
 using ChiakiNg.Protocol;
@@ -97,7 +97,7 @@ public partial class App : Application
     /// It does not write. The three governed files are roadkeep's, a hook denies a hand edit to
     /// them, and going around that would solve the transcription by removing the gate. What it
     /// removes instead is the part a person does badly: knowing that a claim about session.c on
-    /// IMPROVEMENTS.md:216 belongs to §PP28 and not to §PP293, and that a claim in a roadmap line's
+    /// IMPROVEMENTS.md:216 belongs to Â§PP28 and not to Â§PP293, and that a claim in a roadmap line's
     /// symptom takes `restate` while one in its why takes `amend`.
     ///
     /// Exits 1 where anything is stale, so it answers the same question the test does and can be
@@ -1173,10 +1173,23 @@ public partial class App : Application
         MainWindow window = this.MainWindow as MainWindow ?? OpenedByHand();
 
         var store = new QSettingsStore();
-        var model = new ConsoleListViewModel(new NativeConsoleSessionStarter(), store.RegisteredHosts);
+
+        // PP625: the marshal is the dispatcher, which is what PP217 made it a parameter for. The
+        // session's events arrive on libchiaki's own thread and every property they move is bound.
+        var model = new ConsoleListViewModel(
+            new NativeConsoleSessionStarter(),
+            store.RegisteredHosts,
+            run => Dispatcher.BeginInvoke(run));
+
         var view = new Views.ConsoleListView { DataContext = model };
 
         view.ConnectRequested += row => model.Connect(row);
+        view.DisconnectRequested += model.Disconnect;
+
+        // PP625: and the session goes when the window does. A held session outlives the screen
+        // otherwise, and the console stays occupied by a process that has nothing left to draw.
+        window.Closed += (_, _) => model.Disconnect();
+
         window.ShowScreen(view);
 
         // Marshalled, because the callback arrives on libchiaki's own discovery thread and every

@@ -74,8 +74,19 @@
       was filed because a failure written to standard error reached nobody. Every refusal this
       screen can produce is about the room rather than about the code, so all of them belong here.
     -->
-    <TextBlock x:Name="ConnectStatus" Grid.Row="1"
-               Text="{Binding Status}" Margin="12,4" TextWrapping="Wrap" Opacity="0.8" />
+    <DockPanel Grid.Row="1" Margin="12,4">
+      <!--
+        PP625: the way out. A session outlives the click now, so without this the console stays
+        occupied until the process does and the person who clicked Connect has no answer except
+        closing the window. Enabled only while there is one, which is HasSession.
+      -->
+      <Button x:Name="DisconnectButton" DockPanel.Dock="Right"
+              Content="Disconnect" Padding="12,2" Click="OnDisconnect"
+              IsEnabled="{Binding HasSession}" />
+      <TextBlock x:Name="ConnectStatus"
+                 Text="{Binding Status}" VerticalAlignment="Center"
+                 TextWrapping="Wrap" Opacity="0.8" />
+    </DockPanel>
 
     <!--
       The empty state, which is a real state and not an oversight: discovery answering nothing is

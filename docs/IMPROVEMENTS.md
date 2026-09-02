@@ -350,32 +350,6 @@ sends.
 Deleting is the deliverable, not just porting. The C video receiver leaving the build is
 what makes the five ports beneath it real.
 
-### §PP625 A session nothing holds
-
-`NativeConsoleSessionStarter.Start` makes the four calls `ExchangeCapture` makes - lib
-init, the connect info, `chiaki_session_init`, `chiaki_session_start` - and then the
-`using` runs and the session is finished. It reports what libchiaki said about STARTING,
-which is honest and is not what a person clicking Connect means by connecting.
-
-It was written that way deliberately and the reason is still true: there is no screen to
-hand a running session to. A session held open behind a window that cannot show it is
-worse than one that says what it managed and stops, because the console is occupied and
-the port has nothing to draw.
-
-The capture is the shape this needs. It sets an event handler, waits for `Connected` or
-`Quit`, and holds for a bounded window - so what it reports is the console's answer
-rather than the call's. The front door wants the same, and one more thing: the session
-has to OUTLIVE the click.
-
-So this is two questions and they should not be answered at once. Holding the session
-and reporting its events is this line. What draws the frames is Block C's, and PP31
-records that the decoder is where 100% managed stops - so a stream screen is a decision
-with a dependency, and a front door that says "connected, and the console ended it" is
-not.
-
-The event handler is also the first place a quit reason reaches a person. PP600 put
-every refusal on the screen and libchiaki's own reasons still go nowhere.
-
 ### §PP626 Three actions with no button
 
 `ConsoleActions` is PP13's model of what a row offers - "three questions with a wrong

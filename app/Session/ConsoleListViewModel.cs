@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Text.RegularExpressions;
 using ChiakiNg.Settings;
 
@@ -229,8 +229,10 @@ public sealed class ConsoleListViewModel : INotifyPropertyChanged
 {
     private readonly IConsoleSessionStarter? starter;
     private readonly Func<IReadOnlyList<RegisteredHost>> registrations;
+    private readonly Action<Action> marshal;
     private IReadOnlyList<ConsoleRow> rows = [];
     private string status = "";
+    private IDisposable? live;
 
     /// <summary>
     /// PP600: the list as it has always been - it draws, and connecting is refused with a reason.
@@ -244,14 +246,31 @@ public sealed class ConsoleListViewModel : INotifyPropertyChanged
     {
     }
 
-    /// <summary>The list with a way to act, which is what the front door is given.</summary>
+    /// <summary>
+    /// The list with a way to act, which is what the front door is given.
+    /// </summary>
+    /// <param name="starter">Where a prepared request becomes a session.</param>
+    /// <param name="registrations">
+    /// Read through a func rather than once: registering a console happens in the Qt client while
+    /// this list is open, and a snapshot would go on refusing a console that had been paired since.
+    /// </param>
+    /// <param name="marshal">
+    /// PP625: how to get onto the thread the bindings live on. The session's events arrive on
+    /// libchiaki's own thread and every property they move is bound, so the caller says what the
+    /// marshal is - PP217's parameter, with the dispatcher on one side and a test's inline call on
+    /// the other. Running inline by default is what a test wants and is wrong in the application,
+    /// which is why the front door passes one.
+    /// </param>
     public ConsoleListViewModel(
-        IConsoleSessionStarter? starter, Func<IReadOnlyList<RegisteredHost>> registrations)
+        IConsoleSessionStarter? starter,
+        Func<IReadOnlyList<RegisteredHost>> registrations,
+        Action<Action>? marshal = null)
     {
         ArgumentNullException.ThrowIfNull(registrations);
 
         this.starter = starter;
         this.registrations = registrations;
+        this.marshal = marshal ?? (static run => run());
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -308,13 +327,78 @@ public sealed class ConsoleListViewModel : INotifyPropertyChanged
             return plan.Refusal;
         }
 
-        Native.ChiakiError started = starter.Start(request);
-        Status = started == Native.ChiakiError.Success
-            ? $"Connecting to {row.Name}..."
-            : $"{row.Name} refused the session: {started}";
+        // PP625: one session at a time, and the old one goes first. A console accepts one remote
+        // play session, so a second Connect while one is live is a request to move - and starting
+        // the new one first would have both asking the same console at once.
+        Disconnect(say: false);
+
+        ConsoleSessionStart start = starter.Start(request, Report);
+
+        if (!start.Running)
+        {
+            Status = $"{row.Name} refused the session: {start.Error}";
+            return ConnectRefusal.None;
+        }
+
+        live = start.Session;
+        Status = $"Connecting to {row.Name}...";
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasSession)));
 
         return ConnectRefusal.None;
     }
+
+    /// <summary>
+    /// PP625: whether a session is being held, which is what the way out binds to.
+    ///
+    /// A session that outlives the click needs a way to end it on the screen. Without one the
+    /// console stays occupied until the process does, and the person who clicked Connect has no
+    /// answer except closing the window.
+    /// </summary>
+    public bool HasSession => live is not null;
+
+    /// <summary>Ends the session this list is holding, if it is holding one.</summary>
+    public void Disconnect() => Disconnect(say: true);
+
+    private void Disconnect(bool say)
+    {
+        IDisposable? going = live;
+        live = null;
+
+        if (going is null)
+            return;
+
+        going.Dispose();
+
+        if (say)
+            Status = QuitSentence.Ended;
+
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasSession)));
+    }
+
+    /// <summary>
+    /// PP625: what the session said, on the thread the bindings live on.
+    ///
+    /// Ended releases the handle as well as saying so. libchiaki has finished with the session by
+    /// then, and a handle left behind would leave <see cref="HasSession"/> true - a way-out button
+    /// enabled for a session that is over, which is the state a second click would try to stop.
+    /// </summary>
+    private void Report(ConsoleSessionEvent moved) => marshal(() =>
+    {
+        switch (moved.State)
+        {
+            case ConsoleSessionState.Connected:
+                Status = "Connected.";
+                break;
+
+            case ConsoleSessionState.Ended:
+                Status = moved.Sentence ?? QuitSentence.Ended;
+                Disconnect(say: false);
+                break;
+
+            default:
+                break;
+        }
+    });
 
     /// <summary>Every row, shown or not - the model keeps what it does not display.</summary>
     public IReadOnlyList<ConsoleRow> Rows
@@ -348,3 +432,4 @@ public sealed class ConsoleListViewModel : INotifyPropertyChanged
         => Rows = ConsoleList.Build(
             discovered, manual, psn, hiddenMacs, registeredMacs, registeredPs4Count);
 }
+

@@ -1,4 +1,4 @@
-using ChiakiNg.Native;
+﻿using ChiakiNg.Native;
 using ChiakiNg.Session;
 using ChiakiNg.Settings;
 using Xunit;
@@ -31,16 +31,39 @@ public class ConsoleConnectTests
     private static ConsoleRow Discovered(string name, bool registered = true)
         => new(name, "10.0.0.5", Discovered: true, Manual: false, Registered: registered, Display: true);
 
-    private sealed class FakeStarter : IConsoleSessionStarter
+    /// <summary>
+    /// PP625: a starter that hands back a handle, and lets a test say what the console did next.
+    /// </summary>
+    internal sealed class FakeStarter : IConsoleSessionStarter
     {
         public ConnectRequest? Started { get; private set; }
 
         public ChiakiError Answer { get; init; } = ChiakiError.Success;
 
-        public ChiakiError Start(ConnectRequest request)
+        /// <summary>The report the last start was given, so a test can be the console.</summary>
+        public Action<ConsoleSessionEvent>? Report { get; private set; }
+
+        /// <summary>Whether the handle it handed back has been disposed.</summary>
+        public bool Released { get; private set; }
+
+        /// <summary>How many sessions it has been asked for.</summary>
+        public int Starts { get; private set; }
+
+        public ConsoleSessionStart Start(ConnectRequest request, Action<ConsoleSessionEvent> report)
         {
             Started = request;
-            return Answer;
+            Report = report;
+            Starts++;
+            Released = false;
+
+            return Answer == ChiakiError.Success
+                ? new(ChiakiError.Success, new Handle(this))
+                : new(Answer, null);
+        }
+
+        private sealed class Handle(FakeStarter owner) : IDisposable
+        {
+            public void Dispose() => owner.Released = true;
         }
     }
 
@@ -389,3 +412,4 @@ public class ConsoleConnectTests
         Assert.Equal("10.0.0.9", Assert.Single(manual).Address);
     }
 }
+
