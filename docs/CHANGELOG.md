@@ -540,6 +540,7 @@
 - ✅ **PP633** **PP44's budget is measured over heads, and the copy the keeping branches do needs a payload to exist** — Over 3.69MB a PS5 sent, the keeping branches copied 3693956 bytes and the loop allocated nothing, and the gate's share is unchanged because it stops at eighteen.
 - ✅ **PP634** **PP623's third step would delete the predicates that keep session.c's nine from coming back** — The predicates stay and the prose around them is what turns, and the plan says so before PP27 follows the same three steps by reading them.
 - ✅ **PP635** **PP27's timing criterion asks for the loop against the C, and that comparison would measure the socket** — The criterion carries the reason now: the gate is comparable, the loop is not, and what answers it is a thousandth of the arrival gap with nothing allocated.
+- ✅ **PP636** **PP295 waits on the whole of PP27, whose last criterion is the deletion PP295 has to happen before** — PP295 no longer declares PP27, the six files the fourth criterion waits on are named, and an assertion holds that the criterion is still the end state.
 
 ## Block G — Test discipline
 
