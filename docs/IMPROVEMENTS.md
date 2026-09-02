@@ -350,32 +350,6 @@ sends.
 Deleting is the deliverable, not just porting. The C video receiver leaving the build is
 what makes the five ports beneath it real.
 
-### §PP624 Two spellings that never met
-
-`ConsoleList.Build` has taken two sets of keys since PP13 and tests a discovered host's
-`Id` against them. That id is the discovery reply's `host-id`: bare hexadecimal, and
-eight bytes on the console this port was read against. `RegisteredHost.MacText` and
-`HiddenHost.MacText` are six bytes with colons. They are not the same string, and no
-caller can make them one.
-
-Nothing noticed because nothing called it. Every caller of Build was a test, and a test
-hands it whatever set the assertion needs, so the two spellings never met until PP600
-wired the screen.
-
-PP600 got past it for ONE of the two: the registered set it hands Build is the ids of
-the discovered consoles whose nickname the store has a registration for - the join
-`ExchangeCapture` makes, and the only one a row can make. Its cost is that two consoles
-sharing a nickname are one.
-
-THE HIDDEN SET HAS NO SUCH ANSWER and PP600 passes it empty. So a console the user hid
-is drawn, and `ConsoleActions.RemovalFor`'s `Hide` outcome - one of the three the port
-went to some trouble to model - cannot be reached from any screen.
-
-What settles both is what the Qt client stores. It hides by MAC and matches discovery
-replies, so either it derives one spelling from the other or the id it keeps is not the
-MAC this port reads. `gui/src/qmlbackend.cpp` and `gui/src/settings.cpp` say which: this
-is a reading, not a design.
-
 ### §PP625 A session nothing holds
 
 `NativeConsoleSessionStarter.Start` makes the four calls `ExchangeCapture` makes - lib

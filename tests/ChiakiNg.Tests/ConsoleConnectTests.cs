@@ -236,34 +236,139 @@ public class ConsoleConnectTests
     }
 
     /// <summary>
-    /// PP600: the registered set is built from NICKNAMES, which is the join that exists.
+    /// PP624: the registered set is the store's own bytes, and the reply's id is read as the same
+    /// identity.
     ///
-    /// <see cref="ConsoleList.Build"/> asks whether a discovered host's id is in the set, and that
-    /// id is the reply's `host-id` - bare hexadecimal, and eight bytes on the console this port was
-    /// read against. <see cref="RegisteredHost.MacText"/> is six bytes with colons. Handing Build
-    /// the MACs would disable the button on every console, silently and forever.
+    /// PP600 could not make the two spellings meet and joined by nickname instead, which cost it
+    /// two consoles sharing a name. The Qt client's own source settles it - `GetHostMAC` parses the
+    /// host-id from hex and refuses anything that is not six bytes - so the key is twelve lower-case
+    /// hexadecimal characters and both sides can be written in it.
+    ///
+    /// The console sends UPPER case here on purpose: that is the half a set built out of the store
+    /// would miss, and missing it disables the button on a console that really is paired.
     /// </summary>
     [Fact]
-    public void TheRegisteredSetIsTheIdsOfConsolesTheStoreKnowsByName()
+    public void TheRegisteredSetIsTheStoresOwnIdentities()
     {
-        DiscoveredConsole living = new(
-            "10.0.0.5", "1.0", "00030010", "Living room", "PS5", "0011223344556677", null, null,
-            DiscoveryHostState.Ready, 9295);
-        DiscoveredConsole other = living with { Name = "Somebody else's", Id = "8899aabbccddeeff" };
+        DiscoveredConsole living = Reply("Living room", "90474882FC29");
+        DiscoveredConsole other = Reply("Somebody else's", "aabbccddeeff");
 
-        IReadOnlySet<string> ids =
-            ConsoleListSources.RegisteredIds([living, other], [Registration("Living room")]);
+        IReadOnlySet<string> keys = ConsoleListSources.RegisteredMacs([Registration("Living room")]);
 
-        Assert.Contains("0011223344556677", ids);
-        Assert.DoesNotContain("8899aabbccddeeff", ids);
+        Assert.Contains("90474882fc29", keys);
 
-        // And the whole point: the row Build produces is registered, so the button is enabled.
-        IReadOnlyList<ConsoleRow> rows = ConsoleList.Build(
-            [living, other], [], [], new HashSet<string>(), ids);
+        IReadOnlyList<ConsoleRow> rows =
+            ConsoleList.Build([living, other], [], [], new HashSet<string>(), keys);
 
         Assert.True(rows.Single(r => r.Name == "Living room").Connectable);
         Assert.False(rows.Single(r => r.Name == "Somebody else's").Connectable);
     }
+
+    /// <summary>
+    /// PP624: and the hidden set works, which PP600 had no way to key and passed as nothing.
+    ///
+    /// <see cref="ConsoleActions.RemovalFor"/> has three outcomes and Hide is one of them. A port
+    /// that could not read this set had that third unreachable from any screen - the row was drawn
+    /// whatever the user had said about it.
+    /// </summary>
+    [Fact]
+    public void AHiddenConsoleIsNotDrawn()
+    {
+        IReadOnlySet<string> hidden = ConsoleListSources.HiddenMacs(
+            [new HiddenHost("Living room", [0x90, 0x47, 0x48, 0x82, 0xfc, 0x29])]);
+
+        ConsoleRow row = Assert.Single(ConsoleList.Build(
+            [Reply("Living room", "90474882FC29")], [], [], hidden, new HashSet<string>()));
+
+        Assert.False(row.Display);
+    }
+
+    /// <summary>
+    /// PP624: two consoles under one nickname are two consoles, which is what the identity buys.
+    ///
+    /// The exact case PP600's nickname join could not tell apart. Only one of them is registered,
+    /// and a row that reached for the other's key would offer a Connect that opens a session with
+    /// the wrong console's credentials.
+    /// </summary>
+    [Fact]
+    public void TwoConsolesUnderOneNicknameAreToldApart()
+    {
+        RegisteredHost stored = Registration("PS5-385");
+
+        ConsoleRow[] rows =
+        [
+            .. ConsoleList.Build(
+                [Reply("PS5-385", "90474882fc29"), Reply("PS5-385", "001122334455")],
+                [], [], new HashSet<string>(),
+                ConsoleListSources.RegisteredMacs([stored]))
+        ];
+
+        Assert.Same(stored, ConsoleConnect.RegistrationFor(rows[0], [stored]));
+        Assert.Null(ConsoleConnect.RegistrationFor(rows[1], [stored]));
+    }
+
+    /// <summary>
+    /// PP624: an id that is not six bytes is not an identity, which is the Qt client's own refusal.
+    ///
+    /// `DiscoveryHost::GetHostMAC` prints "Invalid mac received" and hands back a zeroed one. A port
+    /// that keyed on whatever arrived would let two unreadable replies match each other, and the
+    /// two consoles that agreed would be the ones nothing could read.
+    /// </summary>
+    [Fact]
+    public void AnIdThatIsNotSixBytesIsNoIdentity()
+    {
+        Assert.Equal("90474882fc29", HostId.Key("90:47:48:82:FC:29"));
+        Assert.Equal("90474882fc29", HostId.Key("90474882fc29"));
+        Assert.Null(HostId.Key("0011223344556677"));
+        Assert.Null(HostId.Key("90474882fc2"));
+        Assert.Null(HostId.Key("90474882fc2z"));
+        Assert.Null(HostId.Key((string?)null));
+        Assert.Null(HostId.Key(new byte[] { 1, 2, 3 }));
+    }
+
+    /// <summary>
+    /// PP624: and PP13's own keys still match, so this widened the comparison and took nothing away.
+    ///
+    /// The merge's assertions hand Build short strings - "AA" for a console called Bedroom - because
+    /// they are about which rows appear and not about identity. A normalisation that refused them
+    /// would have been a rewrite of PP13 wearing this task's name.
+    /// </summary>
+    [Fact]
+    public void TheKeysPP13AssertsWithStillMatch()
+    {
+        Assert.True(HostId.Knows(new HashSet<string> { "AA" }, "AA"));
+        Assert.False(HostId.Knows(new HashSet<string> { "AA" }, "BB"));
+    }
+
+    /// <summary>
+    /// PP624: and the spelling is the client's, read out of the client rather than remembered.
+    ///
+    /// The rule this whole task rests on is somebody else's code: six bytes of hex, written back as
+    /// `toHex()`. A port that decided that once and wrote it down would be right until the day the
+    /// source moved, and the symptom would be a Connect button disabled on a console that is paired
+    /// - a wrong answer that looks exactly like a console being off.
+    /// </summary>
+    [Fact]
+    public void TheIdentitysSpellingIsTheQtClientsOwn()
+    {
+        if (SanitizerSource.LocateRelative(HostId.DiscoveryManagerRelativePath) is { } manager)
+        {
+            Assert.True(
+                HostId.TheClientParsesHexAndRefusesAnyOtherLength(File.ReadAllText(manager)),
+                "the client no longer reads a host-id as six bytes of hex");
+        }
+
+        if (SanitizerSource.LocateRelative(HostId.HostHeaderRelativePath) is { } header)
+        {
+            Assert.True(
+                HostId.TheClientSpellsItBareHex(File.ReadAllText(header)),
+                "the client no longer writes an identity as bare hexadecimal");
+        }
+    }
+
+    private static DiscoveredConsole Reply(string name, string id)
+        => new("10.0.0.5", "1.0", "00030010", name, "PS5", id, null, null,
+            DiscoveryHostState.Ready, 9295);
 
     /// <summary>
     /// PP600: a manual entry with no address is dropped rather than drawn blank.

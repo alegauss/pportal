@@ -1192,10 +1192,11 @@ public partial class App : Application
                 // PSN hosts need a token and a relay, which is the choice PP600 says it is the step
                 // before. An empty list is what "not wired" looks like to the merge.
                 [],
-                // Hiding is ConsoleActions' third answer and no screen offers it yet, so nothing is
-                // hidden rather than a set built out of a spelling nobody has matched.
-                new HashSet<string>(StringComparer.Ordinal),
-                ConsoleListSources.RegisteredIds(found, hosts));
+                // PP624: both sets are the store's own bytes now. PP600 passed nothing here and a
+                // nickname join there, because the reply's host-id and the stored MAC are two
+                // spellings of one thing and nothing in this port converted between them.
+                ConsoleListSources.HiddenMacs(store.HiddenHosts()),
+                ConsoleListSources.RegisteredMacs(hosts));
         }));
 
         if (!consoles.Sweeping)

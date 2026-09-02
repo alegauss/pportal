@@ -12,38 +12,49 @@ namespace ChiakiNg.Session;
 /// wiring was not written, so this is the wiring - and it is a separate file because one of the
 /// joins is a decision rather than a conversion.
 ///
-/// THE JOIN IS BY NICKNAME AND NOT BY MAC, which is the decision. Build asks whether a discovered
-/// host's <see cref="DiscoveredConsole.Id"/> is in the registered set, and that id is the reply's
-/// `host-id` - bare hexadecimal, eight bytes on the console this port was read against.
-/// <see cref="RegisteredHost.MacText"/> is six bytes with colons. They are not the same string and
-/// no amount of care in the caller makes them one, so the set handed to Build is built the other
-/// way round: the ids OF the discovered consoles whose nickname the store has a registration for.
+/// PP600 JOINED BY NICKNAME AND PP624 DOES NOT. Build asks whether a discovered host's
+/// <see cref="DiscoveredConsole.Id"/> is in the registered set, and PP600 could not make the two
+/// spellings meet, so it handed Build the ids of the discovered consoles whose NAME the store had a
+/// registration for - and passed an empty hidden set, because hiding has no such fallback.
 ///
-/// That is the join <see cref="ExchangeCapture"/> already makes and the only one available here.
-/// What it costs is two consoles with the same nickname, which the Qt client has the same problem
-/// with; what it buys is a Connect button that is enabled on a console that really is paired,
-/// instead of one disabled on every console because two spellings never met.
+/// The Qt client's own answer settles it: `DiscoveryHost::GetHostMAC` parses the host-id from hex
+/// and refuses anything that is not six bytes, and `HostMAC::ToString` is `toHex()`. So the key is
+/// twelve lower-case hexadecimal characters, <see cref="HostId"/> is where that lives, and both
+/// sets are built from the bytes the store actually holds.
 /// </summary>
 public static class ConsoleListSources
 {
-    /// <summary>
-    /// The discovered consoles whose nickname the store holds a registration for, as the ids Build
-    /// tests against.
-    /// </summary>
-    public static IReadOnlySet<string> RegisteredIds(
-        IEnumerable<DiscoveredConsole> discovered, IReadOnlyList<RegisteredHost> hosts)
+    /// <summary>The consoles the store has a registration for, as the keys Build tests against.</summary>
+    public static IReadOnlySet<string> RegisteredMacs(IReadOnlyList<RegisteredHost> hosts)
     {
-        ArgumentNullException.ThrowIfNull(discovered);
         ArgumentNullException.ThrowIfNull(hosts);
 
-        return new HashSet<string>(
-            discovered
-                .Where(one => one.Id is not null
-                    && hosts.Any(host => string.Equals(
-                        host.ServerNickname, one.Name, StringComparison.OrdinalIgnoreCase)))
-                .Select(one => one.Id!),
-            StringComparer.Ordinal);
+        return Keys(hosts.Select(one => one.ServerMac));
     }
+
+    /// <summary>
+    /// The consoles the user hid, which PP600 had no way to key and passed as nothing.
+    ///
+    /// <see cref="ConsoleActions.RemovalFor"/> models three outcomes and Hide is one of them, so a
+    /// port that could not read this set had a third of that rule unreachable from any screen.
+    /// </summary>
+    public static IReadOnlySet<string> HiddenMacs(IReadOnlyList<HiddenHost> hosts)
+    {
+        ArgumentNullException.ThrowIfNull(hosts);
+
+        return Keys(hosts.Select(one => one.ServerMac));
+    }
+
+    /// <summary>
+    /// The readable identities among some stored MACs.
+    ///
+    /// An entry whose bytes are not six is dropped rather than keyed on what it has: the Qt client
+    /// refuses the same shape on the way in, and a half-read identity that matched another
+    /// half-read one would hide or register the wrong console.
+    /// </summary>
+    private static IReadOnlySet<string> Keys(IEnumerable<byte[]> macs)
+        => new HashSet<string>(
+            macs.Select(HostId.Key).OfType<string>(), StringComparer.Ordinal);
 
     /// <summary>
     /// The manual hosts the store carries, in the shape the list merges.
@@ -59,11 +70,7 @@ public static class ConsoleListSources
         [
             .. hosts.Where(one => !string.IsNullOrWhiteSpace(one.Host))
                 .Select(one => new ManualConsole(
-                    one.Host!,
-                    one.RegisteredMac is { Length: > 0 } mac
-                        ? string.Join(':', mac.Select(b => b.ToString("x2", System.Globalization.CultureInfo.InvariantCulture)))
-                        : "",
-                    one.Registered))
+                    one.Host!, HostId.Key(one.RegisteredMac) ?? "", one.Registered))
         ];
     }
 

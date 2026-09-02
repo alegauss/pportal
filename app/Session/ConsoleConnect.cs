@@ -85,11 +85,32 @@ public static class ConsoleConnect
     public static bool CanConnect(ConsoleRow row)
         => row.Registered && !string.IsNullOrEmpty(row.Address);
 
-    /// <summary>The row's registration, matched the way the capture matches one.</summary>
+    /// <summary>
+    /// The row's registration - by identity where the row has one, and by name where it does not.
+    ///
+    /// PP624 put the MAC on the row, so this is the join the Qt client makes. The nickname is kept
+    /// as the fallback rather than deleted: a PSN row carries no identity at all, and a console
+    /// whose reply this port could not read a six-byte host-id out of is still a console somebody
+    /// registered under a name.
+    ///
+    /// The two are exclusive rather than tried in turn. A row that HAS an identity is answered by
+    /// it either way, because the case PP624 is about is two consoles sharing a nickname: falling
+    /// through to the name for the one that did not match hands it the other's credentials.
+    /// </summary>
     public static RegisteredHost? RegistrationFor(
         ConsoleRow row, IReadOnlyList<RegisteredHost> hosts)
     {
         ArgumentNullException.ThrowIfNull(hosts);
+
+        if (row.Mac is { Length: > 0 } mac)
+        {
+            // The identity is the answer, INCLUDING when it is no. Falling through to the name here
+            // is what makes two consoles under one nickname interchangeable again - the second one
+            // would take the first's key and open a session with the wrong console's credentials.
+            return hosts.FirstOrDefault(one =>
+                HostId.Key(one.ServerMac) is { } key
+                && string.Equals(key, mac, StringComparison.Ordinal));
+        }
 
         return hosts.FirstOrDefault(one =>
             string.Equals(one.ServerNickname, row.Name, StringComparison.OrdinalIgnoreCase));

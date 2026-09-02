@@ -19,6 +19,19 @@ public readonly record struct ConsoleRow(
     string Name, string Address, bool Discovered, bool Manual, bool Registered, bool Display)
 {
     /// <summary>
+    /// PP624: which console this is, as the key everything else is stored under.
+    ///
+    /// Not positional, so every construction written before this one still compiles - and there are
+    /// a great many, because PP13's merge is the most asserted thing in the port. Null is a row that
+    /// has no identity to carry: a PSN entry is a nickname and a DUID and nothing else.
+    ///
+    /// It exists because the row was a NAME and the store is keyed by this. PP600 had to join a row
+    /// to its registration by nickname, which is what the Qt client does only when it has nothing
+    /// better; two consoles sharing a nickname were one console to it.
+    /// </summary>
+    public string? Mac { get; init; }
+
+    /// <summary>
     /// PP600: whether the row offers the connect action, which is what its button's enabled state
     /// binds to.
     ///
@@ -102,12 +115,18 @@ public static class ConsoleList
             // once and carried around.
             string mac = host.Id ?? "";
             string nickname = host.Name ?? "";
-            bool registered = registeredMacs.Contains(mac);
+
+            // PP624: through HostId, which knows the two spellings this port had. The reply's
+            // host-id is hex as the console sent it and the store holds six bytes; the Qt client
+            // parses one into the other and keys everything on the result. Compared exactly as
+            // well, so PP13's own assertions - which hand this short strings as keys - are
+            // unchanged.
+            bool registered = HostId.Knows(registeredMacs, mac);
 
             // A registered host that was also hidden stops being hidden. Pairing with a console
             // is a statement that you want to see it, and the Qt client removes the hidden entry
             // rather than leaving the two settings to disagree.
-            bool hidden = !registered && hiddenMacs.Contains(mac);
+            bool hidden = !registered && HostId.Knows(hiddenMacs, mac);
 
             bool isManual = manualList.Any(m =>
                 m.Registered && m.Mac == mac && m.Address == host.Address);
@@ -116,7 +135,10 @@ public static class ConsoleList
                     m.Registered && m.Mac == mac && m.Address == host.Address));
 
             rows.Add(new ConsoleRow(nickname, host.Address ?? "", Discovered: true,
-                Manual: isManual, Registered: registered, Display: !hidden));
+                Manual: isManual, Registered: registered, Display: !hidden)
+            {
+                Mac = HostId.Key(mac),
+            });
 
             discoveredNicknames.Add(nickname);
             if (!IsPs5(host) && registered)
@@ -126,9 +148,12 @@ public static class ConsoleList
         // Manual hosts are ALWAYS appended. Already discovered only makes them invisible.
         foreach (ManualConsole host in manualList)
         {
-            bool registered = host.Registered && registeredMacs.Contains(host.Mac);
+            bool registered = host.Registered && HostId.Knows(registeredMacs, host.Mac);
             rows.Add(new ConsoleRow(host.Address, host.Address, Discovered: false,
-                Manual: true, Registered: registered, Display: !discoveredManual.Contains(host)));
+                Manual: true, Registered: registered, Display: !discoveredManual.Contains(host))
+            {
+                Mac = HostId.Key(host.Mac),
+            });
         }
 
         // Once every registered PS4 has been discovered, the generic PSN name is treated as
