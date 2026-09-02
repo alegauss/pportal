@@ -15,6 +15,12 @@ namespace ChiakiNg.Session;
 /// something that works and buy nothing, so the retirement rides in PP33's own commit. This holds
 /// the shape of it until then.
 ///
+/// PP623 SAYS WHICH COMMIT THAT IS. "PP33's own commit" was reasoned about a change understood as
+/// nine calls plus this wiring; PP621 measured the oracle in the same transaction. The retirement
+/// still rides with the deletion and nothing above is withdrawn - what changed is that the deletion
+/// is three commits, and this is the middle one. <see cref="HolepunchDeletionOrder"/> is where that
+/// order lives, and it names the pieces below through this type rather than copying them.
+///
 /// THREE PIECES, AND THE HALF-DONE RETIREMENT IS THE EXPENSIVE ONE. `compile.cmd`'s `gui` argument
 /// sets CHIAKI_ENABLE_GUI=ON; <see cref="GuiFreshness"/> compares the built client against gui/ and
 /// fails on Stale; <see cref="GuiFreshness.ClientRelativePath"/> is the binary both mean. Remove the

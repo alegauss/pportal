@@ -33,7 +33,6 @@
 - 📋 **PP295** (deps: PP27 ⏳, PP297 ✅) **streamconnection.c is 1531 lines and calls the video receiver, so every deletion below waits on it** — PP286 to PP291 removed no C, and the shim wraps five of the receiver's exports: lib has one caller and this port's own seam is the other. → §PP295
 - 📋 **PP600** (deps: —) **the host starts a session only from the capture flags, so nothing a user can click reaches one** — MainWindow opens PP13's console list and its view model draws rows with no connect action; only ExchangeCapture builds a ChiakiConnectInfo, to record the oracle. → §PP600
 - 💭 **PP622** (deps: PP573 ✅) **PP33's line cannot honestly say one caller, because the check demands the phrase 'one files call it'** — PP573 builds the required sentence from a count word and a fixed plural, so the number PP33 is heading for is the one spelling the line is refused for. → §PP622
-- 📋 **PP623** (deps: PP621 ✅, PP598 ✅) **PP33's deletion has no order, and PP598 has it riding in one commit that PP621 shows is an oracle rewrite** — A conversion can turn each model over with the suite green after every step, and nothing says which of them can land before the C changes. → §PP623
 
 ## Block G — Test discipline
 
