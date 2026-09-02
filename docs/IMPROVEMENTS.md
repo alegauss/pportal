@@ -376,6 +376,31 @@ an entry that does nothing, which no control offers by default.
 
 Waking has two rules that disagree on purpose: what the screen offers, and what is sent.
 
+### §PP628 The reason the ordinary path was left alone
+
+PP223 put the mapping screen behind `--map-controller` and said why: "PP13's console
+list is what MainWindow is filed to open with, and putting this there instead would be a
+navigation decision taken by a diagnostic." PP600 put the list behind `--consoles` for
+the same reason - the list could not yet do what a front door is for.
+
+It can now. It draws what discovery answers, it knows which consoles the store has a
+registration for, a row connects, the session is held until somebody ends it or the
+console does, the ending arrives as a sentence, and a console asking for its login PIN
+gets one. The reason the ordinary path was left alone has expired.
+
+What this line is NOT is a redesign. `MainWindow` opens empty by PP1 and PP223's
+`ShowScreen` is the one way to put something in it, so the change is which screen that
+is and when - not the window, not the placeholder, and not the flag, which keeps
+working.
+
+Two things need deciding rather than typing. PP224's placeholder is what a person sees
+while discovery has answered nothing, and "No consoles found." covers that better. And
+`--map-controller` and `--dcomp-demo` fill the same window: with the list in the
+ordinary path a diagnostic has to REPLACE it rather than race it.
+
+The startup assertions are PP1's, PP223's and PP224's, and all three are about a window
+that opens with nothing in it. They say what this may not break.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry
