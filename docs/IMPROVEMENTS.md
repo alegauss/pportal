@@ -274,31 +274,30 @@ host would use regardless of this block.
 
 holepunch.c is 5962 lines and is the only translation unit in this tree that still needs
 either library: 234 curl_easy calls, 4 curl_ws, and the json_object and json_tokener
-sites beside them. http.c is 262 lines over rudp and winsock, is not among them, and
-carries no curl symbol at all, which is not what the first version of this section said
-it was built around.
+sites beside them. http.c is 262 lines over rudp and winsock and carries no curl symbol
+at all, which is not what the first version of this section said it was built around.
 
 ```roadkeep-remaining
 lib/src/**/*.c :: curl_easy_|json_object|json_tokener
 ```
 
-Read that count carefully: it reports 420 sites in "46 files", and 46 is every .c under
+Read that count carefully: it reports 420 sites in "45 files", and 45 is every .c under
 lib/src - the glob's reach, not the hits. Every one of the 420 is in holepunch.c.
 
 What the count does not say is who calls it. session.c has NINE call sites over seven
 functions - the ctrl and data sockets, the offer, the punch, the regist info, the
 selected address, the ctrl port and the fini - the shim one and qmlbackend.cpp three.
-PP591: holepunch-test.c was a built executable calling eight of the exports, and is
-deleted.
+PP591 deleted holepunch-test.c, which called eight.
 
 The behaviours are largely ported. PP231 stated the websocket auto-ACK, PP266 performs
 the five session calls over a real HttpClient, and the shim exposes json-c's accessors
-deliberately: an oracle the managed parser is held against (PP215), not a dependency
-waiting to go.
+deliberately: an oracle the managed parser is held against (PP215).
 
-So what remains is not translation. It is session.c no longer asking, which PP533 now
-names: PP481 gave the nine a managed driver, and a driver is not a deletion. PP596: no
-default build reaches them; PP599: gui/ retires, so the nine are removed not converted.
+So what remains is not translation. It is session.c no longer asking: PP596, no default
+build reaches the nine; PP599, gui/ retires, so they are removed and not converted.
+PP621 counts what that costs: the handle is quoted across app/ and tests/ far more
+widely than by the two callers this line names, and each is an assertion the deletion
+rewrites.
 
 ### §PP107 The two that were said to be uncalled
 
