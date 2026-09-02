@@ -376,6 +376,32 @@ not.
 The event handler is also the first place a quit reason reaches a person. PP600 put
 every refusal on the screen and libchiaki's own reasons still go nowhere.
 
+### §PP626 Three actions with no button
+
+`ConsoleActions` is PP13's model of what a row offers - "three questions with a wrong
+obvious answer each". Waking is offered only for a console that is neither discovered
+nor reachable through PSN, because the other two already have a way in. Removing has
+THREE outcomes and the third is silence: a discovered console that IS registered offers
+neither, and filling that branch in loses the user their registration.
+
+All of it is asserted and none of it is on a screen. PP600 put one button on the row -
+Connect - and the other three actions are a model with no caller, which is the shape
+PP600 was itself filed for one level up.
+
+What changed is that they are now reachable. `RemoveAction.Hide` needs the hidden set to
+be keyed on something the console sends, and until PP624 it was keyed on a caption;
+`CanWake` needs a registration key as a wake credential, which
+`ExchangeCapture.TryWakeCredential` already derives and nothing on a screen calls. So
+the two halves that were missing are both in the tree.
+
+The care this needs is in the silent branch. A menu that offers Delete for everything is
+the port filling in what the model deliberately leaves empty, and the cost lands on
+somebody who then re-pairs a console. The screen has to draw a menu entry that does
+nothing, which no control offers by default.
+
+Waking also has two rules that disagree on purpose: what the screen offers, and what the
+backend would send.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry
