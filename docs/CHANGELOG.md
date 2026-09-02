@@ -542,6 +542,7 @@
 - ✅ **PP635** **PP27's timing criterion asks for the loop against the C, and that comparison would measure the socket** — The criterion carries the reason now: the gate is comparable, the loop is not, and what answers it is a thousandth of the arrival gap with nothing allocated.
 - ✅ **PP636** **PP295 waits on the whole of PP27, whose last criterion is the deletion PP295 has to happen before** — PP295 no longer declares PP27, the six files the fourth criterion waits on are named, and an assertion holds that the criterion is still the end state.
 - ✅ **PP637** **the vendored-C rule names PP33 and PP30 as what it does not reach, and PP295's deliverable is a deletion too** — The rule names PP295 beside PP33 and PP30, and the three checks that pin the exempt list say why PP27 is still not among them.
+- ✅ **PP638** **PP295 names the video receiver's callers and not streamconnection's own, which is session.c** — The build named seventeen symbols over three consumers: session.c drives the stream connection, one of its six calls carries no prefix, and the C suite links four of the files.
 
 ## Block G — Test discipline
 
