@@ -34,11 +34,12 @@ public class HolepunchReachTests(ITestOutputHelper output)
     [Fact]
     public void RudpIsSetOnlyWhereTheHandleIsKnownToBeThere()
     {
-        if (HolepunchSessionOwnership.LocateSession() is not { } path)
+        // PP631: the asking shape, so this declines once PP33's flip lands rather than failing.
+        if (SessionHolepunchShape.AskingSource() is not { } source)
             return;
 
         IReadOnlyList<int> loose =
-            HolepunchSessionOwnership.RudpAssignmentsOutsideTheGuard(File.ReadAllText(path));
+            HolepunchSessionOwnership.RudpAssignmentsOutsideTheGuard(source);
 
         Assert.True(
             loose.Count == 0,

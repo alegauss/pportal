@@ -120,5 +120,49 @@ public static class SessionHolepunchShape
         ];
     }
 
+    /// <summary>
+    /// PP631: the test files converted to read session.c through this pair.
+    ///
+    /// Named rather than counted, for the reason <see cref="HolepunchConsumers.All"/> is: what a
+    /// later session needs is WHICH files are already done, so the ones that are not can be finished
+    /// without reading all of them again.
+    ///
+    /// Held so the conversion cannot be quietly undone. A file that went back to locating and
+    /// reading session.c itself would be green today and red in PP33's flip commit - which is the
+    /// one commit PP623 exists to keep free of test edits.
+    /// </summary>
+    public static IReadOnlyList<string> ConvertedTests { get; } =
+    [
+        @"tests\ChiakiNg.Tests\HolepunchDirectionTests.cs",
+        @"tests\ChiakiNg.Tests\HolepunchFlowTests.cs",
+        @"tests\ChiakiNg.Tests\HolepunchReachTests.cs",
+        @"tests\ChiakiNg.Tests\HolepunchSeamTests.cs",
+        @"tests\ChiakiNg.Tests\HolepunchSocketOwnershipTests.cs",
+        @"tests\ChiakiNg.Tests\HolepunchStateTests.cs",
+        @"tests\ChiakiNg.Tests\PunchProgressTests.cs",
+        @"tests\ChiakiNg.Tests\SessionRegistForkTests.cs",
+        @"tests\ChiakiNg.Tests\SessionReleaseTests.cs",
+        @"tests\ChiakiNg.Tests\SessionRequestAddressTests.cs",
+    ];
+
+    /// <summary>The call a converted file makes, which is how one is recognised.</summary>
+    public const string TheReading = nameof(AskingSource);
+
+    /// <summary>Converted files that no longer go through the pair, if any have been undone.</summary>
+    public static IReadOnlyList<string> NotReadingThroughTheShape(string repositoryRoot)
+    {
+        ArgumentNullException.ThrowIfNull(repositoryRoot);
+
+        return
+        [
+            .. ConvertedTests.Where(relative =>
+            {
+                string path = Path.Combine(repositoryRoot, relative);
+                return File.Exists(path)
+                    && !File.ReadAllText(path).Contains(TheReading, StringComparison.Ordinal);
+            })
+        ];
+    }
+
     private static string? Read() => Locate() is { } path ? File.ReadAllText(path) : null;
 }

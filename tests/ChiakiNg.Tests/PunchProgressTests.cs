@@ -95,10 +95,10 @@ public class PunchProgressTests
     [Fact]
     public void TheCStillRaisesThemThisWay()
     {
-        if (PunchProgressSource.LocateSession() is not { } path)
+        // PP631: the asking shape, so this declines once PP33's flip lands rather than failing.
+        if (SessionHolepunchShape.AskingSource() is not { } source)
             return;
 
-        string source = File.ReadAllText(path);
 
         Assert.True(PunchProgressSource.TheEventsStillStraddleThePunch(source));
         Assert.True(PunchProgressSource.AFailedPunchSendsNoFinish(source));

@@ -13,11 +13,15 @@ namespace ChiakiNg.Tests;
 /// </summary>
 public class HolepunchFlowTests
 {
-    private static string? Session()
-    {
-        string? path = HolepunchFlow.Locate();
-        return path is null ? null : File.ReadAllText(path);
-    }
+    /// <summary>
+    /// PP631: session.c while it still asks, which is what every assertion below is about.
+    ///
+    /// Null outside a checkout, as it always was, AND null once PP33's flip lands - so these decline
+    /// rather than fail on a tree where the nine are gone, and PP630's counterpart is what asserts
+    /// the deletion happened. The predicates in the model are unchanged: what moves is whether they
+    /// are asked.
+    /// </summary>
+    private static string? Session() => SessionHolepunchShape.AskingSource();
 
     /// <summary>holepunch.c, where the getter and the punch live.</summary>
     private static string? Holepunch()

@@ -84,11 +84,10 @@ public class SessionReleaseTests
     [Fact]
     public void TheCStillReleasesInThisOrder()
     {
-        if (SessionReleaseSource.Locate() is not { } path)
+        if (SessionHolepunchShape.AskingSource() is not { } source)
             return;
 
-        string fini = Assert.IsType<string>(
-            SessionReleaseSource.FiniBody(File.ReadAllText(path)));
+        string fini = Assert.IsType<string>(SessionReleaseSource.FiniBody(source));
 
         Assert.True(SessionReleaseSource.TheStepsRunInThisOrder(fini));
         Assert.True(SessionReleaseSource.OnlyTheTwoFreesAreUnderTheMutex(fini));

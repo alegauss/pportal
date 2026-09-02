@@ -15,11 +15,11 @@ namespace ChiakiNg.Tests;
 /// </summary>
 public class HolepunchStateTests
 {
-    private static string? Session()
-    {
-        string? path = HolepunchState.Locate();
-        return path is null ? null : File.ReadAllText(path);
-    }
+    /// <summary>
+    /// PP631: session.c while it still asks - null outside a checkout, and null once PP33's flip
+    /// lands, so these decline rather than fail and PP630's counterpart asserts the deletion.
+    /// </summary>
+    private static string? Session() => SessionHolepunchShape.AskingSource();
 
     /// <summary>
     /// FIVE PIECES, THREE LIFETIMES - and a managed flow object would give them all one.

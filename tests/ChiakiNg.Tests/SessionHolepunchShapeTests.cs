@@ -108,6 +108,31 @@ public class SessionHolepunchShapeTests
     }
 
     /// <summary>
+    /// PP631: every converted test still goes through the pair, and none has gone back.
+    ///
+    /// The failure this is against is green today and red in exactly one commit: a file that
+    /// returned to locating and reading session.c itself passes now and fails in PP33's flip, which
+    /// is the one commit PP623 exists to keep free of test edits. A drift check is the only thing
+    /// that catches it before then.
+    /// </summary>
+    [Fact]
+    public void EveryConvertedTestStillReadsThroughTheShape()
+    {
+        if (ChiakiNg.Session.SanitizerSource.RepositoryRoot() is not { } root)
+            return;
+
+        IReadOnlyList<string> back = SessionHolepunchShape.NotReadingThroughTheShape(root);
+
+        Assert.True(
+            back.Count == 0,
+            $"these read session.c themselves again, so PP33's flip would turn them red: "
+                + string.Join(", ", back));
+
+        // And the list is not empty, which is what a check about nothing would look like.
+        Assert.NotEmpty(SessionHolepunchShape.ConvertedTests);
+    }
+
+    /// <summary>
     /// PP630: the mechanism converts no model yet, and that is what makes the step landable.
     ///
     /// PP623's first stage is per-model and each conversion is its own commit. This one is the thing

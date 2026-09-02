@@ -105,10 +105,9 @@ public class SessionRegistForkTests
     [Fact]
     public void TheCStillForksThisWay()
     {
-        if (SessionRegistForkSource.Locate() is not { } path)
+        if (SessionHolepunchShape.AskingSource() is not { } source)
             return;
 
-        string source = File.ReadAllText(path);
 
         string init = Assert.IsType<string>(SessionRegistForkSource.InitBody(source));
         Assert.True(SessionRegistForkSource.OnlyTheLocalArmCopiesTheCallersKeys(init));
@@ -127,10 +126,9 @@ public class SessionRegistForkTests
     [Fact]
     public void TheWaitIsStillFollowedByACheckThatCannotSeeATimeout()
     {
-        if (SessionRegistForkSource.Locate() is not { } path)
+        if (SessionHolepunchShape.AskingSource() is not { } source)
             return;
 
-        Assert.True(SessionRegistForkSource.TheWaitIsBoundedAndFollowedByCheckStop(
-            File.ReadAllText(path)));
+        Assert.True(SessionRegistForkSource.TheWaitIsBoundedAndFollowedByCheckStop(source));
     }
 }

@@ -23,10 +23,9 @@ public class HolepunchSeamTests(ITestOutputHelper output)
     [Fact]
     public void TheNineAreStillTheOnesSessionMakes()
     {
-        if (HolepunchSeam.Locate() is not { } path)
+        if (SessionHolepunchShape.AskingSource() is not { } source)
             return;
 
-        string source = File.ReadAllText(path);
         IReadOnlyList<string> calls = HolepunchSeam.CallsIn(source);
 
         foreach (string call in calls)
@@ -49,11 +48,11 @@ public class HolepunchSeamTests(ITestOutputHelper output)
     [Fact]
     public void TheTwoSocketsAskForDifferentPorts()
     {
-        if (HolepunchSeam.Locate() is not { } path)
+        if (SessionHolepunchShape.AskingSource() is not { } source)
             return;
 
         Assert.True(
-            HolepunchSeam.TheTwoSocketsStillAskForDifferentPorts(File.ReadAllText(path)),
+            HolepunchSeam.TheTwoSocketsStillAskForDifferentPorts(source),
             "the ctrl and data sockets no longer ask for different port types");
     }
 
@@ -96,7 +95,8 @@ public class HolepunchSeamTests(ITestOutputHelper output)
     [Fact]
     public void TheReaderRefusesATenthAndAMissingOne()
     {
-        string real = HolepunchSeam.Locate() is { } path ? File.ReadAllText(path) : "";
+        // PP631: the asking shape, so this declines once PP33's flip lands rather than failing.
+        string real = SessionHolepunchShape.AskingSource() ?? "";
         if (real.Length == 0)
             return;
 

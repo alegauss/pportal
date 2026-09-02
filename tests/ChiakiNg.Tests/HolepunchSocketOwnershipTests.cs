@@ -97,10 +97,11 @@ public class HolepunchSocketOwnershipTests
     [Fact]
     public void TheSessionReleasesTheRudpFirst()
     {
-        if (HolepunchSocketOwnershipSource.LocateSession() is not { } path)
+        // PP631: the asking shape, so this declines once PP33's flip lands rather than failing.
+        if (SessionHolepunchShape.AskingSource() is not { } source)
             return;
 
-        Assert.True(HolepunchSocketOwnershipSource.TheRudpIsReleasedFirst(File.ReadAllText(path)));
+        Assert.True(HolepunchSocketOwnershipSource.TheRudpIsReleasedFirst(source));
 
         Assert.Equal(
             ["chiaki_rudp_fini", "chiaki_holepunch_session_fini"],

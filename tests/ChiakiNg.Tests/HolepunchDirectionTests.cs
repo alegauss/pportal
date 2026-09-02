@@ -8,12 +8,16 @@ namespace ChiakiNg.Tests;
 /// </summary>
 public class HolepunchDirectionTests
 {
-    private static string Source()
-    {
-        string? path = HolepunchDirection.Locate();
-        Assert.NotNull(path);
-        return File.ReadAllText(path);
-    }
+    /// <summary>
+    /// PP631: session.c while it still asks - null outside a checkout, and null once PP33's flip
+    /// lands.
+    ///
+    /// This one had `Assert.NotNull` on the path, which asserted that the runner was in a checkout.
+    /// After the flip that becomes an assertion about the wrong thing: the file is there and says
+    /// nothing about the handle. The checkout question is <see cref="SessionHolepunchShape.Locate"/>
+    /// and is asked once, by PP630's own assertions; these decline instead.
+    /// </summary>
+    private static string? Source() => SessionHolepunchShape.AskingSource();
 
     /// <summary>
     /// THE ONE THAT DECIDES IT. Every mention of the handle is the assignment, a null guard, or one
@@ -26,7 +30,8 @@ public class HolepunchDirectionTests
     [Fact]
     public void TheHandleIsOnlyEverTakenGuardedOrPassed()
     {
-        string source = Source();
+        if (Source() is not { } source)
+            return;
 
         Assert.True(HolepunchDirection.TheHandleIsOnlyTakenGuardedOrPassed(source));
 
@@ -125,33 +130,60 @@ public class HolepunchDirectionTests
 
     /// <summary>Each result still lands where the replacement would have to put it.</summary>
     [Fact]
-    public void EveryResultIsStillKept() => Assert.True(HolepunchDirection.EveryResultIsStillKept(Source()));
+    public void EveryResultIsStillKept()
+    {
+        if (Source() is not { } source)
+            return;
+
+        Assert.True(HolepunchDirection.EveryResultIsStillKept(source));
+    }
 
     /// <summary>
     /// And the two verbs still keep only an error code. If either started returning something
     /// session.c held, the replacement would need a sixth value.
     /// </summary>
     [Fact]
-    public void TheVerbsStillKeepOnlyAnError() => Assert.True(HolepunchDirection.TheVerbsKeepOnlyAnError(Source()));
+    public void TheVerbsStillKeepOnlyAnError()
+    {
+        if (Source() is not { } source)
+            return;
+
+        Assert.True(HolepunchDirection.TheVerbsKeepOnlyAnError(source));
+    }
 
     /// <summary>The handle is handed in, not built - which is why the caller can hand results instead.</summary>
     [Fact]
     public void TheHandleComesFromTheConnectInfo()
-        => Assert.True(HolepunchDirection.TakenFromTheConnectInfo(Source()));
+    {
+        if (Source() is not { } source)
+            return;
+
+        Assert.True(HolepunchDirection.TakenFromTheConnectInfo(source));
+    }
 
     /// <summary>The five guards are what become "were there results".</summary>
     [Fact]
     public void TheGuardsAreTheFive()
-        => Assert.Equal(HolepunchDirection.Guards, HolepunchDirection.GuardsIn(Source()));
+    {
+        if (Source() is not { } source)
+            return;
+
+        Assert.Equal(HolepunchDirection.Guards, HolepunchDirection.GuardsIn(source));
+    }
 
     /// <summary>
-    /// A file that read a field of the handle fails the count, which is the check working. Written
-    /// against a doctored copy because the real one cannot be made to do it.
+    /// A file that read a field of the handle fails the count, which is the check working.
+    ///
+    /// PP631: the doctored copy is built from a LITERAL rather than from session.c, so this one goes
+    /// on running after the flip. It is the only assertion here that is about the rule instead of
+    /// about the file, and a rule that stopped being exercised the moment the C changed is a rule
+    /// nobody would notice breaking.
     /// </summary>
     [Fact]
     public void AnExtraUseOfTheHandleIsCaught()
     {
-        string doctored = Source() + "\nvoid extra(ChiakiSession *session) { (void)session->holepunch_session; }\n";
+        string doctored =
+            $"void extra(ChiakiSession *session) {{ (void){HolepunchDirection.Handle}; }}\n";
 
         Assert.False(HolepunchDirection.TheHandleIsOnlyTakenGuardedOrPassed(doctored));
     }

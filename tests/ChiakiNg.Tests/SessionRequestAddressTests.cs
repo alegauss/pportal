@@ -111,10 +111,9 @@ public class SessionRequestAddressTests
     [Fact]
     public void TheCStillAddressesItThisWay()
     {
-        if (SessionRequestAddressSource.Locate() is not { } path)
+        if (SessionHolepunchShape.AskingSource() is not { } source)
             return;
 
-        string source = File.ReadAllText(path);
 
         Assert.True(SessionRequestAddressSource.TheLocalArmNamesBeforeItConnects(source));
         Assert.True(SessionRequestAddressSource.TheFallbackCarriesOn(source));
