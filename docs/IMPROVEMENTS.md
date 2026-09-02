@@ -374,6 +374,58 @@ Worth keeping from PP573: the "only caller" phrasing stays refused whatever the 
 reaches. That claim was wrong through three findings and its shape is what made it
 survive them.
 
+### §PP624 Two spellings that never met
+
+`ConsoleList.Build` has taken two sets of keys since PP13 and tests a discovered host's
+`Id` against them. That id is the discovery reply's `host-id`: bare hexadecimal, and
+eight bytes on the console this port was read against. `RegisteredHost.MacText` and
+`HiddenHost.MacText` are six bytes with colons. They are not the same string, and no
+caller can make them one.
+
+Nothing noticed because nothing called it. Every caller of Build was a test, and a test
+hands it whatever set the assertion needs, so the two spellings never met until PP600
+wired the screen.
+
+PP600 got past it for ONE of the two: the registered set it hands Build is the ids of
+the discovered consoles whose nickname the store has a registration for - the join
+`ExchangeCapture` makes, and the only one a row can make. Its cost is that two consoles
+sharing a nickname are one.
+
+THE HIDDEN SET HAS NO SUCH ANSWER and PP600 passes it empty. So a console the user hid
+is drawn, and `ConsoleActions.RemovalFor`'s `Hide` outcome - one of the three the port
+went to some trouble to model - cannot be reached from any screen.
+
+What settles both is what the Qt client stores. It hides by MAC and matches discovery
+replies, so either it derives one spelling from the other or the id it keeps is not the
+MAC this port reads. `gui/src/qmlbackend.cpp` and `gui/src/settings.cpp` say which: this
+is a reading, not a design.
+
+### §PP625 A session nothing holds
+
+`NativeConsoleSessionStarter.Start` makes the four calls `ExchangeCapture` makes - lib
+init, the connect info, `chiaki_session_init`, `chiaki_session_start` - and then the
+`using` runs and the session is finished. It reports what libchiaki said about STARTING,
+which is honest and is not what a person clicking Connect means by connecting.
+
+It was written that way deliberately and the reason is still true: there is no screen to
+hand a running session to. A session held open behind a window that cannot show it is
+worse than one that says what it managed and stops, because the console is occupied and
+the port has nothing to draw.
+
+The capture is the shape this needs. It sets an event handler, waits for `Connected` or
+`Quit`, and holds for a bounded window - so what it reports is the console's answer
+rather than the call's. The front door wants the same, and one more thing: the session
+has to OUTLIVE the click.
+
+So this is two questions and they should not be answered at once. Holding the session
+and reporting its events is this line. What draws the frames is Block C's, and PP31
+records that the decoder is where 100% managed stops - so a stream screen is a decision
+with a dependency, and a front door that says "connected, and the console ended it" is
+not.
+
+The event handler is also the first place a quit reason reaches a person. PP600 put
+every refusal on the screen and libchiaki's own reasons still go nowhere.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry

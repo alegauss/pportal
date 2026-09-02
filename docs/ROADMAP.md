@@ -32,6 +32,8 @@
 - ⏳ **PP33** (deps: PP24 ✅, PP293 ✅, PP340 ✅, PP481 ✅, PP533 ✅) **HTTP and JSON in the core are curl and json-c, two vendored dependencies for what the runtime already does** — the deletion: holepunch.c is the only unit needing either library, and two files call it - session.c, the shim. → §PP33
 - 📋 **PP295** (deps: PP27 ⏳, PP297 ✅) **streamconnection.c is 1531 lines and calls the video receiver, so every deletion below waits on it** — PP286 to PP291 removed no C, and the shim wraps five of the receiver's exports: lib has one caller and this port's own seam is the other. → §PP295
 - 💭 **PP622** (deps: PP573 ✅) **PP33's line cannot honestly say one caller, because the check demands the phrase 'one files call it'** — PP573 builds the required sentence from a count word and a fixed plural, so the number PP33 is heading for is the one spelling the line is refused for. → §PP622
+- 📋 **PP624** (deps: PP600 ✅) **ConsoleList keys registration and hiding on a MAC, and discovery answers with a host-id in another spelling** — PP600 joined by nickname to get a Connect button that works and left the hidden set empty, so ConsoleActions' Hide outcome cannot be reached from any screen. → §PP624
+- 📋 **PP625** (deps: PP600 ✅) **the front door starts a session and releases it in the same call, so a connect that succeeds ends at once** — PP600 had nowhere to hand a running session, so the starter creates, starts and disposes, and libchiaki's own quit reasons reach nobody. → §PP625
 
 ## Block G — Test discipline
 
