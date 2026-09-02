@@ -1139,19 +1139,17 @@ public partial class App : Application
 
         base.OnStartup(e);
 
-        if (e.Args.Any(a => string.Equals(a, "--map-controller", StringComparison.OrdinalIgnoreCase)))
-        {
-            // QUEUED rather than called. StartupUri creates MainWindow after this method returns,
-            // so running here would find no window - which is exactly what the first version did,
-            // silently. Clearing StartupUri instead is not an option: the property refuses null
-            // and the process dies before anything is drawn at all.
+        // PP628: ONE screen, chosen. It was two independent tests, which was right while only one
+        // of them could produce a screen - with the list in the ordinary path both would fire and
+        // the window would show whichever ShowScreen ran last.
+        //
+        // QUEUED rather than called. StartupUri creates MainWindow after this method returns, so
+        // running here would find no window - which is exactly what the first version did, silently.
+        // Clearing StartupUri instead is not an option: the property refuses null and the process
+        // dies before anything is drawn at all.
+        if (StartupSequence.ScreenFor(e.Args) == StartupScreen.Mapping)
             Dispatcher.BeginInvoke(StartMappingScreen, DispatcherPriority.ApplicationIdle);
-        }
-
-        // PP600: queued for the reason above, and behind a flag for PP223's reason - what MainWindow
-        // opens with in the ordinary path is a navigation decision, and this task is the missing
-        // caller rather than that decision.
-        if (HostCommandLine.Has(e.Args, "--consoles"))
+        else
             Dispatcher.BeginInvoke(StartConsoleList, DispatcherPriority.ApplicationIdle);
     }
 

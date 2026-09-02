@@ -78,7 +78,50 @@ public static partial class StartupSequence
         return created >= 0 && queued > created;
     }
 
+    /// <summary>
+    /// PP628: which screen a run fills the window with, decided once.
+    ///
+    /// It was two independent `if`s, and that was correct while only one of them could produce a
+    /// screen. With the console list in the ordinary path they can BOTH fire, and two things queued
+    /// against the same window is a race whose winner is whichever `ShowScreen` runs last - a screen
+    /// that appears or does not depending on ordering nothing states.
+    ///
+    /// So it is a choice with a default rather than a pair of tests. `--map-controller` replaces the
+    /// front door and `--consoles` names the front door, which is also what naming nothing means -
+    /// that is what makes the flag keep working after the ordinary path moved.
+    ///
+    /// TWO SCREEN FLAGS TOGETHER ARE ANSWERED BY ORDER, first one wins. It is the rule a person
+    /// already has for a command line, and it is the only one that gives both spellings a meaning:
+    /// a fixed winner would make one of the two a literal that changes nothing, which is the shape
+    /// of an option that quietly does not work.
+    /// </summary>
+    public static StartupScreen ScreenFor(IReadOnlyList<string> args)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+
+        foreach (string arg in args)
+        {
+            if (string.Equals(arg, "--map-controller", StringComparison.OrdinalIgnoreCase))
+                return StartupScreen.Mapping;
+
+            if (string.Equals(arg, "--consoles", StringComparison.OrdinalIgnoreCase))
+                return StartupScreen.ConsoleList;
+        }
+
+        return StartupScreen.ConsoleList;
+    }
+
     // StartupUri = null, however it is qualified and however it is spaced.
     [GeneratedRegex(@"(?:^|[^A-Za-z0-9_.])(?:[A-Za-z0-9_.]+\.)?StartupUri\s*=\s*null")]
     private static partial Regex ClearsStartupUriRegex();
+}
+
+/// <summary>PP628: what a run puts in the window.</summary>
+public enum StartupScreen
+{
+    /// <summary>PP13's console list, which is the front door.</summary>
+    ConsoleList,
+
+    /// <summary>PP223's mapping screen, which replaces it for the run that asked for it.</summary>
+    Mapping,
 }

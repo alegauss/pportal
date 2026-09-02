@@ -5,9 +5,10 @@ description: The flags ChiakiNg.exe answers, read out of the application's own s
 
 import { HostFlags } from "../../../components/HostFlags";
 
-`ChiakiNg.exe` opens the window when it is given no flag. Every flag below is declared in one
-list in `app/Session/HostCommandLine.cs`, and a name it does not declare is refused rather than
-ignored — a mistyped flag does not silently open the window.
+`ChiakiNg.exe` opens the console list when it is given no flag — the consoles on your network,
+with a Connect on any that is registered. Every flag below is declared in one list in
+`app/Session/HostCommandLine.cs`, and a name it does not declare is refused rather than ignored —
+a mistyped flag does not silently open the window.
 
 Both tables are generated from that list at build time. If a flag is renamed in the
 application, the rename lands here in the same commit.
@@ -15,8 +16,8 @@ application, the rename lands here in the same commit.
 ## For running it
 
 The ones the front page prints. Each does something a person running PPortal might want, and
-none of them needs a checkout. `--consoles` is the one that opens the application: it shows
-the consoles on the network and connects to a registered one.
+none of them needs a checkout. `--consoles` is what running it with no flag at all does; it is
+named here because a run that asked for a diagnostic screen instead can ask for this one back.
 
 <HostFlags audience="reader" />
 

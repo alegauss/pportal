@@ -118,7 +118,7 @@ export const HOST_FLAGS: readonly HostFlag[] = [
   {
     "name": "--consoles",
     "argument": "",
-    "summary": "open the console list, and connect to a registered console from it"
+    "summary": "open the console list and connect to a registered console - what no flag does"
   },
   {
     "name": "--dcomp-demo",

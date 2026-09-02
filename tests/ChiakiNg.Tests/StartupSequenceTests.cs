@@ -63,6 +63,59 @@ public class StartupSequenceTests
     }
 
     /// <summary>
+    /// PP628: the ordinary path is PP13's console list, which is what MainWindow was filed to open
+    /// with.
+    ///
+    /// PP223 put the mapping screen behind a flag and said why: putting it in the ordinary path
+    /// would be a navigation decision taken by a diagnostic. PP600 put the list behind a flag for
+    /// the same reason, because the list could not yet connect. It can now, so the reason expired.
+    /// </summary>
+    [Fact]
+    public void NoFlagOpensTheConsoleList()
+    {
+        Assert.Equal(StartupScreen.ConsoleList, StartupSequence.ScreenFor([]));
+        Assert.Equal(StartupScreen.ConsoleList, StartupSequence.ScreenFor(["--consoles"]));
+
+        // A flag that says nothing about screens leaves the front door where it is.
+        Assert.Equal(StartupScreen.ConsoleList, StartupSequence.ScreenFor(["--record"]));
+    }
+
+    /// <summary>
+    /// PP628: and a diagnostic screen REPLACES it rather than racing it.
+    ///
+    /// One choice and not two tests. Two things queued against the same window show whichever
+    /// ShowScreen runs last, which is a screen that appears or does not on ordering nothing states.
+    /// </summary>
+    [Fact]
+    public void AskingForTheMappingScreenReplacesTheFrontDoor()
+    {
+        Assert.Equal(StartupScreen.Mapping, StartupSequence.ScreenFor(["--map-controller"]));
+        Assert.Equal(StartupScreen.Mapping, StartupSequence.ScreenFor(["--MAP-CONTROLLER"]));
+        Assert.Equal(
+            StartupScreen.Mapping,
+            StartupSequence.ScreenFor(["--record", "--map-controller"]));
+    }
+
+    /// <summary>
+    /// PP628: two screen flags together are answered by order, first one wins.
+    ///
+    /// The rule a person already has for a command line, and the only one that leaves both
+    /// spellings meaning something. A fixed winner would make one of the two a literal that changes
+    /// nothing - which is the shape of an option that quietly does not work.
+    /// </summary>
+    [Fact]
+    public void TwoScreenFlagsAreAnsweredByOrder()
+    {
+        Assert.Equal(
+            StartupScreen.Mapping,
+            StartupSequence.ScreenFor(["--map-controller", "--consoles"]));
+
+        Assert.Equal(
+            StartupScreen.ConsoleList,
+            StartupSequence.ScreenFor(["--consoles", "--map-controller"]));
+    }
+
+    /// <summary>
     /// THE ASSERTION PP225 SHIPPED WITHOUT. The real file still starts up the way it was fixed to.
     /// </summary>
     [Fact]
@@ -84,5 +137,12 @@ public class StartupSequenceTests
         Assert.True(StartupSequence.QueuesAfterTheWindowIsCreated(source),
             "the mapping screen is queued before base.OnStartup, which is what creates the window "
                 + "it is queued behind");
+
+        // PP628: and the front door is queued the same way, behind the same window. A list called
+        // inline would find no window and do nothing, silently - the failure PP225 was filed for,
+        // arriving through the screen that replaced its subject in the ordinary path.
+        Assert.Contains(
+            "Dispatcher.BeginInvoke(StartConsoleList, DispatcherPriority.ApplicationIdle)",
+            source, StringComparison.Ordinal);
     }
 }

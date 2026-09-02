@@ -130,7 +130,15 @@ public class HostCommandLineTests(ITestOutputHelper output)
         string? sourcePath = HostCommandLine.LocateSource();
         Assert.True(sourcePath is not null, "not running out of a checkout");
 
-        IReadOnlySet<string> matched = HostCommandLine.FlagsMatchedIn(File.ReadAllText(sourcePath));
+        // PP628: every file that matches a flag literal, not only OnStartup. The two screen flags
+        // moved into StartupSequence.ScreenFor when the console list took the ordinary path, and a
+        // check reading one file would call --consoles a flag nothing answers.
+        var matched = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (string relative in HostCommandLine.DispatchRelativePaths)
+        {
+            if (ChiakiNg.Session.SanitizerSource.LocateRelative(relative) is { } path)
+                matched.UnionWith(HostCommandLine.FlagsMatchedIn(File.ReadAllText(path)));
+        }
         Assert.True(matched.Count >= 5, $"only {matched.Count} flags found in the dispatch - the scan is not working");
 
         output.WriteLine("dispatched: " + string.Join(", ", matched));

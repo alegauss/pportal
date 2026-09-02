@@ -36,6 +36,24 @@ public static partial class HostCommandLine
     /// <summary>Where the dispatch is, relative to the repository root.</summary>
     public const string SourceRelativePath = @"app\App.xaml.cs";
 
+    /// <summary>
+    /// PP628: where the flags that choose a SCREEN are matched, which is no longer OnStartup.
+    ///
+    /// The two screen flags used to be two `if`s in the dispatch, which was right while only one of
+    /// them could produce a screen. With the console list in the ordinary path they would both
+    /// fire, so the choice moved into <see cref="StartupSequence.ScreenFor"/> - one answer with a
+    /// default, which is what makes "no flag" a spelling of `--consoles`.
+    ///
+    /// Named here so the drift check follows it. A check that went on reading one file would have
+    /// reported `--consoles` as a flag nothing answers, on a tree where it is what running the
+    /// application does.
+    /// </summary>
+    public const string ScreenDispatchRelativePath = @"app\Session\StartupSequence.cs";
+
+    /// <summary>Every file that matches a flag literal, in the order a reader would look.</summary>
+    public static IReadOnlyList<string> DispatchRelativePaths { get; } =
+        [SourceRelativePath, ScreenDispatchRelativePath];
+
     /// <summary>The source, or null outside a checkout.</summary>
     public static string? LocateSource() => SanitizerSource.LocateRelative(SourceRelativePath);
 
@@ -64,7 +82,7 @@ public static partial class HostCommandLine
         new("--replay-datagrams", "<path>", "replay a datagram capture through the managed receive path"),
         new("--timed", "", "with --replay-datagrams: time the MAC gate against the C over the capture"),
         new("--map-controller", "", "open the mapping screen against a real pad"),
-        new("--consoles", "", "open the console list, and connect to a registered console from it"),
+        new("--consoles", "", "open the console list and connect to a registered console - what no flag does"),
         new("--dcomp-demo", "", "show what one window composes, which PP163 is answered by looking at"),
         new("--topmost", "", "with --dcomp-demo: the control, asking the visual to cover WPF instead"),
         new("--layers", "", "with --dcomp-demo: the overlay PP319 chose, over the video plane"),
