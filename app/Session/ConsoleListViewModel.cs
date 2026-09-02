@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text.RegularExpressions;
+using ChiakiNg.Settings;
 
 namespace ChiakiNg.Session;
 
@@ -15,7 +16,18 @@ public readonly record struct PsnConsole(string Nickname, string Duid, bool IsPs
 /// which is why MainView.qml's navigation skips invisible items rather than trusting the index.
 /// </param>
 public readonly record struct ConsoleRow(
-    string Name, string Address, bool Discovered, bool Manual, bool Registered, bool Display);
+    string Name, string Address, bool Discovered, bool Manual, bool Registered, bool Display)
+{
+    /// <summary>
+    /// PP600: whether the row offers the connect action, which is what its button's enabled state
+    /// binds to.
+    ///
+    /// Computed rather than a seventh member, so the merge in <see cref="ConsoleList.Build"/> is
+    /// unchanged and the rule lives once, in <see cref="ConsoleConnect.CanConnect"/>. A binding
+    /// cannot call a static method, and a converter would put the rule in markup.
+    /// </summary>
+    public bool Connectable => ConsoleConnect.CanConnect(this);
+}
 
 /// <summary>
 /// PP13: the console list, which is the front door and the first screen with real logic in it.
@@ -190,9 +202,94 @@ public static partial class ConsoleListSource
 /// </summary>
 public sealed class ConsoleListViewModel : INotifyPropertyChanged
 {
+    private readonly IConsoleSessionStarter? starter;
+    private readonly Func<IReadOnlyList<RegisteredHost>> registrations;
     private IReadOnlyList<ConsoleRow> rows = [];
+    private string status = "";
+
+    /// <summary>
+    /// PP600: the list as it has always been - it draws, and connecting is refused with a reason.
+    ///
+    /// The parameterless shape is kept because every existing caller is a test about the merge, and
+    /// a screen with no starter is a real state: it is what the list is before somebody hands it a
+    /// way to open a session.
+    /// </summary>
+    public ConsoleListViewModel()
+        : this(null, static () => [])
+    {
+    }
+
+    /// <summary>The list with a way to act, which is what the front door is given.</summary>
+    public ConsoleListViewModel(
+        IConsoleSessionStarter? starter, Func<IReadOnlyList<RegisteredHost>> registrations)
+    {
+        ArgumentNullException.ThrowIfNull(registrations);
+
+        this.starter = starter;
+        this.registrations = registrations;
+    }
 
     public event PropertyChangedEventHandler? PropertyChanged;
+
+    /// <summary>
+    /// What the last connect attempt said, or the empty string before there has been one.
+    ///
+    /// PP224's rule applied to this screen: a refusal a person can do something about belongs where
+    /// the person is looking. Every branch below sets it, including the ones that never reach
+    /// libchiaki, because "nothing happened" is the failure that reads as a broken button.
+    /// </summary>
+    public string Status
+    {
+        get => status;
+        private set
+        {
+            status = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Status)));
+        }
+    }
+
+    /// <summary>
+    /// PP600: starts a session for one row, which is the thing no screen could do.
+    ///
+    /// Answers with the refusal rather than throwing: every outcome here is about the room - the
+    /// console is not paired, it is only on PSN, the registration is stale - and the caller is a
+    /// button.
+    /// </summary>
+    public ConnectRefusal Connect(ConsoleRow row)
+    {
+        if (starter is null)
+        {
+            // Asked FIRST, and it is not a refusal about the console. A list built with no way to
+            // open a session would otherwise answer with whatever the store happens to say about
+            // this row - a sentence about the console, for a fault in the wiring, which sends the
+            // reader to re-pair a console that is fine.
+            Status = "This list has no way to open a session.";
+            return ConnectRefusal.None;
+        }
+
+        if (!ConsoleConnect.CanConnect(row))
+        {
+            ConnectRefusal refused = row.Registered
+                ? ConnectRefusal.NoAddress
+                : ConnectRefusal.NotRegistered;
+            Status = ConsoleConnect.Explain(refused);
+            return refused;
+        }
+
+        ConnectPlan plan = ConsoleConnect.Prepare(row, registrations());
+        if (plan.Request is not { } request)
+        {
+            Status = ConsoleConnect.Explain(plan.Refusal);
+            return plan.Refusal;
+        }
+
+        Native.ChiakiError started = starter.Start(request);
+        Status = started == Native.ChiakiError.Success
+            ? $"Connecting to {row.Name}..."
+            : $"{row.Name} refused the session: {started}";
+
+        return ConnectRefusal.None;
+    }
 
     /// <summary>Every row, shown or not - the model keeps what it does not display.</summary>
     public IReadOnlyList<ConsoleRow> Rows

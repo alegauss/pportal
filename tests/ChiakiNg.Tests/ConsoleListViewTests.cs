@@ -95,6 +95,92 @@ public class ConsoleListViewTests
     });
 
     /// <summary>
+    /// PP600: the row's button says WHICH row, which is the one thing markup cannot.
+    ///
+    /// The row is the button's own DataContext and exists only once the template has been realised,
+    /// so the handler is three lines of code-behind - the exception PP13's rule for these files now
+    /// carries. What is asserted is the whole path: a realised template, a button found inside it,
+    /// a click, and the row that comes back out.
+    /// </summary>
+    [Fact]
+    public void ClickingARowsButtonSaysWhichRow() => Apartment.Run(() =>
+    {
+        var model = new ConsoleListViewModel();
+        model.Refresh([Found("0011223344556677", "Living room")], [], [],
+            new HashSet<string>(), new HashSet<string> { "0011223344556677" });
+
+        var view = new ConsoleListView { DataContext = model };
+        Realise(view);
+
+        ConsoleRow? asked = null;
+        view.ConnectRequested += row => asked = row;
+
+        Button button = FirstButton(view);
+        Assert.True(button.IsEnabled, "a registered console on the network offers the action");
+
+        button.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+
+        Assert.Equal("Living room", asked?.Name);
+    });
+
+    /// <summary>
+    /// PP600: and the button is disabled for a console that cannot be connected to, through the
+    /// binding rather than through a trigger written in markup.
+    /// </summary>
+    [Fact]
+    public void TheButtonFollowsTheRowsOwnRule() => Apartment.Run(() =>
+    {
+        var model = new ConsoleListViewModel();
+        model.Refresh([Found("0011223344556677", "Living room")], [], [],
+            new HashSet<string>(), new HashSet<string>());
+
+        var view = new ConsoleListView { DataContext = model };
+        Realise(view);
+
+        Assert.False(FirstButton(view).IsEnabled, "an unregistered console offers no connect");
+    });
+
+    /// <summary>
+    /// PP600: what the last attempt said, bound where the person is looking - PP224's rule.
+    /// </summary>
+    [Fact]
+    public void TheStatusBindingReachesTheViewModel() => Apartment.Run(() =>
+    {
+        var model = new ConsoleListViewModel();
+        var view = new ConsoleListView { DataContext = model };
+        Realise(view);
+
+        model.Connect(new ConsoleRow("Bedroom", "", false, false, false, true));
+        Realise(view);
+
+        Assert.Equal(model.Status, ((TextBlock)view.FindName("ConnectStatus")).Text);
+        Assert.NotEqual("", model.Status);
+    });
+
+    /// <summary>The first row's connect button, out of the realised template.</summary>
+    private static Button FirstButton(ConsoleListView view)
+    {
+        var items = (ItemsControl)view.FindName("Rows");
+        DependencyObject container = items.ItemContainerGenerator.ContainerFromIndex(0);
+
+        Assert.NotNull(container);
+        return Descendants(container).OfType<Button>().First();
+    }
+
+    private static IEnumerable<DependencyObject> Descendants(DependencyObject root)
+    {
+        int count = System.Windows.Media.VisualTreeHelper.GetChildrenCount(root);
+        for (var i = 0; i < count; i++)
+        {
+            DependencyObject child = System.Windows.Media.VisualTreeHelper.GetChild(root, i);
+            yield return child;
+
+            foreach (DependencyObject deeper in Descendants(child))
+                yield return deeper;
+        }
+    }
+
+    /// <summary>
     /// The view model's own answer, without the view - because HasVisibleRows is the thing the
     /// screen decides on and it should be assertable on its own.
     /// </summary>

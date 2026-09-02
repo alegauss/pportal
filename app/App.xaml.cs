@@ -1147,5 +1147,61 @@ public partial class App : Application
             // and the process dies before anything is drawn at all.
             Dispatcher.BeginInvoke(StartMappingScreen, DispatcherPriority.ApplicationIdle);
         }
+
+        // PP600: queued for the reason above, and behind a flag for PP223's reason - what MainWindow
+        // opens with in the ordinary path is a navigation decision, and this task is the missing
+        // caller rather than that decision.
+        if (HostCommandLine.Has(e.Args, "--consoles"))
+            Dispatcher.BeginInvoke(StartConsoleList, DispatcherPriority.ApplicationIdle);
     }
+
+    /// <summary>
+    /// PP600: the console list, wired to something that can actually open a session.
+    ///
+    /// The three parts nothing had put together. <see cref="DiscoveryService"/> answers what is on
+    /// the network, <see cref="QSettingsStore"/> holds the registrations the Qt client wrote, and
+    /// <see cref="NativeConsoleSessionStarter"/> is the four calls the capture flag was the only
+    /// caller of. The view raises a row and this decides what answers it, which is the shape every
+    /// other screen in this host arrives in.
+    ///
+    /// The registrations are read through a FUNC and not once at startup: registering a console
+    /// happens in the Qt client while this is open, and a list holding a snapshot would go on
+    /// refusing a console that had been paired since.
+    /// </summary>
+    private void StartConsoleList()
+    {
+        MainWindow window = this.MainWindow as MainWindow ?? OpenedByHand();
+
+        var store = new QSettingsStore();
+        var model = new ConsoleListViewModel(new NativeConsoleSessionStarter(), store.RegisteredHosts);
+        var view = new Views.ConsoleListView { DataContext = model };
+
+        view.ConnectRequested += row => model.Connect(row);
+        window.ShowScreen(view);
+
+        // Marshalled, because the callback arrives on libchiaki's own discovery thread and every
+        // property it moves is bound. PP217's rule with the dispatcher as the marshal, which is the
+        // same shape the mapping screen uses.
+        consoles = new ConsoleDiscovery(found => Dispatcher.BeginInvoke(() =>
+        {
+            IReadOnlyList<RegisteredHost> hosts = store.RegisteredHosts();
+
+            model.Refresh(
+                found,
+                ConsoleListSources.Manual(store.ManualHosts()),
+                // PSN hosts need a token and a relay, which is the choice PP600 says it is the step
+                // before. An empty list is what "not wired" looks like to the merge.
+                [],
+                // Hiding is ConsoleActions' third answer and no screen offers it yet, so nothing is
+                // hidden rather than a set built out of a spelling nobody has matched.
+                new HashSet<string>(StringComparer.Ordinal),
+                ConsoleListSources.RegisteredIds(found, hosts));
+        }));
+
+        if (!consoles.Sweeping)
+            window.ShowMessage("no network interface this machine can broadcast discovery on");
+    }
+
+    /// <summary>The front door's discovery, held for as long as the screen is up.</summary>
+    private ConsoleDiscovery? consoles;
 }

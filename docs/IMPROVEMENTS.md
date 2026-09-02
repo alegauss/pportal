@@ -350,33 +350,6 @@ sends.
 Deleting is the deliverable, not just porting. The C video receiver leaving the build is
 what makes the five ports beneath it real.
 
-### §PP600 Fitted, and never called
-
-PP561's line said eight tasks were "pieces that fit and were never fitted", and it
-fitted them. This is that one level up: the pieces are fitted, and no screen reaches
-them.
-
-WHAT THE HOST CAN DO. App.xaml.cs handles `--capture-exchange` and
-`--capture-datagrams`, and those reach ExchangeCapture, which builds a ChiakiConnectInfo
-and calls ChiakiSession.TryCreate against a real console. So the binary does start
-sessions. That path exists to record PP297's oracle, and it is spelled as a developer
-flag rather than as a feature.
-
-WHAT NO SCREEN DOES. MainWindow opens PP13's console list. ConsoleListViewModel carries
-Rows, HasVisibleRows and Refresh - it draws. ConsoleActions models which of connect,
-wake and remove a row offers, and performs none of them. HolepunchConnect, which
-consumes the seam, is built only in its own file, in HolepunchFlowCoverage or in a test;
-ManagedHolepunch only by its own tests. So the front door decides and does not act.
-
-THIS LINE HAS BEEN WRONG TWICE, in both directions, which the next reader should know.
-It first said the holepunch half; the whole connect path is missing. It then said the
-host constructs nothing, which the capture flags disprove. The truth sits between: no
-user-reachable path.
-
-WHAT THIS IS NOT is the choice between the native seam and the managed one. That needs a
-console to confirm, because the create's HTTP and websocket need PSN. This is the step
-before it: there is no caller for the choice to live in.
-
 ### §PP622 The count PP33 is heading for has no sentence
 
 PP573 holds PP33's line to the number in `HolepunchConsumers.All`, and it does that by

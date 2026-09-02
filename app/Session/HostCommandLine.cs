@@ -64,6 +64,7 @@ public static partial class HostCommandLine
         new("--replay-datagrams", "<path>", "replay a datagram capture through the managed receive path"),
         new("--timed", "", "with --replay-datagrams: time the MAC gate against the C over the capture"),
         new("--map-controller", "", "open the mapping screen against a real pad"),
+        new("--consoles", "", "open the console list, and connect to a registered console from it"),
         new("--dcomp-demo", "", "show what one window composes, which PP163 is answered by looking at"),
         new("--topmost", "", "with --dcomp-demo: the control, asking the visual to cover WPF instead"),
         new("--layers", "", "with --dcomp-demo: the overlay PP319 chose, over the video plane"),

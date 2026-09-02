@@ -526,6 +526,7 @@
 - ✅ **PP621** **nothing counts what reads session.c's holepunch handle, so PP33's deletion is sized at its two C callers** — The handle's readers are found from the tree and the tests asserting against them counted apart, so PP33's two callers are no longer the size of its deletion.
 - ✅ **PP620** **five probe methods still write the STA scaffolding out inline, around bodies that hand a value back** — The five inline runners are Apartment.Run now - four through the Func overload that hands the value back - and the exception list naming their two files is deleted rather than emptied.
 - ✅ **PP623** **PP33's deletion has no order, and PP598 has it riding in one commit that PP621 shows is an oracle rewrite** — Three steps, of which exactly one edits the C and it is the middle: the models learn both shapes first, and the shape that cannot occur goes last.
+- ✅ **PP600** **the host starts a session only from the capture flags, so nothing a user can click reaches one** — --consoles opens the list against real discovery and a row's button reaches a session through a seam, so every refusal is a named sentence on the screen rather than silence.
 
 ## Block G — Test discipline
 

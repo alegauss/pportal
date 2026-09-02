@@ -23,7 +23,18 @@
       <Border Padding="12,8" Margin="0,2"
               Visibility="{Binding Display, Converter={StaticResource BoolToVisibility}}">
         <StackPanel>
-          <TextBlock Text="{Binding Name}" FontSize="16" />
+          <DockPanel>
+            <!--
+              PP600: the action the list decided about and never performed. IsEnabled follows
+              ConsoleRow.Connectable, which is ConsoleConnect.CanConnect - so the rule that a
+              console must be paired and have an address is stated once, in code that is asserted,
+              rather than as a pair of triggers here.
+            -->
+            <Button x:Name="ConnectButton" DockPanel.Dock="Right"
+                    Content="Connect" Padding="12,2" Click="OnConnect"
+                    IsEnabled="{Binding Connectable}" />
+            <TextBlock Text="{Binding Name}" FontSize="16" />
+          </DockPanel>
           <StackPanel Orientation="Horizontal" Opacity="0.6">
             <TextBlock Text="{Binding Address}" />
 
@@ -49,9 +60,22 @@
   </UserControl.Resources>
 
   <Grid>
-    <ItemsControl x:Name="Rows"
+    <Grid.RowDefinitions>
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <ItemsControl x:Name="Rows" Grid.Row="0"
                   ItemsSource="{Binding Rows}"
                   ItemTemplate="{StaticResource ConsoleRowTemplate}" />
+
+    <!--
+      PP600: what the last connect attempt said, WHERE THE PERSON IS LOOKING - PP224's rule, which
+      was filed because a failure written to standard error reached nobody. Every refusal this
+      screen can produce is about the room rather than about the code, so all of them belong here.
+    -->
+    <TextBlock x:Name="ConnectStatus" Grid.Row="1"
+               Text="{Binding Status}" Margin="12,4" TextWrapping="Wrap" Opacity="0.8" />
 
     <!--
       The empty state, which is a real state and not an oversight: discovery answering nothing is

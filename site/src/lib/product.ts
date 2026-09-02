@@ -34,12 +34,17 @@ export function dotnet(): string {
 }
 
 /**
- * The diagnostics a person runs, in the order the terminal block prints them.
+ * What a person runs, in the order the terminal block prints them.
  *
  * Chosen rather than taken whole: the host also answers flags that report on this
  * repository's own test debt, and those are for whoever is working on it.
+ *
+ * The first is not a diagnostic and is deliberately first. PP600 gave the console list a
+ * connect action, so `--consoles` is the flag that opens the application rather than one
+ * that reports on it, and a list headed by a self-test described a tree with no front door.
  */
 const SHOWN = [
+  "--consoles",
   "--selftest",
   "--controllers",
   "--capture-controller",

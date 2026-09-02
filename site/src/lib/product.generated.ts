@@ -116,6 +116,11 @@ export const HOST_FLAGS: readonly HostFlag[] = [
     "summary": "open the mapping screen against a real pad"
   },
   {
+    "name": "--consoles",
+    "argument": "",
+    "summary": "open the console list, and connect to a registered console from it"
+  },
+  {
     "name": "--dcomp-demo",
     "argument": "",
     "summary": "show what one window composes, which PP163 is answered by looking at"
