@@ -543,6 +543,7 @@
 - ✅ **PP636** **PP295 waits on the whole of PP27, whose last criterion is the deletion PP295 has to happen before** — PP295 no longer declares PP27, the six files the fourth criterion waits on are named, and an assertion holds that the criterion is still the end state.
 - ✅ **PP637** **the vendored-C rule names PP33 and PP30 as what it does not reach, and PP295's deliverable is a deletion too** — The rule names PP295 beside PP33 and PP30, and the three checks that pin the exempt list say why PP27 is still not among them.
 - ✅ **PP638** **PP295 names the video receiver's callers and not streamconnection's own, which is session.c** — The build named seventeen symbols over three consumers: session.c drives the stream connection, one of its six calls carries no prefix, and the C suite links four of the files.
+- ✅ **PP639** **three deletion lines have an end state their own dependents come before, and each was untied by hand** — PP295 has criteria that separate its port from its deletion, PP28 is released, and a check holds that no line an end state waits on declares a dep on it.
 
 ## Block G — Test discipline
 
