@@ -168,6 +168,70 @@ public class ConsoleRowActionsTests : IDisposable
             => throw new InvalidOperationException("the silent branch must not write");
     }
 
+    private sealed class AcceptingRemover : IConsoleRemover
+    {
+        public bool Remove(ConsoleRow row, RemoveAction action) => true;
+    }
+
+    /// <summary>
+    /// PP629: a removal made while the Qt client is open says so.
+    ///
+    /// The client rewrites `hidden_hosts` whole from the list it loaded at startup, so a change made
+    /// here survives only until it next saves - and nothing errors when it does not. The write is
+    /// correct and is not refused; what is added is the one fact the person can act on.
+    /// </summary>
+    [Fact]
+    public void ARemovalWhileTheClientIsOpenWarnsAboutIt()
+    {
+        var model = new ConsoleListViewModel(null, static () => [], null, null, new AcceptingRemover())
+        {
+            Processes = () => ["explorer", StoreOwnership.ReleasedClientProcess],
+        };
+
+        model.Remove(Manual("10.0.0.9"));
+
+        Assert.Contains("deleted", model.Status, StringComparison.Ordinal);
+        Assert.Contains(StoreOwnership.Warning.Trim(), model.Status, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// PP629: and stays quiet when it is not, which is the ordinary case.
+    ///
+    /// A warning on every removal is a warning nobody reads, and it would be wrong: with no client
+    /// running the change is simply the change.
+    /// </summary>
+    [Fact]
+    public void ARemovalWithNoClientOpenSaysNothingExtra()
+    {
+        var model = new ConsoleListViewModel(null, static () => [], null, null, new AcceptingRemover())
+        {
+            Processes = () => ["explorer", "ChiakiNg"],
+        };
+
+        model.Remove(Manual("10.0.0.9"));
+
+        Assert.DoesNotContain(StoreOwnership.Warning.Trim(), model.Status, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// PP629: both of the client's names are looked for, and one of them is derived.
+    ///
+    /// The locally built client is whatever <see cref="GuiFreshness.ClientRelativePath"/> names, so
+    /// it cannot drift from the binary the freshness check reads. The released one is a separate
+    /// name on purpose: somebody running this port is very likely running upstream's published
+    /// build beside it, which is where their registrations came from.
+    /// </summary>
+    [Fact]
+    public void BothOfTheClientsNamesAreRecognised()
+    {
+        Assert.Equal("chiaki", StoreOwnership.BuiltClientProcess);
+
+        Assert.True(StoreOwnership.ClientIsRunning(["Chiaki"]));
+        Assert.True(StoreOwnership.ClientIsRunning(["CHIAKI-NG"]));
+        Assert.False(StoreOwnership.ClientIsRunning(["chiakiwhatever", "ChiakiNg"]));
+        Assert.False(StoreOwnership.ClientIsRunning([]));
+    }
+
     /// <summary>
     /// PP626: a manual console is DELETED, and the store says so when it is read back.
     ///

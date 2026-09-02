@@ -295,6 +295,25 @@ public sealed class ConsoleListViewModel : INotifyPropertyChanged
     private readonly IConsoleRemover? remover;
 
     /// <summary>
+    /// PP629: what this machine is running, asked only when a removal lands.
+    ///
+    /// A property with a setter rather than a constructor parameter, because it is the fifth thing
+    /// this model takes and the only one a test changes on its own. The default reads the machine,
+    /// which is what the application wants and what a test replaces.
+    /// </summary>
+    public Func<IReadOnlyList<string>> Processes
+    {
+        get => processes;
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            processes = value;
+        }
+    }
+
+    private Func<IReadOnlyList<string>> processes = StoreOwnership.RunningProcesses;
+
+    /// <summary>
     /// PP626: sends the magic packet, for a row that offers one.
     ///
     /// Nothing is waited for. A wake packet is unacknowledged UDP, and the sweep behind this list is
@@ -345,9 +364,18 @@ public sealed class ConsoleListViewModel : INotifyPropertyChanged
             return action;
         }
 
-        Status = remover.Remove(row, action)
-            ? $"{row.Name} {(action == RemoveAction.Delete ? "deleted" : "hidden")}."
-            : $"{row.Name} was already gone.";
+        if (!remover.Remove(row, action))
+        {
+            Status = $"{row.Name} was already gone.";
+            return action;
+        }
+
+        // PP629: the write happened and is correct, and somebody else may be holding an older copy
+        // of the same list. The client rewrites its arrays whole from what it loaded at startup, so
+        // a change made here survives only until it next saves - and that is the one thing the
+        // person in front of the screen can do something about.
+        Status = $"{row.Name} {(action == RemoveAction.Delete ? "deleted" : "hidden")}."
+            + (StoreOwnership.ClientIsRunning(processes()) ? StoreOwnership.Warning : "");
 
         return action;
     }

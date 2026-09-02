@@ -533,6 +533,7 @@
 - ✅ **PP627** **a console asking for a login PIN gets no answer, so the front door sits at Connecting for ever** — A shim wrapper carries the PIN to the waiting session, the prompt goes up when the console asks and down when it is spent, and the second ask raises it again.
 - ✅ **PP628** **the console list connects, holds a session and answers a PIN, and only a flag opens it** — A run with no flag opens the list, one screen is chosen rather than two queued, and two screen flags are answered by order so both spellings still mean something.
 - ✅ **PP626** **ConsoleActions models a wake and three removals, and the row draws a Connect button and nothing else** — The wake sends the client's own credential, hiding and deleting write the store through the inverse of the reader's rules, and the silent third outcome stays silent.
+- ✅ **PP629** **this port writes the Qt client's settings now, and a running client saves its own cache back over them** — The client owns the store and the person is told: a removal made while one is running says so, by both the built name and the released one, and locking was never available.
 
 ## Block G — Test discipline
 
