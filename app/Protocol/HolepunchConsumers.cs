@@ -179,9 +179,32 @@ public static class HolepunchConsumers
         if (roadmapLine.Contains("only caller", StringComparison.OrdinalIgnoreCase))
             return false;
 
-        return roadmapLine.Contains(
-            $"{CountWord(All.Count)} files call it", StringComparison.OrdinalIgnoreCase);
+        return roadmapLine.Contains(SentenceFor(All.Count), StringComparison.OrdinalIgnoreCase);
     }
+
+    /// <summary>
+    /// PP622: the clause the line has to carry, which is not a count word and a fixed plural.
+    ///
+    /// It was `CountWord(count) + " files call it"`, and four, three and two all read correctly.
+    /// ONE DOES NOT. "one files call it" is a sentence this check demanded and no writer would
+    /// write, and one is the count PP33 is heading for - the shim is the caller that survives
+    /// session.c. So the gate would have turned from holding the line honest to refusing every
+    /// correct spelling of it, in the commit that first made the line true.
+    ///
+    /// Zero has a sentence of its own rather than falling through to the plural. A line whose
+    /// consumers are all gone is not making a claim about how many files call the C; it is a line
+    /// about an archive, and "no file calls it" is what that says.
+    ///
+    /// The failure this avoids is the quiet one: the check and the line are edited in the same
+    /// commit either way, and a check edited to accommodate a sentence is not the same thing as a
+    /// check that knew the sentence in advance.
+    /// </summary>
+    public static string SentenceFor(int count) => count switch
+    {
+        0 => "no file calls it",
+        1 => "one file calls it",
+        _ => $"{CountWord(count)} files call it",
+    };
 
     /// <summary>The count as the line spells it. Words, because that is how a sentence carries a number.</summary>
     public static string CountWord(int count) => count switch

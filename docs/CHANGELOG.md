@@ -527,6 +527,7 @@
 - ✅ **PP620** **five probe methods still write the STA scaffolding out inline, around bodies that hand a value back** — The five inline runners are Apartment.Run now - four through the Func overload that hands the value back - and the exception list naming their two files is deleted rather than emptied.
 - ✅ **PP623** **PP33's deletion has no order, and PP598 has it riding in one commit that PP621 shows is an oracle rewrite** — Three steps, of which exactly one edits the C and it is the middle: the models learn both shapes first, and the shape that cannot occur goes last.
 - ✅ **PP600** **the host starts a session only from the capture flags, so nothing a user can click reaches one** — --consoles opens the list against real discovery and a row's button reaches a session through a seam, so every refusal is a named sentence on the screen rather than silence.
+- ✅ **PP622** **PP33's line cannot honestly say one caller, because the check demands the phrase 'one files call it'** — The clause is chosen per count rather than assembled from a plural, so one takes a singular verb and zero says no file calls it at all.
 
 ## Block G — Test discipline
 

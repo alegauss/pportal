@@ -244,6 +244,56 @@ public class HolepunchConsumersTests
     }
 
     /// <summary>
+    /// PP622: the counts this line is HEADING for have sentences, and they are sentences.
+    ///
+    /// The check built the clause as a count word and a fixed plural, so the demand at one was "one
+    /// files call it" - a sentence no writer would write, for the very count PP33 arrives at when
+    /// session.c stops asking and the shim is what is left. The gate would have turned from holding
+    /// the line honest to refusing every correct spelling of it, in the commit that made it true.
+    ///
+    /// Zero is here too, and it is not the plural with a different word in front. A line whose
+    /// consumers are all gone is not claiming anything about how many files call the C.
+    /// </summary>
+    [Fact]
+    public void EveryCountTheLineCanReachHasASentence()
+    {
+        Assert.Equal("no file calls it", HolepunchConsumers.SentenceFor(0));
+        Assert.Equal("one file calls it", HolepunchConsumers.SentenceFor(1));
+        Assert.Equal("two files call it", HolepunchConsumers.SentenceFor(2));
+        Assert.Equal("four files call it", HolepunchConsumers.SentenceFor(4));
+
+        // The shape that was demanded, refused as a sentence rather than merely unproduced.
+        Assert.DoesNotContain("one files", HolepunchConsumers.SentenceFor(1), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// PP622: and the check reads whichever of them the list currently makes true.
+    ///
+    /// Written through <see cref="HolepunchConsumers.SentenceFor"/> rather than as a literal, for
+    /// PP573's reason one level down: a hand-typed clause is what let the line say "only caller"
+    /// through three findings, and a hand-typed clause HERE would be the same defect in the check.
+    /// </summary>
+    [Fact]
+    public void TheCheckAsksForTheSentenceTheCountActuallyHas()
+    {
+        string current = HolepunchConsumers.SentenceFor(HolepunchConsumers.All.Count);
+
+        Assert.True(HolepunchConsumers.TheRoadmapLineAgreesOnTheCount($"the deletion: {current}."));
+
+        // And every other count is still refused, so the clause is a claim and not a formality.
+        foreach (int other in (int[])[0, 1, 3, 4])
+        {
+            if (other == HolepunchConsumers.All.Count)
+                continue;
+
+            Assert.False(
+                HolepunchConsumers.TheRoadmapLineAgreesOnTheCount(
+                    $"the deletion: {HolepunchConsumers.SentenceFor(other)}."),
+                $"a line claiming {other} passed while the list holds {HolepunchConsumers.All.Count}");
+        }
+    }
+
+    /// <summary>
     /// PP591: the harness is NOT in the tree, which is the decision PP544 held open.
     ///
     /// Its own comment named the three outcomes - ported, deleted with the C, or kept as the

@@ -350,30 +350,6 @@ sends.
 Deleting is the deliverable, not just porting. The C video receiver leaving the build is
 what makes the five ports beneath it real.
 
-### §PP622 The count PP33 is heading for has no sentence
-
-PP573 holds PP33's line to the number in `HolepunchConsumers.All`, and it does that by
-building the sentence the line must contain: `CountWord(count) + " files call it"`.
-Four, three and two all read correctly. One does not - "one files call it" is a sentence
-the check demands and no writer would write, and it is the count PP33 is heading for:
-the shim is the caller that survives session.c.
-
-So the gate turns from holding the line honest to refusing every correct spelling of it.
-The line would have to carry a grammatical error to pass, or PP573's check would have to
-be edited in the same commit that removes the caller - and the second is what happens,
-silently, because the failure arrives as a test about a roadmap line rather than as a
-defect in the check.
-
-The fix is the check knowing that a count of one takes a singular verb, and that zero
-has a sentence of its own: a line whose consumers are gone says nothing about callers at
-all, and PP33's own text would be about the archive rather than about who links against
-it. Both are one method's worth of work, and both are cheaper now than inside the commit
-that first needs them.
-
-Worth keeping from PP573: the "only caller" phrasing stays refused whatever the count
-reaches. That claim was wrong through three findings and its shape is what made it
-survive them.
-
 ### §PP624 Two spellings that never met
 
 `ConsoleList.Build` has taken two sets of keys since PP13 and tests a discovered host's
