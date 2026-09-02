@@ -400,6 +400,54 @@ Func for exactly this, and the migration is per site rather than one pattern app
 twenty-six times. Until it lands, ApartmentRunnerTests names the two files and refuses a
 third, so the door does not reopen under a new name.
 
+### §PP622 The count PP33 is heading for has no sentence
+
+PP573 holds PP33's line to the number in `HolepunchConsumers.All`, and it does that by
+building the sentence the line must contain: `CountWord(count) + " files call it"`.
+Four, three and two all read correctly. One does not - "one files call it" is a sentence
+the check demands and no writer would write, and it is the count PP33 is heading for:
+the shim is the caller that survives session.c.
+
+So the gate turns from holding the line honest to refusing every correct spelling of it.
+The line would have to carry a grammatical error to pass, or PP573's check would have to
+be edited in the same commit that removes the caller - and the second is what happens,
+silently, because the failure arrives as a test about a roadmap line rather than as a
+defect in the check.
+
+The fix is the check knowing that a count of one takes a singular verb, and that zero
+has a sentence of its own: a line whose consumers are gone says nothing about callers at
+all, and PP33's own text would be about the archive rather than about who links against
+it. Both are one method's worth of work, and both are cheaper now than inside the commit
+that first needs them.
+
+Worth keeping from PP573: the "only caller" phrasing stays refused whatever the count
+reaches. That claim was wrong through three findings and its shape is what made it
+survive them.
+
+### §PP623 Nothing stages the deletion
+
+PP598 recorded the decision and its timing together: the Qt client's build retires, and
+"the retirement rides in PP33's own commit", because taking the affordance away earlier
+would remove something that works and buy nothing. The timing half was reasoned about a
+commit understood as nine calls in session.c plus three pieces of build wiring.
+
+PP621 measured what else is in it. Model classes under app/ quote session.c's holepunch
+text as a specification, and the tests asserting against those models are the larger
+half again. So the commit PP598 describes deletes the nine, retires three build pieces,
+and rewrites the oracle the port was held to - in one transaction, with the suite red
+from the first edit until the last.
+
+That is not an argument for keeping the client. It is an argument that the ORDER is a
+decision nobody has taken. A conversion has a shape a deletion does not: a model can
+state what session.c did and assert its absence, one file at a time, with the suite
+green after each - and only the last step has to be the commit that removes the field
+and the build. PP591 did that for the harness, turning its assertions over rather than
+deleting them.
+
+What this line owes is the sequence: which models convert before the C changes, which
+cannot, and what the one irreducible commit is left holding. Without it the next session
+picking PP33 meets a diff it cannot land and stages it by instinct.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry
