@@ -15,6 +15,10 @@ namespace ChiakiNg.Tests;
 ///
 /// This is what fails if they come back. The deletion is the whole of PP618, and a deletion is the
 /// one kind of change that leaves nothing behind to assert on unless somebody writes this down.
+///
+/// PP620 finished it. Two files wrote the scaffolding out INSIDE their probe methods rather than
+/// declaring a reusable helper, so PP618's count never reached them and this test carried them as a
+/// named exception. It carries none now.
 /// </summary>
 public class ApartmentRunnerTests
 {
@@ -22,16 +26,20 @@ public class ApartmentRunnerTests
     private const string Starting = "SetApartmentState";
 
     /// <summary>
-    /// The files that still start one inline, and nothing else may join them.
+    /// PP620: nothing is excused any more, and the exception list is gone with the five sites.
     ///
     /// PP618 was about the twenty-six view test files that each declared a REUSABLE runner — the
-    /// eight lines pasted into each of them. These two write the scaffolding out inside the probe
-    /// methods themselves, around bodies that build a DirectComposition device and hand a value
-    /// back, so they were never in that task's count and are not in its deletion. PP620 empties
-    /// this list; until it does, the list is what keeps a twenty-seventh copy from arriving quietly.
+    /// eight lines pasted into each of them. RenderProbeTests and SteamShortcutTests wrote the
+    /// scaffolding out inside the probe methods themselves, four times in one file and once in the
+    /// other, around bodies that build a DirectComposition device and hand a value back. They were
+    /// never in that task's count, so they were not in its deletion, and this test named them as an
+    /// exception rather than letting them read as a twenty-seventh copy arriving quietly.
+    ///
+    /// The four that produce values are <c>Apartment.Run(Func)</c> now, which is what the overload
+    /// is for: the answer comes back rather than being assigned into a captured local from another
+    /// thread. The list is DELETED rather than emptied — an empty array left in place is the shape
+    /// of an excuse, and the next file that wants one would find it already written.
     /// </summary>
-    private static readonly string[] StillInline = ["RenderProbeTests.cs", "SteamShortcutTests.cs"];
-
     [Fact]
     public void NoTestFileStartsAnApartmentOfItsOwn()
     {
@@ -49,22 +57,12 @@ public class ApartmentRunnerTests
                 .Select(one => Path.GetFileName(one)),
         ];
 
-        string[] arrived = [.. carrying.Except(StillInline, StringComparer.Ordinal)];
-
         Assert.True(
-            arrived.Length == 0,
-            $"{arrived.Length} file(s) start an apartment of their own again: {string.Join(", ", arrived)}. "
+            carrying.Length == 0,
+            $"{carrying.Length} file(s) start an apartment of their own again: {string.Join(", ", carrying)}. "
                 + "Winwright.InApp carries Apartment.Run, bounded the same way and rethrowing what the "
-                + "work threw with its stack intact");
-
-        // Both directions, so the list cannot outlive what it excuses: a file that stopped starting
-        // one and stayed on this list would keep the door open for a new copy under its name.
-        string[] gone = [.. StillInline.Except(carrying, StringComparer.Ordinal)];
-
-        Assert.True(
-            gone.Length == 0,
-            $"{string.Join(", ", gone)} no longer start an apartment inline, so take them off "
-                + $"{nameof(StillInline)} — PP620 is what empties it");
+                + "work threw with its stack intact; the Func overload is for a body that hands a "
+                + "value back, which is what PP620's five sites did");
     }
 
     [Fact]

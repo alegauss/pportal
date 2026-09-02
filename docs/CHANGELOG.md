@@ -524,6 +524,7 @@
 - ✅ **PP618** **twenty-six view test files each carry their own copy of the STA runner every one of them depends on** — Deleted twenty-six times over for one package reference: 589 lines out, 178 in, and a thread that times out now names itself and rethrows what it caught.
 - ✅ **PP619** **the mapping screen's row slots are templated buttons with no automation id** — The slot carries an id built from the row's stable key, so a check addresses one by name instead of by the absence of the field an application controls.
 - ✅ **PP621** **nothing counts what reads session.c's holepunch handle, so PP33's deletion is sized at its two C callers** — The handle's readers are found from the tree and the tests asserting against them counted apart, so PP33's two callers are no longer the size of its deletion.
+- ✅ **PP620** **five probe methods still write the STA scaffolding out inline, around bodies that hand a value back** — The five inline runners are Apartment.Run now - four through the Func overload that hands the value back - and the exception list naming their two files is deleted rather than emptied.
 
 ## Block G — Test discipline
 

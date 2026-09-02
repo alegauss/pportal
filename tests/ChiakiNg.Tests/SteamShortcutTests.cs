@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using ChiakiNg.Session;
 using ChiakiNg.Views;
+using Winwright.InApp;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -210,10 +211,8 @@ public class SteamShortcutTests
     [Fact]
     public void TheViewFollowsTheRule()
     {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try
+        Apartment.Run(
+            () =>
             {
                 var model = new SteamShortcutViewModel("couch");
                 var view = new SteamShortcutView { DataContext = model };
@@ -229,20 +228,8 @@ public class SteamShortcutTests
                 ((TextBox)view.FindName("NameField")).Text = "   ";
                 view.UpdateLayout();
                 Assert.False(create.IsEnabled);
-            }
-            catch (Exception ex)
-            {
-                failure = ex;
-            }
-        })
-        { IsBackground = true };
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread did not finish");
-        if (failure is not null)
-            throw new Xunit.Sdk.XunitException(failure.ToString());
+            },
+            named: "the Steam shortcut screen");
     }
 
     private static FakePreferences Linked()

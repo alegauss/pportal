@@ -1,5 +1,6 @@
 using ChiakiNg.Native;
 using ChiakiNg.Session;
+using Winwright.InApp;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -353,16 +354,12 @@ public class RenderProbeTests
     [Fact]
     public void AWpfWindowsHwndAcceptsTheTarget()
     {
-        DcompStage stage = DcompStage.NoDevice;
-        Exception? failure = null;
-
-        var thread = new Thread(() =>
-        {
-            try
+        DcompStage stage = Apartment.Run(
+            () =>
             {
                 using RenderDevice? device = AnyDevice();
                 if (device is null)
-                    return;
+                    return DcompStage.NoDevice;
 
                 var window = new System.Windows.Window { Width = 320, Height = 240 };
                 IntPtr hwnd = new System.Windows.Interop.WindowInteropHelper(window).EnsureHandle();
@@ -370,21 +367,12 @@ public class RenderProbeTests
 
                 // false: the visual BEHIND the window's content, which is the arrangement PP282
                 // established the design needs and the only one worth asking of a WPF window.
-                stage = device.ProbeDirectCompositionOn(hwnd, SwapchainFormat.Rgb10A2, topmost: false);
+                DcompStage reached = device.ProbeDirectCompositionOn(
+                    hwnd, SwapchainFormat.Rgb10A2, topmost: false);
                 window.Close();
-            }
-            catch (Exception ex)
-            {
-                failure = ex;
-            }
-        })
-        { IsBackground = true };
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread did not finish");
-        if (failure is not null)
-            throw new Xunit.Sdk.XunitException(failure.ToString());
+                return reached;
+            },
+            named: "a DirectComposition probe on a WPF window's HWND");
 
         Assert.True(
             stage == DcompStage.Ok,
@@ -407,17 +395,12 @@ public class RenderProbeTests
     [Fact]
     public void TheTreeAttachesToAWpfWindowAndDetaches()
     {
-        DcompStage stage = DcompStage.NoDevice;
-        bool attached = false;
-        Exception? failure = null;
-
-        var thread = new Thread(() =>
-        {
-            try
+        (DcompStage stage, bool attached) = Apartment.Run(
+            () =>
             {
                 using RenderDevice? device = AnyDevice();
                 if (device is null)
-                    return;
+                    return (DcompStage.NoDevice, false);
 
                 var window = new System.Windows.Window { Width = 320, Height = 240 };
                 IntPtr hwnd = new System.Windows.Interop.WindowInteropHelper(window).EnsureHandle();
@@ -427,28 +410,18 @@ public class RenderProbeTests
                     ChiakiNg.Views.DcompDemo.FillRed,
                     ChiakiNg.Views.DcompDemo.FillGreen,
                     ChiakiNg.Views.DcompDemo.FillBlue,
-                    out stage);
+                    out DcompStage reached);
 
-                attached = session is not null;
+                bool built = session is not null;
                 session?.Dispose();
 
                 // Twice, because a window closing can race a dispose and the second call is the one
                 // that would free an already-freed tree.
                 session?.Dispose();
                 window.Close();
-            }
-            catch (Exception ex)
-            {
-                failure = ex;
-            }
-        })
-        { IsBackground = true };
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread did not finish");
-        if (failure is not null)
-            throw new Xunit.Sdk.XunitException(failure.ToString());
+                return (reached, built);
+            },
+            named: "a one-layer attach to a WPF window");
 
         Assert.True(attached, $"the tree did not attach: {stage}");
     }
@@ -560,17 +533,12 @@ public class RenderProbeTests
     [Fact]
     public void TheTwoLayerTreeAttachesToAWpfWindowAndDetaches()
     {
-        LayersStage stage = LayersStage.NoDevice;
-        bool attached = false;
-        Exception? failure = null;
-
-        var thread = new Thread(() =>
-        {
-            try
+        (LayersStage stage, bool attached) = Apartment.Run(
+            () =>
             {
                 using RenderDevice? device = AnyDevice();
                 if (device is null)
-                    return;
+                    return (LayersStage.NoDevice, false);
 
                 var window = new System.Windows.Window { Width = 320, Height = 240 };
                 IntPtr hwnd = new System.Windows.Interop.WindowInteropHelper(window).EnsureHandle();
@@ -580,9 +548,9 @@ public class RenderProbeTests
                     ChiakiNg.Views.DcompDemo.FillRed,
                     ChiakiNg.Views.DcompDemo.FillGreen,
                     ChiakiNg.Views.DcompDemo.FillBlue,
-                    out stage);
+                    out LayersStage reached);
 
-                attached = session is not null;
+                bool built = session is not null;
                 session?.Dispose();
 
                 // Twice, for the reason the one-layer attach is disposed twice: a window closing can
@@ -590,19 +558,9 @@ public class RenderProbeTests
                 // tree - which now means three more pointers than it used to.
                 session?.Dispose();
                 window.Close();
-            }
-            catch (Exception ex)
-            {
-                failure = ex;
-            }
-        })
-        { IsBackground = true };
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread did not finish");
-        if (failure is not null)
-            throw new Xunit.Sdk.XunitException(failure.ToString());
+                return (reached, built);
+            },
+            named: "a two-layer attach to a WPF window");
 
         Assert.True(attached, $"the two-layer tree did not attach: {stage}");
     }
@@ -618,44 +576,26 @@ public class RenderProbeTests
     [Fact]
     public void AnImpossibleOverlayFormatRefusesTheAttachAtTheSurface()
     {
-        LayersStage stage = LayersStage.NoDevice;
-        bool attached = true;
-        Exception? failure = null;
-
-        var thread = new Thread(() =>
-        {
-            try
+        (LayersStage stage, bool attached) = Apartment.Run(
+            () =>
             {
                 using RenderDevice? device = AnyDevice();
                 if (device is null)
-                {
-                    attached = false;
-                    stage = LayersStage.Surface;
-                    return;
-                }
+                    return (LayersStage.Surface, false);
 
                 var window = new System.Windows.Window { Width = 320, Height = 240 };
                 IntPtr hwnd = new System.Windows.Interop.WindowInteropHelper(window).EnsureHandle();
 
                 DcompAttachment? session = device.AttachLayers(
-                    hwnd, SwapchainFormat.Rgb10A2, (SwapchainFormat)0x7000, 0.5, 0.0, 0.0, out stage);
+                    hwnd, SwapchainFormat.Rgb10A2, (SwapchainFormat)0x7000, 0.5, 0.0, 0.0,
+                    out LayersStage reached);
 
-                attached = session is not null;
+                bool built = session is not null;
                 session?.Dispose();
                 window.Close();
-            }
-            catch (Exception ex)
-            {
-                failure = ex;
-            }
-        })
-        { IsBackground = true };
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "the STA thread did not finish");
-        if (failure is not null)
-            throw new Xunit.Sdk.XunitException(failure.ToString());
+                return (reached, built);
+            },
+            named: "an attach with an overlay format DXGI has no such thing as");
 
         Assert.False(attached, "an impossible overlay format produced a tree");
         Assert.Equal(LayersStage.Surface, stage);

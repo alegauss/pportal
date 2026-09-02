@@ -377,29 +377,6 @@ WHAT THIS IS NOT is the choice between the native seam and the managed one. That
 console to confirm, because the create's HTTP and websocket need PSN. This is the step
 before it: there is no caller for the choice to live in.
 
-### §PP620 The runners PP618 did not count
-
-PP618's claim was the twenty-six view test files that each declared a REUSABLE runner -
-a private OnSta helper, the same eight lines pasted into each. RenderProbeTests and
-SteamShortcutTests are a different shape: the scaffolding is written out inside the
-probe methods themselves, four times in one file and once in the other, around bodies
-that build a DirectComposition device or a view and hand a value back.
-
-They were never in that task's count, which is why its deletion did not reach them. What
-found them is the assertion written to cover PP618 - it asked which files start an
-apartment at all, and answered two more than the migration had touched.
-
-They are the same defect. Each is bounded at thirty seconds by its own literal, each
-rethrows as XunitException over the exception's ToString, and each is load-bearing for
-the same reason: a control cannot be built off that apartment, and a thread that never
-finishes reports nothing at all.
-
-Why they are their own line rather than a wider PP618. The bodies return a value and
-capture locals, so each is a real edit rather than a deletion - Apartment.Run takes a
-Func for exactly this, and the migration is per site rather than one pattern applied
-twenty-six times. Until it lands, ApartmentRunnerTests names the two files and refuses a
-third, so the door does not reopen under a new name.
-
 ### §PP622 The count PP33 is heading for has no sentence
 
 PP573 holds PP33's line to the number in `HolepunchConsumers.All`, and it does that by
