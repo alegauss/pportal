@@ -24,7 +24,7 @@
 ## Block F — Managed core
 
 - ⏳ **PP27** (deps: PP23 ✅, PP25 ✅, PP44 ✅) (requires: console) **takion.c is 2007 lines of C over raw sockets and timers, and the whole stream rides on it** — PP610 timed the MAC gate and PP633 the loop's copy over real payloads; what is left is takion.c, takionsendbuffer.c and reorderqueue.c leaving. → §PP27
-- 📋 **PP28** (deps: PP293 ✅, PP294 ✅, PP23 ✅) **session.c 1196, ctrl.c 1767 and streamconnection.c 1531, three state machines with no oracle** — the three together, once PP293, PP294 and PP295 have each landed: what is left here is the ordering between them. → §PP28
+- 📋 **PP28** (deps: PP293 ✅, PP294 ✅, PP23 ✅) **session.c 1196, ctrl.c 1767 and streamconnection.c 1531, three state machines with no oracle** — the three together, once the ports land: PP295's line stays open past its own, because PP639 puts its deletion after this one. → §PP28
 - 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — 13 sites and none of them arithmetic: chiaki_fec_decode has three callers - frameprocessor.c, the C suite, and this port's shim. → §PP30
 - 📋 **PP31** (deps: PP28) **the video decoder is where 100% managed stops being achievable, and no task above says so** — There is no managed H.264 or HEVC decoder that holds 1080p60 at remote play latency, so this boundary is chosen deliberately or discovered late. → §PP31
 - 📋 **PP32** (deps: PP28) **audio decode is Opus in lib and the microphone's noise and echo stages are speexdsp in the Qt client** — Managed Opus exists and speexdsp has none; the conversion between them is SDL_AudioCVT rather than speex, so the audio path is three dependencies and not two. → §PP32
