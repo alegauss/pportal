@@ -380,6 +380,29 @@ times and see whether it fails again. If it does, the fix is a bounded retry on 
 receive or a tap the assertion can wait on, and which of those depends on where it
 actually loses.
 
+### §PP666 A test written from the table it checks
+
+PP364 modelled the stream connection's six exit labels as a ladder: what was built
+decides where a failure enters. Its test asserted that entering after N things built
+runs N plus one labels. Both were wrong in the same direction - every rung one label too
+early - and they passed each other for five months, because the test's arithmetic was
+derived from the table it was checking. A connect failure entered at close_takion, which
+would close a takion that never connected. Three other rungs were hidden by null-safe
+frees.
+
+What found it was PP295's managed run: a consumer that had to DRIVE the table against
+the C with the file open beside it. A table nobody drives is a claim that only its own
+test reads, and a test written from a table inherits its error.
+
+Three more tables in this tree have that shape. PP623's deletion stages, PP639's
+end-state waits, and PP640's six orderings are each a list something asserts the
+presence of and nothing consumes. None is known to be wrong. What is known is that the
+mechanism which found PP364's defect - a consumer, held against the source, not the
+table - exists for none of them.
+
+The fix is not a rule about tables. It is asking, for each, what would drive it, and
+whether that thing is cheaper than the next five months.
+
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed
