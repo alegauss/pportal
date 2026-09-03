@@ -24,6 +24,37 @@ namespace ChiakiNg.Tests;
 /// </summary>
 public class NativeHolepunchSessionTests
 {
+    /// <summary>
+    /// PP658, finishing PP655's first step here: whether the shim still wraps the nine.
+    ///
+    /// Every assertion below reaches the C through one of them, so on a tree where PP655's flip has
+    /// landed they would not fail, they would throw EntryPointNotFoundException - which is a red
+    /// suite reporting a build option rather than a defect. PP631 converted ten models this way for
+    /// session.c and the flip then edited no test file; this is the same conversion for the seam.
+    ///
+    /// The counterpart is <see cref="OnceTheSeamIsBareThereIsNothingToDrive"/>, which is what makes
+    /// this a conversion rather than a way of not looking: one of the two always runs.
+    /// </summary>
+    private static bool SeamWraps() => ShimHolepunchShape.WrappingHeader() is not null;
+
+    /// <summary>
+    /// PP657: and once it is bare, the nine are gone from the contract the host imports against.
+    ///
+    /// The side that runs after the flip. What it asserts is that the removal actually happened -
+    /// an absence, checked - rather than that this file has stopped having an opinion.
+    /// </summary>
+    [Fact]
+    public void OnceTheSeamIsBareThereIsNothingToDrive()
+    {
+        if (ShimHolepunchShape.BareHeader() is not { } header)
+            return;
+
+        Assert.Empty(ShimHolepunchShape.StillDeclaredIn(header));
+        Assert.Equal(
+            ShimHolepunchShape.GoneWhenBare.Order(StringComparer.Ordinal),
+            ChiakiNg.Session.NativeSeam.ImportsOnlyAHolepunchBuildResolves().Order(StringComparer.Ordinal));
+    }
+
     private static RecordedHolepunch Recording() => new(
         PsIp: "192.168.1.42",
         ClientLocalIp: "192.168.1.7",
@@ -42,6 +73,9 @@ public class NativeHolepunchSessionTests
     [Fact]
     public void TheRecordedValuesComeBackThroughTheC()
     {
+        if (!SeamWraps())
+            return;
+
         RecordedHolepunch recorded = Recording();
         using var session = NativeHolepunchSession.FromRecording(recorded);
 
@@ -65,6 +99,9 @@ public class NativeHolepunchSessionTests
     [Fact]
     public void TheTwoSocketArmsAreToldApartByThePortType()
     {
+        if (!SeamWraps())
+            return;
+
         using var session = NativeHolepunchSession.FromRecording(Recording());
 
         var ctrl = Assert.IsType<IntPtr>(session.GetSocket(HolepunchPortType.Ctrl));
@@ -85,6 +122,9 @@ public class NativeHolepunchSessionTests
     [Fact]
     public void FiniReleasesOnceAndIsSafeTwice()
     {
+        if (!SeamWraps())
+            return;
+
         var session = NativeHolepunchSession.FromRecording(Recording());
         Assert.True(session.IsOpen);
 
@@ -100,6 +140,9 @@ public class NativeHolepunchSessionTests
     [Fact]
     public void AskingAReleasedSessionThrowsRatherThanReachingFreedMemory()
     {
+        if (!SeamWraps())
+            return;
+
         var session = NativeHolepunchSession.FromRecording(Recording());
         session.Fini();
 
@@ -131,6 +174,9 @@ public class NativeHolepunchSessionTests
     [Fact]
     public void TheFlowDrivesTheRealSessionUpToTheStepThatNeedsHardware()
     {
+        if (!SeamWraps())
+            return;
+
         using var real = NativeHolepunchSession.FromRecording(Recording());
         var session = new StopsBeforeTheNetwork(real);
         var connect = new HolepunchConnect(session, ctrlSock => ctrlSock);

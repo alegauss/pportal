@@ -555,6 +555,7 @@
 - ✅ **PP655** **PP33's remaining blocker is an oracle, and the obvious way to gate it is the one PP437 exists to catch** — The second flip has an order now: two-state the seam, gate the header with the bodies and the host's imports, then turn the prose - three landable commits instead of one diff.
 - ✅ **PP656** **PP655's first step has no mechanism, so each model of the shim's seam would learn two shapes its own way** — One reading answers while the shim wraps and a counterpart answers once it does not, keyed on the header NativeSeam reads - so exactly one side runs on any tree.
 - ✅ **PP657** **PP656 taught the seam its two shapes and the census that reads it still knows only one** — The allowance is derived from the seam's shape, so it is empty today and becomes the nine when the header goes bare - and the flip edits neither this check nor a test.
+- ✅ **PP658** **five tests drive the C through the nine wrappers and would throw rather than fail once they are gone** — The five that call the C decline on a bare seam and a counterpart asserts the removal instead, so PP655's first step is finished and its flip edits no test file.
 
 ## Block G — Test discipline
 
