@@ -206,31 +206,42 @@ public class BacklogDepsTests
     }
 
     /// <summary>
-    /// PP639's edge is the sixth case, and the two rules have to compose on the real backlog.
+    /// PP639's edge is the sixth case, and the two rules have to compose for every pair it names.
     ///
-    /// PP28's why names PP295 and PP28 declares no dep on it, which is the shape this reader looks
-    /// for - and the dep it would ask for is the one <c>DeletionEndStateTests</c> refuses, because
-    /// PP295's deletion waits on PP28. Asserted against the roadmap rather than a fixture: what
-    /// matters is that the pair of rules leaves this particular backlog with no edit that satisfies
-    /// one and breaks the other, which a fixture cannot say.
+    /// PP28's why named PP295 while declaring no dep on it, which is exactly the shape this reader
+    /// looks for - and the dep it would have asked for is the one <c>DeletionEndStateTests</c>
+    /// refuses, because PP295's deletion waits on PP28. That was the case that found this.
+    ///
+    /// Built from <see cref="DeletionEndState.WaitsOn"/> rather than from today's roadmap, and the
+    /// first draft of this test was the other way round: it asserted that PP28's sentence still
+    /// names PP295, and PP28's next `ship --part` rewrote that sentence and turned it red. A check
+    /// on a wording is a check on whichever commit touches it next. The pairs are the rule.
     /// </summary>
     [Fact]
-    public void TheEndStateEdgeIsNotReportedAsAMissingDep()
+    public void TheEndStateEdgeIsNeverReportedAsAMissingDep()
     {
-        if (BacklogDeps.LocateRoadmap() is not { } path)
-            return;
+        int pairs = 0;
 
-        string roadmap = File.ReadAllText(path);
+        foreach ((string endState, IReadOnlyList<string> waiters) in DeletionEndState.WaitsOn)
+        {
+            foreach (string waiter in waiters)
+            {
+                pairs++;
 
-        // The premise: PP28 still names PP295 in its own sentence, and still does not depend on it.
-        string line = Assert.IsType<string>(BacklogDeps.LineFor(roadmap, "PP28"));
-        Assert.Contains("PP295", BacklogDeps.Prose(line), StringComparison.Ordinal);
-        Assert.DoesNotContain("PP295", BacklogDeps.Of(line));
+                // The waiter names the end-state line in its own sentence and declares no dep on
+                // it, which is what a line saying "once that has landed" looks like.
+                string roadmap =
+                    $"- 📋 **{waiter}** (deps: —) **the port** — once {endState} has landed. → §{waiter}\n"
+                    + $"- 📋 **{endState}** (deps: —) **the deletion** — comes last. → §{endState}\n";
 
-        // And PP639 is why that is right rather than an omission.
-        Assert.Contains("PP28", DeletionEndState.WaitsOn["PP295"]);
+                Assert.DoesNotContain(
+                    (waiter, endState),
+                    BacklogDeps.MentionedButNotDepended(roadmap));
+            }
+        }
 
-        Assert.DoesNotContain(("PP28", "PP295"), BacklogDeps.MentionedButNotDepended(roadmap));
+        // PP271: an empty table would satisfy the loop by iterating nothing.
+        Assert.True(pairs > 0, "DeletionEndState names no end state waiting on an open line");
     }
 
     /// <summary>
