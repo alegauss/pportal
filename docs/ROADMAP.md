@@ -33,6 +33,9 @@
 
 ## Block G — Test discipline
 
+- 📋 **PP642** (deps: —) **a ship's `recorded in` clause names a file and nothing checks the file ever received the design** — PP11 is the first entry to carry one, and what holds its paragraph in DcompDemo.cs is a test written by hand for that one entry. → §PP642
+- 💭 **PP643** (deps: —) **two `<summary>` elements on one member compile, and the wrong one wins silently** — PP322's attach docstring sat above the reading test describing a member two declarations down, and the ratchet joins tasks to tests by exactly that text. → §PP643
+
 ## Block H — Performance and telemetry
 
 - ⏳ **PP46** (deps: PP42 ✅, PP63) **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — A Chromium leaving the build should be visible in cold start and in megabytes, and stating it without measuring is how a port collects folklore. → §PP46

@@ -327,6 +327,51 @@ what makes the five ports beneath it real.
 
 ## Block G — Test discipline
 
+### §PP642 Checking where a deleted design went
+
+`ship --recorded-in` takes a path, requires it to resolve, and writes "(design recorded
+in `x`)" into the ledger entry. That is the whole of the check. The file is not read, so
+nothing distinguishes an entry whose paragraph moved from one whose paragraph was never
+written - and the second is the easy mistake, because the flag is passed in the same
+call that deletes the section it claims to have moved.
+
+PP11 is the first entry in this ledger to carry the clause. What holds its recording is
+a test written by hand for that one entry: it asserts the clause is in the ledger and
+that four phrases of the constraint are in the file. That works and it does not
+generalise - the next `--recorded-in` gets nothing unless somebody remembers to write
+the same test again, which is the shape of a discipline that decays.
+
+What a check could do without judging prose: for every ledger entry carrying the clause,
+the path resolves from the repository root, and the file names the id. Naming the id is
+the same join the assertion ratchet already uses and it is exactly as strong - it cannot
+tell a recording from a mention, and it can tell a recording from nothing at all.
+
+Where it lives is the open question. The ratchet reads the ledger already, so the
+cheapest home is beside it; the alternative is roadkeep's own lint, which would make it
+every project's rule rather than this one's.
+
+### §PP643 A docstring on the wrong member
+
+Two `<summary>` elements on one member is not a compiler error. The documentation
+generator takes one and drops the other, and a reader of the source sees both - so a
+docstring can describe a member two declarations further down while sitting on a member
+it says nothing true about.
+
+That happened in RenderProbeTests. PP322's attach test shipped with its docstring
+stacked above `TheReadingsApparatusIsUnchanged`, which then carried two summaries and no
+complaint, while `TheTwoLayerTreeAttachesToAWpfWindowAndDetaches` carried none at all.
+It was found by reading, during PP11's ship, and corrected there.
+
+This tree leans on docstrings harder than most: the assertion ratchet joins tasks to
+tests by the id in a test's summary, so a summary attached to the wrong member is a
+coverage claim made about the wrong thing. That is the reason to check it here rather
+than treat it as a style preference.
+
+The check is a scan and not a parse. Within a member's leading run of `///` lines, count
+the `<summary>` opens; more than one is the finding, and the member it sits on is what
+to name. It costs nothing over a tree the drift checks already walk, and it is filed as
+an idea rather than designed because one occurrence is not yet evidence of a class.
+
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed
