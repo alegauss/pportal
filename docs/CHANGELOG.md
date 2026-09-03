@@ -554,6 +554,7 @@
 - ✅ **PP654** **the one holepunch wrapper the host actually runs makes a device id from a prefix and 16 random bytes** — The login generates its own device id and the C is kept beside it as the oracle, so every consumer of holepunch.c is now a testing seam rather than a feature.
 - ✅ **PP655** **PP33's remaining blocker is an oracle, and the obvious way to gate it is the one PP437 exists to catch** — The second flip has an order now: two-state the seam, gate the header with the bodies and the host's imports, then turn the prose - three landable commits instead of one diff.
 - ✅ **PP656** **PP655's first step has no mechanism, so each model of the shim's seam would learn two shapes its own way** — One reading answers while the shim wraps and a counterpart answers once it does not, keyed on the header NativeSeam reads - so exactly one side runs on any tree.
+- ✅ **PP657** **PP656 taught the seam its two shapes and the census that reads it still knows only one** — The allowance is derived from the seam's shape, so it is empty today and becomes the nine when the header goes bare - and the flip edits neither this check nor a test.
 
 ## Block G — Test discipline
 

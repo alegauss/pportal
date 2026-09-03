@@ -121,10 +121,39 @@ public static partial class NativeSeam
     }
 
     /// <summary>
+    /// PP656, finishing PP655's first step: the imports that resolve only in a holepunch build.
+    ///
+    /// This is the half of the conversion the shape question alone does not do. PP655's flip takes
+    /// holepunch.c behind an option and gates the shim's nine wrappers in the HEADER as well as the
+    /// body - which is what keeps this census honest rather than green-and-wrong - and the moment
+    /// the header stops declaring them, the host's DllImports for them become imports nothing
+    /// exports. That is <see cref="Undefined"/>, and it is the one answer that must be empty.
+    ///
+    /// SO THE ALLOWANCE IS DERIVED FROM THE SHAPE AND NOT DECLARED. While the header wraps, this is
+    /// EMPTY and the census is exactly what it was: every one of the nine is checked. Once the
+    /// header is bare it becomes those nine and no others, so the flip edits this file not at all
+    /// and no test file either, which is what step one is for.
+    ///
+    /// WHAT IT COSTS is stated rather than hidden: after the flip those nine imports are unchecked
+    /// by this census, and a call to one of them in a build without the option throws
+    /// EntryPointNotFoundException. That is acceptable only because of what reaches them - PP481's
+    /// live tests, which need a console as well - and PP654 is what made it true, by moving the one
+    /// wrapper the host itself ran.
+    /// </summary>
+    public static IReadOnlySet<string> ImportsOnlyAHolepunchBuildResolves()
+        => Protocol.ShimHolepunchShape.BareHeader() is null
+            ? new HashSet<string>(StringComparer.Ordinal)
+            : new HashSet<string>(Protocol.ShimHolepunchShape.GoneWhenBare, StringComparer.Ordinal);
+
+    /// <summary>
     /// THE ONE THAT CRASHES: names the host imports and no header declares.
     ///
     /// Empty is the only acceptable answer, and an entry here is a call that throws when it is first
     /// reached rather than when it is compiled.
+    ///
+    /// PP656: minus the ones a holepunch build alone resolves, which is empty until the flip lands
+    /// and is the nine afterwards. Subtracted here rather than at the call site so there is one
+    /// place the allowance exists, and derived rather than declared so it cannot be left behind.
     /// </summary>
     public static IReadOnlyList<string> Undefined(
         IReadOnlySet<string> imported, IReadOnlySet<string> exported)
@@ -132,7 +161,15 @@ public static partial class NativeSeam
         ArgumentNullException.ThrowIfNull(imported);
         ArgumentNullException.ThrowIfNull(exported);
 
-        return [.. imported.Where(name => !exported.Contains(name)).Order(StringComparer.Ordinal)];
+        IReadOnlySet<string> allowed = ImportsOnlyAHolepunchBuildResolves();
+
+        return
+        [
+            .. imported
+                .Where(name => !exported.Contains(name))
+                .Where(name => !allowed.Contains(name))
+                .Order(StringComparer.Ordinal),
+        ];
     }
 
     /// <summary>

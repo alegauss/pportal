@@ -1,3 +1,4 @@
+using ChiakiNg.Protocol;
 using ChiakiNg.Session;
 using Xunit;
 using Xunit.Abstractions;
@@ -128,6 +129,53 @@ public class NativeSeamTests(ITestOutputHelper output)
             imported, NativeSeam.Exported("void chiaki_shim_something_else(void);")));
 
         Assert.Equal("chiaki_shim_never_existed", undefined);
+    }
+
+    /// <summary>
+    /// PP657, finishing PP655's first step: the holepunch allowance is empty while the seam wraps.
+    ///
+    /// This is the conversion, and its whole value is that it changes nothing today. Every one of
+    /// the nine is still checked by the census, because the header still declares them - and the
+    /// moment PP655's flip takes them out, the allowance becomes exactly those nine and this file is
+    /// not edited. That is what "the flip edits no test file" means in practice.
+    ///
+    /// DERIVED, NOT DECLARED, which is the difference between a conversion and a hole. A hand-written
+    /// list would be nine names allowed through whatever the header says - including on a tree where
+    /// the wrappers are still there and one of them was renamed.
+    /// </summary>
+    [Fact]
+    public void TheHolepunchAllowanceIsEmptyWhileTheSeamStillWraps()
+    {
+        IReadOnlySet<string> allowed = NativeSeam.ImportsOnlyAHolepunchBuildResolves();
+
+        if (ShimHolepunchShape.WrappingHeader() is not null)
+        {
+            Assert.Empty(allowed);
+            return;
+        }
+
+        // The other side of the pair: once bare, it is the nine and nothing else.
+        Assert.Equal(
+            ShimHolepunchShape.GoneWhenBare.Order(StringComparer.Ordinal),
+            allowed.Order(StringComparer.Ordinal));
+    }
+
+    /// <summary>
+    /// And the allowance cannot hide an ordinary mistake, which is what it would be worth nothing as.
+    ///
+    /// A name that is not one of the nine is reported whatever shape the seam is in. Asserted with
+    /// the real reader rather than a fixture, so what is being trusted is the code the census runs.
+    /// </summary>
+    [Fact]
+    public void TheAllowanceDoesNotCoverAnOrdinaryUndefinedImport()
+    {
+        IReadOnlySet<string> imported = NativeSeam.ImportedFrom(
+            """[DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_never_existed")]""");
+
+        Assert.Single(NativeSeam.Undefined(imported, NativeSeam.Exported("void chiaki_shim_x(void);")));
+
+        Assert.DoesNotContain(
+            "chiaki_shim_never_existed", NativeSeam.ImportsOnlyAHolepunchBuildResolves());
     }
 
     /// <summary>
