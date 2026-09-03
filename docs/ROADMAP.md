@@ -47,6 +47,8 @@
 - 📋 **PP52** (deps: PP32) **the Qt client runs speex echo cancellation on the CPU, and speexdsp has no managed replacement** — NVIDIA ships GPU noise and echo removal for exactly this, so one task can both improve the voice sent to the console and delete a dependency the port has no answer for. → §PP52
 - 📋 **PP53** (deps: PP11 ✅, PP41 ✅) **frames arrive with network jitter and are presented against a fixed refresh, so each waits for a vblank it missed** — A variable refresh display can show a frame when it arrives rather than when the panel next allows it, which is latency removed and not an image improved. → §PP53
 - ⏳ **PP76** (deps: PP528 ✅) (requires: console, a-person-looking) **the decoder preference is measured on synthetic frames, and drops under network jitter are what a stream is judged by** — one session per decoder against a real console, now that the difference between the two counters is the number to read. → §PP76
+- 📋 **PP644** (deps: —) **spike/video-upscale calls the extension read-back a hint, and PP49 measured that it is not one** — The same zeros came back on a run where 2.07 million pixels moved, so the echo says nothing in either direction and a reader is still told to weigh it. → §PP644
+- 📋 **PP645** (deps: —) **both NVIDIA spikes report a mean, and four of PP49's six runs carried 200-300us outliers on it** — PP49's delta is stable at the p50 and moves by 40% at the mean, so which run gets committed is chosen by eye rather than by a rule the spike applies. → §PP645
 
 ## Block J — Public documentation
 
