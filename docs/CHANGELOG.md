@@ -545,7 +545,7 @@
 - ✅ **PP638** **PP295 names the video receiver's callers and not streamconnection's own, which is session.c** — The build named seventeen symbols over three consumers: session.c drives the stream connection, one of its six calls carries no prefix, and the C suite links four of the files.
 - ✅ **PP639** **three deletion lines have an end state their own dependents come before, and each was untied by hand** — PP295 has criteria that separate its port from its deletion, PP28 is released, and a check holds that no line an end state waits on declares a dep on it.
 - ✅ **PP640** **PP295's first criterion has no oracle: nothing states the sequence a port has to reproduce** — Six orderings held as positions in streamconnection.c, each with what a port loses by not keeping it, and readers that see each one broken.
-- ✅ **PP28 (senkusha's place in the sequence)** **session.c 1196, ctrl.c 1767 and streamconnection.c 1531, three state machines with no oracle** — Senkusha's three outcomes with cancelled as the fatal one: every other error falls back to 1454, 1454, 1000 and a cleared don't-fragment bit the success path never writes.
+- ✅ **PP28** **session.c 1196, ctrl.c 1767 and streamconnection.c 1531, three state machines with no oracle** — The three joins are modelled: senkusha's fallback, the switch wait that reports three endings as one, and the handover that releases the lock for exactly the run.
 - ✅ **PP649** **the switch-ack wait has a predicate reading three fields and an arm after it reading one** — PP28's second join is modelled: the five wakes, the one arm three of them share, and the stop check too late to record a stop - reproduced rather than repaired.
 
 ## Block G — Test discipline

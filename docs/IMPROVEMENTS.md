@@ -157,29 +157,6 @@ enough for the dispatch and the MAC layout, and no frame of anybody's screen. Ti
 whole loop wants payloads, so it wants a second decision about what to record rather
 than more code.
 
-### §PP28 The state machines
-
-session.c is 1196 lines, ctrl.c 1767 and streamconnection.c 1531. Together they are the
-connection: what is sent in which order, what is waited for, what a timeout means at
-each point, and how a session comes apart when the console stops answering.
-
-There is no diagram and the code is the diagram. Translating it means reading control
-flow that was written to match observed behaviour, not designed - and the honest
-expectation is that some of it looks wrong and is not.
-
-THE SPLIT THIS SECTION ASKED FOR HAPPENED, differently. It said to divide the work along
-the three files when it was started. Two of them got lines of their own - PP294 took
-ctrl.c and PP295 has streamconnection.c - and PP293 took session.c's own lifetime. What
-is left here is not a file: it is the ordering BETWEEN them, and it lives in one
-function, the session thread.
-
-Three joins in it are unmodelled and they are this line's parts. Senkusha runs between
-ctrl's start and the stream connection, handing over the MTUs and the RTT that
-everything after it is sized by. The rudp path sends a switch message and then waits,
-with a timeout whose expiry is a failure rather than a fallback. And the stream
-connection's run blocks for the whole session, so everything after it is teardown
-reading a reason another thread wrote.
-
 ### §PP30 Reed-Solomon, by hand
 
 third-party/jerasure and third-party/gf-complete implement erasure coding over GF(2^8),

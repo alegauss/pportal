@@ -128,6 +128,13 @@ public class AnchoredTotalsTests(ITestOutputHelper output)
     /// correct - the recount checks what is still open, and a shipped number is history rather than a
     /// promise. The rows go with the line rather than the assertion being loosened to tolerate them.
     ///
+    /// PP28 took two more the same way, and by the same rule. Its line carried session.c 1196 and
+    /// ctrl.c 1767 alongside streamconnection.c 1531, and shipping it moved all three into the
+    /// ledger - so the backlog's counted claims fell from sixteen to ten in one commit. Only
+    /// streamconnection.c is still claimed by an open line, PP295's, which is why it is the one of
+    /// the three that stayed. Nothing was lost: `--recount` reads what is open, and what is open is
+    /// what a promise about a number can still be made of.
+    ///
     /// PP594: AND THE NUMBER IS GONE FROM THE ROWS, deliberately.
     ///
     /// It was here as `[InlineData("session.c", 1267)]`, and every comment added to one of these
@@ -149,8 +156,6 @@ public class AnchoredTotalsTests(ITestOutputHelper output)
     /// </summary>
     [Theory]
     [InlineData("takion.c")]
-    [InlineData("session.c")]
-    [InlineData("ctrl.c")]
     [InlineData("streamconnection.c")]
     public void TheRestatedFilesAreCheckedClaimsNow(string file)
     {
@@ -185,21 +190,27 @@ public class AnchoredTotalsTests(ITestOutputHelper output)
             .Cast<InlineDataAttribute>();
 
         var stated = new List<string>();
-        int read = 0;
+        var subjects = new List<string>();
 
         foreach (InlineDataAttribute row in rows)
         {
-            read++;
-
             foreach (object? value in row.GetData(null!).Single())
             {
                 if (value is int number)
                     stated.Add(number.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                if (value is string subject)
+                    subjects.Add(subject);
             }
         }
 
         // PP271's shape: reflection that found nothing would report no numbers and be believed.
-        Assert.True(read >= 4, $"only {read} row(s) read - this guard is looking at the wrong method");
+        //
+        // Asserted by NAME and not by count. This guard used to demand four rows, and PP28 shipping
+        // took two of them - session.c and ctrl.c, whose claims went into the ledger with the line
+        // that made them. A floor that falls every time a line ships is a floor somebody lowers
+        // without reading, which is the opposite of what a guard is for. takion.c is PP27's and PP27
+        // is open; the day that stops being true this says so instead of quietly passing.
+        Assert.Contains("takion.c", subjects);
 
         Assert.True(
             stated.Count == 0,
