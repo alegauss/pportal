@@ -34,6 +34,17 @@ not there is simply not in the menu.
 The same rule binds every vendor feature added later: the absence path is the *quiet* one. A dialog
 saying an NVIDIA card would be better is a requirement with a friendly voice.
 
+**And there is a third shape, which §PP648 measured rather than predicted.** A driver feature can be
+present, offered, and switched off in the vendor's own control panel — and then the option *is* in
+the menu, every call succeeds, and nothing happens. RTX Video Super Resolution does not engage on
+this RTX 4060 ([`spike/video-upscale`](../spike/video-upscale), §PP47 and §PP648) while RTX Video
+HDR does ([`spike/video-hdr`](../spike/video-hdr), §PP49) — same card, same driver, same API. So the
+toggles are per feature.
+
+That binds anything built on one of them: **a vendor feature that reports success is not a vendor
+feature that ran.** Whatever ships has to read back the effect rather than the return code, the way
+both spikes compare pixels, or the setting will claim to be on for users whose panel says otherwise.
+
 ## What the evidence actually covers
 
 Worth stating plainly, because the tables in `spike/` read stronger than they are:

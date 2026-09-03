@@ -41,6 +41,7 @@ public static class SpikeRunQuality
     [
         @"spike\video-hdr\release-4060-engaged.json",
         @"spike\video-upscale\release-4060-no-engage.json",
+        @"spike\video-upscale\release-4060-no-engage-2.json",
     ];
 
     /// <summary>

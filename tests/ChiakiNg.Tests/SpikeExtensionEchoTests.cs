@@ -35,6 +35,9 @@ public class SpikeExtensionEchoTests(ITestOutputHelper output)
     /// <summary>PP49's: a different extension on the same card, and it worked.</summary>
     private const string Hdr = @"spike\video-hdr\release-4060-engaged.json";
 
+    /// <summary>PP648's: PP47's spike run again, after PP49 proved the panel is reachable.</summary>
+    private const string UpscaleAgain = @"spike\video-upscale\release-4060-no-engage-2.json";
+
     private static JsonElement? Run(string relative)
         => SanitizerSource.LocateRelative(relative) is { } path
             ? JsonDocument.Parse(File.ReadAllText(path)).RootElement
@@ -111,6 +114,52 @@ public class SpikeExtensionEchoTests(ITestOutputHelper output)
                     + "runs beside it cannot be re-taken from their own source");
             Assert.StartsWith("set accepted;", echo.GetString(), StringComparison.Ordinal);
         }
+    }
+
+    /// <summary>
+    /// PP648: one card, one driver, two NVIDIA extensions, two different answers.
+    ///
+    /// PP47 measured that super resolution did not engage and named the cause: the driver switch,
+    /// in NVIDIA Control Panel under Video, RTX Video Enhancement. That was a good explanation with
+    /// nothing behind it - the panel had never been shown to be reachable from this process at all,
+    /// so "the switch is off" and "the mechanism does not work here" were the same reading.
+    ///
+    /// PP49 separated them by accident. Its extension engaged, through the same
+    /// VideoProcessorSetStreamExtension on the same adapter. PP648 then ran PP47's spike again in
+    /// that state and it STILL does not engage - 0 of 8,294,400 pixels.
+    ///
+    /// So the mechanism works, the panel is reachable, and the two features answer differently.
+    /// What that leaves is a per-feature toggle, which is a stronger claim than PP47 could make and
+    /// a worse one for the port: a user may have any one of these on and any other off, and the
+    /// code path succeeds either way.
+    ///
+    /// The three runs are asserted together because the finding IS the comparison. Any one of them
+    /// alone is a reading of a machine on a day.
+    /// </summary>
+    [Fact]
+    public void OneCardAnswersDifferentlyPerFeature()
+    {
+        if (Run(Upscale) is not { } first || Run(UpscaleAgain) is not { } second
+            || Run(Hdr) is not { } hdr)
+        {
+            return;
+        }
+
+        // Same silicon in all three, or they are three readings of three machines.
+        string adapter = first.GetProperty("adapter").GetString() ?? "";
+        output.WriteLine($"adapter: {adapter}");
+        Assert.Equal(adapter, second.GetProperty("adapter").GetString());
+        Assert.Equal(adapter, hdr.GetProperty("adapter").GetString());
+
+        Assert.False(first.GetProperty("engaged").GetBoolean(), "PP47's first run engaged");
+        Assert.False(second.GetProperty("engaged").GetBoolean(), "PP648's re-run engaged");
+        Assert.True(hdr.GetProperty("engaged").GetBoolean(), "PP49's run did not engage");
+
+        // And the re-run really is a re-run of the same question, not a differently shaped one.
+        Assert.Equal(
+            first.GetProperty("pixels_total").GetInt64(),
+            second.GetProperty("pixels_total").GetInt64());
+        Assert.Equal(0, second.GetProperty("pixels_changed").GetInt64());
     }
 
     private static string Echo(JsonElement run) => run.GetProperty("set_extension").GetString() ?? "";

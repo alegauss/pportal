@@ -114,10 +114,40 @@ feature — which moved the *mean* by half and the p50 not at all. The spike now
 side and `SpikeRunQuality` in the gate holds the committed file to a limit of 1.5. The run below
 sits at 1.05 and 1.07, which is why its mean was quotable.
 
-The run below was **not** re-taken to add that, deliberately. Re-running this spike today would
-answer a different question — whether the driver's Super Resolution switch is on now, which §PP49's
-result suggests the HDR one is — and that belongs to §PP47 rather than to a change about the
-instrument.
+The run below was **not** re-taken to add that, deliberately. Re-running this spike answers a
+different question, and §PP648 is where it was asked.
+
+## Read again, §PP648 — and the explanation got worse
+
+§PP47's finding came with a good explanation: the extension is set, the driver switch is off, so
+nothing happens. Nothing was behind it. The panel had never been shown to be reachable from this
+process at all, so "the switch is off" and "the mechanism does not work here" were the same reading
+of the same zero.
+
+§PP49 separated them without meaning to. It sets a *different* NVIDIA extension — RTX Video HDR,
+through the same `VideoProcessorSetStreamExtension`, on the same adapter — and it **engages**:
+2,073,580 of 2,073,600 pixels move.
+
+So this spike was run again in that state:
+
+| | pixels changed | of |
+|---|---|---|
+| §PP47, [`release-4060-no-engage.json`](release-4060-no-engage.json) | **0** | 8,294,400 |
+| §PP648, [`release-4060-no-engage-2.json`](release-4060-no-engage-2.json) | **0** | 8,294,400 |
+| §PP49, `spike/video-hdr` | **2,073,580** | 2,073,600 |
+
+**Super resolution still does not engage, on a machine where the other one does.** That rules out
+every explanation about the machine or the mechanism: the panel is reachable, the API path works,
+and the two features answer differently on one card in one afternoon.
+
+What is left is a **per-feature toggle** — separate checkboxes under one RTX Video Enhancement
+heading — and that is a worse finding than §PP47's, not a better one. A user may have any one of
+these on and any other off; the code path succeeds either way and the picture is unchanged. The
+absence is silent per feature, which `docs/HARDWARE-CONTRACT.md` now names as a third shape of
+absence rather than the two it described.
+
+`SpikeExtensionEchoTests` holds all three runs together, because the finding is the comparison and
+any one of them alone is a reading of a machine on a day.
 
 **The drain was proven by removing it.** Without it the same run reports **0.2 µs** per frame
 instead of 262.9 — a 1300× lie, because `Flush` submits work rather than waiting for it. A timing

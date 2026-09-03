@@ -548,27 +548,4 @@ What is left is the run, and it is a run: sessions per decoder on a link that ji
 which takes a console and somebody playing on it. Reading either counter on its own is
 what this waits to prevent.
 
-### §PP648 Re-running the upscaler now the other one works
-
-PP47 set the NVIDIA super resolution extension, got a byte-identical picture, and
-concluded the feature was installed and unreached. Its README names the cause and mpv
-corroborates it: setting the extension is not turning the feature on, and the switch is
-in NVIDIA Control Panel under Video, RTX Video Enhancement.
-
-PP49 then set a different NVIDIA extension on the same card and the same driver, and it
-worked - 2,073,580 of 2,073,600 pixels moved. Super Resolution and HDR are separate
-checkboxes under that one panel heading, so PP49's result says the panel is reachable
-and says nothing directly about the other box. What it does say is that the machine is
-no longer in the state PP47 measured in: something under that heading is on now, and it
-was not then.
-
-So PP47's committed run may be recording a setting rather than a limit, and the spike
-that would say is already written. `bin\Release\net10.0-windows\video-upscale.exe` and
-read the exit code: 0 means it engaged and there is finally a cost for VSR, 1 means the
-finding stands and is stronger for having been re-taken under different conditions.
-
-Either answer is worth the minute. The one thing this must not do is quietly overwrite
-release-4060-no-engage.json - that file is the record of the first reading, and a second
-one is a second file with the panel's state written beside it.
-
 ## Block J — Public documentation
