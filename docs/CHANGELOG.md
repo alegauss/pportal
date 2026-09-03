@@ -562,6 +562,7 @@
 - ✅ **PP663** **libchiaki links curl and json-c in every build for one file two console-only test groups reach** — The default build links neither library and the suite is green; -DCHIAKI_ENABLE_HOLEPUNCH=ON restores curl, json-c, the file and both oracles, and it is green there too.
 - ✅ **PP664** **the seam's prose reads as though the shim wraps holepunch unconditionally, which PP663 made false** — Both places gain a sentence rather than losing one, and PP655's order is complete at three of three - PP33 is not, because the flag still carries PP481's oracle.
 - ✅ **PP295 (the run's ordering and a table it fixed)** **streamconnection.c is 1531 lines and calls the video receiver, so every deletion below waits on it** — The run walks the states, loops and unwinds in the C's order over a recorded host, and writing it found the entry table one label early at every rung.
+- ✅ **PP667** **The AV route has no managed counterpart: video, haptics and audio reach only a C receiver** — StreamAvDispatch decrypts with gkcrypt's own padding or drops, tests haptics before audio, and drives PP291's receiver; the frame it delivers is the unit less its two-byte head.
 
 ## Block G — Test discipline
 

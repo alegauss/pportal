@@ -61,6 +61,14 @@ public sealed class KeyState : IDisposable
 }
 
 /// <summary>One audio or video packet's header, with the payload named by where it sits.</summary>
+/// <param name="IsHaptics">
+/// PP295: the third way streamconnection.c routes a packet, which the mirror could not express.
+/// The C sets it on the V12 AUDIO LAYOUT ONLY - <c>if(v12 &amp;&amp; !packet->is_video)
+/// packet->is_haptics = *av == 0x02;</c> - and the shim's parse this mirror is built from is v9's,
+/// which never sets it. So it is false for every packet the port parses today, and that is the C's
+/// answer rather than a default standing in for one. Last and defaulted, so the two sites that
+/// build this positionally stay as they are.
+/// </param>
 public readonly record struct AvPacket(
     bool IsVideo,
     ushort PacketIndex,
@@ -72,7 +80,8 @@ public readonly record struct AvPacket(
     byte AdaptiveStreamIndex,
     ulong KeyPos,
     int DataOffset,
-    int DataSize);
+    int DataSize,
+    bool IsHaptics = false);
 
 /// <summary>
 /// PP23: takion's AV packet header, which is what every frame of picture and sound arrives inside.
