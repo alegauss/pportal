@@ -104,7 +104,18 @@ if(CHIAKI_USE_SYSTEM_CURL)
 	endif()
 endif()
 
-if(CHIAKI_ENABLE_SPEEX)
+# PP32: and only where the client that links it is being built.
+#
+# PkgConfig::SpeexDSP is linked in exactly one place - gui/CMakeLists.txt, on the microphone path -
+# and lib/ references speex nowhere at all. PP632 retired the Qt client's build, so CHIAKI_ENABLE_GUI
+# is off by default and gui/ is not added; this probe went on running anyway and printing "Speex DSP
+# found echo cancelling and noise suppression enabled" on every configure of a tree that links it
+# nowhere. A configure line announcing a feature no target has is worse than silence: it is the
+# report somebody checks before asking whether the dependency is still needed.
+#
+# So the probe follows the client. Building with -DCHIAKI_ENABLE_GUI=ON restores it unchanged, which
+# is the point - this removes a dependency from the default build and not from the client.
+if(CHIAKI_ENABLE_GUI AND CHIAKI_ENABLE_SPEEX)
 	set(SpeexDSP_FOUND FALSE)
 	find_package(SpeexDSP QUIET)
 	pkg_check_modules(SpeexDSP speexdsp IMPORTED_TARGET)
@@ -115,6 +126,8 @@ if(CHIAKI_ENABLE_SPEEX)
 		set(CHIAKI_ENABLE_SPEEX OFF)
 		message(STATUS "Speex DSP not found echo cancelling and noise suppression disabled")
 	endif()
+elseif(NOT CHIAKI_ENABLE_GUI)
+	set(CHIAKI_ENABLE_SPEEX OFF)
 endif()
 
 # PP431: FindPython3, because CMP0148 says FindPythonInterp is REMOVED - not deprecated. The old
