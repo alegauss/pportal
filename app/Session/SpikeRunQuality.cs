@@ -45,10 +45,18 @@ public static class SpikeRunQuality
     ];
 
     /// <summary>
-    /// The one that is deliberately not bound, named so the exclusion is a record rather than an
-    /// omission. PP65's finding IS the tail: a 103us median send against a 26990us p99.
+    /// The runs deliberately not bound, named so each exclusion is a record rather than an omission.
+    ///
+    /// Two now, and the second is why this stopped being one string. PP65's finding IS the tail - a
+    /// 103us median send against a 26990us p99 - and PP32's opus comparison found a managed decoder
+    /// whose p99 is five times its own median in every run taken, which is the thing that spike
+    /// measures rather than noise in it. A limit applied to either would reject the result.
     /// </summary>
-    public const string Excluded = @"spike\decode-path\release-4060.json";
+    public static IReadOnlyList<string> Excluded { get; } =
+    [
+        @"spike\decode-path\release-4060.json",
+        @"spike\opus-decode\release-managed-vs-native.json",
+    ];
 
     /// <summary>One timing series out of a run's JSON.</summary>
     /// <param name="Name">The property that held it, e.g. hdr_on_us.</param>

@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    PP32's Opus half, as a spike rather than an argument. Like the others it is deliberately not in
+    any solution: it exists to produce a number and the conditions it was taken under, re-runnable
+    by whoever doubts it.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <AssemblyName>opus-decode</AssemblyName>
+    <RootNamespace>OpusDecode</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      The managed decoder under test. Concentus is a line-by-line port of libopus rather than a
+      reimplementation, which is what makes the comparison below a comparison of the same algorithm
+      on two runtimes rather than of two codecs.
+
+      Taking this reference is the DECISION the spike exists to inform: if the port adopts managed
+      Opus, this package - or one like it - is what it adopts.
+    -->
+    <PackageReference Include="Concentus" Version="2.2.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Linked, for the reason video-upscale recorded: a second copy that drifts makes two spikes'
+         numbers quietly incomparable. -->
+    <Compile Include="../present-path/Stats.cs" Link="Stats.cs" />
+  </ItemGroup>
+
+</Project>

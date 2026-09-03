@@ -56,26 +56,80 @@ public class SpikeRunQualityTests(ITestOutputHelper output)
     }
 
     /// <summary>
-    /// And the excluded run WOULD fail it, which is the whole reason the list is a list.
+    /// And every excluded run WOULD fail it, which is the whole reason the list is a list.
     ///
     /// Asserted rather than commented, because an exclusion nobody checks is indistinguishable from
-    /// one somebody forgot to remove. PP65's result is a 103us median send against a 26990us p99 -
-    /// the tail IS the finding there - so a rule applied to every spike in the tree would reject
-    /// the measurement that shipped. If this ever stops failing the limit, decode-path's numbers
-    /// changed and PP65 should be re-read.
+    /// one somebody forgot to remove. PP65's result is a 103us median send against a 26990us p99,
+    /// and PP32's opus comparison found a managed decoder whose p99 is five times its own median in
+    /// every run taken - the tail IS the finding in both, so a rule applied to every spike in the
+    /// tree would reject two measurements that shipped. If one ever stops failing the limit, that
+    /// spike's numbers changed and its line should be re-read.
     /// </summary>
     [Fact]
-    public void TheExcludedRunIsExcludedBecauseItsTailIsTheFinding()
+    public void EveryExcludedRunIsExcludedBecauseItsTailIsTheFinding()
     {
-        if (SpikeRunQuality.Locate(SpikeRunQuality.Excluded) is not { } path)
+        int checkedRuns = 0;
+
+        foreach (string relative in SpikeRunQuality.Excluded)
+        {
+            if (SpikeRunQuality.Locate(relative) is not { } path)
+                continue;
+
+            checkedRuns++;
+            IReadOnlyList<SpikeRunQuality.Series> bad =
+                SpikeRunQuality.ContaminatedIn(File.ReadAllText(path));
+
+            output.WriteLine($"{relative}: {bad.Count} side(s) over the limit");
+            Assert.True(
+                bad.Count > 0,
+                $"{relative} is excluded from the limit and would now pass it, so the reason it was "
+                    + "excluded no longer holds and the spike's own line should be re-read");
+
+            Assert.DoesNotContain(relative, SpikeRunQuality.BoundRuns);
+        }
+
+        if (SpikeRunQuality.Locate(SpikeRunQuality.Excluded[0]) is not null)
+            Assert.Equal(SpikeRunQuality.Excluded.Count, checkedRuns);
+    }
+
+    /// <summary>
+    /// PP651, for PP32: the opus run's two sides, and which of them the limit is about.
+    ///
+    /// The managed decoder costs more per frame and jitters far more, and neither is near a budget:
+    /// a frame is 10 ms and both medians are tens of microseconds. So cost decides nothing here,
+    /// which is the same shape PP49 found - and what is left to decide on is the dependency and the
+    /// audio, neither of which is a clock.
+    ///
+    /// The three claims are asserted against the committed run rather than restated from the README,
+    /// because the README is where a number goes stale and the JSON is where it was taken.
+    /// </summary>
+    [Fact]
+    public void TheOpusRunsManagedSideIsTheSlowAndJitteryOne()
+    {
+        if (SpikeRunQuality.Locate(@"spike\opus-decode\release-managed-vs-native.json") is not { } path)
             return;
 
-        IReadOnlyList<SpikeRunQuality.Series> bad =
-            SpikeRunQuality.ContaminatedIn(File.ReadAllText(path));
+        IReadOnlyList<SpikeRunQuality.Series> series =
+            SpikeRunQuality.SeriesIn(File.ReadAllText(path));
 
-        output.WriteLine($"{SpikeRunQuality.Excluded}: {bad.Count} side(s) over the limit");
-        Assert.NotEmpty(bad);
-        Assert.DoesNotContain(SpikeRunQuality.Excluded, SpikeRunQuality.BoundRuns);
+        SpikeRunQuality.Series native = series.Single(s => s.Name == "native_us");
+        SpikeRunQuality.Series managed = series.Single(s => s.Name == "managed_us");
+
+        output.WriteLine($"native p50={native.P50} tail={native.Tail:F2}");
+        output.WriteLine($"managed p50={managed.P50} tail={managed.Tail:F2}");
+
+        Assert.True(managed.P50 > native.P50, "the managed decoder is no longer the slower one");
+
+        // A 480-sample frame at 48 kHz is 10 ms. Both sides are two orders of magnitude inside it,
+        // which is the claim that makes this a decision about something other than speed.
+        Assert.True(
+            managed.P99 < 10_000.0 / 2,
+            $"the managed decoder's p99 is {managed.P99}us against a 10000us frame, so cost has "
+                + "started to decide this after all and PP32's criterion should be re-read");
+
+        // And the tail is the finding, which is why the run is excluded from the limit.
+        Assert.True(managed.Contaminated, "the managed side's tail no longer exceeds the limit");
+        Assert.False(native.Contaminated, "the native side's tail now exceeds the limit too");
     }
 
     /// <summary>
