@@ -46,10 +46,19 @@ public class HolepunchSessionOwnershipTests
     /// Wiring it in is the natural next move for anything porting the PSN path - the Qt client does
     /// exactly that at chiaki_connect_info.holepunch_session - and the day it happens, both owners
     /// fini one handle. A double free is not a test failure anywhere else in this suite.
+    ///
+    /// PP655: ROUTED THROUGH THE SEAM'S SHAPE, which is that line's first step. There are two owners
+    /// only while the shim wraps fini at all; once PP655's flip takes the nine wrappers behind an
+    /// option there is one owner and this has nothing to be about. Asking
+    /// <see cref="ShimHolepunchShape"/> is what lets the flip edit no test file - and the
+    /// counterpart below is what stops the question becoming a way of not looking.
     /// </summary>
     [Fact]
     public void TheShimKeepsItsHandleOutOfTheConnectInfo()
     {
+        if (ShimHolepunchShape.WrappingHeader() is null)
+            return;
+
         if (HolepunchSessionOwnership.LocateShim() is not { } path)
             return;
 
@@ -57,6 +66,22 @@ public class HolepunchSessionOwnershipTests
             HolepunchSessionOwnership.TheShimNeverWiresTheHandleIn(File.ReadAllText(path)),
             "the shim now puts a holepunch handle into the connect info, so chiaki_session_fini and "
                 + "chiaki_shim_holepunch_session_fini are two owners of one session - decide which");
+    }
+
+    /// <summary>
+    /// PP655: and once the seam is bare there is one owner, which is the other half of the pair.
+    ///
+    /// The assertion that runs after the flip. It declines today, exactly as the one above will
+    /// decline after - and between them one of the two always runs, which is what makes this a
+    /// conversion rather than a guard somebody bolted on.
+    /// </summary>
+    [Fact]
+    public void OnceTheSeamIsBareThereIsOneOwner()
+    {
+        if (ShimHolepunchShape.BareHeader() is not { } header)
+            return;
+
+        Assert.Empty(ShimHolepunchShape.StillDeclaredIn(header));
     }
 
     /// <summary>
