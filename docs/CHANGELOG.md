@@ -635,6 +635,7 @@
 - ✅ **PP595** **the roadkeep skills, hook and launcher this checkout ships are older than the engine answering here, and lint says so** — install wrote all four surfaces - the launcher, SKILL.md and the two skill files that were absent - and the wiring to the committed launcher is asserted rather than assumed.
 - ✅ **PP594** **--recount prints the calls that fix a stale count and cannot see the same numbers hardcoded in the suite's InlineData** — The rows keep the subject and drop the count CountedClaimTests already holds, so a .c line change is answered once, where --recount can print it.
 - ✅ **PP611** **PP27's section says its loop is unreachable, which PP607 made false, and omits what the capture cannot time** — PP27's section says the loop is reachable and names the eighteen-byte head as what bounds the rest, so the next session reads the state it is in.
+- ✅ **PP665** **PP663 made 23 assertions opt-in and an early return is a pass, so the gate prints the same total either way** — Every run now prints which oracles are present and how many comparisons their absence costs, counted from the five files that guard rather than declared beside them.
 
 ## Block H — Performance and telemetry
 
