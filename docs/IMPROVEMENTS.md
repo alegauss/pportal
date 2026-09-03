@@ -190,11 +190,12 @@ references speex nowhere, gui/ is the only thing that links it, the probe now ru
 where gui/ is built, and SpeexBuildGate holds all three. What is left is not a
 translation.
 
-OPUS IS A DECISION WITH TWO REAL OPTIONS. A managed implementation exists and so does
-the native one lib already links, which makes this measurable rather than theoretical:
-decode cost per packet against one fewer native dependency. PP31's boundary does not
-reach here - Opus is not the decoder that cannot be managed, and that non-goal names the
-video decoder specifically for this reason.
+OPUS IS MEASURED NOW, and it decided less than it looked like deciding. PP651 found
+managed decode costs 1.58x the native median at 24.9us a frame - a quarter of one
+percent of a 10ms frame - so cost decides nothing. What was left was the dependency, and
+libopus turns out to have TWO consumers: the decoder and the microphone's encoder.
+Porting the decoder alone removes no DLL and buys a slower, jitterier decoder for no
+saving. The two halves move together.
 
 THE MICROPHONE IS A QUESTION ABOUT THE HOST, not about speex. The managed host captures
 no microphone at all, so there is nothing for a noise or echo stage to run on and

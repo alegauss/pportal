@@ -161,11 +161,11 @@
 
 ## Done when — PP32
 
-- **Opus decode is decided on a measurement rather than a preference** Managed Opus
-  exists and so does the native one lib already links, so this is the one half of the
-  audio path where both options are real: decode cost per packet against one fewer
-  native dependency. Neither number has been taken, and PP31's boundary does not reach
-  here - Opus is not the decoder that cannot be managed.
+- **Opus decode is decided on a measurement rather than a preference** PP651 took the
+  measurement and it decided nothing on its own: cost is a quarter of a percent of a
+  frame either way. What decides it is that libopus has two consumers, so the decoder
+  and the microphone's encoder move together - and the encoder waits on the criterion
+  below.
 - **The managed host captures a microphone, or the line says it will not** It captures
   none today, so there is nothing for a noise or echo stage to run on and nothing
   speexdsp's departure has left a hole in. Until that is answered the mic half is not a

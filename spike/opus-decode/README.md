@@ -65,12 +65,24 @@ nothing, which would measure the call overhead and report it as a decoder.
 
 ## What this does not measure
 
-**The dependency, which is the other half of the trade.** That one is a count rather than a clock:
-`libopus-0.dll` against a NuGet reference, one fewer native binary in the package against one more
-managed one. A number printed by this spike would be a number about one machine's copy of a DLL.
+**The dependency, which is the other half of the trade** — and when it was counted it changed the
+answer. `libopus-0.dll` is 488 KB, linked by `chiaki-lib` alone behind `CHIAKI_LIB_ENABLE_OPUS`. It
+has **two** consumers, not one: `opusdecoder.c` on playback and `opusencoder.c` on the microphone.
 
-And the microphone. §PP32's remaining half is a question about the managed host — it captures none
-today — and nothing here bears on it.
+So porting the decoder removes nothing. The library stays linked for the encoder, the DLL stays in
+the package, and what the port would have bought is a decoder that costs 1.58× more and jitters five
+times as much *for no saving at all*. The two halves of the audio path move together or neither
+moves — and the encoder's half cannot move yet, because §PP32's other criterion is that this host
+captures no microphone and there is nothing to encode.
+
+`audiosender.c` reads like a third consumer and is not one. It names its parameter `opus_sender`,
+copies it into three buffers, and calls nothing in the library: it carries frames somebody else
+encoded. A census taken by grepping for the word gets three. `OpusDependency` counts calls instead,
+and `OpusDependencyTests` holds both halves — the two that call, and the one that only looks like it.
+
+**So the measurement decided less than it looked like deciding**, which is the finding rather than a
+disappointment: managed Opus is adequate by a factor of 400 on the median, and adopting it for the
+decoder alone is a cost with no saving attached.
 
 ## Committed run
 
