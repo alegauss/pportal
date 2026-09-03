@@ -563,6 +563,30 @@ answer for a v9 stream. THE ORACLE IS THE CORPUS: PP608's heads carry every inde
 queue is seeded and ordered by, so the managed arm's order of delivery and its drops are
 compared against AvReorderTimeout's and the C's over a real stream.
 
+### §PP681 The tenth wrapper's guard reads text
+
+PP661 moved the nine wrappers' guard off the header's text and onto the built DLL,
+because PP655's flip puts the declarations inside an #ifdef rather than deleting them,
+and text that still says Wrapping over a DLL that exports nothing is how the first
+attempt turned a hundred and twenty-eight assertions red. PP656 then made the device
+id's oracle shape-aware - by reading the header for its name. That is the text again,
+one wrapper over.
+
+PP663 turned holepunch off by default, so every ordinary compile.cmd produces a shim
+without chiaki_shim_generate_client_device_uid while chiaki_shim.h goes on declaring it.
+The selftest asks TheFormatOracleIsAvailable, is told yes, calls
+PsnAuth.NativeDeviceUid, and the process dies on an unhandled
+EntryPointNotFoundException in the middle of the RpCrypt oracle - every check after that
+line never runs. Found on 2026-09-03 running test.cmd after a plain build, and it had
+been dying that way on every default build since the flag went in; the sibling line
+under Block G says why nobody saw it.
+
+THE FIX IS PP661'S, APPLIED TO THE TENTH: key the guard on OfTheBuild, which asks
+chiaki_shim_has_holepunch of the DLL that was loaded, since the wrapper's C is in
+holepunch.c and leaves with the nine. And the assertion that holds it: on a bare build
+the guard says no where the header's text says yes, and ChiakiNg.exe --selftest exits
+zero on the shim the gate itself built.
+
 ## Block G — Test discipline
 
 ### §PP642 Checking where a deleted design went
@@ -656,6 +680,29 @@ table - exists for none of them.
 
 The fix is not a rule about tables. It is asking, for each, what would drive it, and
 whether that thing is cheaper than the next five months.
+
+### §PP682 A gate that cannot see a crash
+
+cmd's `if errorlevel N` is true when the errorlevel is N OR ABOVE, so `if errorlevel 1`
+is the idiom for "failed" only while failures are positive. An unhandled exception ends
+a .NET process with 0xE0434352, which the shell holds as a negative number, and a
+negative number is below one. test.cmd reads five verdicts that way - the host's
+selftest, compare-baselines, measure-startup, roadkeep lint and dotnet test - and
+compile.cmd reads dotnet build the same way.
+
+WHAT IT HID. The selftest has been crashing on every default build since PP663 took
+holepunch out of the ordinary shim: the device id guard reads the header's text and says
+yes, NativeDeviceUid throws, the exception is unhandled, and the exit code is the
+runtime's. The gate saw a number below one, kept CRC at zero, and printed OK over a
+selftest that ran to the RpCrypt oracle and no further. That is the lie PP56, PP74 and
+PP75 are each about - a green over assertions nobody ran - arriving through the shell's
+comparison rather than through a binary nobody built.
+
+THE FIX IS ONE COMPARISON, SIX TIMES: test the errorlevel for anything other than zero,
+either `if not "%errorlevel%"=="0"` after each call or the pair `if errorlevel 1` and
+`if not errorlevel 0`. And the assertion that holds it, in the shape PP588 and PP589
+gave the gate's own text: a test reads test.cmd and compile.cmd and refuses a verdict
+line that catches one sign only.
 
 ## Block H — Performance and telemetry
 
