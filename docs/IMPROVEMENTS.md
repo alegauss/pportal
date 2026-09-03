@@ -468,20 +468,27 @@ picture has to be judged on a decoded console frame rather than on the synthetic
 the cost was taken from, and whatever ships is a setting that turns off with a fidelity
 mode bypassing it. Both are criteria on the line now.
 
-### §PP52 Where a vendor feature also pays a debt
+### §PP52 A vendor feature that no longer pays a debt
 
-streamsession.h carries SpeexEchoState, an echo suppress level, and two conversion
-buffers for the mic path. The audio task in the managed core block names speexdsp as the
-piece with no managed counterpart worth the name - one of the few places that block has
-to write rather than reference.
+This line was written about a dependency that has since left. streamsession.h carried
+SpeexEchoState, an echo suppress level and two conversion buffers, and PP32 established
+that all of it was the Qt client's - lib references speex nowhere, gui/ was the only
+thing that linked it, and the probe now runs only where gui/ is built. So the half of
+this task that was "delete a dependency the port has no answer for" is done, and it was
+done by removing the client rather than by replacing the algorithm.
 
-NVIDIA's audio effects SDK does noise removal and echo cancellation on the GPU, which is
-the same job with better results on a machine that has the card. That makes this the
-only item in this block that is not purely an addition: on an NVIDIA machine it replaces
-code the port would otherwise have to carry.
+What is left is the other half, and it is an addition rather than a repayment. NVIDIA's
+audio effects SDK does noise removal and echo cancellation on the GPU, which is the same
+job with better results on a machine that has the card.
 
-It does not remove the fallback, and the fallback is where the dependency question stays
-open - which is the other half of what the first-not-only task has to state.
+Three shipped findings bind it now. PP652 has to land first: nothing in this host opens
+a capture device, so there are no samples for a stage to clean and no CPU cost to
+compare against. PP648 measured that these features sit behind per-feature switches in
+the vendor's control panel and that a call which succeeds is not a feature that ran - so
+whatever ships reads back the effect. And PP647 put a floor row in
+docs/HARDWARE-CONTRACT.md saying the present path names no vendor at all; this would be
+the first vendor path in the audio one, and the non-goal binds it to a fallback that is
+not visible to the user.
 
 ### §PP53 The one that removes waiting instead of adding work
 
