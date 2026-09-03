@@ -146,6 +146,25 @@ public static partial class NativeSeam
             : new HashSet<string>(Protocol.ShimHolepunchShape.GoneWhenBare, StringComparer.Ordinal);
 
     /// <summary>
+    /// PP661: and the json oracle's, which is the same allowance for PP33's other library.
+    ///
+    /// BY PREFIX RATHER THAN BY LIST, and that is forced rather than chosen. The holepunch nine are
+    /// a constant this assembly carries, so they can be named; the json wrappers are found by
+    /// reading the shim - and when the flip has landed the shim no longer has them, so there is
+    /// nothing left to read them from. What survives on both sides of the flip is the prefix.
+    ///
+    /// The gate is the same shape question the guards use, so this is empty until the oracle goes
+    /// and covers exactly its wrappers afterwards.
+    /// </summary>
+    public static bool IsAJsonOracleImport(string name)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+
+        return !DeletedLibraryOracles.JsonOracleIsAvailable()
+            && name.StartsWith(DeletedLibraryOracles.JsonWrapperPrefix, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// THE ONE THAT CRASHES: names the host imports and no header declares.
     ///
     /// Empty is the only acceptable answer, and an entry here is a call that throws when it is first
@@ -168,6 +187,7 @@ public static partial class NativeSeam
             .. imported
                 .Where(name => !exported.Contains(name))
                 .Where(name => !allowed.Contains(name))
+                .Where(name => !IsAJsonOracleImport(name))
                 .Order(StringComparer.Ordinal),
         ];
     }

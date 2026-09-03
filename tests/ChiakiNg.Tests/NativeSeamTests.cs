@@ -176,6 +176,26 @@ public class NativeSeamTests(ITestOutputHelper output)
 
         Assert.DoesNotContain(
             "chiaki_shim_never_existed", NativeSeam.ImportsOnlyAHolepunchBuildResolves());
+        Assert.False(NativeSeam.IsAJsonOracleImport("chiaki_shim_never_existed"));
+    }
+
+    /// <summary>
+    /// PP661: and the json oracle's allowance is by prefix, empty while the oracle is here.
+    ///
+    /// By prefix rather than by list because it has to survive the flip: the holepunch nine are a
+    /// constant this assembly carries, while the json wrappers are found by reading the shim - and
+    /// once the flip has landed the shim no longer has them to read.
+    ///
+    /// Both directions asserted. A name with the prefix is allowed only when the oracle is gone, and
+    /// a name without it never is.
+    /// </summary>
+    [Fact]
+    public void TheJsonAllowanceIsAPrefixAndFollowsTheOracle()
+    {
+        bool here = DeletedLibraryOracles.JsonOracleIsAvailable();
+
+        Assert.Equal(!here, NativeSeam.IsAJsonOracleImport("chiaki_shim_json_parse"));
+        Assert.False(NativeSeam.IsAJsonOracleImport("chiaki_shim_takion_close"));
     }
 
     /// <summary>
