@@ -48,7 +48,8 @@ public static partial class DeletionEndState
     public static IReadOnlyDictionary<string, IReadOnlyList<string>> WaitsOn { get; } =
         new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
         {
-            // The shim wraps ten holepunch exports as PP481's oracle (PP33 counted them at the linker). Not a line.
+            // The shim wraps ten holepunch exports as PP481's oracle, counted at the linker by
+            // PP653 and put behind an option by PP663. Not a line either way.
             ["PP33"] = [],
 
             // PP638: six files in lib/ call takion, and streamconnection.c is PP295's subject.

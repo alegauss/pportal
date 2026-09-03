@@ -29,8 +29,13 @@ namespace ChiakiNg.Protocol;
 ///
 /// PP563: AND THERE IS A THIRD, which this port wrote. The shim wraps ten holepunch exports, put
 /// there by PP481 so the managed side could drive the C rather than replace it - nine of them, and
-/// PP556 added set_recorded as the tenth without the count being re-derived. PP33 asked the linker
-/// and it named ten. So the deletion's
+/// PP556 added set_recorded as the tenth without the count being re-derived. PP653 asked the linker
+/// and it named ten.
+///
+/// PP663: AND ONLY WHERE THE OPTION ASKS FOR THEM. The wrappers, holepunch.c, curl and json-c all
+/// follow CHIAKI_ENABLE_HOLEPUNCH now, off by default - so on an ordinary build this consumer is
+/// not built either, and what the list below names is what a build WITH the oracle still has. The
+/// file has not gone; what has gone is every ordinary build's dependency on it. So the deletion's
 /// blast radius is session.c, this harness, and the port's own seam - and the third arrived from
 /// inside the same block, from a task the roadmap lists among PP33's satisfied deps.
 /// </summary>
@@ -159,6 +164,10 @@ public static class HolepunchConsumers
     /// directly. ONE IS LEFT, and it is the port's own seam: the ten wrappers in the shim, which is
     /// what the linker names when holepunch.c is taken out of lib's sources - HolepunchShimSurface
     /// counts them rather than repeating a number.
+    ///
+    /// PP663 put that one behind an option rather than removing it. The consumer is still this list's
+    /// only entry, and on the default build it is not compiled - which is why ShimHolepunchShape asks
+    /// the built DLL rather than this file when something needs to know whether it is there.
     /// </summary>
     public static IReadOnlyList<string> All { get; } = [ShimRelativePath];
 

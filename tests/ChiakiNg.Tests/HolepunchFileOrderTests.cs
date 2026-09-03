@@ -4,8 +4,8 @@ using Xunit;
 namespace ChiakiNg.Tests;
 
 /// <summary>
-/// PP655 and PP663, under PP33: the second flip's order, the hazard that made its first step
-/// compulsory, and the flip itself now that it has landed.
+/// PP655, PP663 and PP664, under PP33: the second flip's order, the hazard that made its first step
+/// compulsory, the flip itself, and the prose turn that closes it at three of three.
 ///
 /// PP623 wrote the first order and PP634 found its third step wrong - written before the first two
 /// landed, and wrong in the way only their landing made visible. So an order is worth asserting as
@@ -30,7 +30,7 @@ public class HolepunchFileOrderTests
     {
         Assert.Equal(3, HolepunchFileOrder.Stages.Count);
         Assert.Equal(HolepunchFileOrder.Flip, HolepunchFileOrder.Stages[1]);
-        Assert.Equal(2, HolepunchFileOrder.Landed);
+        Assert.Equal(HolepunchFileOrder.Stages.Count, HolepunchFileOrder.Landed);
     }
 
     /// <summary>

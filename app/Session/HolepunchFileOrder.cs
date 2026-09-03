@@ -36,12 +36,16 @@ public static class HolepunchFileOrder
     /// <summary>
     /// How far this order has got.
     ///
-    /// Two. PP656, PP657, PP658 and PP661 are the first step - four commits rather than one, because
-    /// the callers turned out to be three sets and not one - and PP662 corrected the question they
-    /// all ask. PP663 is the flip. What is left is the third: the census entries and the predicates
-    /// stay, and the present tense around them is stale.
+    /// All three. PP656, PP657, PP658 and PP661 are the first step - four commits rather than one,
+    /// because the callers turned out to be three sets and not one - and PP662 corrected the question
+    /// they all ask. PP663 is the flip. PP664 turned the prose: the census entries and the predicates
+    /// stayed, because they are what notices the file coming back, and what was stale was the present
+    /// tense around them.
+    ///
+    /// The order is done and PP33 is not. What the flag still carries is PP481's oracle, and the FILE
+    /// stays until that has an answer - which is a different question from the one this order was for.
     /// </summary>
-    public static int Landed { get; } = 2;
+    public static int Landed { get; } = 3;
 
     /// <summary>The option the file and its wrappers sit behind.</summary>
     public const string ProposedOption = "CHIAKI_ENABLE_HOLEPUNCH";
