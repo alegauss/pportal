@@ -24,11 +24,13 @@ namespace ChiakiNg.Protocol;
 /// Windows machine has, on a port whose first non-goal is Windows-only; it was in no ctest case and
 /// needed a console and credentials, so every build produced a binary nothing could run. The probe
 /// this port keeps is the managed one - PP479 drives the PSN sequence, PP508 reaches all seven seam
-/// methods, over the nine wrappers PP481 put in the shim. So the members below now assert the
-/// removal rather than the file, which is what stops it arriving back unnoticed.
+/// methods, over the ten wrappers PP481 and PP556 put in the shim. So the members below now assert
+/// the removal rather than the file, which is what stops it arriving back unnoticed.
 ///
-/// PP563: AND THERE IS A THIRD, which this port wrote. The shim wraps nine holepunch exports, put
-/// there by PP481 so the managed side could drive the C rather than replace it. So the deletion's
+/// PP563: AND THERE IS A THIRD, which this port wrote. The shim wraps ten holepunch exports, put
+/// there by PP481 so the managed side could drive the C rather than replace it - nine of them, and
+/// PP556 added set_recorded as the tenth without the count being re-derived. PP33 asked the linker
+/// and it named ten. So the deletion's
 /// blast radius is session.c, this harness, and the port's own seam - and the third arrived from
 /// inside the same block, from a task the roadmap lists among PP33's satisfied deps.
 /// </summary>
@@ -154,8 +156,9 @@ public static class HolepunchConsumers
     /// PP632: AND SESSION.C HAS LEFT IT, which is the removal all of this was for. Its nine asks
     /// went with the `holepunch_session` field, and the Qt client's build - the only thing that ever
     /// set that field - retired in the same commit, because gui/ calls eleven of these exports
-    /// directly. ONE IS LEFT, and it is the port's own seam: the nine wrappers PP481 put in the shim
-    /// so the managed side could drive the C rather than replace it.
+    /// directly. ONE IS LEFT, and it is the port's own seam: the ten wrappers in the shim, which is
+    /// what the linker names when holepunch.c is taken out of lib's sources - HolepunchShimSurface
+    /// counts them rather than repeating a number.
     /// </summary>
     public static IReadOnlyList<string> All { get; } = [ShimRelativePath];
 
