@@ -120,7 +120,13 @@ declared = [
     # It is back on 2026-08-28 because PP481 waits on it. PP481 implements the nine holepunch asks
     # over the real C, and its own symptom says no test can exercise one without a live console: the
     # nine shim wrappers and the ABI bump are mechanical, and what cannot be faked is a session that
-    # punched a hole to a machine on the internet. It leaves again the same way, when PP481 closes.
+    # punched a hole to a machine on the internet.
+    #
+    # PP481 has since closed and this did NOT leave with it, because three other lines had arrived
+    # behind it: PP27's timing run, PP76's session per decoder, and PP49's remaining half - a
+    # decoded console frame to judge an inferred HDR picture on. The pattern is worth naming rather
+    # than re-deriving each time: a requirement leaves when nothing waits on it, and the count of
+    # what waits is not the same question as which line put it here.
     #
     # PP486 is why the omission was found. The two checks either side of this array - declared
     # against used, used against declared - were both green while that line said in words that it
@@ -149,6 +155,12 @@ declared = [
     # what each possible reading decides; a session can run it and cannot see it, because a composed
     # window does not screenshot reliably and a test claiming to read one would be reporting on its
     # own capture stack. Re-declared under the name it had, because it is the same absence.
+    #
+    # PP322 closed on 2026-09-02 and this stayed, for PP76 and now for PP49 - and PP49 means the
+    # WIDE one, not PP322's narrow reading. Nothing here is a colour in the middle of a window: an
+    # inferred HDR image is an opinion about colour the source did not express, and whether it
+    # looks worse on some content is a judgement no capture settles. Both spellings are the same
+    # absence, which is why they share a name, but a line declaring it should say which it means.
     "a-person-looking",
 ]
 
