@@ -2350,14 +2350,46 @@ public static class SelfTest
             Console.WriteLine();
             Console.WriteLine("PsnAuth - the login, minus the browser");
 
-            // The device id comes from libchiaki rather than from a Guid here: it identifies this
-            // installation to the relay, so one of the right shape is not one it recognises.
+            // PP654, under PP33: the device id is generated HERE now, and holepunch.c is kept
+            // beside it as the oracle. It identifies this installation to the relay, so one of the
+            // right shape is not one it recognises - and the shape is all there is to be right
+            // about, which is what made this the one of PP653's ten wrappers that could move.
             string duid = PsnAuth.GenerateDeviceUid();
             Check("a device id is generated and is the declared length",
                 PsnAuth.DuidSize == 49 && duid.Length == 48 && duid.All(Uri.IsHexDigit),
                 $"{duid.Length}: {duid}");
             Check("and a second one is different",
                 PsnAuth.GenerateDeviceUid() != duid);
+
+            // The oracle. Two ids from two implementations agree on everything an id can be checked
+            // for - the length, the fixed prefix, and that the rest is lowercase hex - which is what
+            // makes the managed one a port rather than a plausible replacement.
+            string nativeDuid = PsnAuth.NativeDeviceUid();
+            Check("and the C generates the same shape, which is what makes this a port",
+                nativeDuid.Length == duid.Length
+                && nativeDuid.StartsWith(PsnAuth.DuidPrefix, StringComparison.Ordinal)
+                && duid.StartsWith(PsnAuth.DuidPrefix, StringComparison.Ordinal)
+                && nativeDuid.All(Uri.IsHexDigit),
+                nativeDuid);
+
+            // PP33: the prefix is not a coincidence of the random half. Asserted separately because
+            // a check on "48 hex characters" passes on an id with no prefix at all, and the prefix
+            // is the part the relay recognises.
+            Check("and the fixed half is the sixteen characters the relay expects",
+                PsnAuth.DuidPrefix.Length == 16
+                && duid[..16] == PsnAuth.DuidPrefix
+                && PsnAuth.DuidLength == 48
+                && PsnAuth.DuidSize == PsnAuth.DuidLength + 1,
+                PsnAuth.DuidPrefix);
+
+            // And what the C's out_size means, which a comment here had wrong. It is the buffer
+            // size it was GIVEN plus what it wrote, not the length of the string - 97 on a 49-byte
+            // buffer. Nothing reads it, and the fallback that used to would have asked for 97 bytes
+            // of a 49-byte array.
+            Check("the C's out_size is the buffer it was given plus the 48 it wrote",
+                PsnAuth.NativeOutSizeFor(PsnAuth.DuidSize) == 97,
+                PsnAuth.NativeOutSizeFor(PsnAuth.DuidSize).ToString(
+                    System.Globalization.CultureInfo.InvariantCulture));
 
             string loginUrl = PsnAuth.LoginUrl(duid);
             Check("the login url carries the client id, the redirect and the device",

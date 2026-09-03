@@ -551,6 +551,7 @@
 - ✅ **PP32** **audio decode is Opus in lib and the microphone's noise and echo stages are speexdsp in the Qt client** — The audio path says which three it is: speex left with the client, Opus is measured and moves with the encoder it shares a library with, and the capture is PP652.
 - ✅ **PP651** **PP32's Opus half was a preference with no measurement, and both decoders were reachable all along** — Managed costs 1.58x the native p50 at 24.9us a frame - 0.25% of one - so cost decides nothing; its p99 is 5.6x its own median in every run, and the audio differs by 15 of 32767.
 - ✅ **PP653** **PP33's fourth criterion names a linker question and nobody had asked it since two callers left** — Everything compiles, one target fails, and its ten undefined references are all holepunch's - no curl, no json-c - so the callers are down to the shim, which has ten wrappers and not nine.
+- ✅ **PP654** **the one holepunch wrapper the host actually runs makes a device id from a prefix and 16 random bytes** — The login generates its own device id and the C is kept beside it as the oracle, so every consumer of holepunch.c is now a testing seam rather than a feature.
 
 ## Block G — Test discipline
 
