@@ -185,24 +185,22 @@ buffers rather than with state.
 
 ### §PP32 Audio, where one half has a managed answer
 
-audioreceiver.c is 363 lines over Opus. speexdsp is not beside it: lib references speex
-nowhere at all. Both speex families live in gui/ - speex_preprocess_* for noise
-suppression and speex_echo_* for cancellation - and both are on the MICROPHONE path, in
-the client this port replaces.
+audioreceiver.c is 363 lines over Opus. The speex half of this line has landed: lib
+references speex nowhere, gui/ is the only thing that links it, the probe now runs only
+where gui/ is built, and SpeexBuildGate holds all three. What is left is not a
+translation.
 
-THE CONVERSION IS SDL's, NOT SPEEX's. streamsession.cpp builds SDL_AudioCVT into
-mic_resampler_buf, echo_resampler_buf and haptics_resampler_buf. The variables are
-called mic_speex_cvt and echo_speex_cvt because they feed the speex stage, which is how
-the first version of this section came to call the conversion speexdsp's and to place it
-on playback. audioreceiver.c mentions no clock, no drift and no resampling.
+OPUS IS A DECISION WITH TWO REAL OPTIONS. A managed implementation exists and so does
+the native one lib already links, which makes this measurable rather than theoretical:
+decode cost per packet against one fewer native dependency. PP31's boundary does not
+reach here - Opus is not the decoder that cannot be managed, and that non-goal names the
+video decoder specifically for this reason.
 
-SO THE TWO HALVES ARE NOT IN ONE LAYER, and that is what changes the work. Opus decode
-is the library's, and it has a managed implementation and a native one: the decision
-between them is measurable rather than theoretical - decode cost per packet against the
-extra dependency. The speex stages are the Qt client's, and PP21 drops that client, so
-they leave with it. What is left is not a translation but a question about the managed
-host: whether it captures a microphone at all, and with what if it does. It captures
-none today.
+THE MICROPHONE IS A QUESTION ABOUT THE HOST, not about speex. The managed host captures
+no microphone at all, so there is nothing for a noise or echo stage to run on and
+nothing speexdsp's departure has left a hole in. Until it captures one, the mic half is
+not a port of anything - and if it never will, this line should say so rather than carry
+a stage with no input.
 
 Output is the easy half: WASAPI through NAudio or the platform APIs is what the .NET
 host would use regardless of this block.
