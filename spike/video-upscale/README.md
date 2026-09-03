@@ -73,7 +73,17 @@ what came back — `version=0 method=0 enable=0` on this run. An earlier version
 that as "the driver does not recognise this GUID". **That inference was wrong and has been
 removed:** Get is driver-defined exactly as Set is, so a driver that recognises the interface is
 still entitled to leave the buffer alone. Zeros mean the driver wrote nothing, and nothing more.
-The 0-pixel difference is the evidence; the read-back is a hint.
+
+**§PP49 finished that correction by measurement.** `spike/video-hdr` sets a different NVIDIA
+extension on the same card and the same driver, and that one *works* — 2,073,580 of 2,073,600
+pixels move. Its read-back echoes `version=0 method=0 enable=0`, exactly as this one does. So the
+echo does not distinguish an extension that engaged from one that did not, and this README used to
+end the paragraph by calling it a hint. **It is not a hint. It carries nothing.**
+
+The call is still made, and deliberately. It costs a round trip, it is what the two committed runs
+recorded, and removing it would make neither `release-*.json` here reproducible from this source
+for the sake of a line nobody now reads as evidence. What was wrong was the word, not the call.
+The pixel difference is the evidence, and it always was the only one.
 
 ## Two instruments, and both were wrong first
 

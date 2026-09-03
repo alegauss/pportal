@@ -52,8 +52,13 @@ corrected itself to "zeros mean the driver wrote nothing, and nothing more".
 
 **This run proves the correction.** The read-back here echoes `version=0 method=0 enable=0` too, on
 an extension that demonstrably works: 2.07 million pixels moved. So the echo is not a signal in
-either direction, and no future spike should spend a line on it. The pixel comparison is the
-evidence and the read-back is not even a hint.
+either direction. The pixel comparison is the evidence and the read-back is not even a hint.
+
+§PP644 asked the follow-up — whether the call should come out of either spike — and the answer was
+no. It costs a round trip, and it is in both committed `release-*.json` files: removing it would
+make neither run reproducible from its own source, to delete a line nobody now reads as evidence.
+`SpikeExtensionEchoTests` holds the pair, so the day a re-taken run echoes something else, the
+paragraph above goes red instead of quietly becoming false.
 
 ## The experiment toggles one thing
 

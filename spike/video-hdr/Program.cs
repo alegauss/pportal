@@ -219,9 +219,11 @@ internal static class Program
                 videoContext.VideoProcessorSetStreamExtension(processor, 0, NvidiaTrueHdrInterface, (uint)size, data);
 
                 // Set is void and cannot refuse, so it is not evidence the driver knows this GUID.
-                // Reading it back is a hint and not more than that - PP47's README corrected itself
-                // on exactly this point: Get is driver-defined like Set is, so a driver that
-                // recognises the interface is still entitled to leave the buffer alone.
+                // Reading it back is not evidence either, and this run is what proved it: the echo
+                // below came back all zeros on a run where 2.07 million pixels moved, which is the
+                // same echo PP47 got on a run where none did. PP644 corrected both spikes' prose
+                // on that. The call stays - it costs a round trip and the committed runs recorded
+                // it - and what it reports is what the driver wrote, not a verdict.
                 Marshal.WriteInt32(data, 0, 0);
                 Marshal.WriteInt32(data, 4, 0);
                 Marshal.WriteInt32(data, 8, 0);

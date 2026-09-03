@@ -651,6 +651,7 @@
 - ✅ **PP76 (the number to read)** **the decoder preference is measured on synthetic frames, and drops under network jitter are what a stream is judged by** — The decoder's own loss is frames_dropped less frames_lost, named and clamped in lib: reading either counter alone is how a run gets a confident wrong answer.
 - ✅ **PP49 (the cost, and that it engages)** **the console sends SDR on most titles and an HDR display shows it flat, with nothing in the client trying** — It engages: 2,073,580 of 2,073,600 pixels move and it costs 29.0us a frame, 0.17% of a 60fps interval - on a driver interface of its own, not PP47's.
 - ✅ **PP53 (whether the compositor path allows it)** **frames arrive with network jitter and are presented against a fixed refresh, so each waits for a vblank it missed** — DXGI reads the flags and a composition swapchain takes them, so PP319's choice does not foreclose tearing - and an API answer is not a pixel.
+- ✅ **PP644** **spike/video-upscale calls the extension read-back a hint, and PP49 measured that it is not one** — Both spikes say what PP49 measured and the call stays: the two committed runs echo identical zeros while disagreeing on engagement, and a test holds the pair.
 
 ## Block J — Public documentation
 

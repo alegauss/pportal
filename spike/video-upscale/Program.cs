@@ -194,8 +194,11 @@ internal static class Program
                 videoContext.VideoProcessorSetStreamExtension(processor, 0, NvidiaPpeInterface, (uint)size, data);
 
                 // Set is void and cannot refuse, so it is not evidence that the driver knows this
-                // GUID. Reading it back is: a driver that recognises the interface returns what
-                // was stored, and one that does not leaves the buffer as it found it.
+                // GUID. Reading it back is not evidence either, which PP644 corrected here after
+                // PP49 measured it: spike/video-hdr's extension engages on this same card and its
+                // read-back echoes the same three zeros. The call stays because the committed runs
+                // recorded it and it costs a round trip; what it does NOT do is distinguish an
+                // extension that engaged from one that did not.
                 Marshal.WriteInt32(data, 0, 0);
                 Marshal.WriteInt32(data, 4, 0);
                 Marshal.WriteInt32(data, 8, 0);

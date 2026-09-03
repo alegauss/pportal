@@ -547,28 +547,6 @@ What is left is the run, and it is a run: sessions per decoder on a link that ji
 which takes a console and somebody playing on it. Reading either counter on its own is
 what this waits to prevent.
 
-### §PP644 The read-back says nothing, and one README still hedges
-
-PP47 called `VideoProcessorGetStreamExtension` after setting the extension and printed
-what came back. Its first draft read `version=0 method=0 enable=0` as "the driver does
-not recognise this GUID", and corrected itself: Get is driver-defined exactly as Set is,
-so a driver that recognises the interface is still entitled to leave the buffer alone.
-The README ends that paragraph with "the read-back is a hint".
-
-PP49 removed the hedge's last support without changing the paragraph. Its run echoed the
-same three zeros on an extension that demonstrably worked - 2,073,580 of 2,073,600
-pixels moved - so the echo is not weak evidence of engagement, it is no evidence at all.
-A reader following spike/video-upscale is told to weigh something that has now been
-measured to carry nothing.
-
-Two things to do and they are not the same size. The paragraph in
-spike/video-upscale/README.md is three sentences and should say what PP49 found, with
-the pointer. The larger question is whether the call belongs in either spike: it costs a
-round trip and a paragraph of explanation per reader, and the pixel comparison is what
-both runs actually turn on. Removing it would delete the one piece of evidence that the
-Set call reached a driver at all, which is why this is filed rather than done - and the
-answer may differ for a spike that engages from one that does not.
-
 ### §PP645 Choosing a committed run by eye
 
 PP49 took six runs before committing one. The pixel result was identical in all six -
