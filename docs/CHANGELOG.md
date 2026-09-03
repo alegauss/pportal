@@ -547,6 +547,7 @@
 - ✅ **PP640** **PP295's first criterion has no oracle: nothing states the sequence a port has to reproduce** — Six orderings held as positions in streamconnection.c, each with what a port loses by not keeping it, and readers that see each one broken.
 - ✅ **PP28** **session.c 1196, ctrl.c 1767 and streamconnection.c 1531, three state machines with no oracle** — The three joins are modelled: senkusha's fallback, the switch wait that reports three endings as one, and the handover that releases the lock for exactly the run.
 - ✅ **PP649** **the switch-ack wait has a predicate reading three fields and an arm after it reading one** — PP28's second join is modelled: the five wakes, the one arm three of them share, and the stop check too late to record a stop - reproduced rather than repaired.
+- ✅ **PP31** **the video decoder is where 100% managed stops being achievable, and no task above says so** — The boundary is a non-goal now, not a paragraph: no managed video decoder, 100% Windows rather than 100% managed, with a guard so the promise cannot come back.
 
 ## Block G — Test discipline
 

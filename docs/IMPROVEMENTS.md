@@ -183,28 +183,6 @@ oracle covers them completely offline. And keeping the C for this one piece is a
 legitimate outcome, because it is self-contained, has no OS surface, and is called with
 buffers rather than with state.
 
-### §PP31 The line managed code should not cross
-
-ffmpegdecoder.c is 376 lines and bitstream.c 450, and behind them is FFmpeg doing
-hardware accelerated H.264 and HEVC decode. Nothing in .NET replaces that. A pure
-managed decoder is possible in the sense that it can be written and impossible in the
-sense that it would not hold the frame rate, and it would ignore the GPU that is already
-doing this work for free.
-
-So this task is a decision, not a translation, and the honest options are all native:
-
-Keep FFmpeg, called through P/Invoke. Least change, keeps every format and every
-hardware path the project already supports, and keeps a large native dependency in a
-solution that was trying to shed them.
-
-Use Media Foundation with D3D11VA. Native to Windows, ships with the OS, integrates with
-the D3D11 texture path the renderer decision may already need - and supports fewer edge
-cases than FFmpeg does.
-
-Either way the claim to correct is the framing: the goal that is reachable is a project
-that is 100% Windows and builds in Visual Studio, not one that is 100% managed. The
-decoder is the counter-example, and it is better stated here than found at the end.
-
 ### §PP32 Audio, where one half has a managed answer
 
 audioreceiver.c is 363 lines over Opus. speexdsp is not beside it: lib references speex
@@ -308,6 +286,30 @@ sends.
 
 Deleting is the deliverable, not just porting. The C video receiver leaving the build is
 what makes the five ports beneath it real.
+
+### §PP650 Which native decoder, and what each one costs
+
+PP31 settled that the decoder is native. It did not settle which native, and its
+rationale listed two candidates without pricing either - which is the shape PP163 was
+criticised for one subsystem along.
+
+FFmpeg through P/Invoke is the least change. It keeps every format and every hardware
+path the project supports today: chiaki_decoder_choice selects between vulkan, d3d11va
+and cuda, PP78's software fallback is the same library, and bitstream.c - which this
+port has repaired four times, in PP68, PP69 and PP70 - feeds it. It also keeps a large
+native dependency in a solution that was shedding them.
+
+Media Foundation is native to Windows and ships with it. It integrates with the D3D11
+texture path PP9's renderer already needs, and it covers d3d11va - which is the floor
+row in docs/HARDWARE-CONTRACT.md and, under PP71's paced measurement, beat cuda anyway.
+What it does not obviously cover is the software fallback, the parser's edge cases, and
+the two paths that would leave with FFmpeg.
+
+Neither half is measured. What would settle it is small and has not been done: enumerate
+what Media Foundation offers for H.264 and HEVC on this machine, ask whether it decodes
+to a D3D11 texture, and count what the port would lose - the decoder choices, the
+fallback, and the megabytes FFmpeg costs the package. The last of those is the only
+number anybody has guessed at.
 
 ## Block G — Test discipline
 

@@ -25,10 +25,10 @@
 
 - ⏳ **PP27** (deps: PP23 ✅, PP25 ✅, PP44 ✅) (requires: console) **takion.c is 2007 lines of C over raw sockets and timers, and the whole stream rides on it** — PP610 timed the MAC gate and PP633 the loop's copy over real payloads; what is left is takion.c, takionsendbuffer.c and reorderqueue.c leaving. → §PP27
 - 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — 13 sites and none of them arithmetic: chiaki_fec_decode has three callers - frameprocessor.c, the C suite, and this port's shim. → §PP30
-- 📋 **PP31** (deps: PP28 ✅) **the video decoder is where 100% managed stops being achievable, and no task above says so** — There is no managed H.264 or HEVC decoder that holds 1080p60 at remote play latency, so this boundary is chosen deliberately or discovered late. → §PP31
 - 📋 **PP32** (deps: PP28 ✅) **audio decode is Opus in lib and the microphone's noise and echo stages are speexdsp in the Qt client** — Managed Opus exists and speexdsp has none; the conversion between them is SDL_AudioCVT rather than speex, so the audio path is three dependencies and not two. → §PP32
 - ⏳ **PP33** (deps: PP24 ✅, PP293 ✅, PP340 ✅, PP481 ✅, PP533 ✅) **HTTP and JSON in the core are curl and json-c, two vendored dependencies for what the runtime already does** — the deletion: holepunch.c is the only unit needing either library, and one file calls it - the shim, which wraps nine of its exports. → §PP33
 - 📋 **PP295** (deps: PP297 ✅) **streamconnection.c is 1531 lines and calls the video receiver, so every deletion below waits on it** — PP286 to PP291 removed no C, and the shim wraps five of the receiver's exports: lib has one caller and this port's own seam is the other. → §PP295
+- 📋 **PP650** (deps: —) **the decoder stays native and nobody has priced FFmpeg against Media Foundation for the job** — PP31 settled the boundary and left the choice: Media Foundation ships with Windows and covers d3d11va alone, where FFmpeg carries the parser, cuda and software decode. → §PP650
 
 ## Block G — Test discipline
 
@@ -184,3 +184,7 @@
   matches lib/, so a patch leaves them agreeing with a libchiaki nobody runs. PP107
   argues it. Not PP33's deletion, PP30's port or PP295's: a deletion removes what they
   agree with, and a port leaves the vendored source alone.
+- **No managed video decoder** Nothing in .NET decodes H.264 or HEVC at 1080p60 and
+  remote play latency, and writing one would ignore the GPU already doing it for free.
+  The reachable goal is a port that is 100% Windows and builds in Visual Studio, not one
+  that is 100% managed - and this is where the difference is.
