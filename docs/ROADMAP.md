@@ -25,10 +25,10 @@
 
 - ⏳ **PP27** (deps: PP23 ✅, PP25 ✅, PP44 ✅) (requires: console) **takion.c is 2007 lines of C over raw sockets and timers, and the whole stream rides on it** — PP610 timed the MAC gate and PP633 the loop's copy over real payloads; what is left is takion.c, takionsendbuffer.c and reorderqueue.c leaving. → §PP27
 - 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — 13 sites and none of them arithmetic: chiaki_fec_decode has three callers - frameprocessor.c, the C suite, and this port's shim. → §PP30
-- ⏳ **PP32** (deps: PP28 ✅) **audio decode is Opus in lib and the microphone's noise and echo stages are speexdsp in the Qt client** — the Opus decision and the microphone: managed decode against native, and a host that captures nothing to run a stage on. → §PP32
 - ⏳ **PP33** (deps: PP24 ✅, PP293 ✅, PP340 ✅, PP481 ✅, PP533 ✅) **HTTP and JSON in the core are curl and json-c, two vendored dependencies for what the runtime already does** — the deletion: holepunch.c is the only unit needing either library, and one file calls it - the shim, which wraps nine of its exports. → §PP33
 - 📋 **PP295** (deps: PP297 ✅) **streamconnection.c is 1531 lines and calls the video receiver, so every deletion below waits on it** — PP286 to PP291 removed no C, and the shim wraps five of the receiver's exports: lib has one caller and this port's own seam is the other. → §PP295
 - 📋 **PP650** (deps: —) **the decoder stays native and nobody has priced FFmpeg against Media Foundation for the job** — PP31 settled the boundary and left the choice: Media Foundation ships with Windows and covers d3d11va alone, where FFmpeg carries the parser, cuda and software decode. → §PP650
+- 📋 **PP652** (deps: —) **four subsystems carry the microphone and nothing in the host opens a capture device** — The setting, the in-stream button, the ring's drain rule and the pad's mic report all shipped, and there is no stream of samples for any of them to be about. → §PP652
 
 ## Block G — Test discipline
 
@@ -43,7 +43,7 @@
 ## Block I — NVIDIA path
 
 - ⏳ **PP49** (deps: PP11 ✅, PP47 ✅) (requires: console, a-person-looking) **the console sends SDR on most titles and an HDR display shows it flat, with nothing in the client trying** — the quality half and the integration: a decoded console frame to judge the picture on, and a setting that turns it off. → §PP49
-- 📋 **PP52** (deps: PP32 ⏳) **the Qt client runs speex echo cancellation on the CPU, and speexdsp has no managed replacement** — NVIDIA ships GPU noise and echo removal for exactly this, so one task can both improve the voice sent to the console and delete a dependency the port has no answer for. → §PP52
+- 📋 **PP52** (deps: PP32 ✅) **the Qt client runs speex echo cancellation on the CPU, and speexdsp has no managed replacement** — NVIDIA ships GPU noise and echo removal for exactly this, so one task can both improve the voice sent to the console and delete a dependency the port has no answer for. → §PP52
 - ⏳ **PP53** (deps: PP11 ✅, PP41 ✅) (requires: variable-refresh-display) **frames arrive with network jitter and are presented against a fixed refresh, so each waits for a vblank it missed** — the reading itself: a display that varies its refresh, and a trace saying the frame arrived unpaced. → §PP53
 - ⏳ **PP76** (deps: PP528 ✅) (requires: console, a-person-looking) **the decoder preference is measured on synthetic frames, and drops under network jitter are what a stream is judged by** — one session per decoder against a real console, now that the difference between the two counters is the number to read. → §PP76
 
@@ -158,18 +158,6 @@
   chiaki_render_tearing_probe does. Integration means the video plane's own swapchain
   carries it and presents at sync interval zero, which is the half that waits on there
   being a video plane at all.
-
-## Done when — PP32
-
-- **Opus decode is decided on a measurement rather than a preference** PP651 took the
-  measurement and it decided nothing on its own: cost is a quarter of a percent of a
-  frame either way. What decides it is that libopus has two consumers, so the decoder
-  and the microphone's encoder move together - and the encoder waits on the criterion
-  below.
-- **The managed host captures a microphone, or the line says it will not** It captures
-  none today, so there is nothing for a noise or echo stage to run on and nothing
-  speexdsp's departure has left a hole in. Until that is answered the mic half is not a
-  port of anything - which is a different claim from the one this line opened with.
 
 ## Non-goals
 

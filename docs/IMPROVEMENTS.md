@@ -183,29 +183,6 @@ oracle covers them completely offline. And keeping the C for this one piece is a
 legitimate outcome, because it is self-contained, has no OS surface, and is called with
 buffers rather than with state.
 
-### §PP32 Audio, where one half has a managed answer
-
-audioreceiver.c is 363 lines over Opus. The speex half of this line has landed: lib
-references speex nowhere, gui/ is the only thing that links it, the probe now runs only
-where gui/ is built, and SpeexBuildGate holds all three. What is left is not a
-translation.
-
-OPUS IS MEASURED NOW, and it decided less than it looked like deciding. PP651 found
-managed decode costs 1.58x the native median at 24.9us a frame - a quarter of one
-percent of a 10ms frame - so cost decides nothing. What was left was the dependency, and
-libopus turns out to have TWO consumers: the decoder and the microphone's encoder.
-Porting the decoder alone removes no DLL and buys a slower, jitterier decoder for no
-saving. The two halves move together.
-
-THE MICROPHONE IS A QUESTION ABOUT THE HOST, not about speex. The managed host captures
-no microphone at all, so there is nothing for a noise or echo stage to run on and
-nothing speexdsp's departure has left a hole in. Until it captures one, the mic half is
-not a port of anything - and if it never will, this line should say so rather than carry
-a stage with no input.
-
-Output is the easy half: WASAPI through NAudio or the platform APIs is what the .NET
-host would use regardless of this block.
-
 ### §PP33 Two dependencies that simply leave
 
 holepunch.c is 5962 lines and is the only translation unit in this tree that still needs
@@ -309,6 +286,28 @@ what Media Foundation offers for H.264 and HEVC on this machine, ask whether it 
 to a D3D11 texture, and count what the port would lose - the decoder choices, the
 fallback, and the megabytes FFmpeg costs the package. The last of those is the only
 number anybody has guessed at.
+
+### §PP652 The microphone with no input
+
+PP32 asked whether this host captures a microphone or whether the line should say it
+will not. It is neither, and MicrophoneSurface is the census: the port has committed to
+the feature in four separate places and produces no samples in any of them.
+
+The setting is declared with the rest of the profile's preferences and bound to a
+checkbox on the audio screen. The in-stream menu has the button, with the Qt client's
+inversion carried over - lit when the microphone is NOT muted. AudioRing drains the
+microphone differently from playback, because the capture path has no target queue size
+to stop at. And the DualSense report writes the mic light and the mic mute together,
+because a pad left lit with an open mic is the state that matters to a person.
+
+Nothing opens a device. No WASAPI, no NAudio, no MediaCapture, and no managed
+counterpart to chiaki_audio_sender.
+
+So the work is a capture path, and what it unblocks is larger than itself: libopus's
+second consumer is the microphone's encoder, so the audio dependency cannot leave until
+this exists, and the speex stages PP32 opened with have nothing to run on until it does
+either. PP31's boundary is silent here on purpose - video decode has no managed answer
+and audio capture on Windows has several.
 
 ## Block G — Test discipline
 

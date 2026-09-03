@@ -548,7 +548,7 @@
 - ✅ **PP28** **session.c 1196, ctrl.c 1767 and streamconnection.c 1531, three state machines with no oracle** — The three joins are modelled: senkusha's fallback, the switch wait that reports three endings as one, and the handover that releases the lock for exactly the run.
 - ✅ **PP649** **the switch-ack wait has a predicate reading three fields and an arm after it reading one** — PP28's second join is modelled: the five wakes, the one arm three of them share, and the stop check too late to record a stop - reproduced rather than repaired.
 - ✅ **PP31** **the video decoder is where 100% managed stops being achievable, and no task above says so** — The boundary is a non-goal now, not a paragraph: no managed video decoder, 100% Windows rather than 100% managed, with a guard so the promise cannot come back.
-- ✅ **PP32 (the speex half leaving with the client)** **audio decode is Opus in lib and the microphone's noise and echo stages are speexdsp in the Qt client** — speexdsp is the client's and the build says so now: probed only where gui/ is built, linked only there, and absent from lib/ entirely.
+- ✅ **PP32** **audio decode is Opus in lib and the microphone's noise and echo stages are speexdsp in the Qt client** — The audio path says which three it is: speex left with the client, Opus is measured and moves with the encoder it shares a library with, and the capture is PP652.
 - ✅ **PP651** **PP32's Opus half was a preference with no measurement, and both decoders were reachable all along** — Managed costs 1.58x the native p50 at 24.9us a frame - 0.25% of one - so cost decides nothing; its p99 is 5.6x its own median in every run, and the audio differs by 15 of 32767.
 
 ## Block G — Test discipline
