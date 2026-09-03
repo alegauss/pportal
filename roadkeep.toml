@@ -84,6 +84,7 @@ improvements = "docs/IMPROVEMENTS.md"
 # that a capable monitor makes true again. Without this path `defer` refuses and the only
 # doors are the two terminal ones.
 deferred = "docs/DEFERRED.md"
+decisions = "docs/DECISIONS.md"
 
 [limits]
 # characters

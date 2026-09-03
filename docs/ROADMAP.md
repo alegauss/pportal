@@ -23,7 +23,7 @@
 
 ## Block F — Managed core
 
-- ⏳ **PP27** (deps: PP23 ✅, PP25 ✅, PP44 ✅) (requires: console) **takion.c is 2007 lines of C over raw sockets and timers, and the whole stream rides on it** — PP610 timed the MAC gate and PP633 the loop's copy over real payloads; what is left is takion.c, takionsendbuffer.c and reorderqueue.c leaving. → §PP27
+- ⏳ **PP27** (deps: PP672, PP673, PP674, PP675, PP676, PP677, PP678, PP679, PP680) (requires: console) **takion.c is 2007 lines of C over raw sockets and timers, and the whole stream rides on it** — The nine tasks it waits on are the managed transport; after them, the three files leave the build. → §PP27
 - 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — 13 sites and none of them arithmetic: chiaki_fec_decode has three callers - frameprocessor.c, the C suite, and this port's shim. → §PP30
 - ⏳ **PP33** (deps: PP24 ✅, PP293 ✅, PP340 ✅, PP481 ✅, PP533 ✅) (requires: console) **HTTP and JSON in the core are curl and json-c, two vendored dependencies for what the runtime already does** — the file itself: one file calls it, the shim, and PP481's oracle is what that seam is for. → §PP33
 - ⏳ **PP295** (deps: PP297 ✅) **streamconnection.c is 1531 lines and calls the video receiver, so every deletion below waits on it** — the receiver it drives - the shim wraps five of its exports - the consumers PP638 named, and the four files leaving the build. → §PP295
@@ -31,6 +31,15 @@
 - 📋 **PP652** (deps: —) **four subsystems carry the microphone and nothing in the host opens a capture device** — The setting, the in-stream button, the ring's drain rule and the pad's mic report all shipped, and there is no stream of samples for any of them to be about. → §PP652
 - 📋 **PP668** (deps: —) **AvPacket is built from the v9 parse alone, so IsHaptics is false on every packet the port sees** — The C sets the bit on the v12 audio layout only; a managed v12 parse is what lets PP667's haptics arm ever fire, and PP499 bounded that layout in the C. → §PP668
 - 📋 **PP671** (deps: —) **Fec.Recovers with no decoder named runs the C, so after the flip a default becomes a loader failure** — The managed decoder is the one that stays; the default should follow it on the flip, so the sixty-four recorded cases judge the port alone. → §PP671
+- 🛠 **PP672** (deps: —) **no managed code writes the INIT or reads the INIT_ACK, so the port's only takion client is the C** — PP606's responder plays the console and PP607 proves the C completes the exchange against it; the managed side has the rules and the header writer, and no client. → §PP672
+- 📋 **PP673** (deps: —) **no managed code parses a takion control message, so a control datagram stops at the dispatch branch** — takion_parse_message and the DATA and DATA_ACK switch join TakionReceivePath's Control branch to the drain and ack models, and both exist only as source checks. → §PP673
+- 📋 **PP674** (deps: —) **takion's data queue is 32-bit and the managed reorder queue is 16-bit only, so no managed push can hold a data packet** — chiaki_reorder_queue_init_32 has no counterpart and no shim export, and takion_handle_packet_message_data, the push that reads seq and channel, has none either. → §PP674
+- 📋 **PP675** (deps: —) **nothing in the host sends a UDP datagram, so every takion send is a model that emits no bytes** — chiaki_takion_send_raw, chiaki_takion_send and the three data builders have no managed bytes, and TakionMessageHeader knows no DATA or DATA_ACK chunk type. → §PP675
+- 📋 **PP676** (deps: —) **the feedback and mic sends have no managed code, and each places its MAC where packet_mac's table does not look** — takion_send_feedback_packet encrypts at the position plus a block and MACs at eight, the mic packet at ten, and both hold the recursive cipher lock throughout. → §PP676
+- 📋 **PP677** (deps: —) **keystate.c has no managed transcription, so every key position the port expands is the shim's** — PP111 reached the expansion through the shim and PP519 fed it a console's positions; a managed parse of an AV header or a control message needs the ledger in managed code. → §PP677
+- 📋 **PP678** (deps: PP672, PP673, PP674, PP675, PP677) **the receive loop runs only against test doubles, and nothing owns takion's state** — TakionReceiveLoop.Run traces steps through an ITakionLoopHost implemented only in tests; the tag, counter, ledger, cipher and queues have no owner. → §PP678
+- 📋 **PP679** (deps: —) **the v7 AV parse and header formatter are unported, and the formatter's callers are senkusha's** — chiaki_takion_v7_av_packet_parse differs from v9 in three places, and chiaki_takion_v7_av_packet_format_header is called only by senkusha.c, so who owns them is a decision. → §PP679
+- 📋 **PP680** (deps: PP668) **takion_handle_packet_av is only a branch in managed code, so no video packet reaches the flush** — The disable gates, the queue seeded at packet_index minus unit_index, the entry with its stamp and the flush into StreamAvDispatch have no composition; the parse is PP668's. → §PP680
 
 ## Block G — Test discipline
 
@@ -162,6 +171,94 @@
   chiaki_render_tearing_probe does. Integration means the video plane's own swapchain
   carries it and presents at sync interval zero, which is the half that waits on there
   being a video plane at all.
+
+## Done when — PP672
+
+- **The managed INIT and COOKIE are byte-identical to the C's over one exchange**
+  PP607's harness hands the C's own datagrams to a UdpClient this process holds; the
+  managed writers are run with the tag read out of the C's INIT payload and the
+  responder's cookie, and the two byte arrays are compared whole, not field by field.
+- **A managed client completes the handshake against PP606's responder over loopback**
+  The same test shape as PP607 with the client side swapped: two UdpClients on loopback,
+  the responder pumped on one, the managed client on the other; the client reports
+  connected, the responder is Done, and the readers' refusals - a wrong tag, a wrong
+  length, a wrong chunk - are each exercised.
+
+## Done when — PP673
+
+- **Every control head in the corpus parses, under the session's one tag** PP608's heads
+  carry the sixteen-byte header whole. The parse runs over every control datagram in
+  tests/corpus with tag_local read off the first and PP515's recorded length as the
+  datagram size; a refusal, or a head with a byte moved that is accepted, fails by
+  datagram index.
+- **DATA keeps the buffer, DATA_ACK releases it, anything else is dropped** The switch
+  is asserted against a sink the way TakionReceivePath is: a DATA message reaches the
+  drain's entry shape with the buffer retained, a DATA_ACK reaches TakionDataAck.Read
+  and is borrowed, and an unknown chunk type is counted and dropped.
+
+## Done when — PP674
+
+- **The wide queue agrees with a create_32 export after every operation** The oracle
+  shape PP108 and PP150 used for sixteen bits: fixed-seed random scripts of push, pull,
+  peek and drop run through both queues, with count, begin and the drop list compared
+  after every step, across the thirty-two-bit wrap.
+- **A data message becomes an entry and a push, with PP491's two drops kept** A payload
+  shorter than nine bytes and a failed entry are dropped, not queued; a good one is
+  pushed with the sequence number from its first four bytes and the channel from the
+  next two, and drains through TakionDataDrain in the C's order.
+
+## Done when — PP675
+
+- **The managed data message, continuation and ack match the C's bytes**
+  chiaki_takion_send_message_data and its siblings are exported, so a shim call sends
+  through PP607's connected takion and the peer this process holds receives the C's
+  bytes; the managed builder, given the same tag, sequence and payload, produces the
+  same array.
+- **One send path: MAC under the cipher lock, then the socket, nothing allocated**
+  chiaki_takion_send's order is reproduced - stamp, then send - and the send over a
+  connected UDP socket is measured the way PP633 measured the receive: zero bytes
+  allocated after warm-up per packet sent.
+
+## Done when — PP676
+
+- **Feedback state, history and mic bytes match the C's for one key and state** The
+  three exports run through a loopback takion whose gkcrypt_local is built from known
+  keys, so the encrypted bodies and the MACs at offsets eight and ten are the C's; the
+  managed builders, given the same GkCrypt and position, produce the same bytes.
+
+## Done when — PP678
+
+- **A managed takion connects, runs its loop over a socket and tears down in order**
+  Against PP606's responder: the connected event, then a loop that receives real
+  datagrams into TakionReceiveBuffer and dispatches through TakionReceivePath, then
+  close - send buffer, queues, postponed packets, the disconnected event, the socket -
+  each step observed in the C's order.
+- **Nothing is allocated per datagram once the loop is warm** PP633's measurement over
+  the loop as it runs on a socket rather than in a replay: bytes allocated after warm-up
+  are zero over the corpus fed through loopback, which is PP44's budget held on the
+  transport itself and not on a harness.
+
+## Done when — PP679
+
+- **The v7 parse and formatter have an owner, and a test against the C for each** A
+  decision recorded in the decisions file names where each goes; the parse is compared
+  against chiaki_takion_v7_av_packet_parse through a shim export on real and synthetic
+  headers, and the formatter's output is parsed back by the C's own v7 parse.
+
+## Done when — PP680
+
+- **The AV arm delivers the corpus's video in AvReorderTimeout's order** PP608's heads
+  seed and order the video queue: the assembled arm - gates, lazy init, entry, flush -
+  is fed the corpus, and the sequence it hands StreamAvDispatch and what it drops equal
+  what AvReorderTimeout.Flush computes over the same heads.
+
+## Done when — PP677
+
+- **The managed key state agrees with the shim's over the corpus, either way**
+  DatagramReplayReport.KeyPositions reads the low halves off PP608's heads; the same
+  sequence goes through KeyState and the managed ledger, with commit and without, and
+  every expanded position is equal, including PP521's twenty-six zeros before the cipher
+  exists.
 
 ## Non-goals
 

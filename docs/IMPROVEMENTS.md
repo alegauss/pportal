@@ -350,6 +350,219 @@ because today the default is what makes those two theories a check on the ORACLE
 cases are the C's own, and a managed default now would silently stop asking the C
 whether it still agrees with its own recording.
 
+### §PP672 The client half of the handshake
+
+PP603 to PP606 built the console's side of the exchange and PP607 ran the real C against
+it. The client's side is where the port is thin: TakionHandshake models the rules and
+every constant, TakionMessageHeader writes any header, and nothing turns either into the
+two datagrams takion_send_message_init and takion_send_message_cookie put on the wire.
+The bytes exist twice, as private helpers in two test files, which is the shape that
+drifts.
+
+THE READING HALF IS ABSENT ALTOGETHER. takion_parse_message refuses a message three ways
+- too short, a header tag that is not tag_local, a length field that disagrees with the
+datagram - and the INIT_ACK and COOKIE_ACK readers add the type byte, the chunk type and
+its flags, an exact payload size, and the cookie ack's tolerance for a second INIT_ACK
+arriving where the ack was expected. TakionInitAck has no field for the cookie the
+client has to echo.
+
+WHAT THIS IS: the two writers, the two readers, and a client that runs
+TakionHandshake.Exchange twice over a UDP socket to a connected state. THE ORACLE IS
+ALREADY HERE. PP607 hands the C's own INIT and COOKIE to a UdpClient this process holds,
+so the managed writer is compared byte for byte against the C over one exchange, with
+the tag read out of the C's payload; and the managed client completes the handshake
+against PP606's responder, the peer the C has already been shown to accept.
+
+### §PP673 The message layer between the branch and the models
+
+takion_handle_packet_message is the layer between the branch PP500 built and the two
+models under it. TakionReceivePath hands a control datagram to a sink and stops;
+TakionDataDrain models the flush of the data queue and TakionDataAck reads the inbound
+ack; nothing joins them, and the join is two functions.
+
+takion_parse_message reads the tag, the low half of the key position, the chunk type,
+its flags and the length field, and refuses three things in order: a header shorter than
+sixteen bytes, a tag that is not tag_local, and a length field that does not agree with
+the datagram. The position is committed through the key state on every message, not only
+the ones that carry data. Then the switch: DATA hands the whole datagram on and keeps
+the buffer, DATA_ACK runs the ack handler and lets it go, anything else is logged and
+dropped. TakionMessageHeader knows four chunk types and neither of these two.
+
+THE ORACLE IS THE CORPUS. PP510 keeps eighteen bytes a datagram and the control header
+is sixteen of them, so every control datagram a PS5 sent runs through the parse: the
+header tag is the one tag_local of that session, and PP515's recorded length is what the
+length field has to agree with. A parse that refuses one of them, or accepts a head with
+a byte moved, is wrong in a way four thousand real messages say so.
+
+### §PP674 The data queue, one width wider
+
+The C stamps its reorder queue out twice from one body, REORDER_QUEUE_INIT giving a
+sixteen-bit and a thirty-two-bit init that differ only in the three sequence functions
+injected. takion uses both: the video queue is the sixteen-bit one, seeded at
+packet_index minus unit_index, and the data queue is the thirty-two-bit one, seeded with
+tag_remote and given takion_data_drop.
+
+The managed ReorderQueue is the sixteen-bit instantiation with the arithmetic hardwired:
+its constructor takes a ushort, and Push and the comparisons cast to one. SeqNum already
+carries the thirty-two-bit comparisons - TakionSendBuffer.Ack uses them across the wrap
+- so the arithmetic exists and the queue does not. Neither does the shim export:
+chiaki_shim_reorder_queue_create_16 has no sibling.
+
+THE PUSH ABOVE IT IS MISSING TOO. takion_handle_packet_message_data warns when type_b is
+not one, drops a payload shorter than nine bytes, and otherwise builds an entry from the
+sequence number at the payload's start and the channel four bytes in, pushes it, and
+drains. PP491 made both early returns free the packet; PP493 modelled the drain that
+follows. What has no managed shape is the entry and the push between them.
+
+TWO WAYS TO WIDEN IT, and the second is the honest one: a generic queue over an injected
+comparison, as the C is, held against a create_32 export the same way PP108 and PP150
+held the sixteen-bit one - random scripts, both sides stepped, count and drops compared
+after every operation.
+
+### §PP675 The sends, from bytes to socket
+
+Every send in takion.c ends in chiaki_takion_send_raw, a send on the connected socket
+that turns a negative result into a network error, and no managed file in the host sends
+a UDP datagram at all. Above it chiaki_takion_send stamps the packet's MAC under the
+cipher's lock and then sends. Above that, three builders: the data message with its
+twenty-six bytes of overhead - type byte, header, then sequence number, channel, a zero
+word and a type byte before the payload - the continuation that drops the type byte, and
+the data ack, twenty-nine bytes with the cumulative sequence, the advertised window and
+two zero words, sized for the ledger as a whole packet where the others pass the payload
+alone.
+
+WHAT IS RUNNABLE TODAY: TakionMessageHeader.Write for the header,
+TakionKeyPosition.Advance for the ledger, TakionSendBuffer.Push for the hold,
+TakionPacketMac.Apply for the MAC though it allocates. What is a model: TakionDataSend,
+which scripts the failure order and emits no bytes. What is absent: DATA and DATA_ACK as
+chunk types, the three byte layouts, the sequence counter, and the socket. The
+congestion report is the fourth builder and runs only through the shim.
+
+THE ORACLE IS THE EXPORTED C OVER THE LOOPBACK. chiaki_takion_send_message_data is
+exported, and PP607's takion is connected to a socket this process reads. A shim call
+that sends through that takion puts the C's own bytes on the peer, tag and all, for the
+managed builder to be compared against.
+
+### §PP676 Three sends outside the MAC table
+
+Three sends do not go through chiaki_takion_packet_mac, and PP497's table is right to
+know nothing of them. takion_send_feedback_packet takes a key position for the payload
+plus one block, encrypts the body in place at that position plus sixteen, writes the
+position at offset four, computes the GMAC over the whole packet into offset eight, and
+sends raw. The feedback state and the feedback history both funnel through it, one with
+a twelve-byte head over feedback.c's v9 or v12 controller layout, the other with the
+same head over a history payload. The mic packet is the third: a nineteen-byte head,
+twenty on a PS5, the position at fourteen and the MAC at ten.
+
+ALL THREE HOLD THE CIPHER'S LOCK ACROSS THE SEQUENCE, which works because the mutex is
+created recursive; TakionKeyPosition.ReentrantCallSites records the two and the reason.
+A port that made the lock plain deadlocks on the first feedback packet.
+
+Nothing managed writes any of the three, and feedback.c's two serialisers have no
+counterpart either. The primitives are here: StreamAvDispatch.Decrypt is the key-stream
+XOR that encryption also is, Ghash.Tag is the GMAC, GkCrypt holds a session's keys.
+FeedbackState in app/Session is a name collision - PP5's model of the GUI's input
+decisions - and not this packet.
+
+THE ORACLE: the exports exist, so a loopback takion given a GkCrypt built from known
+keys produces the C's bytes for the same state.
+
+### §PP677 The key state, in managed code
+
+chiaki_key_state_request_pos is the counter every encrypted byte of a session is keyed
+by, expanded from the thirty-two bits on the wire to the sixty-four the cipher needs:
+remember the high half, increment it when the low half wraps, and either commit the
+result or only peek at it. A parse that may still turn out to be garbage peeks, so a
+corrupt packet cannot drag the counter forward.
+
+PP23 reached it through the shim as KeyState, PP111 fed the C suite's cases through that
+wrapper, and PP519 fed it a console's own positions, where equal values occur twenty-six
+times in two thousand. All three are the C running. SuiteCoverage answers keystate.c
+with SeqNumTests and the selftest, and neither holds a managed body of the function,
+because there is none.
+
+EVERY MANAGED PARSE NEEDS IT. takion_parse_message commits on every control message;
+chiaki_takion_packet_read_key_pos peeks before the MAC gate; av_packet_parse commits
+inside the AV header. PP668's v12 parse and the control-message layer both stop at this
+wrapper, and a transport whose hot path crosses the seam once per datagram to expand a
+counter is not the transport PP44 budgeted.
+
+THE ORACLE IS THE WRAPPER ITSELF, and the corpus: DatagramReplayReport.KeyPositions
+already reads the positions off four thousand real heads. The same sequence through
+both, committed and peeked, compared at every step.
+
+### §PP678 A takion that owns things
+
+takion_thread_func is more than the loop PP487 modelled. Before it: the handshake, the
+data queue seeded from the remote tag, the send buffer, and the connected event. After
+it: the send buffer and both queues finalised, anything still postponed released, the
+disconnected event, and the socket closed where takion owns it. TakionReceiveLoop.Run
+covers the middle and returns a trace; the bookends have no managed shape.
+
+THE HOST IS A TEST DOUBLE THREE TIMES OVER. ITakionLoopHost asks for the cipher's
+presence, the postponed packets, the next timeout, a receive into a buffer and a
+dispatch, and every implementation lives in the test project. Nothing selects on a
+socket with a stop pipe the way takion_recv does, and TakionDatagramRead triages a
+result nothing produces.
+
+AND NOTHING OWNS THE STATE. The local tag and the sequence counter, tag_remote, the key
+position ledger, the cipher pair, the two queues, the postpone array, the send buffer:
+each is modelled or runnable on its own and none has an owner, so the pieces cannot be
+composed into a takion that a session could hold.
+
+WHAT THIS IS: a managed takion object, built on the client handshake once that exists,
+with the socket that handshake used as the loop's host. THE ORACLE IS PP606'S RESPONDER
+for the connect and PP608's corpus for the loop, with PP44's zero allocation per
+datagram measured the way PP633 measured it.
+
+### §PP679 Version seven, and whose it is
+
+takion.c carries three AV header parsers and the version chosen at connect picks one.
+The v9 and v12 parsers are one body with a flag, which PP668 owns. The v7 parser is a
+body of its own and differs in three places: its bound counts the NALU add for video as
+well as audio, its packed word always takes the video layout whatever the base type, and
+its key position is read raw as thirty-two bits with no key state behind it.
+
+Beside it sits the file's only header FORMATTER,
+chiaki_takion_v7_av_packet_format_header, and its two callers are in senkusha.c - the
+MTU and bandwidth probe - not in takion's receive path. So when takion.c leaves the
+build the formatter has to go somewhere, and PP27's fourth criterion names three files
+and senkusha.c is not one of them.
+
+NOTHING MANAGED ANSWERS EITHER. No shim export, no model, no test; the one mention in
+the tree reads the v7 constant's name inside the v9 parse. NativeTakionLoopback accepts
+version seven, so the C path is reachable for a comparison.
+
+THE DECISION, and it is one: the parse ports with the other two as a third mode of one
+function, or as its own body the way the C keeps it; the formatter moves with the parse,
+or with senkusha's own port. What is refused is deleting a formatter whose callers still
+stand.
+
+### §PP680 The AV arm, assembled
+
+takion_handle_packet_av is the AV branch of the dispatch and the managed side stops
+where the branch does: TakionReceivePath classifies the datagram and hands the bytes to
+a sink, and the sink in the tree copies them into a scratch buffer and counts.
+
+WHAT THE C DOES AFTER THE BRANCH. Video is dropped when the session disabled it, before
+any parse; the parse runs; audio is dropped when disabled unless the packet is haptics;
+audio goes straight to the callback and its buffer is freed; video lazily creates the
+reorder queue on its first packet - begin at packet_index minus unit_index, the drop
+strategy walking begin forward, takion_av_drop as the callback - pushes an entry
+carrying the buffer, the parsed header and the arrival stamp, charges the receive stage,
+and flushes with the timeout. A failed queue init dispatches unreordered rather than
+dropping.
+
+WHAT EXISTS: AvReorderTimeout.Flush over the sixteen-bit queue, StreamAvDispatch as the
+callback's far end, TakionReceiveBuffer.Retain for the copy. WHAT DOES NOT: the gates,
+the lazy init, the entry, the stage stamp, and a queue whose slot can hold a datagram
+rather than a long.
+
+THE PARSE IS PP668'S and this waits on it; until then Takion.ParseV9 is the shim's
+answer for a v9 stream. THE ORACLE IS THE CORPUS: PP608's heads carry every index the
+queue is seeded and ordered by, so the managed arm's order of delivery and its drops are
+compared against AvReorderTimeout's and the C's over a real stream.
+
 ## Block G — Test discipline
 
 ### §PP642 Checking where a deleted design went
