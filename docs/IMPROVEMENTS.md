@@ -356,6 +356,30 @@ the `<summary>` opens; more than one is the finding, and the member it sits on i
 to name. It costs nothing over a tree the drift checks already walk, and it is filed as
 an idea rather than designed because one occurrence is not yet evidence of a class.
 
+### §PP659 A gate with a datagram in it
+
+SessionRelayTests.TheConsolesAnswerComesBackMarked opens three UDP sockets on the
+loopback, sends a datagram through the relay in each direction, and asserts on what the
+tap recorded. It failed once on 2026-09-03 in a run whose two neighbours on either side
+passed, and passed on its own immediately after.
+
+Once is not a pattern and this is filed as an idea rather than a defect for that reason.
+What makes it worth filing anyway is the shape: UDP on the loopback is allowed to drop,
+the receives carry a five second timeout, and the assertion is on a list something else
+fills from a relay thread. Every one of those is a way for the run rather than the code
+to decide the answer.
+
+The cost of leaving it is specific. This tree's gate is read - the ratchet, the counted
+claims and the drift checks all report through it - and a check that fails one run in
+some number teaches a reader to re-run rather than read. PP56 was the same problem
+facing the other way, where a stale binary made the suite green about code that had
+changed.
+
+What would settle it is a count rather than an argument: run the file a few hundred
+times and see whether it fails again. If it does, the fix is a bounded retry on the
+receive or a tap the assertion can wait on, and which of those depends on where it
+actually loses.
+
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed

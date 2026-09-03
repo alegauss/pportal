@@ -34,6 +34,7 @@
 
 - 📋 **PP642** (deps: —) **a ship's `recorded in` clause names a file and nothing checks the file ever received the design** — PP11 is the first entry to carry one, and what holds its paragraph in DcompDemo.cs is a test written by hand for that one entry. → §PP642
 - 💭 **PP643** (deps: —) **two `<summary>` elements on one member compile, and the wrong one wins silently** — PP322's attach docstring sat above the reading test describing a member two declarations down, and the ratchet joins tasks to tests by exactly that text. → §PP643
+- 💭 **PP659** (deps: —) **a relay test sends real UDP between three loopback sockets and failed once in a run that passed twice** — A gate that goes red on a datagram the loopback dropped is one somebody re-runs rather than reads, which is the failure PP56's stale green was the other half of. → §PP659
 
 ## Block H — Performance and telemetry
 
