@@ -552,6 +552,7 @@
 - ✅ **PP651** **PP32's Opus half was a preference with no measurement, and both decoders were reachable all along** — Managed costs 1.58x the native p50 at 24.9us a frame - 0.25% of one - so cost decides nothing; its p99 is 5.6x its own median in every run, and the audio differs by 15 of 32767.
 - ✅ **PP653** **PP33's fourth criterion names a linker question and nobody had asked it since two callers left** — Everything compiles, one target fails, and its ten undefined references are all holepunch's - no curl, no json-c - so the callers are down to the shim, which has ten wrappers and not nine.
 - ✅ **PP654** **the one holepunch wrapper the host actually runs makes a device id from a prefix and 16 random bytes** — The login generates its own device id and the C is kept beside it as the oracle, so every consumer of holepunch.c is now a testing seam rather than a feature.
+- ✅ **PP655** **PP33's remaining blocker is an oracle, and the obvious way to gate it is the one PP437 exists to catch** — The second flip has an order now: two-state the seam, gate the header with the bodies and the host's imports, then turn the prose - three landable commits instead of one diff.
 
 ## Block G — Test discipline
 
