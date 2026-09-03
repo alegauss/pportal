@@ -467,14 +467,22 @@ The window already deals with HDR when the stream is HDR. The case this covers i
 other one: an SDR stream on a display capable of more, which is most sessions on most
 titles.
 
-RTX Video HDR is the driver-side answer and it runs on the same NGX surface as the
-upscaler, which is why it is filed beside it and after the window owns its own
-swapchain. The two together are the whole of what the vendor offers for the picture.
+The cost half is done and it came back cheap. RTX Video HDR engages on this card and
+costs 29.0us a frame, 0.17% of a 60fps interval - see spike/video-hdr, and the ledger
+for the number. So cost is not what decides this feature, which is worth saying because
+it is the question this line was filed to answer.
 
-It comes with a caution worth stating rather than discovering: an inferred HDR image is
-an opinion about colour the source did not express, and on some content it looks worse.
-Whatever ships has to be a setting the user can turn off, and the fidelity mode the
-conformance work already cares about has to bypass it entirely.
+A sentence that stood here is now false, and its correction is why the spike was written
+carefully. This said RTX Video HDR "runs on the same NGX surface as the upscaler". It
+does not: super resolution is the NVIDIA PPE interface at method 2 and true HDR is an
+interface of its own at method 3, so a spike inheriting PP47's constant would have set
+an extension the driver knows, been accepted, and reported PP47's finding as news.
+
+What is left is the half a number cannot reach. An inferred HDR image is an opinion
+about colour the source did not express, and on some content it looks worse - so the
+picture has to be judged on a decoded console frame rather than on the synthetic chart
+the cost was taken from, and whatever ships is a setting that turns off with a fidelity
+mode bypassing it. Both are criteria on the line now.
 
 ### §PP52 Where a vendor feature also pays a debt
 

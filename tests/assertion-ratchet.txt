@@ -102,4 +102,17 @@
 # PP607 and PP610 shipped. The section is where a reader meets them; those tests are where they
 # are true.
 # exempt PP611 - a section corrected: every fact it now states is asserted under its own id.
+#
+# PP49 is the third, and it is one of PP307's sixteen measurements arriving late rather than a new
+# kind of thing. Its deliverable is a number and a finding, both in spike/video-hdr: the extension
+# engages, it costs 29.0us a frame, and the read-back PP47 hedged about echoes zeros on a run that
+# demonstrably worked. The spike is not built by the gate and is not meant to be - it says nothing
+# at all without an NVIDIA card in the machine, and there is no such card in CI.
+#
+# The one thing worth weighing against the exemption is the finding that is not a number: super
+# resolution and true HDR are different driver interfaces, so PP47's constant would have measured
+# PP47's finding a second time. A test over that would assert that a
+# GUID literal contains the digits it contains - a check on a copy of the source, which is the
+# shape PP611's exemption already refused. It is recorded in the spike's README and in §PP49.
+# exempt PP49 - an evaluation: RTX Video HDR engages at 29.0us a frame, which is the number it reported.
 0

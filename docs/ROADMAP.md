@@ -43,7 +43,7 @@
 
 ## Block I — NVIDIA path
 
-- 📋 **PP49** (deps: PP11 ✅, PP47 ✅) **the console sends SDR on most titles and an HDR display shows it flat, with nothing in the client trying** — RTX Video HDR does this conversion on the presented frame, and it is the one vendor feature whose benefit is visible in a still image, not argued from a graph. → §PP49
+- ⏳ **PP49** (deps: PP11 ✅, PP47 ✅) **the console sends SDR on most titles and an HDR display shows it flat, with nothing in the client trying** — the quality half and the integration: a decoded console frame to judge the picture on, and a setting that turns it off with a fidelity mode bypassing it. → §PP49
 - 📋 **PP52** (deps: PP32) **the Qt client runs speex echo cancellation on the CPU, and speexdsp has no managed replacement** — NVIDIA ships GPU noise and echo removal for exactly this, so one task can both improve the voice sent to the console and delete a dependency the port has no answer for. → §PP52
 - 📋 **PP53** (deps: PP11 ✅, PP41 ✅) **frames arrive with network jitter and are presented against a fixed refresh, so each waits for a vblank it missed** — A variable refresh display can show a frame when it arrives rather than when the panel next allows it, which is latency removed and not an image improved. → §PP53
 - ⏳ **PP76** (deps: PP528 ✅) (requires: console, a-person-looking) **the decoder preference is measured on synthetic frames, and drops under network jitter are what a stream is judged by** — one session per decoder against a real console, now that the difference between the two counters is the number to read. → §PP76
@@ -130,6 +130,18 @@
   is an end state, not a progress bar: PP638 measured that session.c drives the stream
   connection, so this cannot land until PP28 stops it - and PP28 is what waits on the
   three criteria above. Porting into app removes no C.
+
+## Done when — PP49
+
+- **The picture is judged on a decoded console frame, not a synthetic chart** The cost
+  half is settled and does not need one: 29.0us follows the resolution. Whether an
+  inferred HDR image is BETTER depends on where a real frame's highlights and shadows
+  sit, and spike/video-hdr says so rather than implying an answer from a chart.
+- **It is a setting that turns off, and a fidelity mode bypasses it** The caution the
+  design filed, kept as a condition rather than a hope: an inferred HDR image is an
+  opinion about colour the source did not express. Nothing in the present path asks for
+  the extension yet, so this is the integration half and it waits on the window owning
+  its own swapchain.
 
 ## Non-goals
 

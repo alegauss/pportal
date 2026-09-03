@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    PP49's evaluation, built the way PP47's was and for the same reason: the tree has no .NET
+    solution yet (PP24), and a spike exists to produce a number and the conditions it was taken
+    under, re-runnable by whoever doubts it.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <!-- For PngBitmapEncoder alone. Nothing is presented here: the video processor writes to a
+         texture and the texture is read back. -->
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <AssemblyName>video-hdr</AssemblyName>
+    <RootNamespace>VideoHdr</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Vortice.Direct3D11" Version="3.6.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Both linked, not copied, for the reason video-upscale gave about Stats: a second copy that
+      drifts makes two spikes' numbers quietly incomparable.
+
+      Frame.cs is the same synthetic 1080p NV12 pattern PP47 fed the upscaler. It was built to be
+      hard in the ways an UPSCALER is judged on, which is not the same as the ways a tone expansion
+      is - README.md says so rather than pretending otherwise. What it is right for is the cost,
+      which is what a synthetic frame can settle in either spike.
+    -->
+    <Compile Include="../present-path/Stats.cs" Link="Stats.cs" />
+    <Compile Include="../video-upscale/Frame.cs" Link="Frame.cs" />
+  </ItemGroup>
+
+</Project>
