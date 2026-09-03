@@ -78,10 +78,11 @@ public class HolepunchSessionOwnershipTests
     [Fact]
     public void OnceTheSeamIsBareThereIsOneOwner()
     {
-        if (ShimHolepunchShape.BareHeader() is not { } header)
+        if (ShimHolepunchShape.BareHeader() is null)
             return;
 
-        Assert.Empty(ShimHolepunchShape.StillDeclaredIn(header));
+        // PP661: asked of the build. The declarations survive the flip inside an #ifdef.
+        Assert.Equal(ShimShape.Bare, ShimHolepunchShape.OfTheBuild());
     }
 
     /// <summary>

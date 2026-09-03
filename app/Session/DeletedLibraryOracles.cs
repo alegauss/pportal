@@ -50,18 +50,42 @@ public static class DeletedLibraryOracles
     /// <summary>
     /// Whether the shim still offers the json oracle, which every comparison against json-c needs.
     ///
-    /// PP655's first step for the third set of callers. Keyed on the HEADER for the reason
-    /// <see cref="Protocol.ShimHolepunchShape"/> is: PP437's census reads that file to learn what
-    /// the shim exports, so the header is what a flip has to change and keying on it makes the two
-    /// agree about what gone means.
+    /// ASKED OF THE BUILD, and the first version of this asked the source. It read the shim's header
+    /// for the wrappers' names and found them - because PP655's flip puts them inside an #ifdef, and
+    /// the declarations are still in the FILE. A text reader cannot see a preprocessor. 128
+    /// assertions went red at once on a build where every guard here reported the oracle present and
+    /// every call into it threw.
+    ///
+    /// chiaki_shim_has_jsonc is exported whichever way the option went, so this answers for the DLL
+    /// the host actually loaded rather than for a file on disk beside it.
     ///
     /// NOT A WAY OF NOT LOOKING. What these guards protect is a comparison - managed against the
     /// library it replaces - and the managed side is asserted on its own either way. What declines
     /// when the oracle goes is the second opinion, which is the only part that needs json-c present.
     /// </summary>
     public static bool JsonOracleIsAvailable()
-        => SanitizerSource.LocateRelative(ShimHeaderRelativePath) is { } path
-            && File.ReadAllText(path).Contains(JsonWrapperPrefix, StringComparison.Ordinal);
+    {
+        try
+        {
+            return HasJsonC();
+        }
+        catch (DllNotFoundException)
+        {
+            return false;
+        }
+        catch (EntryPointNotFoundException)
+        {
+            // A shim older than PP661 does not export the question. It certainly has the oracle,
+            // because that is the only build that predates the flip.
+            return true;
+        }
+    }
+
+    [System.Runtime.InteropServices.DllImport(
+        Native.ChiakiNative.Library, EntryPoint = "chiaki_shim_has_jsonc",
+        CallingConvention = System.Runtime.InteropServices.CallingConvention.Cdecl)]
+    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.I1)]
+    private static extern bool HasJsonC();
 
     /// <summary>
     /// The exported wrappers that call json-c, by name and ordered.

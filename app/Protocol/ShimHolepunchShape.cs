@@ -60,7 +60,7 @@ public static class ShimHolepunchShape
     /// <summary>The header's text, or null outside a checkout.</summary>
     public static string? Read() => Locate() is { } path ? File.ReadAllText(path) : null;
 
-    /// <summary>Which shape a given header is in.</summary>
+    /// <summary>Which shape a given header's TEXT is in, which is not the same as the build's.</summary>
     public static ShimShape Of(string header)
     {
         ArgumentNullException.ThrowIfNull(header);
@@ -71,13 +71,45 @@ public static class ShimHolepunchShape
     }
 
     /// <summary>
+    /// PP661: which shape the BUILT shim is in, which is the one a caller needs.
+    ///
+    /// <see cref="Of"/> reads text, and PP655's flip puts the declarations inside an #ifdef rather
+    /// than deleting them - so the text says Wrapping on a build that exports none of them. That is
+    /// how the first attempt at the flip turned 128 assertions red while every guard reported the
+    /// seam present. chiaki_shim_has_holepunch is exported whichever way the option went.
+    /// </summary>
+    public static ShimShape OfTheBuild()
+    {
+        try
+        {
+            return HasHolepunch() ? ShimShape.Wrapping : ShimShape.Bare;
+        }
+        catch (DllNotFoundException)
+        {
+            return ShimShape.Bare;
+        }
+        catch (EntryPointNotFoundException)
+        {
+            // A shim older than PP661 does not export the question, and the only build that
+            // predates it is one that has the wrappers.
+            return ShimShape.Wrapping;
+        }
+    }
+
+    [System.Runtime.InteropServices.DllImport(
+        Native.ChiakiNative.Library, EntryPoint = "chiaki_shim_has_holepunch",
+        CallingConvention = System.Runtime.InteropServices.CallingConvention.Cdecl)]
+    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.I1)]
+    private static extern bool HasHolepunch();
+
+    /// <summary>
     /// The header while it still declares the wrappers, or null - which a caller reads as "not for
     /// me to check".
     /// </summary>
     public static string? WrappingHeader()
     {
         string? header = Read();
-        return header is not null && Of(header) == ShimShape.Wrapping ? header : null;
+        return header is not null && OfTheBuild() == ShimShape.Wrapping ? header : null;
     }
 
     /// <summary>
@@ -89,7 +121,7 @@ public static class ShimHolepunchShape
     public static string? BareHeader()
     {
         string? header = Read();
-        return header is not null && Of(header) == ShimShape.Bare ? header : null;
+        return header is not null && OfTheBuild() == ShimShape.Bare ? header : null;
     }
 
     /// <summary>

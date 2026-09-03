@@ -46,10 +46,11 @@ public class NativeHolepunchSessionTests
     [Fact]
     public void OnceTheSeamIsBareThereIsNothingToDrive()
     {
-        if (ShimHolepunchShape.BareHeader() is not { } header)
+        if (ShimHolepunchShape.BareHeader() is null)
             return;
 
-        Assert.Empty(ShimHolepunchShape.StillDeclaredIn(header));
+        // PP661: the build's shape, because the flip leaves the declarations in the file.
+        Assert.Equal(ShimShape.Bare, ShimHolepunchShape.OfTheBuild());
         Assert.Equal(
             ShimHolepunchShape.GoneWhenBare.Order(StringComparer.Ordinal),
             ChiakiNg.Session.NativeSeam.ImportsOnlyAHolepunchBuildResolves().Order(StringComparer.Ordinal));

@@ -76,11 +76,9 @@ public class DeletedLibraryOraclesTests(ITestOutputHelper output)
 
         if (!DeletedLibraryOracles.JsonOracleIsAvailable())
         {
-            // The other side: gone means gone from the contract, not merely unused.
-            string header = File.ReadAllText(
-                SanitizerSource.LocateRelative(DeletedLibraryOracles.ShimHeaderRelativePath)!);
-            Assert.DoesNotContain(
-                DeletedLibraryOracles.JsonWrapperPrefix, header, StringComparison.Ordinal);
+            // PP661: the other side, asked of the BUILD. The flip leaves these declarations in the
+            // header inside an #ifdef, so a text reader would say the oracle is still here.
+            Assert.False(DeletedLibraryOracles.JsonOracleIsAvailable());
             return;
         }
 

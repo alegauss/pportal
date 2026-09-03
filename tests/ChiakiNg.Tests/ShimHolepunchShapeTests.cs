@@ -12,6 +12,11 @@ namespace ChiakiNg.Tests;
 /// This is PP630's mechanism one layer along. PP630 asked whether session.c still names the
 /// holepunch handle and PP631 converted ten models through the answer; the flip then edited the C
 /// and no test file. PP655's flip needs the same preparation, and this is the question it turns on.
+///
+/// PP662 CHANGED WHERE THE ANSWER COMES FROM. It was the header's text, which is the right file and
+/// the wrong reader: the flip gates the declarations with an #ifdef rather than deleting them, so
+/// the text says Wrapping on a build that exports none of them. An attempt at the flip turned 128
+/// assertions red saying so. The build answers now, through an export it carries either way.
 /// </summary>
 public class ShimHolepunchShapeTests(ITestOutputHelper output)
 {
@@ -53,10 +58,13 @@ public class ShimHolepunchShapeTests(ITestOutputHelper output)
     [Fact]
     public void OnceItIsBareNoneOfTheNineIsDeclared()
     {
-        if (ShimHolepunchShape.BareHeader() is not { } header)
+        if (ShimHolepunchShape.BareHeader() is null)
             return;
 
-        Assert.Empty(ShimHolepunchShape.StillDeclaredIn(header));
+        // PP661: the BUILD's shape and not the header's text. The flip puts the declarations inside
+        // an #ifdef rather than deleting them, so StillDeclaredIn still finds them - which is what
+        // turned 128 assertions red the first time this was asked of the file.
+        Assert.Equal(ShimShape.Bare, ShimHolepunchShape.OfTheBuild());
     }
 
     /// <summary>

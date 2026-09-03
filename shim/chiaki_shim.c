@@ -55,6 +55,35 @@ CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void)
 	return CHIAKI_SHIM_ABI;
 }
 
+/*
+ * PP661: whether this shim carries the oracles PP655's flip removes.
+ *
+ * ASKED OF THE BUILD, NOT OF THE SOURCE, and that distinction is the whole reason these exist. The
+ * first mechanism read the shim's header for the wrappers' names and reported them present on a
+ * build where they were inside an #ifdef nobody had defined - the declarations are still in the
+ * FILE, and a text reader cannot see a preprocessor. 128 assertions went red at once saying so.
+ *
+ * These two always exist, whatever the option says, and answer for the build that produced the DLL
+ * the host actually loaded. A managed guard that asks them cannot be wrong about which shim it has.
+ */
+CHIAKI_SHIM_API bool chiaki_shim_has_holepunch(void)
+{
+#ifdef CHIAKI_SHIM_HAVE_HOLEPUNCH
+	return true;
+#else
+	return false;
+#endif
+}
+
+CHIAKI_SHIM_API bool chiaki_shim_has_jsonc(void)
+{
+#ifdef CHIAKI_SHIM_HAVE_JSONC
+	return true;
+#else
+	return false;
+#endif
+}
+
 CHIAKI_SHIM_API const char *chiaki_shim_error_string(int32_t error_code)
 {
 	return chiaki_error_string((ChiakiErrorCode)error_code);

@@ -61,6 +61,17 @@ extern "C" {
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
 /**
+ * PP661: whether this shim carries the oracles PP655's flip removes.
+ *
+ * Always declared and always defined, whichever way CHIAKI_ENABLE_HOLEPUNCH went - which is what
+ * makes them answerable. A managed guard that read the header for the wrappers' own names would be
+ * reading text an #ifdef had already excluded from the build, and PP661's first mechanism did
+ * exactly that.
+ */
+CHIAKI_SHIM_API bool chiaki_shim_has_holepunch(void);
+CHIAKI_SHIM_API bool chiaki_shim_has_jsonc(void);
+
+/**
  * chiaki_error_string for a ChiakiErrorCode, as a UTF-8 string the caller does not own.
  *
  * Here because it is the smallest thing that proves a real property of the seam: a pointer to a
