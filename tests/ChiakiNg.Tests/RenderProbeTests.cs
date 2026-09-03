@@ -516,25 +516,6 @@ public class RenderProbeTests
     }
 
     /// <summary>
-    /// PP322: the two-layer tree ATTACHES to a WPF window and detaches, which is the apparatus the
-    /// choice is read from.
-    ///
-    /// The probe builds the same tree and releases it before returning, which is right for a
-    /// question and useless for a window somebody is meant to look at. What --dcomp-demo --layers
-    /// needs is a tree that outlives the call, and the failure modes that adds are invisible unless
-    /// something exercises them: an attach reporting success while handing back nothing, and a
-    /// teardown that now has SEVEN objects to release in an order the compositor cares about rather
-    /// than four.
-    ///
-    /// It does NOT show the window, so this stays in the gate. What the demo is for - whether the
-    /// green block is there, and whether its half-alpha half blends once or twice - is the part no
-    /// assertion here can reach, and saying so is the whole of why PP322 is a line of its own.
-    ///
-    /// PP322 was read on 2026-09-02 and both halves came back the good answer. The reading is in
-    /// DcompDemo's own docstring, beside PP284's, and <see cref="TheReadingsApparatusIsUnchanged"/>
-    /// is what keeps it about this window.
-    /// </summary>
-    /// <summary>
     /// PP322: the window the reading was taken on is the window still in the tree.
     ///
     /// A pixel cannot be asserted - that is the whole reason this line existed - so what a test CAN
@@ -574,6 +555,78 @@ public class RenderProbeTests
             "hwnd, SwapchainFormat.Rgb10A2, SwapchainFormat.Bgra8", source, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// PP11: the design the ledger says is in this file is in this file.
+    ///
+    /// PP11 shipped with its rationale section deleted and a pointer put in its place - "design
+    /// recorded in app/Views/DcompDemo.cs" - because the HDR half's deliverable was a choice
+    /// between paths rather than a rule to port, and a choice belongs beside the apparatus it was
+    /// read from. Nothing in the tree checks such a pointer: `ship --recorded-in` requires the PATH
+    /// to resolve and says nothing about what the file contains, so a ledger entry can name a file
+    /// that never received the paragraph, or a file that later lost it to a tidy-up.
+    ///
+    /// This is that check for the one entry that carries it. It is deliberately about the sentence
+    /// a later presentation path has to obey - the container, the two formats and their ORDER -
+    /// rather than about the whole section: what would be worth catching is the constraint going
+    /// missing, not the prose around it being rewritten.
+    ///
+    /// The ledger's own clause is asserted too. Without it this would pass on a file that happens
+    /// to say the right thing while the entry points somewhere else entirely.
+    /// </summary>
+    [Fact]
+    public void PP11sRecordedDesignIsInTheFileTheLedgerNames()
+    {
+        if (AssertionRatchet.LocateLedger() is not { } ledgerPath)
+            return;
+
+        string ledger = File.ReadAllText(ledgerPath);
+        Assert.Contains(
+            "design recorded in `app/Views/DcompDemo.cs`", ledger, StringComparison.Ordinal);
+
+        if (SanitizerSource.LocateRelative(@"app\Views\DcompDemo.cs") is not { } path)
+            return;
+
+        string source = File.ReadAllText(path);
+
+        // The constraint, in the words the entry summarises: one container, ten bits below and an
+        // eight-bit premultiplied surface above. An overlay drawn straight, or a path that put the
+        // plane on top, would be a different answer to the question PP319 asked.
+        foreach (string clause in (string[])
+        [
+            "one container visual",
+            "ten-bit swapchain BELOW",
+            "eight-bit premultiplied surface ABOVE",
+            "the alpha is taken once",
+        ])
+        {
+            Assert.Contains(clause, source, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    /// <summary>
+    /// PP322: the two-layer tree ATTACHES to a WPF window and detaches, which is the apparatus the
+    /// choice is read from.
+    ///
+    /// The probe builds the same tree and releases it before returning, which is right for a
+    /// question and useless for a window somebody is meant to look at. What --dcomp-demo --layers
+    /// needs is a tree that outlives the call, and the failure modes that adds are invisible unless
+    /// something exercises them: an attach reporting success while handing back nothing, and a
+    /// teardown that now has SEVEN objects to release in an order the compositor cares about rather
+    /// than four.
+    ///
+    /// It does NOT show the window, so this stays in the gate. What the demo is for - whether the
+    /// green block is there, and whether its half-alpha half blends once or twice - is the part no
+    /// assertion here can reach, and saying so is the whole of why PP322 is a line of its own.
+    ///
+    /// PP322 was read on 2026-09-02 and both halves came back the good answer. The reading is in
+    /// DcompDemo's own docstring, beside PP284's, and <see cref="TheReadingsApparatusIsUnchanged"/>
+    /// is what keeps it about this window.
+    ///
+    /// This docstring sat stacked above <see cref="TheReadingsApparatusIsUnchanged"/> as a second
+    /// <c>summary</c> element until PP11's ship, describing a test two members further down. Two
+    /// summaries on one member is not a compiler error and the wrong one wins silently, which is
+    /// why it survived the commit that wrote it.
+    /// </summary>
     [Fact]
     public void TheTwoLayerTreeAttachesToAWpfWindowAndDetaches()
     {

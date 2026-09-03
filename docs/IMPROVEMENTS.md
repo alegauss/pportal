@@ -29,27 +29,26 @@ three, so it is the moment when the duplication is visible.
 
 ## Block C — Video and input path
 
-### §PP11 What the window owns
+### §PP641 The overlay layer, and what draws into it
 
-Beyond presenting frames, the Qt window decides how the session meets the display. Two
-of the three are answered: fullscreen shipped as a state machine, and PP321 took the
-refresh rate, which this window reads as an input on every tick rather than sets on the
-panel.
+PP319 chose the arrangement and PP322 read it: a container visual carries a ten-bit
+swapchain below and an eight-bit premultiplied surface above, and the two compose in the
+order given. What that reading used as the overlay was a green block the shim draws.
 
-What is left is HDR. PP163 measured that WPF's D3DImage refuses ten bits, and PP319
-chose between the three paths that left: the overlay goes above the video in the
-compositor's own tree, because a child HWND costs PP10's overlay outright and SDR on
-purpose costs the picture. A container visual carrying a ten-bit swapchain below and an
-eight-bit premultiplied surface above it commits, which is what makes that choice a
-measurement rather than a preference.
+PP10's screen is not a green block. It is XAML, drawn by WPF into the window's
+redirection bitmap, and PP284 measured that the compositor tree covers that bitmap
+whatever the topmost flag says. So the two halves of the choice are not symmetric: the
+video plane has somewhere to go the moment a renderer presents into a composition
+swapchain, while the overlay has a layer and nothing that draws into it.
 
-So this half is not blocked on a decision any more. It waits on PP322 - the pixel nobody
-has looked at yet, which is the exact mistake PP163 made one layer down - and then on
-PP10's screen being rebuilt against a compositor rather than against XAML.
+Three shapes exist and none is chosen here, because choosing needs the cost of each.
+Render the visual tree to a bitmap per frame and upload it, paying a full-screen copy at
+HUD update rate. Keep the HUD in WPF and accept SDR while it is up, PP319's rejected
+option narrowed to one screen. Or rebuild the HUD against the compositor, which costs
+PP10 and PP12 a second time.
 
-It stays a separate line from PP9 for the reason it always was: this is Win32 and DXGI
-work that does not depend on which of the renderer shapes wins, only on there being a
-window.
+This line is the question and not the answer. It is filed now because shipping PP11
+deletes the only sentence in the tree that says the overlay layer is empty.
 
 ## Block D — Screens
 

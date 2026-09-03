@@ -11,7 +11,7 @@
 
 ## Block C — Video and input path
 
-- ⏳ **PP11** (deps: PP9 ✅, PP163 ✅, PP322 ✅) **fullscreen, HDR handoff and refresh-rate switching are handled by the Qt window** — the HDR half alone: PP319 chose the overlay above the video in the compositor's tree, and PP322 is the reading that has to confirm it. → §PP11
+- 📋 **PP641** (deps: PP11 ✅, PP322 ✅) **PP10's HUD is XAML, and the compositor tree PP319 chose covers a WPF window's own drawing entirely** — PP322 read that an eight-bit premultiplied surface composes above the ten-bit plane; what draws the HUD into it is the half nobody has built. → §PP641
 
 ## Block D — Screens
 
@@ -40,9 +40,9 @@
 
 ## Block I — NVIDIA path
 
-- 📋 **PP49** (deps: PP11 ⏳, PP47 ✅) **the console sends SDR on most titles and an HDR display shows it flat, with nothing in the client trying** — RTX Video HDR does this conversion on the presented frame, and it is the one vendor feature whose benefit is visible in a still image, not argued from a graph. → §PP49
+- 📋 **PP49** (deps: PP11 ✅, PP47 ✅) **the console sends SDR on most titles and an HDR display shows it flat, with nothing in the client trying** — RTX Video HDR does this conversion on the presented frame, and it is the one vendor feature whose benefit is visible in a still image, not argued from a graph. → §PP49
 - 📋 **PP52** (deps: PP32) **the Qt client runs speex echo cancellation on the CPU, and speexdsp has no managed replacement** — NVIDIA ships GPU noise and echo removal for exactly this, so one task can both improve the voice sent to the console and delete a dependency the port has no answer for. → §PP52
-- 📋 **PP53** (deps: PP11 ⏳, PP41 ✅) **frames arrive with network jitter and are presented against a fixed refresh, so each waits for a vblank it missed** — A variable refresh display can show a frame when it arrives rather than when the panel next allows it, which is latency removed and not an image improved. → §PP53
+- 📋 **PP53** (deps: PP11 ✅, PP41 ✅) **frames arrive with network jitter and are presented against a fixed refresh, so each waits for a vblank it missed** — A variable refresh display can show a frame when it arrives rather than when the panel next allows it, which is latency removed and not an image improved. → §PP53
 - ⏳ **PP76** (deps: PP528 ✅) (requires: console, a-person-looking) **the decoder preference is measured on synthetic frames, and drops under network jitter are what a stream is judged by** — one session per decoder against a real console, now that the difference between the two counters is the number to read. → §PP76
 
 ## Block J — Public documentation
@@ -89,16 +89,6 @@
   removes no C, so this is the end state and not a progress bar - the same shape PP33's
   own last criterion has. The three files' sizes are stated in the section, where the
   recount reaches them.
-
-## Done when — PP11
-
-- **A container visual carries the ten-bit swapchain below and the overlay above** PP319
-  chose between the three paths D3DImage's ten-bit refusal left, and this is the one
-  that costs neither PP10's overlay nor the picture. Fullscreen and the refresh rate
-  already shipped; HDR is the half that is left.
-- **PP322's reading confirms the overlay lands above the video** A compositor accepting
-  a tree says nothing about what reaches the glass. This half is not blocked on a
-  decision any more - it waits on the pixel nobody has looked at.
 
 ## Done when — PP46
 

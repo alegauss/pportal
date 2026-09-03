@@ -9,6 +9,29 @@ namespace ChiakiNg.Views;
 /// <summary>
 /// PP284: the window PP163's last question is answered by looking at.
 ///
+/// What PP11 settled, and what it did not
+/// --------------------------------------
+/// PP11 was three things the window owns, and two of them ported as rules: fullscreen is the state
+/// machine in <c>StreamWindowState</c>, and the refresh rate is the input <c>DisplayCadence</c>
+/// reads on every tick rather than a mode it sets on the panel. The HDR handoff had no rule to
+/// port. It was a choice between paths, and the choice is recorded here because the ledger entry
+/// that closed PP11 points at this file for it.
+///
+/// THE CONSTRAINT A PRESENTATION PATH INHERITS: one container visual, a ten-bit swapchain BELOW and
+/// an eight-bit premultiplied surface ABOVE. D3DImage refuses any surface wider than eight bits
+/// (PP163), so the picture cannot reach the display through the surface PP9 chose; of the three
+/// ways out, a child HWND costs PP10's overlay outright and SDR on purpose costs the picture, and
+/// PP319 took the third. The overlay is drawn INTO the tree rather than over the window, because a
+/// redirection bitmap is not a child of anything - which is the correction below, and the reason
+/// the arrangement PP163 originally wanted was never available.
+///
+/// AND THE ALPHA IS TAKEN ONCE, so that surface is drawn premultiplied. That is a reading and not a
+/// deduction: it is the half of PP322 no return value reports, and the entry for it is dated below.
+///
+/// What PP11 does NOT settle is what draws PP10's HUD into that upper layer. The reading below used
+/// a green block the shim draws, which is apparatus and not a screen. PP641 is that question, filed
+/// rather than assumed.
+///
 /// PP281 built the DirectComposition tree to Commit, PP282 asked it in the arrangement the design
 /// needs - the visual BEHIND the window's content - and PP283 asked that of a real WPF window's
 /// HWND. All three hold. What none of them can answer is what WPF DRAWS over the visual, because
