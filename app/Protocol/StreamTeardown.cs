@@ -83,15 +83,54 @@ public static class StreamTeardown
     ///
     /// The names are the C's own goto targets. Read as a ladder: each construction that succeeds
     /// moves the entry point one label earlier, so nothing that was not built is released.
+    ///
+    /// PP295 CORRECTED EVERY RUNG. This table used to enter one label EARLIER than the C at each
+    /// step - a haptics failure at HapticsReceiver where the C goes to err_audio_receiver, a connect
+    /// failure at CloseTakion where the C goes to err_video_receiver. Three of those were harmless
+    /// because the frees are null-safe; the fourth was not, because it would close a takion that
+    /// never connected. It was found by writing <see cref="ManagedStreamRun"/> against this table
+    /// and reading the C beside it, which is the whole of what PP295's first criterion means by
+    /// "the ordering ported, not only the functions": a wrong table is one a message-level
+    /// comparison cannot see. <see cref="StreamTeardownSource.GotoTargetsBeforeTheFirstLabel"/> now
+    /// holds it against the file.
+    ///
+    /// The audio receiver failing is the one case with no label at all: the C unlocks and returns.
+    /// Entering at AudioReceiver frees a null, which is the same outcome by a different route, and
+    /// it is stated here because it is the one rung where the table is a modelling choice.
     /// </summary>
     public static StreamExitLabel EntryAfter(StreamBuilt built) => built switch
     {
         StreamBuilt.Nothing => StreamExitLabel.AudioReceiver,
-        StreamBuilt.AudioReceiver => StreamExitLabel.HapticsReceiver,
-        StreamBuilt.HapticsReceiver => StreamExitLabel.VideoReceiver,
-        StreamBuilt.VideoReceiver => StreamExitLabel.CloseTakion,
-        StreamBuilt.Takion => StreamExitLabel.CongestionControl,
-        _ => StreamExitLabel.Disconnect,
+        StreamBuilt.AudioReceiver => StreamExitLabel.AudioReceiver,
+        StreamBuilt.HapticsReceiver => StreamExitLabel.HapticsReceiver,
+        StreamBuilt.VideoReceiver => StreamExitLabel.VideoReceiver,
+        StreamBuilt.Takion => StreamExitLabel.CloseTakion,
+        _ => StreamExitLabel.CongestionControl,
+    };
+
+    /// <summary>
+    /// The goto each failure takes in the C, in the order the failures can happen, so the table
+    /// above can be held against the file rather than believed.
+    /// </summary>
+    public static IReadOnlyList<(StreamBuilt Built, string Goto)> GotosByRung { get; } =
+    [
+        (StreamBuilt.AudioReceiver, "err_audio_receiver"),
+        (StreamBuilt.HapticsReceiver, "err_haptics_receiver"),
+        (StreamBuilt.VideoReceiver, "err_video_receiver"),
+        (StreamBuilt.Takion, "close_takion"),
+        (StreamBuilt.CongestionControl, "err_congestion_control"),
+    ];
+
+    /// <summary>The label a goto target names.</summary>
+    public static StreamExitLabel LabelOf(string gotoTarget) => gotoTarget switch
+    {
+        "disconnect" => StreamExitLabel.Disconnect,
+        "err_congestion_control" => StreamExitLabel.CongestionControl,
+        "close_takion" => StreamExitLabel.CloseTakion,
+        "err_video_receiver" => StreamExitLabel.VideoReceiver,
+        "err_haptics_receiver" => StreamExitLabel.HapticsReceiver,
+        "err_audio_receiver" => StreamExitLabel.AudioReceiver,
+        _ => throw new ArgumentOutOfRangeException(nameof(gotoTarget), gotoTarget, "not one of the six labels"),
     };
 
     /// <summary>

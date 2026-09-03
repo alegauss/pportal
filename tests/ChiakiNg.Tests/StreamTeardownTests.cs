@@ -38,12 +38,16 @@ public class StreamTeardownTests
     /// The ladder read the other way: each thing that came up moves the entry one label earlier.
     /// </summary>
     [Theory]
+    // PP295: every row below was one label too early, and the fourth was not harmless - a connect
+    // failure entering at CloseTakion closes a takion that never connected. Found by writing
+    // ManagedStreamRun against this table with the C open beside it; held now by the rung test
+    // below, which reads the gotos out of the file rather than trusting either of us.
     [InlineData(StreamBuilt.Nothing, StreamExitLabel.AudioReceiver)]
-    [InlineData(StreamBuilt.AudioReceiver, StreamExitLabel.HapticsReceiver)]
-    [InlineData(StreamBuilt.HapticsReceiver, StreamExitLabel.VideoReceiver)]
-    [InlineData(StreamBuilt.VideoReceiver, StreamExitLabel.CloseTakion)]
-    [InlineData(StreamBuilt.Takion, StreamExitLabel.CongestionControl)]
-    [InlineData(StreamBuilt.CongestionControl, StreamExitLabel.Disconnect)]
+    [InlineData(StreamBuilt.AudioReceiver, StreamExitLabel.AudioReceiver)]
+    [InlineData(StreamBuilt.HapticsReceiver, StreamExitLabel.HapticsReceiver)]
+    [InlineData(StreamBuilt.VideoReceiver, StreamExitLabel.VideoReceiver)]
+    [InlineData(StreamBuilt.Takion, StreamExitLabel.CloseTakion)]
+    [InlineData(StreamBuilt.CongestionControl, StreamExitLabel.CongestionControl)]
     public void AFailureEntersWhereWhatItBuiltIsReleased(StreamBuilt built, StreamExitLabel entry)
     {
         Assert.Equal(entry, StreamTeardown.EntryAfter(built));
@@ -57,15 +61,20 @@ public class StreamTeardownTests
     public void NothingUnbuiltIsEverReleased()
     {
         // Nothing built at all still runs one label: freeing a NULL audio receiver is a no-op, and
-        // that is how the C is written rather than an oversight this port should improve on.
+        // that is how the C is written rather than an oversight this port should improve on. It is
+        // the one rung where the table is a modelling choice - the C has no label there and returns.
         Assert.Single(StreamTeardown.From(StreamTeardown.EntryAfter(StreamBuilt.Nothing)));
 
-        foreach (StreamBuilt built in Enum.GetValues<StreamBuilt>())
+        // PP295: one label per thing built, and NOT one more. This used to assert (int)built + 1,
+        // and it held only because every rung of the old table entered one label too early - the
+        // arithmetic and the table were wrong together, which is how a wrong table survives a test
+        // written from it. The connect rung is the one that mattered: entering a label early there
+        // closes a takion that never connected.
+        foreach (StreamBuilt built in Enum.GetValues<StreamBuilt>().Where(b => b != StreamBuilt.Nothing))
         {
             IReadOnlyList<StreamExitLabel> run = StreamTeardown.From(StreamTeardown.EntryAfter(built));
 
-            // One label per thing built, plus the audio one that always runs.
-            Assert.Equal((int)built + 1, run.Count);
+            Assert.Equal((int)built, run.Count);
         }
     }
 
