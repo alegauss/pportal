@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using ChiakiNg.Protocol;
+using ChiakiNg.Session;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -41,6 +42,9 @@ public class FrameParsingTests
     [Fact]
     public void ThreeCompleteFramesInARowAllParse()
     {
+        if (!DeletedLibraryOracles.JsonOracleIsAvailable())
+            return;
+
         using NativeJsonTokener? tokener = NativeJsonTokener.Create();
         Assert.NotNull(tokener);
 
@@ -61,6 +65,9 @@ public class FrameParsingTests
     [Fact]
     public void ATruncatedFrameSwallowsTheOneAfterIt()
     {
+        if (!DeletedLibraryOracles.JsonOracleIsAvailable())
+            return;
+
         using NativeJsonTokener? tokener = NativeJsonTokener.Create();
         Assert.NotNull(tokener);
 
@@ -79,6 +86,9 @@ public class FrameParsingTests
     [Fact]
     public void GarbageStopsTheTokenerAtOnceAndForGood()
     {
+        if (!DeletedLibraryOracles.JsonOracleIsAvailable())
+            return;
+
         using NativeJsonTokener? tokener = NativeJsonTokener.Create();
         Assert.NotNull(tokener);
 
@@ -96,6 +106,9 @@ public class FrameParsingTests
     [Fact]
     public void AFreshTokenerParsesWhatAPoisonedOneRefused()
     {
+        if (!DeletedLibraryOracles.JsonOracleIsAvailable())
+            return;
+
         using NativeJsonTokener? poisoned = NativeJsonTokener.Create();
         Assert.NotNull(poisoned);
 
@@ -113,6 +126,9 @@ public class FrameParsingTests
     [Fact]
     public void AResetIsWhatClearsIt()
     {
+        if (!DeletedLibraryOracles.JsonOracleIsAvailable())
+            return;
+
         using NativeJsonTokener? tokener = NativeJsonTokener.Create();
         Assert.NotNull(tokener);
 
@@ -133,6 +149,9 @@ public class FrameParsingTests
     [Fact]
     public void TrailingBytesAndAnEmptyFrameAreHarmless()
     {
+        if (!DeletedLibraryOracles.JsonOracleIsAvailable())
+            return;
+
         using NativeJsonTokener? trailing = NativeJsonTokener.Create();
         Assert.NotNull(trailing);
 

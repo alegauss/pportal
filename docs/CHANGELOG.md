@@ -557,6 +557,7 @@
 - ✅ **PP657** **PP656 taught the seam its two shapes and the census that reads it still knows only one** — The allowance is derived from the seam's shape, so it is empty today and becomes the nine when the header goes bare - and the flip edits neither this check nor a test.
 - ✅ **PP658** **five tests drive the C through the nine wrappers and would throw rather than fail once they are gone** — The five that call the C decline on a bare seam and a counterpart asserts the removal instead, so PP655's first step is finished and its flip edits no test file.
 - ✅ **PP660** **PP655 sized the flip from a linker answer taken while json-c was still linked, so it counted one oracle** — The flip's surface is both oracles counted from the shim - 25 exports where the linker named 10 - so PP655's first step has a third set of callers still to convert.
+- ✅ **PP661** **sixteen comparisons hold managed JSON against json-c and would throw rather than fail once it is gone** — The sixteen decline on a shim with no json oracle and a counterpart says which state the tree is in, so PP655's first step now covers all three sets of callers.
 
 ## Block G — Test discipline
 

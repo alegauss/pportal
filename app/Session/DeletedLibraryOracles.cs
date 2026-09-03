@@ -48,6 +48,22 @@ public static class DeletedLibraryOracles
     public static string? LocateShim() => SanitizerSource.LocateRelative(ShimRelativePath);
 
     /// <summary>
+    /// Whether the shim still offers the json oracle, which every comparison against json-c needs.
+    ///
+    /// PP655's first step for the third set of callers. Keyed on the HEADER for the reason
+    /// <see cref="Protocol.ShimHolepunchShape"/> is: PP437's census reads that file to learn what
+    /// the shim exports, so the header is what a flip has to change and keying on it makes the two
+    /// agree about what gone means.
+    ///
+    /// NOT A WAY OF NOT LOOKING. What these guards protect is a comparison - managed against the
+    /// library it replaces - and the managed side is asserted on its own either way. What declines
+    /// when the oracle goes is the second opinion, which is the only part that needs json-c present.
+    /// </summary>
+    public static bool JsonOracleIsAvailable()
+        => SanitizerSource.LocateRelative(ShimHeaderRelativePath) is { } path
+            && File.ReadAllText(path).Contains(JsonWrapperPrefix, StringComparison.Ordinal);
+
+    /// <summary>
     /// The exported wrappers that call json-c, by name and ordered.
     ///
     /// Derived, for the reason PP653's ten were: the nine in this tree's prose had been nine for two

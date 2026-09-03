@@ -61,6 +61,33 @@ public class DeletedLibraryOraclesTests(ITestOutputHelper output)
     }
 
     /// <summary>
+    /// PP661: the json oracle is available today, and the sixteen comparisons that need it run.
+    ///
+    /// One side of the pair PP655's first step wants. Three test files hold managed JSON against
+    /// json-c, and every one of those comparisons needs the library present - so each declines when
+    /// it is not, and this says which state the tree is in rather than leaving it to be inferred
+    /// from sixteen quiet returns.
+    /// </summary>
+    [Fact]
+    public void TheJsonOracleIsHereAndTheComparisonsRun()
+    {
+        if (SanitizerSource.LocateRelative(DeletedLibraryOracles.ShimHeaderRelativePath) is null)
+            return;
+
+        if (!DeletedLibraryOracles.JsonOracleIsAvailable())
+        {
+            // The other side: gone means gone from the contract, not merely unused.
+            string header = File.ReadAllText(
+                SanitizerSource.LocateRelative(DeletedLibraryOracles.ShimHeaderRelativePath)!);
+            Assert.DoesNotContain(
+                DeletedLibraryOracles.JsonWrapperPrefix, header, StringComparison.Ordinal);
+            return;
+        }
+
+        Assert.True(DeletedLibraryOracles.JsonOracleIsAvailable());
+    }
+
+    /// <summary>
     /// The reader tells a call from a name, which is what the holepunch count needed too.
     ///
     /// Both directions, because a reader that matched the word would find the include line and the

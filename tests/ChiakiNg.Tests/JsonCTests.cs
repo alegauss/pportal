@@ -1,5 +1,6 @@
 using System.Text.Json;
 using ChiakiNg.Protocol;
+using ChiakiNg.Session;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -21,6 +22,9 @@ public class JsonCTests
     /// <summary>Both sides' answers for one node, so a case is one line.</summary>
     private static void Same(string json, string key = "v")
     {
+        if (!DeletedLibraryOracles.JsonOracleIsAvailable())
+            return;
+
         using NativeJson? native = NativeJson.Parse(json);
         using JsonDocument? managed = JsonC.Parse(json);
 
@@ -147,6 +151,9 @@ public class JsonCTests
     [Fact]
     public void ArrayLengthAndIndexingAgree()
     {
+        if (!DeletedLibraryOracles.JsonOracleIsAvailable())
+            return;
+
         const string json = @"{""a"":[10,20,30],""b"":7}";
         using NativeJson? native = NativeJson.Parse(json);
         using JsonDocument? managed = JsonC.Parse(json);
@@ -197,6 +204,9 @@ public class JsonCTests
     [InlineData("/a/b/-1")]
     public void ThePointerResolvesTheWayJsonCResolvesIt(string path)
     {
+        if (!DeletedLibraryOracles.JsonOracleIsAvailable())
+            return;
+
         const string doc = @"{""a"":{""b"":[10,20]},""x/y"":1,""x~z"":2,"""":3}";
 
         using NativeJson? native = NativeJson.Parse(doc);
@@ -230,6 +240,9 @@ public class JsonCTests
     [InlineData(@"{""a"":}")]
     public void TheTokenerAgreesOnWhatIsADocument(string text)
     {
+        if (!DeletedLibraryOracles.JsonOracleIsAvailable())
+            return;
+
         using NativeJson? native = NativeJson.Parse(text);
         using JsonDocument? managed = JsonC.Parse(text);
 
@@ -259,6 +272,9 @@ public class JsonCTests
     [InlineData("01")]
     public void JsonCsLexerIsLenientWhereThisIsNot(string text)
     {
+        if (!DeletedLibraryOracles.JsonOracleIsAvailable())
+            return;
+
         using NativeJson? native = NativeJson.Parse(text);
         Assert.NotNull(native);
 
@@ -282,6 +298,9 @@ public class JsonCTests
     [InlineData(@"{""t"":""a\tb\nc""}")]
     public void TheSerialisationIsJsonCsOwn(string json)
     {
+        if (!DeletedLibraryOracles.JsonOracleIsAvailable())
+            return;
+
         using NativeJson? native = NativeJson.Parse(json);
         using JsonDocument? managed = JsonC.Parse(json);
 
@@ -295,6 +314,9 @@ public class JsonCTests
     [Fact]
     public void ASessionMessageShapedDocumentReadsTheSameThroughBoth()
     {
+        if (!DeletedLibraryOracles.JsonOracleIsAvailable())
+            return;
+
         const string outer =
             @"{""to"":""ps5"",""action"":""SEND"",""payload"":" +
             @"""{\""accountId\"":\""9999999999999999999999\"",\""localPeerPort\"":\""9295\""}""}";
