@@ -116,6 +116,44 @@ public enum SwapchainStage
 public readonly record struct SwapchainSupport(
     bool Created, bool Hdr10, bool Srgb, bool ScRgb, SwapchainStage Stage);
 
+/// <summary>PP53: which step of the tearing probe failed, or Ok.</summary>
+public enum TearingStage
+{
+    Ok = 0,
+    NoDevice,
+    DxgiDevice,
+    Adapter,
+    /// <summary>IDXGIFactory5, which is the interface the feature query lives on.</summary>
+    Factory,
+    /// <summary>The hidden window the control swapchain needs; the composition one needs none.</summary>
+    Window,
+}
+
+/// <summary>
+/// PP53: what this machine will let a present tear on.
+///
+/// Three answers rather than one, because a single boolean cannot be read. Tearing is how an
+/// application asks a variable refresh display to show a frame when it arrives instead of at the
+/// next vblank - there is no API called VRR, there is a swapchain flag and a present flag.
+/// </summary>
+/// <param name="Ran">Whether every step ran. False means the probe stopped, not that tearing is off.</param>
+/// <param name="Adapter">What IDXGIFactory5 says the machine supports at all.</param>
+/// <param name="Composition">
+/// Whether a COMPOSITION swapchain - PP319's choice for the video plane - presents with the flag.
+/// </param>
+/// <param name="Hwnd">
+/// The control: the same request on an ordinary HWND flip swapchain. Without it, a false above
+/// cannot be told from a machine that refuses tearing everywhere.
+/// </param>
+/// <param name="Refused">
+/// The negative control, and what makes the rest worth anything: whether DXGI REFUSES the tearing
+/// present on a swapchain created without the flag. False means DXGI is not reading these flags,
+/// and every true above is a call that succeeded by doing nothing.
+/// </param>
+/// <param name="Stage">Where it stopped, when it did.</param>
+public readonly record struct TearingSupport(
+    bool Ran, bool Adapter, bool Composition, bool Hwnd, bool Refused, TearingStage Stage);
+
 /// <summary>
 /// PP281: which step of the DirectComposition path failed, or Ok.
 ///
@@ -416,6 +454,38 @@ public sealed class RenderDevice : IDisposable
         [MarshalAs(UnmanagedType.I1)] out bool hdr10,
         [MarshalAs(UnmanagedType.I1)] out bool srgb,
         [MarshalAs(UnmanagedType.I1)] out bool scrgb,
+        out int stage);
+
+    /// <summary>
+    /// PP53: what this machine will let a present tear on, which is what variable refresh needs.
+    ///
+    /// A frame from a console arrives when the network delivers it, and a fixed-refresh present
+    /// rounds every one up to the next vblank - up to 16ms at 60Hz on top of a frame that already
+    /// crossed a network. Variable refresh is the answer and this is how it is asked for: a
+    /// flip-model swapchain carrying DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING, presented at sync interval
+    /// zero with DXGI_PRESENT_ALLOW_TEARING.
+    ///
+    /// The composition answer is the one PP53 turns on, because PP319 chose a composition swapchain
+    /// for the video plane. The other two are what make it readable.
+    /// </summary>
+    public TearingSupport ProbeTearing()
+    {
+        bool ran = TearingProbe(
+            Handle, out bool adapter, out bool composition, out bool hwnd, out bool refused,
+            out int stage);
+
+        return new TearingSupport(ran, adapter, composition, hwnd, refused, (TearingStage)stage);
+    }
+
+    [DllImport(ChiakiRender.Library, EntryPoint = "chiaki_render_tearing_probe",
+        CallingConvention = CallingConvention.Cdecl)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    private static extern bool TearingProbe(
+        IntPtr d3d11,
+        [MarshalAs(UnmanagedType.I1)] out bool adapter,
+        [MarshalAs(UnmanagedType.I1)] out bool composition,
+        [MarshalAs(UnmanagedType.I1)] out bool hwnd,
+        [MarshalAs(UnmanagedType.I1)] out bool refused,
         out int stage);
 
     /// <summary>

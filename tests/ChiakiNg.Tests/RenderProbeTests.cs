@@ -36,6 +36,80 @@ public class RenderProbeTests
     }
 
     /// <summary>
+    /// PP53: DXGI reads the tearing flags, which is what makes the three answers below answers.
+    ///
+    /// This is the negative control and it is asserted FIRST because everything else here is an
+    /// affirmative. The composition swapchain the probe presents has no window and no visual, so a
+    /// Present on it could succeed by doing nothing whatever the flags said - and "DXGI accepted
+    /// tearing" read off such a call would be a report on the probe's own optimism.
+    ///
+    /// So the same present is made on a swapchain created WITHOUT
+    /// DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING, where DXGI must refuse it with DXGI_ERROR_INVALID_CALL.
+    /// It does. The flags are being read.
+    ///
+    /// It holds with no hardware too - the refusal is DXGI's argument checking and not a driver's
+    /// capability, so this one assertion never goes quiet on a runner.
+    /// </summary>
+    [Fact]
+    public void DxgiRefusesTearingOnASwapchainThatDidNotAskForIt()
+    {
+        using RenderDevice? device = AnyDevice();
+        Assert.NotNull(device);
+
+        TearingSupport tearing = device.ProbeTearing();
+
+        Assert.True(tearing.Ran, $"the tearing probe stopped at {tearing.Stage}");
+        Assert.True(
+            tearing.Refused,
+            "DXGI accepted DXGI_PRESENT_ALLOW_TEARING on a swapchain created without the flag, so "
+                + "it is not reading these flags and every other answer here is a call that "
+                + "succeeded by doing nothing");
+    }
+
+    /// <summary>
+    /// PP53: and the COMPOSITION path does not narrow what the adapter allows.
+    ///
+    /// This is the question PP53 turns on. Variable refresh is not an API called VRR - it is a
+    /// flip-model swapchain carrying DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING, presented at sync interval
+    /// zero with DXGI_PRESENT_ALLOW_TEARING. PP319 chose a composition swapchain for the video
+    /// plane, and a composition swapchain is composed by DWM rather than presented to an output, so
+    /// the obvious guess is that the choice already cost the feature.
+    ///
+    /// It has not, at this layer. Both are asserted against the ADAPTER's own answer rather than
+    /// against true, which is what lets this run on WARP: the claim is that the compositor path and
+    /// an ordinary window agree with the machine, not that this machine says yes. A run where the
+    /// adapter says no and the composition swapchain says yes would be just as much a finding.
+    ///
+    /// WHAT THIS DOES NOT SAY is that a frame through a DirectComposition visual reaches the panel
+    /// unpaced. DXGI accepting a flag is an API answer, and this tree already has PP163's record of
+    /// what an API answer is worth as a prediction about a pixel. That half needs a variable refresh
+    /// display and a frame-time trace, and there is neither here.
+    /// </summary>
+    [Fact]
+    public void TheCompositionPathAllowsTearingWhereverTheAdapterDoes()
+    {
+        using RenderDevice? device = AnyDevice();
+        Assert.NotNull(device);
+
+        TearingSupport tearing = device.ProbeTearing();
+        Assert.True(tearing.Ran, $"the tearing probe stopped at {tearing.Stage}");
+
+        Assert.True(
+            tearing.Composition == tearing.Adapter,
+            $"the adapter says tearing is {tearing.Adapter} and a composition swapchain says "
+                + $"{tearing.Composition}, so PP319's choice of a composition swapchain for the "
+                + "video plane is what decides whether PP53 is available");
+
+        // The control. Without it a matching pair above could be two ways of saying the same no,
+        // and PP53 would read as answered on a machine where nothing tears at all.
+        Assert.True(
+            tearing.Hwnd == tearing.Adapter,
+            $"an ordinary HWND flip swapchain says {tearing.Hwnd} against the adapter's "
+                + $"{tearing.Adapter}, which is the control failing rather than the composition "
+                + "path being interesting");
+    }
+
+    /// <summary>
     /// The premise. PL_HAVE_D3D11 is a property of the libplacebo this DLL was linked against
     /// rather than of the project, so a toolchain that dropped it should say so here and not at
     /// the first frame of a session.

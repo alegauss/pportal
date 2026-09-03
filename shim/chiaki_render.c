@@ -601,6 +601,205 @@ done:
 #endif
 }
 
+// ---- PP53: whether a present can tear ------------------------------------------------------
+//
+// dxgi1_5.h for IDXGIFactory5, which is where CheckFeatureSupport and DXGI_FEATURE_PRESENT_ALLOW_
+// TEARING live. Windows 10 1607 and later, which is above PP22's floor.
+
+#include <dxgi1_5.h>
+
+#ifdef PL_HAVE_D3D11
+
+// The class name is this file's own rather than the dcomp probe's. Two translation units sharing a
+// window class would be two places to change one string, and RegisterClassExW is happy to hold both.
+static const wchar_t chiaki_render_tearing_class[] = L"ChiakiRenderTearingProbe";
+
+static HWND chiaki_render_tearing_window(void)
+{
+	HINSTANCE instance = GetModuleHandleW(NULL);
+	WNDCLASSEXW cls;
+
+	memset(&cls, 0, sizeof(cls));
+	cls.cbSize = sizeof(cls);
+	cls.lpfnWndProc = DefWindowProcW;
+	cls.hInstance = instance;
+	cls.lpszClassName = chiaki_render_tearing_class;
+	// Already registered is not an error: this runs more than once per process, and the second
+	// RegisterClassExW fails with ERROR_CLASS_ALREADY_EXISTS.
+	if(!RegisterClassExW(&cls) && GetLastError() != ERROR_CLASS_ALREADY_EXISTS)
+		return NULL;
+
+	// An ORDINARY window, deliberately - no WS_EX_NOREDIRECTIONBITMAP. This is the control for the
+	// composition swapchain, so it has to be the window a normal present path would use.
+	return CreateWindowExW(
+			0, chiaki_render_tearing_class, L"", WS_POPUP,
+			0, 0, 16, 16, NULL, NULL, instance, NULL);
+}
+
+// One present with the tearing flag, on a swapchain that was created with it. Both halves are
+// required: DXGI refuses DXGI_PRESENT_ALLOW_TEARING with DXGI_ERROR_INVALID_CALL unless the
+// swapchain carries DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING and the sync interval is zero, so a probe
+// that got either wrong would report a refusal about itself.
+static bool chiaki_render_tearing_present(IDXGISwapChain1 *swapchain)
+{
+	// DXGI_STATUS_OCCLUDED is a success code and these windows are never shown, so SUCCEEDED is the
+	// right test rather than == S_OK.
+	return SUCCEEDED(IDXGISwapChain1_Present(swapchain, 0, DXGI_PRESENT_ALLOW_TEARING));
+}
+
+#endif
+
+CHIAKI_RENDER_API bool chiaki_render_tearing_probe(
+		void *d3d11, bool *out_adapter, bool *out_composition, bool *out_hwnd, bool *out_refused,
+		int32_t *out_stage)
+{
+#ifdef PL_HAVE_D3D11
+	chiaki_render_d3d11 *placebo = (chiaki_render_d3d11 *)d3d11;
+	IDXGIDevice *dxgi_device = NULL;
+	IDXGIAdapter *adapter = NULL;
+	IDXGIFactory5 *factory = NULL;
+	IDXGISwapChain1 *composition = NULL;
+	IDXGISwapChain1 *plain = NULL;
+	IDXGISwapChain1 *windowed = NULL;
+	HWND hwnd = NULL;
+	DXGI_SWAP_CHAIN_DESC1 desc;
+	BOOL allow = FALSE;
+	bool ok = false;
+
+	if(out_adapter)
+		*out_adapter = false;
+	if(out_composition)
+		*out_composition = false;
+	if(out_hwnd)
+		*out_hwnd = false;
+	if(out_refused)
+		*out_refused = false;
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_TEARING_NO_DEVICE;
+
+	if(!placebo || !placebo->d3d11 || !placebo->d3d11->device)
+		return false;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_TEARING_DXGI_DEVICE;
+	if(FAILED(ID3D11Device_QueryInterface(placebo->d3d11->device, &IID_IDXGIDevice, (void **)&dxgi_device)))
+		goto done;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_TEARING_ADAPTER;
+	if(FAILED(IDXGIDevice_GetAdapter(dxgi_device, &adapter)))
+		goto done;
+
+	// IDXGIFactory5 and not 2: the feature query is the whole reason this probe needs the newer
+	// interface, and a machine too old to hand one out is one where the answer is no anyway.
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_TEARING_FACTORY;
+	if(FAILED(IDXGIAdapter_GetParent(adapter, &IID_IDXGIFactory5, (void **)&factory)))
+		goto done;
+
+	if(out_adapter
+			&& SUCCEEDED(IDXGIFactory5_CheckFeatureSupport(
+					factory, DXGI_FEATURE_PRESENT_ALLOW_TEARING, &allow, sizeof(allow))))
+	{
+		*out_adapter = allow != FALSE;
+	}
+
+	memset(&desc, 0, sizeof(desc));
+	desc.Width = 1920;
+	desc.Height = 1080;
+	desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+	desc.SampleDesc.Count = 1;
+	desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+	desc.BufferCount = 2;
+	desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
+	desc.AlphaMode = DXGI_ALPHA_MODE_PREMULTIPLIED;
+	desc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+
+	// Failing to CREATE the composition swapchain is an answer, not an error: it means DXGI will
+	// not put the flag on this kind of swapchain at all, which is the strongest form of the no this
+	// probe is looking for. So it does not goto done - the control below still has to run, or a
+	// reader cannot tell it from a machine with no tearing anywhere.
+	if(SUCCEEDED(IDXGIFactory5_CreateSwapChainForComposition(
+			factory, (IUnknown *)placebo->d3d11->device, &desc, NULL, &composition)))
+	{
+		if(out_composition)
+			*out_composition = chiaki_render_tearing_present(composition);
+	}
+
+	// THE NEGATIVE CONTROL, and the reason the answer above is worth anything. A composition
+	// swapchain has no window and this one has no visual, so a Present on it could plausibly be a
+	// call that succeeds by doing nothing - and a probe reporting "DXGI accepted the tearing flag"
+	// off the back of that would be reporting on its own optimism. The same present on a swapchain
+	// created WITHOUT the flag must be REFUSED with DXGI_ERROR_INVALID_CALL. If it is, DXGI is
+	// reading the flags rather than ignoring them, and the yes above is a yes.
+	//
+	// This is PP281's "an impossible format stops at the swapchain and says so", one layer along:
+	// the way to trust an affirmative probe is to make it produce a negative on demand.
+	desc.Flags = 0;
+	if(SUCCEEDED(IDXGIFactory5_CreateSwapChainForComposition(
+			factory, (IUnknown *)placebo->d3d11->device, &desc, NULL, &plain)))
+	{
+		if(out_refused)
+			*out_refused = !chiaki_render_tearing_present(plain);
+	}
+	desc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_TEARING_WINDOW;
+	hwnd = chiaki_render_tearing_window();
+	if(!hwnd)
+		goto done;
+
+	// The control's own description. FLIP_DISCARD rather than FLIP_SEQUENTIAL and no alpha mode:
+	// this is a swapchain presenting to a window and not to a compositor, and asking for
+	// premultiplied alpha on one is what a composed swapchain wants rather than what this is.
+	desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+	desc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
+
+	if(SUCCEEDED(IDXGIFactory5_CreateSwapChainForHwnd(
+			factory, (IUnknown *)placebo->d3d11->device, hwnd, &desc, NULL, NULL, &windowed)))
+	{
+		if(out_hwnd)
+			*out_hwnd = chiaki_render_tearing_present(windowed);
+	}
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_TEARING_OK;
+	ok = true;
+
+done:
+	if(windowed)
+		IDXGISwapChain1_Release(windowed);
+	if(plain)
+		IDXGISwapChain1_Release(plain);
+	if(composition)
+		IDXGISwapChain1_Release(composition);
+	if(hwnd)
+		DestroyWindow(hwnd);
+	if(factory)
+		IDXGIFactory5_Release(factory);
+	if(adapter)
+		IDXGIAdapter_Release(adapter);
+	if(dxgi_device)
+		IDXGIDevice_Release(dxgi_device);
+
+	return ok;
+#else
+	(void)d3d11;
+	if(out_adapter)
+		*out_adapter = false;
+	if(out_composition)
+		*out_composition = false;
+	if(out_hwnd)
+		*out_hwnd = false;
+	if(out_refused)
+		*out_refused = false;
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_TEARING_NO_DEVICE;
+	return false;
+#endif
+}
+
 // ---- PP9: a decoded frame through pl_render_image ------------------------------------------
 
 #ifdef PL_HAVE_D3D11

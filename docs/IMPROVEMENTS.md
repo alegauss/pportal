@@ -507,13 +507,20 @@ present rounds every one of them up to the next vblank. At 60Hz that is up to 16
 pure waiting, added to a frame that already travelled a network.
 
 Variable refresh is the direct answer, and it is the only item in this block that makes
-the picture arrive earlier rather than look better or arrive smoother. It also composes
-with everything else here instead of competing with it.
+the picture arrive earlier rather than look better or arrive smoother.
 
-Two caveats to hold. Below the display's minimum refresh, low framerate compensation
-changes the behaviour and the result has to be checked rather than assumed. And
-exclusive fullscreen is usually the precondition, which is why this hangs off the task
-where the window takes ownership of how it meets the display.
+The first thing measured was whether PP319's choice had already cost it. It has not:
+DXGI takes DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING on a composition swapchain and presents
+with it, and it refuses the same present where the flag was not asked for - so the flags
+are read rather than ignored. A sentence that stood here is corrected by that, not
+confirmed: it said exclusive fullscreen is usually the precondition, and the tearing
+pair is the borderless mechanism that replaced needing one.
+
+What is left is the half an API cannot answer. A composed frame goes through DWM, so a
+flag DXGI accepted is not a panel that followed - which is the mistake PP163 made one
+subsystem along, and there is no display here that varies its refresh to check it on.
+Below the display's minimum, low framerate compensation changes the behaviour again, and
+that too is read rather than assumed.
 
 ### §PP76 The decoder half a spike cannot reach
 

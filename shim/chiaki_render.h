@@ -226,6 +226,58 @@ CHIAKI_RENDER_API bool chiaki_render_swapchain_probe(
 		void *d3d11, int32_t format, bool *out_hdr10, bool *out_srgb, bool *out_scrgb, int32_t *out_stage);
 
 /**
+ * PP53: whether a present here can TEAR, which is the mechanism a variable refresh display needs.
+ *
+ * A frame from a console arrives when the network delivers it. Presented against a fixed refresh it
+ * waits for the next vblank - up to 16ms at 60Hz, added to a frame that already crossed a network.
+ * Variable refresh removes that wait, and the way an application asks for it on Windows is not an
+ * API called "VRR": it creates a flip-model swapchain with DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING and
+ * presents with SyncInterval 0 and DXGI_PRESENT_ALLOW_TEARING. Without that pair the present is
+ * paced by the compositor whatever the panel is capable of.
+ *
+ * FOUR ANSWERS, because none of them alone can be read. `out_adapter` is what
+ * IDXGIFactory5::CheckFeatureSupport says the machine can do at all - a no here makes the rest
+ * meaningless rather than interesting. `out_composition` is whether a COMPOSITION swapchain, which
+ * is what PP319 chose for the video plane, will take the flag and present with it. `out_hwnd` is
+ * the control: the same request on an ordinary HWND flip swapchain, so a refusal can be told from a
+ * machine that refuses tearing everywhere.
+ *
+ * `out_refused` IS WHY THE OTHERS ARE WORTH ANYTHING. A composition swapchain has no window, and
+ * the one here has no visual either, so a Present on it could succeed by doing nothing at all -
+ * which is exactly what an affirmative answer would look like. So the same present is made on a
+ * swapchain created WITHOUT the flag, where DXGI must refuse it: `out_refused` true means DXGI is
+ * reading these flags rather than ignoring them.
+ *
+ * WHAT NONE OF IT SETTLES is whether a frame presented through a DirectComposition visual reaches
+ * the panel unpaced. DXGI accepting a flag is an API answer, and PP163 is this tree's own record of
+ * what happens when an API answer is read as a pixel. That half needs a variable refresh display
+ * and a frame-time trace.
+ *
+ * The hidden window exists for the control alone. Composition swapchains have no window, which is
+ * why PP163's probe could be headless; a swapchain for an HWND cannot be.
+ */
+typedef enum chiaki_render_tearing_stage
+{
+	CHIAKI_RENDER_TEARING_OK = 0,
+	CHIAKI_RENDER_TEARING_NO_DEVICE,
+	CHIAKI_RENDER_TEARING_DXGI_DEVICE,   /**< QueryInterface for IDXGIDevice */
+	CHIAKI_RENDER_TEARING_ADAPTER,       /**< IDXGIDevice::GetAdapter */
+	CHIAKI_RENDER_TEARING_FACTORY,       /**< IDXGIAdapter::GetParent for IDXGIFactory5 */
+	CHIAKI_RENDER_TEARING_WINDOW,        /**< RegisterClass / CreateWindowEx for the control */
+} chiaki_render_tearing_stage;
+
+/**
+ * Asks all three and reports where it stopped.
+ *
+ * Returns true when every step ran, NOT when tearing was allowed: a machine that says no to all
+ * three is an answer and not a failure, and collapsing the two would make "no VRR here" read as
+ * "the probe is broken".
+ */
+CHIAKI_RENDER_API bool chiaki_render_tearing_probe(
+		void *d3d11, bool *out_adapter, bool *out_composition, bool *out_hwnd, bool *out_refused,
+		int32_t *out_stage);
+
+/**
  * PP281: and whether DirectComposition will actually take that swapchain as a visual's content.
  *
  * PP163 priced half the path and asserted the rest. It measured that a composition swapchain carries

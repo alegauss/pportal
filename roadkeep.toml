@@ -143,6 +143,13 @@ declared = [
     # A code-signing certificate, which is a purchase and an identity check against a legal
     # entity rather than anything a commit can produce.
     "signing-certificate",
+    # A display that varies its refresh rate, and something that can read a frame-time trace off
+    # it. Declared for PP53 on 2026-09-03, whose shipped half measured that DXGI takes the tearing
+    # flags on the composition path PP319 chose - an API answer, and PP163 is this tree's record of
+    # what one of those is worth as a prediction about a pixel. The panel is the other half and no
+    # commit produces one. Kin to PP55's deferral, which names a Reflex-capable display, and NOT the
+    # same absence: a monitor can vary its refresh without carrying a latency analyser.
+    "variable-refresh-display",
     # "a-person-looking" was declared here for PP163 and left with it on 2026-08-23. PP284's window
     # was looked at, and the reading was a fourth outcome it had not predicted - solid red over the
     # whole client area, with --topmost reading identically. Worth keeping from the entry that

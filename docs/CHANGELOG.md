@@ -650,6 +650,7 @@
 - ✅ **PP50** **frame generation would smooth a 30fps stream and cost a frame of latency to do it** — No FRAME_RATE_CONVERSION under any usage, and the 2-out-per-1-in doubling returns a byte-identical copy: the 33.3ms hold buys nothing (design recorded in `spike/frame-generation/README.md`).
 - ✅ **PP76 (the number to read)** **the decoder preference is measured on synthetic frames, and drops under network jitter are what a stream is judged by** — The decoder's own loss is frames_dropped less frames_lost, named and clamped in lib: reading either counter alone is how a run gets a confident wrong answer.
 - ✅ **PP49 (the cost, and that it engages)** **the console sends SDR on most titles and an HDR display shows it flat, with nothing in the client trying** — It engages: 2,073,580 of 2,073,600 pixels move and it costs 29.0us a frame, 0.17% of a 60fps interval - on a driver interface of its own, not PP47's.
+- ✅ **PP53 (whether the compositor path allows it)** **frames arrive with network jitter and are presented against a fixed refresh, so each waits for a vblank it missed** — DXGI reads the flags and a composition swapchain takes them, so PP319's choice does not foreclose tearing - and an API answer is not a pixel.
 
 ## Block J — Public documentation
 

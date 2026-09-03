@@ -45,7 +45,7 @@
 
 - ⏳ **PP49** (deps: PP11 ✅, PP47 ✅) (requires: console, a-person-looking) **the console sends SDR on most titles and an HDR display shows it flat, with nothing in the client trying** — the quality half and the integration: a decoded console frame to judge the picture on, and a setting that turns it off. → §PP49
 - 📋 **PP52** (deps: PP32) **the Qt client runs speex echo cancellation on the CPU, and speexdsp has no managed replacement** — NVIDIA ships GPU noise and echo removal for exactly this, so one task can both improve the voice sent to the console and delete a dependency the port has no answer for. → §PP52
-- 📋 **PP53** (deps: PP11 ✅, PP41 ✅) **frames arrive with network jitter and are presented against a fixed refresh, so each waits for a vblank it missed** — A variable refresh display can show a frame when it arrives rather than when the panel next allows it, which is latency removed and not an image improved. → §PP53
+- ⏳ **PP53** (deps: PP11 ✅, PP41 ✅) (requires: variable-refresh-display) **frames arrive with network jitter and are presented against a fixed refresh, so each waits for a vblank it missed** — the reading itself: a display that varies its refresh, and a trace saying the frame arrived unpaced. → §PP53
 - ⏳ **PP76** (deps: PP528 ✅) (requires: console, a-person-looking) **the decoder preference is measured on synthetic frames, and drops under network jitter are what a stream is judged by** — one session per decoder against a real console, now that the difference between the two counters is the number to read. → §PP76
 - 📋 **PP644** (deps: —) **spike/video-upscale calls the extension read-back a hint, and PP49 measured that it is not one** — The same zeros came back on a run where 2.07 million pixels moved, so the echo says nothing in either direction and a reader is still told to weigh it. → §PP644
 - 📋 **PP645** (deps: —) **both NVIDIA spikes report a mean, and four of PP49's six runs carried 200-300us outliers on it** — PP49's delta is stable at the p50 and moves by 40% at the mean, so which run gets committed is chosen by eye rather than by a rule the spike applies. → §PP645
@@ -144,6 +144,18 @@
   opinion about colour the source did not express. Nothing in the present path asks for
   the extension yet, so this is the integration half and it waits on the window owning
   its own swapchain.
+
+## Done when — PP53
+
+- **A frame-time trace on a varying panel, not a flag DXGI accepted** The shipped half
+  is an API answer and PP163 is this tree's record of what one is worth as a prediction
+  about a pixel. A composed frame passes through DWM, so whether the panel actually
+  follows it needs reading on a display that varies its refresh.
+- **The present path asks for the flags, rather than a probe asking on its side**
+  Nothing the client presents carries DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING today; only
+  chiaki_render_tearing_probe does. Integration means the video plane's own swapchain
+  carries it and presents at sync interval zero, which is the half that waits on there
+  being a video plane at all.
 
 ## Non-goals
 
