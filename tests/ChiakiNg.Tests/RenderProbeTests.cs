@@ -339,6 +339,50 @@ public class RenderProbeTests
     }
 
     /// <summary>
+    /// PP646: the tearing present survives a COMMITTED tree, which is where a no-op would have hidden.
+    ///
+    /// PP53 asked DXGI and DXGI said yes. Its swapchain was bound to nothing - no visual, no target,
+    /// no window - so the present had nowhere to go, and the strongest thing its negative control
+    /// could establish is that DXGI reads the flags. Whether a composed swapchain still accepts them
+    /// once it is content of a visual on a committed target is a different question, and it is the
+    /// one PP53's remaining half rests on: a refusal here would settle it against the composition
+    /// path with no display at all.
+    ///
+    /// It does not refuse. Both halves are asserted - the present through the tree that asked for
+    /// tearing, and the refusal on the same tree that did not - because without the second, a
+    /// Present that ignored its flags would look identical.
+    ///
+    /// STILL NOT A PIXEL. DXGI accepting a flag through a committed tree is one layer deeper than
+    /// PP53 reached and it is still an API answer; the panel is the half no probe here can touch.
+    /// </summary>
+    [Fact]
+    public void TheTearingPresentSurvivesACommittedTree()
+    {
+        VisualTearingSupport tearing = Apartment.Run(
+            () =>
+            {
+                using RenderDevice? device = AnyDevice();
+                return device is null
+                    ? new VisualTearingSupport(false, false, false, TearingStage.NoDevice)
+                    : device.ProbeTearingThroughAVisual();
+            },
+            named: "a tearing present through a committed DirectComposition tree");
+
+        Assert.True(tearing.Ran, $"the visual tearing probe stopped at {tearing.Stage}");
+
+        Assert.True(
+            tearing.Refused,
+            "the tearing present succeeded on a committed tree whose swapchain never asked for the "
+                + "flag, so DXGI is not reading them here and the answer below says nothing");
+
+        Assert.True(
+            tearing.Presented,
+            "a composition swapchain that is a visual's content refused the tearing present, so "
+                + "PP319's arrangement forecloses PP53 and the choice between an HDR plane and a "
+                + "variable refresh is a real one");
+    }
+
+    /// <summary>
     /// PP163: the OTHER path carries HDR10, which is the answer PP163's decision was waiting for.
     ///
     /// A composition swapchain - what a DirectComposition visual presents - takes ten bits per

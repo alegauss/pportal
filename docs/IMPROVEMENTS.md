@@ -509,12 +509,13 @@ pure waiting, added to a frame that already travelled a network.
 Variable refresh is the direct answer, and it is the only item in this block that makes
 the picture arrive earlier rather than look better or arrive smoother.
 
-The first thing measured was whether PP319's choice had already cost it. It has not:
-DXGI takes DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING on a composition swapchain and presents
-with it, and it refuses the same present where the flag was not asked for - so the flags
-are read rather than ignored. A sentence that stood here is corrected by that, not
-confirmed: it said exclusive fullscreen is usually the precondition, and the tearing
-pair is the borderless mechanism that replaced needing one.
+The first thing measured was whether PP319's choice had already cost it. It has not, at
+either depth. DXGI takes DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING on a composition swapchain
+and presents with it, and PP646 asked again through a committed tree - the swapchain as
+a visual's content on a real window - where it survives too. Both refuse that present
+where the flag was not asked for, so the flags are read. A sentence here is corrected by
+that: it said exclusive fullscreen is the usual precondition, and the tearing pair is
+what replaced needing one.
 
 What is left is the half an API cannot answer. A composed frame goes through DWM, so a
 flag DXGI accepted is not a panel that followed - which is the mistake PP163 made one
@@ -546,29 +547,6 @@ floor on the decoder's own loss rather than a count of it.
 What is left is the run, and it is a run: sessions per decoder on a link that jitters,
 which takes a console and somebody playing on it. Reading either counter on its own is
 what this waits to prevent.
-
-### §PP646 Tearing through a visual, not beside one
-
-PP53's probe creates a composition swapchain with the tearing flag and presents it. That
-swapchain is bound to nothing - no DirectComposition visual, no target, no window -
-because the question asked was whether DXGI takes the flag pair, and DXGI takes it
-before anything is composed.
-
-The negative control is what makes the yes trustworthy at that layer: the same present
-is refused on a swapchain created without the flag, so DXGI is reading the flags rather
-than ignoring them. What the control cannot reach is the next step down. A present on an
-unbound swapchain has nowhere to go, and "accepted, and went nowhere" is
-indistinguishable here from "accepted, and would reach the panel".
-
-The tree that would answer it already exists. PP281 built the DirectComposition path to
-Commit and PP322 kept it, so the missing measurement is a swapchain created with the
-tearing flag, set as a visual's content, committed, and presented at sync interval zero.
-Whether Commit or Present refuses that combination is the real question about PP319's
-choice, and it is a different question from the one PP53 shipped.
-
-It stops there and does not become PP53's remaining half. That one needs a display which
-varies its refresh; this one needs no hardware at all, which is why it is worth doing
-first and separately - a refusal here would settle PP53 without any panel.
 
 ### §PP647 A neutral line under a vendor heading
 

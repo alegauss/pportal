@@ -653,6 +653,7 @@
 - ✅ **PP53 (whether the compositor path allows it)** **frames arrive with network jitter and are presented against a fixed refresh, so each waits for a vblank it missed** — DXGI reads the flags and a composition swapchain takes them, so PP319's choice does not foreclose tearing - and an API answer is not a pixel.
 - ✅ **PP644** **spike/video-upscale calls the extension read-back a hint, and PP49 measured that it is not one** — Both spikes say what PP49 measured and the call stays: the two committed runs echo identical zeros while disagreeing on engagement, and a test holds the pair.
 - ✅ **PP645** **both NVIDIA spikes report a mean, and four of PP49's six runs carried 200-300us outliers on it** — The eye is a check: both spikes print p99/p50 and the gate holds the two committed runs to 1.5, with decode-path named as excluded because its tail is PP65's finding.
+- ✅ **PP646** **the tearing probe presents to a composition swapchain with no visual, the one place a no-op would hide** — It survives the tree: a ten-bit composition swapchain that is a visual's content, committed, takes the tearing present and refuses it where the flag was not asked for.
 
 ## Block J — Public documentation
 

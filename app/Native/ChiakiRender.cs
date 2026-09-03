@@ -155,6 +155,23 @@ public readonly record struct TearingSupport(
     bool Ran, bool Adapter, bool Composition, bool Hwnd, bool Refused, TearingStage Stage);
 
 /// <summary>
+/// PP646: what a present with the tearing flags does through a COMMITTED DirectComposition tree.
+///
+/// <see cref="TearingSupport"/> answers about a swapchain bound to nothing. This answers about the
+/// one PP319 chose: a ten-bit composition swapchain that is a visual's content, on a target on a
+/// real window, committed before the present.
+/// </summary>
+/// <param name="Ran">Whether both trees were built and asked.</param>
+/// <param name="Presented">Whether the tearing present succeeded through the committed tree.</param>
+/// <param name="Refused">
+/// The negative control: the same tree built without the swapchain flag, where DXGI must refuse.
+/// False means the flags are not being read here and <paramref name="Presented"/> says nothing.
+/// </param>
+/// <param name="Stage">Where it stopped, when it did.</param>
+public readonly record struct VisualTearingSupport(
+    bool Ran, bool Presented, bool Refused, TearingStage Stage);
+
+/// <summary>
 /// PP281: which step of the DirectComposition path failed, or Ok.
 ///
 /// Longer than the swapchain's because the path is longer, and the order is the reading: anything
@@ -485,6 +502,33 @@ public sealed class RenderDevice : IDisposable
         [MarshalAs(UnmanagedType.I1)] out bool adapter,
         [MarshalAs(UnmanagedType.I1)] out bool composition,
         [MarshalAs(UnmanagedType.I1)] out bool hwnd,
+        [MarshalAs(UnmanagedType.I1)] out bool refused,
+        out int stage);
+
+    /// <summary>
+    /// PP646: the same present, through the tree PP281 built and PP322 read.
+    ///
+    /// <see cref="ProbeTearing"/> binds its composition swapchain to nothing, so its Present had
+    /// nowhere to go - and "accepted, and went nowhere" looks exactly like "accepted, and would
+    /// reach the panel". This one is content of a visual, on a target on a real window, committed
+    /// before the present. A refusal here would settle PP53 against the compositor path with no
+    /// display at all.
+    ///
+    /// It needs a window station, so it runs on the STA like the other window-bound probes.
+    /// </summary>
+    public VisualTearingSupport ProbeTearingThroughAVisual()
+    {
+        bool ran = TearingVisualProbe(Handle, out bool presented, out bool refused, out int stage);
+
+        return new VisualTearingSupport(ran, presented, refused, (TearingStage)stage);
+    }
+
+    [DllImport(ChiakiRender.Library, EntryPoint = "chiaki_render_tearing_visual_probe",
+        CallingConvention = CallingConvention.Cdecl)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    private static extern bool TearingVisualProbe(
+        IntPtr d3d11,
+        [MarshalAs(UnmanagedType.I1)] out bool presented,
         [MarshalAs(UnmanagedType.I1)] out bool refused,
         out int stage);
 

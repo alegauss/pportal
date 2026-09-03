@@ -64,9 +64,13 @@ struct chiaki_render_dcomp_session
 // The path itself, over a window the CALLER owns. PP283: split out so a WPF window's own HWND can
 // be handed in, which is the arrangement the design actually runs in - PP281 and PP282 both built
 // the tree on a bare window this file created, and a bare window is not what WPF hands out.
+// PP646: `swapchain_flags` is DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING or zero, and every caller but the
+// tearing probe passes zero. It is a parameter rather than a second builder because the tree it
+// builds has to be the SAME tree - a probe that composed its own arrangement to answer a question
+// about this one would be measuring itself.
 static bool chiaki_render_dcomp_build(
-		void *d3d11, int32_t format, bool topmost, HWND hwnd, int32_t *out_stage,
-		chiaki_render_dcomp_session *keep)
+		void *d3d11, int32_t format, bool topmost, UINT swapchain_flags, HWND hwnd,
+		int32_t *out_stage, chiaki_render_dcomp_session *keep)
 {
 	ID3D11Device *device = nullptr;
 	IDXGIDevice *dxgi_device = nullptr;
@@ -113,6 +117,7 @@ static bool chiaki_render_dcomp_build(
 		desc.BufferCount = 2;
 		desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
 		desc.AlphaMode = DXGI_ALPHA_MODE_PREMULTIPLIED;
+		desc.Flags = swapchain_flags;
 
 		if(out_stage)
 			*out_stage = CHIAKI_RENDER_DCOMP_SWAPCHAIN;
@@ -233,7 +238,7 @@ extern "C" CHIAKI_RENDER_API bool chiaki_render_dcomp_probe(
 	if(!hwnd)
 		return false;
 
-	ok = chiaki_render_dcomp_build(d3d11, format, topmost, hwnd, out_stage, nullptr);
+	ok = chiaki_render_dcomp_build(d3d11, format, topmost, 0, hwnd, out_stage, nullptr);
 	DestroyWindow(hwnd);
 	return ok;
 }
@@ -249,7 +254,7 @@ extern "C" CHIAKI_RENDER_API bool chiaki_render_dcomp_probe_hwnd(
 	if(!hwnd || !IsWindow(static_cast<HWND>(hwnd)))
 		return false;
 
-	return chiaki_render_dcomp_build(d3d11, format, topmost, static_cast<HWND>(hwnd), out_stage, nullptr);
+	return chiaki_render_dcomp_build(d3d11, format, topmost, 0, static_cast<HWND>(hwnd), out_stage, nullptr);
 }
 
 // The fill, and it is the whole point of the colour arguments: an EMPTY swapchain composes as
@@ -312,7 +317,7 @@ extern "C" CHIAKI_RENDER_API void *chiaki_render_dcomp_attach(
 		return nullptr;
 
 	if(!chiaki_render_dcomp_build(
-			d3d11, format, topmost, static_cast<HWND>(hwnd), out_stage, self))
+			d3d11, format, topmost, 0, static_cast<HWND>(hwnd), out_stage, self))
 	{
 		delete self;
 		return nullptr;
@@ -508,6 +513,74 @@ static void chiaki_render_dcomp_release(chiaki_render_dcomp_session *self)
 		self->swapchain->Release();
 }
 
+// PP646: one present, through a committed tree, with the tearing flags PP53 measured beside one.
+//
+// PP53 asked whether DXGI takes DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING on a composition swapchain and
+// it does. That swapchain was bound to nothing - no visual, no target, no window - so a Present on
+// it had nowhere to go, and "accepted, and went nowhere" is indistinguishable from "accepted, and
+// would reach the panel". Its negative control proved DXGI READS the flags and could not reach any
+// further than that.
+//
+// This is the same present through the tree PP281 built and PP322 read: swapchain as a visual's
+// content, target on a real window, committed, then presented at sync interval zero with
+// DXGI_PRESENT_ALLOW_TEARING. A refusal here would settle PP53 against the composition path
+// without needing a display that varies its refresh, which is why it is worth asking separately.
+static bool chiaki_render_tearing_visual_present(void *d3d11, UINT swapchain_flags, HWND hwnd)
+{
+	chiaki_render_dcomp_session tree = {};
+	int32_t build_stage = 0;
+	bool presented = false;
+
+	// Ten bits, matching every other tree in this file: asking with an eight-bit buffer would build
+	// a tree the port has no use for and answer about that one.
+	if(chiaki_render_dcomp_build(d3d11, 24, false, swapchain_flags, hwnd, &build_stage, &tree)
+			&& tree.swapchain)
+	{
+		// DXGI_STATUS_OCCLUDED is a success code and this window is never shown, so SUCCEEDED is
+		// the test rather than == S_OK.
+		presented = SUCCEEDED(tree.swapchain->Present(0, DXGI_PRESENT_ALLOW_TEARING));
+	}
+
+	chiaki_render_dcomp_release(&tree);
+	return presented;
+}
+
+extern "C" CHIAKI_RENDER_API bool chiaki_render_tearing_visual_probe(
+		void *d3d11, bool *out_presented, bool *out_refused, int32_t *out_stage)
+{
+	HWND hwnd = nullptr;
+
+	if(out_presented)
+		*out_presented = false;
+	if(out_refused)
+		*out_refused = false;
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_TEARING_NO_DEVICE;
+
+	if(!chiaki_render_d3d11_device(d3d11))
+		return false;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_TEARING_WINDOW;
+	hwnd = chiaki_render_dcomp_window();
+	if(!hwnd)
+		return false;
+
+	// The tree that asked for tearing, and then the same tree that did not. Both are built and torn
+	// down in turn rather than side by side: two composition targets on one window is an
+	// arrangement nothing in this port uses, and a probe should not be the first thing to try it.
+	if(out_presented)
+		*out_presented = chiaki_render_tearing_visual_present(d3d11, DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING, hwnd);
+	if(out_refused)
+		*out_refused = !chiaki_render_tearing_visual_present(d3d11, 0, hwnd);
+
+	DestroyWindow(hwnd);
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_TEARING_OK;
+	return true;
+}
+
 extern "C" CHIAKI_RENDER_API bool chiaki_render_layers_probe(
 		void *d3d11, int32_t format, int32_t overlay_format, int32_t *out_stage)
 {
@@ -538,7 +611,7 @@ extern "C" CHIAKI_RENDER_API bool chiaki_render_layers_probe(
 	// is PP281's question and not this one's, and the probe above answers it in its own vocabulary.
 	if(out_stage)
 		*out_stage = CHIAKI_RENDER_LAYERS_TREE;
-	if(chiaki_render_dcomp_build(d3d11, format, false, hwnd, &build_stage, &tree))
+	if(chiaki_render_dcomp_build(d3d11, format, false, 0, hwnd, &build_stage, &tree))
 		ok = chiaki_render_layers_build(device, &tree, overlay_format, out_stage);
 
 	chiaki_render_dcomp_release(&tree);
@@ -578,7 +651,7 @@ extern "C" CHIAKI_RENDER_API void *chiaki_render_layers_attach(
 
 	if(out_stage)
 		*out_stage = CHIAKI_RENDER_LAYERS_TREE;
-	if(!chiaki_render_dcomp_build(d3d11, format, false, static_cast<HWND>(hwnd), &build_stage, self))
+	if(!chiaki_render_dcomp_build(d3d11, format, false, 0, static_cast<HWND>(hwnd), &build_stage, self))
 	{
 		delete self;
 		return nullptr;

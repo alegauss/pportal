@@ -278,6 +278,28 @@ CHIAKI_RENDER_API bool chiaki_render_tearing_probe(
 		int32_t *out_stage);
 
 /**
+ * PP646: the same present, through a committed tree rather than beside one.
+ *
+ * The probe above binds its composition swapchain to nothing - no visual, no target, no window - so
+ * its Present had nowhere to go. Its negative control shows DXGI reads the flags and reaches no
+ * further than that: "accepted, and went nowhere" and "accepted, and would reach the panel" look
+ * identical from there.
+ *
+ * This builds the tree PP281 built and PP322 read - a ten-bit composition swapchain as a visual's
+ * content, a target on a real window, committed - and presents it at sync interval zero with
+ * DXGI_PRESENT_ALLOW_TEARING. `out_presented` is that. `out_refused` is the same tree built WITHOUT
+ * the swapchain flag, where the present must fail; without it, a yes above could still be a call
+ * that ignores what it is handed.
+ *
+ * A refusal here would settle PP53 against the composition path with no display at all, which is
+ * why it is asked separately from the panel's own half.
+ *
+ * Returns true when both trees were built and asked; the two answers say what happened.
+ */
+CHIAKI_RENDER_API bool chiaki_render_tearing_visual_probe(
+		void *d3d11, bool *out_presented, bool *out_refused, int32_t *out_stage);
+
+/**
  * PP281: and whether DirectComposition will actually take that swapchain as a visual's content.
  *
  * PP163 priced half the path and asserted the rest. It measured that a composition swapchain carries
