@@ -330,6 +330,26 @@ is small. Whichever, the join is the same - the parse sets the bit, and
 StreamAvDispatchTests gains the one case it cannot write today, a v12 audio packet
 routed to the pad.
 
+### §PP671 The default that points at the oracle
+
+Fec.Recovers(FecCase) forwards to Recovers(recorded, managed: false): the two-argument
+form PP287 added made the C the default and the managed decoder the one a caller has to
+name. That was the right default while the port was being judged against the C. It is
+the wrong one for the day the C leaves.
+
+PP670 guarded the two tests that use the default - FecVectorTests' recorded-erasure
+theories - so the flip does not turn them red. It also means they decline on a bare
+build, and a declined test is a pass that measured nothing (PP663's cost, counted by
+OracleGuardCensus). The sixty-four recorded cases are the strongest evidence the port
+has, and on a bare build they would assert nothing at all.
+
+The change is one line on the flip: make managed: true the default, so the recorded
+cases judge the managed decoder on every build and the differential in FecCodecTests is
+the only place the C is still named. Sequenced with the flip rather than done now,
+because today the default is what makes those two theories a check on the ORACLE - the
+cases are the C's own, and a managed default now would silently stop asking the C
+whether it still agrees with its own recording.
+
 ## Block G — Test discipline
 
 ### §PP642 Checking where a deleted design went

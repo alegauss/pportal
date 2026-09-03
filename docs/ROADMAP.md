@@ -30,6 +30,7 @@
 - 📋 **PP650** (deps: —) **the decoder stays native and nobody has priced FFmpeg against Media Foundation for the job** — PP31 settled the boundary and left the choice: Media Foundation ships with Windows and covers d3d11va alone, where FFmpeg carries the parser, cuda and software decode. → §PP650
 - 📋 **PP652** (deps: —) **four subsystems carry the microphone and nothing in the host opens a capture device** — The setting, the in-stream button, the ring's drain rule and the pad's mic report all shipped, and there is no stream of samples for any of them to be about. → §PP652
 - 📋 **PP668** (deps: —) **AvPacket is built from the v9 parse alone, so IsHaptics is false on every packet the port sees** — The C sets the bit on the v12 audio layout only; a managed v12 parse is what lets PP667's haptics arm ever fire, and PP499 bounded that layout in the C. → §PP668
+- 📋 **PP671** (deps: —) **Fec.Recovers with no decoder named runs the C, so after the flip a default becomes a loader failure** — The managed decoder is the one that stays; the default should follow it on the flip, so the sixty-four recorded cases judge the port alone. → §PP671
 
 ## Block G — Test discipline
 
