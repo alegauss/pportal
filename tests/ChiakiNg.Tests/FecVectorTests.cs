@@ -74,6 +74,10 @@ public class FecVectorTests
     [MemberData(nameof(CaseIndices))]
     public void TheRecordedErasureIsRecovered(int index)
     {
+        // PP670: Recovers with no decoder named is the C's, so this is a differential and asks.
+        if (ShimFramePathShape.WrappingHeader() is null)
+            return;
+
         FecCase c = Cases[index];
         Assert.True(Fec.Recovers(c),
             $"k={c.K} m={c.M} unit={c.UnitSize} lost=[{string.Join(",", c.Erasures)}]");
@@ -88,6 +92,10 @@ public class FecVectorTests
     [MemberData(nameof(CaseIndices))]
     public void TheWrongDeclaredErasureDoesNotRecover(int index)
     {
+        // PP670: the C's decoder again.
+        if (ShimFramePathShape.WrappingHeader() is null)
+            return;
+
         FecCase c = Cases[index];
         uint lied = (c.Erasures[0] + 1) % c.K;
 

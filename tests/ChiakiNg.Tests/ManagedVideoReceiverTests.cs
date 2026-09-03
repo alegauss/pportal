@@ -63,6 +63,10 @@ public class ManagedVideoReceiverTests(ITestOutputHelper output)
         var nativeFrames = new List<byte[]>();
         var managedFrames = new List<byte[]>();
 
+        // PP670: the C receiver is the oracle, and the build says whether it still has one.
+        if (ShimFramePathShape.WrappingHeader() is null)
+            return;
+
         Assert.Equal(ChiakiError.Success, ChiakiSession.LibInit());
 
         using var native = new VideoReceiver(

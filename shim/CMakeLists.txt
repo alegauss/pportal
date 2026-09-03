@@ -18,6 +18,14 @@ if(CHIAKI_ENABLE_HOLEPUNCH)
 	target_compile_definitions(chiaki-shim PUBLIC CHIAKI_SHIM_HAVE_HOLEPUNCH CHIAKI_SHIM_HAVE_JSONC)
 endif()
 
+# PP670: the frame path's fourteen wrappers - fec, frame processor, video receiver - are the third
+# oracle, and this is PP623's first step for it: the define exists and chiaki_shim_has_framepath
+# reports it, so every differential that calls the fourteen can ask before it runs. UNCONDITIONAL
+# today, because the four files are still in the build. The flip (PP295's fourth criterion) turns
+# this into an if() on its option and wraps the fourteen in the define, in the header and the body,
+# and edits no test file - which is what the two-shape readers were converted for.
+target_compile_definitions(chiaki-shim PUBLIC CHIAKI_SHIM_HAVE_FRAMEPATH)
+
 # PP25: the nanopb-generated takion.pb.h, which chiaki-lib compiles against but does not publish -
 # it adds the directory privately, so a consumer that wants the message types has to name it. Named
 # here rather than promoted in lib/CMakeLists.txt, because lib/ is the half this port does not edit.

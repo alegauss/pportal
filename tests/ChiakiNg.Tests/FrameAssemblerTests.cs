@@ -117,6 +117,10 @@ public class FrameAssemblerTests(ITestOutputHelper output)
     [InlineData(10, 4, 32, new[] { 1, 2, 8, 9 })]
     public void BothAssemblersProduceTheSameFrame(int source, int parity, int payload, int[] lose)
     {
+        // PP670: NativeRun is the C through the shim, and the build says whether it still has it.
+        if (ShimFramePathShape.WrappingHeader() is null)
+            return;
+
         byte[][] units = BuildFrame(source, parity, payload, seed: source * 100 + parity);
 
         var deliver = new List<int>();
@@ -204,6 +208,10 @@ public class FrameAssemblerTests(ITestOutputHelper output)
         var managedFirstBytes = managedFirst.ToArray();
         Assert.Equal(FrameFlushResult.Success, assembler.Flush(out ReadOnlySpan<byte> managedSecond));
         var managedSecondBytes = managedSecond.ToArray();
+
+        // PP670: the managed half above has run and asserted; the C half is where the oracle is.
+        if (ShimFramePathShape.WrappingHeader() is null)
+            return;
 
         Assert.Equal(ChiakiError.Success, ChiakiSession.LibInit());
         using var processor = new FrameProcessor();

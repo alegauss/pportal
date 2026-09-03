@@ -330,28 +330,6 @@ is small. Whichever, the join is the same - the parse sets the bit, and
 StreamAvDispatchTests gains the one case it cannot write today, a v12 audio packet
 routed to the pad.
 
-### §PP670 The differentials that must stop seeing the wrappers
-
-PP669's census reads the shim's thirteen calls into the four files and is deliberately
-text-keyed: a call still in the text is still owed a counterpart. The readers with the
-opposite need are the differentials - FecMatrixTests, FecCodecTests, FecVectorTests,
-FrameAssemblerTests, ManagedVideoReceiverTests and AllocBudgetTests hold thirteen call
-sites between them that invoke Fec, FecMatrix, FrameProcessor and the native
-VideoReceiver, every one an oracle wrapper the flip will put inside an #ifdef.
-
-PP662 is the precedent and the warning. The holepunch flip's second attempt turned 128
-assertions red because the shape readers looked at header text and saw declarations an
-#ifdef had hidden from the DLL; the remedy was chiaki_shim_has_holepunch, exported
-whichever way the option went, and ShimHolepunchShape.OfTheBuild asking the built shim
-rather than the file.
-
-The same three pieces, one layer along: a chiaki_shim_has_framepath export beside
-has_holepunch and has_jsonc, a ShimFramePathShape whose WrappingHeader and BareHeader
-pair answers exactly one way on any tree, and each of the six files guarding its oracle
-calls through it - with OracleGuardCensus gaining six rows so the gate keeps saying how
-many assertions declined. No option and no deletion here; PP623's order is two-state
-first, flip second, prose third, and this is the first.
-
 ## Block G — Test discipline
 
 ### §PP642 Checking where a deleted design went

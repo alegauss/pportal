@@ -30,7 +30,8 @@ public static class OracleGuardCensus
     /// <summary>
     /// The files whose assertions decline without an oracle, and the guard each one asks.
     ///
-    /// Two guards because there are two oracles: the seam's shape for holepunch, and the json one.
+    /// Three guards because there are three oracles: the seam's shape for holepunch, the json one,
+    /// and - PP670 - the frame path's, which six differentials ask before they call the fourteen.
     /// Named per file rather than derived, because being guarded is a decision somebody took and a
     /// file that stopped guarding is a finding rather than a smaller number.
     /// </summary>
@@ -41,7 +42,19 @@ public static class OracleGuardCensus
         new(@"tests\ChiakiNg.Tests\FrameParsingTests.cs", "JsonOracleIsAvailable"),
         new(@"tests\ChiakiNg.Tests\NativeHolepunchSessionTests.cs", "SeamWraps"),
         new(@"tests\ChiakiNg.Tests\HolepunchSessionOwnershipTests.cs", "WrappingHeader"),
+        new(@"tests\ChiakiNg.Tests\FecCodecTests.cs", FramePathGuard),
+        new(@"tests\ChiakiNg.Tests\FecMatrixTests.cs", FramePathGuard),
+        new(@"tests\ChiakiNg.Tests\FecVectorTests.cs", FramePathGuard),
+        new(@"tests\ChiakiNg.Tests\FrameAssemblerTests.cs", FramePathGuard),
+        new(@"tests\ChiakiNg.Tests\ManagedVideoReceiverTests.cs", FramePathGuard),
+        new(@"tests\ChiakiNg.Tests\AllocBudgetTests.cs", FramePathGuard),
     ];
+
+    /// <summary>
+    /// PP670: the one call every frame-path differential asks, spelled with its class so a file
+    /// guarding the holepunch seam through the same method name is not counted twice.
+    /// </summary>
+    public const string FramePathGuard = "ShimFramePathShape.WrappingHeader";
 
     /// <summary>A file, or null outside a checkout.</summary>
     public static string? Locate(string relative) => SanitizerSource.LocateRelative(relative);

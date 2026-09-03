@@ -72,6 +72,14 @@ CHIAKI_SHIM_API bool chiaki_shim_has_holepunch(void);
 CHIAKI_SHIM_API bool chiaki_shim_has_jsonc(void);
 
 /**
+ * PP670: and whether it carries the frame path's fourteen - the fec, frame processor and video
+ * receiver wrappers that are PP286-PP291's oracles. True on every build today: the define behind it
+ * is unconditional until PP295's flip makes it follow an option, and this export is what lets the
+ * six differentials that call the fourteen be guarded BEFORE that flip rather than turned red by it.
+ */
+CHIAKI_SHIM_API bool chiaki_shim_has_framepath(void);
+
+/**
  * chiaki_error_string for a ChiakiErrorCode, as a UTF-8 string the caller does not own.
  *
  * Here because it is the smallest thing that proves a real property of the seam: a pointer to a

@@ -68,6 +68,10 @@ public class AllocBudgetTests
         if (capture is null)
             return;
 
+        // PP670: the processor replayed here is the C's through the shim.
+        if (ShimFramePathShape.WrappingHeader() is null)
+            return;
+
         byte[] nalu = capture.Value.Nalu;
         Assert.NotEmpty(nalu);
 

@@ -71,6 +71,10 @@ public class FecCodecTests(ITestOutputHelper output)
     [MemberData(nameof(CaseIndices))]
     public void BothDecodersProduceTheSameFrame(int index)
     {
+        // PP670: the C is the oracle here, and the build says whether it still has one.
+        if (ShimFramePathShape.WrappingHeader() is null)
+            return;
+
         EnsureNativeField();
 
         FecCase recorded = Cases[index];

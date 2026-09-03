@@ -92,6 +92,19 @@ CHIAKI_SHIM_API bool chiaki_shim_has_jsonc(void)
 #endif
 }
 
+/* PP670: the frame path's oracles, asked the same way. The define is set unconditionally in
+ * shim/CMakeLists.txt today; the flip that removes fec.c, frameprocessor.c and videoreceiver.c
+ * from the build makes it follow an option and wraps the fourteen in it, and nothing managed
+ * needs editing on that day because every caller already asks here first. */
+CHIAKI_SHIM_API bool chiaki_shim_has_framepath(void)
+{
+#ifdef CHIAKI_SHIM_HAVE_FRAMEPATH
+	return true;
+#else
+	return false;
+#endif
+}
+
 CHIAKI_SHIM_API const char *chiaki_shim_error_string(int32_t error_code)
 {
 	return chiaki_error_string((ChiakiErrorCode)error_code);

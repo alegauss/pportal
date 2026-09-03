@@ -146,6 +146,18 @@ public static partial class NativeSeam
             : new HashSet<string>(Protocol.ShimHolepunchShape.GoneWhenBare, StringComparer.Ordinal);
 
     /// <summary>
+    /// PP670: the same allowance for the frame path's fourteen, which PP295's flip removes.
+    ///
+    /// Empty while the build carries them - every one of the fourteen is checked, exactly as
+    /// before - and the fourteen once it does not. Derived from the shape for PP656's reason: the
+    /// flip edits this file not at all.
+    /// </summary>
+    public static IReadOnlySet<string> ImportsOnlyAFramePathBuildResolves()
+        => Protocol.ShimFramePathShape.BareHeader() is null
+            ? new HashSet<string>(StringComparer.Ordinal)
+            : new HashSet<string>(Protocol.ShimFramePathShape.GoneWhenBare, StringComparer.Ordinal);
+
+    /// <summary>
     /// PP661: and the json oracle's, which is the same allowance for PP33's other library.
     ///
     /// BY PREFIX RATHER THAN BY LIST, and that is forced rather than chosen. The holepunch nine are
@@ -181,12 +193,14 @@ public static partial class NativeSeam
         ArgumentNullException.ThrowIfNull(exported);
 
         IReadOnlySet<string> allowed = ImportsOnlyAHolepunchBuildResolves();
+        IReadOnlySet<string> framePath = ImportsOnlyAFramePathBuildResolves();
 
         return
         [
             .. imported
                 .Where(name => !exported.Contains(name))
                 .Where(name => !allowed.Contains(name))
+                .Where(name => !framePath.Contains(name))
                 .Where(name => !IsAJsonOracleImport(name))
                 .Order(StringComparer.Ordinal),
         ];

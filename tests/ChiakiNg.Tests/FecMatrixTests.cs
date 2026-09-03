@@ -41,6 +41,10 @@ public class FecMatrixTests(ITestOutputHelper output)
     [MemberData(nameof(Shapes))]
     public void TheManagedMatrixIsJerasuresMatrix(int k, int m)
     {
+        // PP670: jerasure is the oracle, and the build says whether it still has one.
+        if (ShimFramePathShape.WrappingHeader() is null)
+            return;
+
         EnsureNativeField();
 
         int[]? native = FecMatrix.Native(k, m);
@@ -70,9 +74,13 @@ public class FecMatrixTests(ITestOutputHelper output)
     [MemberData(nameof(Shapes))]
     public void NoEntryIsZero(int k, int m)
     {
-        EnsureNativeField();
-
         Assert.DoesNotContain(0, FecMatrix.Cauchy(k, m));
+
+        // PP670: the managed half above runs on every build; jerasure's only where it is.
+        if (ShimFramePathShape.WrappingHeader() is null)
+            return;
+
+        EnsureNativeField();
         Assert.DoesNotContain(0, FecMatrix.Native(k, m)!);
     }
 
