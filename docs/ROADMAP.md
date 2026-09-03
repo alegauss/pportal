@@ -49,6 +49,7 @@
 - ⏳ **PP76** (deps: PP528 ✅) (requires: console, a-person-looking) **the decoder preference is measured on synthetic frames, and drops under network jitter are what a stream is judged by** — one session per decoder against a real console, now that the difference between the two counters is the number to read. → §PP76
 - 📋 **PP646** (deps: —) **the tearing probe presents to a composition swapchain with no visual, the one place a no-op would hide** — PP53's negative control proves DXGI reads the flags; nothing yet presents with them through the tree PP319 built and PP322 read. → §PP646
 - 💭 **PP647** (deps: —) **PP53 is a vendor-neutral DXGI mechanism sitting in the block titled NVIDIA path** — The tearing pair is adaptive sync on AMD and Intel too, and the non-goal binding vendor features to a floor makes where a line sits part of what it promises. → §PP647
+- 📋 **PP648** (deps: —) **PP47 read VSR as not engaging with the driver switch off, and PP49's HDR extension engaged on the same card** — The two features sit behind separate checkboxes under one RTX Video Enhancement panel, so PP47's committed run may be measuring a setting rather than a limit. → §PP648
 
 ## Block J — Public documentation
 
