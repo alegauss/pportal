@@ -142,6 +142,11 @@
   opinion about colour the source did not express. Nothing in the present path asks for
   the extension yet, so this is the integration half and it waits on the window owning
   its own swapchain.
+- **The setting reads back the effect, not the return code** PP648 measured that the
+  toggles are per feature: VSR does not engage on the card where this one does, and
+  every call succeeds either way. So a setting switched on in this port has to compare
+  pixels the way both spikes do, or it claims to be on for users whose control panel
+  says otherwise.
 
 ## Done when — PP53
 
