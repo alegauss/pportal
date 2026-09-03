@@ -109,6 +109,18 @@ internal sealed class Stats
         }
     }
 
+    /// <summary>
+    /// PP645: how far the tail sits above the middle, which is how a contaminated run is spotted.
+    ///
+    /// Computed and printed, never judged here. Whether a long tail is noise or the finding is a
+    /// fact about what the spike measures, not about the numbers - PP65's whole result in
+    /// spike/decode-path is a 103us median against a 26990us p99 - so the verdict lives in the gate
+    /// (ChiakiNg.Session.SpikeRunQuality), which knows which runs it binds.
+    ///
+    /// No sample reads as no tail rather than as an infinite one.
+    /// </summary>
+    public double P99OverP50 => Percentile(0.50) > 0 ? Percentile(0.99) / Percentile(0.50) : 0;
+
     public string ToJson()
     {
         var c = CultureInfo.InvariantCulture;

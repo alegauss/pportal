@@ -547,28 +547,6 @@ What is left is the run, and it is a run: sessions per decoder on a link that ji
 which takes a console and somebody playing on it. Reading either counter on its own is
 what this waits to prevent.
 
-### §PP645 Choosing a committed run by eye
-
-PP49 took six runs before committing one. The pixel result was identical in all six -
-2,073,580 changed, mean 263.214, max 512 - and the timing was not: four carried single
-batches at 200-300us against a p50 near 70, which is another process reaching the same
-video engine rather than anything about the feature.
-
-The p50s were stable across all six, 65-75us off and 92-113us on, so the delta this line
-turns on holds however the mean lands. The means did not: one run reported 69.6us off
-and another 105.7us off, which is a 50% spread on a number a reader would quote.
-
-So the committed run was chosen by looking at whether its p99 sat near its p50, and that
-judgement is nowhere in the spike. Somebody re-running it gets whatever the machine was
-doing that minute, compares it against a README that reports a mean, and cannot tell a
-contaminated run from a changed answer.
-
-Two shapes. Report the p50 as the number and keep the mean beside it, which is the
-smaller change and makes the README honest about the instrument. Or have the spike
-refuse a run whose p99 is more than some multiple of its p50, which is the change that
-stops a bad run being committed at all - and needs a threshold nobody has measured.
-Stats is shared by three spikes, so either lands in more than one.
-
 ### §PP646 Tearing through a visual, not beside one
 
 PP53's probe creates a composition swapchain with the tearing flag and presents it. That

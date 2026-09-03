@@ -108,6 +108,17 @@ What replaced it is wall clock over a batch of 25 blts, drained at the end by ma
 copy. That measures throughput rather than one frame's latency, and the distribution is over batch
 means — 20 samples, not 500.
 
+**§PP645 added the check that says whether a run is a reading.** §PP49 found four of six runs on this
+same engine carrying stray batches at 200–300 µs against a p50 near 70 — another process, not the
+feature — which moved the *mean* by half and the p50 not at all. The spike now prints p99/p50 per
+side and `SpikeRunQuality` in the gate holds the committed file to a limit of 1.5. The run below
+sits at 1.05 and 1.07, which is why its mean was quotable.
+
+The run below was **not** re-taken to add that, deliberately. Re-running this spike today would
+answer a different question — whether the driver's Super Resolution switch is on now, which §PP49's
+result suggests the HDR one is — and that belongs to §PP47 rather than to a change about the
+instrument.
+
 **The drain was proven by removing it.** Without it the same run reports **0.2 µs** per frame
 instead of 262.9 — a 1300× lie, because `Flush` submits work rather than waiting for it. A timing
 harness that reports sub-microsecond GPU upscales is not fast, it is unplugged.

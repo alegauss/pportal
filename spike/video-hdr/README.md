@@ -84,8 +84,17 @@ stamp when that was tried.
 **Read the p50, not the mean, on a noisy run.** Six runs were taken before the committed one and
 four of them carried outliers of 200–300 µs on both sides — another process reaching the same
 engine. The p50s across all six sit at 65–75 µs off and 92–113 µs on, so the delta is stable at
-roughly 30 µs however the mean lands. The committed run is one whose p99 is within 20% of its p50
-on both sides, which is what makes its mean readable at all.
+roughly 30 µs however the mean lands.
+
+On the committed run the two agree, and that is what makes its mean quotable: 29.0 µs by the means,
+29.9 µs by the p50s. **§PP645 turned the eye that chose it into a check.** The spike prints p99/p50
+per side — this run is 1.19 and 1.03, against 1.87 and above on the four that were rejected — and
+`SpikeRunQuality` in the gate holds the committed file to a limit of 1.5. So the way to replace this
+run is to copy a new one over `release-4060-engaged.json` and run `test.cmd`, not to look at it.
+
+That limit is this spike's, not every spike's. `spike/decode-path` reports a 103 µs median against a
+26990 µs p99 and the tail *is* PP65's finding there; the gate names it as excluded and asserts that
+it would fail, so the exclusion is a record rather than an omission.
 
 The **pixel result was identical in all six runs** — 2,073,580 changed, mean 263.214, max 512. That
 is the number this line turns on, and it does not move.

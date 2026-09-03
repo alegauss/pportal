@@ -136,6 +136,18 @@ internal static class Program
             Console.WriteLine(off.Timing);
             Console.WriteLine(on.Timing);
             Console.WriteLine();
+
+            // PP645: whether this run is a reading or the machine being busy, said before it is
+            // committed. PP49 found four of six runs on this same engine carrying stray batches at
+            // 200-300us against a p50 near 70; the p50s never moved and the means moved by half.
+            // The ratio is printed and not judged - the verdict is the gate's, because whether a
+            // long tail is noise depends on what the spike measures. See
+            // ChiakiNg.Session.SpikeRunQuality.
+            foreach (Stats side in (Stats[])[off.Timing, on.Timing])
+                Console.WriteLine($"tail       : {side.Name} p99/p50 = {side.P99OverP50:F2}");
+            Console.WriteLine("  near 1.0 is a reading; PP49's contaminated runs sat at 1.87 and above.");
+            Console.WriteLine("  READ THE p50, not the mean: the mean is what a stray batch moves.");
+            Console.WriteLine();
             Console.WriteLine($"engagement : {diff.Changed} of {diff.Total} pixels differ "
                 + $"({100.0 * diff.Changed / diff.Total:F2}%), mean |delta| {diff.MeanAbs:F2}/255, max {diff.MaxAbs}");
 

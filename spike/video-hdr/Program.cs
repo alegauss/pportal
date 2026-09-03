@@ -163,6 +163,7 @@ internal static class Program
             Console.WriteLine(off.Timing);
             Console.WriteLine(on.Timing);
             Console.WriteLine();
+            Tail(off.Timing, on.Timing);
             Console.WriteLine($"engagement : {diff.Changed} of {diff.Total} pixels differ "
                 + $"({100.0 * diff.Changed / diff.Total:F2}%), mean |delta| {diff.MeanAbs:F2}/1023, max {diff.MaxAbs}");
 
@@ -190,6 +191,29 @@ internal static class Program
 
             return engaged ? 0 : 1;
         }
+    }
+
+    /// <summary>
+    /// PP645: whether this run is a reading or the machine being busy, said before it is committed.
+    ///
+    /// Six runs were taken for the number in README.md and four of them carried single batches at
+    /// 200-300us against a p50 near 70 - another process on the same video engine. The p50s never
+    /// moved; the means moved by half. So the run that got committed was chosen by eye, and this is
+    /// that judgement printed instead.
+    ///
+    /// It prints the ratio and does NOT refuse. The verdict belongs to the gate, which knows which
+    /// spikes' tails are noise and which spike's tail is its finding - see
+    /// ChiakiNg.Session.SpikeRunQuality, and run test.cmd after copying a run over the release-*.json
+    /// beside this file.
+    /// </summary>
+    private static void Tail(params Stats[] sides)
+    {
+        foreach (Stats side in sides)
+            Console.WriteLine($"tail       : {side.Name} p99/p50 = {side.P99OverP50:F2}");
+
+        Console.WriteLine("  near 1.0 is a reading; PP49's contaminated runs sat at 1.87 and above.");
+        Console.WriteLine("  READ THE p50, not the mean: the mean is what a stray batch moves.");
+        Console.WriteLine();
     }
 
     private sealed record Run(string Name, Stats Timing, ushort[] Pixels, string ExtensionResult);
