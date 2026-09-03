@@ -187,8 +187,7 @@ buffers rather than with state.
 
 holepunch.c is 5962 lines and is the only translation unit in this tree that still needs
 either library: 234 curl_easy calls, 4 curl_ws, and the json_object and json_tokener
-sites beside them. http.c is 262 lines over rudp and winsock and carries no curl symbol
-at all, which is not what the first version of this section said it was built around.
+sites beside them.
 
 ```roadkeep-remaining
 lib/src/**/*.c :: curl_easy_|json_object|json_tokener
@@ -197,20 +196,21 @@ lib/src/**/*.c :: curl_easy_|json_object|json_tokener
 Read that count carefully: it reports 420 sites in "45 files", and 45 is every .c under
 lib/src - the glob's reach, not the hits. Every one of the 420 is in holepunch.c.
 
-What the count does not say is who calls it. session.c has NINE call sites over seven
-functions - the ctrl and data sockets, the offer, the punch, the regist info, the
-selected address, the ctrl port and the fini - the shim one and qmlbackend.cpp three.
-PP591 deleted holepunch-test.c, which called eight.
-
 The behaviours are largely ported. PP231 stated the websocket auto-ACK, PP266 performs
 the five session calls over a real HttpClient, and the shim exposes json-c's accessors
 deliberately: an oracle the managed parser is held against (PP215).
 
-So what remains is not translation. It is session.c no longer asking: PP596, no default
-build reaches the nine; PP599, gui/ retires, so they are removed and not converted.
-PP621 counts what that costs: the handle is quoted across app/ and tests/ far more
-widely than by the two callers this line names, and each is an assertion the deletion
-rewrites.
+PP663 TOOK THE DEPENDENCY OUT OF THE BUILD. holepunch.c, curl, json-c and the shim's two
+oracles all follow CHIAKI_ENABLE_HOLEPUNCH, off by default, with the suite green either
+way. So the fourth criterion is met and no build anybody runs links either library.
+
+What is left is the FILE, and what holds it is not a feature. PP654 moved the one
+wrapper the host itself reached; the nine that remain are PP481's oracle and the fifteen
+beside them are the same for json-c. Deleting the file means deciding what those
+comparisons are worth without the C to compare against - and THAT NEEDS A CONSOLE, which
+is why this line declares one. PP312 built requirements for this shape; a line needing
+hardware and declaring none is one `pick` offers as ready, which this was for seven
+sessions. PP621 counts what else the deletion rewrites.
 
 ### §PP107 The two that were said to be uncalled
 
