@@ -2364,13 +2364,25 @@ public static class SelfTest
             // The oracle. Two ids from two implementations agree on everything an id can be checked
             // for - the length, the fixed prefix, and that the rest is lowercase hex - which is what
             // makes the managed one a port rather than a plausible replacement.
-            string nativeDuid = PsnAuth.NativeDeviceUid();
-            Check("and the C generates the same shape, which is what makes this a port",
-                nativeDuid.Length == duid.Length
-                && nativeDuid.StartsWith(PsnAuth.DuidPrefix, StringComparison.Ordinal)
-                && duid.StartsWith(PsnAuth.DuidPrefix, StringComparison.Ordinal)
-                && nativeDuid.All(Uri.IsHexDigit),
-                nativeDuid);
+            //
+            // PP655's flip takes holepunch.c behind an option and this wrapper's C with it, so the
+            // oracle is asked for only where it exists. Not a way of not looking: the managed id is
+            // checked either way above, and what this adds is the comparison.
+            if (ShimHolepunchShape.TheFormatOracleIsAvailable())
+            {
+                string nativeDuid = PsnAuth.NativeDeviceUid();
+                Check("and the C generates the same shape, which is what makes this a port",
+                    nativeDuid.Length == duid.Length
+                    && nativeDuid.StartsWith(PsnAuth.DuidPrefix, StringComparison.Ordinal)
+                    && duid.StartsWith(PsnAuth.DuidPrefix, StringComparison.Ordinal)
+                    && nativeDuid.All(Uri.IsHexDigit),
+                    nativeDuid);
+            }
+            else
+            {
+                Check("the format oracle is gone with holepunch.c, and the managed id stands alone",
+                    !ShimHolepunchShape.TheFormatOracleIsAvailable());
+            }
 
             // PP33: the prefix is not a coincidence of the random half. Asserted separately because
             // a check on "48 hex characters" passes on an id with no prefix at all, and the prefix

@@ -32,9 +32,13 @@ public enum ShimShape
 /// is paired with <see cref="BareHeader"/>: on any tree exactly one answers, and a model converted
 /// through the pair has assertions running either way.
 ///
-/// THE DEVICE ID IS NOT IN THIS SET, deliberately. PP654 moved it to managed code and kept the C
-/// beside it as an oracle for the format, so it is the one wrapper whose absence would not be a
-/// change of shape - it is already not on any path the host runs.
+/// THE DEVICE ID IS NOT IN THIS SET, and the reason needed correcting. It was written here as "the
+/// one wrapper whose absence would not be a change of shape", which reads as though it could stay.
+/// It cannot: chiaki_holepunch_generate_client_device_uid is defined in holepunch.c, so it leaves
+/// with the file like everything else. What is true is narrower and is why it is still excluded -
+/// PP654 took it off every path the host runs, so its absence costs an ORACLE and not a feature,
+/// and <see cref="GoneWhenBare"/> is the set whose absence is the seam changing rather than the set
+/// of everything the flip removes.
 /// </summary>
 public static class ShimHolepunchShape
 {
@@ -117,6 +121,22 @@ public static class ShimHolepunchShape
         "chiaki_shim_holepunch_punch_hole",
         "chiaki_shim_holepunch_session_fini",
     ];
+
+    /// <summary>
+    /// The wrapper that also leaves, and whose absence costs an oracle rather than a shape.
+    ///
+    /// PP654's device id. Kept out of <see cref="GoneWhenBare"/> because the seam's shape is about
+    /// the nine, and named here because a reader working out what the flip removes needs it - the C
+    /// behind it is in holepunch.c and goes with the file.
+    /// </summary>
+    public const string OracleWrapper = "chiaki_shim_generate_client_device_uid";
+
+    /// <summary>
+    /// Whether the shim still offers the device id's C, which is what a check comparing the two
+    /// implementations needs before it runs.
+    /// </summary>
+    public static bool TheFormatOracleIsAvailable()
+        => Read() is { } header && header.Contains(OracleWrapper, StringComparison.Ordinal);
 
     /// <summary>Whatever is still declared that the bare shape must not have.</summary>
     public static IReadOnlyList<string> StillDeclaredIn(string header)
