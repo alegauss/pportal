@@ -591,4 +591,51 @@ refuse a run whose p99 is more than some multiple of its p50, which is the chang
 stops a bad run being committed at all - and needs a threshold nobody has measured.
 Stats is shared by three spikes, so either lands in more than one.
 
+### §PP646 Tearing through a visual, not beside one
+
+PP53's probe creates a composition swapchain with the tearing flag and presents it. That
+swapchain is bound to nothing - no DirectComposition visual, no target, no window -
+because the question asked was whether DXGI takes the flag pair, and DXGI takes it
+before anything is composed.
+
+The negative control is what makes the yes trustworthy at that layer: the same present
+is refused on a swapchain created without the flag, so DXGI is reading the flags rather
+than ignoring them. What the control cannot reach is the next step down. A present on an
+unbound swapchain has nowhere to go, and "accepted, and went nowhere" is
+indistinguishable here from "accepted, and would reach the panel".
+
+The tree that would answer it already exists. PP281 built the DirectComposition path to
+Commit and PP322 kept it, so the missing measurement is a swapchain created with the
+tearing flag, set as a visual's content, committed, and presented at sync interval zero.
+Whether Commit or Present refuses that combination is the real question about PP319's
+choice, and it is a different question from the one PP53 shipped.
+
+It stops there and does not become PP53's remaining half. That one needs a display which
+varies its refresh; this one needs no hardware at all, which is why it is worth doing
+first and separately - a refusal here would settle PP53 without any panel.
+
+### §PP647 A neutral line under a vendor heading
+
+Block I is titled "NVIDIA path" and its own ordering note says every line in it is an
+evaluation with a number as its output, NVIDIA first. Six of its seven fit that: super
+resolution, true HDR, frame generation, the decoder ranking, the noise removal, the
+latency floor. PP53 does not.
+
+Tearing is DXGI. DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING and DXGI_PRESENT_ALLOW_TEARING are
+how an application asks any adaptive-sync display to show a frame when it arrives -
+FreeSync and VESA Adaptive-Sync answer to the same pair, and PP53's probe asks the
+adapter rather than the vendor. Nothing in its shipped half is NVIDIA's.
+
+That matters more here than it would elsewhere, because this port declared a non-goal
+about it. "No vendor path whose absence is visible to the user" binds a proposal to the
+floor in docs/HARDWARE-CONTRACT.md, and the floor's whole argument is that a machine
+with Intel graphics is an ordinary laptop. A latency win that works on that laptop,
+filed under a heading that says NVIDIA, is the one shape of mistake the non-goal cannot
+catch: it would be read as gated, and quietly scheduled behind hardware it does not
+need.
+
+Two doors and neither is obviously right. Move the line to Block C, where the window and
+the present path already live. Or leave it and say in the block's note which of its
+lines are vendor-bound, which is the smaller edit and the one that ages worse.
+
 ## Block J — Public documentation
