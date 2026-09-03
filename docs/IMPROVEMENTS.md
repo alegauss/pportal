@@ -167,11 +167,18 @@ There is no diagram and the code is the diagram. Translating it means reading co
 flow that was written to match observed behaviour, not designed - and the honest
 expectation is that some of it looks wrong and is not.
 
-Two consequences for how this is taken. It should be split when it is started rather
-than now, along the three files, because a single review of 3977 translated lines is not
-a review. And it is the task that most benefits from the oracle running a full captured
-session end to end, since almost nothing here has a fixed input and a fixed output the
-way the crypto does.
+THE SPLIT THIS SECTION ASKED FOR HAPPENED, differently. It said to divide the work along
+the three files when it was started. Two of them got lines of their own - PP294 took
+ctrl.c and PP295 has streamconnection.c - and PP293 took session.c's own lifetime. What
+is left here is not a file: it is the ordering BETWEEN them, and it lives in one
+function, the session thread.
+
+Three joins in it are unmodelled and they are this line's parts. Senkusha runs between
+ctrl's start and the stream connection, handing over the MTUs and the RTT that
+everything after it is sized by. The rudp path sends a switch message and then waits,
+with a timeout whose expiry is a failure rather than a fallback. And the stream
+connection's run blocks for the whole session, so everything after it is teardown
+reading a reason another thread wrote.
 
 ### §PP30 Reed-Solomon, by hand
 

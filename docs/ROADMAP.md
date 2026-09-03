@@ -160,6 +160,21 @@
   carries it and presents at sync interval zero, which is the half that waits on there
   being a video plane at all.
 
+## Done when — PP28
+
+- **Senkusha's place in the sequence, not only its internals** It is initialised, run
+  and finished between ctrl's start and the stream connection, and what it hands back -
+  the two MTUs and the RTT - is what everything after it is sized by. The port models
+  senkusha's own exchange and nowhere says where it sits or what a failure there costs.
+- **The switch message and the wait whose timeout is a failure** On the rudp path the
+  session sends a switch-to-stream-connection message and then waits on a predicate ctrl
+  sets from its own thread. CtrlOnceOnly models the setting side; nothing models the
+  waiting side, where the timeout expiring ends the session rather than falling back.
+- **The run that blocks for the whole session, and what reads it after** The stream
+  connection's run does not return until the session is over, so everything after it is
+  teardown - and the first thing read is a disconnect reason another thread wrote. That
+  join is where a port drops the reason or reads it after the fini that frees it.
+
 ## Non-goals
 
 - **No Linux, macOS, Android, FreeBSD or Switch build** Those trees are already deleted
