@@ -548,30 +548,6 @@ What is left is the run, and it is a run: sessions per decoder on a link that ji
 which takes a console and somebody playing on it. Reading either counter on its own is
 what this waits to prevent.
 
-### §PP647 A neutral line under a vendor heading
-
-Block I is titled "NVIDIA path" and its own ordering note says every line in it is an
-evaluation with a number as its output, NVIDIA first. Six of its seven fit that: super
-resolution, true HDR, frame generation, the decoder ranking, the noise removal, the
-latency floor. PP53 does not.
-
-Tearing is DXGI. DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING and DXGI_PRESENT_ALLOW_TEARING are
-how an application asks any adaptive-sync display to show a frame when it arrives -
-FreeSync and VESA Adaptive-Sync answer to the same pair, and PP53's probe asks the
-adapter rather than the vendor. Nothing in its shipped half is NVIDIA's.
-
-That matters more here than it would elsewhere, because this port declared a non-goal
-about it. "No vendor path whose absence is visible to the user" binds a proposal to the
-floor in docs/HARDWARE-CONTRACT.md, and the floor's whole argument is that a machine
-with Intel graphics is an ordinary laptop. A latency win that works on that laptop,
-filed under a heading that says NVIDIA, is the one shape of mistake the non-goal cannot
-catch: it would be read as gated, and quietly scheduled behind hardware it does not
-need.
-
-Two doors and neither is obviously right. Move the line to Block C, where the window and
-the present path already live. Or leave it and say in the block's note which of its
-lines are vendor-bound, which is the smaller edit and the one that ages worse.
-
 ### §PP648 Re-running the upscaler now the other one works
 
 PP47 set the NVIDIA super resolution extension, got a byte-identical picture, and

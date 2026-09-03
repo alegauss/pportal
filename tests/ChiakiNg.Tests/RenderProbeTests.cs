@@ -683,7 +683,9 @@ public class RenderProbeTests
     /// to resolve and says nothing about what the file contains, so a ledger entry can name a file
     /// that never received the paragraph, or a file that later lost it to a tidy-up.
     ///
-    /// This is that check for the one entry that carries it. It is deliberately about the sentence
+    /// This is that check for PP11's entry. PP647 has since made a second one - its design is in
+    /// docs/HARDWARE-CONTRACT.md, checked by <c>VendorNeutralPresentTests</c> - so there are now two
+    /// hand-written checks where PP642 argues for one that reads the ledger. It is about the sentence
     /// a later presentation path has to obey - the container, the two formats and their ORDER -
     /// rather than about the whole section: what would be worth catching is the constraint going
     /// missing, not the prose around it being rewritten.

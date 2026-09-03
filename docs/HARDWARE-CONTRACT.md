@@ -8,13 +8,20 @@ on one has not shipped, it has narrowed.
 
 ## The floor
 
-Three things must keep working on a machine with no NVIDIA card at all. They are not aspirations;
+Four things must keep working on a machine with no NVIDIA card at all. They are not aspirations;
 a change that breaks one of them is a regression whether or not anything else improved.
+
+**A block heading is a schedule, not a requirement.** §PP647 is why that sentence is here: Block I
+is titled "NVIDIA path" because it is the push that was put second on instruction, and roadkeep.toml
+already noted that two of its lines were never image quality. §PP53 is one of them and it is
+vendor-neutral outright — which is now a row below rather than a note, because a reader scanning the
+heading would have taken a latency win as gated on hardware it does not need.
 
 | Must keep working | Where it is decided today |
 |---|---|
 | **Hardware decode via d3d11va** | [`qmlsettings.cpp`](../gui/src/qmlsettings.cpp) lists `vulkan`, `d3d11va` and `cuda`, each filtered by `hwDecoderRuntimeAvailable`. The choice itself is [`chiaki_decoder_choice`](../lib/src/decoderchoice.c): cuda only when the window reports an NVIDIA card *and* ffmpeg lists it; otherwise vulkan, then d3d11va. **This row is the one with a test.** [`test/decoderchoice.c`](../test/decoderchoice.c) asserts it on the machine it is written for - no NVIDIA card, an OpenGL window, d3d11va listed - and dropping the d3d11va arm turns the suite red (§PP77). |
 | **A vendor-neutral renderer** | Vulkan is the default and OpenGL is the fallback when Vulkan initialisation fails ([`qmlmainwindow.cpp`](../gui/src/qmlmainwindow.cpp)). Neither is an NVIDIA path, and the fallback is taken on the driver's answer rather than on the vendor. |
+| **A present that can tear, with no vendor extension** | Variable refresh is not an NVIDIA feature and PP53 measured it as DXGI's: `DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING` with `DXGI_PRESENT_ALLOW_TEARING`, which is the same pair FreeSync and VESA Adaptive-Sync answer to. **This row has a test.** `VendorNeutralPresentTests` reads every file of the render shim — the swapchain probes, the DirectComposition trees, both tearing probes — and fails if any of them names a GPU vendor at all, with `chiaki_shim.c` as the control that shows the check can find one (§PP647). |
 | **An SDR present with no NGX** | Nothing in the tree loads NGX, and the present path asks for neither vendor feature. Both are now priced and neither is integrated: RTX Video Super Resolution did not engage on this card ([`spike/video-upscale`](../spike/video-upscale), §PP47), and RTX Video HDR does engage, cheaply ([`spike/video-hdr`](../spike/video-hdr), §PP49). A feature that is measured is still not a feature that is shipped, and this row is about the second. |
 
 ## What absence looks like

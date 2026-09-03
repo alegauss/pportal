@@ -24,6 +24,14 @@ ref_scheme = "id"
 # vblank, which is the only one that makes a frame arrive earlier, and PP52 pays a debt the port
 # already has by taking speexdsp off the CPU.
 #
+# AND THE LABEL IS A SCHEDULE, NOT A REQUIREMENT (PP647). "Block I" is what the queue below reads,
+# so the heading names the push and not the hardware every line under it needs. PP53 is the case
+# that made saying so worth it: tearing is DXGI's, the same pair FreeSync and Adaptive-Sync answer
+# to, and its measurement named no vendor anywhere. There is no verb that moves an open line to
+# another block - `record move` reaches the ledger entry alone, which would leave the two
+# disagreeing - so the correction is this sentence and a row in docs/HARDWARE-CONTRACT.md with a
+# test under it, rather than a move.
+#
 # The rest of the order is block order plus deps.
 #
 # The two paths below: BLOCK F, chosen 2026-08-27.
