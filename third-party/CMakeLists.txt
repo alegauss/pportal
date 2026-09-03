@@ -55,7 +55,9 @@ if(NOT CHIAKI_USE_SYSTEM_JERASURE)
 	add_library(Jerasure::Jerasure ALIAS jerasure)
 endif()
 
-if(NOT CHIAKI_USE_SYSTEM_CURL)
+# PP655: and only where holepunch.c is built. Building curl from source is the slowest step this
+# tree has, so the default build stops paying for it as well as stops linking it.
+if(CHIAKI_ENABLE_HOLEPUNCH AND NOT CHIAKI_USE_SYSTEM_CURL)
 	##################
 	# libcurl (with experimental WebSocket support enabled)
 	##################

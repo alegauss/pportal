@@ -34,13 +34,30 @@ namespace ChiakiNg.Session;
 public static class HolepunchFileOrder
 {
     /// <summary>
-    /// How far this order has got. Nothing yet - PP653 and PP654 are what made it writable, not
-    /// steps of it.
+    /// How far this order has got.
+    ///
+    /// Two. PP656, PP657, PP658 and PP661 are the first step - four commits rather than one, because
+    /// the callers turned out to be three sets and not one - and PP662 corrected the question they
+    /// all ask. PP663 is the flip. What is left is the third: the census entries and the predicates
+    /// stay, and the present tense around them is stale.
     /// </summary>
-    public static int Landed { get; }
+    public static int Landed { get; } = 2;
 
-    /// <summary>The option the file and its wrappers would sit behind.</summary>
+    /// <summary>The option the file and its wrappers sit behind.</summary>
     public const string ProposedOption = "CHIAKI_ENABLE_HOLEPUNCH";
+
+    /// <summary>Where the root declares it.</summary>
+    public const string RootCMakeRelativePath = "CMakeLists.txt";
+
+    /// <summary>
+    /// The configure line, which has to pass the option EXPLICITLY.
+    ///
+    /// PP21's finding, inherited: option() does not override a value already in the cache, so a
+    /// default is correct for a fresh clone and inert everywhere else. A stale ON would keep
+    /// holepunch.c, curl, json-c and both oracles in a tree whose author had turned them off, and
+    /// the only way that gets noticed is somebody deleting a DLL and watching it come back.
+    /// </summary>
+    public const string ConfigureScriptRelativePath = @"scripts\build-windows.sh";
 
     /// <summary>The header whose declarations are the contract NativeSeam reads.</summary>
     public const string ShimHeaderRelativePath = @"shim\chiaki_shim.h";

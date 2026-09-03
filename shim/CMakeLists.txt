@@ -6,6 +6,18 @@ add_library(chiaki-shim SHARED chiaki_shim.c chiaki_shim.h)
 target_include_directories(chiaki-shim PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(chiaki-shim chiaki-lib)
 
+# PP655: the two oracles - nine holepunch wrappers and fifteen json-c ones - follow the libraries
+# they wrap, in the BODY and in the HEADER.
+#
+# The header half is load-bearing. PP437's census holds the host's imports against what these
+# headers declare, so gating only the bodies would leave it green while the DLL lost the exports.
+# PUBLIC for the same reason: anything compiling against this header has to see the set this DLL
+# actually exports. chiaki_shim_has_holepunch and chiaki_shim_has_jsonc are outside both gates and
+# are how a managed guard asks which build it got (PP662).
+if(CHIAKI_ENABLE_HOLEPUNCH)
+	target_compile_definitions(chiaki-shim PUBLIC CHIAKI_SHIM_HAVE_HOLEPUNCH CHIAKI_SHIM_HAVE_JSONC)
+endif()
+
 # PP25: the nanopb-generated takion.pb.h, which chiaki-lib compiles against but does not publish -
 # it adds the directory privately, so a consumer that wants the message types has to name it. Named
 # here rather than promoted in lib/CMakeLists.txt, because lib/ is the half this port does not edit.

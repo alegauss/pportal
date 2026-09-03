@@ -31,10 +31,18 @@
 /* PP23: the bit reader both slice-header parsers sit on. Header-only, so including it here is the
  * whole of reaching it - there is no symbol to link against. */
 #include "../lib/src/vl_rbsp.h"
-/* PP33: json-c comes in through chiaki-lib, which links it whole-object for holepunch.c. */
+/* PP33: json-c comes in through chiaki-lib, which links it whole-object for holepunch.c.
+ *
+ * PP655: and only where that is being built. The fifteen wrappers below are an ORACLE - they let a
+ * managed replacement be held against the library it replaces - which is why the nine holepunch
+ * ones exist too, for PP33's other half. PP660 counted them after an attempt at this flip failed to
+ * link on json_object_object_get_ex, having been sized from a linker answer taken while json-c was
+ * still linked. */
+#ifdef CHIAKI_SHIM_HAVE_JSONC
 #include <json-c/json_object.h>
 #include <json-c/json_pointer.h>
 #include <json-c/json_tokener.h>
+#endif
 #include <chiaki/regist.h>
 #include <chiaki/reorderqueue.h>
 #include <chiaki/rpcrypt.h>
@@ -2088,6 +2096,8 @@ CHIAKI_SHIM_API const char *chiaki_shim_http_header_value(void *response, int32_
 /* PP33: json-c, reachable so the managed replacement can be held against it. See the header for
  * why the lookups return borrowed references and only the root is freed. */
 
+#ifdef CHIAKI_SHIM_HAVE_JSONC
+
 CHIAKI_SHIM_API void *chiaki_shim_json_parse(const char *text)
 {
 	if(!text)
@@ -2212,6 +2222,8 @@ CHIAKI_SHIM_API void chiaki_shim_json_tokener_free(void *tok)
 	if(tok)
 		json_tokener_free((json_tokener *)tok);
 }
+
+#endif /* CHIAKI_SHIM_HAVE_JSONC */
 
 CHIAKI_SHIM_API void *chiaki_shim_bitstream_create(int32_t codec)
 {
@@ -3098,6 +3110,8 @@ CHIAKI_SHIM_API int32_t chiaki_shim_duid_str_size(void)
 	return (int32_t)CHIAKI_DUID_STR_SIZE;
 }
 
+#ifdef CHIAKI_SHIM_HAVE_HOLEPUNCH
+
 CHIAKI_SHIM_API int32_t chiaki_shim_generate_client_device_uid(char *buf, int32_t *size)
 {
 	size_t out;
@@ -3238,6 +3252,8 @@ CHIAKI_SHIM_API void chiaki_shim_holepunch_session_fini(void *session)
 		return;
 	chiaki_holepunch_session_fini((ChiakiHolepunchSession)session);
 }
+
+#endif /* CHIAKI_SHIM_HAVE_HOLEPUNCH */
 
 CHIAKI_SHIM_API void chiaki_shim_session_free(void *session)
 {

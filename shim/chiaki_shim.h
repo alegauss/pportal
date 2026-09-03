@@ -756,6 +756,7 @@ CHIAKI_SHIM_API int32_t chiaki_shim_discovery_service_host_request_port(void *ho
 
 CHIAKI_SHIM_API int32_t chiaki_shim_duid_str_size(void);
 
+#ifdef CHIAKI_SHIM_HAVE_HOLEPUNCH
 CHIAKI_SHIM_API int32_t chiaki_shim_generate_client_device_uid(char *buf, int32_t *size);
 
 /* PP481: the nine asks PP429 wrote down, as nine wrappers over the real C.
@@ -780,6 +781,7 @@ CHIAKI_SHIM_API int32_t chiaki_shim_holepunch_get_ctrl_port(void *session);
 CHIAKI_SHIM_API int32_t chiaki_shim_holepunch_create_offer(void *session);
 CHIAKI_SHIM_API int32_t chiaki_shim_holepunch_punch_hole(void *session, int32_t port_type);
 CHIAKI_SHIM_API void chiaki_shim_holepunch_session_fini(void *session);
+#endif /* CHIAKI_SHIM_HAVE_HOLEPUNCH */
 
 /**
  * PP23: the registration crypto, reachable so that both implementations can be run on one input.
@@ -1194,6 +1196,7 @@ CHIAKI_SHIM_API const char *chiaki_shim_http_header_value(void *response, int32_
  * chiaki_shim_json_parse is passed to chiaki_shim_json_free; every other handle here is valid only
  * while its root is.
  */
+#ifdef CHIAKI_SHIM_HAVE_JSONC
 CHIAKI_SHIM_API void *chiaki_shim_json_parse(const char *text);
 
 /** Releases a root from chiaki_shim_json_parse. Never a handle from the lookups below. */
@@ -1244,6 +1247,7 @@ CHIAKI_SHIM_API void *chiaki_shim_json_tokener_parse(void *tok, const char *text
 CHIAKI_SHIM_API int32_t chiaki_shim_json_tokener_error(void *tok);
 CHIAKI_SHIM_API void chiaki_shim_json_tokener_reset(void *tok);
 CHIAKI_SHIM_API void chiaki_shim_json_tokener_free(void *tok);
+#endif /* CHIAKI_SHIM_HAVE_JSONC */
 
 /**
  * PP23: the bitstream parser, which is what tells the client what kind of frame just arrived.

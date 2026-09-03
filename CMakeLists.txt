@@ -27,6 +27,30 @@ option(CHIAKI_ENABLE_TESTS "Enable tests for Chiaki" ON)
 # this task; deleting the corpus those checks read would silence them, which is the opposite of
 # what this line is for. `-DCHIAKI_ENABLE_GUI=ON` still builds the Qt client from it.
 option(CHIAKI_ENABLE_GUI "Enable Qt GUI" OFF)
+# PP655, PP33's second flip: holepunch.c, curl and json-c, and the two oracles that wrap them.
+#
+# PP653 asked the linker what still holds holepunch.c and got ten wrappers in this port's own shim.
+# PP654 moved the one the host actually ran, so the nine that remain are PP481's oracle - reachable
+# only by tests that also need a live console. PP660 then counted what that question could not see:
+# fifteen more wrappers around json-c, an oracle for PP33's OTHER library, invisible to a linker
+# asked while json-c was still linked.
+#
+# All of it follows this one flag because all of it is the same thing - apparatus for holding a
+# managed replacement against the C it replaces. A testing seam can sit behind the flag that admits
+# the hardware and the libraries it needs, which is what PP632 did for gui/ and PP32 for speexdsp.
+#
+# OFF by default is the point. PP33's criterion is that libchiaki builds with neither curl nor
+# json-c, and it is about the ordinary build; -DCHIAKI_ENABLE_HOLEPUNCH=ON restores every piece
+# unchanged. Three sets of callers were converted first - PP656 the seam's shape, PP657 the import
+# census, PP658 the tests that drive the C, PP661 the sixteen that compare against json-c - and
+# PP662 moved the question they all ask from the source text to the built DLL, because an #ifdef is
+# invisible to a text reader and the first attempt at this turned 128 assertions red saying so.
+#
+# PP430 removed CHIAKI_ENABLE_RUDP for the reason that made this possible rather than against it:
+# "gating those three sources without gating their callers breaks the build - session.c drives the
+# PSN path from nine call sites". PP632 removed those nine. This gates one source, and rudp.c and
+# rudpsendbuffer.c stay unconditional: they are the takion path's and reach no PSN at all.
+option(CHIAKI_ENABLE_HOLEPUNCH "Build holepunch.c with curl and json-c, and the shim oracles over them" OFF)
 option(CHIAKI_LIB_ENABLE_OPUS "Use Opus as part of Chiaki Lib" ON)
 tri_option(CHIAKI_ENABLE_SPEEX "Use speex for echo cancelling mic playback" AUTO)
 # PP430: CHIAKI_ENABLE_RUDP stood here and nothing read it. It appeared once in the whole build -
@@ -94,7 +118,8 @@ endif()
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(LIBPLACEBO REQUIRED libplacebo>=7.349.0 IMPORTED_TARGET)
 
-if(CHIAKI_USE_SYSTEM_CURL)
+# PP655: curl follows holepunch.c, the only thing in lib/ that calls it.
+if(CHIAKI_ENABLE_HOLEPUNCH AND CHIAKI_USE_SYSTEM_CURL)
 	if (CHIAKI_USE_SYSTEM_CURL STREQUAL AUTO)
 		find_package(CURL COMPONENTS HTTP HTTPS WS WSS QUIET)
 		set(CHIAKI_USE_SYSTEM_CURL ${CURL_FOUND})

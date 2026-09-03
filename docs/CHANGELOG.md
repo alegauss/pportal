@@ -559,6 +559,7 @@
 - ✅ **PP660** **PP655 sized the flip from a linker answer taken while json-c was still linked, so it counted one oracle** — The flip's surface is both oracles counted from the shim - 25 exports where the linker named 10 - so PP655's first step has a third set of callers still to convert.
 - ✅ **PP661** **sixteen comparisons hold managed JSON against json-c and would throw rather than fail once it is gone** — The sixteen decline on a shim with no json oracle and a counterpart says which state the tree is in, so PP655's first step now covers all three sets of callers.
 - ✅ **PP662** **the seam's shape was read from source text, and an #ifdef is invisible to a text reader** — Two exports the shim carries whichever way the option went answer it now, so a guard asks the DLL it loaded rather than a file on disk beside it.
+- ✅ **PP663** **libchiaki links curl and json-c in every build for one file two console-only test groups reach** — The default build links neither library and the suite is green; -DCHIAKI_ENABLE_HOLEPUNCH=ON restores curl, json-c, the file and both oracles, and it is green there too.
 
 ## Block G — Test discipline
 

@@ -91,9 +91,21 @@ set(SOURCE_FILES
 		src/opusencoder.c
 		src/orientation.c
 		src/bitstream.c
-		src/remote/holepunch.c
 		src/remote/rudp.c
 		src/remote/rudpsendbuffer.c)
+
+# PP655, PP33's second flip: holepunch.c only where CHIAKI_ENABLE_HOLEPUNCH asks for it.
+#
+# rudp.c and rudpsendbuffer.c stay unconditional and are NOT part of this. PP430 grouped the three
+# because they arrived together, and only one of them calls curl and json-c; the rudp pair is the
+# takion path's and reaches no PSN at all.
+#
+# The HEADER stays in the list above. It declares the types the shim's own header names, and a
+# header nothing compiles costs nothing - the same reason gui/'s sources stayed after PP632 retired
+# its build.
+if(CHIAKI_ENABLE_HOLEPUNCH)
+	list(APPEND SOURCE_FILES src/remote/holepunch.c)
+endif()
 
 # decoderchoice.c is deliberately outside this gate. It names decoders but includes nothing
 # from ffmpeg and links nothing: it is a decision over four booleans, and gating it would
@@ -131,6 +143,8 @@ target_include_directories(chiaki-lib PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/includ
 find_package(Threads REQUIRED)
 target_link_libraries(chiaki-lib Threads::Threads)
 
+# PP655: json-c follows holepunch.c, the only file in lib/ that includes it.
+if(CHIAKI_ENABLE_HOLEPUNCH)
 if(CHIAKI_LIB_JSONC_EXTERNAL_PROJECT)
 	target_link_libraries(chiaki-lib json-c)
 	target_include_directories(chiaki-lib PRIVATE "${JSONC_PREFIX_INCLUDE_DIR}")
@@ -140,6 +154,7 @@ else()
 	pkg_search_module(json-c REQUIRED json-c IMPORTED_TARGET)
 	target_include_directories(chiaki-lib PRIVATE ${json-c_INCLUDE_DIRS})
 	target_link_libraries(chiaki-lib PkgConfig::json-c)
+endif()
 endif()
 
 if(CHIAKI_LIB_MINIUPNPC_EXTERNAL_PROJECT)
@@ -163,7 +178,10 @@ else()
 	target_link_libraries(chiaki-lib ${LIBEVENT_LIBRARIES})
 endif()
 
-target_link_libraries(chiaki-lib CURL::libcurl)
+# PP655: and curl, for the same reason and in the same commit.
+if(CHIAKI_ENABLE_HOLEPUNCH)
+	target_link_libraries(chiaki-lib CURL::libcurl)
+endif()
 
 if(CHIAKI_LIB_ENABLE_MBEDTLS)
 	if(CHIAKI_LIB_MBEDTLS_EXTERNAL_PROJECT)

@@ -4,7 +4,8 @@ using Xunit;
 namespace ChiakiNg.Tests;
 
 /// <summary>
-/// PP655, under PP33: the second flip's order, and the hazard that makes its first step compulsory.
+/// PP655 and PP663, under PP33: the second flip's order, the hazard that made its first step
+/// compulsory, and the flip itself now that it has landed.
 ///
 /// PP623 wrote the first order and PP634 found its third step wrong - written before the first two
 /// landed, and wrong in the way only their landing made visible. So an order is worth asserting as
@@ -23,13 +24,51 @@ public class HolepunchFileOrderTests
     public void TheOrderIsLandable()
         => Assert.True(HolepunchDeletionOrder.IsLandable(HolepunchFileOrder.Stages));
 
-    /// <summary>And it is three steps, with the flip in the middle.</summary>
+    /// <summary>And it is three steps, with the flip in the middle, and two have landed.</summary>
     [Fact]
     public void ThereAreThreeStepsAndTheFlipIsTheSecond()
     {
         Assert.Equal(3, HolepunchFileOrder.Stages.Count);
         Assert.Equal(HolepunchFileOrder.Flip, HolepunchFileOrder.Stages[1]);
-        Assert.Equal(0, HolepunchFileOrder.Landed);
+        Assert.Equal(2, HolepunchFileOrder.Landed);
+    }
+
+    /// <summary>
+    /// PP663: the option exists and the build declares it, which is the flip having landed.
+    ///
+    /// The option is the whole of what the flip is. A tree where it is gone is one where somebody
+    /// either finished PP33 or reverted this, and either way the order's Landed count is wrong.
+    /// </summary>
+    [Fact]
+    public void TheOptionTheFlipIntroducedIsDeclared()
+    {
+        if (SanitizerSource.LocateRelative(HolepunchFileOrder.RootCMakeRelativePath) is not { } path)
+            return;
+
+        Assert.Contains(
+            $"option({HolepunchFileOrder.ProposedOption}",
+            File.ReadAllText(path),
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// PP663: and the configure line passes it explicitly, which is PP21's finding inherited.
+    ///
+    /// option() does not override a value already in the cache, so a default is correct for a fresh
+    /// clone and inert everywhere else. Passed on the command line it overrides on every configure -
+    /// without which a stale ON keeps curl, json-c and both oracles in a tree whose author had
+    /// turned them off, and nothing says so.
+    /// </summary>
+    [Fact]
+    public void TheConfigureLinePassesItRatherThanTrustingTheDefault()
+    {
+        if (SanitizerSource.LocateRelative(HolepunchFileOrder.ConfigureScriptRelativePath) is not { } path)
+            return;
+
+        Assert.Contains(
+            $"-D{HolepunchFileOrder.ProposedOption}=",
+            File.ReadAllText(path),
+            StringComparison.Ordinal);
     }
 
     /// <summary>
