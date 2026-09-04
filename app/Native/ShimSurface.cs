@@ -9,7 +9,7 @@ namespace ChiakiNg.Native;
 /// A <c>[DllImport]</c> is resolved on first call, not at build. So an export renamed in
 /// chiaki_shim.c, or an EntryPoint typed with one letter wrong, compiles clean, passes the ABI
 /// check - the version is a number, not a symbol table - and throws EntryPointNotFoundException
-/// wherever that call happens to sit. For most of the 231 that is mid-session.
+/// wherever that call happens to sit. For most of the 233 that is mid-session.
 ///
 /// THE SELFTEST COVERS A SUBSET AND SAYS SO. Its note is that "a DLL from an older build exports
 /// every name this assembly imports and answers all of them", which is what the ABI guards. What
@@ -17,7 +17,7 @@ namespace ChiakiNg.Native;
 ///
 /// BOTH DIRECTIONS ARE NEWS, which is PP290's argument for its own set one seam over. A name
 /// imported and not exported is a call that will throw; a name exported and not imported is shim C
-/// nothing reaches, which this port deletes rather than keeps. They are equal today at 231 each.
+/// nothing reaches, which this port deletes rather than keeps. They are equal today at 233 each.
 ///
 /// DEFINITIONS, NOT DECLARATIONS. The header declares each export too, so a sweep of the header
 /// would pass on a function that was declared and never written - which is the same failure with a

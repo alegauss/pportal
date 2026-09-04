@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 44
+#define CHIAKI_SHIM_ABI 45
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -1388,6 +1388,63 @@ CHIAKI_SHIM_API int32_t chiaki_shim_takion_v9_av_packet_parse(
 		uint64_t *key_pos,
 		int32_t *data_offset,
 		int32_t *data_size);
+
+/**
+ * PP679: chiaki_takion_v7_av_packet_parse, which is a body of its own rather than a mode of the
+ * one above.
+ *
+ * Three fields of the header it walks are read differently. Its bound counts the nalu-info add for
+ * video as well as audio; its packed word always takes the video layout whatever the base type;
+ * and its key position is thirty-two raw bits with no ChiakiKeyState behind them, which is why
+ * there is no state parameter here. NULL is passed for the C's own, which it declares and never
+ * reads.
+ *
+ * word_at_0x18 crosses here and not on the v9 export, because the formatter below writes it.
+ *
+ * Every out-parameter may be NULL. Returns a ChiakiErrorCode.
+ */
+CHIAKI_SHIM_API int32_t chiaki_shim_takion_v7_av_packet_parse(
+		uint8_t *buf,
+		int32_t buf_size,
+		bool *is_video,
+		bool *uses_nalu_info_structs,
+		uint16_t *packet_index,
+		uint16_t *frame_index,
+		uint16_t *unit_index,
+		uint16_t *units_in_frame_total,
+		uint16_t *units_in_frame_fec,
+		uint8_t *codec,
+		uint16_t *word_at_0x18,
+		uint8_t *adaptive_stream_index,
+		uint64_t *key_pos,
+		int32_t *data_offset,
+		int32_t *data_size);
+
+/**
+ * PP679: chiaki_takion_v7_av_packet_format_header, takion.c's only header formatter.
+ *
+ * Its two callers are senkusha.c's - the ping and the MTU probe - and not takion's receive path,
+ * so the oracle for a managed formatter is this rather than anything the stream sends.
+ *
+ * Flattened like chiaki_shim_takion_format_congestion: the packet ends in a borrowed pointer, and
+ * only the fields the formatter reads are taken. header_size_out is written even when the buffer
+ * is too small, because the C sets it before its bound check and senkusha.c asserts on it.
+ */
+CHIAKI_SHIM_API int32_t chiaki_shim_takion_v7_av_packet_format_header(
+		uint8_t *buf,
+		int32_t buf_size,
+		int32_t *header_size_out,
+		bool is_video,
+		bool uses_nalu_info_structs,
+		uint16_t packet_index,
+		uint16_t frame_index,
+		uint16_t unit_index,
+		uint16_t units_in_frame_total,
+		uint16_t units_in_frame_fec,
+		uint8_t codec,
+		uint16_t word_at_0x18,
+		uint8_t adaptive_stream_index,
+		uint64_t key_pos);
 
 /**
  * PP23: the frame processor, where units become a frame and FEC is driven.

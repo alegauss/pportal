@@ -624,6 +624,8 @@
 - ✅ **PP678** **the receive loop runs only against test doubles, and nothing owns takion's state** — A takion that owns its tags, ledger, queues, send buffer and socket: it connects to PP606's responder over loopback, loops on that socket, and releases in the C's order.
   checked **A managed takion connects, runs its loop over a socket and tears down in order** Against PP606's responder: the connected event, then a loop that receives real datagrams into TakionReceiveBuffer and dispatches through TakionReceivePath, then close - send buffer, queues, postponed packets, the disconnected event, the socket - each step observed in the C's order.
   checked **Nothing is allocated per datagram once the loop is warm** PP633's measurement over the loop as it runs on a socket rather than in a replay: bytes allocated after warm-up are zero over the corpus fed through loopback, which is PP44's budget held on the transport itself and not on a harness.
+- ✅ **PP679** **the v7 AV parse and header formatter are unported, and the formatter's callers are senkusha's** — Both go managed and the C's copy stands until senkusha is ported; the round trip found a fourth difference and a key position the formatter never byte-swaps.
+  checked **The v7 parse and formatter have an owner, and a test against the C for each** A decision recorded in the decisions file names where each goes; the parse is compared against chiaki_takion_v7_av_packet_parse through a shim export on real and synthetic headers, and the formatter's output is parsed back by the C's own v7 parse.
 
 ## Block G — Test discipline
 

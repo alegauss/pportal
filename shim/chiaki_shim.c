@@ -2711,6 +2711,129 @@ CHIAKI_SHIM_API int32_t chiaki_shim_takion_v9_av_packet_parse(
 	return (int32_t)CHIAKI_ERR_SUCCESS;
 }
 
+/* PP679: the v7 parse, whose key_state parameter the C declares and never reads.
+ *
+ * NULL is passed for it deliberately rather than forwarded. The v7 body takes its key position
+ * straight off the wire as thirty-two bits - no ChiakiKeyState, no expansion, no ledger - and an
+ * export that accepted a state would suggest the caller's one advances when it does not.
+ *
+ * word_at_0x18 crosses too, unlike the v9 export's. The formatter beside this writes it, so a
+ * round trip that could not read it back would be comparing four fields out of five.
+ */
+CHIAKI_SHIM_API int32_t chiaki_shim_takion_v7_av_packet_parse(
+		uint8_t *buf,
+		int32_t buf_size,
+		bool *is_video,
+		bool *uses_nalu_info_structs,
+		uint16_t *packet_index,
+		uint16_t *frame_index,
+		uint16_t *unit_index,
+		uint16_t *units_in_frame_total,
+		uint16_t *units_in_frame_fec,
+		uint8_t *codec,
+		uint16_t *word_at_0x18,
+		uint8_t *adaptive_stream_index,
+		uint64_t *key_pos,
+		int32_t *data_offset,
+		int32_t *data_size)
+{
+	ChiakiTakionAVPacket packet;
+	ChiakiErrorCode err;
+
+	if(!buf || buf_size <= 0)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+
+	memset(&packet, 0, sizeof(packet));
+	err = chiaki_takion_v7_av_packet_parse(&packet, NULL, buf, (size_t)buf_size);
+	if(err != CHIAKI_ERR_SUCCESS)
+		return (int32_t)err;
+
+	if(is_video)
+		*is_video = packet.is_video;
+	if(uses_nalu_info_structs)
+		*uses_nalu_info_structs = packet.uses_nalu_info_structs;
+	if(packet_index)
+		*packet_index = packet.packet_index;
+	if(frame_index)
+		*frame_index = packet.frame_index;
+	if(unit_index)
+		*unit_index = packet.unit_index;
+	if(units_in_frame_total)
+		*units_in_frame_total = packet.units_in_frame_total;
+	if(units_in_frame_fec)
+		*units_in_frame_fec = packet.units_in_frame_fec;
+	if(codec)
+		*codec = packet.codec;
+	if(word_at_0x18)
+		*word_at_0x18 = packet.word_at_0x18;
+	if(adaptive_stream_index)
+		*adaptive_stream_index = packet.adaptive_stream_index;
+	if(key_pos)
+		*key_pos = packet.key_pos;
+
+	/* The same ownership rule as the v9 export's: an offset into the caller's buffer, never a
+	 * pointer the managed side would have to keep alive. */
+	if(data_offset)
+		*data_offset = packet.data ? (int32_t)(packet.data - buf) : -1;
+	if(data_size)
+		*data_size = (int32_t)packet.data_size;
+
+	return (int32_t)CHIAKI_ERR_SUCCESS;
+}
+
+/* PP679: the file's only header FORMATTER, flattened the way the congestion one is.
+ *
+ * A ChiakiTakionAVPacket ends in a borrowed pointer, so the fields cross as scalars and the struct
+ * is assembled here. Only the fields the formatter READS are taken; is_haptics, byte_at_0x2c and
+ * the payload are not among them, and passing them would say this writes more than it does.
+ *
+ * header_size is written even where the buffer is too small - the C sets it before its bound check,
+ * which is what lets senkusha.c assert the size it expected before looking at the error.
+ */
+CHIAKI_SHIM_API int32_t chiaki_shim_takion_v7_av_packet_format_header(
+		uint8_t *buf,
+		int32_t buf_size,
+		int32_t *header_size_out,
+		bool is_video,
+		bool uses_nalu_info_structs,
+		uint16_t packet_index,
+		uint16_t frame_index,
+		uint16_t unit_index,
+		uint16_t units_in_frame_total,
+		uint16_t units_in_frame_fec,
+		uint8_t codec,
+		uint16_t word_at_0x18,
+		uint8_t adaptive_stream_index,
+		uint64_t key_pos)
+{
+	ChiakiTakionAVPacket packet;
+	ChiakiErrorCode err;
+	size_t header_size = 0;
+
+	if(!buf || buf_size < 0)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+
+	memset(&packet, 0, sizeof(packet));
+	packet.is_video = is_video;
+	packet.uses_nalu_info_structs = uses_nalu_info_structs;
+	packet.packet_index = packet_index;
+	packet.frame_index = frame_index;
+	packet.unit_index = unit_index;
+	packet.units_in_frame_total = units_in_frame_total;
+	packet.units_in_frame_fec = units_in_frame_fec;
+	packet.codec = codec;
+	packet.word_at_0x18 = word_at_0x18;
+	packet.adaptive_stream_index = adaptive_stream_index;
+	packet.key_pos = key_pos;
+
+	err = chiaki_takion_v7_av_packet_format_header(buf, (size_t)buf_size, &header_size, &packet);
+
+	if(header_size_out)
+		*header_size_out = (int32_t)header_size;
+
+	return (int32_t)err;
+}
+
 static void chiaki_shim_unit_packet(
 		ChiakiTakionAVPacket *packet,
 		bool is_video,

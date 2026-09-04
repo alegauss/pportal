@@ -233,29 +233,6 @@ because today the default is what makes those two theories a check on the ORACLE
 cases are the C's own, and a managed default now would silently stop asking the C
 whether it still agrees with its own recording.
 
-### §PP679 Version seven, and whose it is
-
-takion.c carries three AV header parsers and the version chosen at connect picks one.
-The v9 and v12 parsers are one body with a flag, which PP668 owns. The v7 parser is a
-body of its own and differs in three places: its bound counts the NALU add for video as
-well as audio, its packed word always takes the video layout whatever the base type, and
-its key position is read raw as thirty-two bits with no key state behind it.
-
-Beside it sits the file's only header FORMATTER,
-chiaki_takion_v7_av_packet_format_header, and its two callers are in senkusha.c - the
-MTU and bandwidth probe - not in takion's receive path. So when takion.c leaves the
-build the formatter has to go somewhere, and PP27's fourth criterion names three files
-and senkusha.c is not one of them.
-
-NOTHING MANAGED ANSWERS EITHER. No shim export, no model, no test; the one mention in
-the tree reads the v7 constant's name inside the v9 parse. NativeTakionLoopback accepts
-version seven, so the C path is reachable for a comparison.
-
-THE DECISION, and it is one: the parse ports with the other two as a third mode of one
-function, or as its own body the way the C keeps it; the formatter moves with the parse,
-or with senkusha's own port. What is refused is deleting a formatter whose callers still
-stand.
-
 ### §PP680 The AV arm, assembled
 
 takion_handle_packet_av is the AV branch of the dispatch and the managed side stops
@@ -381,6 +358,30 @@ capture path has never had to answer.
 Source mode is the alternative: the DSP opens both devices itself and hands back one
 cleaned stream. That replaces `WasapiCapture` rather than following it, and takes the
 device choice with it - which PP695 showed this port needs to keep.
+
+### §PP702 Senkusha's five calls into takion
+
+PP27's fourth criterion is an end state: takion.c, takionsendbuffer.c and reorderqueue.c
+leave the build. senkusha.c calls five of takion's exports - connect, close,
+send_message_data, send_raw and the v7 header formatter - and is not one of the three,
+so the criterion cannot be met while it stands.
+
+PP679 decided one of the five: the v7 parse and formatter are managed now, held to the C
+byte for byte, and the C's copy stays because deleting it strands two callers while
+moving it into senkusha.c patches vendored source a non-goal refuses. The other four
+were never in that line's scope.
+
+PP638's linker run counted the FRAME path's callers, which is PP295's subject rather
+than this one's, so senkusha has never been counted from this side.
+
+THIS IS NOT A PORT OF SENKUSHA. Its placement, its waits, its send results and its
+participant in the recorded exchange are already modelled - PP28's join and PP394's
+channel - so what is missing is the transport underneath, not the protocol above.
+
+WHAT IT ASKS FOR is the count made once and kept: every takion symbol senkusha names,
+resolved to a managed counterpart or to a line that owes one, the way FramePathConsumers
+does for the frame path. Whether the answer is a senkusha port or four more managed
+calls is the next decision, and it needs the census first.
 
 ## Block G — Test discipline
 
