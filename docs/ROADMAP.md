@@ -36,6 +36,7 @@
 - 📋 **PP679** (deps: —) **the v7 AV parse and header formatter are unported, and the formatter's callers are senkusha's** — chiaki_takion_v7_av_packet_parse differs from v9 in three places, and chiaki_takion_v7_av_packet_format_header is called only by senkusha.c, so who owns them is a decision. → §PP679
 - 📋 **PP680** (deps: PP668) **takion_handle_packet_av is only a branch in managed code, so no video packet reaches the flush** — The disable gates, the queue seeded at packet_index minus unit_index, the entry with its stamp and the flush into StreamAvDispatch have no composition; the parse is PP668's. → §PP680
 - 📋 **PP685** (deps: —) **PP395's chokepoint comment calls the two data-type-2 sends the keyboard pair, which they are not** — They are the corrupt frame and the IDR request, and the word keyboard appears nowhere else in the file; a reader taking the comment for the table gets the video path wrong. → §PP685
+- 📋 **PP694** (deps: —) **the microphone's units reach nothing, and libopus's second consumer is why the dependency cannot leave** — PP652 answered the input question opusencoder.c waited on, so the encoder is portable now and PP651 already measured managed Opus at a quarter of a percent of a frame. → §PP694
 
 ## Block G — Test discipline
 
@@ -267,6 +268,18 @@
   incidental, with the question answered for each: would a more precise sentence break
   it. Two are known already from PP666. A count that returns only those two is an
   answer, not a failure.
+
+## Done when — PP694
+
+- **A managed encoder turns a captured unit into an Opus frame** The 960-byte units
+  WasapiCapture delivers go in and Opus frames come out, at the bitrate and application
+  mode opusencoder.c sets. Held against the C through the shim on recorded input, the
+  way every other port here is, rather than judged by whether the output decodes.
+- **Whether libopus can leave is answered with both consumers counted** A census names
+  every caller of the library across lib, shim and test, the way PP692 did for
+  gf-complete rather than counting one module's export. It says what still holds libopus
+  in the build and the package after the encoder is managed. PP651's decode reading is
+  cited, never re-taken.
 
 ## Non-goals
 

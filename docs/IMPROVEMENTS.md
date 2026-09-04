@@ -500,6 +500,33 @@ this port has written comments into twenty files of lib/src already, which PP483
 counted. A comment corrected is not a patch: the compiled object is identical, and the
 drift checks that read this file read the code around it.
 
+### §PP694 The encoder that was waiting for an input
+
+PP32 measured that libopus has two consumers and not one. `opusdecoder.c` is the
+playback path and `opusencoder.c` is the microphone's, so porting the decoder alone
+removes no dependency: the library stays for the encoder and the DLL stays in the
+package.
+
+Its own sentence named the blocker. "The encoder is on the path that has no input... the
+dependency leaves when the microphone question is answered, and not before."
+
+PP652 answered it. `WasapiCapture` opens the default communications endpoint and
+delivers whole 960-byte units at a hundred a second, in exactly the format
+`streamconnection.c` announces - one channel, 16-bit, 48000 Hz, 480 frames. Windows does
+every conversion, so what arrives needs nothing before an encoder.
+
+PP651 measured the other half already: managed Opus costs 1.58 times the native median
+at 24.9 microseconds a frame, which is a quarter of one percent of a ten-millisecond
+frame. Cost decides nothing here, and the dependency is the whole argument.
+
+So the work is a managed encoder taking those units and producing Opus frames, held
+against `opusencoder.c` through the shim the way every other port in this tree is. What
+it unblocks is the pair: with both consumers managed, libopus leaves the build and the
+package, which is the saving PP32 found was not available for the decoder alone.
+
+`audiosender.c` is not a third consumer - it names a parameter `opus_sender` and calls
+nothing in the library.
+
 ## Block G — Test discipline
 
 ### §PP683 The census stops at the test project
