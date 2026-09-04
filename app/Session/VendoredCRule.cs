@@ -90,8 +90,7 @@ public static class VendoredCRule
     /// The note itself does not clear - it is lexical, and PP33 has been flagged since PP571 named
     /// it. That is roadkeep's, not this repository's; what is this repository's is whether the
     /// answer is written down where the next session reads it.
-    /// </summary>
-    /// <summary>
+    ///
     /// PP637: and PP295, which nothing flagged at all.
     ///
     /// The third of three and the first the lint note is silent about. PP33 and PP30 both carry the

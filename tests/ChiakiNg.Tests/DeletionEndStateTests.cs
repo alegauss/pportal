@@ -37,13 +37,6 @@ public class DeletionEndStateTests
     }
 
     /// <summary>
-    /// PP639: all three carry the criterion, and the words are the ones the three already used.
-    ///
-    /// PP33's says "It is an end state, not a progress bar"; PP27's says "the end state and not a
-    /// progress bar"; PP295's was written to match. Matched as two words rather than one sentence,
-    /// because the two spellings were already in the file before this rule existed.
-    /// </summary>
-    /// <summary>
     /// PP639: THE RULE IS NO BROADER THAN ITS REASON, which its own first run had to teach it.
     ///
     /// Written as "no open line may depend on an end-state line" it reported PP30's dep on PP27. Not
@@ -81,6 +74,13 @@ public class DeletionEndStateTests
             one => one.Contains("PP295 declares a dep on PP27", StringComparison.Ordinal));
     }
 
+    /// <summary>
+    /// PP639: all three carry the criterion, and the words are the ones the three already used.
+    ///
+    /// PP33's says "It is an end state, not a progress bar"; PP27's says "the end state and not a
+    /// progress bar"; PP295's was written to match. Matched as two words rather than one sentence,
+    /// because the two spellings were already in the file before this rule existed.
+    /// </summary>
     [Fact]
     public void AllThreeCarryAnEndStateCriterion()
     {

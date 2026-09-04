@@ -569,28 +569,6 @@ drift checks that read this file read the code around it.
 
 ## Block G — Test discipline
 
-### §PP643 A docstring on the wrong member
-
-Two `<summary>` elements on one member is not a compiler error. The documentation
-generator takes one and drops the other, and a reader of the source sees both - so a
-docstring can describe a member two declarations further down while sitting on a member
-it says nothing true about.
-
-That happened in RenderProbeTests. PP322's attach test shipped with its docstring
-stacked above `TheReadingsApparatusIsUnchanged`, which then carried two summaries and no
-complaint, while `TheTwoLayerTreeAttachesToAWpfWindowAndDetaches` carried none at all.
-It was found by reading, during PP11's ship, and corrected there.
-
-This tree leans on docstrings harder than most: the assertion ratchet joins tasks to
-tests by the id in a test's summary, so a summary attached to the wrong member is a
-coverage claim made about the wrong thing. That is the reason to check it here rather
-than treat it as a style preference.
-
-The check is a scan and not a parse. Within a member's leading run of `///` lines, count
-the `<summary>` opens; more than one is the finding, and the member it sits on is what
-to name. It costs nothing over a tree the drift checks already walk, and it is filed as
-an idea rather than designed because one occurrence is not yet evidence of a class.
-
 ### §PP659 A gate with a datagram in it
 
 SessionRelayTests.TheConsolesAnswerComesBackMarked opens three UDP sockets on the

@@ -128,7 +128,6 @@ public static class JsonC
     private static JsonElement? AsJsonC(JsonElement? node)
         => node is { ValueKind: JsonValueKind.Null } ? null : node;
 
-    /// <summary>json_object_array_length, or -1 where the node is not an array.</summary>
     /// <summary>
     /// PP33: json_object_get_type, which is the accessor the other five are chosen with.
     ///
@@ -170,6 +169,7 @@ public static class JsonC
                 : JsonCType.Int;
     }
 
+    /// <summary>json_object_array_length, or -1 where the node is not an array.</summary>
     public static int ArrayLength(JsonElement? node)
         => node is { ValueKind: JsonValueKind.Array } array ? array.GetArrayLength() : -1;
 

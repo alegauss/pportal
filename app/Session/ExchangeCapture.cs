@@ -204,27 +204,6 @@ public static class ExchangeCapture
     }
 
     /// <summary>
-    /// The whole capture: find the console, wake it if it is asleep, run a session and write down
-    /// what crossed.
-    /// </summary>
-    /// <param name="path">Where the recording goes.</param>
-    /// <param name="nickname">Which registered console, or null for the only one.</param>
-    /// <param name="kind">
-    /// PP514: which recording. Everything from finding the console to stopping the session is the
-    /// same run - what differs is which tap is installed and what gets written at the end.
-    ///
-    /// A parameter and not a second command, because ChiakiMessageTap.Install REPLACES: two
-    /// recorders in one session is one recorder and a silence. The default is Exchange, so
-    /// --capture-exchange behaves as it did.
-    /// </param>
-    /// <param name="sample">
-    /// PP526: how long a sample to take, or null for the default length.
-    ///
-    /// The window and the hold both come out of this, which is the whole reason it is one value:
-    /// a run holding the session for twelve seconds while capturing sixty would report a window it
-    /// never reached, and the file would not say so.
-    /// </param>
-    /// <summary>
     /// PP614: which address the session is pointed at - the console's, or something forwarding for
     /// it.
     ///
@@ -255,6 +234,33 @@ public static class ExchangeCapture
     public static bool AsksForRelay(string? via)
         => via is not null && string.Equals(via.Trim(), RelayVia, StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// The whole capture: find the console, wake it if it is asleep, run a session and write down
+    /// what crossed.
+    /// </summary>
+    /// <param name="path">Where the recording goes.</param>
+    /// <param name="nickname">Which registered console, or null for the only one.</param>
+    /// <param name="kind">
+    /// PP514: which recording. Everything from finding the console to stopping the session is the
+    /// same run - what differs is which tap is installed and what gets written at the end.
+    ///
+    /// A parameter and not a second command, because ChiakiMessageTap.Install REPLACES: two
+    /// recorders in one session is one recorder and a silence. The default is Exchange, so
+    /// --capture-exchange behaves as it did.
+    /// </param>
+    /// <param name="sample">
+    /// PP526: how long a sample to take, or null for the default length.
+    ///
+    /// The window and the hold both come out of this, which is the whole reason it is one value:
+    /// a run holding the session for twelve seconds while capturing sixty would report a window it
+    /// never reached, and the file would not say so.
+    /// </param>
+    /// <param name="via">
+    /// PP614: what to point the session at instead of the console, or null for the console itself.
+    ///
+    /// Undocumented until PP643 moved this block back onto the method it describes: the parameter
+    /// arrived with PP614 and the docstring it should have joined was two declarations away.
+    /// </param>
     public static CaptureOutcome Run(
         string path, string? nickname, SessionCaptureKind kind = SessionCaptureKind.Exchange,
         SampleBounds? sample = null, string? via = null)

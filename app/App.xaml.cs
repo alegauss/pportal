@@ -81,34 +81,6 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// PP218: `--controllers`, which prints what SDL sees and exits.
-    ///
-    /// Its own flag rather than a corner of the selftest, because the selftest is a gate that must
-    /// pass on a build machine with no pad, and this is the opposite - a thing you run BECAUSE a
-    /// pad is plugged in, whose whole output is the device it found.
-    ///
-    /// The enumeration goes through the thread rather than beside it: SDL's device tables belong to
-    /// whichever thread called SDL_Init, which is what <see cref="SdlThread"/> exists to own.
-    /// </summary>
-    /// <summary>
-    /// PP304: `--recount`, which prints every size the backlog states that the tree disagrees with,
-    /// and the roadkeep call that corrects each.
-    ///
-    /// It does not write. The three governed files are roadkeep's, a hook denies a hand edit to
-    /// them, and going around that would solve the transcription by removing the gate. What it
-    /// removes instead is the part a person does badly: knowing that a claim about session.c on
-    /// IMPROVEMENTS.md:216 belongs to Â§PP28 and not to Â§PP293, and that a claim in a roadmap line's
-    /// symptom takes `restate` while one in its why takes `amend`.
-    ///
-    /// Exits 1 where anything is stale, so it answers the same question the test does and can be
-    /// run before the work rather than after it.
-    /// </summary>
-    /// <param name="apply">
-    /// PP417: run each remedy through roadkeep instead of only printing it. Off by default - a check
-    /// that silently rewrote the backlog is one nobody runs BEFORE the work, which is when it is
-    /// worth most.
-    /// </param>
-    /// <summary>
     /// PP530: refuse to answer from a host the tree has moved past, and say so on standard error.
     ///
     /// It guards --recount and --ratchet and nothing else. Those two are run by hand before the
@@ -130,6 +102,24 @@ public partial class App : Application
         return true;
     }
 
+    /// <summary>
+    /// PP304: `--recount`, which prints every size the backlog states that the tree disagrees with,
+    /// and the roadkeep call that corrects each.
+    ///
+    /// It does not write. The three governed files are roadkeep's, a hook denies a hand edit to
+    /// them, and going around that would solve the transcription by removing the gate. What it
+    /// removes instead is the part a person does badly: knowing that a claim about session.c on
+    /// IMPROVEMENTS.md:216 belongs to §PP28 and not to §PP293, and that a claim in a roadmap line's
+    /// symptom takes `restate` while one in its why takes `amend`.
+    ///
+    /// Exits 1 where anything is stale, so it answers the same question the test does and can be
+    /// run before the work rather than after it.
+    /// </summary>
+    /// <param name="apply">
+    /// PP417: run each remedy through roadkeep instead of only printing it. Off by default - a check
+    /// that silently rewrote the backlog is one nobody runs BEFORE the work, which is when it is
+    /// worth most.
+    /// </param>
     private static int Recount(bool apply)
     {
         string? root = SanitizerSource.RepositoryRoot();
@@ -358,20 +348,6 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// PP305: `--ratchet`, which prints the debt PP38 counts in the form it can be paid in.
-    ///
-    /// The count alone is a gate and not a task list. Ninety-seven bare ids say nothing about where
-    /// an assertion for one would go, or whether one already exists under a neighbouring id - and
-    /// that second case is common enough to be the rule: PP300 finished a port whose assertions
-    /// were all written under PP29, so it reads as untested while being among the better-checked
-    /// things in the tree. Each id is printed with the ledger's own sentence for it, which is what
-    /// makes that visible without opening the ledger.
-    ///
-    /// Exits 0 whatever it finds. It is a list, not the gate - the gate is
-    /// <c>AssertionRatchetTests</c>, and having two things fail for one reason only ever teaches
-    /// people to read one of them.
-    /// </summary>
-    /// <summary>
     /// PP583: the open lines, split into what can be started and what waits on something absent.
     ///
     /// A total mixes two states a reader needs apart. "Twenty open" reads as twenty things somebody
@@ -412,6 +388,20 @@ public partial class App : Application
         return 0;
     }
 
+    /// <summary>
+    /// PP305: `--ratchet`, which prints the debt PP38 counts in the form it can be paid in.
+    ///
+    /// The count alone is a gate and not a task list. Ninety-seven bare ids say nothing about where
+    /// an assertion for one would go, or whether one already exists under a neighbouring id - and
+    /// that second case is common enough to be the rule: PP300 finished a port whose assertions
+    /// were all written under PP29, so it reads as untested while being among the better-checked
+    /// things in the tree. Each id is printed with the ledger's own sentence for it, which is what
+    /// makes that visible without opening the ledger.
+    ///
+    /// Exits 0 whatever it finds. It is a list, not the gate - the gate is
+    /// <c>AssertionRatchetTests</c>, and having two things fail for one reason only ever teaches
+    /// people to read one of them.
+    /// </summary>
     private static int Ratchet()
     {
         string? root = SanitizerSource.RepositoryRoot();
@@ -557,6 +547,16 @@ public partial class App : Application
         }
     }
 
+    /// <summary>
+    /// PP218: `--controllers`, which prints what SDL sees and exits.
+    ///
+    /// Its own flag rather than a corner of the selftest, because the selftest is a gate that must
+    /// pass on a build machine with no pad, and this is the opposite - a thing you run BECAUSE a
+    /// pad is plugged in, whose whole output is the device it found.
+    ///
+    /// The enumeration goes through the thread rather than beside it: SDL's device tables belong to
+    /// whichever thread called SDL_Init, which is what <see cref="SdlThread"/> exists to own.
+    /// </summary>
     private static int Controllers()
     {
         using var sdl = new SdlThread();
@@ -743,17 +743,6 @@ public partial class App : Application
     private string? recordingPath;
 
     /// <summary>
-    /// PP223: `--map-controller`, the mapping screen against a real pad.
-    ///
-    /// The first screen this host has ever shown, and it is behind a flag rather than in the
-    /// window's ordinary path: PP13's console list is what MainWindow is filed to open with, and
-    /// putting this there instead would be a navigation decision taken by a diagnostic.
-    ///
-    /// The marshal is the dispatcher, which is the whole reason PP217 made it a parameter: there
-    /// it is a test's inline call, here it is the thread the bindings live on, and the session does
-    /// not know the difference.
-    /// </summary>
-    /// <summary>
     /// PP226: `--capture-mapping [path]`, the mapping screen as a PNG with no window shown.
     ///
     /// Rendered from a FIXTURE rather than from whatever is plugged in, so the picture is the same
@@ -819,6 +808,17 @@ public partial class App : Application
         return window;
     }
 
+    /// <summary>
+    /// PP223: `--map-controller`, the mapping screen against a real pad.
+    ///
+    /// The first screen this host has ever shown, and it is behind a flag rather than in the
+    /// window's ordinary path: PP13's console list is what MainWindow is filed to open with, and
+    /// putting this there instead would be a navigation decision taken by a diagnostic.
+    ///
+    /// The marshal is the dispatcher, which is the whole reason PP217 made it a parameter: there
+    /// it is a test's inline call, here it is the thread the bindings live on, and the session does
+    /// not know the difference.
+    /// </summary>
     private void StartMappingScreen()
     {
         // PP224: the window StartupUri opened, which by now exists - this runs queued behind it.

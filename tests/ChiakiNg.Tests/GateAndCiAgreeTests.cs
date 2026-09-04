@@ -13,12 +13,6 @@ namespace ChiakiNg.Tests;
 public class GateAndCiAgreeTests(ITestOutputHelper output)
 {
     /// <summary>
-    /// THE TABLE IS WHAT THE TWO FILES DO.
-    ///
-    /// Both directions: a pass added to test.cmd is one CI should gain, and a pass CI stops running
-    /// is one that turned local-only without anybody choosing that.
-    /// </summary>
-    /// <summary>
     /// PP569: the tool's own assertion, which NEITHER side ran.
     ///
     /// compare-baselines ships `--self-test` and its README calls it "the assertion this tool ships
@@ -101,6 +95,12 @@ public class GateAndCiAgreeTests(ITestOutputHelper output)
         Assert.False(GateAndCiAgree.Runs(onlyOne, "measure-startup's self-test"));
     }
 
+    /// <summary>
+    /// THE TABLE IS WHAT THE TWO FILES DO.
+    ///
+    /// Both directions: a pass added to test.cmd is one CI should gain, and a pass CI stops running
+    /// is one that turned local-only without anybody choosing that.
+    /// </summary>
     [Fact]
     public void TheTableMatchesBothFiles()
     {

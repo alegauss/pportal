@@ -173,7 +173,6 @@ public sealed class GkCrypt : IDisposable
             throw new InvalidOperationException($"chiaki_gkcrypt_decrypt failed: {(ChiakiError)err}.");
     }
 
-    /// <summary>The key stream at a position, generated rather than looked up.</summary>
     /// <summary>
     /// PP26: the key and IV this gkcrypt derived, which the public header keeps to itself.
     ///
@@ -198,6 +197,7 @@ public sealed class GkCrypt : IDisposable
     [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.I1)]
     private static extern bool GkCryptKeyAndIv(IntPtr gkcrypt, byte[] keyBase, byte[] iv, int capacity);
 
+    /// <summary>The key stream at a position, generated rather than looked up.</summary>
     public byte[] KeyStream(ulong keyPos, int length)
     {
         ObjectDisposedException.ThrowIf(_handle == IntPtr.Zero, this);

@@ -97,9 +97,6 @@ public readonly record struct Divergence(
 public static class ExchangeReplay
 {
     /// <summary>
-    /// Replays every entry, in order, and answers where it first diverged.
-    /// </summary>
-    /// <summary>
     /// PP23: the same, scoped to the conversation one participant owns.
     ///
     /// A capture holds more than one conversation on more than one socket - PP297's has an HTTP
@@ -130,6 +127,9 @@ public static class ExchangeReplay
         return Run(scoped, participant);
     }
 
+    /// <summary>
+    /// Replays every entry, in order, and answers where it first diverged.
+    /// </summary>
     public static Divergence Run(ExchangeRecording recording, IExchangeParticipant participant)
     {
         ArgumentNullException.ThrowIfNull(recording);

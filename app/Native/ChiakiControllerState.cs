@@ -98,7 +98,6 @@ public sealed class ChiakiControllerState : IDisposable
         set => ControllerStateSetSticks(Handle, value.LeftX, value.LeftY, value.RightX, value.RightY);
     }
 
-    /// <summary>Gyro, accelerometer and orientation, in that order.</summary>
     /// <summary>
     /// PP130: the orientation quaternion the state carries, which is what the console is sent.
     ///
@@ -114,6 +113,7 @@ public sealed class ChiakiControllerState : IDisposable
         return (orient[0], orient[1], orient[2], orient[3]);
     }
 
+    /// <summary>Gyro, accelerometer and orientation, in that order.</summary>
     public void SetMotion(
         float gyroX, float gyroY, float gyroZ,
         float accelX, float accelY, float accelZ,

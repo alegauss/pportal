@@ -31,18 +31,6 @@ namespace ChiakiNg.Session;
 public static class CCall
 {
     /// <summary>
-    /// The text with layout removed but tokens still separated.
-    ///
-    /// NOT every whitespace character. The first version of this deleted them all, and welded
-    /// <c>#endif</c> to the <c>xor_bytes(md, md + 0x10, 0x10);</c> on the line below it - so the
-    /// call began mid-identifier and the boundary test correctly refused to see it. Deleting layout
-    /// must not create adjacencies the C never had.
-    ///
-    /// So: runs of whitespace become one space, and a space goes only where at least one side of it
-    /// is punctuation. <c>f(a, b)</c> and <c>f(a,b)</c> become the same thing; <c>md + 0x10</c> and
-    /// <c>md+0x10</c> do too; <c>#endif</c> and <c>xor_bytes</c> stay two words.
-    /// </summary>
-    /// <summary>
     /// PP400: the text with its comments removed, for a claim about what the code does NOT contain.
     ///
     /// AN ABSENCE CHECK READS A COMMENT AS CODE, and the comment explaining a fix is exactly where
@@ -103,6 +91,18 @@ public static class CCall
         return built.ToString();
     }
 
+    /// <summary>
+    /// The text with layout removed but tokens still separated.
+    ///
+    /// NOT every whitespace character. The first version of this deleted them all, and welded
+    /// <c>#endif</c> to the <c>xor_bytes(md, md + 0x10, 0x10);</c> on the line below it - so the
+    /// call began mid-identifier and the boundary test correctly refused to see it. Deleting layout
+    /// must not create adjacencies the C never had.
+    ///
+    /// So: runs of whitespace become one space, and a space goes only where at least one side of it
+    /// is punctuation. <c>f(a, b)</c> and <c>f(a,b)</c> become the same thing; <c>md + 0x10</c> and
+    /// <c>md+0x10</c> do too; <c>#endif</c> and <c>xor_bytes</c> stay two words.
+    /// </summary>
     public static string Compact(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
