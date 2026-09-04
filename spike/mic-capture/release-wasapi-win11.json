@@ -1,0 +1,60 @@
+{
+  "taken": "2026-09-04T13:46:02.2718441+00:00",
+  "machine": "XPS",
+  "os": "Microsoft Windows NT 10.0.26200.0",
+  "dotnet": "10.0.11",
+  "announced": {
+    "channels": 1,
+    "bits": 16,
+    "rate": 48000,
+    "frameSize": 480
+  },
+  "devices": [
+    {
+      "Name": "Microfone (HyperX QuadCast)",
+      "Id": "{0.0.1.00000000}.{978e9fe0-739f-41e1-a12d-a94f66cd9dc9}",
+      "Default": false,
+      "MixChannels": 2,
+      "MixBits": 32,
+      "MixRate": 48000,
+      "MixIsFloat": true,
+      "TakesAnnouncedShared": false,
+      "TakesAnnouncedExclusive": false
+    },
+    {
+      "Name": "Microfone (HD Pro Webcam C920)",
+      "Id": "{0.0.1.00000000}.{c5f4d25e-16ba-464b-90f1-e1f07dc473e6}",
+      "Default": false,
+      "MixChannels": 2,
+      "MixBits": 32,
+      "MixRate": 48000,
+      "MixIsFloat": true,
+      "TakesAnnouncedShared": false,
+      "TakesAnnouncedExclusive": false
+    },
+    {
+      "Name": "Microfone (Steam Streaming Microphone)",
+      "Id": "{0.0.1.00000000}.{d1d2e311-112e-4fec-9d95-1e666f9033ed}",
+      "Default": false,
+      "MixChannels": 1,
+      "MixBits": 32,
+      "MixRate": 44100,
+      "MixIsFloat": true,
+      "TakesAnnouncedShared": false,
+      "TakesAnnouncedExclusive": true
+    },
+    {
+      "Name": "Headset (Lenovo thinkplus XT80)",
+      "Id": "{0.0.1.00000000}.{f1008eec-7f6b-478f-8f96-8251ad108ec7}",
+      "Default": true,
+      "MixChannels": 1,
+      "MixBits": 32,
+      "MixRate": 16000,
+      "MixIsFloat": true,
+      "TakesAnnouncedShared": false,
+      "TakesAnnouncedExclusive": false
+    }
+  ],
+  "anyTakesAnnouncedShared": false,
+  "anyTakesAnnouncedExclusive": true
+}
