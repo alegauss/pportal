@@ -350,29 +350,6 @@ because today the default is what makes those two theories a check on the ORACLE
 cases are the C's own, and a managed default now would silently stop asking the C
 whether it still agrees with its own recording.
 
-### §PP672 The client half of the handshake
-
-PP603 to PP606 built the console's side of the exchange and PP607 ran the real C against
-it. The client's side is where the port is thin: TakionHandshake models the rules and
-every constant, TakionMessageHeader writes any header, and nothing turns either into the
-two datagrams takion_send_message_init and takion_send_message_cookie put on the wire.
-The bytes exist twice, as private helpers in two test files, which is the shape that
-drifts.
-
-THE READING HALF IS ABSENT ALTOGETHER. takion_parse_message refuses a message three ways
-- too short, a header tag that is not tag_local, a length field that disagrees with the
-datagram - and the INIT_ACK and COOKIE_ACK readers add the type byte, the chunk type and
-its flags, an exact payload size, and the cookie ack's tolerance for a second INIT_ACK
-arriving where the ack was expected. TakionInitAck has no field for the cookie the
-client has to echo.
-
-WHAT THIS IS: the two writers, the two readers, and a client that runs
-TakionHandshake.Exchange twice over a UDP socket to a connected state. THE ORACLE IS
-ALREADY HERE. PP607 hands the C's own INIT and COOKIE to a UdpClient this process holds,
-so the managed writer is compared byte for byte against the C over one exchange, with
-the tag read out of the C's payload; and the managed client completes the handshake
-against PP606's responder, the peer the C has already been shown to accept.
-
 ### §PP673 The message layer between the branch and the models
 
 takion_handle_packet_message is the layer between the branch PP500 built and the two

@@ -1,7 +1,16 @@
 using System.Buffers.Binary;
+using ChiakiNg.Native;
 using ChiakiNg.Session;
 
 namespace ChiakiNg.Protocol;
+
+/// <summary>
+/// PP672: an INIT_ACK read by the client - the five fields, and the cookie it has to echo.
+///
+/// <see cref="TakionInitAck"/> has no cookie field because the responder's answer is BUILT from one
+/// and the client's reading YIELDS one, so it rides beside the record rather than inside it.
+/// </summary>
+public readonly record struct TakionInitAckReading(TakionInitAck Ack, byte[] Cookie);
 
 /// <summary>
 /// PP603, under PP27: the INIT_ACK a responder puts on the wire, as bytes.
@@ -90,6 +99,54 @@ public static class TakionInitAckDatagram
         cookie.CopyTo(body[0x10..]);
 
         return datagram;
+    }
+
+    /// <summary>
+    /// PP672: the INIT_ACK read, the way takion_recv_message_init_ack reads what its receive of
+    /// exactly <see cref="TakionHandshake.InitAckDatagramSize"/> bytes handed it - the inverse of
+    /// <see cref="Write"/>.
+    ///
+    /// Five refusals, each CHIAKI_ERR_INVALID_RESPONSE and each in the C's order: shorter than the
+    /// whole datagram; not a control packet; a header the parse refuses - our tag missing, or a length
+    /// field that disagrees; a chunk that is not INIT_ACK or carries flags; and a payload that is not
+    /// the five fields plus the cookie, which PP369 made a check rather than an assert because a
+    /// Release build compiles the assert out and the six reads below it would run past a short payload.
+    ///
+    /// The receive it follows is the buffer's size, so on winsock a longer datagram never reaches here:
+    /// the recv fails and the attempt retries. Handed more anyway, this reads the first sixty-five
+    /// bytes, which is what a truncating recv would have delivered.
+    /// </summary>
+    /// <param name="datagram">What one receive produced.</param>
+    /// <param name="tagLocal">The client's tag, which the header has to carry.</param>
+    /// <param name="reading">The five fields and the cookie, where nothing was refused.</param>
+    public static ChiakiError Read(
+        ReadOnlySpan<byte> datagram, uint tagLocal, out TakionInitAckReading reading)
+    {
+        reading = default;
+
+        if (datagram.Length < TakionHandshake.InitAckDatagramSize)
+            return ChiakiError.InvalidResponse;
+
+        if (datagram[0] != ControlPacketType)
+            return ChiakiError.InvalidResponse;
+
+        ReadOnlySpan<byte> message = datagram.Slice(HeaderOffset, TakionHandshake.InitAckDatagramSize - 1);
+        if (!TakionMessageHeader.TryReadInbound(message, tagLocal, out TakionInboundHeader header))
+            return ChiakiError.InvalidResponse;
+
+        if (header.ChunkType != InitAckChunkType || header.ChunkFlags != NoChunkFlags)
+            return ChiakiError.InvalidResponse;
+
+        // PP369's check. With the parse holding the message to its exact size this cannot fail on its
+        // own, and it stays because the C keeps it and a reader counting refusals should find five.
+        if (header.PayloadSize != PayloadSize)
+            return ChiakiError.InvalidResponse;
+
+        ReadOnlySpan<byte> body = datagram.Slice(PayloadOffset, PayloadSize);
+        reading = new TakionInitAckReading(
+            TakionHandshakeIntake.ReadInit(body), body[0x10..].ToArray());
+
+        return ChiakiError.Success;
     }
 
     /// <summary>takion.c, or null outside a checkout.</summary>

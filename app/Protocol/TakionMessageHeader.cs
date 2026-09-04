@@ -3,6 +3,33 @@ using ChiakiNg.Session;
 
 namespace ChiakiNg.Protocol;
 
+/// <summary>PP672: what takion_recv_message_cookie_ack decides about one datagram.</summary>
+public enum TakionCookieAckVerdict
+{
+    /// <summary>A COOKIE_ACK under our tag: the handshake is done.</summary>
+    Accepted,
+
+    /// <summary>
+    /// A late INIT_ACK where the cookie ack was expected: the C reads one more datagram in its place.
+    /// </summary>
+    ReadAnother,
+
+    /// <summary>
+    /// Anything else - too short, not a control packet, another tag, another chunk.
+    /// CHIAKI_ERR_INVALID_RESPONSE.
+    /// </summary>
+    Refused,
+}
+
+/// <summary>PP672: a control message's header, read.</summary>
+/// <param name="Tag">Ours, or the message was refused before this existed.</param>
+/// <param name="KeyPosLow">The wire's thirty-two bits of key position, not expanded.</param>
+/// <param name="ChunkType">The chunk type at +0xc.</param>
+/// <param name="ChunkFlags">Its flags at +0xd.</param>
+/// <param name="PayloadSize">The payload's own length, the addend taken off.</param>
+internal readonly record struct TakionInboundHeader(
+    uint Tag, uint KeyPosLow, byte ChunkType, byte ChunkFlags, int PayloadSize);
+
 /// <summary>
 /// PP604, under PP27: the sixteen bytes every takion control message opens with.
 ///
@@ -110,6 +137,121 @@ public static class TakionMessageHeader
             tagLocal, keyPos: 0, CookieAckChunkType, NoChunkFlags, payloadDataSize: 0);
 
         return datagram;
+    }
+
+    /// <summary>
+    /// PP672: the sixteen bytes READ, the way takion_parse_message reads them - three refusals, in
+    /// the C's order.
+    ///
+    /// Too short to hold a header; a tag that is not OURS, which is
+    /// <see cref="TakionHandshake.InboundHeaderTagAccepted"/> applied; and a length field that does
+    /// not agree with the message. The field carries the payload plus the addend, so the C's
+    /// <c>buf_size != msg->payload_size + 0xc</c> says: the twelve header bytes the field does not
+    /// count, then the four it does. The addend comes off after the check, which is why
+    /// <see cref="TakionInboundHeader.PayloadSize"/> is the payload's own.
+    ///
+    /// INTERNAL AND NARROW ON PURPOSE. PP673 owns the message layer - the parse as a public reader with
+    /// the DATA and DATA_ACK switch under it, held against PP608's corpus. This is the handshake
+    /// borrowing the header's rules for its two acks until that lands, not a second home for them.
+    /// The key position is handed back as the wire's low half and not expanded: the C commits it
+    /// through the key state on every message, which is PP677's ledger and zero throughout a handshake.
+    /// </summary>
+    /// <param name="message">The datagram after its type byte, as the C passes <c>buf + 1</c>.</param>
+    /// <param name="tagLocal">The client's own tag, the only one an inbound header may carry.</param>
+    /// <param name="header">The five fields, where the message was not refused.</param>
+    internal static bool TryReadInbound(
+        ReadOnlySpan<byte> message, uint tagLocal, out TakionInboundHeader header)
+    {
+        header = default;
+
+        if (message.Length < TakionHandshake.MessageHeaderSize)
+            return false;
+
+        uint tag = BinaryPrimitives.ReadUInt32BigEndian(message[TagOffset..]);
+        uint keyPosLow = BinaryPrimitives.ReadUInt32BigEndian(message[KeyPosOffset..]);
+        byte chunkType = message[ChunkTypeOffset];
+        byte chunkFlags = message[ChunkFlagsOffset];
+        int stated = BinaryPrimitives.ReadUInt16BigEndian(message[SizeFieldOffset..]);
+
+        if (!TakionHandshake.InboundHeaderTagAccepted(tag, tagLocal))
+            return false;
+
+        if (message.Length != stated + (TakionHandshake.MessageHeaderSize - SizeFieldAddend))
+            return false;
+
+        header = new TakionInboundHeader(tag, keyPosLow, chunkType, chunkFlags, stated - SizeFieldAddend);
+        return true;
+    }
+
+    /// <summary>
+    /// PP672: the COOKIE_ACK read, the way takion_recv_message_cookie_ack reads what its receive
+    /// handed it - a datagram received into a buffer of exactly the ack's size.
+    ///
+    /// THE LENGTH GATE COMES FIRST, which is PP451's repair: no byte is read from a datagram shorter
+    /// than the whole ack. THEN THE LATE INIT_ACK TEST, before the type byte is looked at: the C reads
+    /// the chunk type at 0xd and, finding INIT_ACK, receives one more datagram in this one's place.
+    /// That order is reproduced rather than tidied - a datagram of the ack's size that is not a control
+    /// packet and carries two at that offset also asks for another read, because the C asks.
+    ///
+    /// AND ON WINDOWS THAT BRANCH IS ALL BUT UNREACHABLE. A real INIT_ACK is sixty-five bytes, and
+    /// winsock's recv into a seventeen-byte buffer does not truncate it - it fails with WSAEMSGSIZE,
+    /// which takion_recv reports as a network error and the cookie loop answers by sending the COOKIE
+    /// again. So on this port's one platform a late ack is survived by the retry and not by this
+    /// tolerance, which fires only for a datagram already the ack's size. Stated so nobody reads the
+    /// branch as the path a slow console takes; <see cref="TakionUdpWire"/> keeps the receive the C's
+    /// size so the behaviour is the C's.
+    /// </summary>
+    /// <param name="datagram">What one receive of <see cref="TakionHandshake.CookieAckDatagramSize"/> bytes produced. Longer, only that many are read - the truncating recv the C gets elsewhere.</param>
+    /// <param name="tagLocal">The client's tag, which the header has to carry.</param>
+    /// <param name="secondRead">Whether this is the datagram read in a late ack's place, which the C judges without the late-ack test.</param>
+    public static TakionCookieAckVerdict ReadCookieAck(
+        ReadOnlySpan<byte> datagram, uint tagLocal, bool secondRead = false)
+    {
+        if (!TakionHandshake.DatagramIsLongEnoughToRead(datagram.Length))
+            return TakionCookieAckVerdict.Refused;
+
+        if (!secondRead && datagram[TakionHandshake.ChunkTypeOffsetInDatagram] == InitAckChunkType)
+            return TakionCookieAckVerdict.ReadAnother;
+
+        if (datagram[0] != ControlPacketType)
+            return TakionCookieAckVerdict.Refused;
+
+        // sizeof(message) - 1 and not the received length: the receive was the buffer's size.
+        ReadOnlySpan<byte> message = datagram.Slice(OffsetInDatagram, TakionHandshake.MessageHeaderSize);
+        if (!TryReadInbound(message, tagLocal, out TakionInboundHeader header))
+            return TakionCookieAckVerdict.Refused;
+
+        if (header.ChunkType != CookieAckChunkType || header.ChunkFlags != NoChunkFlags)
+            return TakionCookieAckVerdict.Refused;
+
+        // assert(msg.payload_size == 0), which the size check inside the parse already made true.
+        return header.PayloadSize == 0
+            ? TakionCookieAckVerdict.Accepted
+            : TakionCookieAckVerdict.Refused;
+    }
+
+    /// <summary>takion_parse_message's body, or null where it is gone.</summary>
+    public static string? ParseBody(string takionSource)
+        => CFunction.Body(takionSource, "static ChiakiErrorCode takion_parse_message");
+
+    /// <summary>
+    /// PP672: whether the C still refuses the three things <see cref="TryReadInbound"/> refuses, in
+    /// that order, and takes the addend off only afterwards.
+    ///
+    /// The order is the behaviour a log reader sees: a short message is "too short", a foreign tag is
+    /// "tag mismatch", and a lying length is "payload size mismatch". A parse that tested them in
+    /// another order would put a different sentence in the log for the same datagram.
+    /// </summary>
+    public static bool TheCStillRefusesTheseThree(string parseBody)
+    {
+        ArgumentNullException.ThrowIfNull(parseBody);
+
+        int tooShort = parseBody.IndexOf("buf_size < TAKION_MESSAGE_HEADER_SIZE", StringComparison.Ordinal);
+        int tag = parseBody.IndexOf("msg->tag != takion->tag_local", StringComparison.Ordinal);
+        int size = parseBody.IndexOf("buf_size != msg->payload_size + 0xc", StringComparison.Ordinal);
+        int addend = parseBody.IndexOf("msg->payload_size -= 0x4;", StringComparison.Ordinal);
+
+        return tooShort >= 0 && tag > tooShort && size > tag && addend > size;
     }
 
     /// <summary>The line in takion.c that places the chunk type.</summary>

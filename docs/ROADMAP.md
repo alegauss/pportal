@@ -25,7 +25,7 @@
 
 ## Block F — Managed core
 
-- ⏳ **PP27** (deps: PP672, PP673, PP674, PP675, PP676, PP677, PP678, PP679, PP680) (requires: console) **takion.c is 2007 lines of C over raw sockets and timers, and the whole stream rides on it** — The nine tasks it waits on are the managed transport; after them, the three files leave the build. → §PP27
+- ⏳ **PP27** (deps: PP672 ✅, PP673, PP674, PP675, PP676, PP677, PP678, PP679, PP680) (requires: console) **takion.c is 2007 lines of C over raw sockets and timers, and the whole stream rides on it** — The nine tasks it waits on are the managed transport; after them, the three files leave the build. → §PP27
 - 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — 13 sites and none of them arithmetic: chiaki_fec_decode has three callers - frameprocessor.c, the C suite, and this port's shim. → §PP30
 - ⏳ **PP33** (deps: PP24 ✅, PP293 ✅, PP340 ✅, PP481 ✅, PP533 ✅) (requires: console) **HTTP and JSON in the core are curl and json-c, two vendored dependencies for what the runtime already does** — the file itself: one file calls it, the shim, and PP481's oracle is what that seam is for. → §PP33
 - ⏳ **PP295** (deps: PP297 ✅) **streamconnection.c is 1531 lines and calls the video receiver, so every deletion below waits on it** — the receiver it drives - the shim wraps five of its exports - the consumers PP638 named, and the four files leaving the build. → §PP295
@@ -33,13 +33,12 @@
 - 📋 **PP652** (deps: —) **four subsystems carry the microphone and nothing in the host opens a capture device** — The setting, the in-stream button, the ring's drain rule and the pad's mic report all shipped, and there is no stream of samples for any of them to be about. → §PP652
 - 📋 **PP668** (deps: —) **AvPacket is built from the v9 parse alone, so IsHaptics is false on every packet the port sees** — The C sets the bit on the v12 audio layout only; a managed v12 parse is what lets PP667's haptics arm ever fire, and PP499 bounded that layout in the C. → §PP668
 - 📋 **PP671** (deps: —) **Fec.Recovers with no decoder named runs the C, so after the flip a default becomes a loader failure** — The managed decoder is the one that stays; the default should follow it on the flip, so the sixty-four recorded cases judge the port alone. → §PP671
-- 🛠 **PP672** (deps: —) **no managed code writes the INIT or reads the INIT_ACK, so the port's only takion client is the C** — PP606's responder plays the console and PP607 proves the C completes the exchange against it; the managed side has the rules and the header writer, and no client. → §PP672
 - 📋 **PP673** (deps: —) **no managed code parses a takion control message, so a control datagram stops at the dispatch branch** — takion_parse_message and the DATA and DATA_ACK switch join TakionReceivePath's Control branch to the drain and ack models, and both exist only as source checks. → §PP673
 - 📋 **PP674** (deps: —) **takion's data queue is 32-bit and the managed reorder queue is 16-bit only, so no managed push can hold a data packet** — chiaki_reorder_queue_init_32 has no counterpart and no shim export, and takion_handle_packet_message_data, the push that reads seq and channel, has none either. → §PP674
 - 📋 **PP675** (deps: —) **no managed code sends a takion datagram, so every takion send is a model that emits no bytes** — chiaki_takion_send_raw, chiaki_takion_send and the three data builders have no managed bytes, and TakionMessageHeader knows no DATA or DATA_ACK chunk type. → §PP675
 - 📋 **PP676** (deps: —) **the feedback and mic sends have no managed code, and each places its MAC where packet_mac's table does not look** — takion_send_feedback_packet encrypts at the position plus a block and MACs at eight, the mic packet at ten, and both hold the recursive cipher lock throughout. → §PP676
 - 📋 **PP677** (deps: —) **the key state has no managed transcription, so every key position the port expands is the shim's** — PP111 reached the expansion through the shim and PP519 fed it a console's positions; a managed parse of an AV header or a control message needs the ledger in managed code. → §PP677
-- 📋 **PP678** (deps: PP672, PP673, PP674, PP675, PP677) **the receive loop runs only against test doubles, and nothing owns takion's state** — TakionReceiveLoop.Run traces steps through an ITakionLoopHost implemented only in tests; the tag, counter, ledger, cipher and queues have no owner. → §PP678
+- 📋 **PP678** (deps: PP672 ✅, PP673, PP674, PP675, PP677) **the receive loop runs only against test doubles, and nothing owns takion's state** — TakionReceiveLoop.Run traces steps through an ITakionLoopHost implemented only in tests; the tag, counter, ledger, cipher and queues have no owner. → §PP678
 - 📋 **PP679** (deps: —) **the v7 AV parse and header formatter are unported, and the formatter's callers are senkusha's** — chiaki_takion_v7_av_packet_parse differs from v9 in three places, and chiaki_takion_v7_av_packet_format_header is called only by senkusha.c, so who owns them is a decision. → §PP679
 - 📋 **PP680** (deps: PP668) **takion_handle_packet_av is only a branch in managed code, so no video packet reaches the flush** — The disable gates, the queue seeded at packet_index minus unit_index, the entry with its stamp and the flush into StreamAvDispatch have no composition; the parse is PP668's. → §PP680
 - 📋 **PP681** (deps: —) **the selftest asks the header whether the device id oracle exists, so a default build's shim crashes it** — TheFormatOracleIsAvailable reads chiaki_shim.h for the wrapper's name while a shim built with holepunch off exports no such thing, and NativeDeviceUid throws EntryPointNotFound. → §PP681
@@ -175,18 +174,6 @@
   chiaki_render_tearing_probe does. Integration means the video plane's own swapchain
   carries it and presents at sync interval zero, which is the half that waits on there
   being a video plane at all.
-
-## Done when — PP672
-
-- **The managed INIT and COOKIE are byte-identical to the C's over one exchange**
-  PP607's harness hands the C's own datagrams to a UdpClient this process holds; the
-  managed writers are run with the tag read out of the C's INIT payload and the
-  responder's cookie, and the two byte arrays are compared whole, not field by field.
-- **A managed client completes the handshake against PP606's responder over loopback**
-  The same test shape as PP607 with the client side swapped: two UdpClients on loopback,
-  the responder pumped on one, the managed client on the other; the client reports
-  connected, the responder is Done, and the readers' refusals - a wrong tag, a wrong
-  length, a wrong chunk - are each exercised.
 
 ## Done when — PP673
 

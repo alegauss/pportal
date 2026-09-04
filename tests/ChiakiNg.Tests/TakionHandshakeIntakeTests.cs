@@ -10,49 +10,22 @@ namespace ChiakiNg.Tests;
 /// PP603 and PP604 wrote the two answers, and neither is sendable without this: the INIT_ACK echoes
 /// a tag the responder has not been told until the INIT's payload arrives.
 ///
-/// The datagrams here are built the way takion_send_message_init and takion_send_message_cookie
-/// build them, so what is read is what the C actually sends rather than what this file would like.
+/// The datagrams here are the client's own writers (PP672), which PP672 holds byte for byte against
+/// what the C sends - so what is read is what this port puts on the wire, and the C's bytes are one
+/// test away rather than retyped here.
 /// </summary>
 public class TakionHandshakeIntakeTests
 {
     private static readonly byte[] Cookie =
         [.. Enumerable.Range(0, TakionHandshake.CookieSize).Select(i => (byte)(0xA0 + i))];
 
-    /// <summary>An INIT as takion_send_message_init writes it.</summary>
-    private static byte[] Init(uint tagLocal = 0x11223344, uint headerTag = 0)
-    {
-        byte[] datagram = new byte[TakionHandshakeIntake.InitDatagramSize];
-        datagram[0] = TakionMessageHeader.ControlPacketType;
+    /// <summary>An INIT as the client writes it, under the header tag the C sends before the ack: zero.</summary>
+    private static byte[] Init(uint tagLocal = 0x11223344)
+        => TakionClientDatagrams.WriteInit(tagLocal);
 
-        TakionMessageHeader.Write(
-            datagram.AsSpan(TakionMessageHeader.OffsetInDatagram, TakionHandshake.MessageHeaderSize),
-            headerTag, keyPos: 0, TakionMessageHeader.InitChunkType, TakionMessageHeader.NoChunkFlags,
-            TakionHandshakeIntake.InitPayloadSize);
-
-        Span<byte> body = datagram.AsSpan(1 + TakionHandshake.MessageHeaderSize);
-        BinaryPrimitives.WriteUInt32BigEndian(body, tagLocal);
-        BinaryPrimitives.WriteUInt32BigEndian(body[4..], TakionHandshake.ARwnd);
-        BinaryPrimitives.WriteUInt16BigEndian(body[8..], TakionHandshake.OutboundStreams);
-        BinaryPrimitives.WriteUInt16BigEndian(body[0xa..], TakionHandshake.InboundStreams);
-        BinaryPrimitives.WriteUInt32BigEndian(body[0xc..], tagLocal);
-
-        return datagram;
-    }
-
-    /// <summary>A COOKIE as takion_send_message_cookie writes it.</summary>
+    /// <summary>A COOKIE as the client writes it.</summary>
     private static byte[] CookieMessage(uint headerTag, byte[]? cookie = null)
-    {
-        byte[] datagram = new byte[TakionHandshakeIntake.CookieDatagramSize];
-        datagram[0] = TakionMessageHeader.ControlPacketType;
-
-        TakionMessageHeader.Write(
-            datagram.AsSpan(TakionMessageHeader.OffsetInDatagram, TakionHandshake.MessageHeaderSize),
-            headerTag, keyPos: 0, TakionMessageHeader.CookieChunkType,
-            TakionMessageHeader.NoChunkFlags, TakionHandshake.CookieSize);
-
-        (cookie ?? Cookie).CopyTo(datagram, 1 + TakionHandshake.MessageHeaderSize);
-        return datagram;
-    }
+        => TakionClientDatagrams.WriteCookie(headerTag, cookie ?? Cookie);
 
     /// <summary>
     /// THE ONE THAT MAKES THE ANSWER POSSIBLE: the INIT's payload carries the client's tag.

@@ -10,9 +10,9 @@ namespace ChiakiNg.Tests;
 /// PP606, under PP27: the responder as a participant, including over a real socket.
 ///
 /// The state machine is tested on its own, and then the whole exchange is run over loopback UDP so
-/// that "it answers correctly" is not a claim about spans. What is NOT here is the C: that needs a
-/// shim entry point which does not exist yet, and the client side below is this port's own writer
-/// producing the bytes takion_send_message_init produces.
+/// that "it answers correctly" is not a claim about spans. The C is not in this file - PP607 runs the
+/// real takion against this responder over the same loopback - and the client side below is PP672's
+/// writers, which PP672 holds byte for byte against what the C sends.
 /// </summary>
 public class TakionHandshakeResponderTests
 {
@@ -22,42 +22,13 @@ public class TakionHandshakeResponderTests
     private const uint OurTag = 0x55667788;
     private const uint ClientTag = 0x11223344;
 
-    /// <summary>An INIT in the shape takion_send_message_init writes.</summary>
+    /// <summary>An INIT as the client writes it.</summary>
     private static byte[] Init(uint clientTag = ClientTag)
-    {
-        byte[] datagram = new byte[TakionHandshakeIntake.InitDatagramSize];
-        datagram[0] = TakionMessageHeader.ControlPacketType;
+        => TakionClientDatagrams.WriteInit(clientTag);
 
-        TakionMessageHeader.Write(
-            datagram.AsSpan(TakionMessageHeader.OffsetInDatagram, TakionHandshake.MessageHeaderSize),
-            TakionHandshakeIntake.TagBeforeTheInitAck, keyPos: 0,
-            TakionMessageHeader.InitChunkType, TakionMessageHeader.NoChunkFlags,
-            TakionHandshakeIntake.InitPayloadSize);
-
-        Span<byte> body = datagram.AsSpan(1 + TakionHandshake.MessageHeaderSize);
-        BinaryPrimitives.WriteUInt32BigEndian(body, clientTag);
-        BinaryPrimitives.WriteUInt32BigEndian(body[4..], TakionHandshake.ARwnd);
-        BinaryPrimitives.WriteUInt16BigEndian(body[8..], TakionHandshake.OutboundStreams);
-        BinaryPrimitives.WriteUInt16BigEndian(body[0xa..], TakionHandshake.InboundStreams);
-        BinaryPrimitives.WriteUInt32BigEndian(body[0xc..], clientTag);
-
-        return datagram;
-    }
-
-    /// <summary>A COOKIE echoing whatever the ack carried, as takion_send_message_cookie writes it.</summary>
+    /// <summary>A COOKIE echoing whatever the ack carried, as the client writes it.</summary>
     private static byte[] CookieMessage(uint headerTag, ReadOnlySpan<byte> cookie)
-    {
-        byte[] datagram = new byte[TakionHandshakeIntake.CookieDatagramSize];
-        datagram[0] = TakionMessageHeader.ControlPacketType;
-
-        TakionMessageHeader.Write(
-            datagram.AsSpan(TakionMessageHeader.OffsetInDatagram, TakionHandshake.MessageHeaderSize),
-            headerTag, keyPos: 0, TakionMessageHeader.CookieChunkType,
-            TakionMessageHeader.NoChunkFlags, TakionHandshake.CookieSize);
-
-        cookie.CopyTo(datagram.AsSpan(1 + TakionHandshake.MessageHeaderSize));
-        return datagram;
-    }
+        => TakionClientDatagrams.WriteCookie(headerTag, cookie);
 
     /// <summary>The cookie the responder chose, taken out of the ack it sent.</summary>
     private static byte[] CookieIn(byte[] ack)
