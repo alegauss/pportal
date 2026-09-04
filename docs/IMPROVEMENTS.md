@@ -282,30 +282,6 @@ What makes this its own line rather than part of the flip is PP623's own discipl
 flip edits `lib/` and no test file, so every prose change waits for a green tree after
 it. Doing both at once is the thing that plan exists to prevent.
 
-### §PP702 Senkusha's five calls into takion
-
-PP27's fourth criterion is an end state: takion.c, takionsendbuffer.c and reorderqueue.c
-leave the build. senkusha.c calls five of takion's exports - connect, close,
-send_message_data, send_raw and the v7 header formatter - and is not one of the three,
-so the criterion cannot be met while it stands.
-
-PP679 decided one of the five: the v7 parse and formatter are managed now, held to the C
-byte for byte, and the C's copy stays because deleting it strands two callers while
-moving it into senkusha.c patches vendored source a non-goal refuses. The other four
-were never in that line's scope.
-
-PP638's linker run counted the FRAME path's callers, which is PP295's subject rather
-than this one's, so senkusha has never been counted from this side.
-
-THIS IS NOT A PORT OF SENKUSHA. Its placement, its waits, its send results and its
-participant in the recorded exchange are already modelled - PP28's join and PP394's
-channel - so what is missing is the transport underneath, not the protocol above.
-
-WHAT IT ASKS FOR is the count made once and kept: every takion symbol senkusha names,
-resolved to a managed counterpart or to a line that owes one, the way FramePathConsumers
-does for the frame path. Whether the answer is a senkusha port or four more managed
-calls is the next decision, and it needs the census first.
-
 ### §PP703 The takion that has no AV arm
 
 PP678 recorded takion's teardown as a list, because an order is not visible in a Dispose
