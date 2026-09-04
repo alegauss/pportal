@@ -1013,24 +1013,17 @@ public partial class App : Application
         // PP526: how long a sample either capture takes, which sets the window, the count and the
         // hold together. Refused rather than defaulted: a run that asked for sixty seconds and was
         // silently given five measures the wrong thing, and the file it leaves does not say so.
-        SampleBounds sample = SampleWindow.Default;
-        if (HostCommandLine.Has(e.Args, "--capture-seconds")
-            && (HostCommandLine.Has(e.Args, "--capture-exchange")
-                || HostCommandLine.Has(e.Args, "--capture-datagrams")))
+        // Read WITHOUT asking which run flag it accompanies. The condition used to name the two
+        // capture flags that existed when it was written, and the two run flags added since read
+        // `sample` without joining it - so both silently took the default. See SampleWindow.From.
+        if (SampleWindow.From(e.Args, out SampleBounds sample) == SampleWindow.Asked.Malformed)
         {
             ReopenStdOut();
-
-            if (SampleWindow.TryParse(HostCommandLine.ValueAfter(e.Args, "--capture-seconds"))
-                is not { } asked)
-            {
-                Console.Error.WriteLine(
-                    $"[capture] --capture-seconds wants a whole number of seconds, "
-                    + $"1 to {SampleWindow.MaximumSeconds}.");
-                Environment.Exit(2);
-                return;
-            }
-
-            sample = asked;
+            Console.Error.WriteLine(
+                $"[capture] --capture-seconds wants a whole number of seconds, "
+                + $"1 to {SampleWindow.MaximumSeconds}.");
+            Environment.Exit(2);
+            return;
         }
 
         // PP297: the capture itself. Exits like every other capture flag - it drives a session

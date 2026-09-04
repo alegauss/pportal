@@ -182,6 +182,17 @@ public static class StreamRun
             return 1;
         }
 
+        // PP701: the pad, opened after the console answered and before anything is drawn.
+        //
+        // NOT a reason to refuse the session. A machine with nothing plugged in still streams, and
+        // that is the state every version of this before it shipped in - what was wrong was that it
+        // was the only state available.
+        using var pad = new PadFeed(session);
+        Console.WriteLine(
+            pad.Start()
+                ? $"[stream] pad: {pad.PadName}"
+                : "[stream] no pad - the picture will arrive and nothing will be sent back");
+
         var started = DateTimeOffset.UtcNow;
         var clock = System.Diagnostics.Stopwatch.StartNew();
 
@@ -202,6 +213,8 @@ public static class StreamRun
                 + $"{Counted.Dropped} dropped, "
                 + $"{Counted.DecoderDropsAgainst(Lost)} attributable to the decoder"
                 + (residue != 0 ? $", {residue} unaccounted" : string.Empty));
+
+        Console.WriteLine($"[stream] {pad.Pushed} controller state(s) sent");
 
         RecordBaseline(decoderName, started, clock.Elapsed);
 

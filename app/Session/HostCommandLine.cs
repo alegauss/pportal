@@ -79,7 +79,7 @@ public static partial class HostCommandLine
         new("--measure-decoder", "[name]", "the same session WITH a decoder, reporting how many frames it decoded"),
         new("--show-stream", "[name]", "open a window and put a console's picture in it, with the named decoder"),
         new("--console", "[name]", "with either capture: which registered console, by nickname"),
-        new("--capture-seconds", "[n]", "with either capture: how long a sample, which sets the hold too"),
+        new("--capture-seconds", "[n]", "with any run that takes a length: how long, which sets the hold too"),
         new("--via", "[address|relay]", "with --capture-datagrams: go through an address, or 'relay' to run one here and keep whole datagrams"),
         new("--replay-datagrams", "<path>", "replay a datagram capture through the managed receive path"),
         new("--timed", "", "with --replay-datagrams: time the MAC gate against the C over the capture"),

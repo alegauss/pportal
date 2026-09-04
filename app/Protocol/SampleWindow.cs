@@ -110,4 +110,46 @@ public static class SampleWindow
                 ? For(seconds)
                 : null;
     }
+
+    /// <summary>The flag a length is asked for with.</summary>
+    public const string Flag = "--capture-seconds";
+
+    /// <summary>What a command line said about the length.</summary>
+    public enum Asked
+    {
+        /// <summary>No flag, so <see cref="Default"/> and no complaint.</summary>
+        Absent,
+
+        /// <summary>A length was asked for and is the one to use.</summary>
+        Parsed,
+
+        /// <summary>A length was asked for and cannot be read, which is a refusal.</summary>
+        Malformed,
+    }
+
+    /// <summary>
+    /// The length a command line asks for, read WITHOUT reference to which run flag it accompanies.
+    ///
+    /// THAT INDEPENDENCE IS THE POINT. The parse used to be gated on the two capture flags that
+    /// existed when it was written, and each run flag added since - --measure-decoder, then
+    /// --show-stream - read the resulting bounds without joining the condition. Both then took the
+    /// default in silence: a session asked to hold for 120 seconds held for 8.8 and wrote a row
+    /// saying 8801ms, which is the exact failure the parse's own remarks warn about. Nothing here
+    /// knows what flag it is for, so there is no list for a fifth consumer to be missing from.
+    /// </summary>
+    public static Asked From(IReadOnlyList<string> args, out SampleBounds bounds)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+
+        bounds = Default;
+
+        if (!Session.HostCommandLine.Has(args, Flag))
+            return Asked.Absent;
+
+        if (TryParse(Session.HostCommandLine.ValueAfter(args, Flag)) is not { } asked)
+            return Asked.Malformed;
+
+        bounds = asked;
+        return Asked.Parsed;
+    }
 }
