@@ -29,27 +29,6 @@ three, so it is the moment when the duplication is visible.
 
 ## Block C — Video and input path
 
-### §PP641 The overlay layer, and what draws into it
-
-PP319 chose the arrangement and PP322 read it: a container visual carries a ten-bit
-swapchain below and an eight-bit premultiplied surface above, and the two compose in the
-order given. What that reading used as the overlay was a green block the shim draws.
-
-PP10's screen is not a green block. It is XAML, drawn by WPF into the window's
-redirection bitmap, and PP284 measured that the compositor tree covers that bitmap
-whatever the topmost flag says. So the two halves of the choice are not symmetric: the
-video plane has somewhere to go the moment a renderer presents into a composition
-swapchain, while the overlay has a layer and nothing that draws into it.
-
-Three shapes exist and none is chosen here, because choosing needs the cost of each.
-Render the visual tree to a bitmap per frame and upload it, paying a full-screen copy at
-HUD update rate. Keep the HUD in WPF and accept SDR while it is up, PP319's rejected
-option narrowed to one screen. Or rebuild the HUD against the compositor, which costs
-PP10 and PP12 a second time.
-
-This line is the question and not the answer. It is filed now because shipping PP11
-deletes the only sentence in the tree that says the overlay layer is empty.
-
 ## Block D — Screens
 
 ## Block E — Windows-only build

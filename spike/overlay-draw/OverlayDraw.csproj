@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    PP641's reading, as a spike rather than an argument. Like the others it is deliberately not in
+    any solution: it exists to produce a number and the conditions it was taken under, re-runnable
+    by whoever doubts it.
+
+    PP319 chose a compositor tree with an eight-bit premultiplied surface above a ten-bit swapchain,
+    and PP322 read that the two compose. What draws PP10's XAML HUD into that surface is unbuilt,
+    and PP641's section names three shapes without pricing any. The first of the three - render the
+    visual tree to a bitmap and upload it - is the only one a machine can price, and its section
+    prices it as "a full-screen copy at HUD update rate". This asks whether that is true.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <AssemblyName>overlay-draw</AssemblyName>
+    <RootNamespace>OverlayDraw</RootNamespace>
+  </PropertyGroup>
+
+</Project>

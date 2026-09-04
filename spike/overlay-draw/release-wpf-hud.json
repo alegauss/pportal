@@ -1,0 +1,40 @@
+{
+  "taken": "2026-09-04T13:35:32.9063213+00:00",
+  "machine": "XPS",
+  "os": "Microsoft Windows NT 10.0.26200.0",
+  "dotnet": "10.0.11",
+  "iterations": 60,
+  "hud": {
+    "width": 156,
+    "height": 138
+  },
+  "timings": [
+    {
+      "What": "the HUD\u0027s own bounds",
+      "Width": 156,
+      "Height": 138,
+      "RenderMedianUs": 128.1,
+      "RenderP90Us": 155.5,
+      "CopyMedianUs": 2.1,
+      "Bytes": 86112
+    },
+    {
+      "What": "a full 1080p plane",
+      "Width": 1920,
+      "Height": 1080,
+      "RenderMedianUs": 4757.2,
+      "RenderP90Us": 4997,
+      "CopyMedianUs": 351.6,
+      "Bytes": 8294400
+    },
+    {
+      "What": "a full 4K plane",
+      "Width": 3840,
+      "Height": 2160,
+      "RenderMedianUs": 18390,
+      "RenderP90Us": 19344.8,
+      "CopyMedianUs": 2564.8,
+      "Bytes": 33177600
+    }
+  ]
+}

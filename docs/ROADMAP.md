@@ -11,8 +11,6 @@
 
 ## Block C — Video and input path
 
-- 📋 **PP641** (deps: PP11 ✅, PP322 ✅) **PP10's HUD is XAML, and the compositor tree PP319 chose covers a WPF window's own drawing entirely** — PP322 read that an eight-bit premultiplied surface composes above the ten-bit plane; what draws the HUD into it is the half nobody has built. → §PP641
-
 ## Block D — Screens
 
 ## Block E — Windows-only build

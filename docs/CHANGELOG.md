@@ -84,6 +84,9 @@
 - ✅ **PP321** **the buffered pacer's interval comes from the display and nothing states what a rate change mid-stream does to it** — the display's rate paces the present, a rate change gets past an armed pace thread, and a missed deadline catches up in whole intervals.
 - ✅ **PP319** **no presentation path carries HDR: D3DImage refuses ten bits and a DirectComposition visual hides WPF's overlay** — the overlay goes above the video in the compositor's tree, measured to Commit and the only one of three that keeps both (design §PP319 superseded: topmost is about child windows).
 - ✅ **PP322** **the two-layer tree commits and nobody has looked at it, which is the mistake PP163 made one layer down** — Read on a screen: a green block inside the red with no blue, and its half-alpha half olive - so the overlay composes above and the alpha is taken once.
+- ✅ **PP641** **PP10's HUD is XAML, and the compositor tree PP319 chose covers a WPF window's own drawing entirely** — The bitmap shape wins because its price was a premise, not a property: the HUD measures 156x138, costing 0.8% of a 60fps frame, while the full-plane render the section priced needs 125%.
+  checked **Each of the three shapes carries a cost, measured or read from the ledger** The bitmap shape is timed by spike/overlay-draw on this machine, at the HUD's own bounds and at a full plane. The rebuild shape is priced from the commits that shipped PP10 and PP12. The SDR shape has no time cost and PP319 already weighed it, which is stated rather than measured again.
+  checked **The overlay surface is sized by the HUD and not by the video plane** A composition visual carries its own size, so the full-screen copy the section prices is not a property of the option. The rule is code with a test that measures a real visual tree, and the spike's recorded numbers are read from its committed file rather than typed into the model.
 
 ## Block D — Screens
 
