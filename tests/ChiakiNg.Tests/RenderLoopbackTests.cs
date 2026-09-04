@@ -82,6 +82,14 @@ public sealed class RenderLoopback : IDisposable
         // most about, and dropping the endpoint here would leave nothing to judge.
         var clock = Stopwatch.StartNew();
         bool spoke = SpinWait.SpinUntil(() => Volatile.Read(ref units) >= 1, Listen);
+
+        // AND THEN SETTLE, past the grace period, whatever happened. The wait above ends early when
+        // something is playing - which it is whenever the tone test below has just run - and a
+        // fixture that returned then would hand the tests a capture still reading Starting.
+        TimeSpan settle = CaptureSilence.Grace + TimeSpan.FromMilliseconds(250) - clock.Elapsed;
+        if (settle > TimeSpan.Zero)
+            SpinWait.SpinUntil(() => false, settle);
+
         clock.Stop();
 
         attempts.Add(

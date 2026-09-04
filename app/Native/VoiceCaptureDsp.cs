@@ -63,7 +63,7 @@ public sealed class VoiceCaptureDsp : IDisposable
     public static IReadOnlyList<int> CandidateRates { get; } = [48000, 22050, 16000, 11025, 8000];
 
     private object? instance;
-    private IMediaObject? media;
+    private Dmo.IMediaObject? media;
     private bool configured;
 
     /// <summary>The rate the transform was configured at, or zero.</summary>
@@ -84,21 +84,13 @@ public sealed class VoiceCaptureDsp : IDisposable
         if (media is not null)
             return true;
 
-        Type? type = Type.GetTypeFromCLSID(new Guid(EchoCancellation.VoiceCaptureDspClsid));
-        if (type is null)
+        instance = Dmo.Create(new Guid(EchoCancellation.VoiceCaptureDspClsid), out int hresult);
+        LastError = hresult;
+
+        if (instance is null)
             return false;
 
-        try
-        {
-            instance = Activator.CreateInstance(type);
-        }
-        catch (Exception error) when (error is COMException or InvalidOperationException or NotSupportedException)
-        {
-            LastError = error.HResult;
-            return false;
-        }
-
-        if (instance is not IPropertyStore store || instance is not IMediaObject asMedia)
+        if (instance is not Dmo.IPropertyStore store || instance is not Dmo.IMediaObject asMedia)
         {
             Release();
             return false;
@@ -106,7 +98,7 @@ public sealed class VoiceCaptureDsp : IDisposable
 
         // SOURCE MODE FIRST AND FALSE, because it decides which of the two shapes the object is and
         // every other property is read against that shape.
-        if (!SetBool(store, SourceModeProperty, value: false))
+        if (!Dmo.SetBool(store, SourceModeProperty, value: false))
         {
             Release();
             return false;
@@ -114,7 +106,7 @@ public sealed class VoiceCaptureDsp : IDisposable
 
         // SINGLE_CHANNEL_AEC: one microphone, one reference, echo cancellation. The array modes are
         // for a microphone array this port has no way to know it has.
-        if (!SetInt(store, SystemModeProperty, SingleChannelAec))
+        if (!Dmo.SetInt(store, SystemModeProperty, SingleChannelAec))
         {
             Release();
             return false;
@@ -127,7 +119,7 @@ public sealed class VoiceCaptureDsp : IDisposable
     /// <summary>
     /// Which of the candidate rates the transform will take as its output, asked one at a time.
     ///
-    /// DMO_SET_TYPEF_TEST_ONLY, so nothing is configured by asking. The answer is the machine's
+    /// Dmo.SetTypeTestOnly, so nothing is configured by asking. The answer is the machine's
     /// rather than the documentation's, which is the difference between a reading and a citation.
     /// </summary>
     public IReadOnlyList<DspFormatAnswer> Accepts()
@@ -139,15 +131,15 @@ public sealed class VoiceCaptureDsp : IDisposable
 
         foreach (int rate in CandidateRates)
         {
-            IntPtr type = MediaType(rate);
+            IntPtr type = Dmo.MediaType(rate);
             try
             {
-                int hr = transform.SetOutputType(0, type, DMO_SET_TYPEF_TEST_ONLY);
+                int hr = transform.SetOutputType(0, type, Dmo.SetTypeTestOnly);
                 answers.Add(new DspFormatAnswer(rate, hr == 0, hr));
             }
             finally
             {
-                FreeMediaType(type);
+                Dmo.FreeMediaType(type);
             }
         }
 
@@ -168,7 +160,7 @@ public sealed class VoiceCaptureDsp : IDisposable
 
         foreach (int stream in new[] { MicrophoneStream, ReferenceStream })
         {
-            IntPtr type = MediaType(rate);
+            IntPtr type = Dmo.MediaType(rate);
             try
             {
                 LastError = transform.SetInputType(stream, type, 0);
@@ -177,11 +169,11 @@ public sealed class VoiceCaptureDsp : IDisposable
             }
             finally
             {
-                FreeMediaType(type);
+                Dmo.FreeMediaType(type);
             }
         }
 
-        IntPtr output = MediaType(rate);
+        IntPtr output = Dmo.MediaType(rate);
         try
         {
             LastError = transform.SetOutputType(0, output, 0);
@@ -190,7 +182,7 @@ public sealed class VoiceCaptureDsp : IDisposable
         }
         finally
         {
-            FreeMediaType(output);
+            Dmo.FreeMediaType(output);
         }
 
         LastError = transform.AllocateStreamingResources();
@@ -219,24 +211,24 @@ public sealed class VoiceCaptureDsp : IDisposable
         if (media is not { } transform || !configured)
             return default;
 
-        using var mic = new MediaBuffer(microphone.Length);
-        using var speaker = new MediaBuffer(reference.Length);
-        using var cleaned = new MediaBuffer(into.Length);
+        using var mic = new Dmo.Buffer(microphone.Length);
+        using var speaker = new Dmo.Buffer(reference.Length);
+        using var cleaned = new Dmo.Buffer(into.Length);
 
         mic.Fill(microphone);
         speaker.Fill(reference);
 
         LastError = transform.ProcessInput(
-            MicrophoneStream, mic, DMO_INPUT_DATA_BUFFERF_SYNCPOINT, 0, 0);
+            MicrophoneStream, mic, Dmo.InputSyncPoint, 0, 0);
         if (LastError < 0)
             return new DspPass(microphone.Length, 0, 0);
 
         LastError = transform.ProcessInput(
-            ReferenceStream, speaker, DMO_INPUT_DATA_BUFFERF_SYNCPOINT, 0, 0);
+            ReferenceStream, speaker, Dmo.InputSyncPoint, 0, 0);
         if (LastError < 0)
             return new DspPass(microphone.Length, reference.Length, 0);
 
-        var buffers = new DmoOutputDataBuffer[1];
+        var buffers = new Dmo.OutputDataBuffer[1];
         buffers[0].Buffer = cleaned;
 
         LastError = transform.ProcessOutput(0, 1, buffers, out _);
@@ -273,334 +265,14 @@ public sealed class VoiceCaptureDsp : IDisposable
         }
     }
 
-    private static bool SetBool(IPropertyStore store, PropertyKey key, bool value)
-    {
-        // VARIANT_TRUE is -1 and VARIANT_FALSE is 0, which is the one place a bool is not a bit.
-        var variant = new PropVariant { Type = VT_BOOL, Value = value ? new IntPtr(-1) : IntPtr.Zero };
-        PropertyKey local = key;
-
-        return store.SetValue(ref local, ref variant) == 0;
-    }
-
-    private static bool SetInt(IPropertyStore store, PropertyKey key, int value)
-    {
-        var variant = new PropVariant { Type = VT_I4, Value = new IntPtr(value) };
-        PropertyKey local = key;
-
-        return store.SetValue(ref local, ref variant) == 0;
-    }
-
-    /// <summary>
-    /// A DMO_MEDIA_TYPE for 16-bit mono PCM at one rate, allocated whole.
-    ///
-    /// One block holding the type and the WAVEFORMATEX it points at, so freeing it is one call and
-    /// there is no partial state to get wrong. MoInitMediaType would allocate the format for us and
-    /// hand back memory MoFreeMediaType owns; owning both here is fewer rules.
-    /// </summary>
-    private static IntPtr MediaType(int rate)
-    {
-        int typeSize = Marshal.SizeOf<DmoMediaType>();
-        int formatSize = Marshal.SizeOf<WaveFormatEx>();
-
-        IntPtr block = Marshal.AllocHGlobal(typeSize + formatSize);
-        IntPtr format = block + typeSize;
-
-        var wave = new WaveFormatEx
-        {
-            FormatTag = WAVE_FORMAT_PCM,
-            Channels = 1,
-            SamplesPerSec = rate,
-            BitsPerSample = 16,
-            BlockAlign = 2,
-            Size = 0,
-        };
-        wave.AvgBytesPerSec = wave.SamplesPerSec * wave.BlockAlign;
-
-        Marshal.StructureToPtr(wave, format, false);
-
-        var type = new DmoMediaType
-        {
-            MajorType = MediaTypeAudio,
-            SubType = MediaSubTypePcm,
-            FixedSizeSamples = 1,
-            TemporalCompression = 0,
-            SampleSize = wave.BlockAlign,
-            FormatType = FormatWaveFormatEx,
-            Unknown = IntPtr.Zero,
-            FormatSize = formatSize,
-            Format = format,
-        };
-
-        Marshal.StructureToPtr(type, block, false);
-        return block;
-    }
-
-    private static void FreeMediaType(IntPtr type) => Marshal.FreeHGlobal(type);
-
-    private const short VT_I4 = 3;
-    private const short VT_BOOL = 11;
-    private const short WAVE_FORMAT_PCM = 1;
-
     /// <summary>MFPKEY_WMAAECMA_SYSTEM_MODE.</summary>
-    private static readonly PropertyKey SystemModeProperty =
+    private static readonly Dmo.PropertyKey SystemModeProperty =
         new(new Guid("6f52c567-0360-4bd2-9617-ccbf1421c939"), 2);
 
     /// <summary>MFPKEY_WMAAECMA_DMO_SOURCE_MODE, which must be set before anything else.</summary>
-    private static readonly PropertyKey SourceModeProperty =
+    private static readonly Dmo.PropertyKey SourceModeProperty =
         new(new Guid("6f52c567-0360-4bd2-9617-ccbf1421c939"), 3);
 
     /// <summary>SINGLE_CHANNEL_AEC: one microphone, one reference, echo cancellation.</summary>
     private const int SingleChannelAec = 0;
-
-    /// <summary>Ask whether a type would be accepted without accepting it.</summary>
-    private const int DMO_SET_TYPEF_TEST_ONLY = 0x00000001;
-
-    /// <summary>The buffer begins a frame, which is what a fixed-size PCM chunk is.</summary>
-    private const int DMO_INPUT_DATA_BUFFERF_SYNCPOINT = 0x00000001;
-
-    private static readonly Guid MediaTypeAudio = new("73647561-0000-0010-8000-00aa00389b71");
-    private static readonly Guid MediaSubTypePcm = new("00000001-0000-0010-8000-00aa00389b71");
-    private static readonly Guid FormatWaveFormatEx = new("05589f81-c356-11ce-bf01-00aa0055595a");
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct PropertyKey(Guid formatId, int propertyId)
-    {
-        public Guid FormatId = formatId;
-        public int PropertyId = propertyId;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct PropVariant
-    {
-        public short Type;
-        public short Reserved1;
-        public short Reserved2;
-        public short Reserved3;
-        public IntPtr Value;
-        public IntPtr Value2;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct WaveFormatEx
-    {
-        public short FormatTag;
-        public short Channels;
-        public int SamplesPerSec;
-        public int AvgBytesPerSec;
-        public short BlockAlign;
-        public short BitsPerSample;
-        public short Size;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct DmoMediaType
-    {
-        public Guid MajorType;
-        public Guid SubType;
-        public int FixedSizeSamples;
-        public int TemporalCompression;
-        public int SampleSize;
-        public Guid FormatType;
-        public IntPtr Unknown;
-        public int FormatSize;
-        public IntPtr Format;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct DmoOutputDataBuffer
-    {
-        [MarshalAs(UnmanagedType.Interface)]
-        public IMediaBuffer Buffer;
-
-        public int Status;
-        public long Timestamp;
-        public long TimeLength;
-    }
-
-    /// <summary>
-    /// A block of unmanaged memory the transform reads from and writes into.
-    ///
-    /// Managed, because the DMO wants an interface and the buffer's lifetime is this call's. The
-    /// bytes themselves are unmanaged: the transform is handed the pointer and writes through it,
-    /// which a pinned array would also allow and a moving one would not.
-    /// </summary>
-    private sealed class MediaBuffer(int capacity) : IMediaBuffer, IDisposable
-    {
-        private readonly IntPtr data = Marshal.AllocHGlobal(Math.Max(capacity, 1));
-        private int length;
-        private bool freed;
-
-        /// <summary>Put bytes in and say how many, which is what a full buffer is.</summary>
-        public void Fill(ReadOnlySpan<byte> bytes)
-        {
-            unsafe
-            {
-                bytes.CopyTo(new Span<byte>((void*)data, capacity));
-            }
-
-            length = bytes.Length;
-        }
-
-        /// <summary>Take whatever the transform left, up to the caller's room.</summary>
-        public int Read(Span<byte> into)
-        {
-            int taken = Math.Min(length, into.Length);
-
-            unsafe
-            {
-                new ReadOnlySpan<byte>((void*)data, taken).CopyTo(into);
-            }
-
-            return taken;
-        }
-
-        public int SetLength(int cbLength)
-        {
-            if (cbLength > capacity)
-                return unchecked((int)0x80070057);
-
-            length = cbLength;
-            return 0;
-        }
-
-        public int GetMaxLength(out int cbMaxLength)
-        {
-            cbMaxLength = capacity;
-            return 0;
-        }
-
-        public int GetBufferAndLength(out IntPtr ppBuffer, out int pcbLength)
-        {
-            ppBuffer = data;
-            pcbLength = length;
-            return 0;
-        }
-
-        public void Dispose()
-        {
-            if (freed)
-                return;
-
-            freed = true;
-            Marshal.FreeHGlobal(data);
-        }
-    }
-
-    [ComImport]
-    [Guid("59eff8b9-938c-4a26-82f2-95cb84cdc837")]
-    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface IMediaBuffer
-    {
-        [PreserveSig]
-        int SetLength(int cbLength);
-
-        [PreserveSig]
-        int GetMaxLength(out int cbMaxLength);
-
-        [PreserveSig]
-        int GetBufferAndLength(out IntPtr ppBuffer, out int pcbLength);
-    }
-
-    /// <summary>
-    /// IMediaObject, whole.
-    ///
-    /// Every method in vtable order and none omitted, which is not tidiness: a COM interface is an
-    /// offset table, so a missing method above one that is called sends the call to the wrong slot
-    /// and the failure is a crash somewhere else entirely.
-    /// </summary>
-    [ComImport]
-    [Guid("d8ad0f58-5494-4102-97c5-ec798e59bcf4")]
-    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface IMediaObject
-    {
-        [PreserveSig]
-        int GetStreamCount(out int inputs, out int outputs);
-
-        [PreserveSig]
-        int GetInputStreamInfo(int stream, out int flags);
-
-        [PreserveSig]
-        int GetOutputStreamInfo(int stream, out int flags);
-
-        [PreserveSig]
-        int GetInputType(int stream, int typeIndex, IntPtr type);
-
-        [PreserveSig]
-        int GetOutputType(int stream, int typeIndex, IntPtr type);
-
-        [PreserveSig]
-        int SetInputType(int stream, IntPtr type, int flags);
-
-        [PreserveSig]
-        int SetOutputType(int stream, IntPtr type, int flags);
-
-        [PreserveSig]
-        int GetInputCurrentType(int stream, IntPtr type);
-
-        [PreserveSig]
-        int GetOutputCurrentType(int stream, IntPtr type);
-
-        [PreserveSig]
-        int GetInputSizeInfo(int stream, out int size, out int maxLookahead, out int alignment);
-
-        [PreserveSig]
-        int GetOutputSizeInfo(int stream, out int size, out int alignment);
-
-        [PreserveSig]
-        int GetInputMaxLatency(int stream, out long latency);
-
-        [PreserveSig]
-        int SetInputMaxLatency(int stream, long latency);
-
-        [PreserveSig]
-        int Flush();
-
-        [PreserveSig]
-        int Discontinuity(int stream);
-
-        [PreserveSig]
-        int AllocateStreamingResources();
-
-        [PreserveSig]
-        int FreeStreamingResources();
-
-        [PreserveSig]
-        int GetInputStatus(int stream, out int flags);
-
-        [PreserveSig]
-        int ProcessInput(
-            int stream,
-            [MarshalAs(UnmanagedType.Interface)] IMediaBuffer buffer,
-            int flags,
-            long timestamp,
-            long timeLength);
-
-        [PreserveSig]
-        int ProcessOutput(
-            int flags,
-            int outputBufferCount,
-            [In, Out, MarshalAs(UnmanagedType.LPArray)] DmoOutputDataBuffer[] buffers,
-            out int status);
-
-        [PreserveSig]
-        int Lock(int locked);
-    }
-
-    [ComImport]
-    [Guid("886d8eeb-8cf2-4446-8d02-cdba1dbdcf99")]
-    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface IPropertyStore
-    {
-        [PreserveSig]
-        int GetCount(out int count);
-
-        [PreserveSig]
-        int GetAt(int index, out PropertyKey key);
-
-        [PreserveSig]
-        int GetValue(ref PropertyKey key, out PropVariant value);
-
-        [PreserveSig]
-        int SetValue(ref PropertyKey key, ref PropVariant value);
-    }
 }
