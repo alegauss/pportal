@@ -116,8 +116,9 @@ public static partial class ManagedBoundaryRule
     /// <summary>
     /// The files under app/ whose prose promises it, relative to app/ and ordered.
     ///
-    /// Recursively, and this file excluded. bin/ and obj/ are skipped: a build output carrying a
-    /// copy of a docstring is the same claim counted twice, and it is not a file anybody edits.
+    /// Recursively, and two files excluded: this one, and PP691's census of the phrases a check may
+    /// rest on - both quote the promise in order to refuse it. bin/ and obj/ are skipped too, since
+    /// a build output carrying a copy of a docstring is the same claim counted twice.
     /// </summary>
     public static IReadOnlyList<string> ManagedFilesPromisingIt()
     {
@@ -130,6 +131,10 @@ public static partial class ManagedBoundaryRule
             .Where(p => !p.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
             .Where(p => !p.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
             .Where(p => !Path.GetFileName(p).Equals(RuleFileName, StringComparison.Ordinal))
+            // PP691: and the census OF these phrases, which records this promise in order to judge
+            // it - the same standing this file's own exclusion has.
+            .Where(p => !Path.GetFileName(p)
+                .Equals(RoadmapProseReaders.CensusFileName, StringComparison.Ordinal))
             .Order(StringComparer.Ordinal))
         {
             if (PromisesAManagedDecoder(File.ReadAllText(path)))

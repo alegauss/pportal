@@ -715,6 +715,8 @@
   checked **Every COM method that returns a status carries PreserveSig** A check sweeps every .cs outside bin and obj for interfaces marked ComImport or GeneratedComInterface and fails naming any method returning int or uint without the attribute. A void-returning method is allowed rather than flagged, and the check demonstrates the omission on its own fixture.
 - ✅ **PP683** **the oracle guard census reads test files only, so the selftest's guarded comparisons are invisible to it** — The host's selftest is a row now, so the floor the gate prints stops at what a bare build skips instead of at a project boundary.
   checked **The selftest is a row in the census, and the printed cost counts its guards** app/SelfTest.cs joins OracleGuardCensus.Files with the guard it calls; the census's own test holds that the file still carries it, and the gate's line about what a bare build skipped rises by what the selftest declines rather than stopping at the test project.
+- ✅ **PP691** **checks that match a roadmap sentence literally go red when the sentence gets more precise** — The census is thirty-two literals, judged and swept so the list cannot go stale; four demand a spelling that prose is free to improve, and PP666's two are not among them.
+  checked **Every roadmap sentence a check holds is counted and judged** A list of the string constants in app/ that carry roadmap or ledger prose, each marked load-bearing or incidental, with the question answered for each: would a more precise sentence break it. Two are known already from PP666. A count that returns only those two is an answer, not a failure.
 
 ## Block H — Performance and telemetry
 

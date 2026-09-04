@@ -53,6 +53,7 @@ are read from the spike's committed file rather than typed.
 ## Block G — Test discipline
 
 - ✅ **PP683** **the oracle guard census reads test files only, so the selftest's guarded comparisons are invisible to it** — The census is files that guard, wherever they live; what keeps a file out is defining a guard rather than asking one.
+- ✅ **PP691** **checks that match a roadmap sentence literally go red when the sentence gets more precise** — A check may match an address roadkeep uses or words held on purpose; a whole sentence of governed prose is the fragile case, and a fifth one is now a decision on record.
 
 ## Block H — Performance and telemetry
 

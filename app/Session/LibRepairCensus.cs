@@ -145,7 +145,8 @@ public static partial class LibRepairCensus
     /// The managed files whose prose still rests a reason on lib/ being untouched.
     ///
     /// Empty is the passing answer. Scanned over app/ alone: the rationale files under docs/ quote
-    /// the premise in order to say it is false, which is the opposite problem.
+    /// the premise in order to say it is false, which is the opposite problem - and two files under
+    /// app/ do the same, this one and PP691's census of the phrases a check rests on.
     /// </summary>
     public static IReadOnlyList<string> FilesStatingTheFalsePremise()
     {
@@ -155,6 +156,10 @@ public static partial class LibRepairCensus
         var offenders = new List<string>();
         foreach (string path in Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories)
             .Where(p => !Path.GetFileName(p).Equals(CensusFileName, StringComparison.Ordinal))
+            // PP691: and the census OF these phrases, which records this one in order to judge it -
+            // the same standing as this file's own exclusion, one file over.
+            .Where(p => !Path.GetFileName(p)
+                .Equals(RoadmapProseReaders.CensusFileName, StringComparison.Ordinal))
             .Order(StringComparer.Ordinal))
         {
             if (StatesTheFalsePremise(File.ReadAllText(path)))

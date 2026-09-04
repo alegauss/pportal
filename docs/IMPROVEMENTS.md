@@ -385,33 +385,6 @@ a takion that received one video packet.
 
 ## Block G — Test discipline
 
-### §PP691 A check that matches wording rather than meaning
-
-Two readers went red inside PP666, for the same reason and neither about a defect.
-
-`CriterionBlockers.ShippedIn` matched `- ✅ **PPn` and stopped at the digits, so `ship
---part`'s entry - `**PP295 (the run's ordering)**` - counted as a whole ship. An open
-line then read as finished, and a criterion correctly waiting on it was reported as
-waiting on something already delivered.
-
-`TransportOrder.TheEndStateIsStillTheEndState` held PP27's fourth criterion against the
-literal string "the end state and not a progress bar". Rewording that criterion to name
-PP295 outright - a STRONGER statement of the very premise the check exists to hold -
-failed it.
-
-Both were written in the same sitting as the text they read, which is how the wording
-got into the assertion. Neither test could fail for the reason its own docstring gives.
-
-This is PP666's shape one field over: PP666 was a table nobody drove, and this is a
-sentence matched rather than understood. The difference is that a table has one consumer
-and prose has many spellings, so the fix is not a driver but a rule about what a check
-may match on - a phrase that survives rewording, or a derivation, never a sentence.
-
-What is not known is how many there are. Two were found by tripping over them; nothing
-has looked. The work is to count the string constants in app/Session that hold roadmap
-prose, decide which are load-bearing, and say for each whether a better sentence would
-break it.
-
 ### §PP704 The sweep PP683 left
 
 PP683 added the host to the census and its own design said what it was not doing:
@@ -437,6 +410,31 @@ check that a file calling a known guard is named here - and the second is the sh
 every other census here took.
 
 The number the gate prints is what is being repaired, not the row count.
+
+### §PP705 The exclusion every census writes again
+
+Four classes sweep app/ for a phrase nothing may say: ComSignatures, LibRepairCensus,
+ManagedBoundaryRule and MicrophoneSurface. Each skips its own source, because a list of
+forbidden phrases is a file containing every one of them, and each writes that skip
+itself - seven clauses, all spelling the same idea.
+
+PP691 added a fifth such file and had to edit two of the four to say so. That is the
+tell. The exclusion is not a property of the sweeper; it is a property of the SWEPT
+file, and asking it from the wrong end means every new census is a change to the ones
+already there.
+
+WHAT IS OWED is one predicate - a file that records a phrase in order to judge it - and
+the four asking it instead of listing names. Whether the answer is a marker, an
+attribute or a shared list is the decision; what is not open is leaving four spellings
+of it.
+
+THE COST OF NOT DOING IT is a false red rather than a green. A sixth census added
+without the two extra edits makes the OTHER sweeps report it as an offender, and the fix
+somebody reaches for under time pressure is to soften the sweep. That is a sequence this
+port has seen, in the checks whose fixtures turned out to be themselves.
+
+Small, and filed rather than done because it touches four files that are green and were
+not this line's subject.
 
 ## Block H — Performance and telemetry
 

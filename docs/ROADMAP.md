@@ -34,8 +34,8 @@
 
 ## Block G — Test discipline
 
-- 💭 **PP691** (deps: —) **checks that match a roadmap sentence literally go red when the sentence gets more precise** — PP666 hit two in one task and both were red about text that had improved; nobody has counted how many more of these literal readers the tree carries. → §PP691
 - 📋 **PP704** (deps: PP683 ✅) **FeedbackPayloadTests guards eight comparisons on an oracle the census does not name, and it is not the only file** — PP676's oracle arrived after PP665 wrote the list and four shape files decline too, so the printed floor is short by more than the host's one row. → §PP704
+- 📋 **PP705** (deps: PP691 ✅) **four sweeps over app/ hand-write their own exclusion, so a new census has to be added to the others by hand** — PP691 needed two edits in files it does not own; nothing says which files record a phrase in order to judge it, so the next census needs the same two. → §PP705
 
 ## Block H — Performance and telemetry
 
@@ -130,14 +130,6 @@
   chiaki_render_tearing_probe does. Integration means the video plane's own swapchain
   carries it and presents at sync interval zero, which is the half that waits on there
   being a video plane at all.
-
-## Done when — PP691
-
-- **Every roadmap sentence a check holds is counted and judged** A list of the string
-  constants in app/ that carry roadmap or ledger prose, each marked load-bearing or
-  incidental, with the question answered for each: would a more precise sentence break
-  it. Two are known already from PP666. A count that returns only those two is an
-  answer, not a failure.
 
 ## Done when — PP694
 
