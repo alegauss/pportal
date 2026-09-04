@@ -481,6 +481,31 @@ What makes this its own line rather than part of the flip is PP623's own discipl
 flip edits `lib/` and no test file, so every prose change waits for a green tree after
 it. Doing both at once is the thing that plan exists to prevent.
 
+### §PP698 The other half of what an echo canceller hears
+
+Acoustic echo cancellation works by subtracting what the speakers are playing from what
+the microphone hears. So it needs both, and `spike/audio-effects` measured the shape
+that requirement takes: in filter mode the Voice Capture DSP declares **two inputs and
+one output**, the host feeding the microphone and a reference of the render stream.
+
+PP652 built the first. `WasapiCapture` opens a capture endpoint and delivers whole units
+of the format the console was told about. There is no equivalent for the render side.
+
+WASAPI has one: a loopback client, opened on a RENDER endpoint with
+`AUDCLNT_STREAMFLAGS_LOOPBACK`, which reads back what is being played rather than what a
+device hears. It is the same `IAudioClient` and the same capture client below it, so the
+interop is largely the one that exists.
+
+Two things are not, and are why this is its own line. A loopback client on a silent
+render endpoint produces NOTHING rather than silence - a documented behaviour, and the
+shape PP695 taught this port to notice. And the reference must be time-aligned with the
+microphone for the subtraction to mean anything, which is a buffering question the
+capture path has never had to answer.
+
+Source mode is the alternative: the DSP opens both devices itself and hands back one
+cleaned stream. That replaces `WasapiCapture` rather than following it, and takes the
+device choice with it - which PP695 showed this port needs to keep.
+
 ## Block G — Test discipline
 
 ### §PP683 The census stops at the test project

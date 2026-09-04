@@ -35,6 +35,7 @@
 - 📋 **PP694** (deps: —) **the microphone's units reach nothing, and libopus's second consumer is why the dependency cannot leave** — PP652 answered the input question opusencoder.c waited on, so the encoder is portable now and PP651 already measured managed Opus at a quarter of a percent of a frame. → §PP694
 - 📋 **PP696** (deps: —) **the frame path's deletion has no commit that edits the C, so four files stay while their ports exist** — PP623's middle step is the only one touching lib, and nobody has written this path's: session.c's asks, the shim's wrappers and the suite's four files all still name them. → §PP696
 - 📋 **PP697** (deps: PP696) **after the frame-path flip the models describe a C that has gone, in the present tense** — PP634 found this on the holepunch side: the predicates stay because they notice the calls coming back, and what goes stale is the prose around them. → §PP697
+- 📋 **PP698** (deps: —) **the echo canceller wants a reference of what is playing and nothing captures the render side** — Filter mode declares two inputs and the second is the speaker signal; WasapiCapture opens capture endpoints only, so the DSP has one of the two it needs. → §PP698
 
 ## Block G — Test discipline
 
@@ -49,7 +50,7 @@
 ## Block I — NVIDIA path
 
 - ⏳ **PP49** (deps: PP11 ✅, PP47 ✅) (requires: console, a-person-looking) **the console sends SDR on most titles and an HDR display shows it flat, with nothing in the client trying** — the quality half and the integration: a decoded console frame to judge the picture on, and a setting that turns it off. → §PP49
-- 🛠 **PP52** (deps: PP32 ✅, PP652 ✅) **nothing runs echo cancellation, and the vendor answer is absent on a machine with the card** — Nothing cleans a sample yet: a stage between the capture and the encoder, read back rather than assumed to have run, is still to build. → §PP52
+- ⏳ **PP52** (deps: PP32 ✅, PP652 ✅, PP698) **nothing runs echo cancellation, and the vendor answer is absent on a machine with the card** — Nothing cleans a sample: the in-box DSP takes two inputs in filter mode and the second, a reference of what is playing, has no capture yet. → §PP52
 - ⏳ **PP53** (deps: PP11 ✅, PP41 ✅) (requires: variable-refresh-display) **frames arrive with network jitter and are presented against a fixed refresh, so each waits for a vblank it missed** — the reading itself: a display that varies its refresh, and a trace saying the frame arrived unpaced. → §PP53
 - ⏳ **PP76** (deps: PP528 ✅) (requires: console, a-person-looking) **the decoder preference is measured on synthetic frames, and drops under network jitter are what a stream is judged by** — one session per decoder against a real console, now that the difference between the two counters is the number to read. → §PP76
 
@@ -282,6 +283,14 @@
   to the managed decoder, so the sixty-four recorded erasure cases assert on every build
   instead of declining without the C. The differential in FecCodecTests stays the one
   place the C is named, and OracleGuardCensus counts two fewer guarded theories.
+
+## Done when — PP698
+
+- **A loopback client reads what the render endpoint is playing** The default render
+  endpoint opens with the loopback flag and delivers units in the same format the
+  capture does. A silent endpoint producing nothing rather than silence reads as PP695's
+  state instead of as a working stream, which is the behaviour Windows documents and
+  this port already knows how to notice.
 
 ## Non-goals
 
