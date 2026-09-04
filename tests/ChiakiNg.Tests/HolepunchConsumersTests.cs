@@ -38,12 +38,18 @@ public class HolepunchConsumersTests
     /// roadmap lists among PP33's satisfied deps.
     /// </summary>
     [Fact]
-    public void TheShimIsTheThirdConsumer()
+    public void TheShimIsNoLongerAConsumer()
     {
         if (HolepunchConsumers.LocateShim() is not { } path)
             return;
 
-        Assert.Empty(HolepunchConsumers.MissingFromShim(File.ReadAllText(path)));
+        // PP33: the nine are ALL missing now, which is the flip. The list is kept and so is the
+        // reader - one of the nine reappearing is what this exists to catch, and the shim is the
+        // last consumer holepunch.c had.
+        Assert.Equal(
+            HolepunchConsumers.ShimCalls.Order(StringComparer.Ordinal),
+            HolepunchConsumers.MissingFromShim(File.ReadAllText(path)).Order(StringComparer.Ordinal));
+
         Assert.Equal(9, HolepunchConsumers.ShimCalls.Count);
     }
 
@@ -181,12 +187,16 @@ public class HolepunchConsumersTests
     /// where these three lines moved is one the criterion is describing wrongly.
     /// </summary>
     [Fact]
-    public void TheMeasurementsPreconditionStillHolds()
+    public void TheThreeLinesTheMeasurementNeededAreGone()
     {
         if (HolepunchConsumers.LocateLibCMake() is not { } path)
             return;
 
-        Assert.True(HolepunchConsumers.TheMeasuredTreeIsStillThis(File.ReadAllText(path)));
+        Assert.True(
+            HolepunchConsumers.TheThreeAreGoneFromTheBuild(File.ReadAllText(path)),
+            "lib/CMakeLists.txt names holepunch.c, curl or json-c again, so PP33's flip has been "
+                + "undone and the build links what the criterion says it does not");
+
         Assert.Equal(@"lib\src\remote\holepunch.c", HolepunchConsumers.OnlyFileNeedingCurlAndJsonC);
     }
 
@@ -212,22 +222,28 @@ public class HolepunchConsumersTests
     /// wrong exactly where somebody decides what it costs. PP501 fixed the same shape on PP27's line.
     /// </summary>
     [Fact]
-    public void ThePP33LineAgreesWithThisList()
+    public void ThePP33LineHasLeftTheRoadmapWithItsCountStillRight()
     {
-        string? path = SanitizerSource.LocateRelative(@"docs\ROADMAP.md");
-        if (path is null)
+        // PP33 shipped, so the line a session picking work would read is gone from the roadmap.
+        // The claim it carried can no longer be wrong where it mattered - which is the outcome
+        // this check wanted, not a reason to stop looking.
+        if (SanitizerSource.LocateRelative(@"docs\ROADMAP.md") is { } roadmap)
+        {
+            Assert.DoesNotContain(
+                File.ReadLines(roadmap),
+                one => one.Contains("**PP33**", StringComparison.Ordinal));
+        }
+
+        // The count itself is still asserted, against the ledger's copy. PP622 is why it reads at
+        // all: the clause used to be a count word and a fixed plural, so the demand at one would
+        // have been "one files call it" - the very count PP632 arrived at.
+        if (SanitizerSource.LocateRelative(@"docs\CHANGELOG.md") is not { } changelog)
             return;
 
-        string? line = File.ReadLines(path)
+        string? line = File.ReadLines(changelog)
             .FirstOrDefault(one => one.Contains("**PP33**", StringComparison.Ordinal));
 
         Assert.NotNull(line);
-        Assert.True(
-            HolepunchConsumers.TheRoadmapLineAgreesOnTheCount(line),
-            $"PP33's line does not name one caller: {line}");
-
-        // PP622 is why this reads at all: the clause used to be a count word and a fixed plural, so
-        // the demand at one would have been "one files call it" - the very count PP632 arrived at.
         Assert.Single(HolepunchConsumers.All);
     }
 

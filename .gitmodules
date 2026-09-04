@@ -1,4 +1,4 @@
-[submodule "test/munit"]
+﻿[submodule "test/munit"]
 	path = test/munit
 	url = https://github.com/nemequ/munit.git
 [submodule "third-party/nanopb"]
@@ -10,9 +10,6 @@
 [submodule "third-party/gf-complete"]
 	path = third-party/gf-complete
 	url = https://github.com/streetpea/gf-complete.git
-[submodule "third-party/curl"]
-	path = third-party/curl
-	url = https://github.com/curl/curl
 [submodule "third-party/cpp-steam-tools"]
 	path = third-party/cpp-steam-tools
 	url = https://github.com/streetpea/cpp-steam-tools.git

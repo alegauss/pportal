@@ -119,19 +119,23 @@ public class ShimHolepunchShapeTests(ITestOutputHelper output)
     }
 
     /// <summary>
-    /// PP681, the side this build is on: the header names the oracle and the guard still says no.
+    /// PP33: the header no longer names the oracle either, so the two finally agree.
     ///
-    /// The defect, stated as the two disagreeing. What made it invisible is that the disagreement is
-    /// invisible from the file: the text is right about what is declared and wrong about what is
-    /// exported, and only the DLL knows which.
+    /// PP681 was the two DISAGREEING - the header declared the wrapper whichever way the option
+    /// went, because PP655's flip gated the declarations with an #ifdef rather than deleting them,
+    /// and only the DLL knew what was exported. The declarations are now gone with the bodies, so
+    /// the text and the build say the same thing and there is nothing left for a reader of the file
+    /// to be misled by.
+    ///
+    /// The guard is still asked, because the answer that matters is still the DLL's.
     /// </summary>
     [Fact]
-    public void OnABareBuildTheHeaderNamesTheOracleAndTheGuardSaysNo()
+    public void OnABareBuildNeitherTheHeaderNorTheGuardOffersTheOracle()
     {
         if (ShimHolepunchShape.BareHeader() is not { } header)
             return;
 
-        Assert.Contains(ShimHolepunchShape.OracleWrapper, header, StringComparison.Ordinal);
+        Assert.DoesNotContain(ShimHolepunchShape.OracleWrapper, header, StringComparison.Ordinal);
         Assert.False(ShimHolepunchShape.TheFormatOracleIsAvailable());
     }
 

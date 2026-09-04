@@ -34,18 +34,21 @@ public class HolepunchFileOrderTests
     }
 
     /// <summary>
-    /// PP663: the option exists and the build declares it, which is the flip having landed.
+    /// PP33: the option is GONE, which is this task finishing rather than the flip landing.
     ///
-    /// The option is the whole of what the flip is. A tree where it is gone is one where somebody
-    /// either finished PP33 or reverted this, and either way the order's Landed count is wrong.
+    /// PP663 introduced CHIAKI_ENABLE_HOLEPUNCH so curl, json-c, holepunch.c and both oracles could
+    /// leave the ordinary build while staying reachable. They have now left the tree, so there is
+    /// nothing left for the option to admit - and PP663's own note said this is where it ends: "OFF
+    /// by default is the point... -DCHIAKI_ENABLE_HOLEPUNCH=ON restores every piece unchanged", a
+    /// sentence that stops being true the moment there is nothing to restore.
     /// </summary>
     [Fact]
-    public void TheOptionTheFlipIntroducedIsDeclared()
+    public void TheOptionTheFlipIntroducedIsGone()
     {
         if (SanitizerSource.LocateRelative(HolepunchFileOrder.RootCMakeRelativePath) is not { } path)
             return;
 
-        Assert.Contains(
+        Assert.DoesNotContain(
             $"option({HolepunchFileOrder.ProposedOption}",
             File.ReadAllText(path),
             StringComparison.Ordinal);
@@ -60,12 +63,16 @@ public class HolepunchFileOrderTests
     /// turned them off, and nothing says so.
     /// </summary>
     [Fact]
-    public void TheConfigureLinePassesItRatherThanTrustingTheDefault()
+    public void TheConfigureLineNoLongerPassesIt()
     {
         if (SanitizerSource.LocateRelative(HolepunchFileOrder.ConfigureScriptRelativePath) is not { } path)
             return;
 
-        Assert.Contains(
+        // PP33: passing an option cmake does not declare is a warning nobody reads, so the -D goes
+        // in the same commit as the option. The pair is what this checks - the option's absence is
+        // asserted above, and a configure line still naming it would be the half-done state that
+        // leaves a stale cache deciding what the build does.
+        Assert.DoesNotContain(
             $"-D{HolepunchFileOrder.ProposedOption}=",
             File.ReadAllText(path),
             StringComparison.Ordinal);
@@ -81,25 +88,22 @@ public class HolepunchFileOrderTests
     /// paragraph and one that can is a reason.
     /// </summary>
     [Fact]
-    public void TheWrappersAreDeclaredInTheHeaderTheCensusReads()
+    public void TheWrappersAreGoneFromTheHeaderTheCensusReads()
     {
         if (SanitizerSource.LocateRelative(HolepunchFileOrder.ShimHeaderRelativePath) is not { } path)
             return;
 
         string header = File.ReadAllText(path);
 
-        // Counted, because the wrapper's name is not the C symbol's - the device id's C is
-        // chiaki_holepunch_generate_client_device_uid and its wrapper is chiaki_shim_generate_
-        // client_device_uid. What matters is that the header declares at least as many of them as
-        // the shim defines, so gating one file and not the other is a thing somebody could do.
+        // PP33: the header and the body went TOGETHER, which is the hazard this counted. The header
+        // is the contract NativeSeam reads, so a flip that gated the bodies and left the
+        // declarations would have left that census green while the DLL lost nine exports - and the
+        // failure would arrive as EntryPointNotFoundException on the first call, inside a live
+        // session. Both are zero here, which is the only pairing that is not that hazard.
         int declared = header.Split("chiaki_shim_holepunch", StringSplitOptions.None).Length - 1
             + header.Split("chiaki_shim_generate_client_device_uid", StringSplitOptions.None).Length - 1;
 
-        Assert.True(
-            declared >= HolepunchShimSurface.UndefinedReferences.Count,
-            $"the header declares {declared} of the shim's holepunch entry points and the shim "
-                + $"defines {HolepunchShimSurface.UndefinedReferences.Count}, so the contract "
-                + "NativeSeam reads is already narrower than the DLL and the hazard has changed");
+        Assert.Equal(0, declared);
 
         // And that header really is one the census reads, which is the whole of why it matters.
         Assert.Contains(

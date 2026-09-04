@@ -37,7 +37,10 @@ public static class DeletionCallerClaims
     /// <summary>The lines whose subject is removing C from lib.</summary>
     public static IReadOnlyList<DeletionLine> All { get; } =
     [
-        new("PP33", "holepunch.c"),
+        // PP33 stood here and has shipped. Its claim was the one this rule was written from -
+        // "session.c is its only caller", falsified three times by PP544, PP563 and PP564 without
+        // ever being changed - and a shipped line's prose is in the ledger, where nothing is
+        // deciding what work costs any more.
         new("PP30", "the FEC decode"),
         new("PP295", "the video receiver"),
     ];

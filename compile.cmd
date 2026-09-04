@@ -135,7 +135,8 @@ rem option was not set with it.
 call :warn_sub "third-party\nanopb"      "CHIAKI_USE_SYSTEM_NANOPB"
 call :warn_sub "third-party\jerasure"    "CHIAKI_USE_SYSTEM_JERASURE"
 call :warn_sub "third-party\gf-complete" "CHIAKI_USE_SYSTEM_JERASURE"
-call :warn_sub "third-party\curl"        "CHIAKI_USE_SYSTEM_CURL"
+rem PP33: third-party\curl stood here. It went with holepunch.c, which was the only file in lib/
+rem that called it - so there is no longer a submodule to warn about or an option to name.
 
 rem ---- a running instance locks the portable tree ------------------------
 rem Otherwise the deploy step dies on "cp: Device or resource busy". Uses goto

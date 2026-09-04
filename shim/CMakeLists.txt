@@ -6,17 +6,20 @@ add_library(chiaki-shim SHARED chiaki_shim.c chiaki_shim.h)
 target_include_directories(chiaki-shim PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(chiaki-shim chiaki-lib)
 
-# PP655: the two oracles - nine holepunch wrappers and fifteen json-c ones - follow the libraries
-# they wrap, in the BODY and in the HEADER.
+# PP33: the two oracles are GONE, and so is the option that carried them.
 #
-# The header half is load-bearing. PP437's census holds the host's imports against what these
-# headers declare, so gating only the bodies would leave it green while the DLL lost the exports.
-# PUBLIC for the same reason: anything compiling against this header has to see the set this DLL
-# actually exports. chiaki_shim_has_holepunch and chiaki_shim_has_jsonc are outside both gates and
-# are how a managed guard asks which build it got (PP662).
-if(CHIAKI_ENABLE_HOLEPUNCH)
-	target_compile_definitions(chiaki-shim PUBLIC CHIAKI_SHIM_HAVE_HOLEPUNCH CHIAKI_SHIM_HAVE_JSONC)
-endif()
+# PP655 gated nine holepunch wrappers and fifteen json-c ones behind CHIAKI_ENABLE_HOLEPUNCH, in
+# the body and the header both. PP663 turned the option off by default and PP665 measured what
+# that cost: twenty-three assertions declining on every build anybody ran, reported as passes.
+#
+# json-c's half did not go with it. Its answers are recorded in tests/oracles/json-c.json, taken
+# from the library by --record-json-oracle while it was still here, so JsonCTests and
+# FrameParsingTests compare against what json-c actually said - on every build, which is more than
+# they did before this. The holepunch half had nothing to record: NativeHolepunchSession is a
+# wrapper over the C, and a wrapper outlives nothing when the thing it wraps has gone.
+#
+# chiaki_shim_has_holepunch and chiaki_shim_has_jsonc STAY, and answer false. They are how a
+# managed guard asks which build it got (PP662), and PP657's bare-side assertions read them.
 
 # PP670: the frame path's fourteen wrappers - fec, frame processor, video receiver - are the third
 # oracle, and this is PP623's first step for it: the define exists and chiaki_shim_has_framepath

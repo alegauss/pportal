@@ -53,8 +53,9 @@ public class DeletionEndStateTests
         Assert.DoesNotContain("PP30", DeletionEndState.WaitsOn["PP27"]);
         Assert.Contains("PP295", DeletionEndState.WaitsOn["PP27"]);
 
-        // PP33's waits on the shim, which is this port's own seam and not a line at all.
-        Assert.Empty(DeletionEndState.WaitsOn["PP33"]);
+        // PP33's waited on the shim - this port's own seam and not a line at all - and has
+        // shipped, which is the one way a line leaves this set.
+        Assert.False(DeletionEndState.WaitsOn.ContainsKey("PP33"));
 
         const string ordinary =
             "- 📋 **PP30** (deps: PP23 ✅, PP27) **fec** — y. → §PP30\n"
@@ -75,19 +76,24 @@ public class DeletionEndStateTests
     }
 
     /// <summary>
-    /// PP639: all three carry the criterion, and the words are the ones the three already used.
+    /// PP639: each carries the criterion, and the words are the ones they already used.
     ///
-    /// PP33's says "It is an end state, not a progress bar"; PP27's says "the end state and not a
-    /// progress bar"; PP295's was written to match. Matched as two words rather than one sentence,
-    /// because the two spellings were already in the file before this rule existed.
+    /// PP27's says "the end state and not a progress bar" and PP295's was written to match. Matched
+    /// as two words rather than one sentence, because both spellings were in the file before this
+    /// rule existed.
+    ///
+    /// PP33: THREE UNTIL ITS DELETION LANDED. Its end state waited on the shim rather than on a
+    /// line, and the shim's two oracles have gone with curl, json-c and the option - so the line is
+    /// in the ledger and a rule still counting it would be asserting about shipped work.
     /// </summary>
     [Fact]
-    public void AllThreeCarryAnEndStateCriterion()
+    public void EachCarriesAnEndStateCriterion()
     {
         if (Roadmap() is not { } roadmap)
             return;
 
-        Assert.Equal(3, DeletionEndState.Lines.Count);
+        Assert.Equal(2, DeletionEndState.Lines.Count);
+        Assert.DoesNotContain("PP33", DeletionEndState.Lines);
 
         foreach (string id in DeletionEndState.Lines)
         {

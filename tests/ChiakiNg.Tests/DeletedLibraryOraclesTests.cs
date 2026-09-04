@@ -18,13 +18,19 @@ public class DeletedLibraryOraclesTests(ITestOutputHelper output)
         => DeletedLibraryOracles.LocateShim() is { } path ? File.ReadAllText(path) : null;
 
     /// <summary>
-    /// The shim exports a json oracle, and it is the size the flip has to carry.
+    /// PP33: the json oracle's wrappers are GONE, and the predicate that counted them still counts.
     ///
-    /// Fifteen wrappers today. Counted rather than named, for the reason the holepunch nine turned
-    /// out to be ten: a number typed once stops being right somewhere nobody is looking.
+    /// It counted fifteen and the flip removed all fifteen. The reader is kept rather than deleted,
+    /// which is PP634's rule: what a model like this is for after a deletion is noticing the calls
+    /// coming back, and a check that was deleted with its subject notices nothing.
+    ///
+    /// The comparison did not go with them. tests/oracles/json-c.json holds what json-c answered,
+    /// taken from the library by --record-json-oracle while it was here, and JsonCTests and
+    /// FrameParsingTests compare against it on every build - which is more than they did while the
+    /// library was present and the flag was off.
     /// </summary>
     [Fact]
-    public void TheShimWrapsJsonCAsWellAsHolepunch()
+    public void TheJsonOraclesWrappersAreGone()
     {
         if (Shim() is not { } shim)
             return;
@@ -32,20 +38,19 @@ public class DeletedLibraryOraclesTests(ITestOutputHelper output)
         IReadOnlyList<string> json = DeletedLibraryOracles.JsonWrappers(shim);
         output.WriteLine($"{json.Count} json wrappers: {string.Join(", ", json)}");
 
-        Assert.NotEmpty(json);
-        Assert.All(json, name => Assert.StartsWith(
-            DeletedLibraryOracles.JsonWrapperPrefix, name, StringComparison.Ordinal));
+        Assert.Empty(json);
     }
 
     /// <summary>
-    /// And the flip's surface is both oracles together, which is more than PP655 was sized from.
+    /// And the flip's surface is nothing, which is the end state rather than a progress bar.
     ///
-    /// The number is what the attempt bought. PP655 was written from ten undefined references and
-    /// the flip has to carry every wrapper that calls either library - so its first step is not
-    /// finished, and the assertion says so with a count rather than a paragraph.
+    /// PP655 was sized from ten undefined references and PP660 found the surface was larger - the
+    /// json oracle was invisible to a linker asked while json-c was still linked. Both oracles have
+    /// now gone in one commit, so what this asserts is zero: neither library is reachable from the
+    /// shim, and a wrapper that came back would be a number here rather than a link error later.
     /// </summary>
     [Fact]
-    public void TheFlipSurfaceIsLargerThanTheLinkerReported()
+    public void TheFlipSurfaceIsNothing()
     {
         if (Shim() is not { } shim)
             return;
@@ -53,11 +58,7 @@ public class DeletedLibraryOraclesTests(ITestOutputHelper output)
         int surface = DeletedLibraryOracles.FlipSurface(shim);
         output.WriteLine($"flip surface: {surface} exports");
 
-        Assert.True(
-            surface > HolepunchShimSurface.UndefinedReferences.Count,
-            $"the flip's surface is {surface} and the linker named "
-                + $"{HolepunchShimSurface.UndefinedReferences.Count}; if these are equal the json "
-                + "oracle has gone and PP655's order can be re-read as written");
+        Assert.Equal(0, surface);
     }
 
     /// <summary>

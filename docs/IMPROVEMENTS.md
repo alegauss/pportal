@@ -162,35 +162,6 @@ oracle covers them completely offline. And keeping the C for this one piece is a
 legitimate outcome, because it is self-contained, has no OS surface, and is called with
 buffers rather than with state.
 
-### §PP33 Two dependencies that simply leave
-
-holepunch.c is 5962 lines and is the only translation unit in this tree that still needs
-either library: 234 curl_easy calls, 4 curl_ws, and the json_object and json_tokener
-sites beside them.
-
-```roadkeep-remaining
-lib/src/**/*.c :: curl_easy_|json_object|json_tokener
-```
-
-Read that count carefully: it reports 420 sites in "45 files", and 45 is every .c under
-lib/src - the glob's reach, not the hits. Every one of the 420 is in holepunch.c.
-
-The behaviours are largely ported. PP231 stated the websocket auto-ACK, PP266 performs
-the five session calls over a real HttpClient, and the shim exposes json-c's accessors
-deliberately: an oracle the managed parser is held against (PP215).
-
-PP663 TOOK THE DEPENDENCY OUT OF THE BUILD. holepunch.c, curl, json-c and the shim's two
-oracles all follow CHIAKI_ENABLE_HOLEPUNCH, off by default, with the suite green either
-way. So the fourth criterion is met and no build anybody runs links either library.
-
-What is left is the FILE, and what holds it is not a feature. PP654 moved the one
-wrapper the host itself reached; the nine that remain are PP481's oracle and the fifteen
-beside them are the same for json-c. Deleting the file means deciding what those
-comparisons are worth without the C to compare against - and THAT NEEDS A CONSOLE, which
-is why this line declares one. PP312 built requirements for this shape; a line needing
-hardware and declaring none is one `pick` offers as ready, which this was for seven
-sessions. PP621 counts what else the deletion rewrites.
-
 ### §PP107 The two that were said to be uncalled
 
 chiaki_reorder_queue_drop and chiaki_reorder_queue_peek are both broken. PP562: the

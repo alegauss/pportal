@@ -168,7 +168,7 @@ CHIAKI_SHIM_API uint32_t chiaki_shim_log_level_mask(void *log);
  */
 CHIAKI_SHIM_API void chiaki_shim_log_write(void *log, int32_t level, const char *msg);
 
-/** chiaki_log_level_char: 'I', 'W', 'E'â€¦ the letter that build's log file is written with. */
+/** chiaki_log_level_char: 'I', 'W', 'E'… the letter that build's log file is written with. */
 CHIAKI_SHIM_API char chiaki_shim_log_level_char(int32_t level);
 
 /**
@@ -896,32 +896,6 @@ CHIAKI_SHIM_API int32_t chiaki_shim_discovery_service_host_request_port(void *ho
 
 CHIAKI_SHIM_API int32_t chiaki_shim_duid_str_size(void);
 
-#ifdef CHIAKI_SHIM_HAVE_HOLEPUNCH
-CHIAKI_SHIM_API int32_t chiaki_shim_generate_client_device_uid(char *buf, int32_t *size);
-
-/* PP481: the nine asks PP429 wrote down, as nine wrappers over the real C.
- *
- * The five value-returning methods read fields a recorded exchange carries, so
- * chiaki_shim_holepunch_session_set_recorded is what lets them run without PSN, a network or a
- * console - and create_offer turned out to run over one too. Only punch_hole needs a console. All
- * are declared here rather than only the reachable ones: the declaration costs the same either
- * way, and a live run then needs no further task to reach them. */
-CHIAKI_SHIM_API int32_t chiaki_shim_holepunch_address_size(void);
-CHIAKI_SHIM_API void *chiaki_shim_holepunch_session_init(const char *token);
-CHIAKI_SHIM_API void chiaki_shim_holepunch_session_set_recorded(
-		void *session, const char *ps_ip, const char *client_local_ip, uint16_t ctrl_port,
-		const uint8_t *data1, const uint8_t *data2, const uint8_t *custom_data1);
-CHIAKI_SHIM_API void *chiaki_shim_holepunch_get_sock(void *session, int32_t port_type);
-CHIAKI_SHIM_API int32_t chiaki_shim_holepunch_get_regist_info(
-		void *session, uint8_t *data1, uint8_t *data2, uint8_t *custom_data1,
-		char *local_ip, int32_t local_ip_size);
-CHIAKI_SHIM_API int32_t chiaki_shim_holepunch_get_selected_addr(
-		void *session, char *buf, int32_t size);
-CHIAKI_SHIM_API int32_t chiaki_shim_holepunch_get_ctrl_port(void *session);
-CHIAKI_SHIM_API int32_t chiaki_shim_holepunch_create_offer(void *session);
-CHIAKI_SHIM_API int32_t chiaki_shim_holepunch_punch_hole(void *session, int32_t port_type);
-CHIAKI_SHIM_API void chiaki_shim_holepunch_session_fini(void *session);
-#endif /* CHIAKI_SHIM_HAVE_HOLEPUNCH */
 
 /**
  * PP23: the registration crypto, reachable so that both implementations can be run on one input.
@@ -1343,58 +1317,6 @@ CHIAKI_SHIM_API const char *chiaki_shim_http_header_value(void *response, int32_
  * chiaki_shim_json_parse is passed to chiaki_shim_json_free; every other handle here is valid only
  * while its root is.
  */
-#ifdef CHIAKI_SHIM_HAVE_JSONC
-CHIAKI_SHIM_API void *chiaki_shim_json_parse(const char *text);
-
-/** Releases a root from chiaki_shim_json_parse. Never a handle from the lookups below. */
-CHIAKI_SHIM_API void chiaki_shim_json_free(void *root);
-
-/** json_object_get_type, as json-c numbers it: 0 null, 1 boolean, 2 double, 3 int, 4 object, 5 array, 6 string. */
-CHIAKI_SHIM_API int32_t chiaki_shim_json_type(void *node);
-
-/** json_object_object_get_ex. Borrowed, or NULL where the key is absent. */
-CHIAKI_SHIM_API void *chiaki_shim_json_get(void *node, const char *key);
-
-/** json_pointer_get, RFC 6901. Borrowed, or NULL where the path does not resolve. */
-CHIAKI_SHIM_API void *chiaki_shim_json_pointer(void *root, const char *path);
-
-/** json_object_array_length, or -1 where the node is not an array. */
-CHIAKI_SHIM_API int32_t chiaki_shim_json_array_length(void *node);
-
-/** json_object_array_get_idx. Borrowed. */
-CHIAKI_SHIM_API void *chiaki_shim_json_array_at(void *node, int32_t index);
-
-/** json_object_get_string, which is NOT string-typed only - see the note above. */
-CHIAKI_SHIM_API const char *chiaki_shim_json_string(void *node);
-
-/** json_object_get_int, which parses strings and saturates rather than wrapping. */
-CHIAKI_SHIM_API int32_t chiaki_shim_json_int(void *node);
-
-/** json_object_get_int64, same leniency at the wider width. */
-CHIAKI_SHIM_API int64_t chiaki_shim_json_int64(void *node);
-
-/** json_object_get_boolean, whose answer for a string is not what a port would guess. */
-CHIAKI_SHIM_API bool chiaki_shim_json_bool(void *node);
-
-/**
- * PP215: json-c's tokener, kept rather than made and thrown away.
- *
- * chiaki_shim_json_parse is one call over a fresh tokener, which is every json-c call site in
- * holepunch.c except the websocket loop - that one keeps a single tokener for the life of the
- * socket and feeds it every frame. Whether a tokener that has already refused a document can
- * still parse the next one is therefore a question the single call cannot ask.
- *
- * The handle from chiaki_shim_json_tokener_new is freed with chiaki_shim_json_tokener_free. A
- * document returned by chiaki_shim_json_tokener_parse is an OWNED reference like the one from
- * chiaki_shim_json_parse, and goes to chiaki_shim_json_free; NULL means the tokener did not
- * produce one, and chiaki_shim_json_tokener_error says why in json_tokener_error's own numbering.
- */
-CHIAKI_SHIM_API void *chiaki_shim_json_tokener_new(void);
-CHIAKI_SHIM_API void *chiaki_shim_json_tokener_parse(void *tok, const char *text, int32_t len);
-CHIAKI_SHIM_API int32_t chiaki_shim_json_tokener_error(void *tok);
-CHIAKI_SHIM_API void chiaki_shim_json_tokener_reset(void *tok);
-CHIAKI_SHIM_API void chiaki_shim_json_tokener_free(void *tok);
-#endif /* CHIAKI_SHIM_HAVE_JSONC */
 
 /**
  * PP23: the bitstream parser, which is what tells the client what kind of frame just arrived.

@@ -43,7 +43,11 @@ public class RemainingQueriesTests(ITestOutputHelper output)
         // count fell for the right reason, so the floor follows it rather than the prose being
         // padded to keep a number up. What the floor is for is unchanged: a reader returning
         // nothing still fails here.
-        Assert.True(queries.Count >= 2, $"only {queries.Count} query fence(s) read");
+        // PP33: the floor is 1, and it fell for the same reason the stated-count floor did. §PP33
+        // declared the second fence and a ship deletes the section, because rationale for unshipped
+        // work is what IMPROVEMENTS.md holds. A reader returning nothing still fails here, which is
+        // the whole of what the floor is for.
+        Assert.True(queries.Count >= 1, $"only {queries.Count} query fence(s) read");
         Assert.True(stated.Count >= 1, $"only {stated.Count} stated count(s) read");
 
         IReadOnlyList<string> apart = RemainingQueries.Disagreements(root, improvements);
@@ -55,10 +59,15 @@ public class RemainingQueriesTests(ITestOutputHelper output)
     }
 
     /// <summary>
-    /// The two the backlog declares, named - so a third appearing is something somebody reads.
+    /// The one the backlog declares, named - so a second appearing is something somebody reads.
+    ///
+    /// PP33: it was two. Its query counted curl and json-c across lib/src and went with §PP33 when
+    /// the line shipped - the libraries have left the tree, and holepunch.c stays as unbuilt source
+    /// the way gui/ did, so a query still counting its call sites would be measuring a file nothing
+    /// compiles against a criterion nobody holds.
     /// </summary>
     [Fact]
-    public void TheTwoQueriesAreTheTwo()
+    public void TheOneQueryIsPP30s()
     {
         if (Improvements() is not { } improvements)
             return;
@@ -66,7 +75,7 @@ public class RemainingQueriesTests(ITestOutputHelper output)
         IReadOnlyDictionary<string, RemainingQuery> queries = RemainingQueries.Declared(improvements);
 
         Assert.Contains("PP30", queries);
-        Assert.Contains("PP33", queries);
+        Assert.DoesNotContain("PP33", queries);
     }
 
     /// <summary>

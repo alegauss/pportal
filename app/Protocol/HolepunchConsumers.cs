@@ -337,18 +337,22 @@ public static class HolepunchConsumers
     public const string OnlyFileNeedingCurlAndJsonC = @"lib\src\remote\holepunch.c";
 
     /// <summary>
-    /// Whether the CMakeLists still links both, and still builds the one file they are for.
+    /// PP33: whether the CMakeLists has stopped naming all three, which is what the flip did.
     ///
-    /// The measurement is not repeatable in a test - it needs a build with three lines commented
-    /// out. What a test CAN hold is that the tree it was measured on is the tree in front of it:
-    /// change any of these three and the recorded result is about something else.
+    /// The three lines this used to require are gone: the source is not compiled, curl is not
+    /// linked, and json-c is not searched for. The predicate is kept and INVERTED rather than
+    /// deleted, which is PP634's rule - what a model is worth after a deletion is noticing the
+    /// thing coming back, and one deleted with its subject notices nothing.
+    ///
+    /// The measurement it used to protect was PP566's: a build with those three lines commented
+    /// out. That measurement has been superseded by the build itself, which no longer has them.
     /// </summary>
-    public static bool TheMeasuredTreeIsStillThis(string libCMake)
+    public static bool TheThreeAreGoneFromTheBuild(string libCMake)
     {
         ArgumentNullException.ThrowIfNull(libCMake);
 
-        return libCMake.Contains("src/remote/holepunch.c", StringComparison.Ordinal)
-            && libCMake.Contains("target_link_libraries(chiaki-lib CURL::libcurl)", StringComparison.Ordinal)
-            && libCMake.Contains("pkg_search_module(json-c REQUIRED json-c IMPORTED_TARGET)", StringComparison.Ordinal);
+        return !libCMake.Contains("src/remote/holepunch.c", StringComparison.Ordinal)
+            && !libCMake.Contains("target_link_libraries(chiaki-lib CURL::libcurl)", StringComparison.Ordinal)
+            && !libCMake.Contains("pkg_search_module(json-c REQUIRED json-c IMPORTED_TARGET)", StringComparison.Ordinal);
     }
 }

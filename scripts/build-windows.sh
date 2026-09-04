@@ -61,16 +61,11 @@ fi
 # of both: the edit reads as done, the tree reports success, and every existing checkout keeps the
 # dependency. Passed on the command line it overrides the cache on every configure, so what the
 # build does is what this line says rather than what some earlier run decided.
-# PP655: and -DCHIAKI_ENABLE_HOLEPUNCH the same way, for the reason written directly above.
-#
-# It carries holepunch.c, curl, json-c and the shim's two oracles over them, and a cached ON from an
-# earlier configure would keep every one of them in a tree whose author had turned them off. Passed
-# explicitly, what the build does is what this line says.
-#
-#   CHIAKI_ENABLE_HOLEPUNCH=ON compile.cmd    builds PP481's live tests and their libraries
+# PP33: -DCHIAKI_ENABLE_HOLEPUNCH stood here and there is nothing left for it to admit. curl,
+# json-c and the shim's two oracles have left the tree; holepunch.c stays as SOURCE, the way gui/
+# did after PP598, because the port's drift checks read it and nothing builds it.
 cmake -S . -B "$BUILD_DIR" -G Ninja -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
-    -DCHIAKI_ENABLE_GUI="${CHIAKI_ENABLE_GUI:-OFF}" \
-    -DCHIAKI_ENABLE_HOLEPUNCH="${CHIAKI_ENABLE_HOLEPUNCH:-OFF}"
+    -DCHIAKI_ENABLE_GUI="${CHIAKI_ENABLE_GUI:-OFF}"
 
 if [[ $do_build -eq 0 ]]; then
     echo "configure ok: every path the build graph names resolves"

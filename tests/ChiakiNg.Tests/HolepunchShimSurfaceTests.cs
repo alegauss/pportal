@@ -1,4 +1,4 @@
-using ChiakiNg.Session;
+﻿using ChiakiNg.Session;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -24,14 +24,18 @@ public class HolepunchShimSurfaceTests(ITestOutputHelper output)
     /// record is stale rather than quietly wrong.
     /// </summary>
     [Fact]
-    public void TheShimStillCallsEverySymbolTheLinkerNamed()
+    public void TheShimNoLongerCallsAnySymbolTheLinkerNamed()
     {
         if (Shim() is not { } shim)
             return;
 
+        // PP33: the recorded list is a build's output and a build's output is not in the tree, so
+        // this is what keeps it honest either way. It used to say every symbol is still called; it
+        // now says none is, and one coming back is a red line here rather than a library returning
+        // to the link.
         foreach (string symbol in HolepunchShimSurface.UndefinedReferences)
         {
-            Assert.Contains(
+            Assert.DoesNotContain(
                 symbol + "(", shim, StringComparison.Ordinal);
         }
     }
@@ -48,7 +52,7 @@ public class HolepunchShimSurfaceTests(ITestOutputHelper output)
     /// themselves. They agree at ten because each wrapper calls exactly one.
     /// </summary>
     [Fact]
-    public void ThereAreTenWrappersAndTenSymbols()
+    public void TheTenWrappersAreGoneAndTheListOfTenRemains()
     {
         if (Shim() is not { } shim)
             return;
@@ -56,8 +60,12 @@ public class HolepunchShimSurfaceTests(ITestOutputHelper output)
         IReadOnlyList<string> wrappers = HolepunchShimSurface.Wrappers(shim);
         output.WriteLine(string.Join(", ", wrappers));
 
-        Assert.Equal(HolepunchShimSurface.UndefinedReferences.Count, wrappers.Count);
-        Assert.Equal(10, wrappers.Count);
+        Assert.Empty(wrappers);
+
+        // The recorded ten stay, and are still ten. Three places in this tree said nine - it was
+        // nine when PP481 wrote them and PP556 added set_recorded as the tenth - so the number is
+        // kept where it was re-derived rather than where it was typed.
+        Assert.Equal(10, HolepunchShimSurface.UndefinedReferences.Count);
     }
 
     /// <summary>
@@ -98,14 +106,20 @@ public class HolepunchShimSurfaceTests(ITestOutputHelper output)
     public void ACurlSymbolIsRecognisedAndAHolepunchOneIsNot(string symbol, bool deleted)
         => Assert.Equal(deleted, HolepunchShimSurface.IsFromADeletedLibrary(symbol));
 
-    /// <summary>And holepunch.c is still the line the probe comments out.</summary>
+    /// <summary>
+    /// PP33: and the line the probe used to comment out is gone from the build.
+    ///
+    /// PP566's probe measured the deletion by commenting this entry out and building. The build no
+    /// longer has it - which is the measurement's result rather than a way of not taking it - and
+    /// the entry is kept as the string to look for if it ever returns.
+    /// </summary>
     [Fact]
-    public void TheSourceEntryIsStillWhereTheProbeExpectsIt()
+    public void TheSourceEntryHasLeftTheBuild()
     {
         if (SanitizerSource.LocateRelative(HolepunchShimSurface.LibCMakeRelativePath) is not { } path)
             return;
 
-        Assert.Contains(
+        Assert.DoesNotContain(
             HolepunchShimSurface.SourceEntry, File.ReadAllText(path), StringComparison.Ordinal);
     }
 }

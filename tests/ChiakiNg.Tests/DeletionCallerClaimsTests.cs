@@ -50,17 +50,19 @@ public class DeletionCallerClaimsTests
     [Fact]
     public void ALineOmittingTheSeamIsNamed()
     {
+        // PP33 was the silent one here until it shipped, and its claim - "session.c is its only
+        // caller" - is why this rule exists at all. The fixture moves to a line still open rather
+        // than the demonstration going with it.
         const string roadmap = """
-            - 📋 **PP33** (deps: —) **something** — session.c is its only caller. → §PP33
+            - 📋 **PP295** (deps: —) **something** — session.c is its only caller. → §PP295
             - 📋 **PP30** (deps: —) **something** — and the shim is one of them. → §PP30
-            - 📋 **PP295** (deps: —) **something** — the shim wraps five. → §PP295
             """;
 
         IReadOnlyList<string> silent = DeletionCallerClaims.NotNamingTheSeam(roadmap);
 
         Assert.Single(silent);
-        Assert.Contains("PP33", silent[0], StringComparison.Ordinal);
-        Assert.Contains("holepunch.c", silent[0], StringComparison.Ordinal);
+        Assert.Contains("PP295", silent[0], StringComparison.Ordinal);
+        Assert.Contains("the video receiver", silent[0], StringComparison.Ordinal);
     }
 
     /// <summary>

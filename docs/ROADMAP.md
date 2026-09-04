@@ -23,7 +23,6 @@
 
 - ⏳ **PP27** (deps: PP672 ✅, PP673 ✅, PP674 ✅, PP675 ✅, PP676 ⏳, PP677, PP678, PP679, PP680) (requires: console) **takion.c is 2007 lines of C over raw sockets and timers, and the whole stream rides on it** — The nine tasks it waits on are the managed transport; after them, the three files leave the build. → §PP27
 - 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — chiaki_fec_decode has three callers - frameprocessor.c, the C suite and this port's shim - and gf-complete has a fourth site none of them reach: chiaki_lib_init. → §PP30
-- 🛠 **PP33** (deps: PP24 ✅, PP293 ✅, PP340 ✅, PP481 ✅, PP533 ✅) (requires: console) **HTTP and JSON in the core are curl and json-c, two vendored dependencies for what the runtime already does** — the file itself: one file calls it, the shim, and PP481's oracle is what that seam is for. → §PP33
 - 🛠 **PP295** (deps: PP297 ✅, PP696, PP697) **streamconnection.c is 1540 lines and calls the video receiver, so every deletion below waits on it** — Three criteria are met; the fourth is the four files leaving, which waits on the one commit that edits the C and on the shim, whose wrappers outlive it. → §PP295
 - ⏳ **PP671** (deps: PP696) **Fec.Recovers with no decoder named runs the C, so after the flip a default becomes a loader failure** — The managed decoder is the one that stays; the default should follow it on the flip, so the sixty-four recorded cases judge the port alone. → §PP671
 - ⏳ **PP676** (deps: —) **the feedback and mic sends have no managed code, and each places its MAC where packet_mac's table does not look** — feedback.c's v9 and v12 serialisers have no managed counterpart, so no managed bytes exist yet to hold against the C's for a real key and state. → §PP676
@@ -53,30 +52,6 @@
 - ⏳ **PP53** (deps: PP11 ✅, PP41 ✅) (requires: variable-refresh-display) **frames arrive with network jitter and are presented against a fixed refresh, so each waits for a vblank it missed** — the reading itself: a display that varies its refresh, and a trace saying the frame arrived unpaced. → §PP53
 
 ## Block J — Public documentation
-
-## Done when — PP33
-
-- **Every curl and json-c call site in holepunch.c has a named counterpart** The
-  `remaining` query below finds them; each area answered by a class in app/Protocol
-  whose source assertions read the same file. What is not yet answered is named in the
-  criteria under this one, rather than left for the count to imply.
-- **The websocket thread's auto-ACK of offers is stated** The rule is a state mask -
-  auto-ACK while a control offer is received and not yet established, or once a data
-  offer is - and the `continue` on a parse failure skips the enqueue, losing the
-  notification. Both stated, both asserted against the file.
-- **The session HTTP calls run through HttpClient rather than curl** The four session
-  calls and the wakeup reach PSN through HttpClient, with the response codes and the
-  failure paths the curl setup encodes - CURLOPT_FAILONERROR among them, which turns an
-  HTTP error into a transfer error and is not the default anywhere else.
-- **libchiaki builds with neither curl nor json-c** Met by PP663 for the ordinary build:
-  both libraries and holepunch.c sit behind CHIAKI_ENABLE_HOLEPUNCH, off by default and
-  passed explicitly, with the suite green either way. What that flag still carries is
-  PP481's oracle - nine wrappers plus fifteen over json-c - so the FILE stays until
-  those have an answer.
-- **The remaining query reads zero** And not before. The query counts C that porting
-  does not remove, so it reads its full count until the criterion above is met and then
-  reads zero. It is an end state, not a progress bar, and reading it as one is what made
-  four shipped tasks look like none.
 
 ## Done when — PP27
 

@@ -35,7 +35,20 @@ public class ShimSurfaceTests(ITestOutputHelper output)
 
         output.WriteLine($"{imports.Count} imported, {exports.Count} exported");
 
-        string[] missing = [.. imports.Where(one => !exports.Contains(one)).Order()];
+        // PP33: minus the two oracles' wrappers once they have gone. The host still DECLARES them -
+        // NativeJson and NativeHolepunchSession are managed code that compiles either way and is
+        // never called, because every caller asks a guard first - so an import with no export is
+        // expected here and only here. Derived from the same shape questions the guards use, so
+        // this reads the build rather than a list somebody kept.
+        string[] missing =
+        [
+            .. imports
+                .Where(one => !exports.Contains(one))
+                .Where(one => !ChiakiNg.Session.NativeSeam.IsAJsonOracleImport(one))
+                .Where(one => !ChiakiNg.Session.NativeSeam.IsAHolepunchOracleImport(one))
+                .Order(),
+        ];
+
         Assert.True(missing.Length == 0, $"imported and not exported: {string.Join(", ", missing)}");
     }
 

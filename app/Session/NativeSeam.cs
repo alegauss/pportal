@@ -176,6 +176,32 @@ public static partial class NativeSeam
             && name.StartsWith(DeletedLibraryOracles.JsonWrapperPrefix, StringComparison.Ordinal);
     }
 
+    /// <summary>The prefix every holepunch wrapper but one shares.</summary>
+    public const string HolepunchWrapperPrefix = "chiaki_shim_holepunch";
+
+    /// <summary>
+    /// PP33: the same allowance for the holepunch oracle, BY PREFIX for the reason the json one is.
+    ///
+    /// <see cref="ImportsOnlyAHolepunchBuildResolves"/> answers from GoneWhenBare, which is the NINE
+    /// the seam's shape is about - and the host imports eleven. The device id is excluded from that
+    /// list on purpose (PP654 took it off every path the host runs, so its absence is an oracle and
+    /// not a shape) and chiaki_shim_holepunch_address_size is an accessor nobody counted at all.
+    /// Naming a set that has been wrong at nine, ten and eleven is what a prefix avoids.
+    ///
+    /// The shape question is unchanged: this is empty while the seam wraps, so every import is
+    /// checked exactly as before, and covers the wrappers once it does not.
+    /// </summary>
+    public static bool IsAHolepunchOracleImport(string name)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+
+        if (Protocol.ShimHolepunchShape.BareHeader() is null)
+            return false;
+
+        return name.StartsWith(HolepunchWrapperPrefix, StringComparison.Ordinal)
+            || string.Equals(name, Protocol.ShimHolepunchShape.OracleWrapper, StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// THE ONE THAT CRASHES: names the host imports and no header declares.
     ///
@@ -202,6 +228,7 @@ public static partial class NativeSeam
                 .Where(name => !allowed.Contains(name))
                 .Where(name => !framePath.Contains(name))
                 .Where(name => !IsAJsonOracleImport(name))
+                .Where(name => !IsAHolepunchOracleImport(name))
                 .Order(StringComparer.Ordinal),
         ];
     }

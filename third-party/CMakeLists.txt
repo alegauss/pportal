@@ -1,4 +1,4 @@
-
+﻿
 if(NOT CHIAKI_USE_SYSTEM_NANOPB)
 	##################
 	# nanopb
@@ -55,37 +55,8 @@ if(NOT CHIAKI_USE_SYSTEM_JERASURE)
 	add_library(Jerasure::Jerasure ALIAS jerasure)
 endif()
 
-# PP655: and only where holepunch.c is built. Building curl from source is the slowest step this
-# tree has, so the default build stops paying for it as well as stops linking it.
-if(CHIAKI_ENABLE_HOLEPUNCH AND NOT CHIAKI_USE_SYSTEM_CURL)
-	##################
-	# libcurl (with experimental WebSocket support enabled)
-	##################
-	set(BUILD_CURL_EXE OFF)
-	set(BUILD_SHARED_LIBS OFF)
-	set(BUILD_STATIC_LIBS ON)
-	set(BUILD_TESTING OFF)
-	set(BUILD_EXAMPLES OFF)
-	set(CURL_DISABLE_INSTALL ON)
-	set(HTTP_ONLY ON)
-	set(ENABLE_WEBSOCKETS ON)
-	set(USE_SSLEAY ON)
-	set(CURL_USE_SCHANNEL ON)
-	find_package(PkgConfig QUIET)
-	if (PKG_CONFIG_FOUND)
-		pkg_check_modules(PkgLibIdn2 IMPORTED_TARGET GLOBAL libidn2)
-	endif ()
-
-	if (PkgLibIdn2_FOUND)
-		set(LIBIDN2_INCLUDE_DIR ${PkgLibIdn2_INCLUDE_DIRS} CACHE FILEPATH "libidn2 include path")
-		set(LIBIDN2_LIBRARIES ${PkgLibIdn2_LIBRARIES} CACHE STRING "libidn2 libraries")
-		set(LIBIDN2_VERSION ${PkgLibIdn2_VERSION})
-		add_library(Libidn2::Libidn2 ALIAS PkgConfig::PkgLibIdn2)
-		set(Libidn2_FOUND ON)
-	endif()
-	add_subdirectory(curl)
-	# Exported library is CURL::libcurl_static
-endif()
+# PP33: curl is gone. holepunch.c was the only thing in lib/ that called it, and building curl
+# from source was the slowest step this tree had.
 
 if(CHIAKI_ENABLE_STEAM_SHORTCUT)
 	add_subdirectory(cpp-steam-tools)
