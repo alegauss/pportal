@@ -11,6 +11,8 @@
 
 ## Block C — Video and input path
 
+- 📋 **PP700** (deps: —) **every piece of the video path exists and none is joined to a session, so a stream decodes and shows nothing** — The shim's session installs no video callback, chiaki-render calls itself a probe and not a renderer, and no view draws a frame - while Block C reads finished. → §PP700
+
 ## Block D — Screens
 
 ## Block E — Windows-only build
@@ -35,7 +37,7 @@
 - 📋 **PP696** (deps: —) **the frame path's deletion has no commit that edits the C, so four files stay while their ports exist** — PP623's middle step is the only one touching lib, and nobody has written this path's: session.c's asks, the shim's wrappers and the suite's four files all still name them. → §PP696
 - 📋 **PP697** (deps: PP696) **after the frame-path flip the models describe a C that has gone, in the present tense** — PP634 found this on the holepunch side: the predicates stay because they notice the calls coming back, and what goes stale is the prose around them. → §PP697
 - 📋 **PP698** (deps: —) **the echo canceller wants a reference of what is playing and nothing captures the render side** — Filter mode declares two inputs and the second is the speaker signal; WasapiCapture opens capture endpoints only, so the DSP has one of the two it needs. → §PP698
-- 📋 **PP699** (deps: —) **the managed presenter counts no dropped frames, and the only counter left is in the retired Qt client** — PP528 repaired frames_dropped in gui/src/qmlmainwindow.cpp, which PP632 stopped building; this host presents and counts nothing, so PP76's subtraction has one operand. → §PP699
+- ⏳ **PP699** (deps: PP700) **there is no managed presenter to count dropped frames, and the counter that did is in the retired client** — PP528 repaired frames_dropped in the Qt client PP632 stopped building, and nothing here presents a frame to count, so PP76's subtraction has one operand. → §PP699
 
 ## Block G — Test discipline
 
@@ -49,7 +51,7 @@
 
 ## Block I — NVIDIA path
 
-- ⏳ **PP49** (deps: PP11 ✅, PP47 ✅) (requires: console, a-person-looking) **the console sends SDR on most titles and an HDR display shows it flat, with nothing in the client trying** — the quality half and the integration: a decoded console frame to judge the picture on, and a setting that turns it off. → §PP49
+- ⏳ **PP49** (deps: PP11 ✅, PP47 ✅, PP700) (requires: console, a-person-looking) **the console sends SDR on most titles and an HDR display shows it flat, with nothing in the client trying** — the quality half and the integration: a decoded console frame to judge the picture on, and a setting that turns it off. → §PP49
 - ⏳ **PP52** (deps: PP32 ✅, PP652 ✅, PP698) **nothing runs echo cancellation, and the vendor answer is absent on a machine with the card** — Nothing cleans a sample: the in-box DSP takes two inputs in filter mode and the second, a reference of what is playing, has no capture yet. → §PP52
 - ⏳ **PP53** (deps: PP11 ✅, PP41 ✅) (requires: variable-refresh-display) **frames arrive with network jitter and are presented against a fixed refresh, so each waits for a vblank it missed** — the reading itself: a display that varies its refresh, and a trace saying the frame arrived unpaced. → §PP53
 - ⏳ **PP76** (deps: PP528 ✅, PP699) (requires: console, a-person-looking) **the decoder preference is measured on synthetic frames, and drops under network jitter are what a stream is judged by** — The run needs both counters and this host has one: what counted the other was the retired Qt client. → §PP76
@@ -292,6 +294,18 @@
   way qmlmainwindow.cpp did, and one baseline line is written per live session. A
   session that ended on a failed pull carries its remainder rather than discarding it,
   which is PP528's repair kept.
+
+## Done when — PP700
+
+- **One session decodes a console's frames and puts them on screen** The session's video
+  callback reaches a decoder, the decoder's output reaches the composed plane PP319
+  chose, and a person watching says a picture is there. Nothing short of a run settles
+  it, which is the same rule PP22 states about what only a runner can say.
+- **The pieces already measured are used rather than replaced** PP9's renderer, PP131 to
+  PP135's shared surface, PP319 and PP322's composed planes and PP641's overlay sizing
+  are the join's parts. A path that reached the screen around any of them would make
+  four measured decisions dead, and the non-goal against redesigning while porting binds
+  this.
 
 ## Non-goals
 
