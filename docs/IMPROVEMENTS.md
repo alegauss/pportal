@@ -233,30 +233,6 @@ because today the default is what makes those two theories a check on the ORACLE
 cases are the C's own, and a managed default now would silently stop asking the C
 whether it still agrees with its own recording.
 
-### §PP676 Three sends outside the MAC table
-
-Three sends do not go through chiaki_takion_packet_mac, and PP497's table is right to
-know nothing of them. takion_send_feedback_packet takes a key position for the payload
-plus one block, encrypts the body in place at that position plus sixteen, writes the
-position at offset four, computes the GMAC over the whole packet into offset eight, and
-sends raw. The feedback state and the feedback history both funnel through it, one with
-a twelve-byte head over feedback.c's v9 or v12 controller layout, the other with the
-same head over a history payload. The mic packet is the third: a nineteen-byte head,
-twenty on a PS5, the position at fourteen and the MAC at ten.
-
-ALL THREE HOLD THE CIPHER'S LOCK ACROSS THE SEQUENCE, which works because the mutex is
-created recursive; TakionKeyPosition.ReentrantCallSites records the two and the reason.
-A port that made the lock plain deadlocks on the first feedback packet.
-
-Nothing managed writes any of the three, and feedback.c's two serialisers have no
-counterpart either. The primitives are here: StreamAvDispatch.Decrypt is the key-stream
-XOR that encryption also is, Ghash.Tag is the GMAC, GkCrypt holds a session's keys.
-FeedbackState in app/Session is a name collision - PP5's model of the GUI's input
-decisions - and not this packet.
-
-THE ORACLE: the exports exist, so a loopback takion given a GkCrypt built from known
-keys produces the C's bytes for the same state.
-
 ### §PP677 The key state, in managed code
 
 chiaki_key_state_request_pos is the counter every encrypted byte of a session is keyed

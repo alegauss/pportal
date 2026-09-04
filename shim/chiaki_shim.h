@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 43
+#define CHIAKI_SHIM_ABI 44
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -1711,11 +1711,56 @@ CHIAKI_SHIM_API int32_t chiaki_shim_takion_event_count(void *takion);
 /** chiaki_takion_close, which joins the thread, and then the wrapper goes. */
 CHIAKI_SHIM_API void chiaki_shim_takion_close(void *takion);
 
+/**
+ * PP676: feedback.c's serialisers, reachable so the managed ones can be held against them.
+ *
+ * The three sends outside PP497's MAC table carry these payloads, and none of them had a managed
+ * counterpart - so there were no managed bytes to compare. These are the oracle the comparison
+ * needs, and they are pure: no session, no socket, no key. What they format is a controller's
+ * state and a history of its events, and the compression inside the first is where a port goes
+ * quietly wrong.
+ */
+
+/** CHIAKI_FEEDBACK_STATE_BUF_SIZE_V9 and _V12, so the managed side reads them rather than typing them. */
+CHIAKI_SHIM_API int32_t chiaki_shim_feedback_state_size(bool v12);
+
+/**
+ * chiaki_feedback_state_format_v9 or _v12, over ten floats and four sticks.
+ *
+ * @param motion gyro x,y,z then accel x,y,z then orient x,y,z,w - ten floats, in that order.
+ * @param sticks left x,y then right x,y - four int16, in that order.
+ */
+CHIAKI_SHIM_API void chiaki_shim_feedback_state_format(
+		uint8_t *buf, int32_t buf_size, bool v12, const float *motion, const int16_t *sticks);
+
+/** chiaki_feedback_history_event_set_button. Writes up to 5 bytes and the length written. */
+CHIAKI_SHIM_API int32_t chiaki_shim_feedback_history_button(
+		uint64_t button, uint8_t state, uint8_t *out, int32_t *out_len);
+
+/** chiaki_feedback_history_event_set_touchpad, which never fails. */
+CHIAKI_SHIM_API void chiaki_shim_feedback_history_touchpad(
+		bool down, uint8_t pointer_id, uint16_t x, uint16_t y, uint8_t *out, int32_t *out_len);
+
+/**
+ * The ring buffer, driven end to end: init at `size`, push each event in order, format, fini.
+ *
+ * One call because the ORDER is the finding. chiaki_feedback_history_buffer_push moves `begin`
+ * BACKWARDS, so the newest event formats first and a port that appended would send a console its
+ * history reversed. Driving it whole is what puts that in the bytes.
+ *
+ * @param events each event's bytes, laid end to end, `count` of them.
+ * @param lens each event's length, `count` of them.
+ */
+CHIAKI_SHIM_API int32_t chiaki_shim_feedback_history_format(
+		int32_t size, const uint8_t *events, const int32_t *lens, int32_t count,
+		uint8_t *out, int32_t *out_size);
+
 #ifdef __cplusplus
 }
 #endif
 
 #endif // CHIAKI_SHIM_H
+
 
 
 

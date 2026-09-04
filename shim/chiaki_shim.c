@@ -10,6 +10,7 @@
 #include <chiaki/discovery.h>
 #include <chiaki/discoveryservice.h>
 #include <chiaki/ecdh.h>
+#include <chiaki/feedback.h>
 #include <chiaki/fec.h>
 #include <chiaki/ffmpegdecoder.h>
 #include <chiaki/frameprocessor.h>
@@ -3598,3 +3599,120 @@ CHIAKI_SHIM_API void chiaki_shim_takion_close(void *takion)
 }
 
 
+
+/* PP676: feedback.c's serialisers, reachable as an oracle. See the header for why. */
+
+CHIAKI_SHIM_API int32_t chiaki_shim_feedback_state_size(bool v12)
+{
+	return v12 ? CHIAKI_FEEDBACK_STATE_BUF_SIZE_V12 : CHIAKI_FEEDBACK_STATE_BUF_SIZE_V9;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_feedback_state_format(
+		uint8_t *buf, int32_t buf_size, bool v12, const float *motion, const int16_t *sticks)
+{
+	ChiakiFeedbackState state;
+
+	if(!buf || !motion || !sticks)
+		return;
+	if(buf_size < chiaki_shim_feedback_state_size(v12))
+		return;
+
+	state.gyro_x = motion[0];
+	state.gyro_y = motion[1];
+	state.gyro_z = motion[2];
+	state.accel_x = motion[3];
+	state.accel_y = motion[4];
+	state.accel_z = motion[5];
+	state.orient_x = motion[6];
+	state.orient_y = motion[7];
+	state.orient_z = motion[8];
+	state.orient_w = motion[9];
+	state.left_x = sticks[0];
+	state.left_y = sticks[1];
+	state.right_x = sticks[2];
+	state.right_y = sticks[3];
+
+	if(v12)
+		chiaki_feedback_state_format_v12(buf, &state);
+	else
+		chiaki_feedback_state_format_v9(buf, &state);
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_feedback_history_button(
+		uint64_t button, uint8_t state, uint8_t *out, int32_t *out_len)
+{
+	ChiakiFeedbackHistoryEvent event;
+	ChiakiErrorCode err;
+
+	if(!out || !out_len)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+
+	memset(&event, 0, sizeof(event));
+	err = chiaki_feedback_history_event_set_button(&event, button, state);
+	if(err != CHIAKI_ERR_SUCCESS)
+	{
+		*out_len = 0;
+		return (int32_t)err;
+	}
+
+	memcpy(out, event.buf, event.len);
+	*out_len = (int32_t)event.len;
+	return (int32_t)CHIAKI_ERR_SUCCESS;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_feedback_history_touchpad(
+		bool down, uint8_t pointer_id, uint16_t x, uint16_t y, uint8_t *out, int32_t *out_len)
+{
+	ChiakiFeedbackHistoryEvent event;
+
+	if(!out || !out_len)
+		return;
+
+	memset(&event, 0, sizeof(event));
+	chiaki_feedback_history_event_set_touchpad(&event, down, pointer_id, x, y);
+
+	memcpy(out, event.buf, event.len);
+	*out_len = (int32_t)event.len;
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_feedback_history_format(
+		int32_t size, const uint8_t *events, const int32_t *lens, int32_t count,
+		uint8_t *out, int32_t *out_size)
+{
+	ChiakiFeedbackHistoryBuffer buffer;
+	ChiakiFeedbackHistoryEvent event;
+	ChiakiErrorCode err;
+	size_t written;
+	int32_t at = 0;
+	int32_t i;
+
+	if(!events || !lens || !out || !out_size || size <= 0 || count < 0)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+
+	err = chiaki_feedback_history_buffer_init(&buffer, (size_t)size);
+	if(err != CHIAKI_ERR_SUCCESS)
+		return (int32_t)err;
+
+	for(i = 0; i < count; i++)
+	{
+		if(lens[i] < 0 || lens[i] > CHIAKI_HISTORY_EVENT_SIZE_MAX)
+		{
+			chiaki_feedback_history_buffer_fini(&buffer);
+			return (int32_t)CHIAKI_ERR_INVALID_DATA;
+		}
+
+		memset(&event, 0, sizeof(event));
+		memcpy(event.buf, events + at, (size_t)lens[i]);
+		event.len = (size_t)lens[i];
+		at += lens[i];
+
+		chiaki_feedback_history_buffer_push(&buffer, &event);
+	}
+
+	written = (size_t)*out_size;
+	err = chiaki_feedback_history_buffer_format(&buffer, out, &written);
+	*out_size = (int32_t)written;
+
+	chiaki_feedback_history_buffer_fini(&buffer);
+	return (int32_t)err;
+}
