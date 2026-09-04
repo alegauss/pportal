@@ -52,6 +52,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP694** **the microphone's units reach nothing, and libopus's second consumer is why the dependency cannot leave** — Concentus is not bit-exact either way, so an audio port is held to the length and the TOC the protocol reads; and silence encodes to three bytes, which opusencoder.c drops.
 - ✅ **PP698** **the echo canceller wants a reference of what is playing and nothing captures the render side** — The reference is a side of WasapiCapture and not a second class: one flag, the render default at the console role, and the same converter that puts both in the announced units.
 - ✅ **PP702** **senkusha.c calls five takion symbols, so PP27's fourth criterion cannot be met while the file stands** — Senkusha's five calls have counterparts already, so PP27's fourth criterion needs the file's calls answered rather than a port of it - which of the two is still open.
+- ✅ **PP703** **ManagedTakion's video queue is only ever set to null, so one step of its recorded teardown is unreachable** — The dispatch seam hands a MUTABLE datagram, because the C's handler owns the buffer and the AV branch decrypts in it; a read-only view would have cost a copy per packet.
 
 ## Block G — Test discipline
 

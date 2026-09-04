@@ -117,16 +117,25 @@ public sealed class ManagedAvArm : IDisposable
     /// <param name="clock">The monotonic microsecond clock, read where the C reads it.</param>
     /// <param name="stageReceive">takion->stage_receive, or null where nothing is measuring.</param>
     /// <param name="stageReorder">takion->stage_reorder, likewise.</param>
+    /// <param name="ledger">
+    /// PP703: the takion's own key-position ledger, where one owns this arm.
+    ///
+    /// One per takion and not one per arm: the C's is a field of the takion and every parse in the
+    /// session advances the same counter. An arm with a ledger of its own is right for a test and
+    /// wrong for a session, which is why the caller decides.
+    /// </param>
     public ManagedAvArm(
         IAvArmSink sink,
         Func<int, ushort, ReorderQueue?>? videoQueueFactory = null,
         Func<long>? clock = null,
         BaselineStat? stageReceive = null,
-        BaselineStat? stageReorder = null)
+        BaselineStat? stageReorder = null,
+        ManagedKeyState? ledger = null)
     {
         ArgumentNullException.ThrowIfNull(sink);
 
         this.sink = sink;
+        Ledger = ledger ?? new ManagedKeyState();
         this.videoQueueFactory = videoQueueFactory ?? DefaultVideoQueue;
         this.clock = clock ?? Monotonic;
         this.stageReceive = stageReceive;
@@ -141,7 +150,7 @@ public sealed class ManagedAvArm : IDisposable
     public bool V12 { get; set; }
 
     /// <summary>The key-position ledger the parse advances, which is per takion.</summary>
-    public ManagedKeyState Ledger { get; } = new();
+    public ManagedKeyState Ledger { get; }
 
     /// <summary>The video queue, or null until the first video packet opened it.</summary>
     public ReorderQueue? VideoQueue => videoQueue;

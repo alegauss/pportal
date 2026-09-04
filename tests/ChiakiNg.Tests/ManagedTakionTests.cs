@@ -156,6 +156,123 @@ public class ManagedTakionTests(ITestOutputHelper output) : IDisposable
     }
 
     /// <summary>
+    /// PP703: THE STEP THAT COULD NOT HAPPEN. A takion that received video releases its queue.
+    ///
+    /// PP678 recorded six teardown steps and one of them was unreachable: the field for the video
+    /// queue was assigned null in the constructor and null again on connect, so
+    /// VideoQueueInitialised was false for every takion the port could build and no test named the
+    /// step. PP680 built the arm that opens the queue and nothing owned one.
+    ///
+    /// This is the join, asserted where it shows: a takion with a sink for the AV branch, one video
+    /// datagram through the dispatch, and a teardown whose recorded order now CONTAINS the queue -
+    /// between the send buffer and the data queue, which is where the C releases it.
+    /// </summary>
+    [Fact]
+    public void ATakionThatReceivedVideoReleasesItsQueue()
+    {
+        var responder = new TakionHandshakeResponder(0x0000_aaaa, [.. Enumerable.Repeat((byte)0x33, 32)]);
+        Thread answering = AnswerHandshake(responder);
+
+        var sink = new CountingAvSink();
+        var takion = new ManagedTakion(0x0000_4444, av: sink);
+
+        Assert.Equal(ChiakiError.Success, takion.Connect(PeerEndPoint, expectTimeoutMs: 2000).Error);
+        answering.Join(TimeSpan.FromSeconds(5));
+
+        Assert.False(takion.VideoQueueInitialised);
+
+        ((ITakionLoopHost)takion).Dispatch(VideoDatagram());
+
+        Assert.True(takion.VideoQueueInitialised, "one video datagram did not open a queue");
+        Assert.NotNull(takion.AvArm);
+
+        takion.Dispose();
+
+        Assert.Equal(
+            [
+                TakionTeardownStep.SendBuffer,
+                TakionTeardownStep.VideoQueue,
+                TakionTeardownStep.DataQueue,
+                TakionTeardownStep.Disconnected,
+                TakionTeardownStep.Socket,
+            ],
+            takion.Teardown);
+    }
+
+    /// <summary>
+    /// And a takion that received none does NOT release one, which is the C's own guard.
+    ///
+    /// Both halves, because a step appended unconditionally would satisfy the test above and say
+    /// something false about every session that never carried video.
+    /// </summary>
+    [Fact]
+    public void ATakionThatReceivedNoVideoReleasesNoQueue()
+    {
+        var responder = new TakionHandshakeResponder(0x0000_bbbb, [.. Enumerable.Repeat((byte)0x44, 32)]);
+        Thread answering = AnswerHandshake(responder);
+
+        var takion = new ManagedTakion(0x0000_5555, av: new CountingAvSink());
+        Assert.Equal(ChiakiError.Success, takion.Connect(PeerEndPoint, expectTimeoutMs: 2000).Error);
+        answering.Join(TimeSpan.FromSeconds(5));
+
+        takion.Dispose();
+
+        Assert.DoesNotContain(TakionTeardownStep.VideoQueue, takion.Teardown);
+    }
+
+    /// <summary>
+    /// PP703's other half: the poll timeout comes from the AV queues once there are any.
+    ///
+    /// ManagedTakion carried the property and a comment saying it was "set by whoever drives the AV
+    /// queues", and nobody did. A queue waiting for a missing head asks for the rest of its budget;
+    /// with no queue the takion falls back to the value it has always used.
+    /// </summary>
+    [Fact]
+    public void ThePollTimeoutComesFromTheAvQueuesOnceThereAreAny()
+    {
+        var responder = new TakionHandshakeResponder(0x0000_cccc, [.. Enumerable.Repeat((byte)0x55, 32)]);
+        Thread answering = AnswerHandshake(responder);
+
+        var takion = new ManagedTakion(0x0000_6666, av: new CountingAvSink());
+        Assert.Equal(ChiakiError.Success, takion.Connect(PeerEndPoint, expectTimeoutMs: 2000).Error);
+        answering.Join(TimeSpan.FromSeconds(5));
+
+        Assert.Equal((ulong)ManagedTakion.IdleTimeoutMs, takion.NextTimeoutMs);
+
+        // Packet index 40 at unit 8 opens the queue at 32, so the head is missing and the queue
+        // starts waiting for it - which is the only state that asks for a shorter poll.
+        ((ITakionLoopHost)takion).Dispatch(VideoDatagram(packetIndex: 40, unitIndex: 8));
+
+        Assert.InRange(takion.NextTimeoutMs, 1UL, (ulong)ManagedTakion.IdleTimeoutMs);
+
+        takion.Dispose();
+    }
+
+    /// <summary>A sink that counts, because what the arm delivers is PP680's subject and not this one's.</summary>
+    private sealed class CountingAvSink : IAvArmSink
+    {
+        public int Packets { get; private set; }
+
+        public void Av(in AvPacket packet, Span<byte> datagram) => Packets++;
+    }
+
+    /// <summary>One video datagram long enough for the v9 parse, with chosen indices.</summary>
+    private static byte[] VideoDatagram(ushort packetIndex = 7, ushort unitIndex = 0)
+    {
+        var datagram = new byte[40];
+        datagram[0] = (byte)TakionDispatch.Video;
+
+        for (var i = 1; i < datagram.Length; i++)
+            datagram[i] = (byte)(i + 0x10);
+
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt16BigEndian(datagram.AsSpan(1), packetIndex);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(
+            datagram.AsSpan(5), (uint)unitIndex << 0x15);
+
+        return datagram;
+    }
+
+    /// <summary>
     /// A handshake that never answers releases nothing it never made, and still closes its socket.
     ///
     /// The C's `goto beach` skips all three finis, which is why the postpone release and the socket

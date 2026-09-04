@@ -237,7 +237,7 @@ public class TakionReceivePathTests
         public TakionReceiveResult Receive(Span<byte> into, ulong timeoutMs)
             => new(TakionReceiveOutcome.Datagram, 16);
 
-        public void Dispatch(ReadOnlySpan<byte> datagram)
+        public void Dispatch(Span<byte> datagram)
         {
         }
     }

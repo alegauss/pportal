@@ -282,31 +282,6 @@ What makes this its own line rather than part of the flip is PP623's own discipl
 flip edits `lib/` and no test file, so every prose change waits for a green tree after
 it. Doing both at once is the thing that plan exists to prevent.
 
-### §PP703 The takion that has no AV arm
-
-PP678 recorded takion's teardown as a list, because an order is not visible in a Dispose
-that works. One of its six steps is the video queue, and ManagedTakion's field for it is
-assigned in two places: null in the constructor and null again on connect. So
-VideoQueueInitialised is false for every takion the port can build, that step is never
-appended, and no test names it.
-
-PP680 built what fills it. ManagedAvArm opens the queue on its first video packet, seeds
-it at packet_index minus unit_index, holds the entries and disposes of the queue the way
-chiaki_reorder_queue_fini does - and it is constructed by tests and by nothing else.
-
-WHAT THIS IS is the join: the takion owns an arm, the dispatch's video and audio
-branches reach it, and the teardown releases the arm's queue at the step already
-reserved. NextTimeoutMs is the same join's other half - ManagedTakion carries the
-property and a comment saying "set by whoever drives the AV queues", and the arm is now
-who that is.
-
-WHAT IT IS NOT is a second composition. Neither side needs new behaviour; what is
-missing is that they have never been introduced, which is why this is worth writing down
-rather than doing incidentally inside the next line to touch either.
-
-The assertion it owes is a teardown whose recorded order CONTAINS the video queue, over
-a takion that received one video packet.
-
 ### §PP706 Four pieces of a microphone and no path
 
 Every part of the upstream audio path exists in managed code and none of them has met

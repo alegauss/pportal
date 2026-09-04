@@ -88,9 +88,10 @@ public sealed class ManagedTakion : ITakionLoopHost, IDisposable
     private readonly List<byte[]> postponed = [];
     private readonly Action<ReadOnlySpan<byte>>? dispatch;
 
+    private readonly ManagedAvArm? avArm;
+
     private TakionUdpWire? wire;
     private ReorderQueue? dataQueue;
-    private ReorderQueue? videoQueue;
     private TakionSendBuffer? sendBuffer;
 
     /// <param name="tagLocal">
@@ -103,11 +104,25 @@ public sealed class ManagedTakion : ITakionLoopHost, IDisposable
     /// bytes must copy them itself - which is where a per-datagram allocation would come from and
     /// why it is the caller's to make.
     /// </param>
-    public ManagedTakion(uint tagLocal, Action<ReadOnlySpan<byte>>? dispatch = null)
+    /// <param name="av">
+    /// PP703: where the AV branch goes, which is what gives this takion a video queue at all.
+    ///
+    /// Optional, and its absence is the state PP678 shipped in: the arm exists, nothing owned one,
+    /// so <see cref="VideoQueueInitialised"/> was false for every takion the port could build and
+    /// the teardown step reserved for the queue was never appended. With a sink there is an arm, and
+    /// the arm opens the queue on its first video packet.
+    /// </param>
+    public ManagedTakion(
+        uint tagLocal, Action<ReadOnlySpan<byte>>? dispatch = null, IAvArmSink? av = null)
     {
         Handshake = new TakionHandshakeClient(tagLocal);
         SeqNumLocal = tagLocal;
         this.dispatch = dispatch;
+
+        // The takion's own ledger, not one of the arm's: the C's key state is a field of the takion
+        // and every parse in the session advances the same counter.
+        if (av is not null)
+            avArm = new ManagedAvArm(av, ledger: Ledger);
     }
 
     /// <summary>The handshake, which owns both tags.</summary>
@@ -138,7 +153,13 @@ public sealed class ManagedTakion : ITakionLoopHost, IDisposable
     public bool OwnsSocket { get; private set; }
 
     /// <summary>Whether the video queue was ever initialised, which the teardown reads.</summary>
-    public bool VideoQueueInitialised => videoQueue is not null;
+    public bool VideoQueueInitialised => avArm?.VideoQueue is not null;
+
+    /// <summary>The AV branch, or null where this takion was built without a sink for one.</summary>
+    public ManagedAvArm? AvArm => avArm;
+
+    /// <summary>How long a receive waits when no AV queue is asking for less.</summary>
+    public const int IdleTimeoutMs = 1000;
 
     /// <summary>The data queue, or null before the handshake seeded it.</summary>
     public ReorderQueue? DataQueue => dataQueue;
@@ -151,8 +172,15 @@ public sealed class ManagedTakion : ITakionLoopHost, IDisposable
 
     bool ITakionLoopHost.HasPostponed => postponed.Count > 0;
 
-    /// <summary>How long the next receive may wait. Set by whoever drives the AV queues.</summary>
-    public ulong NextTimeoutMs { get; set; } = 1000;
+    /// <summary>
+    /// How long the next receive may wait.
+    ///
+    /// PP703: the AV arm is who drives it now, which is what the comment here used to be waiting
+    /// for. It is re-read after every dispatch and every flush - the C asks the queues at the top of
+    /// each pass - and falls back to <see cref="IdleTimeoutMs"/> whenever the queues are not waiting
+    /// for anything, so a takion with no arm behaves exactly as it did.
+    /// </summary>
+    public ulong NextTimeoutMs { get; set; } = IdleTimeoutMs;
 
     /// <summary>How many times the loop re-checked the queued MACs.</summary>
     public int Rechecks { get; private set; }
@@ -178,10 +206,13 @@ public sealed class ManagedTakion : ITakionLoopHost, IDisposable
         // Zeroed on the thread that will fill them, so a takion reused for a second session does
         // not open with the first one's tail. Kept because the C keeps it, even where a fresh
         // object makes it redundant - the C reuses the struct and this records why.
+        // PP703: the video queue is not among them any more, and that is the C's shape rather than
+        // an omission. takion_thread_func zeroes video_queue_initialized because the STRUCT is
+        // reused; an arm is an object, and one that has opened a queue is not the one a second
+        // connect gets - so a takion reused after a stream would need a new arm, not a cleared flag.
         Dispatched = 0;
         Rechecks = 0;
         Flushes = 0;
-        videoQueue = null;
 
         Stage = TakionStage.Connecting;
         wire = TakionUdpWire.Connect(peer);
@@ -228,7 +259,15 @@ public sealed class ManagedTakion : ITakionLoopHost, IDisposable
         postponed.Clear();
     }
 
-    void ITakionLoopHost.FlushWithTimeout() => Flushes++;
+    void ITakionLoopHost.FlushWithTimeout()
+    {
+        Flushes++;
+
+        // takion_av_queues_flush_with_timeout, which is a no-op before the first video packet
+        // because the C guards it on video_queue_initialized.
+        avArm?.FlushWithTimeout();
+        RefreshTimeout();
+    }
 
     TakionReceiveResult ITakionLoopHost.Receive(Span<byte> into, ulong timeoutMs)
     {
@@ -245,10 +284,38 @@ public sealed class ManagedTakion : ITakionLoopHost, IDisposable
         };
     }
 
-    void ITakionLoopHost.Dispatch(ReadOnlySpan<byte> datagram)
+    void ITakionLoopHost.Dispatch(Span<byte> datagram)
     {
         Dispatched++;
         dispatch?.Invoke(datagram);
+
+        // PP703: and the AV branch, which is what an arm is FOR. The dispatch above stays: it is
+        // the hook a caller passes to watch everything, and this is the one branch that acts.
+        if (avArm is { } arm && !datagram.IsEmpty)
+        {
+            int baseType = TakionDispatch.BaseTypeOf(datagram);
+
+            if (baseType is TakionDispatch.Video or TakionDispatch.Audio)
+                arm.Handle(baseType, datagram);
+        }
+
+        RefreshTimeout();
+    }
+
+    /// <summary>
+    /// Ask the AV queues how long the next receive may wait, as the C's loop does each pass.
+    ///
+    /// UINT64_MAX from the queues means nothing is waiting, and the C's thread then blocks on the
+    /// socket alone. This port's loop is bounded rather than blocking, so that case falls back to
+    /// <see cref="IdleTimeoutMs"/> - the value every takion here has always used.
+    /// </summary>
+    private void RefreshTimeout()
+    {
+        if (avArm is not { } arm)
+            return;
+
+        ulong next = arm.NextTimeoutMs();
+        NextTimeoutMs = next == ulong.MaxValue ? IdleTimeoutMs : next;
     }
 
     /// <summary>
@@ -271,10 +338,11 @@ public sealed class ManagedTakion : ITakionLoopHost, IDisposable
             teardown.Add(TakionTeardownStep.SendBuffer);
         }
 
-        if (videoQueue is not null)
+        // PP703: and only where a video packet opened one, which is the C's own guard - the step is
+        // conditional because a session that never received video has no queue to release.
+        if (avArm is not null && VideoQueueInitialised)
         {
-            videoQueue.Dispose();
-            videoQueue = null;
+            avArm.Dispose();
             teardown.Add(TakionTeardownStep.VideoQueue);
         }
 

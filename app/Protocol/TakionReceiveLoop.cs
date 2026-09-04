@@ -84,7 +84,7 @@ public interface ITakionLoopHost
     TakionReceiveResult Receive(Span<byte> into, ulong timeoutMs);
 
     /// <summary>Hand a datagram to the handler.</summary>
-    void Dispatch(ReadOnlySpan<byte> datagram);
+    void Dispatch(Span<byte> datagram);
 }
 
 /// <summary>
@@ -183,7 +183,7 @@ public static class TakionReceiveLoop
                 return new TakionLoopOutcome(trace, iterations, true, false);
 
             buffer.Received(result.Length);
-            host.Dispatch(buffer.Datagram);
+            host.Dispatch(buffer.Writable);
             trace.Add(TakionLoopStep.Dispatch);
         }
     }

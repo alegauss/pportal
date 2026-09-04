@@ -152,7 +152,7 @@ public class TakionDatagramReadTests
             return new TakionReceiveResult(TakionDatagramRead.ForTheLoop(read.Result), read.Length);
         }
 
-        public void Dispatch(ReadOnlySpan<byte> datagram) => Dispatches++;
+        public void Dispatch(Span<byte> datagram) => Dispatches++;
     }
 
     /// <summary>

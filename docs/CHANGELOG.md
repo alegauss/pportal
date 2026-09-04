@@ -634,6 +634,7 @@
 - ✅ **PP698** **the echo canceller wants a reference of what is playing and nothing captures the render side** — The render endpoint opens as a capture with one flag more, and a tone played into it comes back in the microphone's own units; a quiet one reads as PP695's silence.
   checked **A loopback client reads what the render endpoint is playing** The default render endpoint opens with the loopback flag and delivers units in the same format the capture does. A silent endpoint producing nothing rather than silence reads as PP695's state instead of as a working stream, which is the behaviour Windows documents and this port already knows how to notice.
 - ✅ **PP702** **senkusha.c calls five takion symbols, so PP27's fourth criterion cannot be met while the file stands** — The five are read out of senkusha.c and each resolves to a managed member; a sixth would fail by name, because the reader matches takion's whole namespace.
+- ✅ **PP703** **ManagedTakion's video queue is only ever set to null, so one step of its recorded teardown is unreachable** — A takion given a sink owns an arm, so one video datagram opens the queue and the teardown step reserved for it is appended where the C releases it.
 
 ## Block G — Test discipline
 

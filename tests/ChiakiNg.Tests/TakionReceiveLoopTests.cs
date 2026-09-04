@@ -65,7 +65,7 @@ public class TakionReceiveLoopTests
             return result;
         }
 
-        public void Dispatch(ReadOnlySpan<byte> datagram) => Dispatched.Add(datagram.ToArray());
+        public void Dispatch(Span<byte> datagram) => Dispatched.Add(datagram.ToArray());
     }
 
     /// <summary>A failed receive is the loop's only exit, which is how the thread ends.</summary>

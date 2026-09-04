@@ -64,6 +64,16 @@ public sealed partial class TakionReceiveBuffer : IDisposable
     /// <summary>The datagram itself - what the C's realloc'd pointer stood for.</summary>
     public ReadOnlySpan<byte> Datagram => Rented.AsSpan(0, _length);
 
+    /// <summary>
+    /// PP703: the same bytes, mutable, which is what the dispatch is handed.
+    ///
+    /// The C's handler takes <c>uint8_t *</c> and the AV branch takes ownership of it, so a port
+    /// that could only offer a read-only view would have to copy before the one branch that decrypts
+    /// in place. Separate from <see cref="Datagram"/> rather than replacing it: a reader that only
+    /// reads should say so, and every other caller here is one.
+    /// </summary>
+    public Span<byte> Writable => Rented.AsSpan(0, _length);
+
     private byte[] Rented =>
         _rented ?? throw new ObjectDisposedException(nameof(TakionReceiveBuffer));
 
