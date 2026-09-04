@@ -68,6 +68,22 @@ public sealed class WasapiCapture : IDisposable
     /// <summary>The device's name, once one is open.</summary>
     public string DeviceName { get; private set; } = string.Empty;
 
+    /// <summary>When the pump started, which is what makes silence measurable.</summary>
+    private long startedAt;
+
+    /// <summary>How long the capture has been running.</summary>
+    public TimeSpan RunningFor
+        => pump is null ? TimeSpan.Zero : System.Diagnostics.Stopwatch.GetElapsedTime(Volatile.Read(ref startedAt));
+
+    /// <summary>
+    /// PP695: whether the endpoint is actually speaking, which is not whether it opened.
+    ///
+    /// A Bluetooth headset in its music profile has no microphone, and opening the capture endpoint
+    /// is only meant to make Windows switch. When it does not, everything here reports success and
+    /// no audio arrives - so this is the reading a host acts on.
+    /// </summary>
+    public CaptureHealth Health => CaptureSilence.Judge(pump is not null, RunningFor, UnitsCaptured);
+
     /// <summary>A capture that hands whole units to <paramref name="sink"/>.</summary>
     public WasapiCapture(Action<ReadOnlySpan<byte>> sink)
     {
@@ -219,6 +235,8 @@ public sealed class WasapiCapture : IDisposable
             LastError = client.Start();
             if (LastError != 0)
                 return CaptureResult.Refused;
+
+            Volatile.Write(ref startedAt, System.Diagnostics.Stopwatch.GetTimestamp());
 
             pump = new Thread(Pump)
             {

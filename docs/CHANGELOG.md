@@ -598,6 +598,8 @@
   checked **The header's whole surface is modelled, and every includer is placed** fec.h carries a constant and an export. Each of its six includers is read from the tree and placed as a decode caller, a constant-only user, or an includer of neither, and a file that changed which it is fails. The gf-complete init site is named by file and function.
   checked **What keeps gf-complete linked is asserted from the source, not from the count** galois_init_default_field has exactly one call site in the tree and it is not in fec.c. The check sweeps lib, shim and test for it rather than trusting the list, so a second caller appearing fails, and so does the day common.c stops being the one.
 - ✅ **PP652** **four subsystems carry the microphone and nothing in the host opens a capture device** — WasapiCapture opens the default communications endpoint and delivers 100 units a second of the announced format; the resample the spike implied is Windows's, not the port's.
+- ✅ **PP695** **the capture opens the default endpoint and a Bluetooth headset answers with silence, reporting success** — The capture reads its own clock and counter, so an endpoint that opened and never spoke is a named state with advice; the two-second grace sits between a 222ms success and a 30s silence.
+  checked **A capture that opens and stays silent is a state the host reports** The capture knows how long it has been running and how many units it has delivered, so silence past a threshold is a reading rather than a guess. It surfaces as a state a caller can act on, and a test drives it without a device by holding the clock.
 
 ## Block G — Test discipline
 

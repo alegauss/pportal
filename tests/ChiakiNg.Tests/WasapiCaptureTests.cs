@@ -206,6 +206,37 @@ public class WasapiCaptureTests(ITestOutputHelper output, CapturedMicrophone mic
         Assert.InRange(rate, announced * 0.5, announced * 2.0);
     }
 
+    /// <summary>
+    /// PP695: the capture reports its own health, and a streaming endpoint reads as streaming.
+    ///
+    /// The silent case is judged without a device in CaptureSilenceTests, because reproducing it
+    /// needs a Bluetooth headset in the wrong profile. What this holds is the join: the capture's
+    /// own clock and counter reach the judgement, so Health is a reading rather than a field
+    /// somebody has to remember to set.
+    /// </summary>
+    [Fact]
+    public void AStreamingCaptureReadsAsStreaming()
+    {
+        if (microphone.Capture is not { } capture || microphone.Started is not CaptureResult.Running)
+            return;
+
+        output.WriteLine($"{capture.Health} after {capture.RunningFor.TotalMilliseconds:F0} ms");
+
+        Assert.Equal(CaptureHealth.Streaming, capture.Health);
+        Assert.True(capture.RunningFor > TimeSpan.Zero, "the capture is running and its clock says zero");
+        Assert.Null(CaptureSilence.Advice(capture.Health, capture.DeviceName));
+    }
+
+    /// <summary>And a capture that never started is Stopped rather than silent.</summary>
+    [Fact]
+    public void ACaptureThatNeverStartedIsStopped()
+    {
+        using var capture = new WasapiCapture(_ => { });
+
+        Assert.Equal(CaptureHealth.Stopped, capture.Health);
+        Assert.Equal(TimeSpan.Zero, capture.RunningFor);
+    }
+
     /// <summary>And the counter agrees with what the sink was handed.</summary>
     [Fact]
     public void TheCounterAgreesWithTheSink()
