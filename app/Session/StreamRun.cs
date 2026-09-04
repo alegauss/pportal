@@ -34,6 +34,18 @@ public static class StreamRun
     /// <summary>And the receiver's own total, which is the second.</summary>
     public static int Lost { get; private set; }
 
+    /// <summary>PP76: decoded frames the pull's own drain threw away, which the C counts nowhere.</summary>
+    public static int Superseded { get; private set; }
+
+    /// <summary>
+    /// PP76: what the decoder had produced AT THE MOMENT the loop stopped.
+    ///
+    /// Read there rather than after, because the session keeps decoding until it is stopped and a
+    /// total taken later counts frames the reader was never offered. Five of them, in the run that
+    /// found this - a residue small enough to look like rounding and misleading for that reason.
+    /// </summary>
+    public static ulong DecodedAtExit { get; private set; }
+
     /// <summary>
     /// Open a window and run one session into it, returning when the window closes.
     /// </summary>
@@ -144,6 +156,9 @@ public static class StreamRun
             return 1;
         }
 
+        // PP76: armed before the start, so no frame is decoded while the reader is still asleep.
+        decoder.SignalWhenReady();
+
         using var connected = new ManualResetEventSlim(false);
         using var quit = new ManualResetEventSlim(false);
 
@@ -175,23 +190,18 @@ public static class StreamRun
         clock.Stop();
         session.Stop();
 
-        // PP699: four numbers, and the gap between the first two is NOT one of the losses.
-        //
-        // FramesAvailable counts the decoder's callback firing; the pull takes the newest frame, so
-        // a loop that polls can be handed one frame where two became ready. Those superseded frames
-        // are the LOOP's and not the decoder's, and calling them dropped would measure this poll
-        // interval under a decoder's name - which is the confound PP76 exists to avoid.
-        //
-        // So they are named separately. The Qt client pulls from the frame-available callback and
-        // has no such gap; closing it here is PP76's to decide, because it moves a download onto
-        // libchiaki's own thread.
-        long unpulled = (long)decoder.FramesAvailable - drawn - Counted.Dropped;
+        // PP76: every decoded frame is now in exactly one column, which is what makes the last
+        // number the decoder's rather than this loop's. FrameLedger holds the arithmetic and the
+        // three ways it was got wrong; a residue here is printed rather than left for a reader to
+        // subtract out and wonder about.
+        long residue = FrameLedger.Residue((long)DecodedAtExit, drawn, Counted.Dropped, Lost);
 
         Console.WriteLine(
-            $"[stream] {decoder.FramesAvailable} decoded, {drawn} shown, "
-                + $"{Lost} lost by the network, {Counted.Dropped} dropped, "
+            $"[stream] {DecodedAtExit} decoded, {drawn} shown, "
+                + $"{Lost} lost by the network, {Superseded} superseded by the pull's drain, "
+                + $"{Counted.Dropped} dropped, "
                 + $"{Counted.DecoderDropsAgainst(Lost)} attributable to the decoder"
-                + (unpulled > 0 ? $", {unpulled} superseded before this loop pulled them" : string.Empty));
+                + (residue != 0 ? $", {residue} unaccounted" : string.Empty));
 
         RecordBaseline(decoderName, started, clock.Elapsed);
 
@@ -234,6 +244,14 @@ public static class StreamRun
                 Lost += frame.FramesLost;
                 Counted.Lost(frame.FramesLost);
 
+                // PP76: the frames the drain threw away, COUNTED rather than inferred. They decoded
+                // and nobody will ever see them, which is what frames_dropped means - and the shim
+                // is the only place the number exists, because the C's drain counts nothing.
+                for (int i = 0; i < frame.Superseded; i++)
+                    Counted.Discard();
+
+                Superseded += frame.Superseded;
+
                 if (!pulled)
                 {
                     // A frame that arrived and cannot be shown is a DISCARD; no frame at all is
@@ -241,7 +259,12 @@ public static class StreamRun
                     if (frame.Width > 0)
                         Counted.Discard();
 
-                    Thread.Sleep(2);
+                    // PP76: WAIT for the decoder rather than sleeping past it. The pull drains the
+                    // codec and keeps only the last, counting none of the rest - so every tick this
+                    // loop spends asleep is frames it can lose without anything saying so. The
+                    // timeout is a liveness bound and not a poll: it exists so a session that
+                    // stopped decoding still notices the quit.
+                    decoder.Ready.WaitOne(TimeSpan.FromMilliseconds(50));
                     continue;
                 }
 
@@ -284,6 +307,11 @@ public static class StreamRun
                     Counted.Discard();
             }
 
+            // Both totals of one instant, and both of one clock. The session decodes on for as
+            // long as it takes to stop, so a count read after this is of frames the reader was
+            // never offered - and FramesDecoded rather than FramesAvailable, because only the
+            // former advances on this thread and can be equal to what this thread did with it.
+            DecodedAtExit = decoder.FramesDecoded;
             return (int)(presentation?.Shown ?? 0);
         }
         finally

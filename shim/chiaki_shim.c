@@ -483,6 +483,33 @@ typedef struct chiaki_shim_decoder_t
 	 * on. Reproducing it rather than avoiding it keeps the cost where the measurement put it.
 	 */
 	AVFrame *downloaded;
+
+	/*
+	 * PP76: signalled when a frame becomes available, so a reader waits rather than polls.
+	 *
+	 * Borrowed - the managed side owns the handle and closes it. Held as a raw HANDLE because the
+	 * only thing done with it is SetEvent, which is what makes this safe to call from libchiaki's
+	 * thread.
+	 */
+	HANDLE ready;
+
+	/*
+	 * PP76: what the CODEC's own frame counter stood at when the last pull ran.
+	 *
+	 * The difference is exactly what the drain swallowed. chiaki_ffmpeg_decoder_pull_frame keeps
+	 * only the last frame and counts none of the rest, so nothing downstream can tell how many
+	 * there were - but avcodec_receive_frame does, in AVCodecContext::frame_num, and the drain
+	 * calls it once per frame it throws away.
+	 *
+	 * NOT frames_available, which was tried first and cannot close. That counter is the
+	 * PRODUCER's, written from libchiaki's thread; sampling it around a drain this thread runs
+	 * races the drain both ways - read before, and a frame that arrives mid-drain is returned
+	 * without ever entering a difference; read after, and the same frame is charged as swallowed
+	 * and then returned by the next pull, counted twice. Measured, that leaked a frame or two a
+	 * session in whichever direction the sampling leaned. frame_num has no such race: it advances
+	 * only inside the drain, which only this thread calls.
+	 */
+	int64_t consumed_at_last_pull;
 } chiaki_shim_decoder;
 
 typedef struct chiaki_shim_session_t
@@ -496,12 +523,30 @@ typedef struct chiaki_shim_session_t
 	chiaki_shim_decoder *decoder;
 } chiaki_shim_session;
 
+/*
+ * PP76: the reader is WOKEN rather than left to poll.
+ *
+ * chiaki_ffmpeg_decoder_pull_frame drains the codec and returns only the last - its own comment
+ * says "always try to pull as much as possible and return only the very last frame" - and it counts
+ * none of the ones it throws away. So a reader that polls accumulates frames between its own ticks
+ * and loses them silently, which measures its interval under the decoder's name. The Qt client
+ * pulls from this callback and has no such gap.
+ *
+ * A Win32 event and not a managed callback. This runs on libchiaki's own thread, and SetEvent is a
+ * syscall that cannot throw, cannot allocate and cannot enter a runtime - which a delegate crossing
+ * the seam here would do sixty times a second inside the packet path.
+ */
 static void chiaki_shim_frame_available(ChiakiFfmpegDecoder *decoder, void *user)
 {
 	chiaki_shim_decoder *self = (chiaki_shim_decoder *)user;
 	(void)decoder;
-	if(self)
-		self->frames_available++;
+	if(!self)
+		return;
+
+	self->frames_available++;
+
+	if(self->ready)
+		SetEvent(self->ready);
 }
 
 static void chiaki_shim_session_dispatch(ChiakiEvent *event, void *user)
@@ -627,15 +672,18 @@ CHIAKI_SHIM_API bool chiaki_shim_decoder_pull(
 		int32_t *out_w, int32_t *out_h,
 		uint8_t **out_luma, int32_t *out_luma_stride,
 		uint8_t **out_chroma, int32_t *out_chroma_stride,
-		int32_t *out_format, int32_t *out_lost)
+		int32_t *out_format, int32_t *out_lost, int32_t *out_superseded)
 {
 	chiaki_shim_decoder *self = (chiaki_shim_decoder *)decoder;
 	ChiakiFfmpegFrame pulled;
 	int32_t lost = 0;
 	AVFrame *shown;
+	int64_t consumed;
 
 	if(out_lost)
 		*out_lost = 0;
+	if(out_superseded)
+		*out_superseded = 0;
 	if(!self)
 		return false;
 
@@ -647,6 +695,30 @@ CHIAKI_SHIM_API bool chiaki_shim_decoder_pull(
 
 	if(out_lost)
 		*out_lost = lost;
+
+	/*
+	 * PP76: how many the drain swallowed, read off the codec once it has.
+	 *
+	 * frame_num is every frame avcodec_receive_frame has handed back. The drain calls it in a
+	 * loop and keeps the last - its own comment says "return only the very last frame" - so the
+	 * frames it advanced past, less the one it returned, are decoded frames nobody will ever see.
+	 * That is exactly the C's frames_dropped, and this is the only place the number exists.
+	 *
+	 * ONE IS SUBTRACTED ONLY WHEN ONE IS RETURNED: a codec that has not filled its reorder window
+	 * returns nothing for the first several packets, and charging it for a frame it never handed
+	 * over leaves a decoded frame in no column at all.
+	 */
+	consumed = self->decoder.codec_context ? self->decoder.codec_context->frame_num : 0;
+
+	if(out_superseded && consumed > self->consumed_at_last_pull)
+	{
+		int64_t swallowed =
+				consumed - self->consumed_at_last_pull - (pulled.frame ? 1 : 0);
+		if(swallowed > 0)
+			*out_superseded = (int32_t)swallowed;
+	}
+
+	self->consumed_at_last_pull = consumed;
 
 	if(!pulled.frame)
 		return false;
@@ -726,11 +798,40 @@ CHIAKI_SHIM_API bool chiaki_shim_session_set_decoder(void *session, void *decode
 	return true;
 }
 
+/*
+ * PP76: the event to set when a frame is ready, or NULL to stop signalling.
+ *
+ * Borrowed. The caller owns the handle and closes it, and must clear this before doing so - a
+ * decoder signalling a closed handle is the one way this can crash rather than merely stop working.
+ */
+CHIAKI_SHIM_API void chiaki_shim_decoder_set_ready_event(void *decoder, void *event)
+{
+	chiaki_shim_decoder *self = (chiaki_shim_decoder *)decoder;
+	if(self)
+		self->ready = (HANDLE)event;
+}
+
 /** How many times the decoder said a frame was ready. */
 CHIAKI_SHIM_API uint64_t chiaki_shim_decoder_frames_available(void *decoder)
 {
 	chiaki_shim_decoder *self = (chiaki_shim_decoder *)decoder;
 	return self ? self->frames_available : 0;
+}
+
+/**
+ * PP76: frames the codec has actually handed back, which is the total a reader can account for.
+ *
+ * NOT frames_available, which counts the callback and is therefore what the decoder PRODUCED. The
+ * gap between them is frames still inside the codec, and a comparison that reads the produced
+ * total against what a reader shows and discards can never close: it is subtracting two clocks.
+ * This is the one the shown-plus-swallowed identity is written against.
+ */
+CHIAKI_SHIM_API uint64_t chiaki_shim_decoder_frames_decoded(void *decoder)
+{
+	chiaki_shim_decoder *self = (chiaki_shim_decoder *)decoder;
+	if(!self || !self->decoder.codec_context)
+		return 0;
+	return (uint64_t)self->decoder.codec_context->frame_num;
 }
 
 /** The pixel format the decoder resolved, which says whether the hardware path was taken. */

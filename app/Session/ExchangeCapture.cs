@@ -579,6 +579,10 @@ public static class ExchangeCapture
         // than a failure to run - so it is printed and handed back, not turned into an outcome.
         if (decoder is not null)
         {
+            // FramesAvailable and NOT FramesDecoded, which is the opposite of PP76's choice for the
+            // same reason: this run installs no reader, so nothing ever calls the pull, and the
+            // codec's own frame_num would read zero on a session that decoded fine. What is being
+            // asked here is whether the decoder produced, and the callback is what knows that.
             FramesDecoded = decoder.FramesAvailable;
             DecoderPixelFormat = decoder.PixelFormatName;
 

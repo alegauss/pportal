@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 40
+#define CHIAKI_SHIM_ABI 43
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -358,8 +358,27 @@ CHIAKI_SHIM_API void chiaki_shim_decoder_free(void *decoder);
  */
 CHIAKI_SHIM_API bool chiaki_shim_session_set_decoder(void *session, void *decoder);
 
+/**
+ * PP76: an event set whenever a frame becomes available, so a reader waits rather than polls.
+ *
+ * chiaki_ffmpeg_decoder_pull_frame DRAINS the codec and returns only the last frame - its own
+ * comment says so - and counts none of the ones it discards. A reader that polls therefore
+ * accumulates frames between its ticks and loses them silently, which measures its own interval
+ * under the decoder's name. The Qt client pulls from the frame-available callback and has no gap.
+ *
+ * A Win32 event and not a managed callback: this is set on libchiaki's own thread, and SetEvent
+ * cannot throw, allocate or enter a runtime - which a delegate crossing the seam would do sixty
+ * times a second inside the packet path.
+ *
+ * BORROWED. The caller owns the handle and must clear this to NULL before closing it.
+ */
+CHIAKI_SHIM_API void chiaki_shim_decoder_set_ready_event(void *decoder, void *event);
+
 /** How many times the decoder reported a frame ready. Zero is a session that decoded nothing. */
 CHIAKI_SHIM_API uint64_t chiaki_shim_decoder_frames_available(void *decoder);
+
+/** Frames the codec has handed back - the total a reader's shown-plus-swallowed can close against. */
+CHIAKI_SHIM_API uint64_t chiaki_shim_decoder_frames_decoded(void *decoder);
 
 /**
  * The AVPixelFormat the decoder resolved, or -1 with no decoder.
@@ -418,13 +437,19 @@ CHIAKI_SHIM_API int32_t chiaki_shim_pixel_format_name(int32_t format, char *buf,
  *
  * `out_lost` is what the decoder accumulated - PP528's repaired counter - and the pull ZEROES it,
  * so this call is the only place it can ever be read.
+ *
+ * PP76: `out_superseded` is how many decoded frames this pull THREW AWAY.
+ * chiaki_ffmpeg_decoder_pull_frame drains the codec and keeps only the last - its own comment says
+ * so - and counts none of the rest. They are decoded frames nobody will ever see, which is exactly
+ * what the C means by frames_dropped, and this subtraction against the callback count is the only
+ * place the number exists at all. Without it a caller can infer a total and cannot attribute it.
  */
 CHIAKI_SHIM_API bool chiaki_shim_decoder_pull(
 		void *decoder,
 		int32_t *out_w, int32_t *out_h,
 		uint8_t **out_luma, int32_t *out_luma_stride,
 		uint8_t **out_chroma, int32_t *out_chroma_stride,
-		int32_t *out_format, int32_t *out_lost);
+		int32_t *out_format, int32_t *out_lost, int32_t *out_superseded);
 
 /** chiaki_quit_reason_string, which is the sentence a disconnect screen shows. */
 CHIAKI_SHIM_API const char *chiaki_shim_quit_reason_string(int32_t reason);
@@ -1769,6 +1794,10 @@ CHIAKI_SHIM_API void chiaki_shim_takion_close(void *takion);
 #endif
 
 #endif // CHIAKI_SHIM_H
+
+
+
+
 
 
 

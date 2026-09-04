@@ -51,7 +51,7 @@
 - ⏳ **PP49** (deps: PP11 ✅, PP47 ✅, PP700 ✅) (requires: console, a-person-looking) **the console sends SDR on most titles and an HDR display shows it flat, with nothing in the client trying** — the quality half and the integration: a decoded console frame to judge on, and a setting that turns it off. → §PP49
 - ⏳ **PP52** (deps: PP32 ✅, PP652 ✅, PP698) **nothing runs echo cancellation, and the vendor answer is absent on a machine with the card** — Nothing cleans a sample: the in-box DSP takes two inputs in filter mode and the second, a reference of what is playing, has no capture yet. → §PP52
 - ⏳ **PP53** (deps: PP11 ✅, PP41 ✅) (requires: variable-refresh-display) **frames arrive with network jitter and are presented against a fixed refresh, so each waits for a vblank it missed** — the reading itself: a display that varies its refresh, and a trace saying the frame arrived unpaced. → §PP53
-- ⏳ **PP76** (deps: PP528 ✅, PP699 ✅) (requires: console, a-person-looking) **the decoder preference is measured on synthetic frames, and drops under network jitter are what a stream is judged by** — The run needs both counters and this host has one: what counted the other was the retired Qt client. → §PP76
+- 🛠 **PP76** (deps: PP528 ✅, PP699 ✅) (requires: console, a-person-looking) **the decoder preference is measured on synthetic frames, and drops under network jitter are what a stream is judged by** — The run needs both counters and this host has one: what counted the other was the retired Qt client. → §PP76
 
 ## Block J — Public documentation
 
@@ -117,6 +117,11 @@
 - **The number read is the difference between the two counters** PP528 separated frames
   lost from frames dropped, and PP76's own remaining half is that difference per decoder
   under jitter - which is what makes this a reading rather than a second instrument.
+- **The reader wakes on each frame, so no drain discards one uncounted**
+  chiaki_ffmpeg_decoder_pull_frame drains the codec and returns only the last, counting
+  none of the rest. A poller accumulates those and measures its own interval; the Qt
+  client pulls per callback and does not. The loop waits on the decoder's signal, and a
+  run reports how many a drain still swallowed.
 
 ## Done when — PP295
 

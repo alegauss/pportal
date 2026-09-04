@@ -76,6 +76,16 @@ public sealed class SessionDecoder : IDisposable
     public ulong FramesAvailable => handle == IntPtr.Zero ? 0 : DecoderFramesAvailable(handle);
 
     /// <summary>
+    /// PP76: frames the codec has actually handed back.
+    ///
+    /// The total to account against, and not <see cref="FramesAvailable"/>. That one counts the
+    /// callback, on the decoder's own thread, and so includes frames still inside the codec -
+    /// subtracting a reader's totals from it compares two clocks and leaves a residue that looks
+    /// like loss. This one advances only inside the pull, which one thread calls.
+    /// </summary>
+    public ulong FramesDecoded => handle == IntPtr.Zero ? 0 : DecoderFramesDecoded(handle);
+
+    /// <summary>
     /// The AVPixelFormat that resolved, which says whether the hardware path was taken.
     ///
     /// PP48 measured the per-frame copy libchiaki runs for any hardware frame that is not
@@ -139,6 +149,23 @@ public sealed class SessionDecoder : IDisposable
         return length > 0 ? System.Text.Encoding.ASCII.GetString(buffer, 0, length) : $"format {format}";
     }
 
+    /// <summary>
+    /// PP76: set whenever a frame becomes available, so a reader waits rather than polls.
+    ///
+    /// The pull DRAINS the codec and returns only the last frame, counting none of the rest - so a
+    /// reader that polls accumulates frames between its ticks and loses them silently, which
+    /// measures its own interval under the decoder's name.
+    ///
+    /// The handle stays this object's: it is cleared on the C side before the wait handle is
+    /// disposed, because a decoder signalling a closed handle is the one way this crashes rather
+    /// than merely stopping.
+    /// </summary>
+    public AutoResetEvent Ready { get; } = new(false);
+
+    /// <summary>Start signalling <see cref="Ready"/>, which the reader waits on.</summary>
+    public void SignalWhenReady()
+        => DecoderSetReadyEvent(Handle, Ready.SafeWaitHandle.DangerousGetHandle());
+
     /// <summary>One decoded frame's planes, borrowed until the next pull.</summary>
     /// <param name="Width">The picture's own width.</param>
     /// <param name="Height">And its height.</param>
@@ -151,11 +178,16 @@ public sealed class SessionDecoder : IDisposable
     /// What the decoder accumulated. PP528 repaired this counter and the pull ZEROES it, so this is
     /// the only place it is ever readable - a caller that drops it has dropped it for good.
     /// </param>
+    /// <param name="Superseded">
+    /// PP76: decoded frames this pull threw away. The C drains the codec and keeps only the last,
+    /// counting none of the rest - so these are frames nobody will ever see, which is exactly what
+    /// frames_dropped means, and this is the only place the number exists.
+    /// </param>
     public readonly record struct DecodedFrame(
         int Width, int Height,
         IntPtr Luma, int LumaStride,
         IntPtr Chroma, int ChromaStride,
-        int Format, int FramesLost);
+        int Format, int FramesLost, int Superseded);
 
     /// <summary>
     /// Take the next decoded frame, or false where there is none or it is not NV12.
@@ -179,9 +211,9 @@ public sealed class SessionDecoder : IDisposable
             handle, out int w, out int h,
             out IntPtr luma, out int lumaStride,
             out IntPtr chroma, out int chromaStride,
-            out int format, out int lost);
+            out int format, out int lost, out int superseded);
 
-        frame = new DecodedFrame(w, h, luma, lumaStride, chroma, chromaStride, format, lost);
+        frame = new DecodedFrame(w, h, luma, lumaStride, chroma, chromaStride, format, lost, superseded);
         return nv12;
     }
 
@@ -190,9 +222,20 @@ public sealed class SessionDecoder : IDisposable
         if (handle == IntPtr.Zero)
             return;
 
+        // Cleared BEFORE the handle goes, and before the decoder does. libchiaki's thread may be
+        // inside the callback right now, and a SetEvent on a closed handle is the one failure here
+        // that is a crash rather than a silence.
+        DecoderSetReadyEvent(handle, IntPtr.Zero);
+
         DecoderFree(handle);
         handle = IntPtr.Zero;
+
+        Ready.Dispose();
     }
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_decoder_set_ready_event",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern void DecoderSetReadyEvent(IntPtr decoder, IntPtr readyEvent);
 
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_decoder_pull",
         CallingConvention = CallingConvention.Cdecl)]
@@ -202,7 +245,7 @@ public sealed class SessionDecoder : IDisposable
         out int w, out int h,
         out IntPtr luma, out int lumaStride,
         out IntPtr chroma, out int chromaStride,
-        out int format, out int lost);
+        out int format, out int lost, out int superseded);
 
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_decoder_create",
         CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
@@ -216,6 +259,10 @@ public sealed class SessionDecoder : IDisposable
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_decoder_frames_available",
         CallingConvention = CallingConvention.Cdecl)]
     private static extern ulong DecoderFramesAvailable(IntPtr decoder);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_decoder_frames_decoded",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern ulong DecoderFramesDecoded(IntPtr decoder);
 
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_decoder_pixel_format",
         CallingConvention = CallingConvention.Cdecl)]
@@ -251,4 +298,5 @@ public sealed class SessionDecoder : IDisposable
     [return: MarshalAs(UnmanagedType.I1)]
     public static extern bool AttachTo(IntPtr session, IntPtr decoder);
 }
+
 

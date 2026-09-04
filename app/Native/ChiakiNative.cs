@@ -49,7 +49,7 @@ public static class ChiakiNative
     internal const string Sdl = "SDL2";
 
     /// <summary>Must equal CHIAKI_SHIM_ABI in shim/chiaki_shim.h.</summary>
-    public const uint ExpectedAbi = 40;
+    public const uint ExpectedAbi = 43;
 
     /// <summary>
     /// A module initializer and not a static constructor, because the resolver has to be in place
@@ -245,6 +245,9 @@ public static class ChiakiNative
         => Marshal.PtrToStringUTF8(DecoderChoicePtr(
             vulkanListed, cudaListed, d3d11vaListed, nvidiaCard, (int)renderer, requested));
 }
+
+
+
 
 
 
