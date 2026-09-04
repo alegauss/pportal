@@ -16,6 +16,7 @@
 #include <chiaki/messagetap.h>
 
 #include <libavutil/frame.h>
+#include <libavutil/hwcontext.h>
 #include <libavutil/pixdesc.h>
 
 #include <pb_decode.h>
@@ -458,6 +459,30 @@ typedef struct chiaki_shim_decoder_t
 	ChiakiFfmpegDecoder decoder;
 	uint64_t frames_available;
 	bool started;
+
+	/*
+	 * PP700: ONE frame is held, and the next pull frees it.
+	 *
+	 * chiaki_ffmpeg_decoder_pull_frame hands over an AVFrame the caller owns. Handing its plane
+	 * POINTERS to managed code and letting that side free it would put an av_frame_free across the
+	 * seam, which is the ownership rule this shim exists to avoid. So the frame stays here and its
+	 * pointers are valid until the next pull - the same borrow the video sample callback already
+	 * documents for its buffer.
+	 */
+	AVFrame *held;
+
+	/*
+	 * PP700: where a hardware frame is downloaded to.
+	 *
+	 * A vulkan decoder's frames arrive as AV_PIX_FMT_VULKAN, which are Vulkan images - and this
+	 * port's presenter is D3D11. The two do not share a texture, so the frame comes down to
+	 * system memory as NV12 and goes back up as a D3D11 texture.
+	 *
+	 * That download IS the per-frame copy PP48 measured, and it is libchiaki's own answer too:
+	 * make_fallback_snapshot_frame does exactly this for any hardware frame the client cannot hand
+	 * on. Reproducing it rather than avoiding it keeps the cost where the measurement put it.
+	 */
+	AVFrame *downloaded;
 } chiaki_shim_decoder;
 
 typedef struct chiaki_shim_session_t
@@ -576,10 +601,108 @@ CHIAKI_SHIM_API void chiaki_shim_decoder_free(void *decoder)
 	if(!self)
 		return;
 
+	if(self->held)
+		av_frame_free(&self->held);
+	if(self->downloaded)
+		av_frame_free(&self->downloaded);
 	if(self->started)
 		chiaki_ffmpeg_decoder_fini(&self->decoder);
 
 	free(self);
+}
+
+/*
+ * PP700: one decoded frame's planes, borrowed until the next pull.
+ *
+ * NV12 only, and that is a statement rather than a limitation this hides. The presenter takes two
+ * planes; a software decoder here resolves to yuv420p, which is three. Reporting the format and
+ * refusing rather than converting is what keeps a run honest: a caller that asked for hardware and
+ * got a software frame should see that, not a picture assembled by a converter nobody measured.
+ *
+ * `out_lost` carries what the decoder accumulated, which PP528 repaired and which is zeroed by the
+ * pull - so this is the only place it can be read.
+ */
+CHIAKI_SHIM_API bool chiaki_shim_decoder_pull(
+		void *decoder,
+		int32_t *out_w, int32_t *out_h,
+		uint8_t **out_luma, int32_t *out_luma_stride,
+		uint8_t **out_chroma, int32_t *out_chroma_stride,
+		int32_t *out_format, int32_t *out_lost)
+{
+	chiaki_shim_decoder *self = (chiaki_shim_decoder *)decoder;
+	ChiakiFfmpegFrame pulled;
+	int32_t lost = 0;
+	AVFrame *shown;
+
+	if(out_lost)
+		*out_lost = 0;
+	if(!self)
+		return false;
+
+	/* Freed before the next is taken, so exactly one frame is ever held. */
+	if(self->held)
+		av_frame_free(&self->held);
+
+	pulled = chiaki_ffmpeg_decoder_pull_frame(&self->decoder, &lost);
+
+	if(out_lost)
+		*out_lost = lost;
+
+	if(!pulled.frame)
+		return false;
+
+	self->held = pulled.frame;
+	shown = self->held;
+
+	if(out_format)
+		*out_format = self->held->format;
+	if(out_w)
+		*out_w = self->held->width;
+	if(out_h)
+		*out_h = self->held->height;
+
+	/*
+	 * A hardware frame comes DOWN first. Its format is the device's - AV_PIX_FMT_VULKAN on a
+	 * vulkan decoder - and a Vulkan image is not something a D3D11 presenter can wrap. This is the
+	 * copy PP48 measured and the one make_fallback_snapshot_frame makes for the same reason.
+	 */
+	if(self->held->hw_frames_ctx)
+	{
+		if(!self->downloaded)
+		{
+			self->downloaded = av_frame_alloc();
+			if(!self->downloaded)
+				return false;
+		}
+
+		/* NV12, because that is what the decoder says a downloaded frame is and what the
+		 * presenter takes. Asking for it rather than accepting the default keeps the two ends
+		 * agreeing about the format rather than about the luck of a driver. */
+		av_frame_unref(self->downloaded);
+		self->downloaded->format = AV_PIX_FMT_NV12;
+
+		if(av_hwframe_transfer_data(self->downloaded, self->held, 0) < 0)
+			return false;
+
+		shown = self->downloaded;
+
+		if(out_format)
+			*out_format = shown->format;
+	}
+
+	if(shown->format != AV_PIX_FMT_NV12)
+		return false;
+
+	if(out_luma)
+		*out_luma = shown->data[0];
+	if(out_luma_stride)
+		*out_luma_stride = shown->linesize[0];
+	if(out_chroma)
+		*out_chroma = shown->data[1];
+	if(out_chroma_stride)
+		*out_chroma_stride = shown->linesize[1];
+
+	return true;
 }
 
 /*
@@ -651,15 +774,18 @@ CHIAKI_SHIM_API int32_t chiaki_shim_decoder_pixel_format_name(void *decoder, cha
 }
 
 /*
- * PP700: whether libchiaki copies every frame out of this format.
+ * PP700: whether libchiaki copies every frame out of this decoder.
  *
  * PP48 measured the per-frame copy make_fallback_snapshot_frame runs for any hardware frame that
- * is not AV_PIX_FMT_VULKAN - 793us on cuda, 2253us on d3d11va, nothing on vulkan. The comparison
- * belongs here because AV_PIX_FMT_VULKAN is an unnumbered enum member: naming it from managed code
- * would be a literal that a different ffmpeg silently moves.
+ * is not AV_PIX_FMT_VULKAN - 793us on cuda, 2253us on d3d11va, nothing on vulkan.
  *
- * A software format copies too, and says so - so this is "is the no-copy path" rather than "is
- * hardware", which are different questions with the same answer only on this one format.
+ * THE FIRST VERSION OF THIS ASKED THE WRONG FUNCTION, and a run said so.
+ * chiaki_ffmpeg_decoder_get_pixel_format returns the format a frame has AFTER a download - NV12 or
+ * P010 with a hardware context, YUV420P or YUV420P10 without - so it can never equal
+ * AV_PIX_FMT_VULKAN and this reported "copied per frame" on a vulkan decoder whose frames arrived
+ * as format 190. `hw_pix_fmt` is the frame's own, which is what the comparison is about.
+ *
+ * A software decoder has hw_pix_fmt AV_PIX_FMT_NONE and copies, which this reports.
  */
 CHIAKI_SHIM_API bool chiaki_shim_decoder_copies_every_frame(void *decoder)
 {
@@ -667,7 +793,37 @@ CHIAKI_SHIM_API bool chiaki_shim_decoder_copies_every_frame(void *decoder)
 	if(!self)
 		return true;
 
-	return chiaki_ffmpeg_decoder_get_pixel_format(&self->decoder) != AV_PIX_FMT_VULKAN;
+	return self->decoder.hw_pix_fmt != AV_PIX_FMT_VULKAN;
+}
+
+/** The format a FRAME carries, which is the hardware one where there is a device. */
+CHIAKI_SHIM_API int32_t chiaki_shim_decoder_frame_format(void *decoder)
+{
+	chiaki_shim_decoder *self = (chiaki_shim_decoder *)decoder;
+	return self ? (int32_t)self->decoder.hw_pix_fmt : (int32_t)AV_PIX_FMT_NONE;
+}
+
+/** Any AVPixelFormat's name, so a caller can print one it did not expect. */
+CHIAKI_SHIM_API int32_t chiaki_shim_pixel_format_name(int32_t format, char *buf, int32_t buf_size)
+{
+	const char *name;
+	size_t len;
+
+	if(!buf || buf_size < 1)
+		return 0;
+
+	buf[0] = 0;
+	name = av_get_pix_fmt_name((enum AVPixelFormat)format);
+	if(!name)
+		return 0;
+
+	len = strlen(name);
+	if(len >= (size_t)buf_size)
+		len = (size_t)buf_size - 1;
+
+	memcpy(buf, name, len);
+	buf[len] = 0;
+	return (int32_t)len;
 }
 
 CHIAKI_SHIM_API bool chiaki_shim_session_set_event_cb(
@@ -3619,3 +3775,5 @@ CHIAKI_SHIM_API void chiaki_shim_takion_close(void *takion)
 	chiaki_takion_close(&self->takion);
 	free(self);
 }
+
+

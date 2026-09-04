@@ -259,6 +259,9 @@ public static class ExchangeCapture
     /// <summary>The pixel format that resolved, which is a fact about the machine.</summary>
     public static string DecoderPixelFormat { get; private set; } = string.Empty;
 
+    /// <summary>PP700: how many of those frames were rendered into the shared texture.</summary>
+    public static ulong FramesRendered { get; private set; }
+
     /// <summary>
     /// The whole capture: find the console, wake it if it is asleep, run a session and write down
     /// what crossed.
@@ -477,7 +480,11 @@ public static class ExchangeCapture
         if (WaitHandle.WaitAny([connected.WaitHandle, quit.WaitHandle], Wake) == 0)
         {
             Console.WriteLine($"[capture] connected - holding for {bounds.Hold.TotalSeconds:0}s");
-            quit.Wait(bounds.Hold);
+
+            if (decoder is not null)
+                DrainToScreen(decoder, quit, bounds.Hold);
+            else
+                quit.Wait(bounds.Hold);
         }
         else if (quitReason is not null)
         {
@@ -496,7 +503,8 @@ public static class ExchangeCapture
             DecoderPixelFormat = decoder.PixelFormatName;
 
             Console.WriteLine(
-                $"[capture] {FramesDecoded} frame(s) decoded as {DecoderPixelFormat}"
+                $"[capture] {FramesDecoded} frame(s) decoded as {DecoderPixelFormat}, "
+                    + $"{FramesRendered} drawn"
                     + (FramesDecoded == 0 ? " - the session decoded nothing" : string.Empty));
 
             // A Decode run arms neither recorder, so it returns here rather than falling into the
@@ -524,6 +532,101 @@ public static class ExchangeCapture
 
         Console.WriteLine($"[capture] {message}");
         return CaptureOutcome.Recorded;
+    }
+
+    /// <summary>
+    /// PP700: pull decoded frames and render them, until the session quits or the hold runs out.
+    ///
+    /// THE PRESENTER IS BUILT ON THE FIRST FRAME and not before, because its size is the picture's
+    /// and the picture's size is not known until one arrives. The console negotiates a profile and
+    /// can change it mid-session; a presenter built from the connect info's request would be right
+    /// until the first downgrade and wrong silently after it.
+    ///
+    /// A SOFTWARE FRAME IS REPORTED AND NOT DRAWN. yuv420p is three planes and the presenter takes
+    /// two, and converting here would put a converter nobody measured between a decoder and the
+    /// numbers a run reports about it.
+    ///
+    /// The loop polls rather than waiting on a signal. The decoder's frame-available callback runs
+    /// on the stream connection's own thread, and rendering from there would put a GPU submit
+    /// inside the packet path - which is the shape PP48's per-frame copy already costs enough of.
+    /// </summary>
+    private static void DrainToScreen(SessionDecoder decoder, ManualResetEventSlim quit, TimeSpan hold)
+    {
+        using RenderDevice? device = ChiakiRender.CreateD3d11();
+
+        if (device is null)
+        {
+            Console.WriteLine("[capture] no D3D11 device - decoding without drawing");
+            quit.Wait(hold);
+            return;
+        }
+
+        SharedSurface? surface = null;
+        VideoPresenter? presenter = null;
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        int refused = 0;
+
+        try
+        {
+            while (!quit.IsSet && clock.Elapsed < hold)
+            {
+                if (!decoder.Pull(out SessionDecoder.DecodedFrame frame))
+                {
+                    // No frame at all leaves the width at zero; a frame the presenter cannot take
+                    // reports its size, and saying which is the whole point of the distinction.
+                    if (frame.Width > 0)
+                    {
+                        if (refused == 0)
+                        {
+                            Console.WriteLine(
+                                $"[capture] the pulled frame is {frame.Width}x{frame.Height} in "
+                                    + $"{SessionDecoder.NameOfFormat(frame.Format)}, "
+                                    + "which the presenter cannot take");
+                        }
+
+                        refused++;
+                    }
+
+                    Thread.Sleep(2);
+                    continue;
+                }
+
+                if (presenter is null)
+                {
+                    surface = SharedSurface.Create(device, frame.Width, frame.Height, out ShareStage shared);
+
+                    if (surface is null)
+                    {
+                        Console.WriteLine($"[capture] the surface stopped at {shared}");
+                        break;
+                    }
+
+                    presenter = VideoPresenter.Create(
+                        device, surface, frame.Width, frame.Height, out RenderStage built);
+
+                    if (presenter is null)
+                    {
+                        Console.WriteLine($"[capture] the presenter stopped at {built}");
+                        break;
+                    }
+
+                    Console.WriteLine($"[capture] drawing {frame.Width}x{frame.Height}");
+                }
+
+                presenter.Render(
+                    frame.Luma, frame.LumaStride, frame.Chroma, frame.ChromaStride, out _);
+            }
+
+            FramesRendered = presenter?.Frames ?? 0;
+
+            if (refused > 0)
+                Console.WriteLine($"[capture] {refused} frame(s) were not NV12 and were not drawn");
+        }
+        finally
+        {
+            presenter?.Dispose();
+            surface?.Dispose();
+        }
     }
 
     /// <summary>

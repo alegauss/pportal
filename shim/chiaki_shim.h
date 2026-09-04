@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 39
+#define CHIAKI_SHIM_ABI 40
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -388,6 +388,43 @@ CHIAKI_SHIM_API int32_t chiaki_shim_decoder_pixel_format_name(void *decoder, cha
  * hardware" - two questions with the same answer on exactly one format.
  */
 CHIAKI_SHIM_API bool chiaki_shim_decoder_copies_every_frame(void *decoder);
+
+/**
+ * The format a FRAME carries, which is the hardware one where there is a device.
+ *
+ * Not the same as chiaki_shim_decoder_pixel_format, and the difference is what made the first
+ * version of copies_every_frame wrong: that one returns the format after a DOWNLOAD - NV12 or P010
+ * with a hardware context, YUV420P otherwise - while a vulkan decoder's frames arrive as
+ * AV_PIX_FMT_VULKAN. A caller comparing the wrong one gets "copied per frame" on a decoder that
+ * copies nothing.
+ */
+CHIAKI_SHIM_API int32_t chiaki_shim_decoder_frame_format(void *decoder);
+
+/** Any AVPixelFormat's name, so a caller can print one it did not expect. */
+CHIAKI_SHIM_API int32_t chiaki_shim_pixel_format_name(int32_t format, char *buf, int32_t buf_size);
+
+/**
+ * PP700: one decoded frame's planes, BORROWED until the next pull.
+ *
+ * chiaki_ffmpeg_decoder_pull_frame hands over an AVFrame the caller owns. Handing its plane
+ * pointers to managed code and letting that side free it would put an av_frame_free across the
+ * seam, which is the ownership rule this shim exists to avoid - so the frame stays here and its
+ * pointers are valid until the next pull or the free.
+ *
+ * True only for an NV12 frame, and that is a statement rather than a hidden limitation. The
+ * presenter takes two planes; a software decoder resolves to yuv420p, which is three. `out_format`
+ * carries the AVPixelFormat either way, so a caller that asked for hardware and got software sees
+ * it rather than seeing a picture assembled by a converter nobody measured.
+ *
+ * `out_lost` is what the decoder accumulated - PP528's repaired counter - and the pull ZEROES it,
+ * so this call is the only place it can ever be read.
+ */
+CHIAKI_SHIM_API bool chiaki_shim_decoder_pull(
+		void *decoder,
+		int32_t *out_w, int32_t *out_h,
+		uint8_t **out_luma, int32_t *out_luma_stride,
+		uint8_t **out_chroma, int32_t *out_chroma_stride,
+		int32_t *out_format, int32_t *out_lost);
 
 /** chiaki_quit_reason_string, which is the sentence a disconnect screen shows. */
 CHIAKI_SHIM_API const char *chiaki_shim_quit_reason_string(int32_t reason);
@@ -1732,5 +1769,6 @@ CHIAKI_SHIM_API void chiaki_shim_takion_close(void *takion);
 #endif
 
 #endif // CHIAKI_SHIM_H
+
 
 

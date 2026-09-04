@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using ChiakiNg.Native;
 
 namespace ChiakiNg.Protocol;
@@ -115,6 +115,76 @@ public sealed class SessionDecoder : IDisposable
     /// </summary>
     public bool CopiesEveryFrame => handle == IntPtr.Zero || DecoderCopiesEveryFrame(handle);
 
+    /// <summary>
+    /// The format a FRAME carries, which is not the one above.
+    ///
+    /// <see cref="PixelFormat"/> is what a frame becomes after a DOWNLOAD - NV12 or P010 with a
+    /// hardware context, YUV420P without - and a vulkan decoder's frames arrive as
+    /// AV_PIX_FMT_VULKAN. Reading the first as the second is what made the copy question answer
+    /// wrongly on a decoder that copies nothing, and a run said so.
+    /// </summary>
+    public int FrameFormat => handle == IntPtr.Zero ? -1 : DecoderFrameFormat(handle);
+
+    /// <summary>
+    /// Any AVPixelFormat's name, for a caller printing one it did not expect.
+    ///
+    /// Static and general, because the interesting case is a format the port has no constant for -
+    /// which is exactly the one worth naming in a log line.
+    /// </summary>
+    public static string NameOfFormat(int format)
+    {
+        byte[] buffer = new byte[64];
+        int length = FormatName(format, buffer, buffer.Length);
+
+        return length > 0 ? System.Text.Encoding.ASCII.GetString(buffer, 0, length) : $"format {format}";
+    }
+
+    /// <summary>One decoded frame's planes, borrowed until the next pull.</summary>
+    /// <param name="Width">The picture's own width.</param>
+    /// <param name="Height">And its height.</param>
+    /// <param name="Luma">The Y plane. Valid until the next <see cref="Pull"/> or the dispose.</param>
+    /// <param name="LumaStride">Its stride, which is usually wider than the picture.</param>
+    /// <param name="Chroma">The interleaved CbCr plane, for an NV12 frame.</param>
+    /// <param name="ChromaStride">And its own stride.</param>
+    /// <param name="Format">The AVPixelFormat, which says whether the two planes above exist.</param>
+    /// <param name="FramesLost">
+    /// What the decoder accumulated. PP528 repaired this counter and the pull ZEROES it, so this is
+    /// the only place it is ever readable - a caller that drops it has dropped it for good.
+    /// </param>
+    public readonly record struct DecodedFrame(
+        int Width, int Height,
+        IntPtr Luma, int LumaStride,
+        IntPtr Chroma, int ChromaStride,
+        int Format, int FramesLost);
+
+    /// <summary>
+    /// Take the next decoded frame, or false where there is none or it is not NV12.
+    ///
+    /// FALSE IS TWO DIFFERENT THINGS and the frame says which: no frame at all leaves Width at
+    /// zero, and a frame in a format the presenter cannot take reports its size and its format. A
+    /// software decoder resolves to yuv420p here, which is three planes rather than two - refusing
+    /// it rather than converting is what keeps a run honest about which decoder produced its
+    /// numbers.
+    ///
+    /// The loss count comes back either way, because the pull zeroed it whatever it returned.
+    /// </summary>
+    public bool Pull(out DecodedFrame frame)
+    {
+        frame = default;
+
+        if (handle == IntPtr.Zero)
+            return false;
+
+        bool nv12 = DecoderPull(
+            handle, out int w, out int h,
+            out IntPtr luma, out int lumaStride,
+            out IntPtr chroma, out int chromaStride,
+            out int format, out int lost);
+
+        frame = new DecodedFrame(w, h, luma, lumaStride, chroma, chromaStride, format, lost);
+        return nv12;
+    }
+
     public void Dispose()
     {
         if (handle == IntPtr.Zero)
@@ -123,6 +193,16 @@ public sealed class SessionDecoder : IDisposable
         DecoderFree(handle);
         handle = IntPtr.Zero;
     }
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_decoder_pull",
+        CallingConvention = CallingConvention.Cdecl)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    private static extern bool DecoderPull(
+        IntPtr decoder,
+        out int w, out int h,
+        out IntPtr luma, out int lumaStride,
+        out IntPtr chroma, out int chromaStride,
+        out int format, out int lost);
 
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_decoder_create",
         CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
@@ -150,6 +230,14 @@ public sealed class SessionDecoder : IDisposable
     [return: MarshalAs(UnmanagedType.I1)]
     private static extern bool DecoderCopiesEveryFrame(IntPtr decoder);
 
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_decoder_frame_format",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern int DecoderFrameFormat(IntPtr decoder);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_pixel_format_name",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern int FormatName(int format, byte[] buffer, int size);
+
     /// <summary>
     /// Installs a decoder as a session's video sink.
     /// </summary>
@@ -163,3 +251,4 @@ public sealed class SessionDecoder : IDisposable
     [return: MarshalAs(UnmanagedType.I1)]
     public static extern bool AttachTo(IntPtr session, IntPtr decoder);
 }
+
