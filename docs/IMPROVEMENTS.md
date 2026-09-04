@@ -385,28 +385,6 @@ a takion that received one video packet.
 
 ## Block G — Test discipline
 
-### §PP683 The census stops at the test project
-
-PP665 made the gate say which oracles a build had and how many comparisons their absence
-cost, counted from the files that guard rather than declared beside them.
-OracleGuardCensus.Files names eleven, all under tests/ChiakiNg.Tests, and its own note
-says the list is test files only because a class defining a guard is not a use of one.
-
-The host's selftest guards too. It asks whether the device id's format oracle is there
-before comparing the managed id against the C's, which is the same shape as the eleven
-and is counted by nothing - so the number the gate prints understates what a bare build
-actually skipped. PP681 is why that matters rather than being tidy: the one guarded
-comparison outside the census is exactly the one whose guard was wrong, and a census
-reaching it would have had a row to be surprised by.
-
-WHAT IS OWED IS A ROW, not a second census. app/SelfTest.cs joins Files with the guard
-it uses, and GuardsIn counts it there as it does in a test file. The care needed is that
-not every branch in the selftest is an oracle guard - PP74's shape means some are about
-a machine rather than a build - so the row names the guard by its call, as the eleven
-do.
-
-Whether any OTHER guarded comparison sits outside both is a sweep, and not this line.
-
 ### §PP691 A check that matches wording rather than meaning
 
 Two readers went red inside PP666, for the same reason and neither about a defect.
@@ -433,6 +411,32 @@ What is not known is how many there are. Two were found by tripping over them; n
 has looked. The work is to count the string constants in app/Session that hold roadmap
 prose, decide which are load-bearing, and say for each whether a better sentence would
 break it.
+
+### §PP704 The sweep PP683 left
+
+PP683 added the host to the census and its own design said what it was not doing:
+whether any OTHER guarded comparison sits outside the list is a sweep. It does, and the
+sweep is not empty.
+
+FeedbackPayloadTests asks NativeFeedback.IsAvailable eight times. That is PP676's oracle
+- the shim wrappers around feedback.c's serialisers - and it did not exist when PP665
+wrote the list, so nothing was ever removed; the list simply stopped being complete the
+day the wrappers landed. Four more files decline on a shape that is absent:
+NativeSeamTests, ShimHolepunchShapeTests, ShimFramePathShapeTests and
+DeletedLibraryOraclesTests, each returning early rather than asserting.
+
+THE FOUR ARE NOT THE SAME CASE as the eight, which is the judgement this line owes. A
+file that tests the GUARD declines for a different reason than one testing a comparison
+the guard protects, and counting both under one number would make the floor say
+something it does not mean. Deciding that, per file, is the work.
+
+WHAT MAKES IT A LINE rather than nine more rows is that the list went stale by addition.
+PP665 named what guarded then; two oracles have arrived since and one brought eight
+guards with it. So the answer is either a rule the census applies to a directory, or a
+check that a file calling a known guard is named here - and the second is the shape
+every other census here took.
+
+The number the gate prints is what is being repaired, not the row count.
 
 ## Block H — Performance and telemetry
 

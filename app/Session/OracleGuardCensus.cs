@@ -1,6 +1,6 @@
 namespace ChiakiNg.Session;
 
-/// <summary>One test file that declines when an oracle is absent, and how many guards it carries.</summary>
+/// <summary>One file that declines when an oracle is absent, and how many guards it carries.</summary>
 /// <param name="Where">The file, relative to the repository root.</param>
 /// <param name="Guard">The call whose false answer makes an assertion decline.</param>
 public readonly record struct GuardedFile(string Where, string Guard);
@@ -22,16 +22,27 @@ public readonly record struct GuardedFile(string Where, string Guard);
 /// their counterparts assert the other side - it is a check that the gate SAYS which configuration
 /// it ran under, in a number a person reads rather than in twenty-one silent returns.
 ///
-/// Counted from the test files themselves rather than declared, for the reason every count in this
-/// port is: the nine wrappers were nine in the prose for two commits after they were ten.
+/// Counted from the files themselves rather than declared, for the reason every count in this port
+/// is: the nine wrappers were nine in the prose for two commits after they were ten.
+///
+/// PP683: AND NOT ONLY THE TEST PROJECT. The host's own selftest guards too - it asks whether the
+/// device id's format oracle is there before comparing the managed id against the C's - and for two
+/// blocks that comparison was counted by nothing, so the number the gate printed understated what a
+/// bare build had skipped. That is not a tidiness point: the one guarded comparison outside the
+/// census was exactly the one whose guard was wrong, and PP681 found it by reading rather than from
+/// a row that looked surprising.
+///
+/// So the list is files that GUARD, wherever they live. What still keeps a file out is defining a
+/// guard rather than asking one, which is why the classes the guards belong to are not here.
 /// </summary>
 public static class OracleGuardCensus
 {
     /// <summary>
     /// The files whose assertions decline without an oracle, and the guard each one asks.
     ///
-    /// Three guards because there are three oracles: the seam's shape for holepunch, the json one,
-    /// and - PP670 - the frame path's, which six differentials ask before they call the fourteen.
+    /// Three oracles: the seam's shape for holepunch, the json one, and - PP670 - the frame path's,
+    /// which six differentials ask before they call the fourteen. More guard CALLS than that,
+    /// because one oracle is asked through whichever predicate the asking file already had.
     /// Named per file rather than derived, because being guarded is a decision somebody took and a
     /// file that stopped guarding is a finding rather than a smaller number.
     /// </summary>
@@ -51,7 +62,25 @@ public static class OracleGuardCensus
         new(@"tests\ChiakiNg.Tests\FrameAssemblerTests.cs", FramePathGuard),
         new(@"tests\ChiakiNg.Tests\ManagedVideoReceiverTests.cs", FramePathGuard),
         new(@"tests\ChiakiNg.Tests\AllocBudgetTests.cs", FramePathGuard),
+
+        // PP683: the host, which is not a test file and guards all the same. Its one comparison is
+        // the device id's shape against holepunch.c's, and it asks OfTheBuild through the predicate
+        // PP681 corrected rather than through the two names above - so the row names the call as it
+        // is written, the way every other row does.
+        new(SelfTestPath, SelfTestGuard),
     ];
+
+    /// <summary>The host's selftest, which is the one guarded comparison outside the test project.</summary>
+    public const string SelfTestPath = @"app\SelfTest.cs";
+
+    /// <summary>
+    /// The guard it asks, spelled with its class as it is written at the call.
+    ///
+    /// PP74's shape means the selftest has branches that are about a MACHINE rather than about a
+    /// build - a missing .NET SDK, an absent console - and those are not oracle guards. Naming the
+    /// call is what keeps this row about the one that is.
+    /// </summary>
+    public const string SelfTestGuard = "ShimHolepunchShape.TheFormatOracleIsAvailable";
 
     /// <summary>
     /// PP670: the one call every frame-path differential asks, spelled with its class so a file

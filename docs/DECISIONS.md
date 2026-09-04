@@ -52,6 +52,8 @@ are read from the spike's committed file rather than typed.
 
 ## Block G — Test discipline
 
+- ✅ **PP683** **the oracle guard census reads test files only, so the selftest's guarded comparisons are invisible to it** — The census is files that guard, wherever they live; what keeps a file out is defining a guard rather than asking one.
+
 ## Block H — Performance and telemetry
 
 ## Block I — NVIDIA path

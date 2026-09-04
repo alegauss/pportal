@@ -34,8 +34,8 @@
 
 ## Block G — Test discipline
 
-- 📋 **PP683** (deps: —) **the oracle guard census reads test files only, so the selftest's guarded comparisons are invisible to it** — PP665 prints what an absent oracle costs from eleven test files; the host's own 460 checks guard comparisons too, and PP681's defect lived in one the count never saw. → §PP683
 - 💭 **PP691** (deps: —) **checks that match a roadmap sentence literally go red when the sentence gets more precise** — PP666 hit two in one task and both were red about text that had improved; nobody has counted how many more of these literal readers the tree carries. → §PP691
+- 📋 **PP704** (deps: PP683 ✅) **FeedbackPayloadTests guards eight comparisons on an oracle the census does not name, and it is not the only file** — PP676's oracle arrived after PP665 wrote the list and four shape files decline too, so the printed floor is short by more than the host's one row. → §PP704
 
 ## Block H — Performance and telemetry
 
@@ -130,14 +130,6 @@
   chiaki_render_tearing_probe does. Integration means the video plane's own swapchain
   carries it and presents at sync interval zero, which is the half that waits on there
   being a video plane at all.
-
-## Done when — PP683
-
-- **The selftest is a row in the census, and the printed cost counts its guards**
-  app/SelfTest.cs joins OracleGuardCensus.Files with the guard it calls; the census's
-  own test holds that the file still carries it, and the gate's line about what a bare
-  build skipped rises by what the selftest declines rather than stopping at the test
-  project.
 
 ## Done when — PP691
 

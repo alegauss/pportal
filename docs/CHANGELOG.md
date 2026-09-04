@@ -713,6 +713,8 @@
   checked **A reader written beside its subject no longer matches one spelling of it** Two literal readers were wrong the same way and both went red on a more precise sentence. ShippedIn counted `ship --part`'s entry as a whole ship; TransportOrder matched one wording of PP27's end state. Both read meaning now, and the second also asserts the wait it exists to hold.
 - ✅ **PP693** **a COM method declared without PreserveSig reads an uninitialised int as its HRESULT and answers anyway** — A sweep over app, tests, spike and tools names any COM method returning int or uint without the attribute; the tree is clean, and the check demonstrates the omission on its own excluded fixture.
   checked **Every COM method that returns a status carries PreserveSig** A check sweeps every .cs outside bin and obj for interfaces marked ComImport or GeneratedComInterface and fails naming any method returning int or uint without the attribute. A void-returning method is allowed rather than flagged, and the check demonstrates the omission on its own fixture.
+- ✅ **PP683** **the oracle guard census reads test files only, so the selftest's guarded comparisons are invisible to it** — The host's selftest is a row now, so the floor the gate prints stops at what a bare build skips instead of at a project boundary.
+  checked **The selftest is a row in the census, and the printed cost counts its guards** app/SelfTest.cs joins OracleGuardCensus.Files with the guard it calls; the census's own test holds that the file still carries it, and the gate's line about what a bare build skipped rises by what the selftest declines rather than stopping at the test project.
 
 ## Block H — Performance and telemetry
 
