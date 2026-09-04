@@ -103,12 +103,17 @@ export const HOST_FLAGS: readonly HostFlag[] = [
   {
     "name": "--capture-seconds",
     "argument": "[n]",
-    "summary": "with either capture: how long a sample, which sets the hold too"
+    "summary": "with any run that takes a length: how long, which sets the hold too"
   },
   {
     "name": "--via",
     "argument": "[address|relay]",
     "summary": "with --capture-datagrams: go through an address, or 'relay' to run one here and keep whole datagrams"
+  },
+  {
+    "name": "--record-json-oracle",
+    "argument": "[path]",
+    "summary": "write down what json-c answers, so PP33 can delete it and keep the comparison"
   },
   {
     "name": "--replay-datagrams",

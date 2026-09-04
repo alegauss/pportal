@@ -965,6 +965,42 @@ public partial class App : Application
                 e.Args.Any(a => string.Equals(a, "--apply", StringComparison.OrdinalIgnoreCase))));
         }
 
+        // PP33: take the json oracle's answers down, so json-c can leave without them.
+        //
+        // Needs a build that HAS the oracle - CHIAKI_ENABLE_HOLEPUNCH=ON - and says so rather than
+        // writing a file of absences that every later comparison would agree with.
+        if (HostCommandLine.Has(e.Args, "--record-json-oracle"))
+        {
+            ReopenStdOut();
+
+            string destination = HostCommandLine.ValueAfter(e.Args, "--record-json-oracle") is
+                { } named && !named.StartsWith("--", StringComparison.Ordinal)
+                    ? named
+                    : JsonOracleRecorder.Destination();
+
+            switch (JsonOracleRecorder.Write(destination))
+            {
+                case JsonOracleRecorder.Outcome.Recorded:
+                    Console.WriteLine($"[oracle] json-c recorded to {destination}");
+                    Environment.Exit(0);
+                    break;
+
+                case JsonOracleRecorder.Outcome.NoOracle:
+                    Console.Error.WriteLine(
+                        "[oracle] this build has no json-c, so there is nothing to ask. Build with "
+                            + "CHIAKI_ENABLE_HOLEPUNCH=ON and run this again.");
+                    Environment.Exit(2);
+                    break;
+
+                default:
+                    Console.Error.WriteLine(
+                        "[oracle] json-c parsed none of the cases, which is a broken oracle rather "
+                            + "than a recording. Nothing written.");
+                    Environment.Exit(1);
+                    break;
+            }
+        }
+
         // PP305: the debt PP38 counts, in the form it can be paid in. PP311: with an id after it,
         // where that id is named instead - which is how a payment is audited. PP329: and a FLAG
         // after it is not an id, so `--ratchet --selftest` still runs the selftest.

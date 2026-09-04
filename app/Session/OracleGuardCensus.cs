@@ -37,9 +37,12 @@ public static class OracleGuardCensus
     /// </summary>
     public static IReadOnlyList<GuardedFile> Files { get; } =
     [
-        new(@"tests\ChiakiNg.Tests\JsonCTests.cs", "JsonOracleIsAvailable"),
+        // PP33: JsonCTests and FrameParsingTests used to be here and are not, which is a smaller
+        // number for the right reason. Their comparisons did not go: they read json-c's answers out
+        // of JsonOracleRecording, taken from the library once, so they run on every build. What is
+        // left of the json oracle is the ONE guard that re-derives the recording from the library -
+        // and that one declining costs nothing, because what it protects is asserted either way.
         new(@"tests\ChiakiNg.Tests\JsonDifferentialTests.cs", "JsonOracleIsAvailable"),
-        new(@"tests\ChiakiNg.Tests\FrameParsingTests.cs", "JsonOracleIsAvailable"),
         new(@"tests\ChiakiNg.Tests\NativeHolepunchSessionTests.cs", "SeamWraps"),
         new(@"tests\ChiakiNg.Tests\HolepunchSessionOwnershipTests.cs", "WrappingHeader"),
         new(@"tests\ChiakiNg.Tests\FecCodecTests.cs", FramePathGuard),

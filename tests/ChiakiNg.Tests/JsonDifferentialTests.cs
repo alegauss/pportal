@@ -9,9 +9,9 @@ namespace ChiakiNg.Tests;
 /// PP33: the same documents through both JSON implementations, accessor by accessor.
 ///
 /// <see cref="JsonC"/> reproduces json-c's ANSWERS in managed code, which is a translation and not
-/// a wrapper - so the only correctness test it has is behavioural. The cases already written cover
-/// the shapes somebody thought of; this covers the ones json-c coerces without being asked, which
-/// is where a reimplementation of an accessor quietly disagrees:
+/// a wrapper - so the only correctness test it has is behavioural. The cases in
+/// <see cref="JsonOracleCases"/> cover the shapes json-c coerces without being asked, which is
+/// where a reimplementation of an accessor quietly disagrees:
 ///
 ///   a STRING asked for as an int. json-c parses it rather than returning zero, so "42" is 42 and
 ///   "abc" is 0 - and a port using int.TryParse gets the first right and the second right for the
@@ -23,96 +23,75 @@ namespace ChiakiNg.Tests;
 ///
 ///   and a MISSING key, which is a null node every accessor then has to answer for.
 ///
-/// Every row is run through both and compared. A row that both get wrong the same way is not
-/// caught here and is not meant to be: the claim is that the two clients agree, because that is
-/// what lets a reply parsed by one be trusted by the other.
+/// THE SECOND OPINION IS NOW RECORDED, which is what lets json-c leave. These assertions used to
+/// decline on any build without the library - twenty-three of them, reported as passes - so the
+/// file PP33 deletes was also the only thing keeping this comparison alive. It is compared against
+/// <see cref="JsonOracleRecording"/> on every build, and the recording is compared against the live
+/// library on the builds that still have one.
+///
+/// A row that both get wrong the same way is not caught here and is not meant to be: the claim is
+/// that the two clients agree, because that is what lets a reply parsed by one be trusted by the
+/// other.
 /// </summary>
 public class JsonDifferentialTests
 {
-    /// <summary>The documents, chosen for what json-c does to them rather than for shape.</summary>
+    /// <summary>The cases, from the one list the recorder also walks.</summary>
     public static TheoryData<string, string> Documents()
     {
         var data = new TheoryData<string, string>();
 
-        void Add(string json, params string[] paths)
-        {
-            foreach (string path in paths)
-                data.Add(json, path);
-        }
-
-        // Strings that are not strings to json-c.
-        Add("""{"v":"42"}""", "/v");
-        Add("""{"v":"abc"}""", "/v");
-        Add("""{"v":"42abc"}""", "/v");
-        Add("""{"v":""}""", "/v");
-        Add("""{"v":"-7"}""", "/v");
-        Add("""{"v":"0"}""", "/v");
-        Add("""{"v":"true"}""", "/v");
-        Add("""{"v":"false"}""", "/v");
-
-        // Numbers asked for as other things.
-        Add("""{"v":42}""", "/v");
-        Add("""{"v":0}""", "/v");
-        Add("""{"v":-1}""", "/v");
-        Add("""{"v":3.9}""", "/v");
-        Add("""{"v":-3.9}""", "/v");
-        Add("""{"v":4294967296}""", "/v");
-        Add("""{"v":9223372036854775807}""", "/v");
-
-        // Booleans and null.
-        Add("""{"v":true}""", "/v");
-        Add("""{"v":false}""", "/v");
-        Add("""{"v":null}""", "/v");
-
-        // Containers, and a key that is not there.
-        Add("""{"v":[1,2,3]}""", "/v", "/v/0", "/v/2", "/v/3");
-        Add("""{"v":{"w":1}}""", "/v", "/v/w", "/v/x");
-        Add("""{"v":[]}""", "/v", "/v/0");
-        Add("""{"v":{}}""", "/v");
-        Add("""{"a":1}""", "/b", "/a/b");
-
-        // Pointer escapes, which are the two characters a key can contain that a path cannot.
-        Add("""{"a/b":1}""", "/a~1b");
-        Add("""{"a~b":1}""", "/a~0b");
+        foreach ((string json, string path) in JsonOracleCases.Rows)
+            data.Add(json, path);
 
         return data;
     }
 
+    private static JsonOracleRecording Recording()
+    {
+        JsonOracleRecording? recording = JsonOracleRecording.Read();
+
+        Assert.True(
+            recording is not null,
+            $"{JsonOracleRecording.RelativePath} is missing or unreadable, so json-c's answers are "
+                + "gone and nothing is comparing this port against them. Rebuild with "
+                + "CHIAKI_ENABLE_HOLEPUNCH=ON and run --record-json-oracle.");
+
+        return recording;
+    }
+
     /// <summary>
-    /// Every accessor, on one node, from both sides. Compared as a tuple so a failure names the
-    /// document and the path rather than only the accessor that happened to be checked first.
+    /// THE COMPARISON: every accessor, on one node, against what json-c said.
+    ///
+    /// Against the RECORDING rather than the library, so it runs on every build. What the library
+    /// is still used for is checking the recording, one test below.
     /// </summary>
     [Theory]
     [MemberData(nameof(Documents))]
-    public void BothImplementationsAnswerAlike(string json, string path)
+    public void ThisPortAnswersWhatJsonCAnswered(string json, string path)
     {
-        if (!DeletedLibraryOracles.JsonOracleIsAvailable())
-            return;
+        JsonOracleRow? recorded = Recording().Row(json, path);
+        Assert.True(recorded is not null, $"no recorded answer for {json} at {path}");
 
-        using NativeJson? native = NativeJson.Parse(json);
-        Assert.NotNull(native);
-
+        JsonOracleRow row = recorded.Value;
         JsonDocument? managed = JsonC.Parse(json);
-        Assert.NotNull(managed);
 
         using (managed)
         {
-            IntPtr nativeNode = native.Pointer(path);
-            JsonElement? managedNode = JsonC.Pointer(managed.RootElement, path);
+            JsonElement? node = managed is null ? null : JsonC.Pointer(managed.RootElement, path);
 
             // Present or absent has to agree first: everything below is about a node, and the two
             // disagreeing here would make the rest compare different things.
-            Assert.Equal(nativeNode == IntPtr.Zero, managedNode is null);
+            Assert.Equal(row.Present, node is not null);
 
-            if (nativeNode == IntPtr.Zero)
+            if (node is null)
                 return;
 
-            Assert.Equal(NativeJson.TypeOf(nativeNode), JsonC.TypeOf(managedNode));
-            Assert.Equal(NativeJson.String(nativeNode), JsonC.String(managedNode));
-            Assert.Equal(NativeJson.Int(nativeNode), JsonC.Int(managedNode));
-            Assert.Equal(NativeJson.Int64(nativeNode), JsonC.Int64(managedNode));
-            Assert.Equal(NativeJson.Bool(nativeNode), JsonC.Bool(managedNode));
-            Assert.Equal(NativeJson.ArrayLength(nativeNode), JsonC.ArrayLength(managedNode));
+            Assert.Equal(row.Type, JsonC.TypeOf(node));
+            Assert.Equal(row.String, JsonC.String(node));
+            Assert.Equal(row.Int, JsonC.Int(node));
+            Assert.Equal(row.Int64, JsonC.Int64(node));
+            Assert.Equal(row.Bool, JsonC.Bool(node));
+            Assert.Equal(row.ArrayLength, JsonC.ArrayLength(node));
         }
     }
 
@@ -121,27 +100,68 @@ public class JsonDifferentialTests
     /// "throws" are both plausible answers and only one of them is json-c's.
     /// </summary>
     /// <remarks>
-    /// The trailing comma is deliberately NOT here. json-c's lexer accepts it and this port does
-    /// not, which <see cref="JsonCTests.JsonCsLexerIsLenientWhereThisIsNot"/> records as a decision:
-    /// matching a lenient lexer means being bug-compatible with a parser, for inputs Sony's
-    /// endpoints do not send. This differential re-found it and the decision stood - the line is
-    /// drawn at the lexer, and everything past it is matched exactly.
+    /// The trailing comma is deliberately NOT among the cases. json-c's lexer accepts it and this
+    /// port does not, which <see cref="JsonCTests.JsonCsLexerIsLenientWhereThisIsNot"/> records as a
+    /// decision: matching a lenient lexer means being bug-compatible with a parser, for inputs
+    /// Sony's endpoints do not send. This differential re-found it and the decision stood - the line
+    /// is drawn at the lexer, and everything past it is matched exactly.
     /// </remarks>
-    [Theory]
-    [InlineData("")]
-    [InlineData("{")]
-    [InlineData("{\"a\":}")]
-    [InlineData("not json at all")]
-    public void BothRefuseTheSameRubbish(string json)
+    [Fact]
+    public void BothRefuseTheSameRubbish()
+    {
+        JsonOracleRecording recording = Recording();
+
+        foreach (string rubbish in new[] { "", "{", """{"a":}""", "not json at all" })
+        {
+            JsonDocumentAnswer? recorded = recording.Document(rubbish);
+            Assert.True(recorded is not null, $"no recorded answer for \"{rubbish}\"");
+            Assert.False(recorded.Value.Parsed, $"json-c now accepts \"{rubbish}\"");
+
+            JsonDocument? managed = JsonC.Parse(rubbish);
+            using (managed)
+                Assert.Null(managed);
+        }
+    }
+
+    /// <summary>
+    /// AND THE RECORDING IS STILL WHAT JSON-C SAYS, on a build that can ask.
+    ///
+    /// This is what keeps the file from becoming a fossil. A recorded second opinion nobody checks
+    /// is a table somebody typed, and the whole reason it is worth having is that it came off the
+    /// library - so while a build carrying json-c exists, it is re-derived and compared. It
+    /// declines where the library is absent, which is the one guard PP33's deletion leaves standing
+    /// and the only one whose absence costs nothing: what it protects is already asserted above.
+    /// </summary>
+    [Fact]
+    public void TheRecordingIsWhatTheLibraryStillSays()
     {
         if (!DeletedLibraryOracles.JsonOracleIsAvailable())
             return;
 
-        using NativeJson? native = NativeJson.Parse(json);
-        JsonDocument? managed = JsonC.Parse(json);
+        JsonOracleRecording? taken = JsonOracleRecorder.Take();
+        Assert.NotNull(taken);
 
-        using (managed)
-            Assert.Equal(native is null, managed is null);
+        JsonOracleRecording recorded = Recording();
+
+        Assert.Equal(recorded.Rows, taken.Rows);
+        Assert.Equal(recorded.Documents, taken.Documents);
+
+        // The runs are compared FIELD BY FIELD, because a record's generated equality compares its
+        // list members by reference - two identical recordings would differ, and a difference that
+        // is always there is a check nobody can act on.
+        Assert.Equal(recorded.Runs.Count, taken.Runs.Count);
+
+        for (int i = 0; i < recorded.Runs.Count; i++)
+        {
+            JsonTokenerRun was = recorded.Runs[i];
+            JsonTokenerRun now = taken.Runs[i];
+
+            Assert.Equal(was.Name, now.Name);
+            Assert.Equal(was.Frames, now.Frames);
+            Assert.Equal(was.ResetBefore, now.ResetBefore);
+            Assert.Equal(was.Parsed, now.Parsed);
+            Assert.Equal(was.Errors, now.Errors);
+        }
     }
 
     /// <summary>
@@ -151,17 +171,21 @@ public class JsonDifferentialTests
     [Fact]
     public void TheComparisonCanTellTwoDocumentsApart()
     {
-        if (!DeletedLibraryOracles.JsonOracleIsAvailable())
-            return;
+        JsonOracleRecording recording = Recording();
 
-        using NativeJson? one = NativeJson.Parse("""{"v":1}""");
-        using NativeJson? two = NativeJson.Parse("""{"v":2}""");
+        Assert.NotEmpty(recording.Rows);
+        Assert.Contains(recording.Rows, row => row.Present);
 
-        Assert.NotNull(one);
-        Assert.NotNull(two);
+        // The coercions themselves, named. A recording of all-zeroes would satisfy every row-by-row
+        // comparison above, because JsonC would be compared against nothing in particular.
+        Assert.Equal(42, recording.Row("""{"v":"42abc"}""", "/v")?.Int);
+        Assert.Equal(3, recording.Row("""{"v":3.9}""", "/v")?.Int);
+        Assert.Equal(-3, recording.Row("""{"v":-3.9}""", "/v")?.Int);
+        Assert.Equal(0, recording.Row("""{"v":"abc"}""", "/v")?.Int);
+        Assert.Equal(3, recording.Row("""{"v":[1,2,3]}""", "/v")?.ArrayLength);
 
-        Assert.NotEqual(
-            NativeJson.Int(one.Pointer("/v")),
-            NativeJson.Int(two.Pointer("/v")));
+        // And a non-array answers -1 rather than 0, which is the difference between "no elements"
+        // and "not a thing with elements".
+        Assert.Equal(-1, recording.Row("""{"v":42}""", "/v")?.ArrayLength);
     }
 }

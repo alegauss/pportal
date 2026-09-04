@@ -1,0 +1,1279 @@
+{
+  "Recorded": "2026-09-04",
+  "Rows": [
+    {
+      "Json": "{\u0022v\u0022:\u002242\u0022}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "String",
+      "String": "42",
+      "Int": 42,
+      "Int64": 42,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:\u0022abc\u0022}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "String",
+      "String": "abc",
+      "Int": 0,
+      "Int64": 0,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:\u002242abc\u0022}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "String",
+      "String": "42abc",
+      "Int": 42,
+      "Int64": 42,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:\u0022\u0022}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "String",
+      "String": "",
+      "Int": 0,
+      "Int64": 0,
+      "Bool": false,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:\u0022-7\u0022}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "String",
+      "String": "-7",
+      "Int": -7,
+      "Int64": -7,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:\u00220\u0022}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "String",
+      "String": "0",
+      "Int": 0,
+      "Int64": 0,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:\u0022true\u0022}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "String",
+      "String": "true",
+      "Int": 0,
+      "Int64": 0,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:\u0022false\u0022}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "String",
+      "String": "false",
+      "Int": 0,
+      "Int64": 0,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:42}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "Int",
+      "String": "42",
+      "Int": 42,
+      "Int64": 42,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:0}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "Int",
+      "String": "0",
+      "Int": 0,
+      "Int64": 0,
+      "Bool": false,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:-1}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "Int",
+      "String": "-1",
+      "Int": -1,
+      "Int64": -1,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:3.9}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "Double",
+      "String": "3.9",
+      "Int": 3,
+      "Int64": 3,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:-3.9}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "Double",
+      "String": "-3.9",
+      "Int": -3,
+      "Int64": -3,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:4294967296}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "Int",
+      "String": "4294967296",
+      "Int": 2147483647,
+      "Int64": 4294967296,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:9223372036854775807}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "Int",
+      "String": "9223372036854775807",
+      "Int": 2147483647,
+      "Int64": 9223372036854775807,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:true}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "Boolean",
+      "String": "true",
+      "Int": 1,
+      "Int64": 1,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:false}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "Boolean",
+      "String": "false",
+      "Int": 0,
+      "Int64": 0,
+      "Bool": false,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:null}",
+      "Path": "/v",
+      "Present": false,
+      "Type": null,
+      "String": null,
+      "Int": 0,
+      "Int64": 0,
+      "Bool": false,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:[1,2,3]}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "Array",
+      "String": "[ 1, 2, 3 ]",
+      "Int": 0,
+      "Int64": 0,
+      "Bool": false,
+      "ArrayLength": 3
+    },
+    {
+      "Json": "{\u0022v\u0022:[1,2,3]}",
+      "Path": "/v/0",
+      "Present": true,
+      "Type": "Int",
+      "String": "1",
+      "Int": 1,
+      "Int64": 1,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:[1,2,3]}",
+      "Path": "/v/2",
+      "Present": true,
+      "Type": "Int",
+      "String": "3",
+      "Int": 3,
+      "Int64": 3,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:[1,2,3]}",
+      "Path": "/v/3",
+      "Present": false,
+      "Type": null,
+      "String": null,
+      "Int": 0,
+      "Int64": 0,
+      "Bool": false,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:{\u0022w\u0022:1}}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "Object",
+      "String": "{ \u0022w\u0022: 1 }",
+      "Int": 0,
+      "Int64": 0,
+      "Bool": false,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:{\u0022w\u0022:1}}",
+      "Path": "/v/w",
+      "Present": true,
+      "Type": "Int",
+      "String": "1",
+      "Int": 1,
+      "Int64": 1,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:{\u0022w\u0022:1}}",
+      "Path": "/v/x",
+      "Present": false,
+      "Type": null,
+      "String": null,
+      "Int": 0,
+      "Int64": 0,
+      "Bool": false,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:[]}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "Array",
+      "String": "[ ]",
+      "Int": 0,
+      "Int64": 0,
+      "Bool": false,
+      "ArrayLength": 0
+    },
+    {
+      "Json": "{\u0022v\u0022:[]}",
+      "Path": "/v/0",
+      "Present": false,
+      "Type": null,
+      "String": null,
+      "Int": 0,
+      "Int64": 0,
+      "Bool": false,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:{}}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "Object",
+      "String": "{ }",
+      "Int": 0,
+      "Int64": 0,
+      "Bool": false,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022a\u0022:1}",
+      "Path": "/b",
+      "Present": false,
+      "Type": null,
+      "String": null,
+      "Int": 0,
+      "Int64": 0,
+      "Bool": false,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022a\u0022:1}",
+      "Path": "/a/b",
+      "Present": false,
+      "Type": null,
+      "String": null,
+      "Int": 0,
+      "Int64": 0,
+      "Bool": false,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022a/b\u0022:1}",
+      "Path": "/a~1b",
+      "Present": true,
+      "Type": "Int",
+      "String": "1",
+      "Int": 1,
+      "Int64": 1,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022a~b\u0022:1}",
+      "Path": "/a~0b",
+      "Present": true,
+      "Type": "Int",
+      "String": "1",
+      "Int": 1,
+      "Int64": 1,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:\u0022hello\u0022}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "String",
+      "String": "hello",
+      "Int": 0,
+      "Int64": 0,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:1.5}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "Double",
+      "String": "1.5",
+      "Int": 1,
+      "Int64": 1,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:9.99}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "Double",
+      "String": "9.99",
+      "Int": 9,
+      "Int64": 9,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:{\u0022a\u0022:1}}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "Object",
+      "String": "{ \u0022a\u0022: 1 }",
+      "Int": 0,
+      "Int64": 0,
+      "Bool": false,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:[1,2]}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "Array",
+      "String": "[ 1, 2 ]",
+      "Int": 0,
+      "Int64": 0,
+      "Bool": false,
+      "ArrayLength": 2
+    },
+    {
+      "Json": "{\u0022v\u0022:\u002242px\u0022}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "String",
+      "String": "42px",
+      "Int": 42,
+      "Int64": 42,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:\u0022 42 \u0022}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "String",
+      "String": " 42 ",
+      "Int": 42,
+      "Int64": 42,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:\u0022\u002B7\u0022}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "String",
+      "String": "\u002B7",
+      "Int": 7,
+      "Int64": 7,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:\u002299999999999999999999\u0022}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "String",
+      "String": "99999999999999999999",
+      "Int": 2147483647,
+      "Int64": 9223372036854775807,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:99999999999}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "Int",
+      "String": "99999999999",
+      "Int": 2147483647,
+      "Int64": 99999999999,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:-99999999999}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "Int",
+      "String": "-99999999999",
+      "Int": -2147483648,
+      "Int64": -99999999999,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:2147483647}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "Int",
+      "String": "2147483647",
+      "Int": 2147483647,
+      "Int64": 2147483647,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:2147483648}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "Int",
+      "String": "2147483648",
+      "Int": 2147483647,
+      "Int64": 2147483648,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:-2147483649}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "Int",
+      "String": "-2147483649",
+      "Int": -2147483648,
+      "Int64": -2147483649,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:-9.99}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "Double",
+      "String": "-9.99",
+      "Int": -9,
+      "Int64": -9,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:0.4}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "Double",
+      "String": "0.4",
+      "Int": 0,
+      "Int64": 0,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:1e3}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "Double",
+      "String": "1e3",
+      "Int": 1000,
+      "Int64": 1000,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:1}",
+      "Path": "/missing",
+      "Present": false,
+      "Type": null,
+      "String": null,
+      "Int": 0,
+      "Int64": 0,
+      "Bool": false,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:1}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "Int",
+      "String": "1",
+      "Int": 1,
+      "Int64": 1,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:1}",
+      "Path": "/V",
+      "Present": false,
+      "Type": null,
+      "String": null,
+      "Int": 0,
+      "Int64": 0,
+      "Bool": false,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022V\u0022:1}",
+      "Path": "/v",
+      "Present": false,
+      "Type": null,
+      "String": null,
+      "Int": 0,
+      "Int64": 0,
+      "Bool": false,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022V\u0022:1}",
+      "Path": "/V",
+      "Present": true,
+      "Type": "Int",
+      "String": "1",
+      "Int": 1,
+      "Int64": 1,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:1,\u0022v\u0022:2}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "Int",
+      "String": "2",
+      "Int": 2,
+      "Int64": 2,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022v\u0022:\u0022a\u0022,\u0022v\u0022:\u0022b\u0022,\u0022v\u0022:\u0022c\u0022}",
+      "Path": "/v",
+      "Present": true,
+      "Type": "String",
+      "String": "c",
+      "Int": 0,
+      "Int64": 0,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022a\u0022:\u0022false\u0022,\u0022b\u0022:\u0022\u0022,\u0022c\u0022:0,\u0022d\u0022:1}",
+      "Path": "/a",
+      "Present": true,
+      "Type": "String",
+      "String": "false",
+      "Int": 0,
+      "Int64": 0,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022a\u0022:\u0022false\u0022,\u0022b\u0022:\u0022\u0022,\u0022c\u0022:0,\u0022d\u0022:1}",
+      "Path": "/b",
+      "Present": true,
+      "Type": "String",
+      "String": "",
+      "Int": 0,
+      "Int64": 0,
+      "Bool": false,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022a\u0022:\u0022false\u0022,\u0022b\u0022:\u0022\u0022,\u0022c\u0022:0,\u0022d\u0022:1}",
+      "Path": "/c",
+      "Present": true,
+      "Type": "Int",
+      "String": "0",
+      "Int": 0,
+      "Int64": 0,
+      "Bool": false,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022a\u0022:\u0022false\u0022,\u0022b\u0022:\u0022\u0022,\u0022c\u0022:0,\u0022d\u0022:1}",
+      "Path": "/d",
+      "Present": true,
+      "Type": "Int",
+      "String": "1",
+      "Int": 1,
+      "Int64": 1,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022a\u0022:[10,20,30],\u0022b\u0022:7}",
+      "Path": "",
+      "Present": true,
+      "Type": "Object",
+      "String": "{ \u0022a\u0022: [ 10, 20, 30 ], \u0022b\u0022: 7 }",
+      "Int": 0,
+      "Int64": 0,
+      "Bool": false,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022a\u0022:[10,20,30],\u0022b\u0022:7}",
+      "Path": "/a",
+      "Present": true,
+      "Type": "Array",
+      "String": "[ 10, 20, 30 ]",
+      "Int": 0,
+      "Int64": 0,
+      "Bool": false,
+      "ArrayLength": 3
+    },
+    {
+      "Json": "{\u0022a\u0022:[10,20,30],\u0022b\u0022:7}",
+      "Path": "/b",
+      "Present": true,
+      "Type": "Int",
+      "String": "7",
+      "Int": 7,
+      "Int64": 7,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022a\u0022:[10,20,30],\u0022b\u0022:7}",
+      "Path": "/a/0",
+      "Present": true,
+      "Type": "Int",
+      "String": "10",
+      "Int": 10,
+      "Int64": 10,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022a\u0022:[10,20,30],\u0022b\u0022:7}",
+      "Path": "/a/1",
+      "Present": true,
+      "Type": "Int",
+      "String": "20",
+      "Int": 20,
+      "Int64": 20,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022a\u0022:[10,20,30],\u0022b\u0022:7}",
+      "Path": "/a/2",
+      "Present": true,
+      "Type": "Int",
+      "String": "30",
+      "Int": 30,
+      "Int64": 30,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022a\u0022:[10,20,30],\u0022b\u0022:7}",
+      "Path": "/a/3",
+      "Present": false,
+      "Type": null,
+      "String": null,
+      "Int": 0,
+      "Int64": 0,
+      "Bool": false,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022a\u0022:[10,20,30],\u0022b\u0022:7}",
+      "Path": "/a/4",
+      "Present": false,
+      "Type": null,
+      "String": null,
+      "Int": 0,
+      "Int64": 0,
+      "Bool": false,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022a\u0022:{\u0022b\u0022:[10,20]},\u0022x/y\u0022:1,\u0022x~z\u0022:2,\u0022\u0022:3}",
+      "Path": "",
+      "Present": true,
+      "Type": "Object",
+      "String": "{ \u0022a\u0022: { \u0022b\u0022: [ 10, 20 ] }, \u0022x\\/y\u0022: 1, \u0022x~z\u0022: 2, \u0022\u0022: 3 }",
+      "Int": 0,
+      "Int64": 0,
+      "Bool": false,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022a\u0022:{\u0022b\u0022:[10,20]},\u0022x/y\u0022:1,\u0022x~z\u0022:2,\u0022\u0022:3}",
+      "Path": "/a",
+      "Present": true,
+      "Type": "Object",
+      "String": "{ \u0022b\u0022: [ 10, 20 ] }",
+      "Int": 0,
+      "Int64": 0,
+      "Bool": false,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022a\u0022:{\u0022b\u0022:[10,20]},\u0022x/y\u0022:1,\u0022x~z\u0022:2,\u0022\u0022:3}",
+      "Path": "/a/b",
+      "Present": true,
+      "Type": "Array",
+      "String": "[ 10, 20 ]",
+      "Int": 0,
+      "Int64": 0,
+      "Bool": false,
+      "ArrayLength": 2
+    },
+    {
+      "Json": "{\u0022a\u0022:{\u0022b\u0022:[10,20]},\u0022x/y\u0022:1,\u0022x~z\u0022:2,\u0022\u0022:3}",
+      "Path": "/a/b/0",
+      "Present": true,
+      "Type": "Int",
+      "String": "10",
+      "Int": 10,
+      "Int64": 10,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022a\u0022:{\u0022b\u0022:[10,20]},\u0022x/y\u0022:1,\u0022x~z\u0022:2,\u0022\u0022:3}",
+      "Path": "/a/b/1",
+      "Present": true,
+      "Type": "Int",
+      "String": "20",
+      "Int": 20,
+      "Int64": 20,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022a\u0022:{\u0022b\u0022:[10,20]},\u0022x/y\u0022:1,\u0022x~z\u0022:2,\u0022\u0022:3}",
+      "Path": "/a/b/2",
+      "Present": false,
+      "Type": null,
+      "String": null,
+      "Int": 0,
+      "Int64": 0,
+      "Bool": false,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022a\u0022:{\u0022b\u0022:[10,20]},\u0022x/y\u0022:1,\u0022x~z\u0022:2,\u0022\u0022:3}",
+      "Path": "/a/b/-",
+      "Present": false,
+      "Type": null,
+      "String": null,
+      "Int": 0,
+      "Int64": 0,
+      "Bool": false,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022a\u0022:{\u0022b\u0022:[10,20]},\u0022x/y\u0022:1,\u0022x~z\u0022:2,\u0022\u0022:3}",
+      "Path": "/x~1y",
+      "Present": true,
+      "Type": "Int",
+      "String": "1",
+      "Int": 1,
+      "Int64": 1,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022a\u0022:{\u0022b\u0022:[10,20]},\u0022x/y\u0022:1,\u0022x~z\u0022:2,\u0022\u0022:3}",
+      "Path": "/x~0z",
+      "Present": true,
+      "Type": "Int",
+      "String": "2",
+      "Int": 2,
+      "Int64": 2,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022a\u0022:{\u0022b\u0022:[10,20]},\u0022x/y\u0022:1,\u0022x~z\u0022:2,\u0022\u0022:3}",
+      "Path": "/",
+      "Present": true,
+      "Type": "Int",
+      "String": "3",
+      "Int": 3,
+      "Int64": 3,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022a\u0022:{\u0022b\u0022:[10,20]},\u0022x/y\u0022:1,\u0022x~z\u0022:2,\u0022\u0022:3}",
+      "Path": "/a/missing",
+      "Present": false,
+      "Type": null,
+      "String": null,
+      "Int": 0,
+      "Int64": 0,
+      "Bool": false,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022a\u0022:{\u0022b\u0022:[10,20]},\u0022x/y\u0022:1,\u0022x~z\u0022:2,\u0022\u0022:3}",
+      "Path": "a/b",
+      "Present": false,
+      "Type": null,
+      "String": null,
+      "Int": 0,
+      "Int64": 0,
+      "Bool": false,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022a\u0022:{\u0022b\u0022:[10,20]},\u0022x/y\u0022:1,\u0022x~z\u0022:2,\u0022\u0022:3}",
+      "Path": "/A",
+      "Present": false,
+      "Type": null,
+      "String": null,
+      "Int": 0,
+      "Int64": 0,
+      "Bool": false,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022a\u0022:{\u0022b\u0022:[10,20]},\u0022x/y\u0022:1,\u0022x~z\u0022:2,\u0022\u0022:3}",
+      "Path": "/a/b/00",
+      "Present": false,
+      "Type": null,
+      "String": null,
+      "Int": 0,
+      "Int64": 0,
+      "Bool": false,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022a\u0022:{\u0022b\u0022:[10,20]},\u0022x/y\u0022:1,\u0022x~z\u0022:2,\u0022\u0022:3}",
+      "Path": "/a/b/-1",
+      "Present": false,
+      "Type": null,
+      "String": null,
+      "Int": 0,
+      "Int64": 0,
+      "Bool": false,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022to\u0022:\u0022ps5\u0022,\u0022action\u0022:\u0022SEND\u0022,\u0022payload\u0022:\u0022{\\\u0022accountId\\\u0022:\\\u00229999999999999999999999\\\u0022,\\\u0022localPeerPort\\\u0022:\\\u00229295\\\u0022}\u0022}",
+      "Path": "/to",
+      "Present": true,
+      "Type": "String",
+      "String": "ps5",
+      "Int": 0,
+      "Int64": 0,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022to\u0022:\u0022ps5\u0022,\u0022action\u0022:\u0022SEND\u0022,\u0022payload\u0022:\u0022{\\\u0022accountId\\\u0022:\\\u00229999999999999999999999\\\u0022,\\\u0022localPeerPort\\\u0022:\\\u00229295\\\u0022}\u0022}",
+      "Path": "/action",
+      "Present": true,
+      "Type": "String",
+      "String": "SEND",
+      "Int": 0,
+      "Int64": 0,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022to\u0022:\u0022ps5\u0022,\u0022action\u0022:\u0022SEND\u0022,\u0022payload\u0022:\u0022{\\\u0022accountId\\\u0022:\\\u00229999999999999999999999\\\u0022,\\\u0022localPeerPort\\\u0022:\\\u00229295\\\u0022}\u0022}",
+      "Path": "/payload",
+      "Present": true,
+      "Type": "String",
+      "String": "{\u0022accountId\u0022:\u00229999999999999999999999\u0022,\u0022localPeerPort\u0022:\u00229295\u0022}",
+      "Int": 0,
+      "Int64": 0,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022accountId\u0022:\u00229999999999999999999999\u0022,\u0022localPeerPort\u0022:\u00229295\u0022}",
+      "Path": "/localPeerPort",
+      "Present": true,
+      "Type": "String",
+      "String": "9295",
+      "Int": 9295,
+      "Int64": 9295,
+      "Bool": true,
+      "ArrayLength": -1
+    },
+    {
+      "Json": "{\u0022accountId\u0022:\u00229999999999999999999999\u0022,\u0022localPeerPort\u0022:\u00229295\u0022}",
+      "Path": "/accountId",
+      "Present": true,
+      "Type": "String",
+      "String": "9999999999999999999999",
+      "Int": 2147483647,
+      "Int64": 9223372036854775807,
+      "Bool": true,
+      "ArrayLength": -1
+    }
+  ],
+  "Documents": [
+    {
+      "Text": "",
+      "Parsed": false,
+      "RootString": null
+    },
+    {
+      "Text": "{",
+      "Parsed": false,
+      "RootString": null
+    },
+    {
+      "Text": "{\u0022a\u0022:}",
+      "Parsed": false,
+      "RootString": null
+    },
+    {
+      "Text": "not json at all",
+      "Parsed": false,
+      "RootString": null
+    },
+    {
+      "Text": "   ",
+      "Parsed": false,
+      "RootString": null
+    },
+    {
+      "Text": "42",
+      "Parsed": true,
+      "RootString": "42"
+    },
+    {
+      "Text": "\u0022bare\u0022",
+      "Parsed": true,
+      "RootString": "bare"
+    },
+    {
+      "Text": "true",
+      "Parsed": true,
+      "RootString": "true"
+    },
+    {
+      "Text": "false",
+      "Parsed": true,
+      "RootString": "false"
+    },
+    {
+      "Text": "null",
+      "Parsed": false,
+      "RootString": null
+    },
+    {
+      "Text": "{\u0022a\u0022:1} trailing",
+      "Parsed": true,
+      "RootString": "{ \u0022a\u0022: 1 }"
+    },
+    {
+      "Text": "{\u0022a\u0022:1}{\u0022b\u0022:2}",
+      "Parsed": true,
+      "RootString": "{ \u0022a\u0022: 1 }"
+    },
+    {
+      "Text": "[1,2]",
+      "Parsed": true,
+      "RootString": "[ 1, 2 ]"
+    },
+    {
+      "Text": "{\u0027a\u0027:1}",
+      "Parsed": true,
+      "RootString": "{ \u0022a\u0022: 1 }"
+    },
+    {
+      "Text": "[1,2,]",
+      "Parsed": true,
+      "RootString": "[ 1, 2 ]"
+    },
+    {
+      "Text": "{\u0022a\u0022:1,}",
+      "Parsed": true,
+      "RootString": "{ \u0022a\u0022: 1 }"
+    },
+    {
+      "Text": "NaN",
+      "Parsed": true,
+      "RootString": "NaN"
+    },
+    {
+      "Text": "Infinity",
+      "Parsed": true,
+      "RootString": "Infinity"
+    },
+    {
+      "Text": "0x1f",
+      "Parsed": true,
+      "RootString": "0"
+    },
+    {
+      "Text": "01",
+      "Parsed": true,
+      "RootString": "1"
+    },
+    {
+      "Text": "{\u0022a\u0022:1}",
+      "Parsed": true,
+      "RootString": "{ \u0022a\u0022: 1 }"
+    },
+    {
+      "Text": "{\u0022a\u0022:1,\u0022b\u0022:\u0022two\u0022}",
+      "Parsed": true,
+      "RootString": "{ \u0022a\u0022: 1, \u0022b\u0022: \u0022two\u0022 }"
+    },
+    {
+      "Text": "{\u0022a\u0022:{\u0022b\u0022:[1,2]}}",
+      "Parsed": true,
+      "RootString": "{ \u0022a\u0022: { \u0022b\u0022: [ 1, 2 ] } }"
+    },
+    {
+      "Text": "[1,\u0022two\u0022,true,null]",
+      "Parsed": true,
+      "RootString": "[ 1, \u0022two\u0022, true, null ]"
+    },
+    {
+      "Text": "[]",
+      "Parsed": true,
+      "RootString": "[ ]"
+    },
+    {
+      "Text": "{}",
+      "Parsed": true,
+      "RootString": "{ }"
+    },
+    {
+      "Text": "{\u0022url\u0022:\u0022https://example.invalid/a/b\u0022}",
+      "Parsed": true,
+      "RootString": "{ \u0022url\u0022: \u0022https:\\/\\/example.invalid\\/a\\/b\u0022 }"
+    },
+    {
+      "Text": "{\u0022q\u0022:\u0022a\\\u0022b\\\\c\u0022}",
+      "Parsed": true,
+      "RootString": "{ \u0022q\u0022: \u0022a\\\u0022b\\\\c\u0022 }"
+    },
+    {
+      "Text": "{\u0022t\u0022:\u0022a\\tb\\nc\u0022}",
+      "Parsed": true,
+      "RootString": "{ \u0022t\u0022: \u0022a\\tb\\nc\u0022 }"
+    }
+  ],
+  "Runs": [
+    {
+      "Name": "three complete frames all parse",
+      "Frames": [
+        "{\u0022a\u0022:1}",
+        "{\u0022b\u0022:2}",
+        "{\u0022c\u0022:3}"
+      ],
+      "ResetBefore": [
+        false,
+        false,
+        false
+      ],
+      "Parsed": [
+        true,
+        true,
+        true
+      ],
+      "Errors": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "Name": "a truncated frame swallows the one after it",
+      "Frames": [
+        "{\u0022a\u0022:",
+        "{\u0022b\u0022:2}",
+        "{\u0022c\u0022:3}",
+        "{\u0022a\u0022:1}"
+      ],
+      "ResetBefore": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "Parsed": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "Errors": [
+        1,
+        1,
+        11,
+        11
+      ]
+    },
+    {
+      "Name": "garbage stops the tokener at once and for good",
+      "Frames": [
+        "not json at all",
+        "{\u0022a\u0022:1}",
+        "{\u0022b\u0022:2}"
+      ],
+      "ResetBefore": [
+        false,
+        false,
+        false
+      ],
+      "Parsed": [
+        false,
+        false,
+        false
+      ],
+      "Errors": [
+        5,
+        5,
+        5
+      ]
+    },
+    {
+      "Name": "a poisoned tokener refuses what is good",
+      "Frames": [
+        "not json at all",
+        "{\u0022b\u0022:2}"
+      ],
+      "ResetBefore": [
+        false,
+        false
+      ],
+      "Parsed": [
+        false,
+        false
+      ],
+      "Errors": [
+        5,
+        5
+      ]
+    },
+    {
+      "Name": "a fresh tokener parses what the poisoned one refused",
+      "Frames": [
+        "{\u0022b\u0022:2}"
+      ],
+      "ResetBefore": [
+        false
+      ],
+      "Parsed": [
+        true
+      ],
+      "Errors": [
+        0
+      ]
+    },
+    {
+      "Name": "a reset is what clears it, and holepunch.c never calls one",
+      "Frames": [
+        "not json at all",
+        "{\u0022a\u0022:1}",
+        "{\u0022a\u0022:1}"
+      ],
+      "ResetBefore": [
+        false,
+        false,
+        true
+      ],
+      "Parsed": [
+        false,
+        false,
+        true
+      ],
+      "Errors": [
+        5,
+        5,
+        0
+      ]
+    },
+    {
+      "Name": "trailing bytes and an empty frame are harmless",
+      "Frames": [
+        "{\u0022a\u0022:1}xx",
+        "{\u0022b\u0022:2}",
+        "",
+        "{\u0022c\u0022:3}"
+      ],
+      "ResetBefore": [
+        false,
+        false,
+        false,
+        false
+      ],
+      "Parsed": [
+        true,
+        true,
+        false,
+        true
+      ],
+      "Errors": [
+        0,
+        0,
+        1,
+        0
+      ]
+    }
+  ]
+}

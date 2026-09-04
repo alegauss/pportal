@@ -9,22 +9,28 @@ namespace ChiakiNg.Tests;
 /// <summary>
 /// PP215: what a reused json-c tokener does, measured, and the rule that keeps the port out of it.
 ///
-/// The first half runs json-c itself through <see cref="NativeJsonTokener"/>. That is the evidence
-/// - the claim in <see cref="FrameParsing"/> is about a library this project does not ship the
-/// source of, and a claim like that is worth exactly what it was measured against. The second half
-/// runs the same sequences through the port and asserts the opposite.
+/// The first half is json-c's own answer to each frame sequence. That is the evidence - the claim
+/// in <see cref="FrameParsing"/> is about a library this project does not ship the source of, and a
+/// claim like that is worth exactly what it was measured against. The second half runs the same
+/// sequences through the port and asserts the opposite.
+///
+/// PP33: THE MEASUREMENT IS NOW READ RATHER THAN RE-TAKEN. It used to call the library on the spot
+/// and decline where PP663's flag had left it out, so six findings about a state machine were
+/// reported as passes on every ordinary build - and the file that carried the library is the one
+/// PP33 deletes. <see cref="JsonOracleRecording"/> holds what json-c said, taken from the library
+/// by <see cref="JsonOracleRecorder"/>, and JsonDifferentialTests re-derives it wherever a build
+/// still can.
 /// </summary>
 public class FrameParsingTests
 {
-    private const string Good = "{\"a\":1}";
-    private const string AlsoGood = "{\"b\":2}";
-    private const string Third = "{\"c\":3}";
+    private const string Good = JsonOracleCases.Good;
+    private const string AlsoGood = JsonOracleCases.AlsoGood;
 
     /// <summary>An opening brace and a key with no value: not wrong, just not finished.</summary>
-    private const string Truncated = "{\"a\":";
+    private const string Truncated = JsonOracleCases.Truncated;
 
     /// <summary>Not JSON in any state of completion.</summary>
-    private const string Garbage = "not json at all";
+    private const string Garbage = JsonOracleCases.Garbage;
 
     private static byte[] Bytes(string text) => Encoding.UTF8.GetBytes(text);
 
@@ -35,6 +41,21 @@ public class FrameParsingTests
         return document is not null;
     }
 
+    /// <summary>The recorded run of that name, which is json-c's own answer to the sequence.</summary>
+    private static JsonTokenerRun Recorded(string name)
+    {
+        JsonOracleRecording? recording = JsonOracleRecording.Read();
+        Assert.True(recording is not null, $"{JsonOracleRecording.RelativePath} is missing");
+
+        JsonTokenerRun? run = recording.Run(name);
+        Assert.True(run is not null, $"the recording holds no run called \"{name}\"");
+
+        return run.Value;
+    }
+
+    /// <summary>Whether each frame of a recorded sequence yielded a document.</summary>
+    private static bool[] ParsedIn(string name) => [.. Recorded(name).Parsed];
+
     /// <summary>
     /// Reuse is fine while every frame is a whole document, which is why this has never been
     /// noticed: the socket carries complete notifications and the tokener never sees a partial one.
@@ -42,19 +63,8 @@ public class FrameParsingTests
     [Fact]
     public void ThreeCompleteFramesInARowAllParse()
     {
-        if (!DeletedLibraryOracles.JsonOracleIsAvailable())
-            return;
-
-        using NativeJsonTokener? tokener = NativeJsonTokener.Create();
-        Assert.NotNull(tokener);
-
-        foreach (string frame in new[] { Good, AlsoGood, Third })
-        {
-            using NativeJson? document = tokener.Parse(frame);
-
-            Assert.NotNull(document);
-            Assert.Equal(0, tokener.Error);
-        }
+        Assert.Equal([true, true, true], ParsedIn("three complete frames all parse"));
+        Assert.All(Recorded("three complete frames all parse").Errors, error => Assert.Equal(0, error));
     }
 
     /// <summary>
@@ -65,38 +75,19 @@ public class FrameParsingTests
     [Fact]
     public void ATruncatedFrameSwallowsTheOneAfterIt()
     {
-        if (!DeletedLibraryOracles.JsonOracleIsAvailable())
-            return;
+        JsonTokenerRun run = Recorded("a truncated frame swallows the one after it");
 
-        using NativeJsonTokener? tokener = NativeJsonTokener.Create();
-        Assert.NotNull(tokener);
-
-        Assert.Null(tokener.Parse(Truncated));
-        Assert.NotEqual(0, tokener.Error);
-
-        // The good frame that follows it: gone, and not because there was anything wrong with it.
-        Assert.Null(tokener.Parse(AlsoGood));
-
-        // And it never comes back on its own.
-        Assert.Null(tokener.Parse(Third));
-        Assert.Null(tokener.Parse(Good));
+        // The truncated frame itself, the good one it consumed, and the two after it that never
+        // come back on their own.
+        Assert.Equal([false, false, false, false], run.Parsed);
+        Assert.NotEqual(0, run.Errors[0]);
     }
 
     /// <summary>Garbage is the same outcome one step sooner: nothing, from that frame onwards.</summary>
     [Fact]
     public void GarbageStopsTheTokenerAtOnceAndForGood()
-    {
-        if (!DeletedLibraryOracles.JsonOracleIsAvailable())
-            return;
-
-        using NativeJsonTokener? tokener = NativeJsonTokener.Create();
-        Assert.NotNull(tokener);
-
-        Assert.Null(tokener.Parse(Garbage));
-
-        Assert.Null(tokener.Parse(Good));
-        Assert.Null(tokener.Parse(AlsoGood));
-    }
+        => Assert.Equal(
+            [false, false, false], ParsedIn("garbage stops the tokener at once and for good"));
 
     /// <summary>
     /// And the frame it refused was never the problem. A tokener that has not seen the bad one
@@ -106,40 +97,20 @@ public class FrameParsingTests
     [Fact]
     public void AFreshTokenerParsesWhatAPoisonedOneRefused()
     {
-        if (!DeletedLibraryOracles.JsonOracleIsAvailable())
-            return;
-
-        using NativeJsonTokener? poisoned = NativeJsonTokener.Create();
-        Assert.NotNull(poisoned);
-
-        Assert.Null(poisoned.Parse(Garbage));
-        Assert.Null(poisoned.Parse(AlsoGood));
-
-        using NativeJsonTokener? fresh = NativeJsonTokener.Create();
-        Assert.NotNull(fresh);
-
-        using NativeJson? document = fresh.Parse(AlsoGood);
-        Assert.NotNull(document);
+        Assert.Equal([false, false], ParsedIn("a poisoned tokener refuses what is good"));
+        Assert.Equal([true], ParsedIn("a fresh tokener parses what the poisoned one refused"));
     }
 
     /// <summary>The one call that clears it - which holepunch.c never makes.</summary>
     [Fact]
     public void AResetIsWhatClearsIt()
     {
-        if (!DeletedLibraryOracles.JsonOracleIsAvailable())
-            return;
+        JsonTokenerRun run = Recorded("a reset is what clears it, and holepunch.c never calls one");
 
-        using NativeJsonTokener? tokener = NativeJsonTokener.Create();
-        Assert.NotNull(tokener);
-
-        Assert.Null(tokener.Parse(Garbage));
-        Assert.Null(tokener.Parse(Good));
-
-        tokener.Reset();
-
-        using NativeJson? document = tokener.Parse(Good);
-        Assert.NotNull(document);
-        Assert.Equal(0, tokener.Error);
+        // Garbage, then a good frame it refuses, then the SAME good frame after a reset.
+        Assert.Equal([false, false, true], run.Parsed);
+        Assert.Equal([false, false, true], run.ResetBefore);
+        Assert.Equal(0, run.Errors[2]);
     }
 
     /// <summary>
@@ -149,25 +120,10 @@ public class FrameParsingTests
     [Fact]
     public void TrailingBytesAndAnEmptyFrameAreHarmless()
     {
-        if (!DeletedLibraryOracles.JsonOracleIsAvailable())
-            return;
-
-        using NativeJsonTokener? trailing = NativeJsonTokener.Create();
-        Assert.NotNull(trailing);
-
-        using (NativeJson? first = trailing.Parse(Good + "xx"))
-            Assert.NotNull(first);
-
-        using (NativeJson? second = trailing.Parse(AlsoGood))
-            Assert.NotNull(second);
-
-        using NativeJsonTokener? empty = NativeJsonTokener.Create();
-        Assert.NotNull(empty);
-
-        Assert.Null(empty.Parse(""));
-
-        using NativeJson? after = empty.Parse(AlsoGood);
-        Assert.NotNull(after);
+        // Trailing bytes parse, the frame after them parses, an empty frame yields nothing, and
+        // the frame after THAT still parses - so neither poisons the tokener.
+        Assert.Equal(
+            [true, true, false, true], ParsedIn("trailing bytes and an empty frame are harmless"));
     }
 
     /// <summary>

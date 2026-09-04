@@ -1,6 +1,5 @@
 using System.Text.Json;
 using ChiakiNg.Protocol;
-using ChiakiNg.Session;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -16,32 +15,51 @@ namespace ChiakiNg.Tests;
 /// lenient about JSON itself and this is not, deliberately, and writing down which inputs the two
 /// disagree on is what makes that a decision rather than a surprise for whoever translates
 /// holepunch.c.
+///
+/// PP33: JSON-C'S HALF IS NOW READ FROM <see cref="JsonOracleRecording"/> rather than called. PP663
+/// put the library behind a flag, so every one of these declined on an ordinary build and was
+/// reported as a pass - and the file carrying the library is the one PP33 deletes, which would have
+/// made the decline permanent. The recording is taken from the real library by
+/// <see cref="JsonOracleRecorder"/> and re-derived by
+/// <see cref="JsonDifferentialTests.TheRecordingIsWhatTheLibraryStillSays"/> wherever a build can.
 /// </summary>
 public class JsonCTests
 {
+    private static JsonOracleRecording Recording()
+    {
+        JsonOracleRecording? recording = JsonOracleRecording.Read();
+        Assert.True(recording is not null, $"{JsonOracleRecording.RelativePath} is missing");
+        return recording;
+    }
+
     /// <summary>Both sides' answers for one node, so a case is one line.</summary>
     private static void Same(string json, string key = "v")
     {
-        if (!DeletedLibraryOracles.JsonOracleIsAvailable())
-            return;
+        // The key as a pointer, which is the same node for every key in these cases: none contains
+        // a slash or a tilde, and the empty key is the root in both spellings.
+        string path = key.Length == 0 ? "" : "/" + key;
 
-        using NativeJson? native = NativeJson.Parse(json);
+        JsonOracleRow? recorded = Recording().Row(json, path);
+        Assert.True(recorded is not null, $"no recorded answer for {json} at {path}");
+
+        JsonOracleRow row = recorded.Value;
         using JsonDocument? managed = JsonC.Parse(json);
 
-        Assert.Equal(native is null, managed is null);
-        if (native is null || managed is null)
+        Assert.Equal(row.Present || managed is not null, managed is not null);
+        if (managed is null)
             return;
 
-        IntPtr nativeNode = key.Length == 0 ? native.Root : NativeJson.Get(native.Root, key);
-        JsonElement? managedNode = key.Length == 0
-            ? managed.RootElement
-            : JsonC.Get(managed.RootElement, key);
+        JsonElement? node = JsonC.Pointer(managed.RootElement, path);
 
-        Assert.Equal(NativeJson.String(nativeNode), JsonC.String(managedNode));
-        Assert.Equal(NativeJson.Int(nativeNode), JsonC.Int(managedNode));
-        Assert.Equal(NativeJson.Int64(nativeNode), JsonC.Int64(managedNode));
-        Assert.Equal(NativeJson.Bool(nativeNode), JsonC.Bool(managedNode));
-        Assert.Equal(NativeJson.ArrayLength(nativeNode), JsonC.ArrayLength(managedNode));
+        // Present or absent first, then every accessor - for an ABSENT node too, because json-c
+        // answers for one and holepunch.c reads fields it never checked.
+        Assert.Equal(row.Present, node is not null);
+
+        Assert.Equal(row.String, JsonC.String(node));
+        Assert.Equal(row.Int, JsonC.Int(node));
+        Assert.Equal(row.Int64, JsonC.Int64(node));
+        Assert.Equal(row.Bool, JsonC.Bool(node));
+        Assert.Equal(row.ArrayLength, JsonC.ArrayLength(node));
     }
 
     /// <summary>
@@ -151,31 +169,31 @@ public class JsonCTests
     [Fact]
     public void ArrayLengthAndIndexingAgree()
     {
-        if (!DeletedLibraryOracles.JsonOracleIsAvailable())
-            return;
-
         const string json = @"{""a"":[10,20,30],""b"":7}";
-        using NativeJson? native = NativeJson.Parse(json);
+        JsonOracleRecording recording = Recording();
+
+        Assert.Equal(3, recording.Row(json, "/a")?.ArrayLength);
+        Assert.Equal(-1, recording.Row(json, "/b")?.ArrayLength);
+        Assert.Equal(-1, recording.Row(json, "")?.ArrayLength);
+
         using JsonDocument? managed = JsonC.Parse(json);
+        JsonElement? array = JsonC.Get(managed!.RootElement, "a");
 
-        IntPtr nativeArray = NativeJson.Get(native!.Root, "a");
-        JsonElement? managedArray = JsonC.Get(managed!.RootElement, "a");
-
-        Assert.Equal(3, NativeJson.ArrayLength(nativeArray));
-        Assert.Equal(3, JsonC.ArrayLength(managedArray));
-
-        Assert.Equal(-1, NativeJson.ArrayLength(NativeJson.Get(native.Root, "b")));
+        Assert.Equal(3, JsonC.ArrayLength(array));
         Assert.Equal(-1, JsonC.ArrayLength(JsonC.Get(managed.RootElement, "b")));
-        Assert.Equal(-1, NativeJson.ArrayLength(native.Root));
         Assert.Equal(-1, JsonC.ArrayLength(managed.RootElement));
 
+        // Indexing past the end, through the pointer - which is how the recording addresses it and
+        // is the same node ArrayAt reaches.
         for (int i = 0; i < 5; i++)
         {
-            IntPtr nativeAt = NativeJson.ArrayAt(nativeArray, i);
-            JsonElement? managedAt = JsonC.ArrayAt(managedArray, i);
+            JsonOracleRow? recorded = recording.Row(json, $"/a/{i}");
+            Assert.True(recorded is not null, $"no recorded answer for index {i}");
 
-            Assert.Equal(nativeAt == IntPtr.Zero, managedAt is null);
-            Assert.Equal(NativeJson.String(nativeAt), JsonC.String(managedAt));
+            JsonElement? at = JsonC.ArrayAt(array, i);
+
+            Assert.Equal(recorded.Value.Present, at is not null);
+            Assert.Equal(recorded.Value.String, JsonC.String(at));
         }
     }
 
@@ -204,20 +222,20 @@ public class JsonCTests
     [InlineData("/a/b/-1")]
     public void ThePointerResolvesTheWayJsonCResolvesIt(string path)
     {
-        if (!DeletedLibraryOracles.JsonOracleIsAvailable())
-            return;
-
         const string doc = @"{""a"":{""b"":[10,20]},""x/y"":1,""x~z"":2,"""":3}";
 
-        using NativeJson? native = NativeJson.Parse(doc);
+        JsonOracleRow? recorded = Recording().Row(doc, path);
+        Assert.True(recorded is not null, $"no recorded answer for the pointer \"{path}\"");
+
         using JsonDocument? managed = JsonC.Parse(doc);
+        JsonElement? node = JsonC.Pointer(managed!.RootElement, path);
 
-        IntPtr nativeNode = native!.Pointer(path);
-        JsonElement? managedNode = JsonC.Pointer(managed!.RootElement, path);
-
-        Assert.Equal(nativeNode == IntPtr.Zero, managedNode is null);
-        Assert.Equal(NativeJson.String(nativeNode), JsonC.String(managedNode));
-        Assert.Equal(NativeJson.Int(nativeNode), JsonC.Int(managedNode));
+        // The accessors are compared for an absent node too - json-c answers for NULL, and what it
+        // answers is the whole reason a caller reading an unchecked field gets 0 rather than a
+        // failure.
+        Assert.Equal(recorded.Value.Present, node is not null);
+        Assert.Equal(recorded.Value.String, JsonC.String(node));
+        Assert.Equal(recorded.Value.Int, JsonC.Int(node));
     }
 
     /// <summary>
@@ -240,17 +258,16 @@ public class JsonCTests
     [InlineData(@"{""a"":}")]
     public void TheTokenerAgreesOnWhatIsADocument(string text)
     {
-        if (!DeletedLibraryOracles.JsonOracleIsAvailable())
-            return;
+        JsonDocumentAnswer? recorded = Recording().Document(text);
+        Assert.True(recorded is not null, $"no recorded answer for \"{text}\"");
 
-        using NativeJson? native = NativeJson.Parse(text);
         using JsonDocument? managed = JsonC.Parse(text);
 
-        Assert.Equal(native is null, managed is null);
-        if (native is null || managed is null)
+        Assert.Equal(recorded.Value.Parsed, managed is not null);
+        if (managed is null)
             return;
 
-        Assert.Equal(NativeJson.String(native.Root), JsonC.String(managed.RootElement));
+        Assert.Equal(recorded.Value.RootString, JsonC.String(managed.RootElement));
     }
 
     /// <summary>
@@ -272,14 +289,30 @@ public class JsonCTests
     [InlineData("01")]
     public void JsonCsLexerIsLenientWhereThisIsNot(string text)
     {
-        if (!DeletedLibraryOracles.JsonOracleIsAvailable())
-            return;
+        Assert.Contains(text, JsonOracleCases.Divergences);
 
-        using NativeJson? native = NativeJson.Parse(text);
-        Assert.NotNull(native);
+        JsonDocumentAnswer? recorded = Recording().Document(text);
+        Assert.True(recorded is not null, $"no recorded answer for \"{text}\"");
+        Assert.True(recorded.Value.Parsed, $"json-c no longer accepts \"{text}\"");
 
         using JsonDocument? managed = JsonC.Parse(text);
         Assert.Null(managed);
+    }
+
+    /// <summary>And the divergence set is exactly those, so a new one cannot arrive unremarked.</summary>
+    [Fact]
+    public void TheDivergenceSetIsExactlyThose()
+    {
+        JsonOracleRecording recording = Recording();
+
+        IReadOnlyList<string> diverging =
+        [
+            .. recording.Documents
+                .Where(one => one.Parsed && JsonC.Parse(one.Text) is null)
+                .Select(one => one.Text),
+        ];
+
+        Assert.Equal(JsonOracleCases.Divergences.Order(), diverging.Order());
     }
 
     /// <summary>
@@ -298,13 +331,13 @@ public class JsonCTests
     [InlineData(@"{""t"":""a\tb\nc""}")]
     public void TheSerialisationIsJsonCsOwn(string json)
     {
-        if (!DeletedLibraryOracles.JsonOracleIsAvailable())
-            return;
+        JsonDocumentAnswer? recorded = Recording().Document(json);
+        Assert.True(recorded is not null, $"no recorded answer for {json}");
 
-        using NativeJson? native = NativeJson.Parse(json);
         using JsonDocument? managed = JsonC.Parse(json);
+        Assert.NotNull(managed);
 
-        Assert.Equal(NativeJson.String(native!.Root), JsonC.String(managed!.RootElement));
+        Assert.Equal(recorded.Value.RootString, JsonC.String(managed.RootElement));
     }
 
     /// <summary>
@@ -314,34 +347,30 @@ public class JsonCTests
     [Fact]
     public void ASessionMessageShapedDocumentReadsTheSameThroughBoth()
     {
-        if (!DeletedLibraryOracles.JsonOracleIsAvailable())
-            return;
+        JsonOracleRecording recording = Recording();
 
-        const string outer =
-            @"{""to"":""ps5"",""action"":""SEND"",""payload"":" +
-            @"""{\""accountId\"":\""9999999999999999999999\"",\""localPeerPort\"":\""9295\""}""}";
+        using JsonDocument? managed = JsonC.Parse(JsonOracleCases.SessionMessage);
+        string? payload = JsonC.String(JsonC.Get(managed!.RootElement, "payload"));
 
-        using NativeJson? native = NativeJson.Parse(outer);
-        using JsonDocument? managed = JsonC.Parse(outer);
+        Assert.Equal(recording.Row(JsonOracleCases.SessionMessage, "/payload")?.String, payload);
+        Assert.NotNull(payload);
 
-        string? nativePayload = NativeJson.String(NativeJson.Get(native!.Root, "payload"));
-        string? managedPayload = JsonC.String(JsonC.Get(managed!.RootElement, "payload"));
-        Assert.Equal(nativePayload, managedPayload);
-        Assert.NotNull(managedPayload);
+        // The payload json-c handed back IS the inner document, which is what makes recording the
+        // two separately a comparison rather than two unrelated readings.
+        Assert.Equal(JsonOracleCases.SessionPayload, payload);
 
-        using NativeJson? nativeInner = NativeJson.Parse(nativePayload!);
-        using JsonDocument? managedInner = JsonC.Parse(managedPayload!);
+        using JsonDocument? inner = JsonC.Parse(payload);
 
         // The port is 9295 as a STRING, which get_int reads anyway - and the account id overflows,
         // which is why the wide read and the saturating one are both asserted.
         Assert.Equal(
-            NativeJson.Int(NativeJson.Get(nativeInner!.Root, "localPeerPort")),
-            JsonC.Int(JsonC.Get(managedInner!.RootElement, "localPeerPort")));
-        Assert.Equal(9295, JsonC.Int(JsonC.Get(managedInner.RootElement, "localPeerPort")));
+            recording.Row(JsonOracleCases.SessionPayload, "/localPeerPort")?.Int,
+            JsonC.Int(JsonC.Get(inner!.RootElement, "localPeerPort")));
+        Assert.Equal(9295, JsonC.Int(JsonC.Get(inner.RootElement, "localPeerPort")));
 
         Assert.Equal(
-            NativeJson.Int64(NativeJson.Get(nativeInner.Root, "accountId")),
-            JsonC.Int64(JsonC.Get(managedInner.RootElement, "accountId")));
+            recording.Row(JsonOracleCases.SessionPayload, "/accountId")?.Int64,
+            JsonC.Int64(JsonC.Get(inner.RootElement, "accountId")));
     }
 
     /// <summary>
