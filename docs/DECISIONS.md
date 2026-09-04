@@ -45,6 +45,7 @@ are read from the spike's committed file rather than typed.
 
 - ✅ **PP33** **HTTP and JSON in the core are curl and json-c, two vendored dependencies for what the runtime already does** — holepunch.c stays as unbuilt source, gui/'s answer after PP598: ~20 managed models are held against it, and deleting it turned 28 assertions red and would have silenced more quietly.
 - ✅ **PP676** **the feedback and mic sends have no managed code, and each places its MAC where packet_mac's table does not look** — The quaternion picks its largest by MAGNITUDE and the ring formats newest-first; both are right-sized when wrong, so neither fails - one aims a pad differently, the other reads as lag.
+- ✅ **PP677** **the key state has no managed transcription, so every key position the port expands is the shim's** — Both wrap branches need the RFC comparison AND the plain one to disagree, and neither is true of a repeat - an expansion written with one comparison adds 2^32 to twenty-six of four thousand.
 
 ## Block G — Test discipline
 

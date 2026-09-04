@@ -233,30 +233,6 @@ because today the default is what makes those two theories a check on the ORACLE
 cases are the C's own, and a managed default now would silently stop asking the C
 whether it still agrees with its own recording.
 
-### §PP677 The key state, in managed code
-
-chiaki_key_state_request_pos is the counter every encrypted byte of a session is keyed
-by, expanded from the thirty-two bits on the wire to the sixty-four the cipher needs:
-remember the high half, increment it when the low half wraps, and either commit the
-result or only peek at it. A parse that may still turn out to be garbage peeks, so a
-corrupt packet cannot drag the counter forward.
-
-PP23 reached it through the shim as KeyState, PP111 fed the C suite's cases through that
-wrapper, and PP519 fed it a console's own positions, where equal values occur twenty-six
-times in two thousand. All three are the C running. SuiteCoverage answers keystate.c
-with SeqNumTests and the selftest, and neither holds a managed body of the function,
-because there is none.
-
-EVERY MANAGED PARSE NEEDS IT. takion_parse_message commits on every control message;
-chiaki_takion_packet_read_key_pos peeks before the MAC gate; av_packet_parse commits
-inside the AV header. PP668's v12 parse and the control-message layer both stop at this
-wrapper, and a transport whose hot path crosses the seam once per datagram to expand a
-counter is not the transport PP44 budgeted.
-
-THE ORACLE IS THE WRAPPER ITSELF, and the corpus: DatagramReplayReport.KeyPositions
-already reads the positions off four thousand real heads. The same sequence through
-both, committed and peeked, compared at every step.
-
 ### §PP678 A takion that owns things
 
 takion_thread_func is more than the loop PP487 modelled. Before it: the handshake, the

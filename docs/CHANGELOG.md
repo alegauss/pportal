@@ -619,6 +619,8 @@
   checked **The comment names the two sends that carry the type, and a check holds it** The sentence says corrupt frame and IDR request; StreamMessagesSource already reads the call sites, so the check is that the comment's named pair and the pair the calls pass with data type two are the same two, which a future rename breaks loudly.
 - ✅ **PP699** **there is no managed presenter to count dropped frames, and the counter that did is in the retired client** — The presenter tallies what it showed and what it never did, folding in the receiver's total as the Qt client does, and a live session appends a row to the ledger both builds share.
   checked **The presenter counts what it never showed, and a session writes a row** The managed present path accumulates frames it did not show, folding in the receiver's total the way qmlmainwindow.cpp did, and one baseline line is written per live session. A session that ended on a failed pull carries its remainder rather than discarding it, which is PP528's repair kept.
+- ✅ **PP677** **the key state has no managed transcription, so every key position the port expands is the shim's** — The expansion is managed now and agrees with the shim's at every step of 4025 real positions, 26 repeats among them, committed and peeked alike.
+  checked **The managed key state agrees with the shim's over the corpus, either way** DatagramReplayReport.KeyPositions reads the low halves off PP608's heads; the same sequence goes through KeyState and the managed ledger, with commit and without, and every expanded position is equal, including PP521's twenty-six zeros before the cipher exists.
 
 ## Block G — Test discipline
 
