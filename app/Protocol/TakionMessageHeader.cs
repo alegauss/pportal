@@ -1,4 +1,4 @@
-using System.Buffers.Binary;
+﻿using System.Buffers.Binary;
 using ChiakiNg.Session;
 
 namespace ChiakiNg.Protocol;
@@ -27,7 +27,7 @@ public enum TakionCookieAckVerdict
 /// <param name="ChunkType">The chunk type at +0xc.</param>
 /// <param name="ChunkFlags">Its flags at +0xd.</param>
 /// <param name="PayloadSize">The payload's own length, the addend taken off.</param>
-internal readonly record struct TakionInboundHeader(
+public readonly record struct TakionInboundHeader(
     uint Tag, uint KeyPosLow, byte ChunkType, byte ChunkFlags, int PayloadSize);
 
 /// <summary>
@@ -150,36 +150,77 @@ public static class TakionMessageHeader
     /// count, then the four it does. The addend comes off after the check, which is why
     /// <see cref="TakionInboundHeader.PayloadSize"/> is the payload's own.
     ///
-    /// INTERNAL AND NARROW ON PURPOSE. PP673 owns the message layer - the parse as a public reader with
-    /// the DATA and DATA_ACK switch under it, held against PP608's corpus. This is the handshake
-    /// borrowing the header's rules for its two acks until that lands, not a second home for them.
-    /// The key position is handed back as the wire's low half and not expanded: the C commits it
-    /// through the key state on every message, which is PP677's ledger and zero throughout a handshake.
+    /// PP673 LANDED AND THIS IS NOW THE ONE READER. It was internal while the handshake was
+    /// borrowing the header's rules for its two acks; <see cref="TakionMessageIntake"/> is the
+    /// message layer that owns them, and it calls this rather than writing a second copy - which is
+    /// what the note here promised and the reason it stayed narrow in between.
+    ///
+    /// The key position is still handed back as the wire's LOW HALF and not expanded. The C commits
+    /// it through the key state on every message, and that commit belongs to the message layer:
+    /// doing it here would move a ledger for a handshake ack that has no ledger, and would make a
+    /// corpus reader's every answer depend on the order it read in.
     /// </summary>
     /// <param name="message">The datagram after its type byte, as the C passes <c>buf + 1</c>.</param>
     /// <param name="tagLocal">The client's own tag, the only one an inbound header may carry.</param>
     /// <param name="header">The five fields, where the message was not refused.</param>
-    internal static bool TryReadInbound(
+    public static bool TryReadInbound(
         ReadOnlySpan<byte> message, uint tagLocal, out TakionInboundHeader header)
     {
         header = default;
+
+        if (!TryReadInboundFields(message, tagLocal, out header, out int stated))
+            return false;
+
+        if (message.Length != stated + (TakionHandshake.MessageHeaderSize - SizeFieldAddend))
+        {
+            header = default;
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// The first two refusals alone, for a message whose LENGTH is not knowable.
+    ///
+    /// PP673: PP510's tap keeps eighteen bytes of each datagram, so a captured control message is a
+    /// header and a stub. The third refusal compares the length field against the whole message and
+    /// on a truncated one it always fires - correctly, and about the capture rather than about the
+    /// header. So the two a head can answer are separated out: too short to hold a header, and a
+    /// tag that is not ours.
+    ///
+    /// NOT AN EASIER PARSE. The full reader is the one a live datagram goes through; this exists so
+    /// four thousand recorded heads can be held against the field placement, which is the half a
+    /// capture can testify to. A caller with a whole message that used this would be skipping a
+    /// check the C makes.
+    /// </summary>
+    /// <param name="message">The datagram after its type byte, as the C passes <c>buf + 1</c>.</param>
+    /// <param name="tagLocal">The tag the header must carry.</param>
+    /// <param name="header">The five fields, where neither refusal fired.</param>
+    /// <param name="statedSize">The length field as written, addend included, for a caller checking it.</param>
+    public static bool TryReadInboundFields(
+        ReadOnlySpan<byte> message, uint tagLocal, out TakionInboundHeader header, out int statedSize)
+    {
+        header = default;
+        statedSize = 0;
 
         if (message.Length < TakionHandshake.MessageHeaderSize)
             return false;
 
         uint tag = BinaryPrimitives.ReadUInt32BigEndian(message[TagOffset..]);
-        uint keyPosLow = BinaryPrimitives.ReadUInt32BigEndian(message[KeyPosOffset..]);
-        byte chunkType = message[ChunkTypeOffset];
-        byte chunkFlags = message[ChunkFlagsOffset];
-        int stated = BinaryPrimitives.ReadUInt16BigEndian(message[SizeFieldOffset..]);
 
         if (!TakionHandshake.InboundHeaderTagAccepted(tag, tagLocal))
             return false;
 
-        if (message.Length != stated + (TakionHandshake.MessageHeaderSize - SizeFieldAddend))
-            return false;
+        statedSize = BinaryPrimitives.ReadUInt16BigEndian(message[SizeFieldOffset..]);
 
-        header = new TakionInboundHeader(tag, keyPosLow, chunkType, chunkFlags, stated - SizeFieldAddend);
+        header = new TakionInboundHeader(
+            tag,
+            BinaryPrimitives.ReadUInt32BigEndian(message[KeyPosOffset..]),
+            message[ChunkTypeOffset],
+            message[ChunkFlagsOffset],
+            statedSize - SizeFieldAddend);
+
         return true;
     }
 
@@ -280,3 +321,4 @@ public static class TakionMessageHeader
             && takionSource.Contains(SizeFieldWrite, StringComparison.Ordinal);
     }
 }
+
