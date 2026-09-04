@@ -1,0 +1,473 @@
+using System.Runtime.InteropServices;
+using ChiakiNg.Session;
+
+namespace ChiakiNg.Native;
+
+/// <summary>What opening a capture device did.</summary>
+public enum CaptureResult
+{
+    /// <summary>Open, running, and handing units to the sink.</summary>
+    Running,
+
+    /// <summary>There is no active capture endpoint, which is a machine with no microphone.</summary>
+    NoDevice,
+
+    /// <summary>WASAPI refused. <see cref="WasapiCapture.LastError"/> holds the HRESULT.</summary>
+    Refused,
+}
+
+/// <summary>
+/// PP652: the microphone, opened.
+///
+/// <see cref="MicrophoneSurface"/> counted four subsystems assuming a microphone and nothing
+/// producing one sample. This is the producer. The default COMMUNICATIONS endpoint, because that is
+/// the one Windows nominates for a voice path and the one a person expects a headset to be.
+///
+/// EVERY CONVERSION IS WINDOWS'S. PP652's spike measured that no capture device here takes the
+/// announced one-channel 16-bit 48000 format in shared mode - a shared client gets the mix format,
+/// and a mix format is 32-bit float, at 16000 Hz on this machine's default headset. But
+/// AUTOCONVERTPCM initialises on every device, so the engine puts a converter in front and the
+/// client reads exactly what the console was told about. A resample written here would be a second
+/// one, and worse.
+///
+/// IsFormatSupported does not know about that flag, which is why the spike had to initialise rather
+/// than ask, and why this does the same thing rather than checking first.
+///
+/// THE LOOP IS EVENT-DRIVEN AND THE SINK IS NOT. A capture callback runs on a thread WASAPI is
+/// waiting on, so anything slow in the sink is a dropped packet. What this hands over is a span
+/// valid for that call alone - <see cref="MicrophoneUnits"/>'s contract - and a caller that needs
+/// the bytes to outlive it copies them.
+///
+/// Every COM method here carries PreserveSig, which PP693 made a check rather than a habit: without
+/// it the CLR reads the declared int as a retval and every HRESULT test compares against an
+/// uninitialised local.
+/// </summary>
+public sealed class WasapiCapture : IDisposable
+{
+    /// <summary>How much the engine buffers, in hundred-nanosecond units. A hundred milliseconds.</summary>
+    public const long BufferDuration = 100 * 10_000L;
+
+    /// <summary>How long the loop waits for a packet before looking again.</summary>
+    public static TimeSpan PollInterval { get; } = TimeSpan.FromMilliseconds(5);
+
+    private readonly Action<ReadOnlySpan<byte>> sink;
+    private readonly MicrophoneUnits units = new();
+    private readonly CancellationTokenSource stopping = new();
+
+    private IAudioClient? client;
+    private IAudioCaptureClient? capture;
+    private Thread? pump;
+    private bool disposed;
+
+    /// <summary>The HRESULT of whatever last refused, or zero.</summary>
+    public int LastError { get; private set; }
+
+    /// <summary>How many whole units have reached the sink.</summary>
+    public long UnitsCaptured => units.Emitted;
+
+    /// <summary>The device's name, once one is open.</summary>
+    public string DeviceName { get; private set; } = string.Empty;
+
+    /// <summary>A capture that hands whole units to <paramref name="sink"/>.</summary>
+    public WasapiCapture(Action<ReadOnlySpan<byte>> sink)
+    {
+        ArgumentNullException.ThrowIfNull(sink);
+        this.sink = sink;
+    }
+
+    /// <summary>
+    /// Open the default communications capture endpoint and start reading.
+    ///
+    /// Reports rather than throws, for <see cref="Session.SurfacePresenter"/>'s reason: whether a
+    /// machine has a microphone is a fact about the machine, and a host that cannot start one still
+    /// has a session to run.
+    /// </summary>
+    public CaptureResult Start()
+    {
+        ObjectDisposedException.ThrowIf(disposed, this);
+
+        if (pump is not null)
+            return CaptureResult.Running;
+
+        object enumeratorObject;
+        try
+        {
+            enumeratorObject = Activator.CreateInstance(Type.GetTypeFromCLSID(MMDeviceEnumeratorClsid)!)!;
+        }
+        catch (Exception error) when (error is COMException or InvalidOperationException or NotSupportedException)
+        {
+            LastError = error.HResult;
+            return CaptureResult.Refused;
+        }
+
+        var enumerator = (IMMDeviceEnumerator)enumeratorObject;
+        IMMDevice? device = null;
+
+        try
+        {
+            LastError = enumerator.GetDefaultAudioEndpoint(EDataFlow.Capture, ERole.Communications, out device);
+
+            if (LastError != 0 || device is null)
+                return CaptureResult.NoDevice;
+
+            DeviceName = NameOf(device);
+
+            LastError = device.Activate(AudioClientIid, CLSCTX_ALL, IntPtr.Zero, out object? activated);
+            if (LastError != 0 || activated is not IAudioClient opened)
+                return CaptureResult.Refused;
+
+            client = opened;
+
+            IntPtr format = Announced();
+            try
+            {
+                LastError = client.Initialize(
+                    AudioClientShareMode.Shared,
+                    AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY,
+                    BufferDuration,
+                    0,
+                    format,
+                    IntPtr.Zero);
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(format);
+            }
+
+            if (LastError != 0)
+                return CaptureResult.Refused;
+
+            LastError = client.GetService(CaptureClientIid, out object? service);
+            if (LastError != 0 || service is not IAudioCaptureClient reader)
+                return CaptureResult.Refused;
+
+            capture = reader;
+
+            LastError = client.Start();
+            if (LastError != 0)
+                return CaptureResult.Refused;
+
+            pump = new Thread(Pump)
+            {
+                IsBackground = true,
+                Name = "microphone capture",
+            };
+            pump.Start();
+
+            return CaptureResult.Running;
+        }
+        finally
+        {
+            if (device is not null)
+                Marshal.ReleaseComObject(device);
+
+            Marshal.ReleaseComObject(enumerator);
+        }
+    }
+
+    /// <summary>
+    /// Read packets until stopped, handing whole units on.
+    ///
+    /// A silent device returns zero-sized packets rather than nothing, and the SILENT flag means
+    /// the buffer pointer is not to be read - so a run of silence is fed as zeroes, which keeps the
+    /// unit clock running rather than letting the encoder drift through a quiet moment.
+    /// </summary>
+    private void Pump()
+    {
+        byte[] silence = new byte[units.UnitBytes];
+
+        while (!stopping.IsCancellationRequested)
+        {
+            if (capture is not { } reader)
+                return;
+
+            if (reader.GetNextPacketSize(out int frames) != 0)
+                return;
+
+            if (frames == 0)
+            {
+                stopping.Token.WaitHandle.WaitOne(PollInterval);
+                continue;
+            }
+
+            if (reader.GetBuffer(out IntPtr buffer, out int got, out int flags, out _, out _) != 0)
+                return;
+
+            try
+            {
+                int bytes = got * units.UnitBytes / MicrophoneFormat.Announced.FrameSize;
+
+                if ((flags & AUDCLNT_BUFFERFLAGS_SILENT) != 0 || buffer == IntPtr.Zero)
+                {
+                    for (int at = 0; at < bytes; at += silence.Length)
+                        units.Take(silence.AsSpan(0, Math.Min(silence.Length, bytes - at)), sink);
+                }
+                else
+                {
+                    unsafe
+                    {
+                        units.Take(new ReadOnlySpan<byte>((void*)buffer, bytes), sink);
+                    }
+                }
+            }
+            finally
+            {
+                reader.ReleaseBuffer(got);
+            }
+        }
+    }
+
+    /// <summary>Stop reading and release the device.</summary>
+    public void Dispose()
+    {
+        if (disposed)
+            return;
+
+        disposed = true;
+        stopping.Cancel();
+
+        // Bounded: a pump that will not finish must not take the host down with it, which is the
+        // rule PP618's runner exists for on the other side of the process.
+        pump?.Join(TimeSpan.FromSeconds(2));
+        pump = null;
+
+        if (client is not null)
+        {
+            client.Stop();
+            Marshal.ReleaseComObject(client);
+            client = null;
+        }
+
+        if (capture is not null)
+        {
+            Marshal.ReleaseComObject(capture);
+            capture = null;
+        }
+
+        stopping.Dispose();
+        units.Reset();
+    }
+
+    private static string NameOf(IMMDevice device)
+    {
+        if (device.OpenPropertyStore(STGM_READ, out IPropertyStore? store) != 0 || store is null)
+            return string.Empty;
+
+        try
+        {
+            if (store.GetValue(ref FriendlyName, out PropVariant value) != 0)
+                return string.Empty;
+
+            string name = value.AsString() ?? string.Empty;
+            PropVariantClear(ref value);
+            return name;
+        }
+        finally
+        {
+            Marshal.ReleaseComObject(store);
+        }
+    }
+
+    /// <summary>The format the C announces, allocated unmanaged for a call that takes a pointer.</summary>
+    private static IntPtr Announced()
+    {
+        MicrophoneAnnouncement announced = MicrophoneFormat.Announced;
+
+        var wanted = new WaveFormatEx
+        {
+            FormatTag = WAVE_FORMAT_PCM,
+            Channels = (short)announced.Channels,
+            SamplesPerSec = announced.Rate,
+            BitsPerSample = (short)announced.Bits,
+            BlockAlign = (short)(announced.Channels * announced.Bits / 8),
+            Size = 0,
+        };
+        wanted.AvgBytesPerSec = wanted.SamplesPerSec * wanted.BlockAlign;
+
+        IntPtr buffer = Marshal.AllocHGlobal(Marshal.SizeOf<WaveFormatEx>());
+        Marshal.StructureToPtr(wanted, buffer, false);
+        return buffer;
+    }
+
+    private const int CLSCTX_ALL = 23;
+    private const int STGM_READ = 0;
+    private const short WAVE_FORMAT_PCM = 1;
+    private const int AUDCLNT_BUFFERFLAGS_SILENT = 2;
+
+    /// <summary>Put a converter in front of the engine, which is what makes the announced format reachable.</summary>
+    public const int AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM = unchecked((int)0x80000000);
+
+    /// <summary>And let it resample, which the default endpoint at 16000 Hz needs.</summary>
+    public const int AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY = 0x08000000;
+
+    private static readonly Guid MMDeviceEnumeratorClsid = new("BCDE0395-E52F-467C-8E3D-C4579291692E");
+    private static readonly Guid AudioClientIid = new("1CB9AD4C-DBFA-4c32-B178-C2F568A703B2");
+    private static readonly Guid CaptureClientIid = new("C8ADBD64-E71E-48a0-A4DE-185C395CD317");
+
+    private static PropertyKey FriendlyName = new(new Guid("a45c254e-df1c-4efd-8020-67d146a850e0"), 14);
+
+    [DllImport("ole32.dll")]
+    private static extern int PropVariantClear(ref PropVariant value);
+
+    private enum EDataFlow
+    {
+        Render = 0,
+        Capture = 1,
+    }
+
+    private enum ERole
+    {
+        Console = 0,
+        Multimedia = 1,
+        Communications = 2,
+    }
+
+    private enum AudioClientShareMode
+    {
+        Shared = 0,
+        Exclusive = 1,
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct WaveFormatEx
+    {
+        public short FormatTag;
+        public short Channels;
+        public int SamplesPerSec;
+        public int AvgBytesPerSec;
+        public short BlockAlign;
+        public short BitsPerSample;
+        public short Size;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct PropertyKey(Guid formatId, int propertyId)
+    {
+        public Guid FormatId = formatId;
+        public int PropertyId = propertyId;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct PropVariant
+    {
+        public short Type;
+        public short Reserved1;
+        public short Reserved2;
+        public short Reserved3;
+        public IntPtr Value;
+        public IntPtr Value2;
+
+        /// <summary>VT_LPWSTR is 31, and a friendly name is one.</summary>
+        public readonly string? AsString() => Type == 31 ? Marshal.PtrToStringUni(Value) : null;
+    }
+
+    [ComImport]
+    [Guid("A95664D2-9614-4F35-A746-DE8DB63617E6")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IMMDeviceEnumerator
+    {
+        [PreserveSig]
+        int EnumAudioEndpoints(EDataFlow flow, int stateMask, out IntPtr devices);
+
+        [PreserveSig]
+        int GetDefaultAudioEndpoint(EDataFlow flow, ERole role, out IMMDevice? device);
+    }
+
+    [ComImport]
+    [Guid("D666063F-1587-4E43-81F1-B948E807363F")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IMMDevice
+    {
+        [PreserveSig]
+        int Activate(
+            [MarshalAs(UnmanagedType.LPStruct)] Guid iid,
+            int context,
+            IntPtr activationParams,
+            [MarshalAs(UnmanagedType.IUnknown)] out object? instance);
+
+        [PreserveSig]
+        int OpenPropertyStore(int access, out IPropertyStore? store);
+
+        [PreserveSig]
+        int GetId([MarshalAs(UnmanagedType.LPWStr)] out string id);
+    }
+
+    [ComImport]
+    [Guid("886d8eeb-8cf2-4446-8d02-cdba1dbdcf99")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IPropertyStore
+    {
+        [PreserveSig]
+        int GetCount(out int count);
+
+        [PreserveSig]
+        int GetAt(int index, out PropertyKey key);
+
+        [PreserveSig]
+        int GetValue(ref PropertyKey key, out PropVariant value);
+    }
+
+    [ComImport]
+    [Guid("1CB9AD4C-DBFA-4c32-B178-C2F568A703B2")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IAudioClient
+    {
+        [PreserveSig]
+        int Initialize(
+            AudioClientShareMode mode, int flags, long duration, long period, IntPtr format, IntPtr session);
+
+        [PreserveSig]
+        int GetBufferSize(out int frames);
+
+        [PreserveSig]
+        int GetStreamLatency(out long latency);
+
+        [PreserveSig]
+        int GetCurrentPadding(out int frames);
+
+        [PreserveSig]
+        int IsFormatSupported(AudioClientShareMode mode, IntPtr format, out IntPtr closest);
+
+        [PreserveSig]
+        int GetMixFormat(out IntPtr format);
+
+        [PreserveSig]
+        int GetDevicePeriod(out long defaultPeriod, out long minimumPeriod);
+
+        [PreserveSig]
+        int Start();
+
+        [PreserveSig]
+        int Stop();
+
+        [PreserveSig]
+        int Reset();
+
+        [PreserveSig]
+        int SetEventHandle(IntPtr handle);
+
+        [PreserveSig]
+        int GetService([MarshalAs(UnmanagedType.LPStruct)] Guid iid,
+            [MarshalAs(UnmanagedType.IUnknown)] out object? service);
+    }
+
+    [ComImport]
+    [Guid("C8ADBD64-E71E-48a0-A4DE-185C395CD317")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IAudioCaptureClient
+    {
+        [PreserveSig]
+        int GetBuffer(
+            out IntPtr buffer,
+            out int frames,
+            out int flags,
+            out long devicePosition,
+            out long counterPosition);
+
+        [PreserveSig]
+        int ReleaseBuffer(int frames);
+
+        [PreserveSig]
+        int GetNextPacketSize(out int frames);
+    }
+}

@@ -1,5 +1,5 @@
 {
-  "taken": "2026-09-04T13:46:02.2718441+00:00",
+  "taken": "2026-09-04T13:58:05.3754025+00:00",
   "machine": "XPS",
   "os": "Microsoft Windows NT 10.0.26200.0",
   "dotnet": "10.0.11",
@@ -19,7 +19,8 @@
       "MixRate": 48000,
       "MixIsFloat": true,
       "TakesAnnouncedShared": false,
-      "TakesAnnouncedExclusive": false
+      "TakesAnnouncedExclusive": false,
+      "InitialisesWithAutoConvert": true
     },
     {
       "Name": "Microfone (HD Pro Webcam C920)",
@@ -30,7 +31,8 @@
       "MixRate": 48000,
       "MixIsFloat": true,
       "TakesAnnouncedShared": false,
-      "TakesAnnouncedExclusive": false
+      "TakesAnnouncedExclusive": false,
+      "InitialisesWithAutoConvert": true
     },
     {
       "Name": "Microfone (Steam Streaming Microphone)",
@@ -41,7 +43,8 @@
       "MixRate": 44100,
       "MixIsFloat": true,
       "TakesAnnouncedShared": false,
-      "TakesAnnouncedExclusive": true
+      "TakesAnnouncedExclusive": true,
+      "InitialisesWithAutoConvert": true
     },
     {
       "Name": "Headset (Lenovo thinkplus XT80)",
@@ -52,9 +55,11 @@
       "MixRate": 16000,
       "MixIsFloat": true,
       "TakesAnnouncedShared": false,
-      "TakesAnnouncedExclusive": false
+      "TakesAnnouncedExclusive": false,
+      "InitialisesWithAutoConvert": true
     }
   ],
   "anyTakesAnnouncedShared": false,
-  "anyTakesAnnouncedExclusive": true
+  "anyTakesAnnouncedExclusive": true,
+  "allInitialiseWithAutoConvert": true
 }

@@ -25,7 +25,6 @@
 - 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — chiaki_fec_decode has three callers - frameprocessor.c, the C suite and this port's shim - and gf-complete has a fourth site none of them reach: chiaki_lib_init. → §PP30
 - ⏳ **PP33** (deps: PP24 ✅, PP293 ✅, PP340 ✅, PP481 ✅, PP533 ✅) (requires: console) **HTTP and JSON in the core are curl and json-c, two vendored dependencies for what the runtime already does** — the file itself: one file calls it, the shim, and PP481's oracle is what that seam is for. → §PP33
 - 🛠 **PP295** (deps: PP297 ✅) **streamconnection.c is 1531 lines and calls the video receiver, so every deletion below waits on it** — Three criteria are met; the fourth is the four files leaving, which waits on session.c's own asks and on the shim, whose wrapped exports outlive streamconnection.c's calls. → §PP295
-- ⏳ **PP652** (deps: —) **four subsystems carry the microphone and nothing in the host opens a capture device** — Nothing opens a device yet: the capture loop, the float-to-short resample the spike proved is owed, and the encoder's input are all still to build. → §PP652
 - 📋 **PP668** (deps: —) **AvPacket is built from the v9 parse alone, so IsHaptics is false on every packet the port sees** — The C sets the bit on the v12 audio layout only; a managed v12 parse is what lets PP667's haptics arm ever fire, and PP499 bounded that layout in the C. → §PP668
 - 📋 **PP671** (deps: —) **Fec.Recovers with no decoder named runs the C, so after the flip a default becomes a loader failure** — The managed decoder is the one that stays; the default should follow it on the flip, so the sixty-four recorded cases judge the port alone. → §PP671
 - 📋 **PP673** (deps: —) **no managed code parses a takion control message, so a control datagram stops at the dispatch branch** — takion_parse_message and the DATA and DATA_ACK switch join TakionReceivePath's Control branch to the drain and ack models, and both exist only as source checks. → §PP673
@@ -51,7 +50,7 @@
 ## Block I — NVIDIA path
 
 - ⏳ **PP49** (deps: PP11 ✅, PP47 ✅) (requires: console, a-person-looking) **the console sends SDR on most titles and an HDR display shows it flat, with nothing in the client trying** — the quality half and the integration: a decoded console frame to judge the picture on, and a setting that turns it off. → §PP49
-- 📋 **PP52** (deps: PP32 ✅, PP652 ⏳) **nothing runs echo cancellation now, and the vendor answer would be the first card in this port's audio** — PP32 took speexdsp out of the build with the client, so there is no dependency left to delete and no samples to clean until PP652 captures some. → §PP52
+- 📋 **PP52** (deps: PP32 ✅, PP652 ✅) **nothing runs echo cancellation now, and the vendor answer would be the first card in this port's audio** — PP32 took speexdsp out of the build with the client, so there is no dependency left to delete and no samples to clean until PP652 captures some. → §PP52
 - ⏳ **PP53** (deps: PP11 ✅, PP41 ✅) (requires: variable-refresh-display) **frames arrive with network jitter and are presented against a fixed refresh, so each waits for a vblank it missed** — the reading itself: a display that varies its refresh, and a trace saying the frame arrived unpaced. → §PP53
 - ⏳ **PP76** (deps: PP528 ✅) (requires: console, a-person-looking) **the decoder preference is measured on synthetic frames, and drops under network jitter are what a stream is judged by** — one session per decoder against a real console, now that the difference between the two counters is the number to read. → §PP76
 
@@ -268,19 +267,6 @@
   incidental, with the question answered for each: would a more precise sentence break
   it. Two are known already from PP666. A count that returns only those two is an
   answer, not a failure.
-
-## Done when — PP652
-
-- **The format the capture must produce is read from the C, not typed**
-  streamconnection.c announces the microphone as one channel, 16 bits, 48000 Hz and 480
-  frames per unit. The model parses that call out of the C source and derives the unit's
-  byte count and its duration, so a console the C announces differently to fails here
-  rather than downstream.
-- **The capture API is chosen by asking this machine, not by naming one** A spike
-  enumerates the capture devices through WASAPI's own COM interfaces, reads the default
-  device's mix format, and asks IsFormatSupported whether the announced format is taken
-  directly. Its committed reading says whether a conversion stage is owed and whether
-  any new dependency is.
 
 ## Non-goals
 

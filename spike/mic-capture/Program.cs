@@ -13,6 +13,7 @@ namespace MicCapture;
 /// <param name="MixIsFloat">Whether its samples are float, which the announced sixteen-bit format is not.</param>
 /// <param name="TakesAnnouncedShared">Whether IsFormatSupported accepts the announced format in shared mode.</param>
 /// <param name="TakesAnnouncedExclusive">And in exclusive mode, which is the other way to get it without converting.</param>
+/// <param name="InitialisesWithAutoConvert">Whether Initialize succeeds on the announced format with AUTOCONVERTPCM, which is Windows converting rather than the port.</param>
 internal readonly record struct CaptureDevice(
     string Name,
     string Id,
@@ -22,7 +23,8 @@ internal readonly record struct CaptureDevice(
     int MixRate,
     bool MixIsFloat,
     bool TakesAnnouncedShared,
-    bool TakesAnnouncedExclusive);
+    bool TakesAnnouncedExclusive,
+    bool InitialisesWithAutoConvert);
 
 /// <summary>
 /// PP652: what this machine's capture devices offer, and whether the console's format is one of them.
@@ -123,21 +125,28 @@ internal static class Program
             Console.WriteLine(
                 $"      announced {Channels}ch {Bits}-bit {Rate} Hz: "
                     + $"shared {(device.TakesAnnouncedShared ? "yes" : "no")}, "
-                    + $"exclusive {(device.TakesAnnouncedExclusive ? "yes" : "no")}");
+                    + $"exclusive {(device.TakesAnnouncedExclusive ? "yes" : "no")}, "
+                    + $"autoconvert {(device.InitialisesWithAutoConvert ? "yes" : "no")}");
         }
 
         bool anyShared = devices.Any(one => one.TakesAnnouncedShared);
         bool anyExclusive = devices.Any(one => one.TakesAnnouncedExclusive);
+        bool allAutoconvert = devices.Count > 0 && devices.All(one => one.InitialisesWithAutoConvert);
 
         Console.WriteLine();
         Console.WriteLine(
             anyShared
                 ? "shared mode takes the announced format directly on at least one device"
-                : "no device takes the announced format in shared mode, so a conversion stage is owed");
+                : "no device takes the announced format in shared mode, so a conversion is owed");
         Console.WriteLine(
             anyExclusive
                 ? "exclusive mode takes it, at the cost of every other application on the device"
                 : "exclusive mode does not take it either");
+        Console.WriteLine(
+            allAutoconvert
+                ? "AUTOCONVERTPCM initialises on EVERY device, so the conversion is Windows's and "
+                    + "the port owes no resampler"
+                : "AUTOCONVERTPCM does not cover every device, so the port owes the conversion");
 
         File.WriteAllText(
             output,
@@ -152,6 +161,7 @@ internal static class Program
                     devices,
                     anyTakesAnnouncedShared = anyShared,
                     anyTakesAnnouncedExclusive = anyExclusive,
+                    allInitialiseWithAutoConvert = allAutoconvert,
                 },
                 new JsonSerializerOptions { WriteIndented = true }));
 
@@ -181,7 +191,7 @@ internal static class Program
         }
 
         int channels = 0, bits = 0, rate = 0;
-        bool isFloat = false, shared = false, exclusive = false;
+        bool isFloat = false, shared = false, exclusive = false, autoconverts = false;
 
         if (device.Activate(AudioClientIid, CLSCTX_ALL, IntPtr.Zero, out object? activated) == 0
             && activated is IAudioClient client)
@@ -205,6 +215,7 @@ internal static class Program
 
                 shared = Accepts(client, AudioClientShareMode.Shared);
                 exclusive = Accepts(client, AudioClientShareMode.Exclusive);
+                autoconverts = Initialises(client);
             }
             finally
             {
@@ -221,7 +232,64 @@ internal static class Program
             rate,
             isFloat,
             shared,
-            exclusive);
+            exclusive,
+            autoconverts);
+    }
+
+    /// <summary>
+    /// Whether the client INITIALISES on the announced format with Windows converting.
+    ///
+    /// The question IsFormatSupported answers is not the question that matters. It says whether the
+    /// engine takes the format as it is, and in shared mode the answer is always no because the
+    /// engine's format is the mix format. AUTOCONVERTPCM asks something else: put a converter in
+    /// front of it. IsFormatSupported does not know about the flag, so the only way to ask is to
+    /// initialise and see.
+    ///
+    /// If this is yes, the port owes no resampler at all - which is a different conclusion from the
+    /// one the first two columns support, and the reason a spike initialises rather than asking.
+    /// </summary>
+    private static bool Initialises(IAudioClient client)
+    {
+        IntPtr buffer = Announced();
+        try
+        {
+            // A hundred milliseconds in hundred-nanosecond units, which is the buffer WASAPI keeps
+            // for a shared client. Ten units of the announced 480 frames.
+            const long Duration = 100 * 10_000L;
+
+            int hr = client.Initialize(
+                AudioClientShareMode.Shared,
+                AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY,
+                Duration,
+                0,
+                buffer,
+                IntPtr.Zero);
+
+            return hr == 0;
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(buffer);
+        }
+    }
+
+    /// <summary>The announced format, allocated unmanaged for a call that takes a pointer.</summary>
+    private static IntPtr Announced()
+    {
+        var wanted = new WaveFormatEx
+        {
+            FormatTag = WAVE_FORMAT_PCM,
+            Channels = (short)Channels,
+            SamplesPerSec = Rate,
+            BitsPerSample = (short)Bits,
+            BlockAlign = (short)(Channels * Bits / 8),
+            Size = 0,
+        };
+        wanted.AvgBytesPerSec = wanted.SamplesPerSec * wanted.BlockAlign;
+
+        IntPtr buffer = Marshal.AllocHGlobal(Marshal.SizeOf<WaveFormatEx>());
+        Marshal.StructureToPtr(wanted, buffer, false);
+        return buffer;
     }
 
     /// <summary>Whether a client takes the announced format in a mode. S_OK is yes; anything else is no.</summary>
@@ -261,6 +329,8 @@ internal static class Program
     private const int CLSCTX_ALL = 23;
     private const int STGM_READ = 0;
     private const int DEVICE_STATE_ACTIVE = 1;
+    private const int AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM = unchecked((int)0x80000000);
+    private const int AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY = 0x08000000;
     private const short WAVE_FORMAT_PCM = 1;
     private const short WAVE_FORMAT_IEEE_FLOAT = 3;
     private const short WAVE_FORMAT_EXTENSIBLE = unchecked((short)0xFFFE);
@@ -411,4 +481,5 @@ internal static class Program
         int GetMixFormat(out IntPtr format);
     }
 }
+
 

@@ -242,28 +242,6 @@ sends.
 Deleting is the deliverable, not just porting. The C video receiver leaving the build is
 what makes the five ports beneath it real.
 
-### §PP652 The microphone with no input
-
-PP32 asked whether this host captures a microphone or whether the line should say it
-will not. It is neither, and MicrophoneSurface is the census: the port has committed to
-the feature in four separate places and produces no samples in any of them.
-
-The setting is declared with the rest of the profile's preferences and bound to a
-checkbox on the audio screen. The in-stream menu has the button, with the Qt client's
-inversion carried over - lit when the microphone is NOT muted. AudioRing drains the
-microphone differently from playback, because the capture path has no target queue size
-to stop at. And the DualSense report writes the mic light and the mic mute together,
-because a pad left lit with an open mic is the state that matters to a person.
-
-Nothing opens a device. No WASAPI, no NAudio, no MediaCapture, and no managed
-counterpart to chiaki_audio_sender.
-
-So the work is a capture path, and what it unblocks is larger than itself: libopus's
-second consumer is the microphone's encoder, so the audio dependency cannot leave until
-this exists, and the speex stages PP32 opened with have nothing to run on until it does
-either. PP31's boundary is silent here on purpose - video decode has no managed answer
-and audio capture on Windows has several.
-
 ### §PP668 The haptics bit the mirror cannot see
 
 takion.c parses two AV layouts. The shim exposes v9's, and every AvPacket in the port is

@@ -32,26 +32,34 @@ dotnet run -c Release -- result.json
 
 `release-wasapi-win11.json`, on Windows 11, .NET 10, 2026-09-04.
 
-| device | mix format | announced, shared | announced, exclusive |
-| --- | --- | --- | --- |
-| HyperX QuadCast | 2ch 32-bit float 48000 | no | no |
-| HD Pro Webcam C920 | 2ch 32-bit float 48000 | no | no |
-| Steam Streaming Microphone | 1ch 32-bit float 44100 | no | yes |
-| Lenovo thinkplus XT80 (default) | 1ch 32-bit float 16000 | no | no |
+| device | mix format | shared | exclusive | autoconvert |
+| --- | --- | --- | --- | --- |
+| HyperX QuadCast | 2ch 32-bit float 48000 | no | no | **yes** |
+| HD Pro Webcam C920 | 2ch 32-bit float 48000 | no | no | **yes** |
+| Steam Streaming Microphone | 1ch 32-bit float 44100 | no | yes | **yes** |
+| Lenovo thinkplus XT80 (default) | 1ch 32-bit float 16000 | no | no | **yes** |
 
-**A conversion stage is owed, unconditionally.** Not one device takes the announced
-format in shared mode, and the reason is structural rather than local: WASAPI shared
-mode hands back the mix format, and a mix format is 32-bit float. Sixteen-bit PCM is
-never what a shared capture gives.
+**No device takes the announced format in shared mode**, and the reason is structural
+rather than local: WASAPI shared mode hands back the mix format, and a mix format is
+32-bit float. Sixteen-bit PCM is never what a shared capture gives. The default
+communications endpoint - the one a microphone path opens - runs at 16000 Hz, so a
+resample is implied too, and upward.
 
-The default communications endpoint - the one a microphone path opens - runs at
-**16000 Hz**. So the conversion is not only float-to-short: it is a resample as well,
-and upward, which is the direction that cannot invent detail.
+**But the port owes neither.** `IsFormatSupported` answers a narrower question than the
+one that matters: whether the engine takes the format as it is. `AUTOCONVERTPCM` asks
+for a converter to be put in front of it instead, and the flag is invisible to
+`IsFormatSupported` - the only way to ask is to `Initialize` and see.
+
+Initialising with `AUTOCONVERTPCM | SRC_DEFAULT_QUALITY` succeeds on **all four
+devices**, including the 16000 Hz mono headset and the two stereo microphones. So a
+capture client hands back exactly one channel of 16-bit PCM at 48000 Hz, and every
+downmix and resample is Windows's.
+
+That inverts the conclusion the first two columns support, which is why the spike
+initialises rather than asking.
 
 Exclusive mode does take the format on one device, and it takes the whole device with
-it. For a microphone shared with a voice chat that is not a trade this port can make
-silently, and the non-goal about vendor paths whose absence is visible applies to the
-same instinct.
+it. With autoconvert available there is no reason to pay that.
 
 ## The bug this spike had, and what it produced
 
