@@ -581,6 +581,9 @@
 - ✅ **PP687** **a bounded field longer than its buffer fails the whole decode in the C, and PP686 reads it as a wrong size** — A field past its bound is undecodable on both readers, PP686's case names fifteen the other way now, and a disconnect's reason reads back with 255 and 256 one apart.
   checked **A field over its bound is undecodable, and PP686's case says so instead** The streaminfo parse returns the wrong-size verdict for thirteen and below and undecodable for fifteen and above, with the boundary asserted at both fourteen and fifteen; the theory that claimed otherwise is corrected rather than deleted.
   checked **The disconnect's reason is read, and a long one is no disconnect at all** A managed reader takes the message the port itself sends and reads the reason back; a reason over 255 bytes leaves the reading undecodable and the disconnected flag unset, which is the console hanging up and the client not being told.
+- ✅ **PP688** **the idle handler's switch has no counterpart, so a running stream's four messages reach nothing managed** — The four arms route and the rest is dropped as the C drops it, and a round trip is milliseconds unless it is zero, negative or not finite, when the last reading stands.
+  checked **The four arms route where the C routes them, and the default is silence** A decision over the payload type answers disconnect, quality, corrupt frame, streaminfo ack and ignore; a source check holds that the C's switch still has those four cases and a default that does nothing, so a fifth arriving is a red test rather than a silent drop.
+  checked **A zero round trip keeps the last reading, and the unit is a thousand** Cases for zero, negative, infinity and not-a-number all keep what was last reported, a positive one is multiplied by a thousand into microseconds, and the C's guard is read back so a port that dropped it fails here.
 
 ## Block G — Test discipline
 
