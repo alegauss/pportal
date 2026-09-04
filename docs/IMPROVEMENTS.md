@@ -638,29 +638,6 @@ table - exists for none of them.
 The fix is not a rule about tables. It is asking, for each, what would drive it, and
 whether that thing is cheaper than the next five months.
 
-### §PP682 A gate that cannot see a crash
-
-cmd's `if errorlevel N` is true when the errorlevel is N OR ABOVE, so `if errorlevel 1`
-is the idiom for "failed" only while failures are positive. An unhandled exception ends
-a .NET process with 0xE0434352, which the shell holds as a negative number, and a
-negative number is below one. test.cmd reads five verdicts that way - the host's
-selftest, compare-baselines, measure-startup, roadkeep lint and dotnet test - and
-compile.cmd reads dotnet build the same way.
-
-WHAT IT HID. The selftest has been crashing on every default build since PP663 took
-holepunch out of the ordinary shim: the device id guard reads the header's text and says
-yes, NativeDeviceUid throws, the exception is unhandled, and the exit code is the
-runtime's. The gate saw a number below one, kept CRC at zero, and printed OK over a
-selftest that ran to the RpCrypt oracle and no further. That is the lie PP56, PP74 and
-PP75 are each about - a green over assertions nobody ran - arriving through the shell's
-comparison rather than through a binary nobody built.
-
-THE FIX IS ONE COMPARISON, SIX TIMES: test the errorlevel for anything other than zero,
-either `if not "%errorlevel%"=="0"` after each call or the pair `if errorlevel 1` and
-`if not errorlevel 0`. And the assertion that holds it, in the shape PP588 and PP589
-gave the gate's own text: a test reads test.cmd and compile.cmd and refuses a verdict
-line that catches one sign only.
-
 ### §PP683 The census stops at the test project
 
 PP665 made the gate say which oracles a build had and how many comparisons their absence

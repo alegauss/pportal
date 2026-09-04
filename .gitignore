@@ -44,7 +44,6 @@ compile_commands.json
 chiaki.conf
 /appimage
 .cache/
-*.vscode
 
 # site/ used to be ignored here, and the rule arrived with the fork: upstream builds its
 # mkdocs documentation into that directory, so ignoring it was right there. Nothing in this

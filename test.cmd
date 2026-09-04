@@ -101,7 +101,20 @@ if not exist "%APP_EXE%" (
 echo.
 echo [test] .NET host selftest
 "%APP_EXE%" --selftest
+rem PP682: TWO comparisons per verdict, because `if errorlevel N` means "N or above". A
+rem process that CRASHES rather than failing exits with a negative code - 0xE0434352 for
+rem an unhandled .NET exception - and a negative number is below one, so the first test
+rem alone reads a crash as success. This is the call that proved it: the selftest died on
+rem every default build from PP663 until PP681 and the gate printed OK over it.
+rem
+rem `if not errorlevel 0` is true only below zero, so the pair covers every non-zero code
+rem and nothing else. Measured at -532462766, 3 and 0 rather than assumed. Two tests rather
+rem than one comparison against the errorlevel VARIABLE, because three of these sit inside
+rem a parenthesised block, where a variable expands at parse time and would carry the value
+rem it had before the step ran. The order is not arbitrary either: the first line's `set`
+rem clears the errorlevel, which is harmless only because CRC is already set by then.
 if errorlevel 1 set "CRC=1"
+if not errorlevel 0 set "CRC=1"
 
 rem ---- the tool's own selftest (PP569) -----------------------------------
 rem PP75's shape a second time. compare-baselines ships `--self-test` - its README calls it "the
@@ -119,7 +132,9 @@ if exist "%CB_EXE%" (
     echo.
     echo [test] compare-baselines selftest
     "%CB_EXE%" --self-test
+    rem PP682: the pair, and inside a block - which is why neither line expands a variable.
     if errorlevel 1 set "CRC=1"
+    if not errorlevel 0 set "CRC=1"
 ) else (
     echo [test] compare-baselines: not built, selftest not run
 )
@@ -132,7 +147,9 @@ if exist "%MS_EXE%" (
     echo.
     echo [test] measure-startup selftest
     "%MS_EXE%" --self-test
+    rem PP682: the pair.
     if errorlevel 1 set "CRC=1"
+    if not errorlevel 0 set "CRC=1"
 ) else (
     echo [test] measure-startup: not built, selftest not run
 )
@@ -157,7 +174,9 @@ if errorlevel 1 (
     echo.
     echo [test] roadkeep lint
     roadkeep lint
+    rem PP682: the pair.
     if errorlevel 1 set "CRC=1"
+    if not errorlevel 0 set "CRC=1"
 )
 
 rem ---- the xUnit project (PP35) ------------------------------------------
@@ -173,7 +192,9 @@ rem they are not is optional, which is why they are one word away rather than be
 echo.
 echo [test] xUnit vectors
 dotnet test "%~dp0ChiakiNg.slnx" --nologo -v quiet --filter "Category!=Interaction"
+rem PP682: the pair.
 if errorlevel 1 set "CRC=1"
+if not errorlevel 0 set "CRC=1"
 
 :after_app
 exit /b %CRC%

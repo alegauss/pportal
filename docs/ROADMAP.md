@@ -2,7 +2,6 @@
 
 ## Priority
 
-- PP682
 - Block H
 - Block I
 
@@ -47,7 +46,6 @@
 - 💭 **PP643** (deps: —) **two `<summary>` elements on one member compile, and the wrong one wins silently** — PP322's attach docstring sat above the reading test describing a member two declarations down, and the ratchet joins tasks to tests by exactly that text. → §PP643
 - 💭 **PP659** (deps: —) **a relay test sends real UDP between three loopback sockets and failed once in a run that passed twice** — A gate that goes red on a datagram the loopback dropped is one somebody re-runs rather than reads, which is the failure PP56's stale green was the other half of. → §PP659
 - 📋 **PP666** (deps: —) **a table and the test written from it were wrong together at every rung, and only a consumer noticed** — PP364's entry ladder held for five months against a test whose arithmetic assumed the same off-by-one, and the tree has three more tables nothing drives. → §PP666
-- 📋 **PP682** (deps: —) **test.cmd reads a step's exit code with 'if errorlevel 1', so a crash's negative code passes the gate** — An unhandled .NET exception exits with 0xE0434352, which cmd sees as an errorlevel below one; the selftest died that way on every default build and the gate printed OK. → §PP682
 - 📋 **PP683** (deps: —) **the oracle guard census reads test files only, so the selftest's guarded comparisons are invisible to it** — PP665 prints what an absent oracle costs from eleven test files; the host's own 460 checks guard comparisons too, and PP681's defect lived in one the count never saw. → §PP683
 
 ## Block H — Performance and telemetry
@@ -249,14 +247,6 @@
   sequence goes through KeyState and the managed ledger, with commit and without, and
   every expanded position is equal, including PP521's twenty-six zeros before the cipher
   exists.
-
-## Done when — PP682
-
-- **Every verdict in test.cmd and compile.cmd catches a negative exit code** A test
-  reads both launchers and holds that each native step - the selftest, the two tools,
-  roadkeep lint, dotnet test and dotnet build - is followed by a check that is true for
-  any non-zero errorlevel, so a verdict catching one sign only is red before it hides
-  anything.
 
 ## Done when — PP683
 

@@ -176,11 +176,20 @@ if not defined DO_DEPLOY if not defined CONFIGURE_ONLY echo [compile] portable  
 echo.
 
 "%BASH%" -l "%REPO%/scripts/build-windows.sh" %SH_ARGS%
-if errorlevel 1 (
-    echo.
-    echo [compile] FAILED
-    exit /b 1
-)
+rem PP682: TWO comparisons, because `if errorlevel N` means "N or above". A process that
+rem crashes rather than failing exits with a negative code - 0xE0434352 for an unhandled
+rem .NET exception - and a negative number is below one, so the first test alone reads a
+rem crash as success. `if not errorlevel 0` is the other half: true only below zero.
+rem Measured, not assumed: at -532462766 the first misses and the second catches; at 3 the
+rem first catches and the second is quiet; at 0 both are quiet.
+if errorlevel 1 goto native_failed
+if not errorlevel 0 goto native_failed
+goto native_ok
+:native_failed
+echo.
+echo [compile] FAILED
+exit /b 1
+:native_ok
 
 rem ---- the .NET host (PP74) ----------------------------------------------
 rem PP1 put a second executable in this tree and nothing built it, so a change under
@@ -210,13 +219,17 @@ rem the two honest - a solution that has lost a project, or that names one which
 rem build, is a red build here rather than a surprise on somebody elses F5.
 echo [compile] building ChiakiNg.slnx ...
 dotnet build "%~dp0ChiakiNg.slnx" -c Debug --nologo -v quiet
-if errorlevel 1 (
-    echo.
-    rem PP532 had two spellings of this, one per half of the flag. PP632 left one: nothing
-    rem builds the Qt client any more, so "the native side built" is the only true half.
-    echo [compile] FAILED - the native side built, the .NET host did not.
-    exit /b 1
-)
+rem PP682: the pair again, and this is the call it matters most for - dotnet is what
+rem produces the negative code the single test cannot see.
+if errorlevel 1 goto host_failed
+if not errorlevel 0 goto host_failed
+goto app_done
+:host_failed
+echo.
+rem PP532 had two spellings of this, one per half of the flag. PP632 left one: nothing
+rem builds the Qt client any more, so "the native side built" is the only true half.
+echo [compile] FAILED - the native side built, the .NET host did not.
+exit /b 1
 :app_done
 
 echo.

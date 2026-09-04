@@ -1,0 +1,21 @@
+{
+  // The roadkeep this workspace writes with (RK1009). This repo vendors its engine under
+  // .roadkeep/ and ROADKEEP_HOME points the hook and the MCP server at it, so the view has
+  // to call the same copy — the user-level setting names the marketplace clone, which is a
+  // different, older engine and reports this project's config as unknown keys.
+  "roadkeep.command": "python .roadkeep/scripts/roadkeep.py",
+
+  "window.title": "🎮 PPortal ${separator} ${dirty}${activeEditorShort} ${separator} ${appName}",
+
+  // Status bar in PlayStation blue so this worktree is easy to spot
+  "workbench.colorCustomizations": {
+    "statusBar.background": "#0070d1",
+    "statusBar.foreground": "#ffffff",
+    "statusBar.border": "#003791",
+    "statusBar.noFolderBackground": "#0070d1",
+    "statusBar.debuggingBackground": "#0070d1",
+    "statusBarItem.hoverBackground": "#003791",
+    "statusBarItem.remoteBackground": "#003791",
+    "statusBarItem.remoteForeground": "#ffffff"
+  }
+}
