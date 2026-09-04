@@ -33,7 +33,6 @@
 
 ## Block G — Test discipline
 
-- 📋 **PP704** (deps: PP683 ✅) **FeedbackPayloadTests guards eight comparisons on an oracle the census does not name, and it is not the only file** — PP676's oracle arrived after PP665 wrote the list and four shape files decline too, so the printed floor is short by more than the host's one row. → §PP704
 - 📋 **PP705** (deps: PP691 ✅) **four sweeps over app/ hand-write their own exclusion, so a new census has to be added to the others by hand** — PP691 needed two edits in files it does not own; nothing says which files record a phrase in order to judge it, so the next census needs the same two. → §PP705
 
 ## Block H — Performance and telemetry

@@ -106,7 +106,13 @@ public class ShimFramePathShapeTests(ITestOutputHelper output)
         if (counted.Count == 0)
             return;
 
-        var framePath = counted.Where(c => c.File.Guard == OracleGuardCensus.FramePathGuard).ToList();
+        // PP704: COMPARISONS, which is what "differential file" means. The census now also names the
+        // file that tests this guard, and that one is a seventh row about a different thing - so a
+        // count over every row would report seven differentials and be wrong about all of them.
+        var framePath = counted
+            .Where(c => c.File.Guard == OracleGuardCensus.FramePathGuard)
+            .Where(c => c.File.Kind == GuardKind.Comparison)
+            .ToList();
         output.WriteLine(string.Join(", ", framePath.Select(c => $"{Path.GetFileName(c.File.Where)}={c.Guards}")));
 
         Assert.Equal(6, framePath.Count);

@@ -360,32 +360,6 @@ session that cannot hear them and cannot use one that plays nothing.
 
 ## Block G — Test discipline
 
-### §PP704 The sweep PP683 left
-
-PP683 added the host to the census and its own design said what it was not doing:
-whether any OTHER guarded comparison sits outside the list is a sweep. It does, and the
-sweep is not empty.
-
-FeedbackPayloadTests asks NativeFeedback.IsAvailable eight times. That is PP676's oracle
-- the shim wrappers around feedback.c's serialisers - and it did not exist when PP665
-wrote the list, so nothing was ever removed; the list simply stopped being complete the
-day the wrappers landed. Four more files decline on a shape that is absent:
-NativeSeamTests, ShimHolepunchShapeTests, ShimFramePathShapeTests and
-DeletedLibraryOraclesTests, each returning early rather than asserting.
-
-THE FOUR ARE NOT THE SAME CASE as the eight, which is the judgement this line owes. A
-file that tests the GUARD declines for a different reason than one testing a comparison
-the guard protects, and counting both under one number would make the floor say
-something it does not mean. Deciding that, per file, is the work.
-
-WHAT MAKES IT A LINE rather than nine more rows is that the list went stale by addition.
-PP665 named what guarded then; two oracles have arrived since and one brought eight
-guards with it. So the answer is either a rule the census applies to a directory, or a
-check that a file calling a known guard is named here - and the second is the shape
-every other census here took.
-
-The number the gate prints is what is being repaired, not the row count.
-
 ### §PP705 The exclusion every census writes again
 
 Four classes sweep app/ for a phrase nothing may say: ComSignatures, LibRepairCensus,

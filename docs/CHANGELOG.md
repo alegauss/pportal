@@ -724,6 +724,7 @@
   checked **The selftest is a row in the census, and the printed cost counts its guards** app/SelfTest.cs joins OracleGuardCensus.Files with the guard it calls; the census's own test holds that the file still carries it, and the gate's line about what a bare build skipped rises by what the selftest declines rather than stopping at the test project.
 - ✅ **PP691** **checks that match a roadmap sentence literally go red when the sentence gets more precise** — The census is thirty-two literals, judged and swept so the list cannot go stale; four demand a spelling that prose is free to improve, and PP666's two are not among them.
   checked **Every roadmap sentence a check holds is counted and judged** A list of the string constants in app/ that carry roadmap or ledger prose, each marked load-bearing or incidental, with the question answered for each: would a more precise sentence break it. Two are known already from PP666. A count that returns only those two is an answer, not a failure.
+- ✅ **PP704** **FeedbackPayloadTests guards eight comparisons on an oracle the census does not name, and it is not the only file** — The floor rose from eighteen to thirty-one and the list is closed: a file calling a guard the census knows and naming no row fails by name.
 
 ## Block H — Performance and telemetry
 

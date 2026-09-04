@@ -58,6 +58,7 @@ public class OracleGuardCensusTests(ITestOutputHelper output)
     /// <summary>What the census counts in files that are not part of the xUnit project.</summary>
     private static int OutsideTheTestProject()
         => OracleGuardCensus.Counted()
+            .Where(one => one.File.Kind == GuardKind.Comparison)
             .Where(one => !one.File.Where.StartsWith(@"tests\", StringComparison.Ordinal))
             .Sum(one => one.Guards);
 
@@ -91,7 +92,10 @@ public class OracleGuardCensusTests(ITestOutputHelper output)
         Assert.Equal(OracleGuardCensus.SelfTestGuard, row.File.Guard);
         Assert.True(row.Guards > 0, "the selftest no longer asks the guard this row names");
 
+        // Comparisons only, which is what the printed floor is: PP704 separated a test OF a guard
+        // and a plain read from an assertion that declines, and only the last of the three costs.
         int inTests = OracleGuardCensus.Counted()
+            .Where(one => one.File.Kind == GuardKind.Comparison)
             .Where(one => one.File.Where.StartsWith(@"tests\", StringComparison.Ordinal))
             .Sum(one => one.Guards);
 
@@ -145,6 +149,107 @@ public class OracleGuardCensusTests(ITestOutputHelper output)
         }
 
         Assert.Equal(OracleGuardCensus.Files.Count, counted.Count);
+    }
+
+    /// <summary>
+    /// PP704: THE LIST IS CLOSED. No file calls a guard this census knows and stays off it.
+    ///
+    /// PP683 added the host and said what it was not doing: whether any OTHER guarded comparison
+    /// sits outside the list is a sweep. It did - FeedbackPayloadTests asks PP676's oracle eight
+    /// times, and that oracle did not exist when PP665 wrote the list, so nothing was ever removed
+    /// and the list simply stopped being complete.
+    ///
+    /// A better list would go stale the same way, which is why this is a check rather than more
+    /// rows. Its bound is honest and stated: a SIXTH oracle arriving under a name nothing here knows
+    /// is invisible to it, exactly as the fourth and fifth were. What it stops is the same oracle
+    /// spreading to files nobody counted.
+    /// </summary>
+    [Fact]
+    public void NoFileCallsAKnownGuardWithoutARow()
+    {
+        if (OracleGuardCensus.Locate(OracleGuardCensus.SelfTestPath) is null)
+            return;
+
+        IReadOnlyList<(string Where, string Guard)> unnamed = OracleGuardCensus.Unnamed();
+
+        Assert.True(
+            unnamed.Count == 0,
+            "these call a guard this census knows and are not rows in it: "
+                + string.Join(", ", unnamed.Select(one => $"{one.Where} on {one.Guard}")));
+
+        // PP271: a sweep that found no guards at all would satisfy that.
+        Assert.NotEmpty(OracleGuardCensus.KnownGuards);
+    }
+
+    /// <summary>
+    /// A test of the GUARD is named and not counted, which is the judgement PP704 owed.
+    ///
+    /// A comparison that declines is an assertion the run did not make. A test of the guard that
+    /// declines is the check working: a build without the oracle is one of the two cases it exists
+    /// to tell apart. Counting them together would make the floor larger and less true at once.
+    /// </summary>
+    [Fact]
+    public void GuardTestsAreNamedAndNotCounted()
+    {
+        IReadOnlyList<(GuardedFile File, int Guards)> counted = OracleGuardCensus.Counted();
+        if (counted.Count == 0)
+            return;
+
+        var ownTests = counted.Where(one => one.File.Kind == GuardKind.GuardsOwnTest).ToList();
+        Assert.NotEmpty(ownTests);
+
+        foreach ((GuardedFile file, int guards) in ownTests)
+            output.WriteLine($"  not counted: {guards,2} in {file.Where} on {file.Guard}");
+
+        int comparisons = counted
+            .Where(one => one.File.Kind == GuardKind.Comparison)
+            .Sum(one => one.Guards);
+
+        Assert.Equal(comparisons, OracleGuardCensus.WouldDecline());
+        Assert.True(
+            ownTests.Sum(one => one.Guards) > 0,
+            "the guard tests are named and carry no guards, so the rows are about nothing");
+    }
+
+    /// <summary>
+    /// PP676's oracle is a row now, and it is the largest single cost in the census.
+    ///
+    /// The one PP704 was filed for. Eight comparisons in one file, invisible to the printed floor
+    /// for two blocks, because the wrappers landed after the list was written.
+    /// </summary>
+    [Fact]
+    public void TheFeedbackOracleIsCounted()
+    {
+        (GuardedFile File, int Guards) row = Assert.Single(
+            OracleGuardCensus.Counted(),
+            one => one.File.Guard == OracleGuardCensus.FeedbackGuard);
+
+        output.WriteLine($"{row.Guards} guard(s) on {row.File.Guard}");
+
+        Assert.Equal(GuardKind.Comparison, row.File.Kind);
+        Assert.True(row.Guards > 1, "one guard is not the eight this row was added for");
+    }
+
+    /// <summary>
+    /// The guards are class-qualified, which is what makes the sweep sound.
+    ///
+    /// A bare name matches the guard's own DEFINITION as well as its callers - GuardsIn says so, and
+    /// that is why the total was always a floor. It also means a sweep for unnamed callers would
+    /// report the file that defines a guard as one that forgot to declare itself. The exception is a
+    /// guard defined as a file-local helper, which has no class to qualify with and exactly one
+    /// caller by construction.
+    /// </summary>
+    [Fact]
+    public void EveryGuardIsQualifiedOrFileLocal()
+    {
+        foreach (string guard in OracleGuardCensus.KnownGuards)
+        {
+            if (guard.Contains('.', StringComparison.Ordinal))
+                continue;
+
+            // The one that is not: a private helper in the file that asks it.
+            Assert.Equal("SeamWraps", guard);
+        }
     }
 
     /// <summary>
