@@ -33,15 +33,39 @@ public sealed unsafe class NativeReorderQueue : IDisposable
     /// <param name="sizeExp">The window is 2^sizeExp elements.</param>
     /// <param name="seqNumStart">The sequence number of the first element expected.</param>
     public NativeReorderQueue(int sizeExp, ushort seqNumStart)
+        : this(sizeExp, seqNumStart, ReorderWidth.Sixteen)
     {
+    }
+
+    /// <summary>
+    /// PP674: the thirty-two-bit instantiation, which takion's DATA queue is.
+    ///
+    /// A named entry point rather than an overload, for <see cref="ReorderQueue.Wide"/>'s reason: a
+    /// caller passing a small number would otherwise pick a width by the type it happened to write,
+    /// and the width decides the wrap.
+    /// </summary>
+    public static NativeReorderQueue Wide(int sizeExp, uint seqNumStart)
+        => new(sizeExp, seqNumStart, ReorderWidth.ThirtyTwo);
+
+    private NativeReorderQueue(int sizeExp, ulong seqNumStart, ReorderWidth width)
+    {
+        Width = width;
         _self = GCHandle.Alloc(this);
-        _handle = QueueCreate16(sizeExp, seqNumStart, &Dispatch, GCHandle.ToIntPtr(_self));
+
+        _handle = width == ReorderWidth.Sixteen
+            ? QueueCreate16(sizeExp, (ushort)seqNumStart, &Dispatch, GCHandle.ToIntPtr(_self))
+            : QueueCreate32(sizeExp, (uint)seqNumStart, &Dispatch, GCHandle.ToIntPtr(_self));
+
         if (_handle == IntPtr.Zero)
         {
             _self.Free();
-            throw new InvalidOperationException("chiaki_reorder_queue_init_16 failed.");
+            throw new InvalidOperationException(
+                $"chiaki_reorder_queue_init_{(width == ReorderWidth.Sixteen ? 16 : 32)} failed.");
         }
     }
+
+    /// <summary>Which of the C's two instantiations this handle is.</summary>
+    public ReorderWidth Width { get; }
 
     /// <summary>Everything the queue has dropped, oldest first.</summary>
     public IReadOnlyList<ReorderDrop> Drops => drops;
@@ -106,6 +130,12 @@ public sealed unsafe class NativeReorderQueue : IDisposable
         CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr QueueCreate16(
         int sizeExp, ushort seqNumStart,
+        delegate* unmanaged[Cdecl]<ulong, IntPtr, IntPtr, void> cb, IntPtr user);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_reorder_queue_create_32",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr QueueCreate32(
+        int sizeExp, uint seqNumStart,
         delegate* unmanaged[Cdecl]<ulong, IntPtr, IntPtr, void> cb, IntPtr user);
 
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_reorder_queue_free",

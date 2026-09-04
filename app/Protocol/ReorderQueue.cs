@@ -1,6 +1,22 @@
 namespace ChiakiNg.Protocol;
 
 /// <summary>
+/// PP674: which of reorderqueue.c's two instantiations a queue is.
+///
+/// The C stamps one body out twice through REORDER_QUEUE_INIT and injects three sequence functions
+/// at each width. takion uses both - the video queue at sixteen bits, the data queue at thirty-two,
+/// seeded with tag_remote - and only the narrow one had a managed counterpart.
+/// </summary>
+public enum ReorderWidth
+{
+    /// <summary>chiaki_reorder_queue_init_16, which the video queue is.</summary>
+    Sixteen,
+
+    /// <summary>chiaki_reorder_queue_init_32, which the data queue is.</summary>
+    ThirtyTwo,
+}
+
+/// <summary>
 /// PP23: the reorder queue in managed code, which is what turns a UDP arrival order back into a
 /// stream.
 ///
@@ -39,20 +55,52 @@ public sealed class ReorderQueue : IDisposable
     private ulong count;
     private bool disposed;
 
+    /// <summary>
+    /// PP674: the width, which is the ONLY thing the C's two instantiations differ in.
+    ///
+    /// reorderqueue.c stamps one body out twice through REORDER_QUEUE_INIT and injects three
+    /// sequence functions - add, gt, lt - at sixteen bits or thirty-two. takion uses both: the video
+    /// queue is the sixteen-bit one and the DATA queue the thirty-two-bit one, seeded with
+    /// tag_remote. This was the sixteen-bit instantiation with the casts written inline, so no
+    /// managed queue could hold a data packet at all.
+    /// </summary>
+    private readonly ReorderWidth width;
+
     /// <param name="sizeExp">The window is 2^sizeExp elements.</param>
     /// <param name="seqNumStart">The sequence number of the first element expected.</param>
     public ReorderQueue(int sizeExp, ushort seqNumStart)
+        : this(sizeExp, seqNumStart, ReorderWidth.Sixteen)
+    {
+    }
+
+    /// <summary>
+    /// The thirty-two-bit instantiation, which takion's data queue is.
+    ///
+    /// A separate entry point rather than an overload on the start value, because a caller passing
+    /// a small number would otherwise pick a width by the type it happened to write - and the width
+    /// decides the wrap, which is the whole behaviour.
+    /// </summary>
+    /// <param name="sizeExp">The window is 2^sizeExp elements.</param>
+    /// <param name="seqNumStart">The first sequence number expected. takion seeds it with tag_remote.</param>
+    public static ReorderQueue Wide(int sizeExp, uint seqNumStart)
+        => new(sizeExp, seqNumStart, ReorderWidth.ThirtyTwo);
+
+    private ReorderQueue(int sizeExp, ulong seqNumStart, ReorderWidth width)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(sizeExp);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(sizeExp, 16);
 
         this.sizeExp = sizeExp;
+        this.width = width;
         set = new bool[1 << sizeExp];
         payloads = new long[1 << sizeExp];
         begin = seqNumStart;
         count = 0;
         DropStrategy = ReorderDropStrategy.End;
     }
+
+    /// <summary>Which of the C's two instantiations this queue is.</summary>
+    public ReorderWidth Width => width;
 
     /// <summary>Everything the queue has dropped, oldest first.</summary>
     public IReadOnlyList<ReorderDrop> Drops => drops;
@@ -78,12 +126,24 @@ public sealed class ReorderQueue : IDisposable
 
     private int Index(ulong seqNum) => (int)(seqNum & (ulong)Mask);
 
-    /// <summary>The 16-bit add the queue is initialised with: wraps at the counter's width.</summary>
-    private static ulong Add(ulong a, ulong b) => (ushort)((ushort)a + (ushort)b);
+    /// <summary>
+    /// The add the queue was initialised with: wraps at the counter's width.
+    ///
+    /// PP674: this and the two below were the sixteen-bit versions with their casts inline, which
+    /// is where the C injects a function. Now they read the width, which is the same choice made in
+    /// one place instead of three.
+    /// </summary>
+    private ulong Add(ulong a, ulong b) => width == ReorderWidth.Sixteen
+        ? (ushort)((ushort)a + (ushort)b)
+        : (uint)((uint)a + (uint)b);
 
-    private static bool Gt(ulong a, ulong b) => SeqNum.Gt((ushort)a, (ushort)b);
+    private bool Gt(ulong a, ulong b) => width == ReorderWidth.Sixteen
+        ? SeqNum.Gt((ushort)a, (ushort)b)
+        : SeqNum.Gt((uint)a, (uint)b);
 
-    private static bool Lt(ulong a, ulong b) => SeqNum.Lt((ushort)a, (ushort)b);
+    private bool Lt(ulong a, ulong b) => width == ReorderWidth.Sixteen
+        ? SeqNum.Lt((ushort)a, (ushort)b)
+        : SeqNum.Lt((uint)a, (uint)b);
 
     /// <summary>
     /// `a == b || gt(a, b)`, which is NOT `!lt(a, b)`.
@@ -92,7 +152,7 @@ public sealed class ReorderQueue : IDisposable
     /// apart both comparisons are false, so `ge` is false and so is `lt`, and the push below needs a
     /// branch for the case that is neither.
     /// </summary>
-    private static bool Ge(ulong a, ulong b) => a == b || Gt(a, b);
+    private bool Ge(ulong a, ulong b) => a == b || Gt(a, b);
 
     /// <summary>
     /// The queue's own `seq_num_gt`, which takion's AV flush calls through the function pointer to
@@ -102,7 +162,10 @@ public sealed class ReorderQueue : IDisposable
     /// comparison and inherits PP149's antipode - at half the sequence space apart it is false in
     /// both directions, and the flush reads that as a backward move.
     /// </summary>
-    public static bool SeqNumGt(ulong a, ulong b) => Gt(a, b);
+    public static bool SeqNumGt(ulong a, ulong b) => SeqNum.Gt((ushort)a, (ushort)b);
+
+    /// <summary>The same at thirty-two bits, which the data path's callers need.</summary>
+    public static bool SeqNumGtWide(ulong a, ulong b) => SeqNum.Gt((uint)a, (uint)b);
 
     /// <summary>
     /// Moves the window's start forward by <paramref name="n"/> slots, dropping nothing and telling

@@ -34,10 +34,24 @@ public enum TakionDrainOutcome
     Delivered,
 }
 
-/// <summary>One entry as the queue holds it.</summary>
+/// <summary>
+/// One entry as the queue holds it.
+///
+/// PP674: THE C'S TakionDataPacketEntry HAS SIX FIELDS AND THIS HELD TWO. PP493 modelled the drain,
+/// which reads the sequence number and the payload and needs nothing else, so two was the whole of
+/// what that line could justify. <see cref="TakionDataPush"/> is the other end - the entry being
+/// BUILT - and it reads two more off the payload's own header.
+///
+/// Extended rather than duplicated. A second record for the same C struct is the shape a reader has
+/// to hold two names for, and the two ends would drift; the added fields default so PP493's callers
+/// are untouched.
+/// </summary>
 /// <param name="SeqNum">Its sequence number, which the ack may end up carrying.</param>
 /// <param name="Payload">The message payload, header included.</param>
-public readonly record struct TakionDataEntry(uint SeqNum, byte[] Payload);
+/// <param name="TypeB">The chunk flags. The C warns when they are not one and pushes anyway.</param>
+/// <param name="Channel">The sixteen bits four bytes into the payload.</param>
+public readonly record struct TakionDataEntry(
+    uint SeqNum, byte[] Payload, byte TypeB = 1, ushort Channel = 0);
 
 /// <summary>What one delivery handed to the callback.</summary>
 /// <param name="DataType">The type byte, already known to be one of the four.</param>

@@ -104,16 +104,34 @@ public static partial class ShimCallbacks
         return said;
     }
 
-    /// <summary>The generic argument list of the one function pointer a managed file declares.</summary>
+    /// <summary>
+    /// The generic argument list of the function pointer a managed file declares.
+    ///
+    /// PP674: ONE SIGNATURE, NOT ONE OCCURRENCE. This required exactly one match, and a file taking
+    /// the same callback into two entry points then had none - which is what happened the day the
+    /// reorder queue gained its thirty-two-bit create beside the sixteen-bit one, both handing the
+    /// shim the same drop thunk.
+    ///
+    /// Repeats of the SAME signature are one signature, and refusing them was refusing a fact the
+    /// check does not care about. Two DIFFERENT ones are still refused: the comparison is against a
+    /// single typedef, so a file with two shapes has no unambiguous answer to give and saying so is
+    /// the whole reason this returns null rather than picking.
+    /// </summary>
     public static IReadOnlyList<string>? ManagedSignatureIn(string source)
     {
         ArgumentNullException.ThrowIfNull(source);
 
-        MatchCollection found = FunctionPointer().Matches(source);
-        if (found.Count != 1)
+        string[] signatures =
+        [
+            .. FunctionPointer().Matches(source)
+                .Select(one => one.Groups["args"].Value.Trim())
+                .Distinct(StringComparer.Ordinal)
+        ];
+
+        if (signatures.Length != 1)
             return null;
 
-        return [.. found[0].Groups["args"].Value.Split(',').Select(one => one.Trim())];
+        return [.. signatures[0].Split(',').Select(one => one.Trim())];
     }
 
     /// <summary>A callback typedef, with its return type and its parameter list.</summary>

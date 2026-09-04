@@ -1938,6 +1938,42 @@ CHIAKI_SHIM_API void *chiaki_shim_reorder_queue_create_16(
 	return self;
 }
 
+/*
+ * PP674: the other instantiation, which takion's DATA queue is.
+ *
+ * reorderqueue.c stamps one body out twice through REORDER_QUEUE_INIT, and the two differ only in
+ * the three sequence functions injected - add, gt, lt at one width or the other. takion uses both:
+ * the video queue is the sixteen-bit one and the data queue the thirty-two-bit one, seeded with
+ * tag_remote. Only the sixteen-bit init had a wrapper, so a managed queue had nothing to be held
+ * against at the width the data path actually uses.
+ *
+ * Everything below this - free, size, count, push, pull, peek, drop, the strategy - is width-blind
+ * and already takes the handle, so this adds one entry point and no second family.
+ */
+CHIAKI_SHIM_API void *chiaki_shim_reorder_queue_create_32(
+		int32_t size_exp, uint32_t seq_num_start, ChiakiShimReorderDropCb cb, void *user)
+{
+	chiaki_shim_reorder_queue *self;
+	if(size_exp < 0)
+		return NULL;
+
+	self = (chiaki_shim_reorder_queue *)calloc(1, sizeof(chiaki_shim_reorder_queue));
+	if(!self)
+		return NULL;
+
+	if(chiaki_reorder_queue_init_32(&self->queue, (size_t)size_exp, seq_num_start)
+			!= CHIAKI_ERR_SUCCESS)
+	{
+		free(self);
+		return NULL;
+	}
+
+	self->cb = cb;
+	self->user = user;
+	chiaki_reorder_queue_set_drop_cb(&self->queue, cb ? chiaki_shim_reorder_drop : NULL, self);
+	return self;
+}
+
 CHIAKI_SHIM_API void chiaki_shim_reorder_queue_free(void *queue)
 {
 	chiaki_shim_reorder_queue *self = (chiaki_shim_reorder_queue *)queue;

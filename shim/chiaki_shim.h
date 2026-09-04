@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 36
+#define CHIAKI_SHIM_ABI 37
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -1147,6 +1147,13 @@ typedef void (*ChiakiShimReorderDropCb)(uint64_t seq_num, void *elem_user, void 
 
 CHIAKI_SHIM_API void *chiaki_shim_reorder_queue_create_16(
 		int32_t size_exp, uint16_t seq_num_start, ChiakiShimReorderDropCb cb, void *user);
+
+/*
+ * PP674: the thirty-two-bit instantiation, which takion's DATA queue is. Everything below takes the
+ * handle and is width-blind, so this adds an entry point and not a family.
+ */
+CHIAKI_SHIM_API void *chiaki_shim_reorder_queue_create_32(
+		int32_t size_exp, uint32_t seq_num_start, ChiakiShimReorderDropCb cb, void *user);
 
 CHIAKI_SHIM_API void chiaki_shim_reorder_queue_free(void *queue);
 

@@ -21,16 +21,15 @@
 
 ## Block F — Managed core
 
-- ⏳ **PP27** (deps: PP672 ✅, PP673 ✅, PP674, PP675, PP676, PP677, PP678, PP679, PP680) (requires: console) **takion.c is 2007 lines of C over raw sockets and timers, and the whole stream rides on it** — The nine tasks it waits on are the managed transport; after them, the three files leave the build. → §PP27
+- ⏳ **PP27** (deps: PP672 ✅, PP673 ✅, PP674 ✅, PP675, PP676, PP677, PP678, PP679, PP680) (requires: console) **takion.c is 2007 lines of C over raw sockets and timers, and the whole stream rides on it** — The nine tasks it waits on are the managed transport; after them, the three files leave the build. → §PP27
 - 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — chiaki_fec_decode has three callers - frameprocessor.c, the C suite and this port's shim - and gf-complete has a fourth site none of them reach: chiaki_lib_init. → §PP30
 - ⏳ **PP33** (deps: PP24 ✅, PP293 ✅, PP340 ✅, PP481 ✅, PP533 ✅) (requires: console) **HTTP and JSON in the core are curl and json-c, two vendored dependencies for what the runtime already does** — the file itself: one file calls it, the shim, and PP481's oracle is what that seam is for. → §PP33
 - 🛠 **PP295** (deps: PP297 ✅, PP696, PP697) **streamconnection.c is 1531 lines and calls the video receiver, so every deletion below waits on it** — Three criteria are met; the fourth is the four files leaving, which waits on the one commit that edits the C and on the shim, whose wrappers outlive it. → §PP295
 - ⏳ **PP671** (deps: PP696) **Fec.Recovers with no decoder named runs the C, so after the flip a default becomes a loader failure** — The managed decoder is the one that stays; the default should follow it on the flip, so the sixty-four recorded cases judge the port alone. → §PP671
-- 📋 **PP674** (deps: —) **takion's data queue is 32-bit and the managed reorder queue is 16-bit only, so no managed push can hold a data packet** — chiaki_reorder_queue_init_32 has no counterpart and no shim export, and takion_handle_packet_message_data, the push that reads seq and channel, has none either. → §PP674
 - 📋 **PP675** (deps: —) **no managed code sends a takion datagram, so every takion send is a model that emits no bytes** — chiaki_takion_send_raw, chiaki_takion_send and the three data builders have no managed bytes, and TakionMessageHeader knows no DATA or DATA_ACK chunk type. → §PP675
 - 📋 **PP676** (deps: —) **the feedback and mic sends have no managed code, and each places its MAC where packet_mac's table does not look** — takion_send_feedback_packet encrypts at the position plus a block and MACs at eight, the mic packet at ten, and both hold the recursive cipher lock throughout. → §PP676
 - 📋 **PP677** (deps: —) **the key state has no managed transcription, so every key position the port expands is the shim's** — PP111 reached the expansion through the shim and PP519 fed it a console's positions; a managed parse of an AV header or a control message needs the ledger in managed code. → §PP677
-- 📋 **PP678** (deps: PP672 ✅, PP673 ✅, PP674, PP675, PP677) **the receive loop runs only against test doubles, and nothing owns takion's state** — TakionReceiveLoop.Run traces steps through an ITakionLoopHost implemented only in tests; the tag, counter, ledger, cipher and queues have no owner. → §PP678
+- 📋 **PP678** (deps: PP672 ✅, PP673 ✅, PP674 ✅, PP675, PP677) **the receive loop runs only against test doubles, and nothing owns takion's state** — TakionReceiveLoop.Run traces steps through an ITakionLoopHost implemented only in tests; the tag, counter, ledger, cipher and queues have no owner. → §PP678
 - 📋 **PP679** (deps: —) **the v7 AV parse and header formatter are unported, and the formatter's callers are senkusha's** — chiaki_takion_v7_av_packet_parse differs from v9 in three places, and chiaki_takion_v7_av_packet_format_header is called only by senkusha.c, so who owns them is a decision. → §PP679
 - 📋 **PP680** (deps: PP668 ✅) **takion_handle_packet_av is only a branch in managed code, so no video packet reaches the flush** — The disable gates, the queue seeded at packet_index minus unit_index, the entry with its stamp and the flush into StreamAvDispatch have no composition; the parse is PP668's. → §PP680
 - 📋 **PP685** (deps: —) **PP395's chokepoint comment calls the two data-type-2 sends the keyboard pair, which they are not** — They are the corrupt frame and the IDR request, and the word keyboard appears nowhere else in the file; a reader taking the comment for the table gets the video path wrong. → §PP685
@@ -170,17 +169,6 @@
   chiaki_render_tearing_probe does. Integration means the video plane's own swapchain
   carries it and presents at sync interval zero, which is the half that waits on there
   being a video plane at all.
-
-## Done when — PP674
-
-- **The wide queue agrees with a create_32 export after every operation** The oracle
-  shape PP108 and PP150 used for sixteen bits: fixed-seed random scripts of push, pull,
-  peek and drop run through both queues, with count, begin and the drop list compared
-  after every step, across the thirty-two-bit wrap.
-- **A data message becomes an entry and a push, with PP491's two drops kept** A payload
-  shorter than nine bytes and a failed entry are dropped, not queued; a good one is
-  pushed with the sequence number from its first four bytes and the channel from the
-  next two, and drains through TakionDataDrain in the C's order.
 
 ## Done when — PP675
 

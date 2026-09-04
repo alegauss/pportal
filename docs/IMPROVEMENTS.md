@@ -262,31 +262,6 @@ because today the default is what makes those two theories a check on the ORACLE
 cases are the C's own, and a managed default now would silently stop asking the C
 whether it still agrees with its own recording.
 
-### §PP674 The data queue, one width wider
-
-The C stamps its reorder queue out twice from one body, REORDER_QUEUE_INIT giving a
-sixteen-bit and a thirty-two-bit init that differ only in the three sequence functions
-injected. takion uses both: the video queue is the sixteen-bit one, seeded at
-packet_index minus unit_index, and the data queue is the thirty-two-bit one, seeded with
-tag_remote and given takion_data_drop.
-
-The managed ReorderQueue is the sixteen-bit instantiation with the arithmetic hardwired:
-its constructor takes a ushort, and Push and the comparisons cast to one. SeqNum already
-carries the thirty-two-bit comparisons - TakionSendBuffer.Ack uses them across the wrap
-- so the arithmetic exists and the queue does not. Neither does the shim export:
-chiaki_shim_reorder_queue_create_16 has no sibling.
-
-THE PUSH ABOVE IT IS MISSING TOO. takion_handle_packet_message_data warns when type_b is
-not one, drops a payload shorter than nine bytes, and otherwise builds an entry from the
-sequence number at the payload's start and the channel four bytes in, pushes it, and
-drains. PP491 made both early returns free the packet; PP493 modelled the drain that
-follows. What has no managed shape is the entry and the push between them.
-
-TWO WAYS TO WIDEN IT, and the second is the honest one: a generic queue over an injected
-comparison, as the C is, held against a create_32 export the same way PP108 and PP150
-held the sixteen-bit one - random scripts, both sides stepped, count and drops compared
-after every operation.
-
 ### §PP675 The sends, from bytes to socket
 
 Every send in takion.c ends in chiaki_takion_send_raw, a send on the connected socket
