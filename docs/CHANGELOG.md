@@ -612,6 +612,7 @@
 - ✅ **PP675** **no managed code sends a takion datagram, so every takion send is a model that emits no bytes** — The three layouts are written into a caller's span and read back by PP673's parser, and one send path stamps and sends under the recursive cipher lock at zero bytes over a thousand sends.
   checked **The managed data message, continuation and ack match the C's bytes** chiaki_takion_send_message_data and its siblings are exported, so a shim call sends through PP607's connected takion and the peer this process holds receives the C's bytes; the managed builder, given the same tag, sequence and payload, produces the same array.
   checked **One send path: MAC under the cipher lock, then the socket, nothing allocated** chiaki_takion_send's order is reproduced - stamp, then send - and the send over a connected UDP socket is measured the way PP633 measured the receive: zero bytes allocated after warm-up per packet sent.
+- ✅ **PP676 (the send sequence and the three layouts)** **the feedback and mic sends have no managed code, and each places its MAC where packet_mac's table does not look** — The payload encrypts one block above where the GMAC is taken, the position is written before the MAC covers it, under the recursive lock.
 
 ## Block G — Test discipline
 
