@@ -617,26 +617,25 @@ an idea rather than designed because one occurrence is not yet evidence of a cla
 ### §PP659 A gate with a datagram in it
 
 SessionRelayTests.TheConsolesAnswerComesBackMarked opens three UDP sockets on the
-loopback, sends a datagram through the relay in each direction, and asserts on what the
-tap recorded. It failed once on 2026-09-03 in a run whose two neighbours on either side
-passed, and passed on its own immediately after.
+loopback, sends a datagram through the relay each way, and asserts on what the tap
+recorded. It failed once on 2026-09-03 in a run whose neighbours either side passed, and
+passed on its own immediately after.
 
-Once is not a pattern and this is filed as an idea rather than a defect for that reason.
-What makes it worth filing anyway is the shape: UDP on the loopback is allowed to drop,
-the receives carry a five second timeout, and the assertion is on a list something else
-fills from a relay thread. Every one of those is a way for the run rather than the code
-to decide the answer.
+IT DID IT AGAIN ON 2026-09-04, in a gate run for a task that touches no socket, and
+passed three times alone straight after and again in the re-run of the whole gate. Twice
+in two days, both alone in a suite of five thousand, both green on every re-run. Still
+not a count, so this stays an idea - but the shape is why it is filed: UDP on the
+loopback may drop, the receives carry a timeout, and the assertion is on a list a relay
+thread fills. Each lets the run rather than the code decide.
 
-The cost of leaving it is specific. This tree's gate is read - the ratchet, the counted
-claims and the drift checks all report through it - and a check that fails one run in
-some number teaches a reader to re-run rather than read. PP56 was the same problem
-facing the other way, where a stale binary made the suite green about code that had
-changed.
+The cost of leaving it is specific: this tree's gate is READ - the ratchet, the counted
+claims and the drift checks report through it - and a check that fails one run in some
+number teaches a reader to re-run rather than read. PP56 was the same problem facing the
+other way, where a stale binary made the suite green about changed code.
 
-What would settle it is a count rather than an argument: run the file a few hundred
-times and see whether it fails again. If it does, the fix is a bounded retry on the
-receive or a tap the assertion can wait on, and which of those depends on where it
-actually loses.
+What would settle it is a count: run the file a few hundred times. If it fails again the
+fix is a bounded retry on the receive or a tap the assertion can wait on, and which
+depends on where it loses.
 
 ### §PP666 A test written from the table it checks
 

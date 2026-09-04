@@ -584,6 +584,9 @@
 - ✅ **PP688** **the idle handler's switch has no counterpart, so a running stream's four messages reach nothing managed** — The four arms route and the rest is dropped as the C drops it, and a round trip is milliseconds unless it is zero, negative or not finite, when the last reading stands.
   checked **The four arms route where the C routes them, and the default is silence** A decision over the payload type answers disconnect, quality, corrupt frame, streaminfo ack and ignore; a source check holds that the C's switch still has those four cases and a default that does nothing, so a fifth arriving is a red test rather than a silent drop.
   checked **A zero round trip keeps the last reading, and the unit is a thousand** Cases for zero, negative, infinity and not-a-number all keep what was last reported, a positive one is multiplied by a thousand into microseconds, and the C's guard is read back so a port that dropped it fails here.
+- ✅ **PP689** **the pad info message has two layouts and five reports, and nothing managed reads either one** — Both layouts read at their own offsets, a third length reports nothing and holds its state, and the five go out in the C's order rather than the order they were parsed.
+  checked **Both layouts are read at their own offsets, and a third length reports nothing** Each field is read where its own layout puts it, with a case per layout carrying the same values at different places; a message of any other length yields no reports and leaves the held state untouched.
+  checked **Only what changed is reported, and the order is the C's five** A second identical message reports nothing, one field moving reports one, and the sequence is motion reset, haptic, trigger, light bar, player index - held against the order the C emits them in after the switch rather than the order the fields are parsed.
 
 ## Block G — Test discipline
 
