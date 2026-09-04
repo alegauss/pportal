@@ -544,30 +544,6 @@ answer for a v9 stream. THE ORACLE IS THE CORPUS: PP608's heads carry every inde
 queue is seeded and ordered by, so the managed arm's order of delivery and its drops are
 compared against AvReorderTimeout's and the C's over a real stream.
 
-### §PP681 The tenth wrapper's guard reads text
-
-PP661 moved the nine wrappers' guard off the header's text and onto the built DLL,
-because PP655's flip puts the declarations inside an #ifdef rather than deleting them,
-and text that still says Wrapping over a DLL that exports nothing is how the first
-attempt turned a hundred and twenty-eight assertions red. PP656 then made the device
-id's oracle shape-aware - by reading the header for its name. That is the text again,
-one wrapper over.
-
-PP663 turned holepunch off by default, so every ordinary compile.cmd produces a shim
-without chiaki_shim_generate_client_device_uid while chiaki_shim.h goes on declaring it.
-The selftest asks TheFormatOracleIsAvailable, is told yes, calls
-PsnAuth.NativeDeviceUid, and the process dies on an unhandled
-EntryPointNotFoundException in the middle of the RpCrypt oracle - every check after that
-line never runs. Found on 2026-09-03 running test.cmd after a plain build, and it had
-been dying that way on every default build since the flag went in; the sibling line
-under Block G says why nobody saw it.
-
-THE FIX IS PP661'S, APPLIED TO THE TENTH: key the guard on OfTheBuild, which asks
-chiaki_shim_has_holepunch of the DLL that was loaded, since the wrapper's C is in
-holepunch.c and leaves with the nine. And the assertion that holds it: on a bare build
-the guard says no where the header's text says yes, and ChiakiNg.exe --selftest exits
-zero on the shim the gate itself built.
-
 ## Block G — Test discipline
 
 ### §PP642 Checking where a deleted design went
@@ -684,6 +660,28 @@ either `if not "%errorlevel%"=="0"` after each call or the pair `if errorlevel 1
 `if not errorlevel 0`. And the assertion that holds it, in the shape PP588 and PP589
 gave the gate's own text: a test reads test.cmd and compile.cmd and refuses a verdict
 line that catches one sign only.
+
+### §PP683 The census stops at the test project
+
+PP665 made the gate say which oracles a build had and how many comparisons their absence
+cost, counted from the files that guard rather than declared beside them.
+OracleGuardCensus.Files names eleven, all under tests/ChiakiNg.Tests, and its own note
+says the list is test files only because a class defining a guard is not a use of one.
+
+The host's selftest guards too. It asks whether the device id's format oracle is there
+before comparing the managed id against the C's, which is the same shape as the eleven
+and is counted by nothing - so the number the gate prints understates what a bare build
+actually skipped. PP681 is why that matters rather than being tidy: the one guarded
+comparison outside the census is exactly the one whose guard was wrong, and a census
+reaching it would have had a row to be surprised by.
+
+WHAT IS OWED IS A ROW, not a second census. app/SelfTest.cs joins Files with the guard
+it uses, and GuardsIn counts it there as it does in a test file. The care needed is that
+not every branch in the selftest is an oracle guard - PP74's shape means some are about
+a machine rather than a build - so the row names the guard by its call, as the eleven
+do.
+
+Whether any OTHER guarded comparison sits outside both is a sweep, and not this line.
 
 ## Block H — Performance and telemetry
 

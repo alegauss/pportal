@@ -102,4 +102,49 @@ public class ShimHolepunchShapeTests(ITestOutputHelper output)
             "chiaki_shim_generate_client_device_uid", ShimHolepunchShape.GoneWhenBare);
         Assert.Equal(9, ShimHolepunchShape.GoneWhenBare.Count);
     }
+
+    /// <summary>
+    /// PP681: the tenth wrapper's guard follows the BUILD, like the nine.
+    ///
+    /// It read the header, and the header declares the wrapper either way - so once PP663 turned
+    /// holepunch off by default the guard said yes over a DLL exporting nothing, and the selftest
+    /// died calling it. This is the join that stops the two disagreeing again.
+    /// </summary>
+    [Fact]
+    public void TheFormatOracleFollowsTheBuild()
+    {
+        Assert.Equal(
+            ShimHolepunchShape.OfTheBuild() == ShimShape.Wrapping,
+            ShimHolepunchShape.TheFormatOracleIsAvailable());
+    }
+
+    /// <summary>
+    /// PP681, the side this build is on: the header names the oracle and the guard still says no.
+    ///
+    /// The defect, stated as the two disagreeing. What made it invisible is that the disagreement is
+    /// invisible from the file: the text is right about what is declared and wrong about what is
+    /// exported, and only the DLL knows which.
+    /// </summary>
+    [Fact]
+    public void OnABareBuildTheHeaderNamesTheOracleAndTheGuardSaysNo()
+    {
+        if (ShimHolepunchShape.BareHeader() is not { } header)
+            return;
+
+        Assert.Contains(ShimHolepunchShape.OracleWrapper, header, StringComparison.Ordinal);
+        Assert.False(ShimHolepunchShape.TheFormatOracleIsAvailable());
+    }
+
+    /// <summary>
+    /// And the counterpart, so neither side is a check that declined: where the seam wraps, the
+    /// oracle is there and the comparison the selftest makes is one it can make.
+    /// </summary>
+    [Fact]
+    public void OnAWrappingBuildTheOracleIsAvailable()
+    {
+        if (ShimHolepunchShape.WrappingHeader() is null)
+            return;
+
+        Assert.True(ShimHolepunchShape.TheFormatOracleIsAvailable());
+    }
 }

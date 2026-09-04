@@ -166,9 +166,19 @@ public static class ShimHolepunchShape
     /// <summary>
     /// Whether the shim still offers the device id's C, which is what a check comparing the two
     /// implementations needs before it runs.
+    ///
+    /// PP681: ASKED OF THE BUILD, which is PP661's correction arriving one wrapper late. This read
+    /// the header for <see cref="OracleWrapper"/>, and the header declares it either way - PP655's
+    /// flip gates the declarations with an #ifdef rather than deleting them. PP663 then turned
+    /// holepunch off by default, so every ordinary build had a header saying yes over a DLL that
+    /// exported nothing: the selftest asked, was told yes, called
+    /// <see cref="Session.PsnAuth.NativeDeviceUid"/>, and died on an unhandled
+    /// EntryPointNotFoundException with every check after it unrun.
+    ///
+    /// <see cref="OfTheBuild"/> is the right question because the wrapper's C is in holepunch.c and
+    /// leaves with the nine, so the export exists exactly when chiaki_shim_has_holepunch says so.
     /// </summary>
-    public static bool TheFormatOracleIsAvailable()
-        => Read() is { } header && header.Contains(OracleWrapper, StringComparison.Ordinal);
+    public static bool TheFormatOracleIsAvailable() => OfTheBuild() == ShimShape.Wrapping;
 
     /// <summary>Whatever is still declared that the bare shape must not have.</summary>
     public static IReadOnlyList<string> StillDeclaredIn(string header)

@@ -568,6 +568,8 @@
 - ✅ **PP672** **no managed code writes the INIT or reads the INIT_ACK, so the port's only takion client is the C** — The client writes both datagrams and reads both acks, byte for byte the C's over one exchange, and connects against PP606's responder over loopback in one attempt each way.
   checked **The managed INIT and COOKIE are byte-identical to the C's over one exchange** PP607's harness hands the C's own datagrams to a UdpClient this process holds; the managed writers are run with the tag read out of the C's INIT payload and the responder's cookie, and the two byte arrays are compared whole, not field by field.
   checked **A managed client completes the handshake against PP606's responder over loopback** The same test shape as PP607 with the client side swapped: two UdpClients on loopback, the responder pumped on one, the managed client on the other; the client reports connected, the responder is Done, and the readers' refusals - a wrong tag, a wrong length, a wrong chunk - are each exercised.
+- ✅ **PP681** **the selftest asks the header whether the device id oracle exists, so a default build's shim crashes it** — The guard asks chiaki_shim_has_holepunch like the nine, the bare side proves the DLL agrees by requiring the throw, and the selftest runs 460 checks to exit zero.
+  checked **The device id guard asks the DLL, and the selftest survives a default build** TheFormatOracleIsAvailable is keyed on chiaki_shim_has_holepunch like the nine; a test holds that it agrees with the DLL where the header's text says otherwise; and ChiakiNg.exe --selftest exits zero on a shim built with holepunch off, which is the shim the gate itself builds.
 
 ## Block G — Test discipline
 

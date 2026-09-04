@@ -2,7 +2,6 @@
 
 ## Priority
 
-- PP681
 - PP682
 - Block H
 - Block I
@@ -41,7 +40,6 @@
 - 📋 **PP678** (deps: PP672 ✅, PP673, PP674, PP675, PP677) **the receive loop runs only against test doubles, and nothing owns takion's state** — TakionReceiveLoop.Run traces steps through an ITakionLoopHost implemented only in tests; the tag, counter, ledger, cipher and queues have no owner. → §PP678
 - 📋 **PP679** (deps: —) **the v7 AV parse and header formatter are unported, and the formatter's callers are senkusha's** — chiaki_takion_v7_av_packet_parse differs from v9 in three places, and chiaki_takion_v7_av_packet_format_header is called only by senkusha.c, so who owns them is a decision. → §PP679
 - 📋 **PP680** (deps: PP668) **takion_handle_packet_av is only a branch in managed code, so no video packet reaches the flush** — The disable gates, the queue seeded at packet_index minus unit_index, the entry with its stamp and the flush into StreamAvDispatch have no composition; the parse is PP668's. → §PP680
-- 📋 **PP681** (deps: —) **the selftest asks the header whether the device id oracle exists, so a default build's shim crashes it** — TheFormatOracleIsAvailable reads chiaki_shim.h for the wrapper's name while a shim built with holepunch off exports no such thing, and NativeDeviceUid throws EntryPointNotFound. → §PP681
 
 ## Block G — Test discipline
 
@@ -50,6 +48,7 @@
 - 💭 **PP659** (deps: —) **a relay test sends real UDP between three loopback sockets and failed once in a run that passed twice** — A gate that goes red on a datagram the loopback dropped is one somebody re-runs rather than reads, which is the failure PP56's stale green was the other half of. → §PP659
 - 📋 **PP666** (deps: —) **a table and the test written from it were wrong together at every rung, and only a consumer noticed** — PP364's entry ladder held for five months against a test whose arithmetic assumed the same off-by-one, and the tree has three more tables nothing drives. → §PP666
 - 📋 **PP682** (deps: —) **test.cmd reads a step's exit code with 'if errorlevel 1', so a crash's negative code passes the gate** — An unhandled .NET exception exits with 0xE0434352, which cmd sees as an errorlevel below one; the selftest died that way on every default build and the gate printed OK. → §PP682
+- 📋 **PP683** (deps: —) **the oracle guard census reads test files only, so the selftest's guarded comparisons are invisible to it** — PP665 prints what an absent oracle costs from eleven test files; the host's own 460 checks guard comparisons too, and PP681's defect lived in one the count never saw. → §PP683
 
 ## Block H — Performance and telemetry
 
@@ -259,13 +258,13 @@
   any non-zero errorlevel, so a verdict catching one sign only is red before it hides
   anything.
 
-## Done when — PP681
+## Done when — PP683
 
-- **The device id guard asks the DLL, and the selftest survives a default build**
-  TheFormatOracleIsAvailable is keyed on chiaki_shim_has_holepunch like the nine; a test
-  holds that it agrees with the DLL where the header's text says otherwise; and
-  ChiakiNg.exe --selftest exits zero on a shim built with holepunch off, which is the
-  shim the gate itself builds.
+- **The selftest is a row in the census, and the printed cost counts its guards**
+  app/SelfTest.cs joins OracleGuardCensus.Files with the guard it calls; the census's
+  own test holds that the file still carries it, and the gate's line about what a bare
+  build skipped rises by what the selftest declines rather than stopping at the test
+  project.
 
 ## Non-goals
 

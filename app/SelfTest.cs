@@ -2380,8 +2380,24 @@ public static class SelfTest
             }
             else
             {
-                Check("the format oracle is gone with holepunch.c, and the managed id stands alone",
-                    !ShimHolepunchShape.TheFormatOracleIsAvailable());
+                // PP681: the counterpart, and it is not the question asked twice. The guard said no;
+                // this makes the call the guard prevented and requires the throw - so what runs on
+                // this side proves the DLL agrees with the guard, rather than restating it.
+                //
+                // Before PP681 the guard read the header, which declares the wrapper either way, so
+                // this branch never ran and the one above called into an export that was not there.
+                var threw = false;
+                try
+                {
+                    PsnAuth.NativeDeviceUid();
+                }
+                catch (EntryPointNotFoundException)
+                {
+                    threw = true;
+                }
+
+                Check("the format oracle went with holepunch.c, and the managed id stands alone",
+                    threw);
             }
 
             // PP33: the prefix is not a coincidence of the random half. Asserted separately because
