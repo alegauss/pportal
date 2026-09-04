@@ -22,6 +22,13 @@ namespace ChiakiNg.Protocol;
 /// The tag is drawn per session by chiaki_random_32 (PP602), so it identifies this recording and
 /// nothing else - no account, no console, and no frame.
 ///
+/// PP673: INBOUND ONLY, AND TWO TAKION CONNECTIONS. The takion channel's tap emits under
+/// CHIAKI_MESSAGE_TAP_RECEIVED at a single site, so every row here arrived rather than left - a
+/// reader treating it as a two-way capture is reading a direction the file does not hold. And its
+/// 344 control heads carry TWO tags, 333 and eleven: not two directions, but the two takions a PS5
+/// session runs, senkusha's and the stream connection's, each with its own random tag. A reader
+/// that assumed one tag would call the eleven corrupt.
+///
 /// The Length column is the DATAGRAM's, not the head's. A capture written before that was true
 /// carries the other version string, and TakionCaptureFile refuses it rather than reading sizes
 /// that would all be wrong.

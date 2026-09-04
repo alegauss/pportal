@@ -164,15 +164,21 @@ public class TakionMessageIntakeTests(ITestOutputHelper output)
     /// <summary>
     /// THE FIRST CRITERION: every control head in the corpus carries a tag of the session's pair.
     ///
-    /// THE CRITERION SAID "THE SESSION'S ONE TAG" AND THE CAPTURE SAYS TWO. PP510's tap sits at the
-    /// socket and records BOTH directions, so 344 control heads carry 0x71dc1006 333 times and
-    /// 0x2eb0df2b eleven - which is exactly tag_local and tag_remote. The C's own rule is that a
-    /// header carries the RECEIVER's tag, so a capture of both directions must show both, and a
-    /// reading that found one would have been reading the wrong offset.
+    /// THE CRITERION SAID "THE SESSION'S ONE TAG" AND THE CAPTURE SAYS TWO: 0x71dc1006 on 333 heads
+    /// and 0x2eb0df2b on eleven.
     ///
-    /// So the claim the corpus can actually make is stronger than the one written: the field at +0
-    /// holds one of exactly two values across every control datagram of a five-second session, and
-    /// no third. A wrong offset would find a spread rather than a pair.
+    /// THE FIRST READING OF THAT WAS WRONG. Two tags looked like both directions - the C's rule is
+    /// that a header carries the RECEIVER's tag, so a two-way capture would show tag_local and
+    /// tag_remote. But the takion channel's tap emits under CHIAKI_MESSAGE_TAP_RECEIVED alone, at
+    /// one site, so every row here is inbound and every row must carry the client's own tag.
+    ///
+    /// Which makes the pair two TAKION CONNECTIONS in one five-second sample, each having drawn its
+    /// own tag from chiaki_random_32. A PS5 session has exactly that: senkusha runs a takion and the
+    /// stream connection runs another. The eleven and the 333 are the two of them.
+    ///
+    /// So what the corpus testifies to is that the field at +0 holds one of exactly two values
+    /// across every control datagram of the sample and no third. A wrong offset would find a spread
+    /// rather than a pair.
     ///
     /// The length check cannot run here, because the capture kept a HEAD and not the message - so
     /// the parse is asked for the header alone through WouldParse, which does the refusals a
