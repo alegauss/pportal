@@ -1109,7 +1109,13 @@ public partial class App : Application
                     ? named
                     : string.Empty;
 
-            Environment.Exit(StreamRun.Run(HostCommandLine.ValueAfter(e.Args, "--console"), decoder));
+            // --capture-seconds bounds it, the same flag the two recordings take. Without one the
+            // window stays until a person closes it, which is what a person watching wants and what
+            // something reading the numbers afterwards cannot do.
+            TimeSpan? hold = HostCommandLine.Has(e.Args, "--capture-seconds") ? sample.Hold : null;
+
+            Environment.Exit(
+                StreamRun.Run(HostCommandLine.ValueAfter(e.Args, "--console"), decoder, hold));
         }
 
         // PP516: and the other half of that, which needs no console - a capture on disk read back

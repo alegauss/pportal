@@ -28,6 +28,12 @@ public static class StreamRun
     /// <summary>How long to wait for the console to answer before giving up.</summary>
     public static TimeSpan Wake { get; } = TimeSpan.FromSeconds(45);
 
+    /// <summary>PP699: what the presenter did with each frame, which is PP76's first operand.</summary>
+    public static PresentationCount Counted { get; private set; } = new();
+
+    /// <summary>And the receiver's own total, which is the second.</summary>
+    public static int Lost { get; private set; }
+
     /// <summary>
     /// Open a window and run one session into it, returning when the window closes.
     /// </summary>
@@ -161,10 +167,33 @@ public static class StreamRun
             return 1;
         }
 
+        var started = DateTimeOffset.UtcNow;
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+
         int drawn = Draw(decoder, model, window, quit, stopping);
 
+        clock.Stop();
         session.Stop();
-        Console.WriteLine($"[stream] {decoder.FramesAvailable} decoded, {drawn} shown");
+
+        // PP699: four numbers, and the gap between the first two is NOT one of the losses.
+        //
+        // FramesAvailable counts the decoder's callback firing; the pull takes the newest frame, so
+        // a loop that polls can be handed one frame where two became ready. Those superseded frames
+        // are the LOOP's and not the decoder's, and calling them dropped would measure this poll
+        // interval under a decoder's name - which is the confound PP76 exists to avoid.
+        //
+        // So they are named separately. The Qt client pulls from the frame-available callback and
+        // has no such gap; closing it here is PP76's to decide, because it moves a download onto
+        // libchiaki's own thread.
+        long unpulled = (long)decoder.FramesAvailable - drawn - Counted.Dropped;
+
+        Console.WriteLine(
+            $"[stream] {decoder.FramesAvailable} decoded, {drawn} shown, "
+                + $"{Lost} lost by the network, {Counted.Dropped} dropped, "
+                + $"{Counted.DecoderDropsAgainst(Lost)} attributable to the decoder"
+                + (unpulled > 0 ? $", {unpulled} superseded before this loop pulled them" : string.Empty));
+
+        RecordBaseline(decoderName, started, clock.Elapsed);
 
         return drawn > 0 ? 0 : 1;
     }
@@ -188,9 +217,6 @@ public static class StreamRun
             return 0;
         }
 
-        int lost = 0;
-
-
         SharedSurface? surface = null;
         VideoPresenter? presenter = null;
         StreamPresentation? presentation = null;
@@ -199,17 +225,25 @@ public static class StreamRun
         {
             while (!quit.IsSet && !stopping.IsCancellationRequested)
             {
-                if (!decoder.Pull(out SessionDecoder.DecodedFrame frame))
+                bool pulled = decoder.Pull(out SessionDecoder.DecodedFrame frame);
+
+                // PP699: PP528's shape, kept. The count comes off the pull and is ZEROED by it, so
+                // every arm below has to carry it somewhere - and in the C two returns between the
+                // pull and the present did not, which is the defect PP528 repaired. One place, and
+                // it is before any branch that could return.
+                Lost += frame.FramesLost;
+                Counted.Lost(frame.FramesLost);
+
+                if (!pulled)
                 {
-                    lost += frame.FramesLost;
+                    // A frame that arrived and cannot be shown is a DISCARD; no frame at all is
+                    // not. The width is what tells them apart.
+                    if (frame.Width > 0)
+                        Counted.Discard();
+
                     Thread.Sleep(2);
                     continue;
                 }
-
-                // PP528's counter, which the pull ZEROES - so it is added here or lost for good.
-                // Reported because it is what tells a picture torn by the network from one torn by
-                // this port, and those have opposite fixes.
-                lost += frame.FramesLost;
 
                 if (presenter is null)
                 {
@@ -237,18 +271,81 @@ public static class StreamRun
                 // the shared texture has no fence, so drawing outside D3DImage's lock lets WPF
                 // compose a half-written one.
                 VideoPresenter drawing = presenter;
-                presentation?.Present(
+
+                bool shown = presentation?.Present(
                     () => drawing.Render(
-                        frame.Luma, frame.LumaStride, frame.Chroma, frame.ChromaStride, out _));
+                        frame.Luma, frame.LumaStride, frame.Chroma, frame.ChromaStride, out _)) ?? false;
+
+                // The client's two arms, one per frame: presented, or discarded. A frame that
+                // reached the presenter and did not reach the screen is the eviction PP76 reads.
+                if (shown)
+                    Counted.Present();
+                else
+                    Counted.Discard();
             }
 
-            Console.WriteLine($"[stream] {lost} frame(s) lost by the network");
             return (int)(presentation?.Shown ?? 0);
         }
         finally
         {
             presenter?.Dispose();
             surface?.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// PP699: one row per session, in the ledger both builds append to.
+    ///
+    /// qmlbackend.cpp's recordSessionBaseline, minus the parts that need a client. The path is the
+    /// same file - chiaki_baseline.jsonl in the log directory - because a comparison between this
+    /// host and the Qt build is exactly what a shared ledger is for, and a second file would make
+    /// the two incomparable while looking like more data.
+    ///
+    /// A ROW THAT SILENTLY FAILS TO LAND reads afterwards as a session that never ran, which is the
+    /// one way this record can mislead the comparison it exists for. The client says so in a
+    /// comment and warns; so does this.
+    /// </summary>
+    private static void RecordBaseline(string decoderName, DateTimeOffset started, TimeSpan duration)
+    {
+        try
+        {
+            using var baseline = new SessionBaseline();
+
+            baseline.SetStarted(started);
+            baseline.SetDuration(duration);
+            // PP1: one version, one place. The assembly's own, so a row cannot claim a build the
+            // executable is not - which a literal here would eventually do.
+            baseline.SetAppVersion(
+                typeof(StreamRun).Assembly.GetName().Version?.ToString(3) ?? "0.0.0");
+            baseline.SetVideo("h264", 1280, 720, 60, 0);
+            baseline.SetConfig(
+                decoderName.Length == 0 ? "none" : decoderName,
+                "d3d11",
+                packetLossMax: 0,
+                idrOnFecFailure: true);
+
+            baseline.SetMeasured(
+                measuredBitrateMbps: 0,
+                averagePacketLoss: 0,
+                framesPresented: (ulong)Counted.Presented,
+                framesLost: (ulong)Lost,
+                framesDropped: (ulong)Counted.Dropped,
+                networkRttUs: 0);
+
+            ChiakiError wrote = baseline.AppendTo(SessionBaseline.LedgerPath);
+
+            if (wrote != ChiakiError.Success)
+            {
+                Console.Error.WriteLine(
+                    $"[stream] the baseline did not land in {SessionBaseline.LedgerPath}: {wrote}");
+                return;
+            }
+
+            Console.WriteLine($"[stream] baseline recorded to {SessionBaseline.LedgerPath}");
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            Console.Error.WriteLine($"[stream] the baseline could not be written: {error.Message}");
         }
     }
 
@@ -263,5 +360,7 @@ public static class StreamRun
         });
     }
 }
+
+
 
 

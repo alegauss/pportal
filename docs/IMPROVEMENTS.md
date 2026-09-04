@@ -483,33 +483,6 @@ Source mode is the alternative: the DSP opens both devices itself and hands back
 cleaned stream. That replaces `WasapiCapture` rather than following it, and takes the
 device choice with it - which PP695 showed this port needs to keep.
 
-### §PP699 A counter repaired in the client that no longer builds
-
-PP76 says "what is left is the run", and that is the second time this line has been
-wrong about needing no instrument. PP528 corrected it once: neither loss counter
-attributes a loss to a decoder, and `frames_dropped` was under-reporting on two returns.
-
-PP528 repaired it in `gui/src/qmlmainwindow.cpp`. PP598 retired the Qt client and PP632
-stopped building it - its source stays only because the drift checks read it.
-
-So the operand does not exist here. `frames_lost` is the video receiver's and the shim
-exports it. `frames_dropped` is the PRESENTER's: the same total as the presenter
-received it, plus the frames the codec evicted from a full internal buffer, and that
-eviction is the only loss in the path a decoder is responsible for. This line first said
-the host "presents and counts neither", and the first half was wrong: PP700 found that
-nothing here presents at all.
-
-`SessionBaseline` is bound and used by the self-test alone; no live session writes a
-row.
-
-So the work is the presenter's counter and the row that carries it: count what was never
-shown, fold in the receiver's total the way the Qt client did, and write one baseline
-line per session. Then PP76's difference is a subtraction over two real numbers rather
-than over one.
-
-Until then a played session measures nothing, whichever decoder it ran - which is
-exactly what PP76's own line exists to prevent, arrived at from the other side.
-
 ## Block G — Test discipline
 
 ### §PP683 The census stops at the test project
