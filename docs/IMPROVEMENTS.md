@@ -353,23 +353,27 @@ whether it still agrees with its own recording.
 ### §PP673 The message layer between the branch and the models
 
 takion_handle_packet_message is the layer between the branch PP500 built and the two
-models under it. TakionReceivePath hands a control datagram to a sink and stops;
-TakionDataDrain models the flush of the data queue and TakionDataAck reads the inbound
-ack; nothing joins them, and the join is two functions.
+models under it: TakionReceivePath hands a control datagram to a sink and stops,
+TakionDataDrain models the data queue's flush and TakionDataAck reads the inbound ack,
+and nothing joins them.
 
-takion_parse_message reads the tag, the low half of the key position, the chunk type,
-its flags and the length field, and refuses three things in order: a header shorter than
-sixteen bytes, a tag that is not tag_local, and a length field that does not agree with
-the datagram. The position is committed through the key state on every message, not only
-the ones that carry data. Then the switch: DATA hands the whole datagram on and keeps
-the buffer, DATA_ACK runs the ack handler and lets it go, anything else is logged and
-dropped. TakionMessageHeader knows four chunk types and neither of these two.
+takion_parse_message refuses three things in order - a header under sixteen bytes, a tag
+that is not tag_local, a length field disagreeing with the datagram - and commits the
+key position on every message. Then the switch: DATA keeps the buffer, DATA_ACK runs the
+ack handler and lets it go, anything else is logged and dropped. TakionMessageHeader
+knows four chunk types and neither of these two.
+
+HALF THE PARSE IS WRITTEN. PP672 needed the three refusals for the two acks it reads, so
+TakionMessageHeader.TryReadInbound is internal, keeps the C's order, and is joined to
+the C by TheCStillRefusesTheseThree. What it lacks is the commit - it hands the position
+back as the wire's low half, which is PP677's ledger - so this lifts that reader rather
+than writing a second one.
 
 THE ORACLE IS THE CORPUS. PP510 keeps eighteen bytes a datagram and the control header
 is sixteen of them, so every control datagram a PS5 sent runs through the parse: the
-header tag is the one tag_local of that session, and PP515's recorded length is what the
-length field has to agree with. A parse that refuses one of them, or accepts a head with
-a byte moved, is wrong in a way four thousand real messages say so.
+header tag is that session's one tag_local, and PP515's recorded length is what the
+length field has to agree with. A parse refusing one of them, or accepting a head with a
+byte moved, is wrong in a way four thousand real messages say so.
 
 ### §PP674 The data queue, one width wider
 
