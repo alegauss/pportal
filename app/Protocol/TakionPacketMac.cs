@@ -114,8 +114,15 @@ public static class TakionPacketMac
     /// the blanking still happens and nothing is computed, which is how a handshake packet goes out.
     /// </param>
     /// <param name="wantMacBefore">Whether the caller passed mac_old_out.</param>
+    /// <param name="wantMacAfter">
+    /// Whether the caller passed mac_out. PP675: this used to be unconditional, and the C's
+    /// parameter is optional exactly as mac_old_out is - chiaki_takion_send passes NULL for it. The
+    /// four bytes were being copied out on every send for a caller that never read them, which the
+    /// send path's zero-allocation budget is what noticed.
+    /// </param>
     public static MacResult Apply(
-        Span<byte> packet, Func<ReadOnlyMemory<byte>, byte[]>? gmac, bool wantMacBefore = true)
+        Span<byte> packet, Func<ReadOnlyMemory<byte>, byte[]>? gmac,
+        bool wantMacBefore = true, bool wantMacAfter = true)
     {
         if (packet.IsEmpty)
             return new MacResult(ChiakiError.BufTooSmall, null, null, false);
@@ -153,7 +160,10 @@ public static class TakionPacketMac
         }
 
         return new MacResult(
-            ChiakiError.Success, before, packet.Slice(layout.MacOffset, GmacSize).ToArray(), blanked);
+            ChiakiError.Success,
+            before,
+            wantMacAfter ? packet.Slice(layout.MacOffset, GmacSize).ToArray() : null,
+            blanked);
     }
 }
 

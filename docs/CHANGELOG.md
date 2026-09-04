@@ -609,6 +609,9 @@
 - ✅ **PP674** **takion's data queue is 32-bit and the managed reorder queue is 16-bit only, so no managed push can hold a data packet** — The width is injected as the C injects it, held against a new create_32 export step for step across the wrap, and a data message becomes an entry with PP491's drops freeing.
   checked **The wide queue agrees with a create_32 export after every operation** The oracle shape PP108 and PP150 used for sixteen bits: fixed-seed random scripts of push, pull, peek and drop run through both queues, with count, begin and the drop list compared after every step, across the thirty-two-bit wrap.
   checked **A data message becomes an entry and a push, with PP491's two drops kept** A payload shorter than nine bytes and a failed entry are dropped, not queued; a good one is pushed with the sequence number from its first four bytes and the channel from the next two, and drains through TakionDataDrain in the C's order.
+- ✅ **PP675** **no managed code sends a takion datagram, so every takion send is a model that emits no bytes** — The three layouts are written into a caller's span and read back by PP673's parser, and one send path stamps and sends under the recursive cipher lock at zero bytes over a thousand sends.
+  checked **The managed data message, continuation and ack match the C's bytes** chiaki_takion_send_message_data and its siblings are exported, so a shim call sends through PP607's connected takion and the peer this process holds receives the C's bytes; the managed builder, given the same tag, sequence and payload, produces the same array.
+  checked **One send path: MAC under the cipher lock, then the socket, nothing allocated** chiaki_takion_send's order is reproduced - stamp, then send - and the send over a connected UDP socket is measured the way PP633 measured the receive: zero bytes allocated after warm-up per packet sent.
 
 ## Block G — Test discipline
 

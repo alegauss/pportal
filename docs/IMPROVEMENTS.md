@@ -262,30 +262,6 @@ because today the default is what makes those two theories a check on the ORACLE
 cases are the C's own, and a managed default now would silently stop asking the C
 whether it still agrees with its own recording.
 
-### §PP675 The sends, from bytes to socket
-
-Every send in takion.c ends in chiaki_takion_send_raw, a send on the connected socket
-that turns a negative result into a network error, and no managed file in the host sends
-a UDP datagram at all. Above it chiaki_takion_send stamps the packet's MAC under the
-cipher's lock and then sends. Above that, three builders: the data message with its
-twenty-six bytes of overhead - type byte, header, then sequence number, channel, a zero
-word and a type byte before the payload - the continuation that drops the type byte, and
-the data ack, twenty-nine bytes with the cumulative sequence, the advertised window and
-two zero words, sized for the ledger as a whole packet where the others pass the payload
-alone.
-
-WHAT IS RUNNABLE TODAY: TakionMessageHeader.Write for the header,
-TakionKeyPosition.Advance for the ledger, TakionSendBuffer.Push for the hold,
-TakionPacketMac.Apply for the MAC though it allocates. What is a model: TakionDataSend,
-which scripts the failure order and emits no bytes. What is absent: DATA and DATA_ACK as
-chunk types, the three byte layouts, the sequence counter, and the socket. The
-congestion report is the fourth builder and runs only through the shim.
-
-THE ORACLE IS THE EXPORTED C OVER THE LOOPBACK. chiaki_takion_send_message_data is
-exported, and PP607's takion is connected to a socket this process reads. A shim call
-that sends through that takion puts the C's own bytes on the peer, tag and all, for the
-managed builder to be compared against.
-
 ### §PP676 Three sends outside the MAC table
 
 Three sends do not go through chiaki_takion_packet_mac, and PP497's table is right to
