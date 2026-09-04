@@ -544,6 +544,29 @@ answer for a v9 stream. THE ORACLE IS THE CORPUS: PP608's heads carry every inde
 queue is seeded and ordered by, so the managed arm's order of delivery and its drops are
 compared against AvReorderTimeout's and the C's over a real stream.
 
+### §PP685 The chokepoint's comment names the wrong pair
+
+PP395 made stream_connection_send_data the one place the stream's protobufs cross, and
+wrote above it what the data type means: one for most, two for the keyboard pair, nine
+for the streaminfo ack. Two of those three are right.
+
+The sends carrying two are stream_connection_send_corrupt_frame and
+stream_connection_send_idr_request - the video receiver's two messages, and the file's
+own only mention of a keyboard is that comment. Nothing reads the comment, so nothing
+went wrong; what it costs is a reader, and the reader it costs most is the next person
+building the table, because the sentence is exactly the shape of an answer.
+
+PP684 found it while writing that table and did not take the comment's word for it:
+StreamMessagesSource reads the seven call sites and the test compares the built messages
+against what the calls pass. So the managed side is right whatever this line says, and
+the comment is now the only wrong statement about it in the tree.
+
+WHAT IS OWED IS ONE SENTENCE, in a file the vendored-C rule does bind. The rule is about
+behaviour - no local patch that leaves lib/ agreeing with a libchiaki nobody runs - and
+this port has written comments into twenty files of lib/src already, which PP483
+counted. A comment corrected is not a patch: the compiled object is identical, and the
+drift checks that read this file read the code around it.
+
 ## Block G — Test discipline
 
 ### §PP642 Checking where a deleted design went

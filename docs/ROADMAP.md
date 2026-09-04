@@ -39,6 +39,7 @@
 - 📋 **PP678** (deps: PP672 ✅, PP673, PP674, PP675, PP677) **the receive loop runs only against test doubles, and nothing owns takion's state** — TakionReceiveLoop.Run traces steps through an ITakionLoopHost implemented only in tests; the tag, counter, ledger, cipher and queues have no owner. → §PP678
 - 📋 **PP679** (deps: —) **the v7 AV parse and header formatter are unported, and the formatter's callers are senkusha's** — chiaki_takion_v7_av_packet_parse differs from v9 in three places, and chiaki_takion_v7_av_packet_format_header is called only by senkusha.c, so who owns them is a decision. → §PP679
 - 📋 **PP680** (deps: PP668) **takion_handle_packet_av is only a branch in managed code, so no video packet reaches the flush** — The disable gates, the queue seeded at packet_index minus unit_index, the entry with its stamp and the flush into StreamAvDispatch have no composition; the parse is PP668's. → §PP680
+- 📋 **PP685** (deps: —) **PP395's chokepoint comment calls the two data-type-2 sends the keyboard pair, which they are not** — They are the corrupt frame and the IDR request, and the word keyboard appears nowhere else in the file; a reader taking the comment for the table gets the video path wrong. → §PP685
 
 ## Block G — Test discipline
 
@@ -255,6 +256,13 @@
   own test holds that the file still carries it, and the gate's line about what a bare
   build skipped rises by what the selftest declines rather than stopping at the test
   project.
+
+## Done when — PP685
+
+- **The comment names the two sends that carry the type, and a check holds it** The
+  sentence says corrupt frame and IDR request; StreamMessagesSource already reads the
+  call sites, so the check is that the comment's named pair and the pair the calls pass
+  with data type two are the same two, which a future rename breaks loudly.
 
 ## Non-goals
 
