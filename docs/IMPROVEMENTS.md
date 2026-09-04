@@ -545,29 +545,6 @@ drift checks that read this file read the code around it.
 
 ## Block G — Test discipline
 
-### §PP659 A gate with a datagram in it
-
-SessionRelayTests.TheConsolesAnswerComesBackMarked opens three UDP sockets on the
-loopback, sends a datagram through the relay each way, and asserts on what the tap
-recorded. It failed once on 2026-09-03 in a run whose neighbours either side passed, and
-passed on its own immediately after.
-
-IT DID IT AGAIN ON 2026-09-04, in a gate run for a task that touches no socket, and
-passed three times alone straight after and again in the re-run of the whole gate. Twice
-in two days, both alone in a suite of five thousand, both green on every re-run. Still
-not a count, so this stays an idea - but the shape is why it is filed: UDP on the
-loopback may drop, the receives carry a timeout, and the assertion is on a list a relay
-thread fills. Each lets the run rather than the code decide.
-
-The cost of leaving it is specific: this tree's gate is READ - the ratchet, the counted
-claims and the drift checks report through it - and a check that fails one run in some
-number teaches a reader to re-run rather than read. PP56 was the same problem facing the
-other way, where a stale binary made the suite green about changed code.
-
-What would settle it is a count: run the file a few hundred times. If it fails again the
-fix is a bounded retry on the receive or a tap the assertion can wait on, and which
-depends on where it loses.
-
 ### §PP666 A test written from the table it checks
 
 PP364 modelled the stream connection's six exit labels as a ladder: what was built

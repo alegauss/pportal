@@ -41,12 +41,12 @@ public class SessionRelayTests
         console.Client.ReceiveTimeout = 5000;
         var consoleStream = (IPEndPoint)console.Client.LocalEndPoint!;
 
-        var seen = new List<(byte[] Bytes, bool FromConsole)>();
-        
+        var seen = new System.Collections.Concurrent.ConcurrentQueue<(byte[] Bytes, bool FromConsole)>();
+
         using var relay = new SessionRelay(
             new IPEndPoint(IPAddress.Loopback, 1),
             consoleStream,
-            (bytes, fromConsole) => seen.Add((bytes, fromConsole)),
+            (bytes, fromConsole) => seen.Enqueue((bytes, fromConsole)),
             0,
             0);
 
@@ -62,7 +62,10 @@ public class SessionRelayTests
         Assert.Equal(payload, arrived);
         Assert.True(arrived.Length > 18, "the relay truncated, which is the thing it exists not to do");
 
-        SpinWait.SpinUntil(() => seen.Count > 0, TimeSpan.FromSeconds(5));
+        Assert.True(
+            SpinWait.SpinUntil(() => !seen.IsEmpty, TimeSpan.FromSeconds(5)),
+            "the relay carried the datagram and reported nothing");
+
         (byte[] bytes, bool fromConsole) = Assert.Single(seen);
 
         Assert.Equal(payload, bytes);
@@ -77,6 +80,16 @@ public class SessionRelayTests
     /// on loopback - while a real console got datagrams from a loopback-bound socket and had
     /// nowhere to answer. This sends the reply where a console's reply actually lands: the port the
     /// relay used to reach it.
+    ///
+    /// PP659: AND IT WAITS FOR THE COUNT RATHER THAN ASSUMING IT. This test failed alone in a suite
+    /// of five thousand twice in two days and passed on every re-run, and the reason is one line of
+    /// the relay: the counter is incremented AFTER the send, so a receiver holding the datagram can
+    /// still read the old value. Receiving is not a receipt for the count, and asserting on it the
+    /// instant the datagram lands is a race the loopback usually wins and sometimes does not.
+    ///
+    /// The recorder is thread-safe for a second reason, which nothing had yet hit: both forwarding
+    /// directions call it, and two threads adding to one List is a corruption rather than a wrong
+    /// number.
     /// </summary>
     [Fact]
     public void TheConsolesAnswerComesBackMarked()
@@ -85,12 +98,12 @@ public class SessionRelayTests
         console.Client.ReceiveTimeout = 5000;
         var consoleStream = (IPEndPoint)console.Client.LocalEndPoint!;
 
-        var seen = new List<(byte[] Bytes, bool FromConsole)>();
-        
+        var seen = new System.Collections.Concurrent.ConcurrentQueue<(byte[] Bytes, bool FromConsole)>();
+
         using var relay = new SessionRelay(
             new IPEndPoint(IPAddress.Loopback, 1),
             consoleStream,
-            (bytes, fromConsole) => seen.Add((bytes, fromConsole)),
+            (bytes, fromConsole) => seen.Enqueue((bytes, fromConsole)),
             0,
             0);
 
@@ -114,9 +127,15 @@ public class SessionRelayTests
         byte[] backAtClient = client.Receive(ref from);
 
         Assert.Equal(down, backAtClient);
+
+        // Both directions are recorded before their send, so having the datagram means the record
+        // exists - but the COUNT moves after it, so that one is waited for.
         Assert.Contains(seen, s => s.FromConsole && s.Bytes.SequenceEqual(down));
         Assert.Contains(seen, s => !s.FromConsole && s.Bytes.SequenceEqual(up));
-        Assert.Equal(2, relay.DatagramsForwarded);
+
+        Assert.True(
+            SpinWait.SpinUntil(() => relay.DatagramsForwarded == 2, TimeSpan.FromSeconds(5)),
+            $"the relay carried both datagrams and counted {relay.DatagramsForwarded}");
     }
 
     /// <summary>

@@ -106,8 +106,23 @@ public sealed class SessionRelay : IDisposable
     /// <summary>Where the session should be pointed, which is what `--via` takes.</summary>
     public static string Via => IPAddress.Loopback.ToString();
 
-    /// <summary>How many datagrams have been carried, both directions.</summary>
-    public int DatagramsForwarded { get; private set; }
+    /// <summary>
+    /// How many datagrams have been carried, both directions.
+    ///
+    /// PP659: read and written across threads, so it is an interlocked counter rather than a plain
+    /// property. TWO forwarding threads increment it - one per direction - and `count++` from two
+    /// threads loses updates, which for a relay carrying thousands of datagrams a second is a
+    /// number that drifts low for reasons nothing records.
+    ///
+    /// AND IT IS WRITTEN AFTER THE SEND, which is the half that made a test flake. The datagram is
+    /// on the wire before the counter moves, so a reader that has just RECEIVED one can still see
+    /// the old value - a real ordering and not a wrong one, since counting a send that threw would
+    /// be the wrong number. What it means for a caller is that the count is eventually right and
+    /// never a receipt: something waiting on it has to wait, which is what the tests now do.
+    /// </summary>
+    public int DatagramsForwarded => Volatile.Read(ref forwarded);
+
+    private int forwarded;
 
     /// <summary>The port the UDP half is on, which a test needs when it did not choose one.</summary>
     public int StreamPortInUse => ((IPEndPoint)stream.Client.LocalEndPoint!).Port;
@@ -207,7 +222,7 @@ public sealed class SessionRelay : IDisposable
         try
         {
             socket.Send(datagram, datagram.Length, to);
-            DatagramsForwarded++;
+            Interlocked.Increment(ref forwarded);
         }
         catch (SocketException)
         {

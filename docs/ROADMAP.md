@@ -42,7 +42,6 @@
 
 ## Block G — Test discipline
 
-- 💭 **PP659** (deps: —) **a relay test sends real UDP between three loopback sockets and failed once in a run that passed twice** — A gate that goes red on a datagram the loopback dropped is one somebody re-runs rather than reads, which is the failure PP56's stale green was the other half of. → §PP659
 - 📋 **PP666** (deps: —) **a table and the test written from it were wrong together at every rung, and only a consumer noticed** — PP364's entry ladder held for five months against a test whose arithmetic assumed the same off-by-one, and the tree has three more tables nothing drives. → §PP666
 - 📋 **PP683** (deps: —) **the oracle guard census reads test files only, so the selftest's guarded comparisons are invisible to it** — PP665 prints what an absent oracle costs from eleven test files; the host's own 460 checks guard comparisons too, and PP681's defect lived in one the count never saw. → §PP683
 

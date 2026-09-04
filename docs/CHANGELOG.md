@@ -670,6 +670,7 @@
   checked **Every verdict in test.cmd and compile.cmd catches a negative exit code** A test reads both launchers and holds that each native step - the selftest, the two tools, roadkeep lint, dotnet test and dotnet build - is followed by a check that is true for any non-zero errorlevel, so a verdict catching one sign only is red before it hides anything.
 - ✅ **PP642** **a ship's `recorded in` clause names a file and nothing checks the file ever received the design** — Every clause's file is opened and has to name the id, three exempt by name because the file is a recording with no room for one, and PP446's own paragraph was the miss it found.
 - ✅ **PP643** **two `<summary>` elements on one member compile, and the wrong one wins silently** — Twelve members carried a stacked summary, ten were another member's docstring stranded by an insertion, and a scan over 933 files now refuses the next one.
+- ✅ **PP659** **a relay test sends real UDP between three loopback sockets and failed once in a run that passed twice** — The count moves after the send, so receiving was never a receipt for it; the test waits, the counter is interlocked across its two threads, and 200 runs failed none.
 
 ## Block H — Performance and telemetry
 
