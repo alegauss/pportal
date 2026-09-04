@@ -513,8 +513,9 @@ PP632 ran it once for the holepunch seam, and the middle step - the only one tha
 `lib/` - was one commit that touched no test file, because every assertion it moved had
 already been taught where it would land.
 
-The frame path owes the same three, and the first is nearly done: PP670 made the oracles
-two-shape and PP671 is the one default left to move.
+The frame path owes the same three and the first is done: PP670 made the oracles
+two-shape. PP671 rides ON this commit rather than before it, by its own design's
+reasoning.
 
 This is the middle step. `FramePathConsumers` already reads what it must answer for,
 which is why no number here is typed: session.c's calls into the stream connection, the

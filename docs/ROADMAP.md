@@ -25,7 +25,7 @@
 - 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — chiaki_fec_decode has three callers - frameprocessor.c, the C suite and this port's shim - and gf-complete has a fourth site none of them reach: chiaki_lib_init. → §PP30
 - ⏳ **PP33** (deps: PP24 ✅, PP293 ✅, PP340 ✅, PP481 ✅, PP533 ✅) (requires: console) **HTTP and JSON in the core are curl and json-c, two vendored dependencies for what the runtime already does** — the file itself: one file calls it, the shim, and PP481's oracle is what that seam is for. → §PP33
 - 🛠 **PP295** (deps: PP297 ✅, PP696, PP697) **streamconnection.c is 1531 lines and calls the video receiver, so every deletion below waits on it** — Three criteria are met; the fourth is the four files leaving, which waits on the one commit that edits the C and on the shim, whose wrappers outlive it. → §PP295
-- 📋 **PP671** (deps: —) **Fec.Recovers with no decoder named runs the C, so after the flip a default becomes a loader failure** — The managed decoder is the one that stays; the default should follow it on the flip, so the sixty-four recorded cases judge the port alone. → §PP671
+- ⏳ **PP671** (deps: PP696) **Fec.Recovers with no decoder named runs the C, so after the flip a default becomes a loader failure** — The managed decoder is the one that stays; the default should follow it on the flip, so the sixty-four recorded cases judge the port alone. → §PP671
 - 📋 **PP673** (deps: —) **no managed code parses a takion control message, so a control datagram stops at the dispatch branch** — takion_parse_message and the DATA and DATA_ACK switch join TakionReceivePath's Control branch to the drain and ack models, and both exist only as source checks. → §PP673
 - 📋 **PP674** (deps: —) **takion's data queue is 32-bit and the managed reorder queue is 16-bit only, so no managed push can hold a data packet** — chiaki_reorder_queue_init_32 has no counterpart and no shim export, and takion_handle_packet_message_data, the push that reads seq and channel, has none either. → §PP674
 - 📋 **PP675** (deps: —) **no managed code sends a takion datagram, so every takion send is a model that emits no bytes** — chiaki_takion_send_raw, chiaki_takion_send and the three data builders have no managed bytes, and TakionMessageHeader knows no DATA or DATA_ACK chunk type. → §PP675
@@ -36,7 +36,7 @@
 - 📋 **PP680** (deps: PP668 ✅) **takion_handle_packet_av is only a branch in managed code, so no video packet reaches the flush** — The disable gates, the queue seeded at packet_index minus unit_index, the entry with its stamp and the flush into StreamAvDispatch have no composition; the parse is PP668's. → §PP680
 - 📋 **PP685** (deps: —) **PP395's chokepoint comment calls the two data-type-2 sends the keyboard pair, which they are not** — They are the corrupt frame and the IDR request, and the word keyboard appears nowhere else in the file; a reader taking the comment for the table gets the video path wrong. → §PP685
 - 📋 **PP694** (deps: —) **the microphone's units reach nothing, and libopus's second consumer is why the dependency cannot leave** — PP652 answered the input question opusencoder.c waited on, so the encoder is portable now and PP651 already measured managed Opus at a quarter of a percent of a frame. → §PP694
-- 📋 **PP696** (deps: PP671) **the frame path's deletion has no commit that edits the C, so four files stay while their ports exist** — PP623's middle step is the only one touching lib, and nobody has written this path's: session.c's asks, the shim's wrappers and the suite's four files all still name them. → §PP696
+- 📋 **PP696** (deps: —) **the frame path's deletion has no commit that edits the C, so four files stay while their ports exist** — PP623's middle step is the only one touching lib, and nobody has written this path's: session.c's asks, the shim's wrappers and the suite's four files all still name them. → §PP696
 - 📋 **PP697** (deps: PP696) **after the frame-path flip the models describe a C that has gone, in the present tense** — PP634 found this on the holepunch side: the predicates stay because they notice the calls coming back, and what goes stale is the prose around them. → §PP697
 
 ## Block G — Test discipline
@@ -313,6 +313,13 @@
   the frame path: each predicate is a shape the C could return in, so none is deleted.
   What changes is prose asserting the tree still has what the flip removed, turned to
   say what it was rather than what it is, the way PP591 and PP652 turned theirs.
+
+## Done when — PP671
+
+- **The recorded cases judge the managed decoder on a bare build** Fec.Recovers defaults
+  to the managed decoder, so the sixty-four recorded erasure cases assert on every build
+  instead of declining without the C. The differential in FecCodecTests stays the one
+  place the C is named, and OracleGuardCensus counts two fewer guarded theories.
 
 ## Non-goals
 
