@@ -73,7 +73,8 @@ public readonly record struct StreamInfoReading(
 ///
 ///   an audio header that is not <see cref="AudioHeaderSize"/> bytes refuses the whole message, with
 ///   the resolutions already decoded - which is the path PP372 called the reason the leak was worth
-///   a task rather than a note.
+///   a task rather than a note. PP687 split that in two: SHORTER is a wrong size, LONGER is no
+///   message at all, because the C's bounded read refuses rather than truncating.
 ///
 /// The fourth is ownership, and it needs no code here: a reading either reaches
 /// <see cref="ManagedVideoReceiver.StreamInfo"/> or does not, and the garbage collector is what the
@@ -87,6 +88,18 @@ public static class StreamInfoMessage
 {
     /// <summary>CHIAKI_AUDIO_HEADER_SIZE, which the audio receiver loads and nothing else fits.</summary>
     public const int AudioHeaderSize = 0xe;
+
+    /// <summary>
+    /// PP687: the bound the DECODE puts on the audio header, which is the same number read the other
+    /// way round.
+    ///
+    /// The C hands nanopb a fourteen-byte buffer and chiaki_pb_decode_buf refuses - sets the size to
+    /// zero and returns false - for anything longer, which fails the whole pb_decode. So fifteen
+    /// bytes is not a wrong size, it is no message: the handler takes the failed-decode branch and
+    /// never reaches the check that would have called it wrong. Thirteen decodes and is then refused
+    /// for its size, which is the case they are easy to confuse.
+    /// </summary>
+    public const int AudioHeaderDecodeBound = AudioHeaderSize;
 
     /// <summary>CHIAKI_VIDEO_BUFFER_PADDING_SIZE - what follows every header, zeroed.</summary>
     public const int PaddingBytes = 64;
@@ -138,6 +151,12 @@ public static class StreamInfoMessage
         }
 
         byte[] audio = decoded.StreamInfoPayload.AudioHeader.ToByteArray();
+
+        // PP687: above the bound there is no message. protoc's parser has no per-field buffer to
+        // refuse with, so the C's refusal is applied here rather than being inherited - and it is
+        // applied BEFORE the size check, because in the C the decode is what runs first.
+        if (audio.Length > AudioHeaderDecodeBound)
+            return new StreamInfoReading(StreamInfoVerdict.Undecodable, profiles, audio, announced);
 
         if (audio.Length != AudioHeaderSize)
             return new StreamInfoReading(StreamInfoVerdict.AudioHeaderWrongSize, profiles, audio, announced);

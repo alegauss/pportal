@@ -161,18 +161,22 @@ public class StreamInfoMessageTests(ITestOutputHelper output)
     }
 
     /// <summary>
-    /// PP372'S SECOND: an audio header of any other size refuses the message, and the resolutions
-    /// are already read by then.
+    /// PP372'S SECOND: a SHORT audio header refuses the message, and the resolutions are already
+    /// read by then.
     ///
     /// That second half is the reason the leak was a task rather than a note - a console with a bad
     /// audio header got here having had every resolution decoded and padded.
+    ///
+    /// PP687 CORRECTED THE OTHER HALF OF THIS CASE. It named fifteen and sixty-four too, and both
+    /// were wrong: the C's bounded read refuses a field past its maximum instead of truncating it, so
+    /// a long header fails the decode and never reaches the size check. Those two moved to the theory
+    /// below, which is what asserts the difference.
     /// </summary>
     [Theory]
     [InlineData(0)]
+    [InlineData(1)]
     [InlineData(13)]
-    [InlineData(15)]
-    [InlineData(64)]
-    public void AnAudioHeaderOfTheWrongSizeRefusesTheMessage(int size)
+    public void AShortAudioHeaderRefusesTheMessageForItsSize(int size)
     {
         StreamInfoReading reading = StreamInfoMessage.Read(Built(resolutions: 3, audioHeaderSize: size));
 
@@ -183,6 +187,25 @@ public class StreamInfoMessageTests(ITestOutputHelper output)
         Assert.Equal(3, reading.Profiles.Count);
     }
 
+    /// <summary>
+    /// PP687: and a LONG one is no message at all, because the bounded read refuses rather than
+    /// truncating - so the handler never reaches the check that would call it a wrong size.
+    ///
+    /// Fifteen is the case that tells the two apart, one byte past a bound that is also the only
+    /// accepted length. A port that truncated would call it accepted and hand the audio receiver
+    /// fourteen bytes of a header the console did not send.
+    /// </summary>
+    [Theory]
+    [InlineData(15)]
+    [InlineData(16)]
+    [InlineData(64)]
+    public void ALongAudioHeaderIsNoMessageAtAll(int size)
+    {
+        StreamInfoReading reading = StreamInfoMessage.Read(Built(resolutions: 3, audioHeaderSize: size));
+
+        Assert.Equal(StreamInfoVerdict.Undecodable, reading.Verdict);
+    }
+
     /// <summary>Fourteen is what the audio receiver loads, and the only size accepted.</summary>
     [Fact]
     public void FourteenIsTheOnlySizeAccepted()
@@ -191,6 +214,16 @@ public class StreamInfoMessageTests(ITestOutputHelper output)
             StreamInfoVerdict.Accepted,
             StreamInfoMessage.Read(
                 Built(resolutions: 1, audioHeaderSize: StreamInfoMessage.AudioHeaderSize)).Verdict);
+
+        // The boundary from both sides, which is the whole of PP687's correction.
+        Assert.Equal(
+            StreamInfoVerdict.AudioHeaderWrongSize,
+            StreamInfoMessage.Read(
+                Built(resolutions: 1, audioHeaderSize: StreamInfoMessage.AudioHeaderSize - 1)).Verdict);
+        Assert.Equal(
+            StreamInfoVerdict.Undecodable,
+            StreamInfoMessage.Read(
+                Built(resolutions: 1, audioHeaderSize: StreamInfoMessage.AudioHeaderSize + 1)).Verdict);
     }
 
     /// <summary>

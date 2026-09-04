@@ -578,6 +578,9 @@
   checked **The console's own STREAMINFO parses into its resolutions and audio header** PP396's capture is the subject: the parse reads the message a PS5 sent and what it yields - how many profiles, their sizes, the fourteen-byte audio header - is asserted against the bytes rather than against a message this port wrote.
   checked **The cap comes before the padding, and a bad audio header refuses the message** PP372's two repairs, held on the managed side: a ninth resolution is neither padded nor kept, and an audio header of any length but fourteen refuses the whole message with the resolutions already read - each asserted by a case that fails without it.
   checked **The video receiver is handed the profiles the console announced** The second half of PP295's second criterion: ManagedVideoReceiver.StreamInfo takes what the parse produced from the capture, and a packet on one of those profiles reaches the handler with that profile's own header ahead of it.
+- ✅ **PP687** **a bounded field longer than its buffer fails the whole decode in the C, and PP686 reads it as a wrong size** — A field past its bound is undecodable on both readers, PP686's case names fifteen the other way now, and a disconnect's reason reads back with 255 and 256 one apart.
+  checked **A field over its bound is undecodable, and PP686's case says so instead** The streaminfo parse returns the wrong-size verdict for thirteen and below and undecodable for fifteen and above, with the boundary asserted at both fourteen and fifteen; the theory that claimed otherwise is corrected rather than deleted.
+  checked **The disconnect's reason is read, and a long one is no disconnect at all** A managed reader takes the message the port itself sends and reads the reason back; a reason over 255 bytes leaves the reading undecodable and the disconnected flag unset, which is the console hanging up and the client not being told.
 
 ## Block G — Test discipline
 
