@@ -26,7 +26,7 @@
 - ⏳ **PP27** (deps: PP672 ✅, PP673, PP674, PP675, PP676, PP677, PP678, PP679, PP680) (requires: console) **takion.c is 2007 lines of C over raw sockets and timers, and the whole stream rides on it** — The nine tasks it waits on are the managed transport; after them, the three files leave the build. → §PP27
 - 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — 13 sites and none of them arithmetic: chiaki_fec_decode has three callers - frameprocessor.c, the C suite, and this port's shim. → §PP30
 - ⏳ **PP33** (deps: PP24 ✅, PP293 ✅, PP340 ✅, PP481 ✅, PP533 ✅) (requires: console) **HTTP and JSON in the core are curl and json-c, two vendored dependencies for what the runtime already does** — the file itself: one file calls it, the shim, and PP481's oracle is what that seam is for. → §PP33
-- ⏳ **PP295** (deps: PP297 ✅) **streamconnection.c is 1531 lines and calls the video receiver, so every deletion below waits on it** — the receiver it drives - the shim wraps five of its exports - the consumers PP638 named, and the four files leaving the build. → §PP295
+- ⏳ **PP295** (deps: PP297 ✅) **streamconnection.c is 1531 lines and calls the video receiver, so every deletion below waits on it** — Three criteria are met; the fourth is the four files leaving, which waits on PP28 and on the shim, whose five wrapped exports outlive streamconnection.c's own calls. → §PP295
 - 📋 **PP650** (deps: —) **the decoder stays native and nobody has priced FFmpeg against Media Foundation for the job** — PP31 settled the boundary and left the choice: Media Foundation ships with Windows and covers d3d11va alone, where FFmpeg carries the parser, cuda and software decode. → §PP650
 - 📋 **PP652** (deps: —) **four subsystems carry the microphone and nothing in the host opens a capture device** — The setting, the in-stream button, the ring's drain rule and the pad's mic report all shipped, and there is no stream of samples for any of them to be about. → §PP652
 - 📋 **PP668** (deps: —) **AvPacket is built from the v9 parse alone, so IsHaptics is false on every packet the port sees** — The C sets the bit on the v12 audio layout only; a managed v12 parse is what lets PP667's haptics arm ever fire, and PP499 bounded that layout in the C. → §PP668
@@ -127,18 +127,20 @@
 
 ## Done when — PP295
 
-- **The stream connection's event ordering is ported, not only its functions** The file
-  where the ordering IS the behaviour: a port that reproduced every function and not
-  their sequence would pass a message-level comparison and fail a session, which is the
-  failure no oracle built from messages can catch.
-- **The managed video receiver is driven by the ported stream connection**
-  ManagedVideoReceiver takes a four-method outbound seam precisely so its driver need
-  not be a session pointer, and corrupt-frame and IDR requests are two of the four -
-  both messages this file sends.
-- **Every consumer PP638's linker run named has a counterpart** Seventeen symbols over
-  three kinds: session.c's six, the shim's twelve including jerasure's create_matrix,
-  and the four files in the C suite. A port that answered the library's callers alone
-  leaves the gate red at link time.
+- **The stream connection's event ordering is ported, not only its functions** Met.
+  PP640 stated six orderings as checks on the C, ManagedStreamRun.Run reproduces all six
+  in one trace, and PP689 added the pad info's own five - decided after its switch so
+  both layouts share it. The failure this names is a port right about every function and
+  wrong about the sequence.
+- **The managed video receiver is driven by the ported stream connection** Met. PP667's
+  dispatch drives it, PP684 gave its outbound seam its first non-test implementation so
+  the corrupt frame and the IDR request reach a sink as bytes, and PP686 hands it the
+  profiles a console announced rather than headers a test wrote.
+- **Every consumer PP638's linker run named has a counterpart** Met by PP669:
+  session.c's five, the shim's thirteen and the suite's four each resolve to a managed
+  class by reflection, and a call with no row or a row with no call fails by name.
+  Seventeen was the count before it was measured; the mapping is what the criterion
+  asked for.
 - **streamconnection.c, videoreceiver.c, frameprocessor.c and fec.c leave the build** It
   is an end state, not a progress bar: PP638 measured that session.c drives the stream
   connection, so this cannot land until PP28 stops it - and PP28 is what waits on the
