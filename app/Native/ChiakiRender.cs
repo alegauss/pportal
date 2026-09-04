@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 
 namespace ChiakiNg.Native;
 
@@ -21,7 +21,7 @@ public static class ChiakiRender
     internal const string Library = "chiaki-render";
 
     /// <summary>Must equal CHIAKI_RENDER_ABI in shim/chiaki_render.h. Independent of the shim's.</summary>
-    public const uint ExpectedAbi = 7;
+    public const uint ExpectedAbi = 8;
 
     [DllImport(Library, EntryPoint = "chiaki_render_abi_version", CallingConvention = CallingConvention.Cdecl)]
     public static extern uint AbiVersion();
@@ -351,6 +351,9 @@ public sealed class SharedSurface : IDisposable
 
     /// <summary>Whether DXGI produced a shared handle, which is what D3D9Ex is asked to open.</summary>
     public bool HasSharedHandle => ShareHasHandle(_handle);
+
+    /// <summary>The share itself, for the presenter that renders into it.</summary>
+    internal IntPtr Raw => _handle;
 
     public void Dispose()
     {
@@ -734,4 +737,5 @@ public sealed class RenderDevice : IDisposable
         CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr D3d11Description(IntPtr d3d11);
 }
+
 

@@ -834,6 +834,272 @@ static void chiaki_render_frame_fill(uint8_t *plane, uint8_t luma, uint8_t cb, u
 
 #endif
 
+/*
+ * PP700: the presenter, which is chiaki_render_frame_nv12 turned into a thing that lives.
+ *
+ * That function proves one frame and destroys everything it made. A stream cannot: creating a
+ * texture, two plane wraps and a renderer per frame is the whole cost of rendering paid sixty times
+ * a second to draw one picture. So this holds them.
+ *
+ * WHAT IS HELD AND WHY EACH:
+ *
+ *   the NV12 texture, because the decoder hands over planes and D3D11 wants a texture. DEFAULT
+ *   usage rather than DYNAMIC - pl_d3d11_wrap requires it, which is the same constraint the
+ *   one-frame version records - so it is written with UpdateSubresource rather than mapped;
+ *
+ *   the two wraps, because pl_d3d11_wrap is not free and the texture underneath does not move;
+ *
+ *   the renderer, because pl_renderer_create builds shader caches that exist to be reused;
+ *
+ *   the scratch buffer, because an AVFrame's planes have their own strides and NV12's subresource
+ *   wants luma rows then chroma rows at one pitch. That repack is the copy this path costs, and it
+ *   is the one PP48 already measured as the price of a frame that is not AV_PIX_FMT_VULKAN.
+ *
+ * The TARGET is the shared texture, not a readable one. PP132 measured that a shared texture cannot
+ * be host_readable, so the texture that can be shown and the texture that can be checked are two
+ * different textures - and this is the first, which is the one a person sees.
+ */
+typedef struct chiaki_render_video
+{
+	chiaki_render_d3d11 *placebo;
+	chiaki_render_share *share;
+	ID3D11Texture2D *nv12;
+
+	/* The immediate context, taken once. GetImmediateContext AddRefs, so this is released on the
+	 * way out - and taken once rather than per frame because that AddRef is not free either. */
+	ID3D11DeviceContext *context;
+
+	pl_tex plane[2];
+	pl_tex target;
+	pl_renderer renderer;
+	uint8_t *scratch;
+	int32_t w;
+	int32_t h;
+	uint64_t frames;
+} chiaki_render_video;
+
+CHIAKI_RENDER_API void chiaki_render_video_destroy(void *video)
+{
+#ifdef PL_HAVE_D3D11
+	chiaki_render_video *self = (chiaki_render_video *)video;
+	if(!self)
+		return;
+
+	if(self->renderer)
+		pl_renderer_destroy(&self->renderer);
+	if(self->target)
+		pl_tex_destroy(self->placebo->d3d11->gpu, &self->target);
+	if(self->plane[1])
+		pl_tex_destroy(self->placebo->d3d11->gpu, &self->plane[1]);
+	if(self->plane[0])
+		pl_tex_destroy(self->placebo->d3d11->gpu, &self->plane[0]);
+	if(self->nv12)
+		ID3D11Texture2D_Release(self->nv12);
+	if(self->context)
+		ID3D11DeviceContext_Release(self->context);
+
+	free(self->scratch);
+	free(self);
+#else
+	(void)video;
+#endif
+}
+
+CHIAKI_RENDER_API void *chiaki_render_video_create(
+		void *d3d11, void *share, int32_t w, int32_t h, int32_t *out_stage)
+{
+#ifdef PL_HAVE_D3D11
+	chiaki_render_d3d11 *placebo = (chiaki_render_d3d11 *)d3d11;
+	chiaki_render_share *shared = (chiaki_render_share *)share;
+	chiaki_render_video *self;
+	struct pl_d3d11_wrap_params wrap;
+	D3D11_TEXTURE2D_DESC desc;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_FRAME_NO_DEVICE;
+	if(!placebo || !placebo->d3d11 || !placebo->d3d11->gpu || !shared || !shared->texture)
+		return NULL;
+	/* Odd sizes would put the chroma plane half a sample out, which reads as a picture with a
+	 * one-pixel colour fringe rather than as an error. */
+	if(w <= 0 || h <= 0 || (w & 1) || (h & 1))
+		return NULL;
+
+	self = (chiaki_render_video *)calloc(1, sizeof(chiaki_render_video));
+	if(!self)
+		return NULL;
+
+	self->placebo = placebo;
+	self->share = shared;
+	self->w = w;
+	self->h = h;
+
+	self->scratch = (uint8_t *)malloc((size_t)w * (size_t)h * 3 / 2);
+	if(!self->scratch)
+		goto failed;
+
+	memset(&desc, 0, sizeof(desc));
+	desc.Width = (UINT)w;
+	desc.Height = (UINT)h;
+	desc.MipLevels = 1;
+	desc.ArraySize = 1;
+	desc.Format = DXGI_FORMAT_NV12;
+	desc.SampleDesc.Count = 1;
+	desc.Usage = D3D11_USAGE_DEFAULT;
+	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_FRAME_TEXTURE;
+	if(FAILED(ID3D11Device_CreateTexture2D(placebo->d3d11->device, &desc, NULL, &self->nv12)))
+		goto failed;
+
+	ID3D11Device_GetImmediateContext(placebo->d3d11->device, &self->context);
+	if(!self->context)
+		goto failed;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_FRAME_LUMA;
+	memset(&wrap, 0, sizeof(wrap));
+	wrap.tex = (ID3D11Resource *)self->nv12;
+	wrap.array_slice = 0;
+	wrap.fmt = DXGI_FORMAT_R8_UNORM;
+	wrap.w = w;
+	wrap.h = h;
+	self->plane[0] = pl_d3d11_wrap(placebo->d3d11->gpu, &wrap);
+	if(!self->plane[0])
+		goto failed;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_FRAME_CHROMA;
+	wrap.fmt = DXGI_FORMAT_R8G8_UNORM;
+	wrap.w = w / 2;
+	wrap.h = h / 2;
+	self->plane[1] = pl_d3d11_wrap(placebo->d3d11->gpu, &wrap);
+	if(!self->plane[1])
+		goto failed;
+
+	/* The shared texture, wrapped once. This is the target every frame renders into and the one
+	 * D3DImage shows, so it is held rather than wrapped per frame like share_render does. */
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_FRAME_TARGET;
+	memset(&wrap, 0, sizeof(wrap));
+	wrap.tex = (ID3D11Resource *)shared->texture;
+	self->target = pl_d3d11_wrap(placebo->d3d11->gpu, &wrap);
+	if(!self->target)
+		goto failed;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_FRAME_RENDERER;
+	self->renderer = pl_renderer_create(placebo->log, placebo->d3d11->gpu);
+	if(!self->renderer)
+		goto failed;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_FRAME_OK;
+	return self;
+
+failed:
+	chiaki_render_video_destroy(self);
+	return NULL;
+#else
+	(void)d3d11; (void)share; (void)w; (void)h;
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_FRAME_NO_DEVICE;
+	return NULL;
+#endif
+}
+
+CHIAKI_RENDER_API uint64_t chiaki_render_video_frames(void *video)
+{
+	chiaki_render_video *self = (chiaki_render_video *)video;
+	return self ? self->frames : 0;
+}
+
+CHIAKI_RENDER_API bool chiaki_render_video_frame(
+		void *video,
+		const uint8_t *luma, int32_t luma_stride,
+		const uint8_t *chroma, int32_t chroma_stride,
+		int32_t *out_stage)
+{
+#ifdef PL_HAVE_D3D11
+	chiaki_render_video *self = (chiaki_render_video *)video;
+	struct pl_frame image, target;
+	uint8_t *row;
+	int32_t y;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_FRAME_NO_DEVICE;
+	if(!self || !luma || !chroma || luma_stride < self->w || chroma_stride < self->w)
+		return false;
+
+	/* Repacked to one pitch, because NV12's subresource is luma rows then chroma rows and an
+	 * AVFrame's two planes have strides of their own. */
+	row = self->scratch;
+	for(y = 0; y < self->h; y++)
+	{
+		memcpy(row, luma + (size_t)y * (size_t)luma_stride, (size_t)self->w);
+		row += self->w;
+	}
+	for(y = 0; y < self->h / 2; y++)
+	{
+		memcpy(row, chroma + (size_t)y * (size_t)chroma_stride, (size_t)self->w);
+		row += self->w;
+	}
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_FRAME_TEXTURE;
+	ID3D11DeviceContext_UpdateSubresource(
+			self->context, (ID3D11Resource *)self->nv12,
+			0, NULL, self->scratch, (UINT)self->w, 0);
+
+	memset(&image, 0, sizeof(image));
+	image.num_planes = 2;
+	image.planes[0].texture = self->plane[0];
+	image.planes[0].components = 1;
+	image.planes[0].component_mapping[0] = PL_CHANNEL_Y;
+	image.planes[1].texture = self->plane[1];
+	image.planes[1].components = 2;
+	image.planes[1].component_mapping[0] = PL_CHANNEL_CB;
+	image.planes[1].component_mapping[1] = PL_CHANNEL_CR;
+	image.crop.x1 = (float)self->w;
+	image.crop.y1 = (float)self->h;
+	/* The console's own encoding. Leaving levels zeroed is PL_COLOR_LEVELS_UNKNOWN, which is the
+	 * washed-out picture nobody files a bug about and everybody sees. */
+	image.repr.sys = PL_COLOR_SYSTEM_BT_709;
+	image.repr.levels = PL_COLOR_LEVELS_LIMITED;
+	image.repr.alpha = PL_ALPHA_UNKNOWN;
+	image.repr.bits.sample_depth = 8;
+	image.repr.bits.color_depth = 8;
+	image.color = pl_color_space_bt709;
+
+	memset(&target, 0, sizeof(target));
+	target.num_planes = 1;
+	target.planes[0].texture = self->target;
+	target.planes[0].components = 3;
+	target.planes[0].component_mapping[0] = PL_CHANNEL_R;
+	target.planes[0].component_mapping[1] = PL_CHANNEL_G;
+	target.planes[0].component_mapping[2] = PL_CHANNEL_B;
+	target.crop.x1 = (float)self->target->params.w;
+	target.crop.y1 = (float)self->target->params.h;
+	target.repr = pl_color_repr_rgb;
+	target.color = pl_color_space_srgb;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_FRAME_RENDER;
+	if(!pl_render_image(self->renderer, &image, &target, &pl_render_default_params))
+		return false;
+
+	self->frames++;
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_FRAME_OK;
+	return true;
+#else
+	(void)video; (void)luma; (void)luma_stride; (void)chroma; (void)chroma_stride;
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_FRAME_NO_DEVICE;
+	return false;
+#endif
+}
+
 CHIAKI_RENDER_API bool chiaki_render_frame_nv12(
 		void *d3d11, uint8_t luma, uint8_t cb, uint8_t cr, uint8_t *out_rgba, int32_t *out_stage)
 {

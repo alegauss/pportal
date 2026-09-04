@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
+﻿// SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
 
 #ifndef CHIAKI_RENDER_H
 #define CHIAKI_RENDER_H
@@ -36,7 +36,7 @@ extern "C" {
 #endif
 
 /** Bumped whenever an exported signature here changes meaning. Independent of CHIAKI_SHIM_ABI. */
-#define CHIAKI_RENDER_ABI 7
+#define CHIAKI_RENDER_ABI 8
 
 CHIAKI_RENDER_API uint32_t chiaki_render_abi_version(void);
 
@@ -515,8 +515,48 @@ typedef enum chiaki_render_frame_stage
 CHIAKI_RENDER_API bool chiaki_render_frame_nv12(
 		void *d3d11, uint8_t luma, uint8_t cb, uint8_t cr, uint8_t *out_rgba, int32_t *out_stage);
 
+/**
+ * PP700: the presenter, which is the call above turned into a thing that LIVES.
+ *
+ * chiaki_render_frame_nv12 proves one frame and destroys everything it made. A stream cannot afford
+ * that: a texture, two plane wraps and a renderer per frame is the whole cost of rendering paid
+ * sixty times a second to draw one picture. This holds them across frames.
+ *
+ * The TARGET is `share`'s texture - the one chiaki_render_share_to_d3d9 made and D3DImage shows -
+ * and not a readable one. PP132 measured that a shared texture cannot be host_readable, so the
+ * texture that can be shown and the texture that can be checked are two different textures, and
+ * this is the first.
+ *
+ * `w` and `h` must be even: an odd size puts the chroma plane half a sample out, which reads as a
+ * one-pixel colour fringe rather than as an error.
+ *
+ * The stages are chiaki_render_frame_stage's, so a failure names the same step in both calls.
+ */
+CHIAKI_RENDER_API void *chiaki_render_video_create(
+		void *d3d11, void *share, int32_t w, int32_t h, int32_t *out_stage);
+
+CHIAKI_RENDER_API void chiaki_render_video_destroy(void *video);
+
+/** How many frames were rendered, which is the number a run reports. */
+CHIAKI_RENDER_API uint64_t chiaki_render_video_frames(void *video);
+
+/**
+ * One decoded frame: NV12 planes as an AVFrame carries them, into the shared texture.
+ *
+ * The two strides are the decoder's own and are usually wider than the picture, which is why they
+ * are passed rather than assumed. The planes are repacked to a single pitch here, because NV12's
+ * D3D11 subresource wants luma rows then chroma rows - and that repack is the per-frame copy PP48
+ * measured as the price of any frame that is not AV_PIX_FMT_VULKAN.
+ */
+CHIAKI_RENDER_API bool chiaki_render_video_frame(
+		void *video,
+		const uint8_t *luma, int32_t luma_stride,
+		const uint8_t *chroma, int32_t chroma_stride,
+		int32_t *out_stage);
+
 #ifdef __cplusplus
 }
 #endif
 
 #endif // CHIAKI_RENDER_H
+
