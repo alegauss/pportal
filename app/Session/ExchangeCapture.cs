@@ -16,6 +16,16 @@ public enum SessionCaptureKind
 
     /// <summary>PP510's: takion's arrivals, with their times, in the datagram format.</summary>
     Datagrams,
+
+    /// <summary>
+    /// PP700's: the session DECODES, and what is written down is how many frames came out.
+    ///
+    /// The other two record what crossed the wire and deliberately run with no decoder - PP297
+    /// needs the control conversation and nothing more. This one exists because that left the port
+    /// with no path that decoded at all, and a stream that reaches the frame processor and stops
+    /// looks exactly like a stream that works until somebody asks for a picture.
+    /// </summary>
+    Decode,
 }
 
 /// <summary>What a capture attempt ended as, so a caller can say which step failed.</summary>
@@ -235,6 +245,21 @@ public static class ExchangeCapture
         => via is not null && string.Equals(via.Trim(), RelayVia, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
+    /// PP700: which hardware decoder a Decode run asks for, or empty for software.
+    ///
+    /// Set by the caller before Run, because the decoder is created inside it and the choice is the
+    /// only thing a PP76 comparison varies. A name the machine has no device for is refused by the
+    /// C, which is how a run says the driver is missing rather than quietly decoding on the CPU.
+    /// </summary>
+    public static string DecoderName { get; set; } = string.Empty;
+
+    /// <summary>What a Decode run produced, for the caller that reports it.</summary>
+    public static ulong FramesDecoded { get; private set; }
+
+    /// <summary>The pixel format that resolved, which is a fact about the machine.</summary>
+    public static string DecoderPixelFormat { get; private set; } = string.Empty;
+
+    /// <summary>
     /// The whole capture: find the console, wake it if it is asleep, run a session and write down
     /// what crossed.
     /// </summary>
@@ -396,6 +421,31 @@ public static class ExchangeCapture
             return CaptureOutcome.SessionRefused;
         }
 
+        // PP700: THE JOIN, and it goes here for a reason the field's own note gives - the stream
+        // connection's thread reads video_sample_cb, so attaching after Start is a race whose
+        // losing side is a session that decodes nothing and says so no differently.
+        //
+        // H264 because the connect above asks for 720p60 and nothing negotiates HEVC on this path
+        // yet; when it does, the codec comes off the streaminfo event and this line moves with it.
+        using SessionDecoder? decoder = kind == SessionCaptureKind.Decode
+            ? new SessionDecoder(log.Handle, codec: 0, maxFps: 60, DecoderName)
+            : null;
+
+        if (decoder is not null)
+        {
+            if (!SessionDecoder.AttachTo(session.Handle, decoder.Handle))
+            {
+                Console.Error.WriteLine("[capture] the decoder would not attach to the session");
+                return CaptureOutcome.SessionRefused;
+            }
+
+            Console.WriteLine(
+                $"[capture] decoding with "
+                    + $"{(DecoderName.Length == 0 ? "software" : DecoderName)}, "
+                    + $"format {decoder.PixelFormatName}"
+                    + (decoder.CopiesEveryFrame ? " (copied per frame)" : " (no copy)"));
+        }
+
         using var connected = new ManualResetEventSlim(false);
         using var quit = new ManualResetEventSlim(false);
         string? quitReason = null;
@@ -436,6 +486,23 @@ public static class ExchangeCapture
 
         session.Stop();
         Thread.Sleep(1000);
+
+        // PP700: read BEFORE the decoder is disposed, and reported whatever the count is. Zero
+        // after a connected session is the state this line exists about, and it is a result rather
+        // than a failure to run - so it is printed and handed back, not turned into an outcome.
+        if (decoder is not null)
+        {
+            FramesDecoded = decoder.FramesAvailable;
+            DecoderPixelFormat = decoder.PixelFormatName;
+
+            Console.WriteLine(
+                $"[capture] {FramesDecoded} frame(s) decoded as {DecoderPixelFormat}"
+                    + (FramesDecoded == 0 ? " - the session decoded nothing" : string.Empty));
+
+            // A Decode run arms neither recorder, so it returns here rather than falling into the
+            // two below - both of which read a tap this kind never installed.
+            return FramesDecoded > 0 ? CaptureOutcome.Recorded : CaptureOutcome.NothingRecorded;
+        }
 
         // 6. What crossed. PP514: two lines differ, and this is both of them.
         if (datagrams is not null)

@@ -14,22 +14,27 @@ namespace ChiakiNg.Tests;
 public class SessionCaptureCommandTests
 {
     /// <summary>
-    /// PP514: both flags are declared, and the default kind leaves --capture-exchange alone.
+    /// PP514: every capture flag is declared, and the default kind leaves --capture-exchange alone.
     ///
     /// A parameter and not a second command, because ChiakiMessageTap.Install replaces: two
     /// recorders in one session is one recorder and a silence. The default is what makes the older
     /// flag's behaviour unchanged rather than merely intended to be.
+    ///
+    /// PP700: THREE NOW, and the third is not a recorder at all. --measure-decoder installs no tap
+    /// - it attaches a decoder and counts what came out - so the "two recorders is a silence"
+    /// argument does not reach it and it can share the run without replacing anything.
     /// </summary>
     [Fact]
-    public void BothCapturesAreDeclaredAndExchangeIsTheDefault()
+    public void EveryCaptureIsDeclaredAndExchangeIsTheDefault()
     {
         string[] declared = [.. HostCommandLine.Flags.Select(f => f.Name)];
 
         Assert.Contains("--capture-exchange", declared);
         Assert.Contains("--capture-datagrams", declared);
+        Assert.Contains("--measure-decoder", declared);
 
         Assert.Equal(SessionCaptureKind.Exchange, default(SessionCaptureKind));
-        Assert.Equal(2, Enum.GetValues<SessionCaptureKind>().Length);
+        Assert.Equal(3, Enum.GetValues<SessionCaptureKind>().Length);
     }
 
     /// <summary>

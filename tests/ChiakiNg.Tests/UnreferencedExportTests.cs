@@ -44,7 +44,6 @@ public partial class UnreferencedExportTests(ITestOutputHelper output)
         "chiaki_bool_pred_cond_broadcast",
         "chiaki_bool_pred_cond_wait",
         "chiaki_discovery_thread_start_oneshot",
-        "chiaki_ffmpeg_decoder_get_pixel_format",
         "chiaki_mutex_trylock",
         "chiaki_packet_stats_reset",
         "chiaki_rpcrypt_ambassador_from_aeropause",

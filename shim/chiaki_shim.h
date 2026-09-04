@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 38
+#define CHIAKI_SHIM_ABI 39
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -330,6 +330,64 @@ CHIAKI_SHIM_API void *chiaki_shim_session_create(void *connect_info, void *log, 
 
 /** chiaki_session_fini and the allocation with it. NULL is a no-op. */
 CHIAKI_SHIM_API void chiaki_shim_session_free(void *session);
+
+/**
+ * PP700: the decoder a session decodes into, which nothing in this port had.
+ *
+ * The session's video_sample_cb is the join. libchiaki hands it every assembled frame, and
+ * chiaki_ffmpeg_decoder_video_sample_cb is the C's own implementation of it - so installing that,
+ * with a decoder as its user, is the whole of what makes a session decode. No path here did it, and
+ * every stream reached the frame processor and stopped.
+ *
+ * `hw_decoder_name` is the setting's own string - "vulkan", "cuda", "d3d11va" - and NULL asks for
+ * software. A name the machine has no device for is REFUSED rather than falling back, which is how
+ * a missing driver says so instead of decoding on the CPU and looking slow.
+ */
+CHIAKI_SHIM_API void *chiaki_shim_decoder_create(
+		void *log, int32_t codec, int32_t max_fps, const char *hw_decoder_name, int32_t *error_out);
+
+/** chiaki_ffmpeg_decoder_fini and the allocation with it. NULL is a no-op. */
+CHIAKI_SHIM_API void chiaki_shim_decoder_free(void *decoder);
+
+/**
+ * Installs the decoder as the session's video sink. Set it before chiaki_shim_session_start, for
+ * the reason the event callback carries: the field is read by the stream connection's own thread,
+ * and installing it after that thread exists is a race whose losing side decodes nothing.
+ *
+ * The session BORROWS the decoder and frees nothing - the same rule the log has.
+ */
+CHIAKI_SHIM_API bool chiaki_shim_session_set_decoder(void *session, void *decoder);
+
+/** How many times the decoder reported a frame ready. Zero is a session that decoded nothing. */
+CHIAKI_SHIM_API uint64_t chiaki_shim_decoder_frames_available(void *decoder);
+
+/**
+ * The AVPixelFormat the decoder resolved, or -1 with no decoder.
+ *
+ * This is what says whether the hardware path was taken: PP48 measured the per-frame copy libchiaki
+ * runs for any hardware frame that is NOT AV_PIX_FMT_VULKAN, so the value here is the difference
+ * between a decoder that costs nothing to hand on and one that costs 2253us a frame.
+ */
+CHIAKI_SHIM_API int32_t chiaki_shim_decoder_pixel_format(void *decoder);
+
+/**
+ * Its NAME, written into `buf`, and the length. The managed side cannot name an AVPixelFormat:
+ * pixfmt.h's enum is sequential and unnumbered, so a literal over there is a guess a different
+ * ffmpeg quietly invalidates. av_get_pix_fmt_name is the C's own answer.
+ */
+CHIAKI_SHIM_API int32_t chiaki_shim_decoder_pixel_format_name(void *decoder, char *buf, int32_t buf_size);
+
+/**
+ * Whether libchiaki copies every frame out of this format.
+ *
+ * PP48 measured the per-frame copy make_fallback_snapshot_frame runs for any hardware frame that is
+ * not AV_PIX_FMT_VULKAN - 793us on cuda, 2253us on d3d11va, nothing on vulkan. The comparison is
+ * here rather than managed for the reason above: AV_PIX_FMT_VULKAN is an unnumbered enum member.
+ *
+ * A software format copies too and says so, which makes this "is the no-copy path" rather than "is
+ * hardware" - two questions with the same answer on exactly one format.
+ */
+CHIAKI_SHIM_API bool chiaki_shim_decoder_copies_every_frame(void *decoder);
 
 /** chiaki_quit_reason_string, which is the sentence a disconnect screen shows. */
 CHIAKI_SHIM_API const char *chiaki_shim_quit_reason_string(int32_t reason);
@@ -1674,4 +1732,5 @@ CHIAKI_SHIM_API void chiaki_shim_takion_close(void *takion);
 #endif
 
 #endif // CHIAKI_SHIM_H
+
 

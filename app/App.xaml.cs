@@ -1072,6 +1072,29 @@ public partial class App : Application
                     HostCommandLine.ValueAfter(e.Args, "--via")) == CaptureOutcome.Recorded ? 0 : 1);
         }
 
+        // PP700: the same session with a DECODER on it, which is the join nothing in this port had.
+        //
+        // The two captures above run with no decoder on purpose - PP297 needs the control
+        // conversation and nothing more - and that left the tree with no path that decoded at all.
+        // This one attaches one before the start and reports how many frames came out, which is the
+        // number that tells a stream reaching the frame processor from a stream reaching a picture.
+        if (HostCommandLine.Has(e.Args, "--measure-decoder"))
+        {
+            ReopenStdOut();
+
+            ExchangeCapture.DecoderName =
+                HostCommandLine.ValueAfter(e.Args, "--measure-decoder") is { } named
+                && !named.StartsWith("--", StringComparison.Ordinal)
+                    ? named
+                    : string.Empty;
+
+            Environment.Exit(
+                ExchangeCapture.Run(
+                    Path.Combine(QtPaths.LogDirectory, "decode.txt"),
+                    HostCommandLine.ValueAfter(e.Args, "--console"),
+                    SessionCaptureKind.Decode, sample) == CaptureOutcome.Recorded ? 0 : 1);
+        }
+
         // PP516: and the other half of that, which needs no console - a capture on disk read back
         // and run through the managed receive path.
         if (HostCommandLine.Has(e.Args, "--replay-datagrams"))

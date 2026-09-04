@@ -76,6 +76,7 @@ public static partial class HostCommandLine
         new("--record", "[path]", "record this session's exchange to a file, for PP297's replay"),
         new("--capture-exchange", "[path]", "wake a registered console, run one session and record the exchange"),
         new("--capture-datagrams", "[path]", "the same session, recording takion's arrivals and their times"),
+        new("--measure-decoder", "[name]", "the same session WITH a decoder, reporting how many frames it decoded"),
         new("--console", "[name]", "with either capture: which registered console, by nickname"),
         new("--capture-seconds", "[n]", "with either capture: how long a sample, which sets the hold too"),
         new("--via", "[address|relay]", "with --capture-datagrams: go through an address, or 'relay' to run one here and keep whole datagrams"),

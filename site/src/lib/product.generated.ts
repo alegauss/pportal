@@ -86,6 +86,11 @@ export const HOST_FLAGS: readonly HostFlag[] = [
     "summary": "the same session, recording takion's arrivals and their times"
   },
   {
+    "name": "--measure-decoder",
+    "argument": "[name]",
+    "summary": "the same session WITH a decoder, reporting how many frames it decoded"
+  },
+  {
     "name": "--console",
     "argument": "[name]",
     "summary": "with either capture: which registered console, by nickname"
