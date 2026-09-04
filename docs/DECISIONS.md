@@ -49,4 +49,6 @@ are read from the spike's committed file rather than typed.
 
 ## Block I — NVIDIA path
 
+- ✅ **PP76** **the decoder preference is measured on synthetic frames, and drops under network jitter are what a stream is judged by** — PP48's copy ranking does not carry: this port downloads every vulkan frame to NV12 for D3D11, so vulkan's no-copy path is not the one a live session measures.
+
 ## Block J — Public documentation

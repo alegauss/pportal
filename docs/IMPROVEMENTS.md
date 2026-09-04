@@ -696,29 +696,4 @@ subsystem along, and there is no display here that varies its refresh to check i
 Below the display's minimum, low framerate compensation changes the behaviour again, and
 that too is read rather than assumed.
 
-### §PP76 The decoder half a spike cannot reach
-
-PP48 settled what a generated stream can settle. All three hardware paths decode within
-13% of each other on an RTX 4060, and what separates them is the per-frame copy
-make_fallback_snapshot_frame runs for any hardware frame that is not AV_PIX_FMT_VULKAN -
-793us on cuda, 2253us on d3d11va, nothing on vulkan. PP71 then paced the same three at
-60fps and reversed the send ranking cuda was preferred for.
-
-None of that is the number a user feels. Frames arrive late and out of order because the
-network is what it is, and which decoder loses the fewest of them under that jitter is a
-property of the live path rather than of the silicon. A generator can carry resolution
-and bitrate; it cannot carry a congested link, and every attempt to synthesise one
-measures the synthesiser.
-
-This line said no new instrument was needed, and that was read rather than checked.
-Neither loss counter attributes a loss to a decoder: frames_lost is the video receiver's
-own total, counted upstream of every one of them, and frames_dropped went missing on two
-decoder-dependent returns. PP528 repaired that counter, and
-chiaki_session_baseline_decoder_drops names the subtraction the comparison rests on - a
-floor on the decoder's own loss rather than a count of it.
-
-What is left is the run, and it is a run: sessions per decoder on a link that jitters,
-which takes a console and somebody playing on it. Reading either counter on its own is
-what this waits to prevent.
-
 ## Block J — Public documentation
