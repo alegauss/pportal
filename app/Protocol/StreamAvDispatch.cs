@@ -59,8 +59,14 @@ public interface IAudioSink
 ///
 /// HAPTICS IS TESTED BEFORE AUDIO, which is PP366's third check and the order that matters: both
 /// arms go to an audio receiver, so an inversion compiles and sends every haptics packet to the
-/// speakers as silence. <see cref="AvPacket.IsHaptics"/> is false on every packet the port parses
-/// today, and <see cref="StreamAvDispatchSource"/> holds why.
+/// speakers as silence.
+///
+/// PP668: THAT ARM CAN FIRE NOW. It could not before, because every AvPacket in the port was built
+/// from the shim's v9 parse and the C writes is_haptics under <c>if(v12 &amp;&amp; !is_video)</c>
+/// alone - so the ordering was correct about a case that never arrived.
+/// <see cref="AvPacketParse"/> is the v12 arm, held against the shim on v9, and
+/// <see cref="StreamAvDispatchSource"/> still holds the C's own condition so the day it moves a
+/// check says so.
 /// </summary>
 public static class StreamAvDispatch
 {

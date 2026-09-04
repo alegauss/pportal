@@ -600,6 +600,9 @@
 - ✅ **PP652** **four subsystems carry the microphone and nothing in the host opens a capture device** — WasapiCapture opens the default communications endpoint and delivers 100 units a second of the announced format; the resample the spike implied is Windows's, not the port's.
 - ✅ **PP695** **the capture opens the default endpoint and a Bluetooth headset answers with silence, reporting success** — The capture reads its own clock and counter, so an endpoint that opened and never spoke is a named state with advice; the two-second grace sits between a 222ms success and a 30s silence.
   checked **A capture that opens and stays silent is a state the host reports** The capture knows how long it has been running and how many units it has delivered, so silence past a threshold is a reading rather than a guess. It surfaces as a state a caller can act on, and a test drives it without a device by holding the clock.
+- ✅ **PP668** **AvPacket is built from the v9 parse alone, so IsHaptics is false on every packet the port sees** — The AV header is parsed in managed code for both versions, so the haptics bit can be true; the v9 arm agrees with the shim field for field on every length across all four lead bytes.
+  checked **The v12 layout is parsed in managed code, with v9 as the oracle** AvPacketParse walks the same bytes as av_packet_parse for both versions, so its v9 answer equals the shim's field for field across every length on all four lead bytes. That differential is what makes the v12 arm trustworthy without a v12 corpus: the arms differ by one byte.
+  checked **A v12 audio packet built from bytes reaches the pad** StreamAvDispatchTests gains the case it could not write: a datagram parsed by the port and dispatched, arriving at the haptics arm. The same bytes read as v9 reach the speakers, which is what every packet did, so the contrast is the assertion rather than a second setup.
 
 ## Block G — Test discipline
 

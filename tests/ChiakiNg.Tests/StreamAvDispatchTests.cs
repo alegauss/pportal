@@ -1,3 +1,4 @@
+﻿using ChiakiNg.Native;
 using ChiakiNg.Protocol;
 using Xunit;
 
@@ -41,6 +42,78 @@ public class StreamAvDispatchTests
 
     private static AvPacket Packet(bool video, bool haptics, int offset, int size, ulong keyPos = 0)
         => new(video, 0, 1, 0, 1, 0, 0, 0, keyPos, offset, size, haptics);
+
+    /// <summary>
+    /// PP668: THE CASE THIS FILE COULD NOT WRITE, end to end from real bytes.
+    ///
+    /// Every test above hands Dispatch a packet built by hand, with IsHaptics passed in. That was
+    /// the only way, because the port's only parse was the shim's v9 export and the C writes
+    /// is_haptics under <c>if(v12 &amp;&amp; !is_video)</c> alone - so no parse the port could run
+    /// ever set it, and the haptics arm was reachable only by asserting the thing under test.
+    ///
+    /// This starts from a datagram. A v12 audio packet with 0x02 in the haptics byte goes through
+    /// AvPacketParse and out through Dispatch, and the pad receives it. The join is what PP668 owes:
+    /// a wrong offset in the parse, or the ordering PP366 demands being inverted, each fails here.
+    /// </summary>
+    [Fact]
+    public void AV12AudioPacketParsedFromBytesReachesTheHapticsArm()
+    {
+        // TAKION_PACKET_TYPE_AUDIO with no nalu-info flag, so the marker sits after the fixed
+        // header and the audio arm's one byte.
+        var datagram = new byte[64];
+        datagram[0] = 0x03;
+
+        for (int i = 1; i < datagram.Length; i++)
+            datagram[i] = (byte)(i + 0x10);
+
+        datagram[1 + AvPacketParse.FixedHeader + 1] = AvPacketParse.HapticsMarker;
+
+        using var keyState = new KeyState();
+
+        AvPacket? parsed = AvPacketParse.Parse(true, keyState, datagram, out ChiakiError error);
+
+        Assert.Equal(ChiakiError.Success, error);
+        Assert.NotNull(parsed);
+        Assert.True(parsed.Value.IsHaptics, "the v12 parse did not set the bit, so the arm is dead again");
+
+        var sink = new Recording();
+        ManagedVideoReceiver receiver = Receiver(out _);
+
+        AvRoute route = StreamAvDispatch.Dispatch(parsed.Value, datagram, Key, Iv, receiver, sink);
+
+        Assert.Equal(AvRoute.Haptics, route);
+        Assert.Equal(["haptics"], sink.Arms);
+    }
+
+    /// <summary>
+    /// And the same bytes read as v9 reach the SPEAKERS, which is what the port did to every one.
+    ///
+    /// The contrast is the finding rather than a second case: one flag decides whether a console's
+    /// haptics arrive at the pad or arrive at the audio receiver as silence.
+    /// </summary>
+    [Fact]
+    public void TheSameBytesReadAsV9ReachTheAudioArm()
+    {
+        var datagram = new byte[64];
+        datagram[0] = 0x03;
+
+        for (int i = 1; i < datagram.Length; i++)
+            datagram[i] = (byte)(i + 0x10);
+
+        datagram[1 + AvPacketParse.FixedHeader + 1] = AvPacketParse.HapticsMarker;
+
+        using var keyState = new KeyState();
+
+        AvPacket parsed = AvPacketParse.Parse(false, keyState, datagram, out _)!.Value;
+
+        Assert.False(parsed.IsHaptics);
+
+        var sink = new Recording();
+        ManagedVideoReceiver receiver = Receiver(out _);
+
+        Assert.Equal(AvRoute.Audio, StreamAvDispatch.Dispatch(parsed, datagram, Key, Iv, receiver, sink));
+        Assert.Equal(["audio"], sink.Arms);
+    }
 
     /// <summary>
     /// The decrypt matches the C's padding arithmetic at an UNALIGNED position.
@@ -192,3 +265,4 @@ public class StreamAvDispatchTests
     public void TheMirrorDefaultsHapticsToFalse()
         => Assert.False(new AvPacket(false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0).IsHaptics);
 }
+

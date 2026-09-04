@@ -242,27 +242,6 @@ sends.
 Deleting is the deliverable, not just porting. The C video receiver leaving the build is
 what makes the five ports beneath it real.
 
-### §PP668 The haptics bit the mirror cannot see
-
-takion.c parses two AV layouts. The shim exposes v9's, and every AvPacket in the port is
-built from that call, positionally, with IsHaptics defaulted to false. The default is
-the C's own answer today: is_haptics is written exactly once, under `if(v12 &&
-!packet->is_video)`, and StreamAvDispatchSource holds that reading so the day the C
-changes, the mirror's default stops being honest and a test says so.
-
-But the honest default is also a dead arm. PP667's route tests haptics before audio, as
-PP366's third check demands, and on the managed side the test can only ever fail: no
-packet the port parses carries the bit. A console that sends the v12 layout - which is
-what a DualSense session negotiates - has its haptics packets handed to the speakers as
-silence, which is exactly the inversion the ordering exists to prevent, arrived at from
-the other direction.
-
-What is owed is the v12 parse: either a second shim export beside the v9 one, or the
-parse itself managed, since PP499 already bounded the layout in the C and the arithmetic
-is small. Whichever, the join is the same - the parse sets the bit, and
-StreamAvDispatchTests gains the one case it cannot write today, a v12 audio packet
-routed to the pad.
-
 ### §PP671 The default that points at the oracle
 
 Fec.Recovers(FecCase) forwards to Recovers(recorded, managed: false): the two-argument
