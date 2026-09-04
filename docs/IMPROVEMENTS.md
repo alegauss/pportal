@@ -263,30 +263,6 @@ sends.
 Deleting is the deliverable, not just porting. The C video receiver leaving the build is
 what makes the five ports beneath it real.
 
-### §PP650 Which native decoder, and what each one costs
-
-PP31 settled that the decoder is native. It did not settle which native, and its
-rationale listed two candidates without pricing either - which is the shape PP163 was
-criticised for one subsystem along.
-
-FFmpeg through P/Invoke is the least change. It keeps every format and every hardware
-path the project supports today: chiaki_decoder_choice selects between vulkan, d3d11va
-and cuda, PP78's software fallback is the same library, and bitstream.c - which this
-port has repaired four times, in PP68, PP69 and PP70 - feeds it. It also keeps a large
-native dependency in a solution that was shedding them.
-
-Media Foundation is native to Windows and ships with it. It integrates with the D3D11
-texture path PP9's renderer already needs, and it covers d3d11va - which is the floor
-row in docs/HARDWARE-CONTRACT.md and, under PP71's paced measurement, beat cuda anyway.
-What it does not obviously cover is the software fallback, the parser's edge cases, and
-the two paths that would leave with FFmpeg.
-
-Neither half is measured. What would settle it is small and has not been done: enumerate
-what Media Foundation offers for H.264 and HEVC on this machine, ask whether it decodes
-to a D3D11 texture, and count what the port would lose - the decoder choices, the
-fallback, and the megabytes FFmpeg costs the package. The last of those is the only
-number anybody has guessed at.
-
 ### §PP652 The microphone with no input
 
 PP32 asked whether this host captures a microphone or whether the line should say it

@@ -115,4 +115,16 @@
 # GUID literal contains the digits it contains - a check on a copy of the source, which is the
 # shape PP611's exemption already refused. It is recorded in the spike's README and in §PP49.
 # exempt PP49 - an evaluation: RTX Video HDR engages at 29.0us a frame, which is the number it reported.
+#
+# PP650 is the fourth, and it is one of PP307's sixteen measurements again: its deliverable is what
+# Media Foundation offers this machine and what leaving FFmpeg would cost, both in spike/decoder-choice.
+# The spike is not in the solution and the gate does not build it, so a test over it would assert
+# something about code the port does not ship - and the reading itself is an enumeration of one
+# machine's registry, which a check could only re-perform rather than judge.
+#
+# The one part that is not a number is worth naming, because it is a finding rather than a reading:
+# Microsoft's H.264 decoder carries no hardware URL and is D3D11-aware, so "software" in the
+# enumeration does not mean the CPU decodes it. A test over that would assert that a constant
+# contains the digits it contains, which is the shape PP611's exemption already refused.
+# exempt PP650 - an evaluation: one D3D11-aware decoder per codec, against 87.6 MB of FFmpeg.
 0

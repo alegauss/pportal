@@ -1,0 +1,1 @@
+{"spike":"decoder-choice","task":"PP650","os":"Microsoft Windows NT 10.0.26200.0","h264":[{"Name":"Microsoft H264 Video Decoder MFT","Clsid":"62ce7e72-4c71-4d20-b15d-452831a87d9d","Hardware":false,"D3D11Aware":true}],"hevc":[{"Name":"HEVCVideoExtension","Clsid":"(none)","Hardware":false,"D3D11Aware":true}],"h264_d3d11_aware":1,"hevc_d3d11_aware":1}

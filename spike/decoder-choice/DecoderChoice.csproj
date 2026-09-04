@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    PP650's reading, as a spike rather than an argument. Like the others it is deliberately not in
+    any solution: it exists to produce a number and the conditions it was taken under, re-runnable
+    by whoever doubts it.
+
+    PP31 settled that the decoder is native and left WHICH native open, listing FFmpeg and Media
+    Foundation without pricing either. This asks the machine rather than the internet: what Media
+    Foundation actually offers for H.264 and HEVC here, whether each of those decodes into a D3D11
+    texture, and what the port would give up by leaving FFmpeg.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <AssemblyName>decoder-choice</AssemblyName>
+    <RootNamespace>DecoderChoice</RootNamespace>
+  </PropertyGroup>
+
+</Project>

@@ -590,6 +590,7 @@
 - ✅ **PP690** **a deletion's end state names a shipped task as what must happen first, so its blocker resolves to nothing** — PP295's end state names the order that closes it instead of a shipped id, and a check reads every criterion's blockers against the ledger so the next one fails rather than waits.
   checked **The end state names the order that closes it, not a shipped task** PP295's fourth criterion says what session.c stopping actually takes, in the shape PP623 and PP655 ran: the counterparts first, the one edit that stops the asking, then the deletion - and no sentence in it names a task the ledger already holds.
   checked **A criterion naming a shipped id is a red test, not a reading** The check PP584 does for a deletion line's callers, done for a criterion's blockers: every id a criterion names as something to wait for is open, so an end state pointing at a ledger entry fails rather than waiting for somebody to notice.
+- ✅ **PP650** **the decoder stays native and nobody has priced FFmpeg against Media Foundation for the job** — One D3D11-aware decoder per codec here and neither is a vendor MFT, against 87.6 MB of FFmpeg and the two paths - cuda and vulkan - Media Foundation has no concept of.
 
 ## Block G — Test discipline
 
