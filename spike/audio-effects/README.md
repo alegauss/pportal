@@ -44,6 +44,25 @@ What is there is FrameView, NvContainer, the NVIDIA App, telemetry, ShadowPlay a
 The in-box path is registered in both hives, served by `mfwmaaec.dll` in `System32` and
 `SysWOW64`, and both files are present.
 
+## And where the in-box one would sit
+
+The DSP has two shapes, and they are two architectures. The mode is a property that must
+be set before the stream counts mean anything - the first version of this spike read them
+on an unconfigured object and got "0 in, 1 out", which is neither mode and answers
+nothing.
+
+Set first, then read:
+
+| mode | inputs | outputs | what it means |
+| --- | --- | --- | --- |
+| filter | **2** | 1 | the host feeds the microphone and a reference of what is playing |
+| source | 0 | 1 | the DSP opens the devices itself |
+
+Both are accepted here. **Filter mode keeps `WasapiCapture`** - PP652's capture stays and
+gains a stage after it - while source mode replaces it and takes the device choice with
+it. The second input is the reference signal, which means a render loopback capture is
+owed either way; in filter mode the port owns it, in source mode the DSP does.
+
 ## What this settles and what it does not
 
 It settles the shape of the choice. The vendor path is not a feature this port can detect

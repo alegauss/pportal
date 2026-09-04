@@ -102,10 +102,15 @@ public static class MicrophoneSurface
     }
 
     /// <summary>
-    /// The files under app/ that open a capture device, which is none of them.
+    /// The files under app/ that open a capture device.
     ///
     /// bin/ and obj/ skipped, and this file with them: a build output carrying a copy of a
     /// docstring is the same text counted twice, and the docstring here names every API by design.
+    ///
+    /// PP52: AND COMMENTS ARE STRIPPED, which is not a refinement. This read raw text, and the day
+    /// a second file's docstring said <c>&lt;see cref="WasapiCapture"/&gt;</c> the census reported
+    /// two files opening a device when one does. A mention is not a use, and a check that cannot
+    /// tell them apart makes every explanation of the capture into another capture.
     /// </summary>
     public static IReadOnlyList<string> FilesThatCapture()
     {
@@ -120,7 +125,7 @@ public static class MicrophoneSurface
             .Where(p => !Path.GetFileName(p).Equals(CensusFileName, StringComparison.Ordinal))
             .Order(StringComparer.Ordinal))
         {
-            string source = File.ReadAllText(path);
+            string source = CCall.Code(File.ReadAllText(path));
             if (CaptureApis.Any(api => source.Contains(api, StringComparison.Ordinal)))
                 found.Add(Path.GetRelativePath(root, path));
         }

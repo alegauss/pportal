@@ -109,6 +109,52 @@ public class EchoCancellationTests(ITestOutputHelper output)
     }
 
     /// <summary>
+    /// THE ARCHITECTURE: filter mode takes two inputs, so PP652's capture stays.
+    ///
+    /// The second input is a reference of what is being played, which is how acoustic echo
+    /// cancellation works at all. Source mode declares no inputs because the DSP opens the devices
+    /// itself - which would replace WasapiCapture and take the device choice with it.
+    ///
+    /// Both are accepted here, so this is a choice rather than a constraint, and the counts are
+    /// what make it readable.
+    /// </summary>
+    [Fact]
+    public void FilterModeTakesTwoInputsAndKeepsTheCaptureThePortOwns()
+    {
+        if (EchoCancellation.RecordedDsp() is not { } dsp)
+            return;
+
+        output.WriteLine($"{dsp.Inputs} in, {dsp.Outputs} out - {dsp.Note}");
+
+        Assert.True(dsp.Created);
+        Assert.True(dsp.TakesFilterMode);
+        Assert.Equal(2, dsp.Inputs);
+        Assert.Equal(1, dsp.Outputs);
+
+        // And the note carries BOTH modes' counts, because one of them is the road not taken and a
+        // reader deciding later needs the number rather than the conclusion.
+        Assert.Contains("filter:", dsp.Note, StringComparison.Ordinal);
+        Assert.Contains("source:", dsp.Note, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The count was read AFTER the mode was set, which the note is the evidence for.
+    ///
+    /// An unconfigured DSP reports a shape it has not been told to take, and this spike's first
+    /// reading did exactly that: "0 in, 1 out", which is neither mode. A filter row of two inputs
+    /// is what says the mode was set first.
+    /// </summary>
+    [Fact]
+    public void TheShapeIsTheConfiguredOneAndNotTheDefault()
+    {
+        if (EchoCancellation.RecordedDsp() is not { } dsp)
+            return;
+
+        Assert.DoesNotContain("filter: 0 in", dsp.Note, StringComparison.Ordinal);
+        Assert.Contains("filter: 2 in", dsp.Note, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// The two non-goals that bound this line are named, which is what the roadmap's lint asked for.
     ///
     /// A constraint may bound a line without forbidding it, and quoting the lead is how the answer

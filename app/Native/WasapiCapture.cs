@@ -76,13 +76,84 @@ public sealed class WasapiCapture : IDisposable
     }
 
     /// <summary>
-    /// Open the default communications capture endpoint and start reading.
+    /// Every active capture endpoint, as an id and a name.
+    ///
+    /// PP652: A HOST HAS TO OFFER THIS, and a check has to be able to use it. The default
+    /// communications endpoint here is a Bluetooth headset, and a Bluetooth headset that is
+    /// connected is not one that is streaming - it sits in a music profile with no microphone until
+    /// something makes it switch, and the switch does not always happen. So "the default endpoint"
+    /// is a reasonable first choice and a bad only choice.
+    /// </summary>
+    public static IReadOnlyList<(string Id, string Name)> ActiveCaptureEndpoints()
+    {
+        object enumeratorObject;
+        try
+        {
+            enumeratorObject = Activator.CreateInstance(Type.GetTypeFromCLSID(MMDeviceEnumeratorClsid)!)!;
+        }
+        catch (Exception error) when (error is COMException or InvalidOperationException or NotSupportedException)
+        {
+            return [];
+        }
+
+        var enumerator = (IMMDeviceEnumerator)enumeratorObject;
+
+        try
+        {
+            if (enumerator.EnumAudioEndpoints(EDataFlow.Capture, DeviceStateActive, out IMMDeviceCollection? all) != 0
+                || all is null)
+            {
+                return [];
+            }
+
+            try
+            {
+                if (all.GetCount(out int count) != 0)
+                    return [];
+
+                var found = new List<(string, string)>();
+
+                for (int i = 0; i < count; i++)
+                {
+                    if (all.Item(i, out IMMDevice? device) != 0 || device is null)
+                        continue;
+
+                    try
+                    {
+                        if (device.GetId(out string id) == 0)
+                            found.Add((id, NameOf(device)));
+                    }
+                    finally
+                    {
+                        Marshal.ReleaseComObject(device);
+                    }
+                }
+
+                return found;
+            }
+            finally
+            {
+                Marshal.ReleaseComObject(all);
+            }
+        }
+        finally
+        {
+            Marshal.ReleaseComObject(enumerator);
+        }
+    }
+
+    /// <summary>
+    /// Open a capture endpoint and start reading.
+    ///
+    /// With no id, the default communications endpoint, which is the one Windows nominates for a
+    /// voice path and the one a person expects a headset to be. With an id, that endpoint, which is
+    /// what a setting would pass and what a check uses when the default will not stream.
     ///
     /// Reports rather than throws, for <see cref="Session.SurfacePresenter"/>'s reason: whether a
     /// machine has a microphone is a fact about the machine, and a host that cannot start one still
     /// has a session to run.
     /// </summary>
-    public CaptureResult Start()
+    public CaptureResult Start(string? deviceId = null)
     {
         ObjectDisposedException.ThrowIf(disposed, this);
 
@@ -105,7 +176,9 @@ public sealed class WasapiCapture : IDisposable
 
         try
         {
-            LastError = enumerator.GetDefaultAudioEndpoint(EDataFlow.Capture, ERole.Communications, out device);
+            LastError = deviceId is null
+                ? enumerator.GetDefaultAudioEndpoint(EDataFlow.Capture, ERole.Communications, out device)
+                : enumerator.GetDevice(deviceId, out device);
 
             if (LastError != 0 || device is null)
                 return CaptureResult.NoDevice;
@@ -361,16 +434,34 @@ public sealed class WasapiCapture : IDisposable
         public readonly string? AsString() => Type == 31 ? Marshal.PtrToStringUni(Value) : null;
     }
 
+    /// <summary>DEVICE_STATE_ACTIVE, which is what "this endpoint is plugged in and enabled" means.</summary>
+    private const int DeviceStateActive = 1;
+
     [ComImport]
     [Guid("A95664D2-9614-4F35-A746-DE8DB63617E6")]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     private interface IMMDeviceEnumerator
     {
         [PreserveSig]
-        int EnumAudioEndpoints(EDataFlow flow, int stateMask, out IntPtr devices);
+        int EnumAudioEndpoints(EDataFlow flow, int stateMask, out IMMDeviceCollection? devices);
 
         [PreserveSig]
         int GetDefaultAudioEndpoint(EDataFlow flow, ERole role, out IMMDevice? device);
+
+        [PreserveSig]
+        int GetDevice([MarshalAs(UnmanagedType.LPWStr)] string id, out IMMDevice? device);
+    }
+
+    [ComImport]
+    [Guid("0BD7A1BE-7A1A-44DB-8397-CC5392387B5E")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IMMDeviceCollection
+    {
+        [PreserveSig]
+        int GetCount(out int count);
+
+        [PreserveSig]
+        int Item(int index, out IMMDevice? device);
     }
 
     [ComImport]

@@ -17,6 +17,21 @@ internal readonly record struct EffectPath(
     string Evidence,
     string Redistributable);
 
+/// <summary>The in-box DSP as an object, which is what decides where it sits in the capture chain.</summary>
+/// <param name="Created">Whether the class id makes an object at all.</param>
+/// <param name="Inputs">Input streams it declares. Two means the mic and a reference of what plays.</param>
+/// <param name="Outputs">Output streams, which is the cleaned microphone.</param>
+/// <param name="TakesFilterMode">Whether it accepts filter mode, where the host feeds both inputs.</param>
+/// <param name="TakesSourceMode">Whether it accepts source mode, where it opens the devices itself.</param>
+/// <param name="Note">What happened, so a no says which call refused.</param>
+internal readonly record struct DspShape(
+    bool Created,
+    int Inputs,
+    int Outputs,
+    bool TakesFilterMode,
+    bool TakesSourceMode,
+    string Note);
+
 /// <summary>
 /// PP52: whether the vendor's echo cancellation is reachable, and what this machine has instead.
 ///
@@ -58,6 +73,7 @@ internal static class Program
 
         EffectPath vendor = ReadVendor();
         EffectPath inBox = ReadInBox();
+        DspShape shape = ReadDspShape();
 
         foreach (EffectPath path in (EffectPath[])[vendor, inBox])
         {
@@ -68,6 +84,14 @@ internal static class Program
             Console.WriteLine(
                 $"      ships:     {(path.Redistributable.Length == 0 ? "nothing" : path.Redistributable)}");
         }
+
+        Console.WriteLine();
+        Console.WriteLine("  the DSP, instantiated");
+        Console.WriteLine($"      created:    {(shape.Created ? "yes" : "no")}");
+        Console.WriteLine($"      streams:    {shape.Inputs} in, {shape.Outputs} out");
+        Console.WriteLine($"      filter mode accepted: {(shape.TakesFilterMode ? "yes" : "no")}");
+        Console.WriteLine($"      source mode accepted: {(shape.TakesSourceMode ? "yes" : "no")}");
+        Console.WriteLine($"      note:       {shape.Note}");
 
         Console.WriteLine();
         Console.WriteLine(
@@ -92,6 +116,7 @@ internal static class Program
                     dotnet = Environment.Version.ToString(),
                     adapters,
                     paths = new[] { vendor, inBox },
+                    dsp = shape,
                 },
                 new JsonSerializerOptions { WriteIndented = true }));
 
@@ -189,6 +214,155 @@ internal static class Program
             reachable,
             string.Join("; ", evidence),
             string.Empty);
+    }
+
+    /// <summary>
+    /// The DSP as an object, which is what decides where it sits in the capture chain.
+    ///
+    /// TWO MODES, AND THEY ARE DIFFERENT ARCHITECTURES. In FILTER mode the transform takes two
+    /// input streams - the microphone and a reference of what is being played - and the host feeds
+    /// both, which fits a capture the port already owns. In SOURCE mode the DSP opens the devices
+    /// itself and hands back one cleaned stream, which REPLACES that capture rather than following
+    /// it.
+    ///
+    /// So the stream counts and which modes the property store accepts are the reading: they say
+    /// whether PP652's WasapiCapture stays and gains a stage, or is replaced by this.
+    /// </summary>
+    private static DspShape ReadDspShape()
+    {
+        Type? type = Type.GetTypeFromCLSID(new Guid(VoiceCaptureDsp));
+        if (type is null)
+            return new DspShape(false, 0, 0, false, false, "no type for the class id");
+
+        object? instance;
+        try
+        {
+            instance = Activator.CreateInstance(type);
+        }
+        catch (Exception error)
+        {
+            return new DspShape(false, 0, 0, false, false, $"could not create: 0x{error.HResult:x8}");
+        }
+
+        Marshal.ReleaseComObject(instance);
+
+        // THE COUNT IS READ AFTER THE MODE IS SET, on a fresh object each time. An unconfigured DSP
+        // reports the shape it has not been told to take yet, and the first run of this read it
+        // before setting anything and got "0 in, 1 out" - which is neither mode and answered
+        // nothing. The mode is the property that decides the shape, so it comes first.
+        (bool filter, int filterIn, int filterOut, int filterHr) = Shape(type, source: false);
+        (bool source, int sourceIn, int sourceOut, int sourceHr) = Shape(type, source: true);
+
+        var note = new List<string>();
+        note.Add(filter ? $"filter: {filterIn} in, {filterOut} out" : $"filter refused 0x{filterHr:x8}");
+        note.Add(source ? $"source: {sourceIn} in, {sourceOut} out" : $"source refused 0x{sourceHr:x8}");
+
+        // The filter shape is reported as THE shape, because it is the one that keeps PP652's
+        // capture: source mode would replace it.
+        return new DspShape(true, filterIn, filterOut, filter, source, string.Join("; ", note));
+    }
+
+    /// <summary>One mode, set on a fresh object, and the stream counts it then declares.</summary>
+    private static (bool Set, int Inputs, int Outputs, int Hr) Shape(Type type, bool source)
+    {
+        object? instance;
+        try
+        {
+            instance = Activator.CreateInstance(type);
+        }
+        catch (Exception error)
+        {
+            return (false, 0, 0, error.HResult);
+        }
+
+        try
+        {
+            if (!SetsMode(instance!, source, out int hr))
+                return (false, 0, 0, hr);
+
+            if (instance is not IMediaObject media || media.GetStreamCount(out int inputs, out int outputs) != 0)
+                return (true, 0, 0, 0);
+
+            return (true, inputs, outputs, 0);
+        }
+        finally
+        {
+            if (instance is not null)
+                Marshal.ReleaseComObject(instance);
+        }
+    }
+
+    /// <summary>Whether the property store takes a mode, which is how the DSP is configured at all.</summary>
+    private static bool SetsMode(object instance, bool source, out int hr)
+    {
+        hr = 0;
+
+        if (instance is not IPropertyStore store)
+        {
+            hr = -1;
+            return false;
+        }
+
+        // MFPKEY_WMAAECMA_DMO_SOURCE_MODE, VT_BOOL. The one property that must be set before any
+        // other, because it decides which of the two shapes the object is.
+        var key = new PropertyKey(new Guid("6f52c567-0360-4bd2-9617-ccbf1421c939"), 3);
+
+        var value = new PropVariant
+        {
+            Type = VT_BOOL,
+            // VARIANT_TRUE is -1 and VARIANT_FALSE is 0, which is the one place a bool is not a bit.
+            Value = source ? new IntPtr(-1) : IntPtr.Zero,
+        };
+
+        hr = store.SetValue(ref key, ref value);
+        return hr == 0;
+    }
+
+    private const short VT_BOOL = 11;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct PropertyKey(Guid formatId, int propertyId)
+    {
+        public Guid FormatId = formatId;
+        public int PropertyId = propertyId;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct PropVariant
+    {
+        public short Type;
+        public short Reserved1;
+        public short Reserved2;
+        public short Reserved3;
+        public IntPtr Value;
+        public IntPtr Value2;
+    }
+
+    [ComImport]
+    [Guid("d8ad0f58-5494-4102-97c5-ec798e59bcf4")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IMediaObject
+    {
+        [PreserveSig]
+        int GetStreamCount(out int inputs, out int outputs);
+    }
+
+    [ComImport]
+    [Guid("886d8eeb-8cf2-4446-8d02-cdba1dbdcf99")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IPropertyStore
+    {
+        [PreserveSig]
+        int GetCount(out int count);
+
+        [PreserveSig]
+        int GetAt(int index, out PropertyKey key);
+
+        [PreserveSig]
+        int GetValue(ref PropertyKey key, out PropVariant value);
+
+        [PreserveSig]
+        int SetValue(ref PropertyKey key, ref PropVariant value);
     }
 
     /// <summary>The display adapters, so a no about the vendor path says which card it is a no on.</summary>

@@ -51,7 +51,7 @@
 ## Block I — NVIDIA path
 
 - ⏳ **PP49** (deps: PP11 ✅, PP47 ✅) (requires: console, a-person-looking) **the console sends SDR on most titles and an HDR display shows it flat, with nothing in the client trying** — the quality half and the integration: a decoded console frame to judge the picture on, and a setting that turns it off. → §PP49
-- ⏳ **PP52** (deps: PP32 ✅, PP652 ✅) **nothing runs echo cancellation, and the vendor answer is absent on a machine with the card** — Nothing cleans a sample yet: a stage between the capture and the encoder, read back rather than assumed to have run, is still to build. → §PP52
+- 🛠 **PP52** (deps: PP32 ✅, PP652 ✅) **nothing runs echo cancellation, and the vendor answer is absent on a machine with the card** — Nothing cleans a sample yet: a stage between the capture and the encoder, read back rather than assumed to have run, is still to build. → §PP52
 - ⏳ **PP53** (deps: PP11 ✅, PP41 ✅) (requires: variable-refresh-display) **frames arrive with network jitter and are presented against a fixed refresh, so each waits for a vblank it missed** — the reading itself: a display that varies its refresh, and a trace saying the frame arrived unpaced. → §PP53
 - ⏳ **PP76** (deps: PP528 ✅) (requires: console, a-person-looking) **the decoder preference is measured on synthetic frames, and drops under network jitter are what a stream is judged by** — one session per decoder against a real console, now that the difference between the two counters is the number to read. → §PP76
 

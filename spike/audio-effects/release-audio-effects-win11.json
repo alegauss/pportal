@@ -1,5 +1,5 @@
 {
-  "taken": "2026-09-04T14:11:28.8047139+00:00",
+  "taken": "2026-09-04T14:18:10.706232+00:00",
   "machine": "XPS",
   "os": "Microsoft Windows NT 10.0.26200.0",
   "dotnet": "10.0.11",
@@ -22,5 +22,13 @@
       "Evidence": "CLSID\\{745057c7-f353-4f2d-a7ee-58434477730e}: C:\\Windows\\System32\\mfwmaaec.dll present; WOW6432Node\\CLSID\\{745057c7-f353-4f2d-a7ee-58434477730e}: C:\\Windows\\SysWOW64\\mfwmaaec.dll present",
       "Redistributable": ""
     }
-  ]
+  ],
+  "dsp": {
+    "Created": true,
+    "Inputs": 2,
+    "Outputs": 1,
+    "TakesFilterMode": true,
+    "TakesSourceMode": true,
+    "Note": "filter: 2 in, 1 out; source: 0 in, 1 out"
+  }
 }

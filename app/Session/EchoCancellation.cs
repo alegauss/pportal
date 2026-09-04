@@ -15,6 +15,21 @@ public readonly record struct EffectPath(
     string Evidence,
     string Redistributable);
 
+/// <summary>The in-box DSP's shape in one mode, which is where it would sit in the capture chain.</summary>
+/// <param name="Created">Whether the class id makes an object at all.</param>
+/// <param name="Inputs">Input streams in filter mode. Two: the microphone and a reference of what plays.</param>
+/// <param name="Outputs">Output streams, which is the cleaned microphone.</param>
+/// <param name="TakesFilterMode">Whether filter mode is accepted, where the host feeds both inputs.</param>
+/// <param name="TakesSourceMode">Whether source mode is, where the DSP opens the devices itself.</param>
+/// <param name="Note">Both modes' counts, so the choice is readable rather than asserted.</param>
+public readonly record struct DspShape(
+    bool Created,
+    int Inputs,
+    int Outputs,
+    bool TakesFilterMode,
+    bool TakesSourceMode,
+    string Note);
+
 /// <summary>
 /// PP52: the two ways to clean a captured microphone, and which of them this machine has.
 ///
@@ -88,6 +103,37 @@ public static class EchoCancellation
         }
 
         return found;
+    }
+
+    /// <summary>
+    /// The DSP's two shapes, from the same file.
+    ///
+    /// FILTER MODE KEEPS PP652'S CAPTURE. Two inputs - the microphone and a reference of what is
+    /// playing - and one cleaned output, with the host feeding both. Source mode declares no inputs
+    /// because the DSP opens the devices itself, which replaces <see cref="Native.WasapiCapture"/>
+    /// and takes the device choice with it.
+    ///
+    /// The mode has to be set BEFORE the counts are read: an unconfigured object reports a shape it
+    /// has not been told to take, and the spike's first reading did exactly that and answered
+    /// nothing.
+    /// </summary>
+    public static DspShape? RecordedDsp()
+    {
+        if (Locate() is not { } path)
+            return null;
+
+        using JsonDocument document = JsonDocument.Parse(File.ReadAllText(path));
+
+        if (!document.RootElement.TryGetProperty("dsp", out JsonElement dsp))
+            return null;
+
+        return new DspShape(
+            dsp.GetProperty("Created").GetBoolean(),
+            dsp.GetProperty("Inputs").GetInt32(),
+            dsp.GetProperty("Outputs").GetInt32(),
+            dsp.GetProperty("TakesFilterMode").GetBoolean(),
+            dsp.GetProperty("TakesSourceMode").GetBoolean(),
+            dsp.GetProperty("Note").GetString() ?? string.Empty);
     }
 
     /// <summary>The adapters the reading was taken on, so a no names the card it is a no about.</summary>
