@@ -42,7 +42,6 @@
 
 ## Block G — Test discipline
 
-- 📋 **PP666** (deps: —) **a table and the test written from it were wrong together at every rung, and only a consumer noticed** — PP364's entry ladder held for five months against a test whose arithmetic assumed the same off-by-one, and the tree has three more tables nothing drives. → §PP666
 - 📋 **PP683** (deps: —) **the oracle guard census reads test files only, so the selftest's guarded comparisons are invisible to it** — PP665 prints what an absent oracle costs from eleven test files; the host's own 460 checks guard comparisons too, and PP681's defect lived in one the count never saw. → §PP683
 
 ## Block H — Performance and telemetry
@@ -97,10 +96,11 @@
   each an allocation if written carelessly. Span, ArrayPool and SocketAsyncEventArgs are
   the answer, chosen deliberately - PP44 set the budget before this line writes what has
   to meet it.
-- **takion.c, takionsendbuffer.c and reorderqueue.c leave the build** Porting into app
-  removes no C, so this is the end state and not a progress bar - the same shape PP33's
-  own last criterion has. The three files' sizes are stated in the section, where the
-  recount reaches them.
+- **takion.c, takionsendbuffer.c and reorderqueue.c leave the build** An end state, not
+  a progress bar: porting into app removes no C, and takion.c cannot leave until PP295
+  has landed, streamconnection.c being one of the six files PP638 counted as calling
+  takion. The three files' sizes are stated in the section, where the recount reaches
+  them.
 
 ## Done when — PP46
 

@@ -54,11 +54,22 @@ public static class TransportOrder
     ///
     /// Read from the reason and not from the lead: a lead can be met early, and what says this one
     /// cannot is the sentence under it.
+    ///
+    /// PP666: TWO WORDS, NOT ONE SENTENCE. This was the literal "the end state and not a progress
+    /// bar", which is one spelling of the thing rather than the thing - and PP666 rewrote the
+    /// criterion to name PP295 outright, so the premise got STRONGER and the check went red. A check
+    /// that a more precise sentence fails is reading its own wording back. These are the two words
+    /// <see cref="DeletionEndState.EndStateWords"/> already reads across all three deletion lines.
     /// </summary>
-    public const string EndStateSays = "the end state and not a progress bar";
+    public static IReadOnlyList<string> EndStateSays { get; } = DeletionEndState.EndStateWords;
 
     /// <summary>
     /// Whether the roadmap still says what the release was made against.
+    ///
+    /// TWO HALVES, AND THE SECOND IS PP666'S. The criterion still reads as an end state, AND its
+    /// prose still says it waits on PP295 - which is the actual premise, PP295 being the last of the
+    /// six callers. The old version asserted only the first, so a criterion that kept the words and
+    /// dropped the wait would have passed it while the release rested on nothing.
     ///
     /// Collapsed whitespace, because roadkeep reflows a criterion's reason to the prose width - so a
     /// check reading the file as written would be asserting about the wrapping.
@@ -69,8 +80,14 @@ public static class TransportOrder
 
         string flat = System.Text.RegularExpressions.Regex.Replace(roadmap, @"\s+", " ");
 
-        return flat.Contains(EndStateCriterion, StringComparison.Ordinal)
-            && flat.Contains(EndStateSays, StringComparison.Ordinal);
+        if (!flat.Contains(EndStateCriterion, StringComparison.Ordinal))
+            return false;
+
+        if (DeletionEndState.CriteriaOf(roadmap, "PP27") is not { } criteria)
+            return false;
+
+        return EndStateSays.All(word => criteria.Contains(word, StringComparison.OrdinalIgnoreCase))
+            && CriterionBlockers.WaitedOnIn(criteria).Contains("PP295", StringComparer.Ordinal);
     }
 
     /// <summary>Whether a line's own text names an id among its deps.</summary>

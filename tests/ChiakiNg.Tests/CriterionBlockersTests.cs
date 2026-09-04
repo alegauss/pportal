@@ -61,6 +61,27 @@ public class CriterionBlockersTests(ITestOutputHelper output)
 
         Assert.True(shipped.Count > 100, $"only {shipped.Count} shipped ids were found");
         Assert.Contains("PP28", shipped);
+
+        // PP666: and a PART is not a ship. `ship --part` writes `**PP295 (the run's ordering)**`
+        // and leaves the line open, so counting it would make an open line's blockers unwaitable-on
+        // and this check red about a sentence that is right.
+        Assert.DoesNotContain("PP295", shipped);
+        Assert.DoesNotContain("PP27", shipped);
+    }
+
+    /// <summary>The two ledger shapes, told apart on their own text rather than on the real file.</summary>
+    [Fact]
+    public void APartialShipIsNotAShip()
+    {
+        const string ledger = """
+            - ✅ **PP900** **a whole one** — it is done.
+            - ✅ **PP901 (half of it)** **a partial one** — the rest is still open.
+            """;
+
+        IReadOnlySet<string> shipped = CriterionBlockers.ShippedIn(ledger);
+
+        Assert.Contains("PP900", shipped);
+        Assert.DoesNotContain("PP901", shipped);
     }
 
     /// <summary>

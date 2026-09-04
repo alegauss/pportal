@@ -150,13 +150,24 @@ public static class CriterionBlockers
         return found;
     }
 
-    /// <summary>Every id the ledger records as shipped.</summary>
+    /// <summary>
+    /// Every id the ledger records as WHOLLY shipped.
+    ///
+    /// PP666: the id has to be followed by the closing bold, and that is the whole of what took a
+    /// second reading. `ship --part` writes its entry as `**PP295 (the run's ordering)**` and leaves
+    /// the line open, so a pattern stopping at the digits counts a line that is still being worked
+    /// as finished - which made an open line's criterion read as waiting on something shipped and
+    /// turned this check red about a sentence that was right.
+    ///
+    /// Found by PP666's driver rather than by this check's own tests, which is the point that line
+    /// makes: a reader written from the same idea as the thing it reads inherits its blind spot.
+    /// </summary>
     public static IReadOnlySet<string> ShippedIn(string ledger)
     {
         ArgumentNullException.ThrowIfNull(ledger);
 
         return new HashSet<string>(
-            Regex.Matches(ledger, @"^- ✅ \*\*(PP[0-9]+)", RegexOptions.Multiline)
+            Regex.Matches(ledger, @"^- ✅ \*\*(PP[0-9]+)\*\*", RegexOptions.Multiline)
                 .Select(one => one.Groups[1].Value),
             StringComparer.Ordinal);
     }

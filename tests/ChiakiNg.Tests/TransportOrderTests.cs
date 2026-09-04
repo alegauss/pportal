@@ -66,6 +66,11 @@ public class TransportOrderTests
     /// If it stopped being one - if somebody decided the three files could leave before their
     /// callers do - then PP295 would be waiting for something reachable and this release was made
     /// against a line that no longer says what it said.
+    ///
+    /// PP666: and the premise is now read as MEANING rather than as one sentence. Rewriting the
+    /// criterion to name PP295 outright - a stronger statement of the very thing this holds - turned
+    /// this red, because the check was matching the wording it had been written beside. The two
+    /// tests below are what it reads now.
     /// </summary>
     [Fact]
     public void TheFourthCriterionIsStillTheEndState()
@@ -75,8 +80,51 @@ public class TransportOrderTests
 
         Assert.True(
             TransportOrder.TheEndStateIsStillTheEndState(roadmap),
-            "PP27's deletion criterion no longer reads as the end state, so PP636's release of "
-                + "PP295 was made against a line that has changed");
+            "PP27's deletion criterion no longer reads as the end state waiting on PP295, so "
+                + "PP636's release of PP295 was made against a line that has changed");
+    }
+
+    /// <summary>
+    /// PP666: a criterion that keeps the words and drops the wait is NOT the premise.
+    ///
+    /// This is the half the old literal match could not have: "end state" said about nothing in
+    /// particular leaves PP295 waiting on a criterion that no longer waits on PP295, which is the
+    /// exact condition PP636's release rules out.
+    /// </summary>
+    [Fact]
+    public void TheWordsWithoutTheWaitAreNotThePremise()
+    {
+        string kept = $"""
+            ## Done when — PP27
+
+            - **{ChiakiNg.Session.TransportOrder.EndStateCriterion}** An end state, not a progress
+              bar: porting into app removes no C.
+            """;
+
+        Assert.False(TransportOrder.TheEndStateIsStillTheEndState(kept));
+
+        string whole = $"""
+            ## Done when — PP27
+
+            - **{ChiakiNg.Session.TransportOrder.EndStateCriterion}** An end state, not a progress
+              bar: takion.c cannot leave until PP295 has landed.
+            """;
+
+        Assert.True(TransportOrder.TheEndStateIsStillTheEndState(whole));
+    }
+
+    /// <summary>And a different spelling of the same two words still reads as the end state.</summary>
+    [Fact]
+    public void TheSpellingOfTheReasonIsNotTheAssertion()
+    {
+        string other = $"""
+            ## Done when — PP27
+
+            - **{ChiakiNg.Session.TransportOrder.EndStateCriterion}** This is the end state and not a
+              progress bar, and it waits on PP295.
+            """;
+
+        Assert.True(TransportOrder.TheEndStateIsStillTheEndState(other));
     }
 
     /// <summary>

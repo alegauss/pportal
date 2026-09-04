@@ -671,6 +671,9 @@
 - ✅ **PP642** **a ship's `recorded in` clause names a file and nothing checks the file ever received the design** — Every clause's file is opened and has to name the id, three exempt by name because the file is a recording with no room for one, and PP446's own paragraph was the miss it found.
 - ✅ **PP643** **two `<summary>` elements on one member compile, and the wrong one wins silently** — Twelve members carried a stacked summary, ten were another member's docstring stranded by an insertion, and a scan over 933 files now refuses the next one.
 - ✅ **PP659** **a relay test sends real UDP between three loopback sockets and failed once in a run that passed twice** — The count moves after the send, so receiving was never a receipt for it; the test waits, the counter is interlocked across its two threads, and 200 runs failed none.
+- ✅ **PP666** **a table and the test written from it were wrong together at every rung, and only a consumer noticed** — Two of the three tables already had a consumer; the third had none and was wrong in both rows, so it derives from the criteria now — and two literal readers beside it were wrong the same way.
+  checked **Each of the three tables names its driver, and the one with none gains one** PP640's six orderings are driven by ManagedStreamRun.Run and PP623's stages by PP630-PP632 and PP655-PP664 having executed them, both asserted. PP639's end-state waits had none and were wrong in both rows, so DrivenTablesTests derives the table from the criteria it summarises and compares.
+  checked **A reader written beside its subject no longer matches one spelling of it** Two literal readers were wrong the same way and both went red on a more precise sentence. ShippedIn counted `ship --part`'s entry as a whole ship; TransportOrder matched one wording of PP27's end state. Both read meaning now, and the second also asserts the wait it exists to hold.
 
 ## Block H — Performance and telemetry
 

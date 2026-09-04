@@ -55,8 +55,11 @@ public static partial class DeletionEndState
             // PP638: six files in lib/ call takion, and streamconnection.c is PP295's subject.
             ["PP27"] = ["PP295"],
 
-            // PP638: session.c drives the stream connection, and session.c is PP28's.
-            ["PP295"] = ["PP28"],
+            // PP690: it used to read ["PP28"], on the grounds that session.c drives the stream
+            // connection and session.c is PP28's subject. PP28 shipped, and what it shipped was
+            // three modelled joins - none of which stops session.c asking. What PP295's end state
+            // waits on is an edit no open line owns, so the honest entry is none.
+            ["PP295"] = [],
         };
 
     /// <summary>The lines the rule is about.</summary>
