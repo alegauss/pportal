@@ -382,6 +382,31 @@ The assertion it owes is a captured buffer going in at one end and a head with t
 eleven fields coming out at the other, with the drop count matching what the encoder
 reported.
 
+### §PP707 The flip has nothing to flip to
+
+PP696 says session.c stops asking, and asking is how this application streams. StreamRun
+calls ChiakiSession.Start, which is chiaki_session_start, which runs the C's session
+thread - and that thread calls chiaki_stream_connection_run. PP700 joined a decoder to
+exactly that path and recorded a stream decoding for the first time.
+
+ManagedStreamRun is constructed nowhere outside its own tests. Grep the assembly and the
+only mentions are a docstring, a parameter's example, and two rows of PP669's census.
+The same is true one layer down: PP703 records that ManagedTakion never opens a video
+queue, and PP680's AV arm is built by tests alone.
+
+SO THE FLIP LINKS AND THE APPLICATION STOPS. That is the failure worth writing down
+rather than discovering in the commit: nothing in PP295's criteria is false, because
+each of them is about a counterpart EXISTING, and none of them is about one being
+reached. PP669 verified the mapping by reflection and a mapping is not a call.
+
+WHAT IS OWED is the session's own seam: something that starts a stream through the
+managed run rather than through chiaki_session_start, with the decoder and the pad
+hanging off it as StreamRun already hangs them off the C. PP703 and PP706 are two of the
+joins under it and there will be more.
+
+Recorded as a dep of PP696 rather than folded into it, because it is a different piece
+of work and PP696's own design is right about everything except what happens next.
+
 ## Block G — Test discipline
 
 ### §PP704 The sweep PP683 left
