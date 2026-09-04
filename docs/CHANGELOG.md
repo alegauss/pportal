@@ -613,6 +613,8 @@
   checked **The managed data message, continuation and ack match the C's bytes** chiaki_takion_send_message_data and its siblings are exported, so a shim call sends through PP607's connected takion and the peer this process holds receives the C's bytes; the managed builder, given the same tag, sequence and payload, produces the same array.
   checked **One send path: MAC under the cipher lock, then the socket, nothing allocated** chiaki_takion_send's order is reproduced - stamp, then send - and the send over a connected UDP socket is measured the way PP633 measured the receive: zero bytes allocated after warm-up per packet sent.
 - ✅ **PP676 (the send sequence and the three layouts)** **the feedback and mic sends have no managed code, and each places its MAC where packet_mac's table does not look** — The payload encrypts one block above where the GMAC is taken, the position is written before the MAC covers it, under the recursive lock.
+- ✅ **PP685** **PP395's chokepoint comment calls the two data-type-2 sends the keyboard pair, which they are not** — The clause now names the video receiver's pair, and a check reads the file for the word it used instead - so a correction that merely deleted the sentence would not pass.
+  checked **The comment names the two sends that carry the type, and a check holds it** The sentence says corrupt frame and IDR request; StreamMessagesSource already reads the call sites, so the check is that the comment's named pair and the pair the calls pass with data type two are the same two, which a future rename breaks loudly.
 
 ## Block G — Test discipline
 

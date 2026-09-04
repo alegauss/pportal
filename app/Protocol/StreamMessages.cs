@@ -240,6 +240,28 @@ public static class StreamMessagesSource
     /// <summary>The chokepoint every one of them goes through.</summary>
     public const string Chokepoint = "stream_connection_send_data(stream_connection, ";
 
+    /// <summary>
+    /// PP685: what the chokepoint's own comment must NOT say about the type it explains.
+    ///
+    /// PP395 wrote "1 for most, 2 for the keyboard pair, 9 for the streaminfo ack", and the middle
+    /// clause was wrong: the two senders passing 2 are the corrupt frame and the IDR request, and
+    /// that comment was the file's only mention of a keyboard anywhere. Nothing read it, so nothing
+    /// broke - what it cost was the next reader, and the sentence is exactly the shape of an answer.
+    ///
+    /// Held by the word rather than by the corrected phrasing, for the reason PP573's check gives:
+    /// a comment that merely stopped explaining the type would satisfy a check for the new wording
+    /// being present, and this is about a claim that was false rather than a sentence that was
+    /// missing.
+    /// </summary>
+    public const string WrongPairName = "keyboard";
+
+    /// <summary>The two senders that actually carry the type, which the comment now names.</summary>
+    public static IReadOnlyList<string> SendersCarryingTypeTwo { get; } =
+        ["stream_connection_send_corrupt_frame", "stream_connection_send_idr_request"];
+
+    /// <summary>The data type those two pass.</summary>
+    public const byte VideoReceiverDataType = 2;
+
     /// <summary>streamconnection.c, or null outside a checkout.</summary>
     public static string? Locate() => SanitizerSource.LocateRelative(RelativePath);
 

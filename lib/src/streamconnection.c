@@ -1383,7 +1383,16 @@ static ChiakiErrorCode stream_connection_enable_microphone(ChiakiStreamConnectio
 //
 // The data type crosses with the message. PP366 established that this channel carries three
 // conversations under one wire format, and the type is what a recording keeps so a replay can tell
-// them apart: 1 for most, 2 for the keyboard pair, 9 for the streaminfo ack.
+// them apart: 1 for most, 2 for the video receiver's pair, 9 for the streaminfo ack.
+//
+// PP685: that middle clause used to name an input device, and was this file's only mention of one.
+// The old wording is not repeated here, because the check that holds this reads for the word - a
+// correction spelling the mistake out would be the last thing in the file still saying it.
+//
+// The two senders passing 2 are stream_connection_send_corrupt_frame and
+// stream_connection_send_idr_request - the messages ManagedVideoReceiver asks for through PP291's
+// outbound seam. Nothing read the comment, so nothing was wrong; what it cost was the next reader
+// building the table, and PP684 built it from the call sites rather than from here.
 static ChiakiErrorCode stream_connection_send_data(ChiakiStreamConnection *stream_connection, uint8_t data_type, uint16_t payload_type, uint8_t *buf, size_t buf_size)
 {
 	chiaki_message_tap_emit(
