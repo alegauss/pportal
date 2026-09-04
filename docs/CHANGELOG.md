@@ -635,6 +635,7 @@
   checked **A loopback client reads what the render endpoint is playing** The default render endpoint opens with the loopback flag and delivers units in the same format the capture does. A silent endpoint producing nothing rather than silence reads as PP695's state instead of as a working stream, which is the behaviour Windows documents and this port already knows how to notice.
 - ✅ **PP702** **senkusha.c calls five takion symbols, so PP27's fourth criterion cannot be met while the file stands** — The five are read out of senkusha.c and each resolves to a managed member; a sixth would fail by name, because the reader matches takion's whole namespace.
 - ✅ **PP703** **ManagedTakion's video queue is only ever set to null, so one step of its recorded teardown is unreachable** — A takion given a sink owns an arm, so one video datagram opens the queue and the teardown step reserved for it is appended where the C releases it.
+- ✅ **PP706** **the microphone has a capture, a unit splitter, an encoder and a head, and nothing runs them as one path** — Captured bytes reach a packet through all four pieces, and the C's two surprises are reproduced: two frames of silence at the start, and the newest frame sent twice while the oldest never is.
 
 ## Block G — Test discipline
 

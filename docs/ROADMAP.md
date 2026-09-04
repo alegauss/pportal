@@ -27,7 +27,6 @@
 - ⏳ **PP671** (deps: PP696) **Fec.Recovers with no decoder named runs the C, so after the flip a default becomes a loader failure** — The managed decoder is the one that stays; the default should follow it on the flip, so the sixty-four recorded cases judge the port alone. → §PP671
 - 📋 **PP696** (deps: PP707) **the frame path's deletion has no commit that edits the C, so four files stay while their ports exist** — PP623's middle step is the only one touching lib, and nobody has written this path's: session.c's asks, the shim's wrappers and the suite's four files all still name them. → §PP696
 - 📋 **PP697** (deps: PP696) **after the frame-path flip the models describe a C that has gone, in the present tense** — PP634 found this on the holepunch side: the predicates stay because they notice the calls coming back, and what goes stale is the prose around them. → §PP697
-- 📋 **PP706** (deps: PP694 ✅) **the microphone has a capture, a unit splitter, an encoder and a head, and nothing runs them as one path** — PP652, PP676 and PP694 each built a piece and each is driven by tests alone; audiosender.c is still the only thing that composes them, and nothing managed does. → §PP706
 - 📋 **PP707** (deps: —) **nothing managed drives a live session, so the flip that stops session.c asking removes the only path that streams** — StreamRun starts the C session and ManagedStreamRun is constructed by tests alone; PP696 would still link, and the application would have no way to show a picture. → §PP707
 - 📋 **PP708** (deps: —) **nothing in the port renders audio, so a session shows a picture and plays no sound at all** — PP698 had to generate a tone to prove a loopback reference works, because no code here plays one; AudioRing is a model whose only consumer is the selftest. → §PP708
 
@@ -41,7 +40,7 @@
 ## Block I — NVIDIA path
 
 - ⏳ **PP49** (deps: PP11 ✅, PP47 ✅, PP700 ✅) (requires: console, a-person-looking) **the console sends SDR on most titles and an HDR display shows it flat, with nothing in the client trying** — the quality half and the integration: a decoded console frame to judge on, and a setting that turns it off. → §PP49
-- ⏳ **PP52** (deps: PP32 ✅, PP652 ✅, PP698 ✅, PP709 ✅, PP710 ✅, PP706) **nothing runs echo cancellation, and the vendor answer is absent on a machine with the card** — PP709's transform cleans and refuses the announced 48000; what is left is a rate bridge and a chain for a stage to sit in. → §PP52
+- ⏳ **PP52** (deps: PP32 ✅, PP652 ✅, PP698 ✅, PP709 ✅, PP710 ✅, PP706 ✅) **nothing runs echo cancellation, and the vendor answer is absent on a machine with the card** — PP709's transform cleans and refuses the announced 48000; what is left is a rate bridge and a chain for a stage to sit in. → §PP52
 - ⏳ **PP53** (deps: PP11 ✅, PP41 ✅) (requires: variable-refresh-display) **frames arrive with network jitter and are presented against a fixed refresh, so each waits for a vblank it missed** — the reading itself: a display that varies its refresh, and a trace saying the frame arrived unpaced. → §PP53
 
 ## Block J — Public documentation

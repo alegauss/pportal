@@ -282,32 +282,6 @@ What makes this its own line rather than part of the flip is PP623's own discipl
 flip edits `lib/` and no test file, so every prose change waits for a green tree after
 it. Doing both at once is the thing that plan exists to prevent.
 
-### §PP706 Four pieces of a microphone and no path
-
-Every part of the upstream audio path exists in managed code and none of them has met
-another. WasapiCapture opens the communications endpoint and delivers bytes;
-MicrophoneUnits holds them until a whole 960-byte unit is there; ManagedOpusEncoder
-turns one unit into a forty-byte frame or says why it did not; MicPacketHead transcribes
-the eleven fields audiosender.c writes before takion overwrites two. Four classes, four
-test files, no caller.
-
-What composes them today is audiosender.c at 143 lines: a sender owning a key position,
-a sequence number and a buffer, and one function - chiaki_audio_sender_opus_data - that
-takes a frame, writes the head, and hands it to takion.
-
-WHAT THIS IS is that function, with the four pieces under it. It is the shape PP680 had
-for video: the parts were right and nothing ran them in order, and the ordering was
-where the behaviour lived.
-
-WHAT IT IS NOT is a decision about whether to send at all. PP694 measured that a silent
-frame encodes to three bytes and the C drops it as a protocol violation, so a path that
-runs is silent most of the time by construction - and whether that is right is a
-question about the console, not about the composition.
-
-The assertion it owes is a captured buffer going in at one end and a head with the right
-eleven fields coming out at the other, with the drop count matching what the encoder
-reported.
-
 ### §PP707 The flip has nothing to flip to
 
 PP696 says session.c stops asking, and asking is how this application streams. StreamRun
