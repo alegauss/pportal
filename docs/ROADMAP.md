@@ -21,11 +21,10 @@
 
 ## Block F — Managed core
 
-- ⏳ **PP27** (deps: PP672 ✅, PP673 ✅, PP674 ✅, PP675 ✅, PP676 ✅, PP677 ✅, PP678, PP679, PP680) (requires: console) **takion.c is 2007 lines of C over raw sockets and timers, and the whole stream rides on it** — The nine tasks it waits on are the managed transport; after them, the three files leave the build. → §PP27
+- ⏳ **PP27** (deps: PP672 ✅, PP673 ✅, PP674 ✅, PP675 ✅, PP676 ✅, PP677 ✅, PP678 ✅, PP679, PP680) (requires: console) **takion.c is 2007 lines of C over raw sockets and timers, and the whole stream rides on it** — The nine tasks it waits on are the managed transport; after them, the three files leave the build. → §PP27
 - 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — chiaki_fec_decode has three callers - frameprocessor.c, the C suite and this port's shim - and gf-complete has a fourth site none of them reach: chiaki_lib_init. → §PP30
 - 🛠 **PP295** (deps: PP297 ✅, PP696, PP697) **streamconnection.c is 1540 lines and calls the video receiver, so every deletion below waits on it** — Three criteria are met; the fourth is the four files leaving, which waits on the one commit that edits the C and on the shim, whose wrappers outlive it. → §PP295
 - ⏳ **PP671** (deps: PP696) **Fec.Recovers with no decoder named runs the C, so after the flip a default becomes a loader failure** — The managed decoder is the one that stays; the default should follow it on the flip, so the sixty-four recorded cases judge the port alone. → §PP671
-- 📋 **PP678** (deps: PP672 ✅, PP673 ✅, PP674 ✅, PP675 ✅, PP677 ✅) **the receive loop runs only against test doubles, and nothing owns takion's state** — TakionReceiveLoop.Run traces steps through an ITakionLoopHost implemented only in tests; the tag, counter, ledger, cipher and queues have no owner. → §PP678
 - 📋 **PP679** (deps: —) **the v7 AV parse and header formatter are unported, and the formatter's callers are senkusha's** — chiaki_takion_v7_av_packet_parse differs from v9 in three places, and chiaki_takion_v7_av_packet_format_header is called only by senkusha.c, so who owns them is a decision. → §PP679
 - 📋 **PP680** (deps: PP668 ✅) **takion_handle_packet_av is only a branch in managed code, so no video packet reaches the flush** — The disable gates, the queue seeded at packet_index minus unit_index, the entry with its stamp and the flush into StreamAvDispatch have no composition; the parse is PP668's. → §PP680
 - 📋 **PP694** (deps: —) **the microphone's units reach nothing, and libopus's second consumer is why the dependency cannot leave** — PP652 answered the input question opusencoder.c waited on, so the encoder is portable now and PP651 already measured managed Opus at a quarter of a percent of a frame. → §PP694
@@ -131,18 +130,6 @@
   chiaki_render_tearing_probe does. Integration means the video plane's own swapchain
   carries it and presents at sync interval zero, which is the half that waits on there
   being a video plane at all.
-
-## Done when — PP678
-
-- **A managed takion connects, runs its loop over a socket and tears down in order**
-  Against PP606's responder: the connected event, then a loop that receives real
-  datagrams into TakionReceiveBuffer and dispatches through TakionReceivePath, then
-  close - send buffer, queues, postponed packets, the disconnected event, the socket -
-  each step observed in the C's order.
-- **Nothing is allocated per datagram once the loop is warm** PP633's measurement over
-  the loop as it runs on a socket rather than in a replay: bytes allocated after warm-up
-  are zero over the corpus fed through loopback, which is PP44's budget held on the
-  transport itself and not on a harness.
 
 ## Done when — PP679
 

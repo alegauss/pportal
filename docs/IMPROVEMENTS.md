@@ -233,30 +233,6 @@ because today the default is what makes those two theories a check on the ORACLE
 cases are the C's own, and a managed default now would silently stop asking the C
 whether it still agrees with its own recording.
 
-### §PP678 A takion that owns things
-
-takion_thread_func is more than the loop PP487 modelled. Before it: the handshake, the
-data queue seeded from the remote tag, the send buffer, and the connected event. After
-it: the send buffer and both queues finalised, anything still postponed released, the
-disconnected event, and the socket closed where takion owns it. TakionReceiveLoop.Run
-covers the middle and returns a trace; the bookends have no managed shape.
-
-THE HOST IS A TEST DOUBLE THREE TIMES OVER. ITakionLoopHost asks for the cipher's
-presence, the postponed packets, the next timeout, a receive into a buffer and a
-dispatch, and every implementation lives in the test project. Nothing selects on a
-socket with a stop pipe the way takion_recv does, and TakionDatagramRead triages a
-result nothing produces.
-
-AND NOTHING OWNS THE STATE. The local tag and the sequence counter, tag_remote, the key
-position ledger, the cipher pair, the two queues, the postpone array, the send buffer:
-each is modelled or runnable on its own and none has an owner, so the pieces cannot be
-composed into a takion that a session could hold.
-
-WHAT THIS IS: a managed takion object, built on the client handshake once that exists,
-with the socket that handshake used as the loop's host. THE ORACLE IS PP606'S RESPONDER
-for the connect and PP608's corpus for the loop, with PP44's zero allocation per
-datagram measured the way PP633 measured it.
-
 ### §PP679 Version seven, and whose it is
 
 takion.c carries three AV header parsers and the version chosen at connect picks one.

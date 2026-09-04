@@ -1,0 +1,307 @@
+﻿using System.Net;
+using ChiakiNg.Native;
+
+namespace ChiakiNg.Protocol;
+
+/// <summary>Where a takion is in its life, which is what says whether its state exists.</summary>
+public enum TakionStage
+{
+    /// <summary>Built and owning nothing.</summary>
+    Idle,
+
+    /// <summary>The socket is open and the handshake has not finished.</summary>
+    Connecting,
+
+    /// <summary>The queues and the send buffer exist and the loop may run.</summary>
+    Connected,
+
+    /// <summary>Torn down, in the order below.</summary>
+    Closed,
+}
+
+/// <summary>One thing a teardown releases, in the order takion_thread_func releases it.</summary>
+public enum TakionTeardownStep
+{
+    /// <summary>chiaki_takion_send_buffer_fini.</summary>
+    SendBuffer,
+
+    /// <summary>The video queue, and only where it was initialised.</summary>
+    VideoQueue,
+
+    /// <summary>chiaki_reorder_queue_fini on the data queue, at the error label.</summary>
+    DataQueue,
+
+    /// <summary>PP474's release of anything still postponed, at `beach`.</summary>
+    Postponed,
+
+    /// <summary>The disconnected event.</summary>
+    Disconnected,
+
+    /// <summary>The socket, and only where this takion made it.</summary>
+    Socket,
+}
+
+/// <summary>
+/// PP678: a takion that OWNS things - the tag, the ledger, the queues, the send buffer, the socket.
+///
+/// PP487 modelled the loop and PP672 the client handshake, and every piece around them - the
+/// postpone array, the send buffer, the reorder queues, the key-position ledger - was runnable on
+/// its own and owned by nothing. So there was no takion a session could hold, and
+/// <see cref="ITakionLoopHost"/> had implementations only in the test project.
+///
+/// This is the composition. The bookends are takion_thread_func's, in its order:
+///
+///   BEFORE the loop - the per-run stats zeroed, the handshake, the data queue seeded from the
+///   REMOTE TAG rather than from the ack's wire field, the drop callback, the send buffer, then the
+///   connected event. The queue seed is the subtlety: PP672's RemoteInitialSeqNum reads the tag, and
+///   a port seeding from the field beside it starts the queue at a number the console never sends.
+///
+///   AFTER it - send buffer, video queue where it was initialised, data queue, anything still
+///   postponed, the disconnected event, and the socket where this takion made it. PP474 put the
+///   postpone release at `beach` because the flush above it is guarded on the cipher: a session that
+///   dies before the cipher is agreed left the array and every datagram in it behind, and that is
+///   the ORDINARY failure rather than an exotic one.
+///
+/// THE TEARDOWN IS RECORDED, not just performed. <see cref="Teardown"/> is what
+/// "tears down in order" is asserted against, because an order is not visible in a Dispose that
+/// works - and the C's is not the order the fields were created in.
+///
+/// NOTHING IS ALLOCATED PER DATAGRAM once the loop is warm. The receive goes into
+/// <see cref="TakionReceiveBuffer"/>'s pooled span and the dispatch is handed the span itself, so
+/// a handler that copies is the handler's decision and not this one's.
+/// </summary>
+public sealed class ManagedTakion : ITakionLoopHost, IDisposable
+{
+    /// <summary>TAKION_REORDER_QUEUE_SIZE_EXP: sixteen entries.</summary>
+    public const int ReorderQueueSizeExp = 4;
+
+    /// <summary>
+    /// TAKION_SEND_BUFFER_SIZE.
+    /// </summary>
+    /// <remarks>
+    /// The C's comment is a constraint rather than a note: this must match the acked-seqnums array
+    /// in takion_handle_packet_message_data_ack, and the two are separated by six hundred lines.
+    /// </remarks>
+    public const int SendBufferSize = 16;
+
+    private readonly List<TakionTeardownStep> teardown = [];
+    private readonly List<byte[]> postponed = [];
+    private readonly Action<ReadOnlySpan<byte>>? dispatch;
+
+    private TakionUdpWire? wire;
+    private ReorderQueue? dataQueue;
+    private ReorderQueue? videoQueue;
+    private TakionSendBuffer? sendBuffer;
+
+    /// <param name="tagLocal">
+    /// The tag this takion draws for itself, which is also its initial local sequence number - the
+    /// C sets both from one chiaki_random_32. Supplied rather than drawn so a byte comparison can
+    /// name it.
+    /// </param>
+    /// <param name="dispatch">
+    /// Where a received datagram goes. Handed the pooled span, so an implementation that keeps the
+    /// bytes must copy them itself - which is where a per-datagram allocation would come from and
+    /// why it is the caller's to make.
+    /// </param>
+    public ManagedTakion(uint tagLocal, Action<ReadOnlySpan<byte>>? dispatch = null)
+    {
+        Handshake = new TakionHandshakeClient(tagLocal);
+        SeqNumLocal = tagLocal;
+        this.dispatch = dispatch;
+    }
+
+    /// <summary>The handshake, which owns both tags.</summary>
+    public TakionHandshakeClient Handshake { get; }
+
+    /// <summary>The key-position ledger, which PP677 put in managed code.</summary>
+    public ManagedKeyState Ledger { get; } = new();
+
+    /// <summary>seq_num_local, which the C seeds from the local tag rather than from zero.</summary>
+    public uint SeqNumLocal { get; private set; }
+
+    /// <summary>Where this takion is.</summary>
+    public TakionStage Stage { get; private set; } = TakionStage.Idle;
+
+    /// <summary>What the teardown released, in the order it released it.</summary>
+    public IReadOnlyList<TakionTeardownStep> Teardown => teardown;
+
+    /// <summary>How many datagrams the loop dispatched.</summary>
+    public int Dispatched { get; private set; }
+
+    /// <summary>Whether the connected event was raised, which the C raises before the loop.</summary>
+    public bool RaisedConnected { get; private set; }
+
+    /// <summary>The remote cipher's presence, which the loop reads to decide when to re-check.</summary>
+    public bool CryptAvailable { get; set; }
+
+    /// <summary>Whether this takion made the socket, which decides whether the teardown closes it.</summary>
+    public bool OwnsSocket { get; private set; }
+
+    /// <summary>Whether the video queue was ever initialised, which the teardown reads.</summary>
+    public bool VideoQueueInitialised => videoQueue is not null;
+
+    /// <summary>The data queue, or null before the handshake seeded it.</summary>
+    public ReorderQueue? DataQueue => dataQueue;
+
+    /// <summary>The send buffer, or null before the handshake.</summary>
+    public TakionSendBuffer? SendBuffer => sendBuffer;
+
+    /// <summary>How many datagrams are held back waiting for the cipher.</summary>
+    public int PostponedCount => postponed.Count;
+
+    bool ITakionLoopHost.HasPostponed => postponed.Count > 0;
+
+    /// <summary>How long the next receive may wait. Set by whoever drives the AV queues.</summary>
+    public ulong NextTimeoutMs { get; set; } = 1000;
+
+    /// <summary>How many times the loop re-checked the queued MACs.</summary>
+    public int Rechecks { get; private set; }
+
+    /// <summary>How many times it flushed on a timeout, either kind.</summary>
+    public int Flushes { get; private set; }
+
+    /// <summary>
+    /// takion_handshake, over a socket this takion opens and owns.
+    /// </summary>
+    /// <param name="peer">Where the console is.</param>
+    /// <param name="expectTimeoutMs">How long one attempt waits, the C's fifteen seconds by default.</param>
+    /// <returns>The outcome the handshake reached; any error leaves nothing owned.</returns>
+    public TakionHandshakeOutcome Connect(
+        IPEndPoint peer, int expectTimeoutMs = TakionHandshake.ExpectTimeoutMs)
+    {
+        ArgumentNullException.ThrowIfNull(peer);
+        ObjectDisposedException.ThrowIf(Stage == TakionStage.Closed, this);
+
+        if (Stage != TakionStage.Idle)
+            throw new InvalidOperationException("this takion has already connected");
+
+        // Zeroed on the thread that will fill them, so a takion reused for a second session does
+        // not open with the first one's tail. Kept because the C keeps it, even where a fresh
+        // object makes it redundant - the C reuses the struct and this records why.
+        Dispatched = 0;
+        Rechecks = 0;
+        Flushes = 0;
+        videoQueue = null;
+
+        Stage = TakionStage.Connecting;
+        wire = TakionUdpWire.Connect(peer);
+        OwnsSocket = true;
+
+        TakionHandshakeOutcome outcome = Handshake.Run(wire, expectTimeoutMs);
+        if (outcome.Error != ChiakiError.Success)
+            return outcome;
+
+        // THE REMOTE TAG, not the ack's wire field beside it. See PP672's RemoteInitialSeqNum.
+        dataQueue = ReorderQueue.Wide(ReorderQueueSizeExp, Handshake.RemoteInitialSeqNum);
+        sendBuffer = new TakionSendBuffer(SendBufferSize);
+
+        Stage = TakionStage.Connected;
+        RaisedConnected = true;
+
+        return outcome;
+    }
+
+    /// <summary>
+    /// The receive loop, over the socket the handshake used.
+    /// </summary>
+    /// <param name="enableCrypt">The C's enable_crypt, which only the MAC re-check reads.</param>
+    /// <param name="iterationLimit">A bound, because a real loop ends on the stop pipe.</param>
+    public TakionLoopOutcome RunLoop(bool enableCrypt = true, int iterationLimit = 16)
+    {
+        if (Stage != TakionStage.Connected)
+            throw new InvalidOperationException("the loop runs on a connected takion");
+
+        return TakionReceiveLoop.Run(this, enableCrypt, iterationLimit);
+    }
+
+    /// <summary>Hold a datagram back until the cipher exists, which is what postponing is.</summary>
+    public void Postpone(ReadOnlySpan<byte> datagram) => postponed.Add(datagram.ToArray());
+
+    void ITakionLoopHost.RecheckMacs() => Rechecks++;
+
+    void ITakionLoopHost.FlushPostponed()
+    {
+        foreach (byte[] one in postponed)
+            dispatch?.Invoke(one);
+
+        // The flush empties the array, which is why the release at teardown is a no-op on this path.
+        postponed.Clear();
+    }
+
+    void ITakionLoopHost.FlushWithTimeout() => Flushes++;
+
+    TakionReceiveResult ITakionLoopHost.Receive(Span<byte> into, ulong timeoutMs)
+    {
+        if (wire is null)
+            return new TakionReceiveResult(TakionReceiveOutcome.Failed, 0);
+
+        ChiakiError err = wire.Receive(into, (int)timeoutMs, out int length);
+
+        return err switch
+        {
+            ChiakiError.Success => new TakionReceiveResult(TakionReceiveOutcome.Datagram, length),
+            ChiakiError.Timeout => new TakionReceiveResult(TakionReceiveOutcome.Timeout, 0),
+            _ => new TakionReceiveResult(TakionReceiveOutcome.Failed, 0),
+        };
+    }
+
+    void ITakionLoopHost.Dispatch(ReadOnlySpan<byte> datagram)
+    {
+        Dispatched++;
+        dispatch?.Invoke(datagram);
+    }
+
+    /// <summary>
+    /// takion_thread_func's teardown, in its order, recorded as it goes.
+    /// </summary>
+    /// <remarks>
+    /// The order is NOT the order the fields were made in, and that is the point of recording it.
+    /// The send buffer goes first though it was made last, the postpone array is released at the
+    /// label every exit passes through, and the socket is closed after the event rather than before
+    /// it - so a listener told the session ended can still read what it needs.
+    /// </remarks>
+    public void Dispose()
+    {
+        if (Stage == TakionStage.Closed)
+            return;
+
+        if (sendBuffer is not null)
+        {
+            sendBuffer = null;
+            teardown.Add(TakionTeardownStep.SendBuffer);
+        }
+
+        if (videoQueue is not null)
+        {
+            videoQueue.Dispose();
+            videoQueue = null;
+            teardown.Add(TakionTeardownStep.VideoQueue);
+        }
+
+        if (dataQueue is not null)
+        {
+            dataQueue.Dispose();
+            dataQueue = null;
+            teardown.Add(TakionTeardownStep.DataQueue);
+        }
+
+        // PP474: at `beach`, so every exit passes it - including the handshake's, which skips all
+        // three above. A no-op where the flush already emptied the array.
+        if (postponed.Count > 0)
+        {
+            postponed.Clear();
+            teardown.Add(TakionTeardownStep.Postponed);
+        }
+
+        teardown.Add(TakionTeardownStep.Disconnected);
+
+        if (OwnsSocket && wire is not null)
+        {
+            wire.Dispose();
+            wire = null;
+            teardown.Add(TakionTeardownStep.Socket);
+        }
+
+        Stage = TakionStage.Closed;
+    }
+}

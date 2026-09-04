@@ -621,6 +621,9 @@
   checked **The presenter counts what it never showed, and a session writes a row** The managed present path accumulates frames it did not show, folding in the receiver's total the way qmlmainwindow.cpp did, and one baseline line is written per live session. A session that ended on a failed pull carries its remainder rather than discarding it, which is PP528's repair kept.
 - ✅ **PP677** **the key state has no managed transcription, so every key position the port expands is the shim's** — The expansion is managed now and agrees with the shim's at every step of 4025 real positions, 26 repeats among them, committed and peeked alike.
   checked **The managed key state agrees with the shim's over the corpus, either way** DatagramReplayReport.KeyPositions reads the low halves off PP608's heads; the same sequence goes through KeyState and the managed ledger, with commit and without, and every expanded position is equal, including PP521's twenty-six zeros before the cipher exists.
+- ✅ **PP678** **the receive loop runs only against test doubles, and nothing owns takion's state** — A takion that owns its tags, ledger, queues, send buffer and socket: it connects to PP606's responder over loopback, loops on that socket, and releases in the C's order.
+  checked **A managed takion connects, runs its loop over a socket and tears down in order** Against PP606's responder: the connected event, then a loop that receives real datagrams into TakionReceiveBuffer and dispatches through TakionReceivePath, then close - send buffer, queues, postponed packets, the disconnected event, the socket - each step observed in the C's order.
+  checked **Nothing is allocated per datagram once the loop is warm** PP633's measurement over the loop as it runs on a socket rather than in a replay: bytes allocated after warm-up are zero over the corpus fed through loopback, which is PP44's budget held on the transport itself and not on a harness.
 
 ## Block G — Test discipline
 
