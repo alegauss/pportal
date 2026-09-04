@@ -13,8 +13,10 @@ namespace ChiakiNg.Protocol;
 /// a DualSense session negotiates, has its haptics packets handed to the speakers as silence.
 ///
 /// MANAGED RATHER THAN A SECOND SHIM EXPORT. Both were open; this removes a native call instead of
-/// adding one, and PP680 and PP27 need the same arithmetic in managed code anyway. The one piece
-/// that stays native is the key position, because <see cref="KeyState"/> holds a ledger the C owns.
+/// adding one, and PP680 and PP27 need the same arithmetic in managed code anyway. The key position
+/// was the one piece that stayed native, because <see cref="KeyState"/> holds a ledger the C owns;
+/// PP677 has since transcribed it, so this takes <see cref="IKeyPositionLedger"/> and a session can
+/// run with no native handle at all while the differential still drives the shim's.
 ///
 /// THE V9 ARM IS THE ORACLE. This walks the same bytes as av_packet_parse for both versions, so the
 /// v9 result must equal the shim's on every input - which is a differential over the real parser
@@ -58,7 +60,8 @@ public static class AvPacketParse
     /// takes a ReadOnlySpan and hands the payload back as an offset, which is the port's own
     /// ownership rule for a datagram the caller already holds.
     /// </summary>
-    public static AvPacket? Parse(bool v12, KeyState keyState, ReadOnlySpan<byte> buffer, out ChiakiError error)
+    public static AvPacket? Parse(
+        bool v12, IKeyPositionLedger keyState, ReadOnlySpan<byte> buffer, out ChiakiError error)
     {
         ArgumentNullException.ThrowIfNull(keyState);
 

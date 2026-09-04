@@ -626,6 +626,8 @@
   checked **Nothing is allocated per datagram once the loop is warm** PP633's measurement over the loop as it runs on a socket rather than in a replay: bytes allocated after warm-up are zero over the corpus fed through loopback, which is PP44's budget held on the transport itself and not on a harness.
 - ✅ **PP679** **the v7 AV parse and header formatter are unported, and the formatter's callers are senkusha's** — Both go managed and the C's copy stands until senkusha is ported; the round trip found a fourth difference and a key position the formatter never byte-swaps.
   checked **The v7 parse and formatter have an owner, and a test against the C for each** A decision recorded in the decisions file names where each goes; the parse is compared against chiaki_takion_v7_av_packet_parse through a shim export on real and synthetic headers, and the formatter's output is parsed back by the C's own v7 parse.
+- ✅ **PP680** **takion_handle_packet_av is only a branch in managed code, so no video packet reaches the flush** — The arm delivers the capture's video in the flush's own order, and the video gate before the parse is what keeps a disabled stream from keying its cipher.
+  checked **The AV arm delivers the corpus's video in AvReorderTimeout's order** PP608's heads seed and order the video queue: the assembled arm - gates, lazy init, entry, flush - is fed the corpus, and the sequence it hands StreamAvDispatch and what it drops equal what AvReorderTimeout.Flush computes over the same heads.
 
 ## Block G — Test discipline
 

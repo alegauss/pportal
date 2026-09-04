@@ -14,7 +14,7 @@ namespace ChiakiNg.Protocol;
 /// the first wrap decrypts to noise and the session dies on a MAC failure - four gigabytes in,
 /// which is far enough from the start that nothing points at a counter.
 /// </summary>
-public sealed class KeyState : IDisposable
+public sealed class KeyState : IKeyPositionLedger, IDisposable
 {
     private IntPtr _handle;
 

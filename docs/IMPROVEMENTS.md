@@ -233,31 +233,6 @@ because today the default is what makes those two theories a check on the ORACLE
 cases are the C's own, and a managed default now would silently stop asking the C
 whether it still agrees with its own recording.
 
-### §PP680 The AV arm, assembled
-
-takion_handle_packet_av is the AV branch of the dispatch and the managed side stops
-where the branch does: TakionReceivePath classifies the datagram and hands the bytes to
-a sink, and the sink in the tree copies them into a scratch buffer and counts.
-
-WHAT THE C DOES AFTER THE BRANCH. Video is dropped when the session disabled it, before
-any parse; the parse runs; audio is dropped when disabled unless the packet is haptics;
-audio goes straight to the callback and its buffer is freed; video lazily creates the
-reorder queue on its first packet - begin at packet_index minus unit_index, the drop
-strategy walking begin forward, takion_av_drop as the callback - pushes an entry
-carrying the buffer, the parsed header and the arrival stamp, charges the receive stage,
-and flushes with the timeout. A failed queue init dispatches unreordered rather than
-dropping.
-
-WHAT EXISTS: AvReorderTimeout.Flush over the sixteen-bit queue, StreamAvDispatch as the
-callback's far end, TakionReceiveBuffer.Retain for the copy. WHAT DOES NOT: the gates,
-the lazy init, the entry, the stage stamp, and a queue whose slot can hold a datagram
-rather than a long.
-
-THE PARSE IS PP668'S and this waits on it; until then Takion.ParseV9 is the shim's
-answer for a v9 stream. THE ORACLE IS THE CORPUS: PP608's heads carry every index the
-queue is seeded and ordered by, so the managed arm's order of delivery and its drops are
-compared against AvReorderTimeout's and the C's over a real stream.
-
 ### §PP694 The encoder that was waiting for an input
 
 PP32 measured that libopus has two consumers and not one. `opusdecoder.c` is the
@@ -382,6 +357,31 @@ WHAT IT ASKS FOR is the count made once and kept: every takion symbol senkusha n
 resolved to a managed counterpart or to a line that owes one, the way FramePathConsumers
 does for the frame path. Whether the answer is a senkusha port or four more managed
 calls is the next decision, and it needs the census first.
+
+### §PP703 The takion that has no AV arm
+
+PP678 recorded takion's teardown as a list, because an order is not visible in a Dispose
+that works. One of its six steps is the video queue, and ManagedTakion's field for it is
+assigned in two places: null in the constructor and null again on connect. So
+VideoQueueInitialised is false for every takion the port can build, that step is never
+appended, and no test names it.
+
+PP680 built what fills it. ManagedAvArm opens the queue on its first video packet, seeds
+it at packet_index minus unit_index, holds the entries and disposes of the queue the way
+chiaki_reorder_queue_fini does - and it is constructed by tests and by nothing else.
+
+WHAT THIS IS is the join: the takion owns an arm, the dispatch's video and audio
+branches reach it, and the teardown releases the arm's queue at the step already
+reserved. NextTimeoutMs is the same join's other half - ManagedTakion carries the
+property and a comment saying "set by whoever drives the AV queues", and the arm is now
+who that is.
+
+WHAT IT IS NOT is a second composition. Neither side needs new behaviour; what is
+missing is that they have never been introduced, which is why this is worth writing down
+rather than doing incidentally inside the next line to touch either.
+
+The assertion it owes is a teardown whose recorded order CONTAINS the video queue, over
+a takion that received one video packet.
 
 ## Block G — Test discipline
 

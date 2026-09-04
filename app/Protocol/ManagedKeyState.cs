@@ -1,6 +1,21 @@
 namespace ChiakiNg.Protocol;
 
 /// <summary>
+/// PP680: what a parse asks for a full key position, whichever ledger is behind it.
+///
+/// The shim's <see cref="KeyState"/> and PP677's <see cref="ManagedKeyState"/> answer the same
+/// question and are held to each other over four thousand real positions. The parse does not care
+/// which it has, and the interface is what lets a session run on the managed one while the
+/// differential still drives the native one - so neither is written into the parse's signature.
+/// </summary>
+public interface IKeyPositionLedger
+{
+    /// <summary>The sixty-four-bit position a thirty-two-bit one on the wire means.</summary>
+    /// <param name="commit">Whether this request advances the state.</param>
+    ulong RequestPos(uint low, bool commit = true);
+}
+
+/// <summary>
 /// PP677: chiaki_key_state_request_pos, in managed code.
 ///
 /// The counter every encrypted byte of a session is keyed by. The wire carries thirty-two bits and
@@ -28,7 +43,7 @@ namespace ChiakiNg.Protocol;
 /// opening - where the console sends zero until the cipher exists - cannot produce a position below
 /// zero by wrapping the high half to 0xffffffff.
 /// </summary>
-public sealed class ManagedKeyState
+public sealed class ManagedKeyState : IKeyPositionLedger
 {
     /// <summary>The sixty-four-bit position last committed. Zero is chiaki_key_state_init.</summary>
     public ulong Previous { get; private set; }

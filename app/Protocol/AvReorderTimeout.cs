@@ -115,7 +115,16 @@ public static partial class AvReorderTimeout
     /// of the behaviour.
     /// </param>
     /// <param name="wait">The head-wait carried in from the previous pass.</param>
-    public static AvFlushOutcome Flush(ReorderQueue queue, long nowUs, AvHeadWait wait)
+    /// <param name="onPull">
+    /// PP680: each element as it comes out, which is where the C dispatches.
+    ///
+    /// Inside the pull loop and not after the flush returns, because that is where takion's event
+    /// goes out and where it reads the clock again for the dwell statistic - a caller handed the
+    /// list afterwards could reproduce the ORDER and not the interleaving. Optional, so the model's
+    /// own tests still drive this with nothing on the far end.
+    /// </param>
+    public static AvFlushOutcome Flush(
+        ReorderQueue queue, long nowUs, AvHeadWait wait, Action<ulong, long>? onPull = null)
     {
         ArgumentNullException.ThrowIfNull(queue);
 
@@ -133,6 +142,7 @@ public static partial class AvReorderTimeout
             {
                 madeProgress = true;
                 dispatched.Add(pulled.SeqNum);
+                onPull?.Invoke(pulled.SeqNum, pulled.Payload);
             }
 
             // Anything at all came out, so the head is not missing any more.
