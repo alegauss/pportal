@@ -25,6 +25,8 @@ namespace ChiakiNg.Session;
 /// SO THIS IS A GUARD AND NOT AN ARGUMENT. The non-goal in docs/ROADMAP.md is the constraint; this
 /// checks it is there and that no prose in the port has gone back to promising the other thing.
 /// §PP107's finding applies here as it did to lib/: prose does not go red.
+///
+/// PP705: this file RECORDS the phrases it judges, so every sweep here skips it.
 /// </summary>
 public static partial class ManagedBoundaryRule
 {
@@ -127,14 +129,8 @@ public static partial class ManagedBoundaryRule
 
         var found = new List<string>();
 
-        foreach (string path in Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories)
-            .Where(p => !p.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
-            .Where(p => !p.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
-            .Where(p => !Path.GetFileName(p).Equals(RuleFileName, StringComparison.Ordinal))
-            // PP691: and the census OF these phrases, which records this promise in order to judge
-            // it - the same standing this file's own exclusion has.
-            .Where(p => !Path.GetFileName(p)
-                .Equals(RoadmapProseReaders.CensusFileName, StringComparison.Ordinal))
+        foreach (string path in PhraseCensus
+            .Sweepable(Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories))
             .Order(StringComparer.Ordinal))
         {
             if (PromisesAManagedDecoder(File.ReadAllText(path)))

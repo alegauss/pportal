@@ -66,6 +66,8 @@ public readonly record struct ProseReader(string Text, string Where, ProseReadin
 /// somehow, and "read the meaning" is not an option a string comparison has. The census is what
 /// makes the choice visible: a fifth row arriving is a decision somebody takes, and the four here
 /// are on record as costing a red gate the next time their sentence improves.
+///
+/// PP705: this file RECORDS the phrases it judges, so every sweep here skips it.
 /// </summary>
 public static class RoadmapProseReaders
 {

@@ -31,6 +31,8 @@ public readonly record struct UnpreservedComMethod(string Where, string Interfac
 /// rewrite is only a problem where the declaration claims the return. So the check reads the return
 /// type and flags int and uint alone, which is the distinction that keeps it from being a rule
 /// about attributes rather than about correctness.
+///
+/// PP705: this file RECORDS the phrases it judges, so every sweep here skips it.
 /// </summary>
 public static partial class ComSignatures
 {
@@ -153,10 +155,8 @@ public static partial class ComSignatures
             if (!Directory.Exists(full))
                 continue;
 
-            foreach (string file in Directory.EnumerateFiles(full, "*.cs", SearchOption.AllDirectories)
-                .Where(one => !one.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
-                .Where(one => !one.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
-                .Where(one => !Path.GetFileName(one).Equals(FixtureFileName, StringComparison.Ordinal))
+            foreach (string file in PhraseCensus
+                .Sweepable(Directory.EnumerateFiles(full, "*.cs", SearchOption.AllDirectories))
                 .OrderBy(one => one, StringComparer.OrdinalIgnoreCase))
             {
                 found.AddRange(UnpreservedIn(Path.GetRelativePath(root, file), File.ReadAllText(file)));
@@ -180,10 +180,8 @@ public static partial class ComSignatures
             if (!Directory.Exists(full))
                 continue;
 
-            foreach (string file in Directory.EnumerateFiles(full, "*.cs", SearchOption.AllDirectories)
-                .Where(one => !one.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
-                .Where(one => !one.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
-                .Where(one => !Path.GetFileName(one).Equals(FixtureFileName, StringComparison.Ordinal))
+            foreach (string file in PhraseCensus
+                .Sweepable(Directory.EnumerateFiles(full, "*.cs", SearchOption.AllDirectories))
                 .OrderBy(one => one, StringComparer.OrdinalIgnoreCase))
             {
                 string code = CCall.Code(File.ReadAllText(file));

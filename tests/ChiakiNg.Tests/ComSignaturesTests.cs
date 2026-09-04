@@ -15,6 +15,10 @@ namespace ChiakiNg.Tests;
 /// THE CHECK IS HERE BECAUSE THE FAILURE IS SILENT. PP650's spike is clean and backs a shipped
 /// decision about the video decoder, so the tree already carries a COM surface a decision rests on.
 /// One attribute separates a reading from a fabrication, and until now nothing looked.
+///
+/// PP705: this file RECORDS the phrases it judges, so every sweep here skips it. Its
+/// fixtures declare the defect on purpose, which is what made it the first file the check
+/// reported when it was written.
 /// </summary>
 public class ComSignaturesTests(ITestOutputHelper output)
 {

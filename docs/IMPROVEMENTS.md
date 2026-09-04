@@ -360,31 +360,6 @@ session that cannot hear them and cannot use one that plays nothing.
 
 ## Block G — Test discipline
 
-### §PP705 The exclusion every census writes again
-
-Four classes sweep app/ for a phrase nothing may say: ComSignatures, LibRepairCensus,
-ManagedBoundaryRule and MicrophoneSurface. Each skips its own source, because a list of
-forbidden phrases is a file containing every one of them, and each writes that skip
-itself - seven clauses, all spelling the same idea.
-
-PP691 added a fifth such file and had to edit two of the four to say so. That is the
-tell. The exclusion is not a property of the sweeper; it is a property of the SWEPT
-file, and asking it from the wrong end means every new census is a change to the ones
-already there.
-
-WHAT IS OWED is one predicate - a file that records a phrase in order to judge it - and
-the four asking it instead of listing names. Whether the answer is a marker, an
-attribute or a shared list is the decision; what is not open is leaving four spellings
-of it.
-
-THE COST OF NOT DOING IT is a false red rather than a green. A sixth census added
-without the two extra edits makes the OTHER sweeps report it as an offender, and the fix
-somebody reaches for under time pressure is to soften the sweep. That is a sequence this
-port has seen, in the checks whose fixtures turned out to be themselves.
-
-Small, and filed rather than done because it touches four files that are green and were
-not this line's subject.
-
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed

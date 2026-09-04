@@ -33,8 +33,6 @@
 
 ## Block G — Test discipline
 
-- 📋 **PP705** (deps: PP691 ✅) **four sweeps over app/ hand-write their own exclusion, so a new census has to be added to the others by hand** — PP691 needed two edits in files it does not own; nothing says which files record a phrase in order to judge it, so the next census needs the same two. → §PP705
-
 ## Block H — Performance and telemetry
 
 - ⏳ **PP46** (deps: PP42 ✅, PP63) **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — A Chromium leaving the build should be visible in cold start and in megabytes, and stating it without measuring is how a port collects folklore. → §PP46

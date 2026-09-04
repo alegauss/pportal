@@ -32,6 +32,8 @@ public readonly record struct MicrophonePlace(string Where, string Names, string
 /// This is a census and not a plan. Which capture API, and whether a noise stage follows it at all,
 /// are separate questions - and the first of them is the one PP31's boundary is silent about,
 /// because audio capture on Windows has several managed answers and video decode has none.
+///
+/// PP705: this file RECORDS the phrases it judges, so every sweep here skips it.
 /// </summary>
 public static class MicrophoneSurface
 {
@@ -119,10 +121,8 @@ public static class MicrophoneSurface
 
         var found = new List<string>();
 
-        foreach (string path in Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories)
-            .Where(p => !p.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
-            .Where(p => !p.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
-            .Where(p => !Path.GetFileName(p).Equals(CensusFileName, StringComparison.Ordinal))
+        foreach (string path in PhraseCensus
+            .Sweepable(Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories))
             .Order(StringComparer.Ordinal))
         {
             string source = CCall.Code(File.ReadAllText(path));

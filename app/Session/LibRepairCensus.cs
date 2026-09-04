@@ -18,6 +18,8 @@ namespace ChiakiNg.Session;
 ///
 /// What this does is stop the false reason coming back. §PP107 named the problem itself: prose
 /// does not go red. So the census is asserted rather than written down.
+///
+/// PP705: this file RECORDS the phrases it judges, so every sweep here skips it.
 /// </summary>
 public static partial class LibRepairCensus
 {
@@ -154,12 +156,8 @@ public static partial class LibRepairCensus
             return [];
 
         var offenders = new List<string>();
-        foreach (string path in Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories)
-            .Where(p => !Path.GetFileName(p).Equals(CensusFileName, StringComparison.Ordinal))
-            // PP691: and the census OF these phrases, which records this one in order to judge it -
-            // the same standing as this file's own exclusion, one file over.
-            .Where(p => !Path.GetFileName(p)
-                .Equals(RoadmapProseReaders.CensusFileName, StringComparison.Ordinal))
+        foreach (string path in PhraseCensus
+            .Sweepable(Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories))
             .Order(StringComparer.Ordinal))
         {
             if (StatesTheFalsePremise(File.ReadAllText(path)))
