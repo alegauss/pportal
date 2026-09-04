@@ -24,7 +24,7 @@
 - ⏳ **PP27** (deps: PP672 ✅, PP673, PP674, PP675, PP676, PP677, PP678, PP679, PP680) (requires: console) **takion.c is 2007 lines of C over raw sockets and timers, and the whole stream rides on it** — The nine tasks it waits on are the managed transport; after them, the three files leave the build. → §PP27
 - 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — chiaki_fec_decode has three callers - frameprocessor.c, the C suite and this port's shim - and gf-complete has a fourth site none of them reach: chiaki_lib_init. → §PP30
 - ⏳ **PP33** (deps: PP24 ✅, PP293 ✅, PP340 ✅, PP481 ✅, PP533 ✅) (requires: console) **HTTP and JSON in the core are curl and json-c, two vendored dependencies for what the runtime already does** — the file itself: one file calls it, the shim, and PP481's oracle is what that seam is for. → §PP33
-- 🛠 **PP295** (deps: PP297 ✅) **streamconnection.c is 1531 lines and calls the video receiver, so every deletion below waits on it** — Three criteria are met; the fourth is the four files leaving, which waits on session.c's own asks and on the shim, whose wrapped exports outlive streamconnection.c's calls. → §PP295
+- 🛠 **PP295** (deps: PP297 ✅, PP696, PP697) **streamconnection.c is 1531 lines and calls the video receiver, so every deletion below waits on it** — Three criteria are met; the fourth is the four files leaving, which waits on the one commit that edits the C and on the shim, whose wrappers outlive it. → §PP295
 - 📋 **PP668** (deps: —) **AvPacket is built from the v9 parse alone, so IsHaptics is false on every packet the port sees** — The C sets the bit on the v12 audio layout only; a managed v12 parse is what lets PP667's haptics arm ever fire, and PP499 bounded that layout in the C. → §PP668
 - 📋 **PP671** (deps: —) **Fec.Recovers with no decoder named runs the C, so after the flip a default becomes a loader failure** — The managed decoder is the one that stays; the default should follow it on the flip, so the sixty-four recorded cases judge the port alone. → §PP671
 - 📋 **PP673** (deps: —) **no managed code parses a takion control message, so a control datagram stops at the dispatch branch** — takion_parse_message and the DATA and DATA_ACK switch join TakionReceivePath's Control branch to the drain and ack models, and both exist only as source checks. → §PP673
@@ -37,6 +37,8 @@
 - 📋 **PP680** (deps: PP668) **takion_handle_packet_av is only a branch in managed code, so no video packet reaches the flush** — The disable gates, the queue seeded at packet_index minus unit_index, the entry with its stamp and the flush into StreamAvDispatch have no composition; the parse is PP668's. → §PP680
 - 📋 **PP685** (deps: —) **PP395's chokepoint comment calls the two data-type-2 sends the keyboard pair, which they are not** — They are the corrupt frame and the IDR request, and the word keyboard appears nowhere else in the file; a reader taking the comment for the table gets the video path wrong. → §PP685
 - 📋 **PP694** (deps: —) **the microphone's units reach nothing, and libopus's second consumer is why the dependency cannot leave** — PP652 answered the input question opusencoder.c waited on, so the encoder is portable now and PP651 already measured managed Opus at a quarter of a percent of a frame. → §PP694
+- 📋 **PP696** (deps: PP671) **the frame path's deletion has no commit that edits the C, so four files stay while their ports exist** — PP623's middle step is the only one touching lib, and nobody has written this path's: session.c's asks, the shim's wrappers and the suite's four files all still name them. → §PP696
+- 📋 **PP697** (deps: PP696) **after the frame-path flip the models describe a C that has gone, in the present tense** — PP634 found this on the holepunch side: the predicates stay because they notice the calls coming back, and what goes stale is the prose around them. → §PP697
 
 ## Block G — Test discipline
 
@@ -139,7 +141,8 @@
 - **streamconnection.c, videoreceiver.c, frameprocessor.c and fec.c leave the build** An
   end state, not a progress bar, and the order is PP623's and PP655's: the counterparts
   first, which PP669 mapped; then the one edit that stops session.c asking, which PP638
-  measured at five calls; then the four files. Porting into app removes no C.
+  measured. That edit is PP696, so this cannot land until PP696 has. Porting into app
+  removes no C.
 
 ## Done when — PP49
 
@@ -292,6 +295,25 @@
   and the encoder and is read back rather than assumed to have run, which is PP648's
   rule. If it is a vendor path its absence is quiet, which the hardware contract
   requires; if it is the in-box transform there is no absence to be quiet about.
+
+## Done when — PP696
+
+- **One commit edits lib and the build, and no test file** session.c stops asking, the
+  shim's wrappers go behind PP663's option, the suite's list loses its frame-path files
+  with the floor moving to match, and the four library files leave. The gate is green
+  after it because every assertion it moves was already taught where it lands.
+- **Every consumer the census names is answered before the file goes**
+  FramePathConsumers reads session.c, the shim and the suite's list from the tree and
+  resolves each symbol's counterpart by reflection. Nothing leaves the build while that
+  reading names a call with no answer, so the flip's own precondition is a check rather
+  than a reviewer's judgement.
+
+## Done when — PP697
+
+- **The predicates stay and the tense around them turns** PP634's correction, applied to
+  the frame path: each predicate is a shape the C could return in, so none is deleted.
+  What changes is prose asserting the tree still has what the flip removed, turned to
+  say what it was rather than what it is, the way PP591 and PP652 turned theirs.
 
 ## Non-goals
 

@@ -55,11 +55,16 @@ public static partial class DeletionEndState
             // PP638: six files in lib/ call takion, and streamconnection.c is PP295's subject.
             ["PP27"] = ["PP295"],
 
-            // PP690: it used to read ["PP28"], on the grounds that session.c drives the stream
+            // PP690 found this reading ["PP28"], on the grounds that session.c drives the stream
             // connection and session.c is PP28's subject. PP28 shipped, and what it shipped was
-            // three modelled joins - none of which stops session.c asking. What PP295's end state
-            // waits on is an edit no open line owns, so the honest entry is none.
-            ["PP295"] = [],
+            // three modelled joins - none of which stops session.c asking. So the entry became
+            // none: what the end state waited on was an edit no open line owned.
+            //
+            // PP696 is that line now. PP623's middle step, filed for the frame path the way PP630
+            // to PP632 filed it for the holepunch seam - one commit that edits lib/ and the build
+            // and no test file. The entry follows the criterion, which is what PP666's driver
+            // holds it to rather than trusting this comment.
+            ["PP295"] = ["PP696"],
         };
 
     /// <summary>The lines the rule is about.</summary>
