@@ -51,7 +51,7 @@
 ## Block I — NVIDIA path
 
 - ⏳ **PP49** (deps: PP11 ✅, PP47 ✅) (requires: console, a-person-looking) **the console sends SDR on most titles and an HDR display shows it flat, with nothing in the client trying** — the quality half and the integration: a decoded console frame to judge the picture on, and a setting that turns it off. → §PP49
-- 📋 **PP52** (deps: PP32 ✅, PP652 ✅) **nothing runs echo cancellation now, and the vendor answer would be the first card in this port's audio** — PP32 took speexdsp out of the build with the client, so there is no dependency left to delete and no samples to clean until PP652 captures some. → §PP52
+- ⏳ **PP52** (deps: PP32 ✅, PP652 ✅) **nothing runs echo cancellation, and the vendor answer is absent on a machine with the card** — Nothing cleans a sample yet: a stage between the capture and the encoder, read back rather than assumed to have run, is still to build. → §PP52
 - ⏳ **PP53** (deps: PP11 ✅, PP41 ✅) (requires: variable-refresh-display) **frames arrive with network jitter and are presented against a fixed refresh, so each waits for a vblank it missed** — the reading itself: a display that varies its refresh, and a trace saying the frame arrived unpaced. → §PP53
 - ⏳ **PP76** (deps: PP528 ✅) (requires: console, a-person-looking) **the decoder preference is measured on synthetic frames, and drops under network jitter are what a stream is judged by** — one session per decoder against a real console, now that the difference between the two counters is the number to read. → §PP76
 
@@ -280,6 +280,18 @@
   gf-complete rather than counting one module's export. It says what still holds libopus
   in the build and the package after the encoder is managed. PP651's decode reading is
   cited, never re-taken.
+
+## Done when — PP52
+
+- **Both paths are read from the machine before either is integrated**
+  spike/audio-effects reports whether the vendor SDK is reachable and whether the in-box
+  Voice Capture DSP is registered, with the evidence for each so a no is refutable. A
+  model reads its committed file rather than restating the numbers, and names what each
+  path would ship.
+- **Something actually cleans the captured samples** A stage sits between the capture
+  and the encoder and is read back rather than assumed to have run, which is PP648's
+  rule. If it is a vendor path its absence is quiet, which the hardware contract
+  requires; if it is the in-box transform there is no absence to be quiet about.
 
 ## Non-goals
 

@@ -1,0 +1,26 @@
+{
+  "taken": "2026-09-04T14:11:28.8047139+00:00",
+  "machine": "XPS",
+  "os": "Microsoft Windows NT 10.0.26200.0",
+  "dotnet": "10.0.11",
+  "adapters": [
+    "Intel(R) UHD Graphics 770",
+    "NVIDIA GeForce RTX 4060"
+  ],
+  "paths": [
+    {
+      "Name": "NVIDIA audio effects (Maxine)",
+      "Vendor": true,
+      "Reachable": false,
+      "Evidence": "NVAFX_SDK_DIR=(unset); NVAFX_MODELS_DIR=(unset); C:\\Program Files\\NVIDIA Broadcast absent; no audio-effects runtime under any NVIDIA tree",
+      "Redistributable": "the SDK\u0027s DLLs and its model files, per effect"
+    },
+    {
+      "Name": "Windows Voice Capture DSP (CLSID_CWMAudioAEC)",
+      "Vendor": false,
+      "Reachable": true,
+      "Evidence": "CLSID\\{745057c7-f353-4f2d-a7ee-58434477730e}: C:\\Windows\\System32\\mfwmaaec.dll present; WOW6432Node\\CLSID\\{745057c7-f353-4f2d-a7ee-58434477730e}: C:\\Windows\\SysWOW64\\mfwmaaec.dll present",
+      "Redistributable": ""
+    }
+  ]
+}

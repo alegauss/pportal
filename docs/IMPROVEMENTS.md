@@ -690,27 +690,31 @@ picture has to be judged on a decoded console frame rather than on the synthetic
 the cost was taken from, and whatever ships is a setting that turns off with a fidelity
 mode bypassing it. Both are criteria on the line now.
 
-### §PP52 A vendor feature that no longer pays a debt
+### §PP52 The vendor answer that is not on the machine
 
-This line was written about a dependency that has since left. streamsession.h carried
-SpeexEchoState, an echo suppress level and two conversion buffers, and PP32 established
-that all of it was the Qt client's - lib references speex nowhere, gui/ was the only
-thing that linked it, and the probe now runs only where gui/ is built. So the half of
-this task that was "delete a dependency the port has no answer for" is done, and it was
-done by removing the client rather than by replacing the algorithm.
+This line was written about a dependency that has since left. PP32 established that
+speexdsp was the Qt client's - lib references it nowhere - so the half that was "delete
+a dependency the port has no answer for" is done, and removing the client did it.
 
-What is left is the other half, and it is an addition rather than a repayment. NVIDIA's
-audio effects SDK does noise removal and echo cancellation on the GPU, which is the same
-job with better results on a machine that has the card.
+What was left was an addition: NVIDIA's audio effects SDK, doing noise removal and echo
+cancellation on the GPU. PP647's contract binds a vendor path to an absence a user
+cannot see, and PP648 found that a call which succeeds is not a feature that ran. Both
+bind a path that exists.
 
-Three shipped findings bind it now. PP652 has to land first: nothing in this host opens
-a capture device, so there are no samples for a stage to clean and no CPU cost to
-compare against. PP648 measured that these features sit behind per-feature switches in
-the vendor's control panel and that a call which succeeds is not a feature that ran - so
-whatever ships reads back the effect. And PP647 put a floor row in
-docs/HARDWARE-CONTRACT.md saying the present path names no vendor at all; this would be
-the first vendor path in the audio one, and the non-goal binds it to a fallback that is
-not visible to the user.
+`spike/audio-effects` asked the prior question. On this machine - an RTX 4060, current
+driver, the NVIDIA App installed - the SDK is not reachable. `NVAFX_SDK_DIR` is unset,
+NVIDIA Broadcast is absent, and a sweep of both NVIDIA trees finds no audio-effects
+runtime. It is not a driver feature but a redistributable this port would ship, models
+included.
+
+Windows carries a Voice Capture DSP in the box. `CLSID_CWMAudioAEC` is registered in
+both hives with `mfwmaaec.dll` present, and it has done echo cancellation and noise
+suppression for communications audio since Vista. It ships nothing.
+
+Two non-goals bound this and forbid neither: "No GPU vendor feature for the network
+path" is about a different path, and "No vendor path whose absence is visible to the
+user" allows one with a quiet fallback. The reading makes the question moot rather than
+forbidden - the fallback is better placed than what it would fall back from.
 
 ### §PP53 The one that removes waiting instead of adding work
 

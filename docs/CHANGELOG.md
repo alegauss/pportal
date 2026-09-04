@@ -720,6 +720,7 @@
 - ✅ **PP646** **the tearing probe presents to a composition swapchain with no visual, the one place a no-op would hide** — It survives the tree: a ten-bit composition swapchain that is a visual's content, committed, takes the tearing present and refuses it where the flag was not asked for.
 - ✅ **PP647** **PP53 is a vendor-neutral DXGI mechanism sitting in the block titled NVIDIA path** — The label is a schedule and the floor is where the claim belongs, so a fourth row says the present needs no vendor and a test reads the shim for one (design recorded in `docs/HARDWARE-CONTRACT.md`).
 - ✅ **PP648** **PP47 read VSR as not engaging with the driver switch off, and PP49's HDR extension engaged on the same card** — Still 0 of 8,294,400 pixels, on the card where PP49's extension moved 2.07 million - so the toggles are per feature and a call that succeeds is not a feature that ran.
+- ✅ **PP52 (the reading of both paths)** **nothing runs echo cancellation, and the vendor answer is absent on a machine with the card** — On an RTX 4060 with a current driver the vendor SDK is not reachable at all, and Windows's Voice Capture DSP is registered in both hives and ships nothing.
 
 ## Block J — Public documentation
 
