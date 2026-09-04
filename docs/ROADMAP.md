@@ -26,7 +26,7 @@
 - ⏳ **PP27** (deps: PP672 ✅, PP673, PP674, PP675, PP676, PP677, PP678, PP679, PP680) (requires: console) **takion.c is 2007 lines of C over raw sockets and timers, and the whole stream rides on it** — The nine tasks it waits on are the managed transport; after them, the three files leave the build. → §PP27
 - 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — 13 sites and none of them arithmetic: chiaki_fec_decode has three callers - frameprocessor.c, the C suite, and this port's shim. → §PP30
 - ⏳ **PP33** (deps: PP24 ✅, PP293 ✅, PP340 ✅, PP481 ✅, PP533 ✅) (requires: console) **HTTP and JSON in the core are curl and json-c, two vendored dependencies for what the runtime already does** — the file itself: one file calls it, the shim, and PP481's oracle is what that seam is for. → §PP33
-- ⏳ **PP295** (deps: PP297 ✅) **streamconnection.c is 1531 lines and calls the video receiver, so every deletion below waits on it** — Three criteria are met; the fourth is the four files leaving, which waits on PP28 and on the shim, whose five wrapped exports outlive streamconnection.c's own calls. → §PP295
+- 🛠 **PP295** (deps: PP297 ✅) **streamconnection.c is 1531 lines and calls the video receiver, so every deletion below waits on it** — Three criteria are met; the fourth is the four files leaving, which waits on PP28 and on the shim, whose five wrapped exports outlive streamconnection.c's own calls. → §PP295
 - 📋 **PP652** (deps: —) **four subsystems carry the microphone and nothing in the host opens a capture device** — The setting, the in-stream button, the ring's drain rule and the pad's mic report all shipped, and there is no stream of samples for any of them to be about. → §PP652
 - 📋 **PP668** (deps: —) **AvPacket is built from the v9 parse alone, so IsHaptics is false on every packet the port sees** — The C sets the bit on the v12 audio layout only; a managed v12 parse is what lets PP667's haptics arm ever fire, and PP499 bounded that layout in the C. → §PP668
 - 📋 **PP671** (deps: —) **Fec.Recovers with no decoder named runs the C, so after the flip a default becomes a loader failure** — The managed decoder is the one that stays; the default should follow it on the flip, so the sixty-four recorded cases judge the port alone. → §PP671
@@ -43,6 +43,7 @@
 ## Block G — Test discipline
 
 - 📋 **PP683** (deps: —) **the oracle guard census reads test files only, so the selftest's guarded comparisons are invisible to it** — PP665 prints what an absent oracle costs from eleven test files; the host's own 460 checks guard comparisons too, and PP681's defect lived in one the count never saw. → §PP683
+- 💭 **PP691** (deps: —) **checks that match a roadmap sentence literally go red when the sentence gets more precise** — PP666 hit two in one task and both were red about text that had improved; nobody has counted how many more of these literal readers the tree carries. → §PP691
 
 ## Block H — Performance and telemetry
 
@@ -261,6 +262,14 @@
   sentence says corrupt frame and IDR request; StreamMessagesSource already reads the
   call sites, so the check is that the comment's named pair and the pair the calls pass
   with data type two are the same two, which a future rename breaks loudly.
+
+## Done when — PP691
+
+- **Every roadmap sentence a check holds is counted and judged** A list of the string
+  constants in app/ that carry roadmap or ledger prose, each marked load-bearing or
+  incidental, with the question answered for each: would a more precise sentence break
+  it. Two are known already from PP666. A count that returns only those two is an
+  answer, not a failure.
 
 ## Non-goals
 

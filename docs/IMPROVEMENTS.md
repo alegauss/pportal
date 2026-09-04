@@ -567,6 +567,33 @@ do.
 
 Whether any OTHER guarded comparison sits outside both is a sweep, and not this line.
 
+### §PP691 A check that matches wording rather than meaning
+
+Two readers went red inside PP666, for the same reason and neither about a defect.
+
+`CriterionBlockers.ShippedIn` matched `- ✅ **PPn` and stopped at the digits, so `ship
+--part`'s entry - `**PP295 (the run's ordering)**` - counted as a whole ship. An open
+line then read as finished, and a criterion correctly waiting on it was reported as
+waiting on something already delivered.
+
+`TransportOrder.TheEndStateIsStillTheEndState` held PP27's fourth criterion against the
+literal string "the end state and not a progress bar". Rewording that criterion to name
+PP295 outright - a STRONGER statement of the very premise the check exists to hold -
+failed it.
+
+Both were written in the same sitting as the text they read, which is how the wording
+got into the assertion. Neither test could fail for the reason its own docstring gives.
+
+This is PP666's shape one field over: PP666 was a table nobody drove, and this is a
+sentence matched rather than understood. The difference is that a table has one consumer
+and prose has many spellings, so the fix is not a driver but a rule about what a check
+may match on - a phrase that survives rewording, or a derivation, never a sentence.
+
+What is not known is how many there are. Two were found by tripping over them; nothing
+has looked. The work is to count the string constants in app/Session that hold roadmap
+prose, decide which are load-bearing, and say for each whether a better sentence would
+break it.
+
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed
