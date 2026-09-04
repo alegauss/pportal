@@ -50,6 +50,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP679** **the v7 AV parse and header formatter are unported, and the formatter's callers are senkusha's** — The formatter goes with the parse into managed code and the C's copy stands until senkusha.c is ported: moving it there patches the vendored C, deleting it strands two callers.
 - ✅ **PP680** **takion_handle_packet_av is only a branch in managed code, so no video packet reaches the flush** — The queue's slot stays a long and the arm holds entries under that handle, which is what the C's void* is; the parse takes a ledger interface, so a session needs no native key state.
 - ✅ **PP694** **the microphone's units reach nothing, and libopus's second consumer is why the dependency cannot leave** — Concentus is not bit-exact either way, so an audio port is held to the length and the TOC the protocol reads; and silence encodes to three bytes, which opusencoder.c drops.
+- ✅ **PP698** **the echo canceller wants a reference of what is playing and nothing captures the render side** — The reference is a side of WasapiCapture and not a second class: one flag, the render default at the console role, and the same converter that puts both in the announced units.
 
 ## Block G — Test discipline
 

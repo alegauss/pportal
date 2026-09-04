@@ -282,31 +282,6 @@ What makes this its own line rather than part of the flip is PP623's own discipl
 flip edits `lib/` and no test file, so every prose change waits for a green tree after
 it. Doing both at once is the thing that plan exists to prevent.
 
-### §PP698 The other half of what an echo canceller hears
-
-Acoustic echo cancellation works by subtracting what the speakers are playing from what
-the microphone hears. So it needs both, and `spike/audio-effects` measured the shape
-that requirement takes: in filter mode the Voice Capture DSP declares **two inputs and
-one output**, the host feeding the microphone and a reference of the render stream.
-
-PP652 built the first. `WasapiCapture` opens a capture endpoint and delivers whole units
-of the format the console was told about. There is no equivalent for the render side.
-
-WASAPI has one: a loopback client, opened on a RENDER endpoint with
-`AUDCLNT_STREAMFLAGS_LOOPBACK`, which reads back what is being played rather than what a
-device hears. It is the same `IAudioClient` and the same capture client below it, so the
-interop is largely the one that exists.
-
-Two things are not, and are why this is its own line. A loopback client on a silent
-render endpoint produces NOTHING rather than silence - a documented behaviour, and the
-shape PP695 taught this port to notice. And the reference must be time-aligned with the
-microphone for the subtraction to mean anything, which is a buffering question the
-capture path has never had to answer.
-
-Source mode is the alternative: the DSP opens both devices itself and hands back one
-cleaned stream. That replaces `WasapiCapture` rather than following it, and takes the
-device choice with it - which PP695 showed this port needs to keep.
-
 ### §PP702 Senkusha's five calls into takion
 
 PP27's fourth criterion is an end state: takion.c, takionsendbuffer.c and reorderqueue.c
@@ -406,6 +381,31 @@ joins under it and there will be more.
 
 Recorded as a dep of PP696 rather than folded into it, because it is a different piece
 of work and PP696's own design is right about everything except what happens next.
+
+### §PP708 A stream with no sound
+
+PP700 joined a decoder to the session and a stream decoded for the first time. Nothing
+joined a speaker. Sweep the assembly for IAudioRenderClient and there is none; sweep it
+for a consumer of AudioRing, which is PP32's playback buffer with its capacity, drain
+target and clear threshold, and the only caller is the selftest asserting its
+arithmetic.
+
+PP698 is how this surfaced rather than how it was looked for. Proving a loopback
+reference delivers needed something playing, and there was nothing in the tree to play
+it with - so the test generates a WAV and hands it to System.Media.SoundPlayer, which is
+a fine thing for a test and not a path a session can use.
+
+WHAT IS MISSING is the mirror of PP652: a render client on the default endpoint, taking
+decoded frames and handing them to the engine, with the same reporting when the endpoint
+opens and says nothing. The interop is the one WasapiCapture already has - the same
+enumerator, the same IAudioClient - plus IAudioRenderClient, which is three methods.
+
+WHAT IS NOT MISSING is the decode. StreamAvDispatch routes audio to a seam and
+IAudioSink is the seam; every implementation of it in the tree counts packets. The
+frames exist and stop there.
+
+Its own line rather than part of the audio path's other work, because a person can use a
+session that cannot hear them and cannot use one that plays nothing.
 
 ## Block G — Test discipline
 

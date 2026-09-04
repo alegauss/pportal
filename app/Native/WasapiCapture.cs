@@ -3,6 +3,23 @@ using ChiakiNg.Session;
 
 namespace ChiakiNg.Native;
 
+/// <summary>Which side of the audio engine a capture reads.</summary>
+public enum CaptureSide
+{
+    /// <summary>A capture endpoint: a microphone, which is what PP652 opened.</summary>
+    Microphone,
+
+    /// <summary>
+    /// PP698: a RENDER endpoint, read back through the loopback flag - what the speakers are playing.
+    ///
+    /// The second input an echo canceller needs. It is the same IAudioClient and the same capture
+    /// client underneath, so what differs is one flag, which endpoint is asked for, and what silence
+    /// means: a loopback client on a render endpoint playing nothing produces NOTHING rather than
+    /// zeroes, which is the state PP695 taught this port to notice.
+    /// </summary>
+    RenderLoopback,
+}
+
 /// <summary>What opening a capture device did.</summary>
 public enum CaptureResult
 {
@@ -68,6 +85,9 @@ public sealed class WasapiCapture : IDisposable
     /// <summary>The device's name, once one is open.</summary>
     public string DeviceName { get; private set; } = string.Empty;
 
+    /// <summary>Which side of the engine this one reads. Set by the Start that opened it.</summary>
+    public CaptureSide Side { get; private set; } = CaptureSide.Microphone;
+
     /// <summary>When the pump started, which is what makes silence measurable.</summary>
     private long startedAt;
 
@@ -101,6 +121,20 @@ public sealed class WasapiCapture : IDisposable
     /// is a reasonable first choice and a bad only choice.
     /// </summary>
     public static IReadOnlyList<(string Id, string Name)> ActiveCaptureEndpoints()
+        => ActiveEndpoints(EDataFlow.Capture);
+
+    /// <summary>
+    /// PP698: every active RENDER endpoint, which is where a loopback reference comes from.
+    ///
+    /// The same enumeration with the flow reversed. A host offering a reference device has the same
+    /// reason to offer a choice that PP652 had on the capture side: the default is a reasonable
+    /// first answer and a bad only one, and here it is also the one a person can change by plugging
+    /// in headphones mid-session.
+    /// </summary>
+    public static IReadOnlyList<(string Id, string Name)> ActiveRenderEndpoints()
+        => ActiveEndpoints(EDataFlow.Render);
+
+    private static IReadOnlyList<(string Id, string Name)> ActiveEndpoints(EDataFlow flow)
     {
         object enumeratorObject;
         try
@@ -116,7 +150,7 @@ public sealed class WasapiCapture : IDisposable
 
         try
         {
-            if (enumerator.EnumAudioEndpoints(EDataFlow.Capture, DeviceStateActive, out IMMDeviceCollection? all) != 0
+            if (enumerator.EnumAudioEndpoints(flow, DeviceStateActive, out IMMDeviceCollection? all) != 0
                 || all is null)
             {
                 return [];
@@ -169,12 +203,31 @@ public sealed class WasapiCapture : IDisposable
     /// machine has a microphone is a fact about the machine, and a host that cannot start one still
     /// has a session to run.
     /// </summary>
-    public CaptureResult Start(string? deviceId = null)
+    public CaptureResult Start(string? deviceId = null) => Start(CaptureSide.Microphone, deviceId);
+
+    /// <summary>
+    /// PP698: the same, on either side of the engine.
+    ///
+    /// <see cref="CaptureSide.RenderLoopback"/> asks for a RENDER endpoint and adds one flag, and
+    /// everything below is unchanged: the same client, the same announced format through the same
+    /// converter, the same unit accumulator, the same pump. That is why this is an argument rather
+    /// than a second class - a loopback reference that split the interop would be two copies of a
+    /// COM surface PP693 already had to make a rule about.
+    ///
+    /// THE ROLE DIFFERS AND IS NOT AN OVERSIGHT. A microphone is opened on the COMMUNICATIONS
+    /// endpoint, because that is the one Windows nominates for a voice path. A reference is what the
+    /// person actually HEARS, which is the console role - the endpoint the game's own audio is on.
+    /// Opening the communications render endpoint would give a reference of a device that may be
+    /// playing nothing while the speakers play the stream.
+    /// </summary>
+    public CaptureResult Start(CaptureSide side, string? deviceId = null)
     {
         ObjectDisposedException.ThrowIf(disposed, this);
 
         if (pump is not null)
             return CaptureResult.Running;
+
+        Side = side;
 
         object enumeratorObject;
         try
@@ -193,7 +246,7 @@ public sealed class WasapiCapture : IDisposable
         try
         {
             LastError = deviceId is null
-                ? enumerator.GetDefaultAudioEndpoint(EDataFlow.Capture, ERole.Communications, out device)
+                ? enumerator.GetDefaultAudioEndpoint(FlowOf(side), RoleOf(side), out device)
                 : enumerator.GetDevice(deviceId, out device);
 
             if (LastError != 0 || device is null)
@@ -212,7 +265,7 @@ public sealed class WasapiCapture : IDisposable
             {
                 LastError = client.Initialize(
                     AudioClientShareMode.Shared,
-                    AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY,
+                    FlagsFor(side),
                     BufferDuration,
                     0,
                     format,
@@ -263,6 +316,12 @@ public sealed class WasapiCapture : IDisposable
     /// the buffer pointer is not to be read - so a run of silence is fed as zeroes, which keeps the
     /// unit clock running rather than letting the encoder drift through a quiet moment.
     /// </summary>
+    /// <remarks>
+    /// PP698: a LOOPBACK client on a render endpoint playing nothing is a different silence. It
+    /// returns no packets at all rather than zero-filled ones, so this loop polls and the unit clock
+    /// stops - which is exactly the state <see cref="CaptureSilence"/> judges, and the reason the
+    /// reference side needs no special case here.
+    /// </remarks>
     private void Pump()
     {
         byte[] silence = new byte[units.UnitBytes];
@@ -390,6 +449,41 @@ public sealed class WasapiCapture : IDisposable
 
     /// <summary>And let it resample, which the default endpoint at 16000 Hz needs.</summary>
     public const int AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY = 0x08000000;
+
+    /// <summary>
+    /// PP698: read a RENDER endpoint back, which is the whole of what a reference stream is.
+    ///
+    /// The one flag that separates the two sides. Without it, activating an audio client on a render
+    /// endpoint and asking for a capture service fails - a render endpoint has no capture service to
+    /// give, and this is what makes it produce one.
+    /// </summary>
+    public const int AUDCLNT_STREAMFLAGS_LOOPBACK = 0x00020000;
+
+    /// <summary>Which endpoints a side is looking at.</summary>
+    private static EDataFlow FlowOf(CaptureSide side)
+        => side == CaptureSide.RenderLoopback ? EDataFlow.Render : EDataFlow.Capture;
+
+    /// <summary>
+    /// And which default it wants: the voice endpoint for a microphone, the ordinary one for a
+    /// reference of what is being heard.
+    /// </summary>
+    private static ERole RoleOf(CaptureSide side)
+        => side == CaptureSide.RenderLoopback ? ERole.Console : ERole.Communications;
+
+    /// <summary>
+    /// The initialise flags, which are the capture's two plus loopback on the render side.
+    ///
+    /// AUTOCONVERTPCM is kept for the reason PP652 found it: the announced format is not what a
+    /// shared client is given, and a render endpoint's mix format is 32-bit float at whatever rate
+    /// the device runs. Keeping it here is what makes the reference arrive in the SAME units as the
+    /// microphone, which is the only shape a subtraction can use.
+    /// </summary>
+    private static int FlagsFor(CaptureSide side)
+    {
+        int flags = AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY;
+
+        return side == CaptureSide.RenderLoopback ? flags | AUDCLNT_STREAMFLAGS_LOOPBACK : flags;
+    }
 
     private static readonly Guid MMDeviceEnumeratorClsid = new("BCDE0395-E52F-467C-8E3D-C4579291692E");
     private static readonly Guid AudioClientIid = new("1CB9AD4C-DBFA-4c32-B178-C2F568A703B2");

@@ -631,6 +631,8 @@
 - ✅ **PP694** **the microphone's units reach nothing, and libopus's second consumer is why the dependency cannot leave** — The encoder is managed and agrees with libopus on every frame's length and TOC and on no payload; libopus stays, held by the unported decoder and by the oracle itself.
   checked **A managed encoder turns a captured unit into an Opus frame** The 960-byte units WasapiCapture delivers go in and Opus frames come out, at the bitrate and application mode opusencoder.c sets. Held against the C through the shim on recorded input, the way every other port here is, rather than judged by whether the output decodes.
   checked **Whether libopus can leave is answered with both consumers counted** A census names every caller of the library across lib, shim and test, the way PP692 did for gf-complete rather than counting one module's export. It says what still holds libopus in the build and the package after the encoder is managed. PP651's decode reading is cited, never re-taken.
+- ✅ **PP698** **the echo canceller wants a reference of what is playing and nothing captures the render side** — The render endpoint opens as a capture with one flag more, and a tone played into it comes back in the microphone's own units; a quiet one reads as PP695's silence.
+  checked **A loopback client reads what the render endpoint is playing** The default render endpoint opens with the loopback flag and delivers units in the same format the capture does. A silent endpoint producing nothing rather than silence reads as PP695's state instead of as a working stream, which is the behaviour Windows documents and this port already knows how to notice.
 
 ## Block G — Test discipline
 
