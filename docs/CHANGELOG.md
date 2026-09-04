@@ -587,6 +587,9 @@
 - ✅ **PP689** **the pad info message has two layouts and five reports, and nothing managed reads either one** — Both layouts read at their own offsets, a third length reports nothing and holds its state, and the five go out in the C's order rather than the order they were parsed.
   checked **Both layouts are read at their own offsets, and a third length reports nothing** Each field is read where its own layout puts it, with a case per layout carrying the same values at different places; a message of any other length yields no reports and leaves the held state untouched.
   checked **Only what changed is reported, and the order is the C's five** A second identical message reports nothing, one field moving reports one, and the sequence is motion reset, haptic, trigger, light bar, player index - held against the order the C emits them in after the switch rather than the order the fields are parsed.
+- ✅ **PP690** **a deletion's end state names a shipped task as what must happen first, so its blocker resolves to nothing** — PP295's end state names the order that closes it instead of a shipped id, and a check reads every criterion's blockers against the ledger so the next one fails rather than waits.
+  checked **The end state names the order that closes it, not a shipped task** PP295's fourth criterion says what session.c stopping actually takes, in the shape PP623 and PP655 ran: the counterparts first, the one edit that stops the asking, then the deletion - and no sentence in it names a task the ledger already holds.
+  checked **A criterion naming a shipped id is a red test, not a reading** The check PP584 does for a deletion line's callers, done for a criterion's blockers: every id a criterion names as something to wait for is open, so an end state pointing at a ledger entry fails rather than waiting for somebody to notice.
 
 ## Block G — Test discipline
 

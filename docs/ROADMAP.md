@@ -141,10 +141,10 @@
   class by reflection, and a call with no row or a row with no call fails by name.
   Seventeen was the count before it was measured; the mapping is what the criterion
   asked for.
-- **streamconnection.c, videoreceiver.c, frameprocessor.c and fec.c leave the build** It
-  is an end state, not a progress bar: PP638 measured that session.c drives the stream
-  connection, so this cannot land until PP28 stops it - and PP28 is what waits on the
-  three criteria above. Porting into app removes no C.
+- **streamconnection.c, videoreceiver.c, frameprocessor.c and fec.c leave the build** An
+  end state, not a progress bar, and the order is PP623's and PP655's: the counterparts
+  first, which PP669 mapped; then the one edit that stops session.c asking, which PP638
+  measured at five calls; then the four files. Porting into app removes no C.
 
 ## Done when — PP49
 
