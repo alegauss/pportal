@@ -628,6 +628,9 @@
   checked **The v7 parse and formatter have an owner, and a test against the C for each** A decision recorded in the decisions file names where each goes; the parse is compared against chiaki_takion_v7_av_packet_parse through a shim export on real and synthetic headers, and the formatter's output is parsed back by the C's own v7 parse.
 - ✅ **PP680** **takion_handle_packet_av is only a branch in managed code, so no video packet reaches the flush** — The arm delivers the capture's video in the flush's own order, and the video gate before the parse is what keeps a disabled stream from keying its cipher.
   checked **The AV arm delivers the corpus's video in AvReorderTimeout's order** PP608's heads seed and order the video queue: the assembled arm - gates, lazy init, entry, flush - is fed the corpus, and the sequence it hands StreamAvDispatch and what it drops equal what AvReorderTimeout.Flush computes over the same heads.
+- ✅ **PP694** **the microphone's units reach nothing, and libopus's second consumer is why the dependency cannot leave** — The encoder is managed and agrees with libopus on every frame's length and TOC and on no payload; libopus stays, held by the unported decoder and by the oracle itself.
+  checked **A managed encoder turns a captured unit into an Opus frame** The 960-byte units WasapiCapture delivers go in and Opus frames come out, at the bitrate and application mode opusencoder.c sets. Held against the C through the shim on recorded input, the way every other port here is, rather than judged by whether the output decodes.
+  checked **Whether libopus can leave is answered with both consumers counted** A census names every caller of the library across lib, shim and test, the way PP692 did for gf-complete rather than counting one module's export. It says what still holds libopus in the build and the package after the encoder is managed. PP651's decode reading is cited, never re-taken.
 
 ## Block G — Test discipline
 

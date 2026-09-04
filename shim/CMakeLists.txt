@@ -29,6 +29,18 @@ target_link_libraries(chiaki-shim chiaki-lib)
 # and edits no test file - which is what the two-shape readers were converted for.
 target_compile_definitions(chiaki-shim PUBLIC CHIAKI_SHIM_HAVE_FRAMEPATH)
 
+# PP694: libopus, for the encoder oracle. chiaki-lib links Opus and propagates it, but the include
+# directory does not travel - lib/CMakeLists.txt adds it with include_directories(), which is scoped
+# to that directory - so the header is named again here rather than assumed.
+#
+# Behind the option, unlike the frame path's define: this one already follows a switch somebody can
+# turn, and the five wrappers are inside it in the body and the header both.
+if(CHIAKI_LIB_ENABLE_OPUS)
+	find_package(Opus REQUIRED)
+	target_include_directories(chiaki-shim PRIVATE ${Opus_INCLUDE_DIRS})
+	target_compile_definitions(chiaki-shim PUBLIC CHIAKI_SHIM_HAVE_OPUS)
+endif()
+
 # PP25: the nanopb-generated takion.pb.h, which chiaki-lib compiles against but does not publish -
 # it adds the directory privately, so a consumer that wants the message types has to name it. Named
 # here rather than promoted in lib/CMakeLists.txt, because lib/ is the half this port does not edit.

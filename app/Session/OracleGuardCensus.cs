@@ -63,6 +63,12 @@ public static class OracleGuardCensus
         new(@"tests\ChiakiNg.Tests\ManagedVideoReceiverTests.cs", FramePathGuard),
         new(@"tests\ChiakiNg.Tests\AllocBudgetTests.cs", FramePathGuard),
 
+        // PP694: libopus, which is a fourth oracle and arrived after PP665 wrote this list. Its
+        // guard asks the build the way PP681's correction requires, and the five comparisons behind
+        // it are the encoder differential - so a build with CHIAKI_LIB_ENABLE_OPUS off declines
+        // them and this is what says how many.
+        new(@"tests\ChiakiNg.Tests\ManagedOpusEncoderTests.cs", "NativeOpusEncoder.IsAvailable"),
+
         // PP683: the host, which is not a test file and guards all the same. Its one comparison is
         // the device id's shape against holepunch.c's, and it asks OfTheBuild through the predicate
         // PP681 corrected rather than through the two names above - so the row names the call as it

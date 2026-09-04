@@ -233,33 +233,6 @@ because today the default is what makes those two theories a check on the ORACLE
 cases are the C's own, and a managed default now would silently stop asking the C
 whether it still agrees with its own recording.
 
-### §PP694 The encoder that was waiting for an input
-
-PP32 measured that libopus has two consumers and not one. `opusdecoder.c` is the
-playback path and `opusencoder.c` is the microphone's, so porting the decoder alone
-removes no dependency: the library stays for the encoder and the DLL stays in the
-package.
-
-Its own sentence named the blocker. "The encoder is on the path that has no input... the
-dependency leaves when the microphone question is answered, and not before."
-
-PP652 answered it. `WasapiCapture` opens the default communications endpoint and
-delivers whole 960-byte units at a hundred a second, in exactly the format
-`streamconnection.c` announces - one channel, 16-bit, 48000 Hz, 480 frames. Windows does
-every conversion, so what arrives needs nothing before an encoder.
-
-PP651 measured the other half already: managed Opus costs 1.58 times the native median
-at 24.9 microseconds a frame, which is a quarter of one percent of a ten-millisecond
-frame. Cost decides nothing here, and the dependency is the whole argument.
-
-So the work is a managed encoder taking those units and producing Opus frames, held
-against `opusencoder.c` through the shim the way every other port in this tree is. What
-it unblocks is the pair: with both consumers managed, libopus leaves the build and the
-package, which is the saving PP32 found was not available for the decoder alone.
-
-`audiosender.c` is not a third consumer - it names a parameter `opus_sender` and calls
-nothing in the library.
-
 ### §PP696 The one commit that edits the C
 
 PP623 gave PP33's deletion three steps and PP634 said the plan is reusable. PP630 to
@@ -382,6 +355,32 @@ rather than doing incidentally inside the next line to touch either.
 
 The assertion it owes is a teardown whose recorded order CONTAINS the video queue, over
 a takion that received one video packet.
+
+### §PP706 Four pieces of a microphone and no path
+
+Every part of the upstream audio path exists in managed code and none of them has met
+another. WasapiCapture opens the communications endpoint and delivers bytes;
+MicrophoneUnits holds them until a whole 960-byte unit is there; ManagedOpusEncoder
+turns one unit into a forty-byte frame or says why it did not; MicPacketHead transcribes
+the eleven fields audiosender.c writes before takion overwrites two. Four classes, four
+test files, no caller.
+
+What composes them today is audiosender.c at 143 lines: a sender owning a key position,
+a sequence number and a buffer, and one function - chiaki_audio_sender_opus_data - that
+takes a frame, writes the head, and hands it to takion.
+
+WHAT THIS IS is that function, with the four pieces under it. It is the shape PP680 had
+for video: the parts were right and nothing ran them in order, and the ordering was
+where the behaviour lived.
+
+WHAT IT IS NOT is a decision about whether to send at all. PP694 measured that a silent
+frame encodes to three bytes and the C drops it as a protocol violation, so a path that
+runs is silent most of the time by construction - and whether that is right is a
+question about the console, not about the composition.
+
+The assertion it owes is a captured buffer going in at one end and a head with the right
+eleven fields coming out at the other, with the drop count matching what the encoder
+reported.
 
 ## Block G — Test discipline
 

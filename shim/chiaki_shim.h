@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 45
+#define CHIAKI_SHIM_ABI 46
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -78,6 +78,40 @@ CHIAKI_SHIM_API bool chiaki_shim_has_jsonc(void);
  * six differentials that call the fourteen be guarded BEFORE that flip rather than turned red by it.
  */
 CHIAKI_SHIM_API bool chiaki_shim_has_framepath(void);
+
+/**
+ * PP694: and whether it carries libopus, which the encoder oracle below needs.
+ *
+ * CHIAKI_LIB_ENABLE_OPUS defaults ON and no build here has turned it off, so this reads true today.
+ * Declared and defined either way, for the reason the three above are: a guard that answers from
+ * anything but the build that produced the DLL is PP681's defect with a different subject.
+ */
+CHIAKI_SHIM_API bool chiaki_shim_has_opus(void);
+
+/**
+ * PP694: what opusencoder.c does to a microphone frame, as the oracle for a managed encoder.
+ *
+ * chiaki_opus_encoder_frame itself is out of reach - it needs an audio sender, which needs a
+ * ChiakiSession, which needs a console. What it DOES is opus_encode with the module's own two
+ * parameters, and those run with nothing behind them: the application mode it chooses, and the
+ * forty-byte buffer whose size it insists the result equals.
+ *
+ * The application crosses as an export so the managed side does not write the number down. The
+ * forty does not: it is a literal inside opusencoder.c and no header publishes it, so a source
+ * model reads it from that file instead.
+ *
+ * chiaki_shim_opus_encode returns opus_encode's own code unchanged. Below one is an error and
+ * anything that is not the buffer's size is what the C drops as a protocol violation, so a caller
+ * needs the number rather than a success flag.
+ *
+ * Guarded by CHIAKI_SHIM_HAVE_OPUS. Ask chiaki_shim_has_opus first.
+ */
+CHIAKI_SHIM_API int32_t chiaki_shim_opus_encoder_application(void);
+CHIAKI_SHIM_API void *chiaki_shim_opus_encoder_create(
+		int32_t rate, int32_t channels, int32_t *error_out);
+CHIAKI_SHIM_API void chiaki_shim_opus_encoder_destroy(void *encoder);
+CHIAKI_SHIM_API int32_t chiaki_shim_opus_encode(
+		void *encoder, const int16_t *pcm, int32_t frame_size, uint8_t *out, int32_t out_size);
 
 /**
  * chiaki_error_string for a ChiakiErrorCode, as a UTF-8 string the caller does not own.

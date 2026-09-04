@@ -111,6 +111,20 @@
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4129.50" />
   </ItemGroup>
 
+  <!-- PP694, under PP32: the microphone's encoder, which is libopus's second consumer.
+       A managed reference in place of a native DLL, and the trade is the whole argument rather
+       than a preference. PP32 measured that porting the DECODER alone removes nothing - the
+       library stays for opusencoder.c and the DLL stays in the package - so the encoder is where
+       the saving is, and PP652's capture is what finally gave it an input.
+       Concentus is a line-by-line port of libopus rather than a reimplementation, which is why
+       spike/opus-decode chose it. It is NOT bit-exact: PP651 measured 386,460 of 480,000 samples
+       differing on the decode side, and PP694 found the encoder differs on every frame too - the
+       length and the TOC byte agree, the payload does not. The differential is written to that,
+       and ManagedOpusEncoder says so at the seam. -->
+  <ItemGroup>
+    <PackageReference Include="Concentus" Version="2.2.2" />
+  </ItemGroup>
+
   <!-- The assertion for "the version as a single source of truth" (PP1). app.manifest carries
        its own assemblyIdentity version, and nothing in the SDK relates the two: they are set
        in different files, in different syntaxes, and a release with two different numbers in

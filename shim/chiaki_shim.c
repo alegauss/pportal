@@ -56,6 +56,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef CHIAKI_SHIM_HAVE_OPUS
+#include <opus/opus.h>
+#endif
+
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void)
 {
 	return CHIAKI_SHIM_ABI;
@@ -97,6 +101,21 @@ CHIAKI_SHIM_API bool chiaki_shim_has_jsonc(void)
 CHIAKI_SHIM_API bool chiaki_shim_has_framepath(void)
 {
 #ifdef CHIAKI_SHIM_HAVE_FRAMEPATH
+	return true;
+#else
+	return false;
+#endif
+}
+
+/* PP694: libopus, asked the same way, for the encoder oracle below.
+ *
+ * CHIAKI_LIB_ENABLE_OPUS defaults ON and every build this tree has produced has it, so this reads
+ * true today - and asking is still the right shape rather than a formality. The option exists, the
+ * five wrappers below are inside it, and PP681's defect was exactly a guard that answered from
+ * something other than the build that made the DLL. */
+CHIAKI_SHIM_API bool chiaki_shim_has_opus(void)
+{
+#ifdef CHIAKI_SHIM_HAVE_OPUS
 	return true;
 #else
 	return false;
@@ -2710,6 +2729,65 @@ CHIAKI_SHIM_API int32_t chiaki_shim_takion_v9_av_packet_parse(
 
 	return (int32_t)CHIAKI_ERR_SUCCESS;
 }
+
+#ifdef CHIAKI_SHIM_HAVE_OPUS
+/* PP694: opusencoder.c's half of libopus, as the oracle a managed encoder is held to.
+ *
+ * NOT chiaki_opus_encoder_frame ITSELF, and the reason is a dependency rather than a preference:
+ * that function needs an audio sender, which needs a ChiakiSession, which needs a console. What it
+ * DOES to a frame is opus_encode with the module's own two parameters - the application mode it
+ * picks and the forty-byte buffer it insists on - and those run with nothing behind them.
+ *
+ * So the parameters cross rather than being written down on the managed side. The application is
+ * this export; the forty is read out of opusencoder.c by a source model, because it is a literal in
+ * that file and no header publishes it.
+ */
+CHIAKI_SHIM_API int32_t chiaki_shim_opus_encoder_application(void)
+{
+	return OPUS_APPLICATION_RESTRICTED_LOWDELAY;
+}
+
+CHIAKI_SHIM_API void *chiaki_shim_opus_encoder_create(
+		int32_t rate, int32_t channels, int32_t *error_out)
+{
+	int error = 0;
+	OpusEncoder *encoder = opus_encoder_create(
+			(opus_int32)rate, (int)channels, OPUS_APPLICATION_RESTRICTED_LOWDELAY, &error);
+
+	if(error_out)
+		*error_out = (int32_t)error;
+
+	if(error != OPUS_OK)
+	{
+		/* opus_encoder_create allocates before it validates, so a refused configuration still
+		 * leaves a pointer the caller has to free - which the C's own error path does too. */
+		if(encoder)
+			opus_encoder_destroy(encoder);
+		return NULL;
+	}
+
+	return encoder;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_opus_encoder_destroy(void *encoder)
+{
+	if(encoder)
+		opus_encoder_destroy((OpusEncoder *)encoder);
+}
+
+/* opus_encode, with the return code handed back unchanged: below one is an error and anything
+ * that is not the buffer's own size is what opusencoder.c drops as a protocol violation, so the
+ * managed side has to see the number rather than a success flag. */
+CHIAKI_SHIM_API int32_t chiaki_shim_opus_encode(
+		void *encoder, const int16_t *pcm, int32_t frame_size, uint8_t *out, int32_t out_size)
+{
+	if(!encoder || !pcm || !out || frame_size <= 0 || out_size <= 0)
+		return (int32_t)OPUS_BAD_ARG;
+
+	return (int32_t)opus_encode((OpusEncoder *)encoder, (const opus_int16 *)pcm, (int)frame_size,
+			out, (opus_int32)out_size);
+}
+#endif
 
 /* PP679: the v7 parse, whose key_state parameter the C declares and never reads.
  *

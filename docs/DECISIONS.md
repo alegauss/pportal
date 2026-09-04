@@ -49,6 +49,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP678** **the receive loop runs only against test doubles, and nothing owns takion's state** — Receiving is the cheaper half: eight datagrams cost the trace and nothing else, while eight timeouts cost 712 bytes each inside the socket - so an idle session allocates and a busy one does not.
 - ✅ **PP679** **the v7 AV parse and header formatter are unported, and the formatter's callers are senkusha's** — The formatter goes with the parse into managed code and the C's copy stands until senkusha.c is ported: moving it there patches the vendored C, deleting it strands two callers.
 - ✅ **PP680** **takion_handle_packet_av is only a branch in managed code, so no video packet reaches the flush** — The queue's slot stays a long and the arm holds entries under that handle, which is what the C's void* is; the parse takes a ledger interface, so a session needs no native key state.
+- ✅ **PP694** **the microphone's units reach nothing, and libopus's second consumer is why the dependency cannot leave** — Concentus is not bit-exact either way, so an audio port is held to the length and the TOC the protocol reads; and silence encodes to three bytes, which opusencoder.c drops.
 
 ## Block G — Test discipline
 

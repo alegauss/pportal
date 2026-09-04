@@ -25,12 +25,12 @@
 - 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — chiaki_fec_decode has three callers - frameprocessor.c, the C suite and this port's shim - and gf-complete has a fourth site none of them reach: chiaki_lib_init. → §PP30
 - 🛠 **PP295** (deps: PP297 ✅, PP696, PP697) **streamconnection.c is 1540 lines and calls the video receiver, so every deletion below waits on it** — Three criteria are met; the fourth is the four files leaving, which waits on the one commit that edits the C and on the shim, whose wrappers outlive it. → §PP295
 - ⏳ **PP671** (deps: PP696) **Fec.Recovers with no decoder named runs the C, so after the flip a default becomes a loader failure** — The managed decoder is the one that stays; the default should follow it on the flip, so the sixty-four recorded cases judge the port alone. → §PP671
-- 📋 **PP694** (deps: —) **the microphone's units reach nothing, and libopus's second consumer is why the dependency cannot leave** — PP652 answered the input question opusencoder.c waited on, so the encoder is portable now and PP651 already measured managed Opus at a quarter of a percent of a frame. → §PP694
 - 📋 **PP696** (deps: —) **the frame path's deletion has no commit that edits the C, so four files stay while their ports exist** — PP623's middle step is the only one touching lib, and nobody has written this path's: session.c's asks, the shim's wrappers and the suite's four files all still name them. → §PP696
 - 📋 **PP697** (deps: PP696) **after the frame-path flip the models describe a C that has gone, in the present tense** — PP634 found this on the holepunch side: the predicates stay because they notice the calls coming back, and what goes stale is the prose around them. → §PP697
 - 📋 **PP698** (deps: —) **the echo canceller wants a reference of what is playing and nothing captures the render side** — Filter mode declares two inputs and the second is the speaker signal; WasapiCapture opens capture endpoints only, so the DSP has one of the two it needs. → §PP698
 - 📋 **PP702** (deps: —) **senkusha.c calls five takion symbols, so PP27's fourth criterion cannot be met while the file stands** — PP638 counted the frame path's callers, not senkusha's; the v7 formatter is one of five, and nothing in the backlog ports the file or answers its calls. → §PP702
 - 📋 **PP703** (deps: PP680 ✅) **ManagedTakion's video queue is only ever set to null, so one step of its recorded teardown is unreachable** — PP678 recorded the order and PP680 built the arm that opens the queue; nothing joins them, so a step the C always takes is asserted by nobody. → §PP703
+- 📋 **PP706** (deps: PP694 ✅) **the microphone has a capture, a unit splitter, an encoder and a head, and nothing runs them as one path** — PP652, PP676 and PP694 each built a piece and each is driven by tests alone; audiosender.c is still the only thing that composes them, and nothing managed does. → §PP706
 
 ## Block G — Test discipline
 
@@ -130,18 +130,6 @@
   chiaki_render_tearing_probe does. Integration means the video plane's own swapchain
   carries it and presents at sync interval zero, which is the half that waits on there
   being a video plane at all.
-
-## Done when — PP694
-
-- **A managed encoder turns a captured unit into an Opus frame** The 960-byte units
-  WasapiCapture delivers go in and Opus frames come out, at the bitrate and application
-  mode opusencoder.c sets. Held against the C through the shim on recorded input, the
-  way every other port here is, rather than judged by whether the output decodes.
-- **Whether libopus can leave is answered with both consumers counted** A census names
-  every caller of the library across lib, shim and test, the way PP692 did for
-  gf-complete rather than counting one module's export. It says what still holds libopus
-  in the build and the package after the encoder is managed. PP651's decode reading is
-  cited, never re-taken.
 
 ## Done when — PP52
 
