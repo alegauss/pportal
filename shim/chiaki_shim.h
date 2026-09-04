@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 37
+#define CHIAKI_SHIM_ABI 38
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -544,6 +544,18 @@ CHIAKI_SHIM_API uint64_t chiaki_shim_baseline_handoff_avg_us(void *baseline);
 
 /** Input queueing plus the network round trip plus the handoff: a floor on glass to glass. */
 CHIAKI_SHIM_API uint64_t chiaki_shim_baseline_latency_estimate_us(void *baseline);
+
+/**
+ * PP76: frames_dropped less frames_lost, which is the only decoder-attributable loss either
+ * counter can give.
+ *
+ * Neither is a decoder's own: frames_lost is the video receiver's total, counted upstream of every
+ * decoder, and frames_dropped is what the presenter never showed. Their difference is a FLOOR on
+ * what the decoder lost rather than a count of it, and reading either alone is what §PP76 exists to
+ * prevent. Clamped rather than wrapped - the two are sampled by different threads, so the receiver
+ * can legitimately be ahead at the end of a session.
+ */
+CHIAKI_SHIM_API uint64_t chiaki_shim_baseline_decoder_drops(void *baseline);
 
 /** The line, as the Qt build writes it. `written` may be NULL. Returns a ChiakiErrorCode. */
 CHIAKI_SHIM_API int32_t chiaki_shim_baseline_format(
@@ -1662,3 +1674,4 @@ CHIAKI_SHIM_API void chiaki_shim_takion_close(void *takion);
 #endif
 
 #endif // CHIAKI_SHIM_H
+

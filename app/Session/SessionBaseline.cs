@@ -227,6 +227,29 @@ public sealed class SessionBaseline : IDisposable
     /// </summary>
     public ulong LatencyEstimateUs => BaselineLatencyEstimateUs(Handle);
 
+    /// <summary>
+    /// PP76: frames_dropped less frames_lost, which is the only decoder-attributable loss here.
+    ///
+    /// NEITHER COUNTER IS A DECODER'S OWN, and that is the whole reason this is a subtraction rather
+    /// than a reading. frames_lost is the video receiver's total, counted upstream of every decoder
+    /// - a frame the network lost is charged to it whichever decoder was going to receive one. And
+    /// frames_dropped is what the presenter never showed, which includes those.
+    ///
+    /// So the difference is a FLOOR on what the decoder itself lost, and PP76's own line says that
+    /// reading either alone is what it exists to prevent.
+    ///
+    /// Clamped rather than wrapped, which is the C's decision and not a defensive one: the two are
+    /// sampled by different threads at different moments, so the receiver can legitimately be ahead
+    /// of the presenter at a session's end. Subtracting unsigned would turn a few frames of skew
+    /// into eighteen quintillion.
+    /// </summary>
+    public ulong DecoderDrops => BaselineDecoderDrops(Handle);
+
+    [System.Runtime.InteropServices.DllImport(Native.ChiakiNative.Library,
+        EntryPoint = "chiaki_shim_baseline_decoder_drops",
+        CallingConvention = System.Runtime.InteropServices.CallingConvention.Cdecl)]
+    private static extern ulong BaselineDecoderDrops(IntPtr baseline);
+
     /// <summary>The line as the Qt build writes it, newline included.</summary>
     public string Format()
     {

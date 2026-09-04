@@ -853,6 +853,13 @@ CHIAKI_SHIM_API uint64_t chiaki_shim_baseline_latency_estimate_us(void *baseline
 			: 0;
 }
 
+CHIAKI_SHIM_API uint64_t chiaki_shim_baseline_decoder_drops(void *baseline)
+{
+	return baseline
+			? chiaki_session_baseline_decoder_drops((const ChiakiSessionBaseline *)baseline)
+			: 0;
+}
+
 // ---- PP23: the five frame stages ------------------------------------------------------------
 
 /** The selector resolved to the member it names, or NULL - there is deliberately no sixth. */
