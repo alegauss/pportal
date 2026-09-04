@@ -1095,6 +1095,23 @@ public partial class App : Application
                     SessionCaptureKind.Decode, sample) == CaptureOutcome.Recorded ? 0 : 1);
         }
 
+        // PP700: the picture. A window, a session with a decoder on it, and the D3DImage that has
+        // been bound and empty since PP10 - which is the whole of what this line owed.
+        //
+        // Not the front door: no console list, no settings, no controller. PP13 is where a person
+        // picks a console, and joining that to this is the next thing rather than this thing.
+        if (HostCommandLine.Has(e.Args, "--show-stream"))
+        {
+            ReopenStdOut();
+
+            string decoder = HostCommandLine.ValueAfter(e.Args, "--show-stream") is { } named
+                && !named.StartsWith("--", StringComparison.Ordinal)
+                    ? named
+                    : string.Empty;
+
+            Environment.Exit(StreamRun.Run(HostCommandLine.ValueAfter(e.Args, "--console"), decoder));
+        }
+
         // PP516: and the other half of that, which needs no console - a capture on disk read back
         // and run through the managed receive path.
         if (HostCommandLine.Has(e.Args, "--replay-datagrams"))

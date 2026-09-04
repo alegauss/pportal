@@ -263,6 +263,86 @@ public static class ExchangeCapture
     public static ulong FramesRendered { get; private set; }
 
     /// <summary>
+    /// PP700: a console found, woken and ready, with what a session needs to reach it.
+    /// </summary>
+    /// <param name="Nickname">Its registered name.</param>
+    /// <param name="Address">Where it answered from, after any wake.</param>
+    /// <param name="Ps5">Which generation, which decides the discovery port and the wake packet.</param>
+    /// <param name="RegistKey">The registration, which is also the wake credential.</param>
+    /// <param name="Morning">The sixteen bytes a session opens with.</param>
+    public readonly record struct ReadyConsole(
+        string Nickname, string Address, bool Ps5, byte[] RegistKey, byte[] Morning);
+
+    /// <summary>
+    /// PP700: find a registered console and wake it, which both runs need and only one had.
+    ///
+    /// Lifted out of Run rather than copied into StreamRun. The steps are the ones a session cannot
+    /// start without and each fails for a reason about the room rather than the code - the console
+    /// is off, it is on another subnet, the registration is stale - so a second copy would be a
+    /// second set of sentences for the same three rooms.
+    /// </summary>
+    /// <returns>Null where any step failed, having said which on the error stream.</returns>
+    public static ReadyConsole? FindAndWake(string? nickname, ChiakiLog log)
+    {
+        ArgumentNullException.ThrowIfNull(log);
+
+        var store = new QSettingsStore();
+        IReadOnlyList<RegisteredHost> hosts = store.RegisteredHosts();
+
+        RegisteredHost? host = nickname is null
+            ? hosts.FirstOrDefault()
+            : hosts.FirstOrDefault(h => string.Equals(h.ServerNickname, nickname, StringComparison.OrdinalIgnoreCase));
+
+        if (host is null)
+        {
+            Console.Error.WriteLine(hosts.Count == 0
+                ? "[console] no registered console - register one in the Qt client first."
+                : $"[console] no registered console called {nickname}. Known: {string.Join(", ", hosts.Select(h => h.ServerNickname))}");
+            return null;
+        }
+
+        if (host.RpRegistKey is not { Length: > 0 } registKey || host.RpKey is not { Length: 16 } morning)
+        {
+            Console.Error.WriteLine($"[console] {host.ServerNickname} has no usable registration - re-register it.");
+            return null;
+        }
+
+        bool ps5 = host.Target >= 1_000_000;
+        IReadOnlyList<IPAddress> broadcasts = Broadcasts();
+
+        if (Find(broadcasts, host.ServerNickname, Discover, log) is not { Address: string address } found)
+        {
+            Console.Error.WriteLine(
+                $"[console] {host.ServerNickname} did not answer. It is off, or on another subnet than this machine.");
+            return null;
+        }
+
+        if (found.State != DiscoveryHostState.Ready)
+        {
+            if (!TryWakeCredential(registKey, out ulong credential))
+            {
+                Console.Error.WriteLine("[console] the registration key is not a wake credential - re-register.");
+                return null;
+            }
+
+            Console.WriteLine($"[console] {address} is in standby - waking it");
+            Send(DiscoveryCommand.Wakeup, IPAddress.Parse(address), ps5, credential);
+
+            if (Find(broadcasts, host.ServerNickname, Wake, log)
+                is not { Address: string woken, State: DiscoveryHostState.Ready })
+            {
+                Console.Error.WriteLine("[console] it did not reach ready. Remote play may be disabled on it.");
+                return null;
+            }
+
+            address = woken;
+        }
+
+        Console.WriteLine($"[console] {host.ServerNickname} at {address} is ready");
+        return new ReadyConsole(host.ServerNickname, address, ps5, registKey, morning);
+    }
+
+    /// <summary>
     /// The whole capture: find the console, wake it if it is asleep, run a session and write down
     /// what crossed.
     /// </summary>

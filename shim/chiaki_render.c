@@ -1088,6 +1088,26 @@ CHIAKI_RENDER_API bool chiaki_render_video_frame(
 	if(!pl_render_image(self->renderer, &image, &target, &pl_render_default_params))
 		return false;
 
+	/*
+	 * PP700: WAIT FOR THE GPU, because the target has nothing else to wait on.
+	 *
+	 * pl_render_image RECORDS commands. The texture it writes is a shared one of the OLD kind -
+	 * chiaki_render.h records why, D3D9Ex cannot open a keyed-mutex resource - so it carries no
+	 * fence, no mutex and nothing a consumer can synchronise against. WPF's D3D9 device copies from
+	 * it whenever it composes, and a copy taken before the queue drains reads a half-written frame.
+	 *
+	 * pl_gpu_finish and not pl_gpu_flush: flush submits and returns, which is the same race one
+	 * step later. The wait is what a surface with no fence costs.
+	 *
+	 * NOT WHAT THE STATIC WAS. This was added believing it - a diagonal tear that a screenshot
+	 * seemed to clear reads exactly like an unfinished write. It was not: the artefacts stopped
+	 * when idrOnFecFailure went true, so they were error propagation from a lost reference frame,
+	 * and the screenshot cleared nothing - it took three seconds to reach for one and the smear
+	 * lasted about that long. This stays because the reasoning above is true on its own, and the
+	 * story that led here is written down so nobody re-derives it as a fix for the wrong thing.
+	 */
+	pl_gpu_finish(self->placebo->d3d11->gpu);
+
 	self->frames++;
 	if(out_stage)
 		*out_stage = CHIAKI_RENDER_FRAME_OK;

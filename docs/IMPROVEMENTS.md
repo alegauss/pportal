@@ -29,29 +29,6 @@ three, so it is the moment when the duplication is visible.
 
 ## Block C — Video and input path
 
-### §PP700 The video path, built in pieces and never joined
-
-Block C is titled "Video and input path" and reads finished: 27 filed, nothing open.
-That is true about the LINES and false about the path.
-
-Five readings agree. The shim's session has `create`, `start`, an event callback and a
-controller state, and no video sample callback at all - the one that exists is on
-`chiaki_shim_video_receiver_create`, which is PP112's oracle seam and takes encoded
-units. `chiaki-render`'s own docstring says "what this carries so far is a probe rather
-than a renderer". `app/Views` has the stream menu, the overlay and the settings, and no
-view that draws a frame; `StreamWindow.cs` models the window TYPE from settings.h rather
-than being one. The overlay's `DroppedFrameCount` is a property nothing assigns. And the
-only `AVFrame` in the tree is `NativeFrameTiming`'s, which is a duration model.
-
-So a session runs - `--capture-exchange` reaches a real console and records eleven
-thousand entries - and nothing decodes or presents. PP9 chose the renderer, PP131 to
-PP135 proved WPF accepts the surface, PP319 and PP322 composed the planes, PP641 priced
-what draws into the overlay. Each piece was measured. None is wired to a stream.
-
-This is not a redesign: it is the join. What it blocks is anything that needs a picture
-- PP49's HDR judgement, PP76's decoder comparison, and PP699's counter, which was filed
-saying the presenter counts nothing when the truth is there is no presenter.
-
 ## Block D — Screens
 
 ## Block E — Windows-only build

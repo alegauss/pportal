@@ -87,7 +87,7 @@
 - ✅ **PP641** **PP10's HUD is XAML, and the compositor tree PP319 chose covers a WPF window's own drawing entirely** — The bitmap shape wins because its price was a premise, not a property: the HUD measures 156x138, costing 0.8% of a 60fps frame, while the full-plane render the section priced needs 125%.
   checked **Each of the three shapes carries a cost, measured or read from the ledger** The bitmap shape is timed by spike/overlay-draw on this machine, at the HUD's own bounds and at a full plane. The rebuild shape is priced from the commits that shipped PP10 and PP12. The SDR shape has no time cost and PP319 already weighed it, which is stated rather than measured again.
   checked **The overlay surface is sized by the HUD and not by the video plane** A composition visual carries its own size, so the full-screen copy the section prices is not a property of the option. The rule is code with a test that measures a real visual tree, and the spike's recorded numbers are read from its committed file rather than typed into the model.
-- ✅ **PP700 (the decoder joined to the session)** **every piece of the video path exists and none is joined to a session, so a stream decodes and shows nothing** — The session's video sink is a decoder now: 709 frames as yuv420p and 711 as nv12 asking for vulkan, against a PS5 on the network.
+- ✅ **PP700** **every piece of the video path exists and none is joined to a session, so a stream decodes and shows nothing** — A window shows a PS5's home screen: decoder on the session, a renderer held between frames, the shared surface WPF takes, and the D3DImage bound and empty since PP10.
 
 ## Block D — Screens
 

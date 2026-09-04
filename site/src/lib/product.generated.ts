@@ -91,6 +91,11 @@ export const HOST_FLAGS: readonly HostFlag[] = [
     "summary": "the same session WITH a decoder, reporting how many frames it decoded"
   },
   {
+    "name": "--show-stream",
+    "argument": "[name]",
+    "summary": "open a window and put a console's picture in it, with the named decoder"
+  },
+  {
     "name": "--console",
     "argument": "[name]",
     "summary": "with either capture: which registered console, by nickname"
