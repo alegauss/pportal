@@ -62,5 +62,6 @@ are read from the spike's committed file rather than typed.
 ## Block I — NVIDIA path
 
 - ✅ **PP76** **the decoder preference is measured on synthetic frames, and drops under network jitter are what a stream is judged by** — PP48's copy ranking does not carry: this port downloads every vulkan frame to NV12 for D3D11, so vulkan's no-copy path is not the one a live session measures.
+- ✅ **PP709** **nothing drives the in-box echo canceller, so PP52's second criterion has a reading of it and no stage** — The in-box canceller's rates stop at 22050, so no cleaning stage can sit in a 48000 chain until something in the port converts between them.
 
 ## Block J — Public documentation
