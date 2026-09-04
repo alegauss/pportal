@@ -37,6 +37,11 @@ npm test                      # the site's own claims, against what the build pr
 
 ## The documentation area (`docs/`)
 
+This section is where PP446's design was recorded when its rationale section was deleted, which
+is what the ledger's `design recorded in site/README.md` points at. PP642 made that pointer a
+check: the entry names this file and this file names PP446, so a paragraph that never arrived is
+a red test rather than a claim nobody reads.
+
 `/pportal/docs` is a **second npm project** with its own toolchain — Astro and Starlight —
 building into this one's `dist/docs`. It exists because the renderer above holds its copy as
 data and has no Markdown pipeline, no highlighting, no sidebar and no search, and writing

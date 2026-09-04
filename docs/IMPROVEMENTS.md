@@ -569,29 +569,6 @@ drift checks that read this file read the code around it.
 
 ## Block G — Test discipline
 
-### §PP642 Checking where a deleted design went
-
-`ship --recorded-in` takes a path, requires it to resolve, and writes "(design recorded
-in `x`)" into the ledger entry. That is the whole of the check. The file is not read, so
-nothing distinguishes an entry whose paragraph moved from one whose paragraph was never
-written - and the second is the easy mistake, because the flag is passed in the same
-call that deletes the section it claims to have moved.
-
-PP11 is the first entry in this ledger to carry the clause. What holds its recording is
-a test written by hand for that one entry: it asserts the clause is in the ledger and
-that four phrases of the constraint are in the file. That works and it does not
-generalise - the next `--recorded-in` gets nothing unless somebody remembers to write
-the same test again, which is the shape of a discipline that decays.
-
-What a check could do without judging prose: for every ledger entry carrying the clause,
-the path resolves from the repository root, and the file names the id. Naming the id is
-the same join the assertion ratchet already uses and it is exactly as strong - it cannot
-tell a recording from a mention, and it can tell a recording from nothing at all.
-
-Where it lives is the open question. The ratchet reads the ledger already, so the
-cheapest home is beside it; the alternative is roadkeep's own lint, which would make it
-every project's rule rather than this one's.
-
 ### §PP643 A docstring on the wrong member
 
 Two `<summary>` elements on one member is not a compiler error. The documentation

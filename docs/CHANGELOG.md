@@ -667,6 +667,7 @@
 - ✅ **PP665** **PP663 made 23 assertions opt-in and an early return is a pass, so the gate prints the same total either way** — Every run now prints which oracles are present and how many comparisons their absence costs, counted from the five files that guard rather than declared beside them.
 - ✅ **PP682** **test.cmd reads a step's exit code with 'if errorlevel 1', so a crash's negative code passes the gate** — Seven steps in both launchers now test both signs, measured at -532462766, 3 and 0; a named list holds each, and a half-written verdict is red.
   checked **Every verdict in test.cmd and compile.cmd catches a negative exit code** A test reads both launchers and holds that each native step - the selftest, the two tools, roadkeep lint, dotnet test and dotnet build - is followed by a check that is true for any non-zero errorlevel, so a verdict catching one sign only is red before it hides anything.
+- ✅ **PP642** **a ship's `recorded in` clause names a file and nothing checks the file ever received the design** — Every clause's file is opened and has to name the id, three exempt by name because the file is a recording with no room for one, and PP446's own paragraph was the miss it found.
 
 ## Block H — Performance and telemetry
 
