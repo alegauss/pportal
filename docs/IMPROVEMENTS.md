@@ -449,6 +449,33 @@ does.
 
 The seam PP729 left is where this lands, unchanged.
 
+### §PP734 A counterpart that is only a seam
+
+PP713 made every row of the frame path's census say what kind of counterpart it names,
+and asking that question exposed a different one it does not ask: WHETHER the thing
+named is reached.
+
+TWO ROWS NAME AN INTERFACE MEMBER AND ONLY ONE OF THEM IS FILLED.
+stream_connection_send_idr_request resolves to IVideoReceiverOutbound.SendIdrRequest,
+and StreamOutbound implements that interface in app - PP684 wrote it as the seam's first
+implementation that is not a double. chiaki_stream_connection_stop resolves to
+IStreamRunHost.ShouldStop, and the only implementations of THAT interface are doubles in
+the test project.
+
+THE CHECK CANNOT SEE THE DIFFERENCE, because both resolve and both name a member that
+exists. So the census reports the same confidence about a call answered by shipping code
+and a call answered by a shape.
+
+WHICH MATTERS BECAUSE THE CENSUS IS A CRITERION. PP295's third is what the deletion of
+four C files is measured against, and PP669's own rule is that a mapping is not a call.
+An interface member with no implementation outside the tests is a mapping one level
+further out: it is a promise that something COULD answer, held against a criterion that
+reads as something DOES.
+
+The fix is a verdict per row rather than a new rule - implemented in app, or a seam
+whose filling is somebody's open work - and the reflection to decide it is three lines,
+since the assembly is already loaded.
+
 ## Block G — Test discipline
 
 ### §PP720 A warning compile.cmd cannot clear

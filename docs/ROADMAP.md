@@ -34,6 +34,7 @@
 - 💭 **PP724** (deps: —) **PP718's claim check reads one note in ten, so nine unported rows can go false the way the one it was filed about did** — The trigger is a phrase in a note the author writes, and PP718 reworded two rows out of its reach in the very commit that added the check. → §PP724
 - 💭 **PP725** (deps: —) **the sender's overflow rung copies a packet buffer onto itself, and nothing records that the port left it out** — A full queue makes the destination index equal begin, so the memcpy is handed one address twice and only a comment says PP723 dropped it. → §PP725
 - 📋 **PP731** (deps: —) **the step after the bang builds two gk crypts at fixed indices and hands them to takion, and none of it is ported** — PP729's keying seam ends at a bool; the derivation is OpenSSL's but the two objects, their indices and the free order are not. → §PP731
+- 💭 **PP734** (deps: —) **one census row is answered by an interface member nothing in app implements, and the check cannot tell that apart** — chiaki_stream_connection_stop resolves to IStreamRunHost.ShouldStop, whose only implementations are test doubles. → §PP734
 
 ## Block G — Test discipline
 
