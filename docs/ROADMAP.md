@@ -35,7 +35,6 @@
 ## Block G — Test discipline
 
 - 💭 **PP728** (deps: —) **a criterion can state a count from a program and go false as that program changes, with the gate green** — PP690 holds a criterion's blocker claim against the ledger, and nothing holds its numbers against the census they were copied from. → §PP728
-- 💭 **PP735** (deps: —) **a census naming an export in a string counts as its caller, so the sweep's dead list is short by an unknown amount** — PP716 excluded one file by name to keep a row true, and export names sit in string literals across the other censuses too. → §PP735
 
 ## Block H — Performance and telemetry
 

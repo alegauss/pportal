@@ -84,6 +84,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP705** **four sweeps over app/ hand-write their own exclusion, so a new census has to be added to the others by hand** — A sweep's exclusion is asked of the swept file, not listed by the sweeper; the marker is asserted to be in exactly the census files, so it cannot become a way of opting out.
 - ✅ **PP720** **the suite's staleness warning globs every .c under lib, so a file no target builds warns on every run** — A staleness guard asks the build graph and not the tree: this checkout keeps C that no target compiles, so a glob warns about files no rebuild can bring up to date.
 - ✅ **PP733** **nothing counts the managed readers that parse a takion message, so a fourth one can be lenient in silence** — A census that spells the call it looks for has to skip itself, and saying so by name is the only version of that a reader can check.
+- ✅ **PP735** **a census naming an export in a string counts as its caller, so the sweep's dead list is short by an unknown amount** — A symbol in quotes is a model and a symbol in code is a caller, which is a rule the sweep can apply where a list of excused files is one somebody has to remember.
 
 ## Block H — Performance and telemetry
 
