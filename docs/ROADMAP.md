@@ -33,6 +33,7 @@
 - 💭 **PP725** (deps: —) **the sender's overflow rung copies a packet buffer onto itself, and nothing records that the port left it out** — A full queue makes the destination index equal begin, so the memcpy is handed one address twice and only a comment says PP723 dropped it. → §PP725
 - 📋 **PP731** (deps: —) **the step after the bang builds two gk crypts at fixed indices and hands them to takion, and none of it is ported** — PP729's keying seam ends at a bool; the derivation is OpenSSL's but the two objects, their indices and the free order are not. → §PP731
 - 💭 **PP734** (deps: —) **one census row is answered by an interface member nothing in app implements, and the check cannot tell that apart** — chiaki_stream_connection_stop resolves to IStreamRunHost.ShouldStop, whose only implementations are test doubles. → §PP734
+- 💭 **PP736** (deps: —) **the stats count one push per audio packet against a ceiling that advances per unit, and nothing states the ratio** — audioreceiver.c pushes only the first frame index of a packet covering source_units_count of them, so a healthy window can read as loss. → §PP736
 
 ## Block G — Test discipline
 
