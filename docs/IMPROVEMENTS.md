@@ -307,6 +307,29 @@ joins under it and there will be more.
 Recorded as a dep of PP696 rather than folded into it, because it is a different piece
 of work and PP696's own design is right about everything except what happens next.
 
+### §PP713 PP669's rows that name a type alone
+
+PP712 found three rows of the run-host census naming a type with no member that answers
+- SendBig pointed at a builder with no BIG - and the check passed because the TYPE
+resolved. Counterpart's Member is nullable, and the frame path's census uses the same
+record: eleven of its symbol rows name a type alone.
+
+Some are certainly right. chiaki_frame_processor_init and _fini answer to
+FrameAssembler's constructor and to the collector, and a managed object has no member
+for either; naming one would be describing C# rather than answering for a call. But
+chiaki_fec_decode names FecCodec with no member,
+chiaki_video_receiver_get_frames_lost_total names ManagedVideoReceiver with no member,
+and those are calls that DO something a member should be doing.
+
+The work is to ask each of the eleven the question PP712 asked, and to make the census
+carry the answer rather than the silence: a row either names the member, or says which
+of the two other things it is - a constructor, or a need the runtime removes. The same
+HostAnswer shape, or a Member that is required with a sentinel for the rest.
+
+What makes it worth doing is that the census is what PP696 will be read against. A row
+that resolves to a namespace is a claim nobody can check, and PP712 showed the failure
+rate on those claims is three in four.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry
