@@ -61,6 +61,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP718** **PP585's wait census still calls congestioncontrol.c unported, and nothing in the gate can tell it is wrong** — A census asserted by group counts survives a row moving between groups, so each group also has to check the claim its rows make rather than only its size.
 - ✅ **PP719** **nothing managed raises a session event, so the frame path's nine reach nobody and the run's CONNECTED is owed** — An event raised with nobody listening is dropped and counted rather than refused, because every raiser in the frame path is written as though a send cannot fail.
 - ✅ **PP723** **nothing composes PP676's serialisers into a sender, so a controller change is recorded and never reaches a wire** — The input delay is sampled only where a handover reached the socket, so the keepalive's own sends and the changes the console does not care about are not counted as input.
+- ✅ **PP726** **nothing managed formats the launch spec, so the JSON that tells the console the stream's shape has no port** — The launch spec is the C's template byte for byte: a field this port thought better, or a key order it found tidier, would be a message no console has ever been sent.
 
 ## Block G — Test discipline
 

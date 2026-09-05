@@ -644,6 +644,7 @@
 - ✅ **PP718** **PP585's wait census still calls congestioncontrol.c unported, and nothing in the gate can tell it is wrong** — The macro moved to the mirrored group, twenty against twelve, and a row calling a file unported that another row follows now fails rather than counting correctly.
 - ✅ **PP719** **nothing managed raises a session event, so the frame path's nine reach nobody and the run's CONNECTED is owed** — The nine the frame path raises go through one seam whose send drops an event where nothing is listening, so PP707's host owes two subsystems rather than three.
 - ✅ **PP723** **nothing composes PP676's serialisers into a sender, so a controller change is recorded and never reaches a wire** — A button press rides the history alone, a quiet 200ms still sends a state, and a flush leaves four events to send again - so PP707's host owes one subsystem.
+- ✅ **PP726** **nothing managed formats the launch spec, so the JSON that tells the console the stream's shape has no port** — The C's own template is the oracle, joined out of its literals and compared byte for byte; a PS5 HDR spec takes 912 of the buffer's 1024, and 951 at its widest.
 
 ## Block G — Test discipline
 
