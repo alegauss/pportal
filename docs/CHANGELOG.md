@@ -647,6 +647,7 @@
 - ✅ **PP726** **nothing managed formats the launch spec, so the JSON that tells the console the stream's shape has no port** — The C's own template is the oracle, joined out of its literals and compared byte for byte; a PS5 HDR spec takes 912 of the buffer's 1024, and 951 at its widest.
 - ✅ **PP727** **nothing turns the launch spec into the BIG's payload, and the obfuscation there is not the encryption it looks like** — The spec is hidden by a key stream rather than encrypted, its terminator rides inside, and one block of agreement with a direct encrypt is what the test asserts.
 - ✅ **PP721** **nothing calls the managed event seam, so the five a pad info decides and the FEC failure still reach nobody** — The pad state is held across messages, so the same pad info decides five things and then one, and the FEC failure reaches the seam without crossing a wire.
+- ✅ **PP729** **the third dispatch layer routes a protobuf to three handlers and the one that keys the session has no port** — Four refusals in the C's order set a flag PP365 proved dead, and the four not-a-bang arms leave both flags alone, so only a keyed bang ends the wait.
 
 ## Block G — Test discipline
 

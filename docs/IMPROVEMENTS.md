@@ -448,30 +448,6 @@ notices it, what this port must go on doing is dropping the OLDEST packet - and 
 reading the index arithmetic would hold that, which the text search PP723 wrote does
 not.
 
-### §PP729 The handler that keys the session
-
-PP721 wired PP366's second dispatch layer to the events. The third asks what STATE the
-run is in and routes a protobuf to one of three handlers - expect_bang,
-expect_streaminfo and idle. Two of the three have ports; the first has none.
-
-WHAT IT DOES IS THE SESSION BECOMING KEYED. Decode the bang payload; refuse it where
-version_accepted or encrypted_key_accepted is false; require both the console's ECDH
-public key and its signature; derive the shared secret from them; initialise gkcrypt
-from that. Every failure sets state_failed and signals, and success sets state_finished
-- which is what releases the run's second wait.
-
-FOUR SCALARS ARE READ TODAY AND NOTHING DECIDES. DecodeWithNanopb reports the server
-version, the token and the two acceptance flags, and BangReachability records PP105's
-finding that the C derives the secret without ever checking the signature - a fact about
-the C rather than a handler here. So a managed run reaching EXPECT_BANG has nothing to
-hand the message to, and the wait it is in can only time out.
-
-THE DERIVATION STAYS BEHIND THE SEAM, as PP727's key pair does:
-chiaki_ecdh_derive_secret is OpenSSL's. What is portable is the decision around it -
-which refusals happen in which order, and what state each one leaves behind. That is the
-half a rewrite gets subtly wrong, and the console's answer to getting it wrong is
-silence.
-
 ## Block G — Test discipline
 
 ### §PP720 A warning compile.cmd cannot clear
