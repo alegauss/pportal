@@ -330,6 +330,53 @@ What makes it worth doing is that the census is what PP696 will be read against.
 that resolves to a namespace is a claim nobody can check, and PP712 showed the failure
 rate on those claims is three in four.
 
+### §PP715 The span that is not a wrap
+
+chiaki_packet_stats_get computes the sequence span as seq_max - seq_min, with a comment
+saying the overflow is on purpose. It is not the overflow the comment means. Both are
+uint16_t, so both promote to int before the minus, and a ceiling numerically below its
+floor is a NEGATIVE int assigned to a uint64_t - about 1.8e19, not the small positive
+difference sixteen-bit wraparound gives.
+
+The state is ordinary. The audio receiver pushes each packet's frame index, the ceiling
+advances only for a number greater under RFC 1982, and a stream crossing 65535 makes 100
+greater than 60000. So one wrap per 65536 audio packets puts the ceiling below the floor
+for exactly one window - and PP714's differential shows the C answering
+18446744073709545716 where the arithmetic the comment describes answers 101.
+
+What that window does downstream is the part worth knowing. Congestion control divides
+lost by received plus lost, gets a ratio at or near 1, and the clamp fires: the console
+is told the maximum reported loss the settings allow, over a stream that lost nothing.
+Its bitrate control reacts to exactly that number.
+
+The non-goals forbid patching the vendored C, and PP714 copied the behaviour rather than
+quietly disagreeing with the client. So this is a question about the console, not a
+repair: whether a single maximum-loss window every few minutes is visible in the
+bitrate, which PP76's played sessions could be read for.
+
+### §PP716 The one push that does not lock
+
+chiaki_packet_stats has a mutex and three of its four writers take it.
+chiaki_packet_stats_push_generation locks, chiaki_packet_stats_reset locks,
+chiaki_packet_stats_get locks - and chiaki_packet_stats_push_seq does not. It increments
+seq_received and conditionally raises seq_max with nothing held.
+
+Both sides of that race exist. The audio receiver pushes a frame index for every packet
+it handles, on the takion thread, and PP714's congestion control thread reads the same
+two fields under the mutex every 200ms. So a read can see the count raised and the
+ceiling not, or the reset can move seq_min while an increment is in flight and lose it.
+Neither corrupts memory; both produce a report that is wrong by a little, which is the
+kind of wrong nothing notices.
+
+PP714's port took the lock on all four, because a managed field read across threads with
+no barrier is worse than the C's - and the differential could not see the difference,
+since the oracle drives one thread. That is a DEPARTURE from the C and this file is
+where it should have been recorded rather than left in a comment.
+
+The work is to decide which the port is: the C's shape, which means documenting a race
+it inherits, or a correction, which means saying so where the census can see it. PP499
+and PP402 are the two precedents and they went opposite ways.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry

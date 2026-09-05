@@ -29,6 +29,8 @@
 - 📋 **PP697** (deps: PP696) **after the frame-path flip the models describe a C that has gone, in the present tense** — PP634 found this on the holepunch side: the predicates stay because they notice the calls coming back, and what goes stale is the prose around them. → §PP697
 - ⏳ **PP707** (deps: —) **nothing managed drives a live session, so the flip that stops session.c asking removes the only path that streams** — Nothing in app implements the host, so the run has never gone over a socket and the stream still starts from chiaki_session_start. → §PP707
 - 💭 **PP713** (deps: —) **eleven rows of the frame path's census name a type with no member, and nothing says which are ctors** — PP712 closed the same hole one census over and found three wrong answers; this one has not been asked. → §PP713
+- 💭 **PP715** (deps: —) **one wrap past 65535 makes the client report 1.8e19 packets lost, and nothing says what the console does then** — PP714 reproduced it because the port copies the C, so the clamp fires on a healthy stream and the console is told the worst loss allowed. → §PP715
+- 💭 **PP716** (deps: —) **packetstats' sequence arm is pushed with no mutex while three neighbours take one, and two threads reach it** — PP714's port locks all four and nothing records that as a departure, so a reader would take the C for the same shape. → §PP716
 
 ## Block G — Test discipline
 
