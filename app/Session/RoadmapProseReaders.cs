@@ -291,16 +291,11 @@ public static class RoadmapProseReaders
             ProseReading.Incidental,
             "The tail of a note in that table, long enough to match and about a runner rather than about a backlog."),
 
-        // PP712: names for the work PP707's host still owes. They occur in that line's own criterion
-        // because it was written FROM this list - which is the coincidence running the way PP527's
-        // does, the document copying the program - and nothing here reads a document. PP714 wrote
-        // one of the four and its row left with it, which is what a row falling off looks like;
-        // PP719 and PP723 took two more, and this is the last of them.
-        new(
-            "a BIG message",
-            @"app\Protocol\StreamRunHostConsumers.cs",
-            ProseReading.Incidental,
-            "The third, which PP712 found reported as answered by a builder that has no BIG."),
+        // PP712 named four subsystems PP707's host owed, and each had a row here: the phrases occur
+        // in that line's own criterion because it was written FROM this list, which is the
+        // coincidence running the way PP527's does - the document copying the program - and nothing
+        // here reads a document. PP714, PP719, PP723 and PP727 wrote all four, and each row left
+        // with its subsystem. What a row falling off looks like is the group being empty.
 
         // PP718: this one IS matched, and never against a document. NativeWaits.Unclaimed looks for
         // it in its own rows' notes - program data - and the backlog carries the phrase only because

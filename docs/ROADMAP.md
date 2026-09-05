@@ -35,7 +35,6 @@
 - 💭 **PP722** (deps: —) **seven events outside the frame path have no managed raiser, and one enum member is raised by nothing at all** — ctrl.c raises three keyboard events and session.c four, and CHIAKI_EVENT_HOLEPUNCH is declared in the header and assigned nowhere in lib/src. → §PP722
 - 💭 **PP724** (deps: —) **PP718's claim check reads one note in ten, so nine unported rows can go false the way the one it was filed about did** — The trigger is a phrase in a note the author writes, and PP718 reworded two rows out of its reach in the very commit that added the check. → §PP724
 - 💭 **PP725** (deps: —) **the sender's overflow rung copies a packet buffer onto itself, and nothing records that the port left it out** — A full queue makes the destination index equal begin, so the memcpy is handed one address twice and only a comment says PP723 dropped it. → §PP725
-- 📋 **PP727** (deps: —) **nothing turns the launch spec into the BIG's payload, and the obfuscation there is not the encryption it looks like** — Encrypting a zero buffer under CFB gives the OFB keystream, so XORing it with the JSON is not what encrypting the JSON gives. → §PP727
 
 ## Block G — Test discipline
 

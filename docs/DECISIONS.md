@@ -62,6 +62,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP719** **nothing managed raises a session event, so the frame path's nine reach nobody and the run's CONNECTED is owed** — An event raised with nobody listening is dropped and counted rather than refused, because every raiser in the frame path is written as though a send cannot fail.
 - ✅ **PP723** **nothing composes PP676's serialisers into a sender, so a controller change is recorded and never reaches a wire** — The input delay is sampled only where a handover reached the socket, so the keepalive's own sends and the changes the console does not care about are not counted as input.
 - ✅ **PP726** **nothing managed formats the launch spec, so the JSON that tells the console the stream's shape has no port** — The launch spec is the C's template byte for byte: a field this port thought better, or a key order it found tidier, would be a message no console has ever been sent.
+- ✅ **PP727** **nothing turns the launch spec into the BIG's payload, and the obfuscation there is not the encryption it looks like** — Collapsing the zero-buffer encrypt and the XOR into one call changes the cipher mode: it agrees for one block, differs after it, and the symptom is a console that never answers.
 
 ## Block G — Test discipline
 

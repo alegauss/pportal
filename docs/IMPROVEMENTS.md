@@ -470,32 +470,6 @@ notices it, what this port must go on doing is dropping the OLDEST packet - and 
 reading the index arithmetic would hold that, which the text search PP723 wrote does
 not.
 
-### §PP727 Two ciphers that look like one
-
-stream_connection_send_big does not encrypt the launch spec. It zeroes a buffer,
-encrypts THAT at counter 0, and XORs the result with the JSON - three lines that read
-like an encryption written the long way round.
-
-THEY ARE A DIFFERENT CIPHER. rpcrypt is AES-128-CFB128, where each block's key stream is
-the encryption of the previous CIPHERTEXT block. Encrypting zeros therefore yields
-E(iv), E(E(iv)), E(E(E(iv))) - which is exactly the OFB key stream - and XORing that
-with the plaintext is AES-OFB. A port that read the three lines as an obfuscated
-encrypt, and called rpcrypt on the JSON instead, would send CFB where the console
-expects OFB: every byte past the first block differs, and the symptom is a stream that
-will not start.
-
-AND THE TERMINATOR IS PART OF THE MESSAGE. The size is incremented by one after the
-format, commented "we also want the trailing 0", so the NUL is encrypted, XORed and
-base64'd with the rest. A port encoding the string's own length sends a spec one byte
-short.
-
-WHAT IS OWED is the BIG itself: PP726's JSON through those three steps, then a protobuf
-carrying the client version, the session id, the encoded spec, a zero encrypted key, and
-the ECDH public key with its signature. The key pair is OpenSSL's and stays behind the
-native seam; everything above it is arithmetic this side can hold.
-
-It is the last of the four subsystems PP712 counted, so shipping it closes that census.
-
 ## Block G — Test discipline
 
 ### §PP720 A warning compile.cmd cannot clear

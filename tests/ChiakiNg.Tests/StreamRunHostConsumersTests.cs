@@ -102,48 +102,49 @@ public class StreamRunHostConsumersTests(ITestOutputHelper output)
     }
 
     /// <summary>
-    /// ONE IS OWED, AND IT IS NAMED.
+    /// NOTHING IS OWED, WHICH IS PP707'S SECOND CRITERION MET.
     ///
-    /// The answer this criterion exists to produce, and it is a small number for a reason worth
-    /// stating: most of what a real host needs already existed, so the work between here and a
-    /// managed run was four pieces rather than twenty-six, and three of them have landed.
+    /// The answer this criterion exists to produce. Most of what a real host needs already existed,
+    /// so the work between the census and here was four subsystems rather than twenty-six members,
+    /// and PP714, PP719, PP723 and PP727 wrote them one commit at a time.
     ///
-    /// Asserted as the SET rather than as a count. One more arriving is a decision somebody takes,
-    /// and one of these being answered should shorten this list in the same commit.
+    /// Asserted as the SET rather than as a count, and it stays: a member added to the host with no
+    /// counterpart lands back in this list, and the assertion is that nobody left one there.
     /// </summary>
     [Fact]
-    public void TheOwedMembersAreTheseAndNoOthers()
+    public void NothingIsOwed()
     {
-        output.WriteLine(string.Join(", ", StreamRunHostConsumers.Owed));
+        output.WriteLine(
+            StreamRunHostConsumers.Owed.Count == 0 ? "none" : string.Join(", ", StreamRunHostConsumers.Owed));
 
-        Assert.Equal(["SendBig"], StreamRunHostConsumers.Owed);
+        Assert.Empty(StreamRunHostConsumers.Owed);
+        Assert.Empty(StreamRunHostConsumers.OwedSubsystems);
     }
 
     /// <summary>
-    /// One member, one subsystem - and the count that matters is objects rather than members.
+    /// And the four that were owed are each answered by a member, not by the list having been emptied.
     ///
-    /// PP712 moved this from two to four, because SendBig and SendConnected were reported as
-    /// answered by types with no member doing either. PP714 wrote congestion control and took two
-    /// members with it, a start and a stop being one thread. PP719 took a single member and was the
-    /// largest of the three, since nothing managed raised a session event at all. PP723 took three
-    /// at once: a sender's init, its fini and the counter lifted out of it are one object.
+    /// The direction that would otherwise be missing. Deleting a row, or answering it with a type
+    /// alone, empties the list above just as well as writing the subsystem does - which is the
+    /// failure PP712 caught the first time, when SendBig was reported as answered by a builder with
+    /// no BIG in it.
     /// </summary>
     [Fact]
-    public void TheOwedMemberIsOneSubsystem()
+    public void EachSubsystemThatWasOwedIsAnsweredByAMember()
     {
-        output.WriteLine(string.Join(", ", StreamRunHostConsumers.OwedSubsystems));
+        string[] answered =
+        [
+            .. StreamRunHostConsumers.Members
+                .Where(one => one.How == HostAnswer.Answered && one.Answer is { Member: not null })
+                .Select(one => $"{one.Answer!.Value.Type}.{one.Answer!.Value.Member}"),
+        ];
 
-        Assert.Single(StreamRunHostConsumers.OwedSubsystems);
-        Assert.Single(StreamRunHostConsumers.Owed);
-        Assert.Contains("SendBig", StreamRunHostConsumers.Owed);
+        output.WriteLine(string.Join(", ", answered.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)));
 
-        // PP714, PP719 and PP723: each of the three is gone from both lists, which is what shipping
-        // one of these looks like from the census's side.
-        Assert.DoesNotContain(
-            StreamRunHostConsumers.Owed,
-            one => one.Contains("Congestion", StringComparison.Ordinal)
-                || one.Contains("FeedbackSender", StringComparison.Ordinal)
-                || one is "SendConnected" or "LiftInputToWire");
+        Assert.Contains($"{nameof(ManagedCongestionControl)}.{nameof(ManagedCongestionControl.Start)}", answered);
+        Assert.Contains($"{nameof(ManagedSessionEvents)}.{nameof(ManagedSessionEvents.SendConnected)}", answered);
+        Assert.Contains($"{nameof(ManagedFeedbackSender)}.{nameof(ManagedFeedbackSender.Start)}", answered);
+        Assert.Contains($"{nameof(BigMessage)}.{nameof(BigMessage.Encode)}", answered);
     }
 
     /// <summary>

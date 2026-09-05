@@ -47,9 +47,10 @@ public readonly record struct HostMember(string Member, HostAnswer How, Counterp
 /// namespace, and PP669's own rule is that a mapping is not a call. So every answered row names the
 /// member that does the work, and the ones that cannot say which of the two other things they are.
 ///
-/// ONE SUBSYSTEM IS OWED. PP712 counted four; PP714, PP719 and PP723 answered three of them, so
-/// what is left is a BIG message. It is its own piece of work rather than a stub, and this list
-/// falling is what shipping one looks like from here.
+/// NOTHING IS OWED NOW. PP712 counted four subsystems; PP714, PP719, PP723 and PP727 wrote them,
+/// and each ship shortened this list in its own commit rather than at the end. What that answers is
+/// PP707's SECOND criterion and not its first: every member has a counterpart, and a counterpart is
+/// still not a call - nothing in app implements this interface, which is what the first one is about.
 /// </summary>
 public static class StreamRunHostConsumers
 {
@@ -86,9 +87,9 @@ public static class StreamRunHostConsumers
             "PP714's thread, reporting every 200ms out of the stats the two receivers push."),
         new(
             "SendBig",
-            HostAnswer.Owed,
-            null,
-            "PP712: nothing assembles one. A BIG carries the session key, the launch spec, the encrypted key and an ECDH public key with its signature."),
+            HostAnswer.Answered,
+            new(CounterpartAssembly.App, nameof(BigMessage), nameof(BigMessage.Encode)),
+            "PP727's message over PP726's spec. PP712 filed this row because a builder with no BIG in it had been answering for it."),
         new(
             "StartFeedbackSender",
             HostAnswer.Answered,
@@ -206,15 +207,18 @@ public static class StreamRunHostConsumers
     ];
 
     /// <summary>
-    /// The subsystems those members belong to, which is what a plan is made from.
+    /// The subsystems those members belong to, which is what a plan is made from - and it is empty.
     ///
-    /// The count that matters is objects and not members: PP714 took congestion control off this
-    /// list and two members with it, because a start and a stop are one thread. PP723 took three at
-    /// once for the same reason - a sender's init, its fini and the counter lifted out of it are one
-    /// object. PP719 took exactly one, and was the largest of the three: nothing managed raised a
-    /// session event at all, so the run's one CONNECTED needed a seam nine events wide.
+    /// The count that mattered was objects and not members: PP714 took congestion control and two
+    /// members with it, because a start and a stop are one thread; PP723 took three at once, a
+    /// sender's init, its fini and the counter lifted out of it being one object; PP719 took exactly
+    /// one and was the largest of the four, since nothing managed raised a session event at all.
+    /// PP727 took the last, which needed PP726's launch spec under it.
+    ///
+    /// Kept rather than deleted with its last entry, because the check that reads it is what would
+    /// report a member arriving with nothing to answer for it.
     /// </summary>
-    public static IReadOnlyList<string> OwedSubsystems { get; } = ["a BIG message"];
+    public static IReadOnlyList<string> OwedSubsystems { get; } = [];
 
     /// <summary>The interface's file, or null outside a checkout.</summary>
     public static string? Locate() => SanitizerSource.LocateRelative(RelativePath);
