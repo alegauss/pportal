@@ -307,31 +307,6 @@ joins under it and there will be more.
 Recorded as a dep of PP696 rather than folded into it, because it is a different piece
 of work and PP696's own design is right about everything except what happens next.
 
-### §PP708 A stream with no sound
-
-PP700 joined a decoder to the session and a stream decoded for the first time. Nothing
-joined a speaker. Sweep the assembly for IAudioRenderClient and there is none; sweep it
-for a consumer of AudioRing, which is PP32's playback buffer with its capacity, drain
-target and clear threshold, and the only caller is the selftest asserting its
-arithmetic.
-
-PP698 is how this surfaced rather than how it was looked for. Proving a loopback
-reference delivers needed something playing, and there was nothing in the tree to play
-it with - so the test generates a WAV and hands it to System.Media.SoundPlayer, which is
-a fine thing for a test and not a path a session can use.
-
-WHAT IS MISSING is the mirror of PP652: a render client on the default endpoint, taking
-decoded frames and handing them to the engine, with the same reporting when the endpoint
-opens and says nothing. The interop is the one WasapiCapture already has - the same
-enumerator, the same IAudioClient - plus IAudioRenderClient, which is three methods.
-
-WHAT IS NOT MISSING is the decode. StreamAvDispatch routes audio to a seam and
-IAudioSink is the seam; every implementation of it in the tree counts packets. The
-frames exist and stop there.
-
-Its own line rather than part of the audio path's other work, because a person can use a
-session that cannot hear them and cannot use one that plays nothing.
-
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry

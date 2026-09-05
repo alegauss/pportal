@@ -125,11 +125,54 @@ public static class MicrophoneSurface
             .Sweepable(Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories))
             .Order(StringComparer.Ordinal))
         {
-            string source = CCall.Code(File.ReadAllText(path));
-            if (CaptureApis.Any(api => source.Contains(api, StringComparison.Ordinal)))
+            if (OpensACaptureDevice(File.ReadAllText(path)))
                 found.Add(Path.GetRelativePath(root, path));
         }
 
         return found;
+    }
+
+    /// <summary>
+    /// Whether a source OPENS a capture device, as opposed to naming one.
+    ///
+    /// PP708: two more ways to name one without opening one, and both arrived in the same commit.
+    ///
+    /// THE INTEROP'S DECLARATION IS NOT AN OPENING. IAudioCaptureClient is declared once, in the
+    /// file both directions share, and the clients that ask an endpoint for one are what this
+    /// census counts. The same distinction ShimSurface draws between a declaration and a
+    /// definition, for the same reason: a header says a thing exists and says nothing about who
+    /// uses it.
+    ///
+    /// AND A MEMBER ACCESS ON THIS PORT'S OWN CAPTURE CLASS IS NOT A SECOND CAPTURE.
+    /// <c>WasapiCapture.</c> followed by a name is a reference to the one place - the render side
+    /// reads its buffer duration and its flags from it - while NAudio's type of the same name is
+    /// CONSTRUCTED. So the qualified form does not count and the bare one does, which is the
+    /// difference between using the census's subject and being a second one.
+    /// </summary>
+    public static bool OpensACaptureDevice(string source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        string code = CCall.Code(source);
+
+        if (code.Contains("interface IAudioCaptureClient", StringComparison.Ordinal))
+            return false;
+
+        return CaptureApis.Any(api => Uses(code, api));
+    }
+
+    /// <summary>An API named other than as a member access on this port's own capture class.</summary>
+    private static bool Uses(string code, string api)
+    {
+        for (int at = code.IndexOf(api, StringComparison.Ordinal);
+             at >= 0;
+             at = code.IndexOf(api, at + api.Length, StringComparison.Ordinal))
+        {
+            int after = at + api.Length;
+            if (after >= code.Length || code[after] != '.')
+                return true;
+        }
+
+        return false;
     }
 }

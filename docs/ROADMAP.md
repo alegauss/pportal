@@ -28,7 +28,6 @@
 - 📋 **PP696** (deps: PP707 ⏳) **the frame path's deletion has no commit that edits the C, so four files stay while their ports exist** — PP623's middle step is the only one touching lib, and nobody has written this path's: session.c's asks, the shim's wrappers and the suite's four files all still name them. → §PP696
 - 📋 **PP697** (deps: PP696) **after the frame-path flip the models describe a C that has gone, in the present tense** — PP634 found this on the holepunch side: the predicates stay because they notice the calls coming back, and what goes stale is the prose around them. → §PP697
 - ⏳ **PP707** (deps: —) **nothing managed drives a live session, so the flip that stops session.c asking removes the only path that streams** — Nothing in app implements the host, so the run has never gone over a socket and the stream still starts from chiaki_session_start. → §PP707
-- 📋 **PP708** (deps: —) **nothing in the port renders audio, so a session shows a picture and plays no sound at all** — PP698 had to generate a tone to prove a loopback reference works, because no code here plays one; AudioRing is a model whose only consumer is the selftest. → §PP708
 
 ## Block G — Test discipline
 

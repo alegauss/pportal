@@ -72,8 +72,8 @@ public sealed class WasapiCapture : IDisposable
     private readonly MicrophoneUnits units;
     private readonly CancellationTokenSource stopping = new();
 
-    private IAudioClient? client;
-    private IAudioCaptureClient? capture;
+    private Wasapi.IAudioClient? client;
+    private Wasapi.IAudioCaptureClient? capture;
     private Thread? pump;
     private bool disposed;
 
@@ -140,7 +140,7 @@ public sealed class WasapiCapture : IDisposable
     /// is a reasonable first choice and a bad only choice.
     /// </summary>
     public static IReadOnlyList<(string Id, string Name)> ActiveCaptureEndpoints()
-        => ActiveEndpoints(EDataFlow.Capture);
+        => ActiveEndpoints(Wasapi.EDataFlow.Capture);
 
     /// <summary>
     /// PP698: every active RENDER endpoint, which is where a loopback reference comes from.
@@ -151,25 +151,25 @@ public sealed class WasapiCapture : IDisposable
     /// in headphones mid-session.
     /// </summary>
     public static IReadOnlyList<(string Id, string Name)> ActiveRenderEndpoints()
-        => ActiveEndpoints(EDataFlow.Render);
+        => ActiveEndpoints(Wasapi.EDataFlow.Render);
 
-    private static IReadOnlyList<(string Id, string Name)> ActiveEndpoints(EDataFlow flow)
+    private static IReadOnlyList<(string Id, string Name)> ActiveEndpoints(Wasapi.EDataFlow flow)
     {
         object enumeratorObject;
         try
         {
-            enumeratorObject = Activator.CreateInstance(Type.GetTypeFromCLSID(MMDeviceEnumeratorClsid)!)!;
+            enumeratorObject = Activator.CreateInstance(Type.GetTypeFromCLSID(Wasapi.MMDeviceEnumeratorClsid)!)!;
         }
         catch (Exception error) when (error is COMException or InvalidOperationException or NotSupportedException)
         {
             return [];
         }
 
-        var enumerator = (IMMDeviceEnumerator)enumeratorObject;
+        var enumerator = (Wasapi.IMMDeviceEnumerator)enumeratorObject;
 
         try
         {
-            if (enumerator.EnumAudioEndpoints(flow, DeviceStateActive, out IMMDeviceCollection? all) != 0
+            if (enumerator.EnumAudioEndpoints(flow, Wasapi.DeviceStateActive, out Wasapi.IMMDeviceCollection? all) != 0
                 || all is null)
             {
                 return [];
@@ -184,13 +184,13 @@ public sealed class WasapiCapture : IDisposable
 
                 for (int i = 0; i < count; i++)
                 {
-                    if (all.Item(i, out IMMDevice? device) != 0 || device is null)
+                    if (all.Item(i, out Wasapi.IMMDevice? device) != 0 || device is null)
                         continue;
 
                     try
                     {
                         if (device.GetId(out string id) == 0)
-                            found.Add((id, NameOf(device)));
+                            found.Add((id, Wasapi.NameOf(device)));
                     }
                     finally
                     {
@@ -251,7 +251,7 @@ public sealed class WasapiCapture : IDisposable
         object enumeratorObject;
         try
         {
-            enumeratorObject = Activator.CreateInstance(Type.GetTypeFromCLSID(MMDeviceEnumeratorClsid)!)!;
+            enumeratorObject = Activator.CreateInstance(Type.GetTypeFromCLSID(Wasapi.MMDeviceEnumeratorClsid)!)!;
         }
         catch (Exception error) when (error is COMException or InvalidOperationException or NotSupportedException)
         {
@@ -259,8 +259,8 @@ public sealed class WasapiCapture : IDisposable
             return CaptureResult.Refused;
         }
 
-        var enumerator = (IMMDeviceEnumerator)enumeratorObject;
-        IMMDevice? device = null;
+        var enumerator = (Wasapi.IMMDeviceEnumerator)enumeratorObject;
+        Wasapi.IMMDevice? device = null;
 
         try
         {
@@ -271,19 +271,19 @@ public sealed class WasapiCapture : IDisposable
             if (LastError != 0 || device is null)
                 return CaptureResult.NoDevice;
 
-            DeviceName = NameOf(device);
+            DeviceName = Wasapi.NameOf(device);
 
-            LastError = device.Activate(AudioClientIid, CLSCTX_ALL, IntPtr.Zero, out object? activated);
-            if (LastError != 0 || activated is not IAudioClient opened)
+            LastError = device.Activate(Wasapi.AudioClientIid, Wasapi.ClsCtxAll, IntPtr.Zero, out object? activated);
+            if (LastError != 0 || activated is not Wasapi.IAudioClient opened)
                 return CaptureResult.Refused;
 
             client = opened;
 
-            IntPtr format = Announced();
+            IntPtr format = Wasapi.Format(this.format);
             try
             {
                 LastError = client.Initialize(
-                    AudioClientShareMode.Shared,
+                    Wasapi.AudioClientShareMode.Shared,
                     FlagsFor(side),
                     BufferDuration,
                     0,
@@ -298,8 +298,8 @@ public sealed class WasapiCapture : IDisposable
             if (LastError != 0)
                 return CaptureResult.Refused;
 
-            LastError = client.GetService(CaptureClientIid, out object? service);
-            if (LastError != 0 || service is not IAudioCaptureClient reader)
+            LastError = client.GetService(Wasapi.CaptureClientIid, out object? service);
+            if (LastError != 0 || service is not Wasapi.IAudioCaptureClient reader)
                 return CaptureResult.Refused;
 
             capture = reader;
@@ -366,7 +366,7 @@ public sealed class WasapiCapture : IDisposable
             {
                 int bytes = got * units.UnitBytes / format.FrameSize;
 
-                if ((flags & AUDCLNT_BUFFERFLAGS_SILENT) != 0 || buffer == IntPtr.Zero)
+                if ((flags & Wasapi.BufferFlagsSilent) != 0 || buffer == IntPtr.Zero)
                 {
                     for (int at = 0; at < bytes; at += silence.Length)
                         units.Take(silence.AsSpan(0, Math.Min(silence.Length, bytes - at)), sink);
@@ -417,51 +417,8 @@ public sealed class WasapiCapture : IDisposable
         units.Reset();
     }
 
-    private static string NameOf(IMMDevice device)
-    {
-        if (device.OpenPropertyStore(STGM_READ, out IPropertyStore? store) != 0 || store is null)
-            return string.Empty;
 
-        try
-        {
-            if (store.GetValue(ref FriendlyName, out PropVariant value) != 0)
-                return string.Empty;
 
-            string name = value.AsString() ?? string.Empty;
-            PropVariantClear(ref value);
-            return name;
-        }
-        finally
-        {
-            Marshal.ReleaseComObject(store);
-        }
-    }
-
-    /// <summary>The format this capture asked for, allocated unmanaged for a call taking a pointer.</summary>
-    private IntPtr Announced()
-    {
-        MicrophoneAnnouncement announced = format;
-
-        var wanted = new WaveFormatEx
-        {
-            FormatTag = WAVE_FORMAT_PCM,
-            Channels = (short)announced.Channels,
-            SamplesPerSec = announced.Rate,
-            BitsPerSample = (short)announced.Bits,
-            BlockAlign = (short)(announced.Channels * announced.Bits / 8),
-            Size = 0,
-        };
-        wanted.AvgBytesPerSec = wanted.SamplesPerSec * wanted.BlockAlign;
-
-        IntPtr buffer = Marshal.AllocHGlobal(Marshal.SizeOf<WaveFormatEx>());
-        Marshal.StructureToPtr(wanted, buffer, false);
-        return buffer;
-    }
-
-    private const int CLSCTX_ALL = 23;
-    private const int STGM_READ = 0;
-    private const short WAVE_FORMAT_PCM = 1;
-    private const int AUDCLNT_BUFFERFLAGS_SILENT = 2;
 
     /// <summary>Put a converter in front of the engine, which is what makes the announced format reachable.</summary>
     public const int AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM = unchecked((int)0x80000000);
@@ -479,15 +436,15 @@ public sealed class WasapiCapture : IDisposable
     public const int AUDCLNT_STREAMFLAGS_LOOPBACK = 0x00020000;
 
     /// <summary>Which endpoints a side is looking at.</summary>
-    private static EDataFlow FlowOf(CaptureSide side)
-        => side == CaptureSide.RenderLoopback ? EDataFlow.Render : EDataFlow.Capture;
+    private static Wasapi.EDataFlow FlowOf(CaptureSide side)
+        => side == CaptureSide.RenderLoopback ? Wasapi.EDataFlow.Render : Wasapi.EDataFlow.Capture;
 
     /// <summary>
     /// And which default it wants: the voice endpoint for a microphone, the ordinary one for a
     /// reference of what is being heard.
     /// </summary>
-    private static ERole RoleOf(CaptureSide side)
-        => side == CaptureSide.RenderLoopback ? ERole.Console : ERole.Communications;
+    private static Wasapi.ERole RoleOf(CaptureSide side)
+        => side == CaptureSide.RenderLoopback ? Wasapi.ERole.Console : Wasapi.ERole.Communications;
 
     /// <summary>
     /// The initialise flags, which are the capture's two plus loopback on the render side.
@@ -504,192 +461,4 @@ public sealed class WasapiCapture : IDisposable
         return side == CaptureSide.RenderLoopback ? flags | AUDCLNT_STREAMFLAGS_LOOPBACK : flags;
     }
 
-    private static readonly Guid MMDeviceEnumeratorClsid = new("BCDE0395-E52F-467C-8E3D-C4579291692E");
-    private static readonly Guid AudioClientIid = new("1CB9AD4C-DBFA-4c32-B178-C2F568A703B2");
-    private static readonly Guid CaptureClientIid = new("C8ADBD64-E71E-48a0-A4DE-185C395CD317");
-
-    private static PropertyKey FriendlyName = new(new Guid("a45c254e-df1c-4efd-8020-67d146a850e0"), 14);
-
-    [DllImport("ole32.dll")]
-    private static extern int PropVariantClear(ref PropVariant value);
-
-    private enum EDataFlow
-    {
-        Render = 0,
-        Capture = 1,
-    }
-
-    private enum ERole
-    {
-        Console = 0,
-        Multimedia = 1,
-        Communications = 2,
-    }
-
-    private enum AudioClientShareMode
-    {
-        Shared = 0,
-        Exclusive = 1,
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct WaveFormatEx
-    {
-        public short FormatTag;
-        public short Channels;
-        public int SamplesPerSec;
-        public int AvgBytesPerSec;
-        public short BlockAlign;
-        public short BitsPerSample;
-        public short Size;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct PropertyKey(Guid formatId, int propertyId)
-    {
-        public Guid FormatId = formatId;
-        public int PropertyId = propertyId;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct PropVariant
-    {
-        public short Type;
-        public short Reserved1;
-        public short Reserved2;
-        public short Reserved3;
-        public IntPtr Value;
-        public IntPtr Value2;
-
-        /// <summary>VT_LPWSTR is 31, and a friendly name is one.</summary>
-        public readonly string? AsString() => Type == 31 ? Marshal.PtrToStringUni(Value) : null;
-    }
-
-    /// <summary>DEVICE_STATE_ACTIVE, which is what "this endpoint is plugged in and enabled" means.</summary>
-    private const int DeviceStateActive = 1;
-
-    [ComImport]
-    [Guid("A95664D2-9614-4F35-A746-DE8DB63617E6")]
-    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface IMMDeviceEnumerator
-    {
-        [PreserveSig]
-        int EnumAudioEndpoints(EDataFlow flow, int stateMask, out IMMDeviceCollection? devices);
-
-        [PreserveSig]
-        int GetDefaultAudioEndpoint(EDataFlow flow, ERole role, out IMMDevice? device);
-
-        [PreserveSig]
-        int GetDevice([MarshalAs(UnmanagedType.LPWStr)] string id, out IMMDevice? device);
-    }
-
-    [ComImport]
-    [Guid("0BD7A1BE-7A1A-44DB-8397-CC5392387B5E")]
-    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface IMMDeviceCollection
-    {
-        [PreserveSig]
-        int GetCount(out int count);
-
-        [PreserveSig]
-        int Item(int index, out IMMDevice? device);
-    }
-
-    [ComImport]
-    [Guid("D666063F-1587-4E43-81F1-B948E807363F")]
-    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface IMMDevice
-    {
-        [PreserveSig]
-        int Activate(
-            [MarshalAs(UnmanagedType.LPStruct)] Guid iid,
-            int context,
-            IntPtr activationParams,
-            [MarshalAs(UnmanagedType.IUnknown)] out object? instance);
-
-        [PreserveSig]
-        int OpenPropertyStore(int access, out IPropertyStore? store);
-
-        [PreserveSig]
-        int GetId([MarshalAs(UnmanagedType.LPWStr)] out string id);
-    }
-
-    [ComImport]
-    [Guid("886d8eeb-8cf2-4446-8d02-cdba1dbdcf99")]
-    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface IPropertyStore
-    {
-        [PreserveSig]
-        int GetCount(out int count);
-
-        [PreserveSig]
-        int GetAt(int index, out PropertyKey key);
-
-        [PreserveSig]
-        int GetValue(ref PropertyKey key, out PropVariant value);
-    }
-
-    [ComImport]
-    [Guid("1CB9AD4C-DBFA-4c32-B178-C2F568A703B2")]
-    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface IAudioClient
-    {
-        [PreserveSig]
-        int Initialize(
-            AudioClientShareMode mode, int flags, long duration, long period, IntPtr format, IntPtr session);
-
-        [PreserveSig]
-        int GetBufferSize(out int frames);
-
-        [PreserveSig]
-        int GetStreamLatency(out long latency);
-
-        [PreserveSig]
-        int GetCurrentPadding(out int frames);
-
-        [PreserveSig]
-        int IsFormatSupported(AudioClientShareMode mode, IntPtr format, out IntPtr closest);
-
-        [PreserveSig]
-        int GetMixFormat(out IntPtr format);
-
-        [PreserveSig]
-        int GetDevicePeriod(out long defaultPeriod, out long minimumPeriod);
-
-        [PreserveSig]
-        int Start();
-
-        [PreserveSig]
-        int Stop();
-
-        [PreserveSig]
-        int Reset();
-
-        [PreserveSig]
-        int SetEventHandle(IntPtr handle);
-
-        [PreserveSig]
-        int GetService([MarshalAs(UnmanagedType.LPStruct)] Guid iid,
-            [MarshalAs(UnmanagedType.IUnknown)] out object? service);
-    }
-
-    [ComImport]
-    [Guid("C8ADBD64-E71E-48a0-A4DE-185C395CD317")]
-    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface IAudioCaptureClient
-    {
-        [PreserveSig]
-        int GetBuffer(
-            out IntPtr buffer,
-            out int frames,
-            out int flags,
-            out long devicePosition,
-            out long counterPosition);
-
-        [PreserveSig]
-        int ReleaseBuffer(int frames);
-
-        [PreserveSig]
-        int GetNextPacketSize(out int frames);
-    }
 }

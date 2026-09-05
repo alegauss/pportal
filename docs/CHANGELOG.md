@@ -637,6 +637,7 @@
 - ✅ **PP703** **ManagedTakion's video queue is only ever set to null, so one step of its recorded teardown is unreachable** — A takion given a sink owns an arm, so one video datagram opens the queue and the teardown step reserved for it is appended where the C releases it.
 - ✅ **PP706** **the microphone has a capture, a unit splitter, an encoder and a head, and nothing runs them as one path** — Captured bytes reach a packet through all four pieces, and the C's two surprises are reproduced: two frames of silence at the start, and the newest frame sent twice while the oldest never is.
 - ✅ **PP707 (the host's census)** **nothing managed drives a live session, so the flip that stops session.c asking removes the only path that streams** — Every member of the run host has a counterpart or is on record as owed, and the four owed are two subsystems: congestion control and the feedback sender.
+- ✅ **PP708** **nothing in the port renders audio, so a session shows a picture and plays no sound at all** — The default render endpoint opens and plays, and PP698's loopback hears the tone back off the same endpoint - two of this port's subsystems, one playing and one listening.
 
 ## Block G — Test discipline
 
