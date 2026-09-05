@@ -37,12 +37,55 @@ public enum CounterpartAssembly
 }
 
 /// <summary>
+/// PP713: what a counterpart that names no member is, since three things look alike as silence.
+/// </summary>
+public enum CounterpartKind
+{
+    /// <summary>A member does what the call does, and the row names it.</summary>
+    Member,
+
+    /// <summary>
+    /// The call is a constructor's, so there is no member to name.
+    ///
+    /// chiaki_frame_processor_init and chiaki_video_receiver_init are these: an init that takes the
+    /// struct it fills is a constructor, and naming a method for one would be inventing a member.
+    /// </summary>
+    Constructor,
+
+    /// <summary>
+    /// The runtime removes the need, which is PP712's answer one census over.
+    ///
+    /// The two finis. A managed object is collected, so a row naming a method for a free would be
+    /// describing C# rather than answering for a call.
+    /// </summary>
+    NotNeeded,
+
+    /// <summary>
+    /// The type ITSELF is the counterpart, which is what a C test file's is.
+    ///
+    /// The suite's four rows. A file is not a call, so there is no member it could name - and this
+    /// is written down rather than left as the same silence, because leaving one legitimate reason
+    /// to say nothing is how the other three got in.
+    /// </summary>
+    WholeType,
+}
+
+/// <summary>
 /// The managed thing that stands where a C symbol stood.
 /// </summary>
 /// <param name="In">Which assembly resolves it.</param>
 /// <param name="Type">The type's name inside that assembly's namespace, e.g. <c>ManagedStreamRun</c>.</param>
-/// <param name="Member">A member that is the counterpart more precisely, or null where the type is.</param>
-public readonly record struct Counterpart(CounterpartAssembly In, string Type, string? Member = null)
+/// <param name="Member">
+/// The member that is the counterpart. Null only where <paramref name="Kind"/> says which of the
+/// two other things this is - PP713, because eleven rows here used to leave it null and mean three
+/// different things by it.
+/// </param>
+/// <param name="Kind">Which of the three, defaulting to the one that names a member.</param>
+public readonly record struct Counterpart(
+    CounterpartAssembly In,
+    string Type,
+    string? Member = null,
+    CounterpartKind Kind = CounterpartKind.Member)
 {
     /// <summary>The namespace-qualified name, which is what reflection resolves.</summary>
     public string FullName => In switch
@@ -143,19 +186,33 @@ public static class FramePathConsumers
     /// </summary>
     public static IReadOnlyList<ConsumedSymbol> Shim { get; } =
     [
-        new("chiaki_fec_decode", new(CounterpartAssembly.App, "FecCodec")),
-        new("create_matrix", new(CounterpartAssembly.App, "FecMatrix")),
-        new("chiaki_frame_processor_init", new(CounterpartAssembly.App, Assembler)),
-        new("chiaki_frame_processor_fini", new(CounterpartAssembly.App, Assembler)),
-        new("chiaki_frame_processor_alloc_frame", new(CounterpartAssembly.App, Assembler)),
-        new("chiaki_frame_processor_put_unit", new(CounterpartAssembly.App, Assembler)),
-        new("chiaki_frame_processor_flush_possible", new(CounterpartAssembly.App, Assembler)),
-        new("chiaki_frame_processor_flush", new(CounterpartAssembly.App, Assembler)),
-        new("chiaki_video_receiver_init", new(CounterpartAssembly.App, Receiver)),
-        new("chiaki_video_receiver_fini", new(CounterpartAssembly.App, Receiver)),
+        // PP713: eleven of these named a type and nothing else, and meant three different things by
+        // it. Each now says which - the member that answers, a constructor, or a need the runtime
+        // removes - because PP712 asked the same question of the run-host census and three of the
+        // four rows that had taken the option were wrong.
+        new("chiaki_fec_decode", new(CounterpartAssembly.App, "FecCodec", "Decode")),
+        new("create_matrix", new(CounterpartAssembly.App, "FecMatrix", "Cauchy")),
+        new(
+            "chiaki_frame_processor_init",
+            new(CounterpartAssembly.App, Assembler, null, CounterpartKind.Constructor)),
+        new(
+            "chiaki_frame_processor_fini",
+            new(CounterpartAssembly.App, Assembler, null, CounterpartKind.NotNeeded)),
+        new("chiaki_frame_processor_alloc_frame", new(CounterpartAssembly.App, Assembler, "AllocFrame")),
+        new("chiaki_frame_processor_put_unit", new(CounterpartAssembly.App, Assembler, "PutUnit")),
+        new("chiaki_frame_processor_flush_possible", new(CounterpartAssembly.App, Assembler, "FlushPossible")),
+        new("chiaki_frame_processor_flush", new(CounterpartAssembly.App, Assembler, "Flush")),
+        new(
+            "chiaki_video_receiver_init",
+            new(CounterpartAssembly.App, Receiver, null, CounterpartKind.Constructor)),
+        new(
+            "chiaki_video_receiver_fini",
+            new(CounterpartAssembly.App, Receiver, null, CounterpartKind.NotNeeded)),
         new("chiaki_video_receiver_stream_info", new(CounterpartAssembly.App, Receiver, "StreamInfo")),
         new("chiaki_video_receiver_av_packet", new(CounterpartAssembly.App, Receiver, "AvPacket")),
-        new("chiaki_video_receiver_get_frames_lost_total", new(CounterpartAssembly.App, Receiver)),
+        new(
+            "chiaki_video_receiver_get_frames_lost_total",
+            new(CounterpartAssembly.App, Receiver, "FramesLostTotal")),
     ];
 
     /// <summary>PP290's frame assembler, which the six frame-processor wrappers were the oracle for.</summary>
@@ -172,10 +229,18 @@ public static class FramePathConsumers
     /// </summary>
     public static IReadOnlyList<ConsumedTestFile> Suite { get; } =
     [
-        new("fec.c", new(CounterpartAssembly.Tests, "FecCodecTests")),
-        new("frameprocessor.c", new(CounterpartAssembly.Tests, "FrameAssemblerTests")),
-        new("videoreceiver.c", new(CounterpartAssembly.Tests, "ManagedVideoReceiverTests")),
-        new("allocbudget.c", new(CounterpartAssembly.Tests, "AllocBudgetTests")),
+        // PP713: a file's counterpart is a CLASS and not a member, and each of these says so rather
+        // than leaving the same null the symbol rows above used to leave for three other reasons.
+        new("fec.c", new(CounterpartAssembly.Tests, "FecCodecTests", null, CounterpartKind.WholeType)),
+        new(
+            "frameprocessor.c",
+            new(CounterpartAssembly.Tests, "FrameAssemblerTests", null, CounterpartKind.WholeType)),
+        new(
+            "videoreceiver.c",
+            new(CounterpartAssembly.Tests, "ManagedVideoReceiverTests", null, CounterpartKind.WholeType)),
+        new(
+            "allocbudget.c",
+            new(CounterpartAssembly.Tests, "AllocBudgetTests", null, CounterpartKind.WholeType)),
     ];
 
     /// <summary>A file, or null outside a checkout.</summary>

@@ -32,9 +32,14 @@ public class FramePathConsumersTests(ITestOutputHelper output)
     ///
     /// This is the half that runs outside a checkout as well: the mapping is a claim about this
     /// assembly, and a counterpart renamed away fails here before any file is read.
+    ///
+    /// PP713: AND EVERY ROW SAYS WHICH KIND IT IS. Eleven of the symbol rows named a type and
+    /// nothing else, and meant three different things by it - a member nobody had looked up, a
+    /// constructor, and a free the runtime makes needless. Silence cannot be judged, so it is no
+    /// longer allowed: a row naming no member has to say which of the reasons that is.
     /// </summary>
     [Fact]
-    public void EveryCounterpartResolves()
+    public void EveryCounterpartResolvesAndSaysWhatKindItIs()
     {
         IEnumerable<Counterpart> all = FramePathConsumers.Session.Select(s => s.Answer)
             .Concat(FramePathConsumers.Shim.Select(s => s.Answer))
@@ -45,12 +50,65 @@ public class FramePathConsumersTests(ITestOutputHelper output)
             Type? type = Resolve(counterpart);
             Assert.True(type is not null, $"{counterpart.FullName} does not resolve");
 
-            if (counterpart.Member is { } member)
+            if (counterpart.Kind == CounterpartKind.Member)
+            {
+                string member = Assert.IsType<string>(counterpart.Member);
+
                 Assert.True(
                     type.GetMember(member).Length > 0,
                     $"{counterpart.FullName} has no member {member}");
+
+                continue;
+            }
+
+            // The three that name none say so, and none of them may name one anyway - a row that
+            // did would be two answers about one call.
+            Assert.True(
+                counterpart.Member is null,
+                $"{counterpart.FullName} is {counterpart.Kind} and names {counterpart.Member}");
+
+            if (counterpart.Kind == CounterpartKind.Constructor)
+                Assert.NotEmpty(type.GetConstructors());
         }
     }
+
+    /// <summary>
+    /// PP713: the eleven that were silent, and what each of them turned out to be.
+    ///
+    /// The answer this task produced, as a count rather than a re-reading. Seven had a member all
+    /// along - FecCodec.Decode and ManagedVideoReceiver.FramesLostTotal among them, which are calls
+    /// that DO something - two are constructors, and two are finis the runtime makes needless.
+    ///
+    /// Asserted as the split so that a row moving between the three is a decision somebody takes
+    /// rather than a default nobody notices.
+    /// </summary>
+    [Fact]
+    public void TheShimsRowsAreSevenMembersTwoConstructorsAndTwoNeedless()
+    {
+        Counterpart[] answers = [.. FramePathConsumers.Shim.Select(one => one.Answer)];
+
+        int members = answers.Count(one => one.Kind == CounterpartKind.Member);
+        int constructors = answers.Count(one => one.Kind == CounterpartKind.Constructor);
+        int needless = answers.Count(one => one.Kind == CounterpartKind.NotNeeded);
+
+        output.WriteLine($"{members} member(s), {constructors} ctor(s), {needless} needless");
+
+        Assert.Equal(9, members);
+        Assert.Equal(2, constructors);
+        Assert.Equal(2, needless);
+
+        // The two PP713 named as calls that do something, now naming the member that does it.
+        Assert.Contains(answers, one => one.Type == "FecCodec" && one.Member == "Decode");
+        Assert.Contains(
+            answers, one => one.Member == nameof(ChiakiNg.Protocol.ManagedVideoReceiver.FramesLostTotal));
+    }
+
+    /// <summary>And a file's counterpart is the class itself, which is its own answer.</summary>
+    [Fact]
+    public void EverySuiteRowNamesAWholeType()
+        => Assert.All(
+            FramePathConsumers.Suite,
+            one => Assert.Equal(CounterpartKind.WholeType, one.Answer.Kind));
 
     /// <summary>
     /// What session.c and the shim actually call is exactly what is modelled - each way.
