@@ -767,6 +767,7 @@
 - ✅ **PP52** **nothing runs echo cancellation, and the vendor answer is absent on a machine with the card** — A stage sits between the capture and the encoder and is read off the samples: a perfect echo goes in at 11584 and comes back at 44, while a voice the speakers never played survives.
 - ✅ **PP709** **nothing drives the in-box echo canceller, so PP52's second criterion has a reading of it and no stage** — Filter mode reports its two inputs and cleans - fifty frames in, twenty-one kilobytes back - and it refuses the announced 48000, taking 22050 and below.
 - ✅ **PP710** **the port cannot change an audio rate, so the cleaner's 22050 ceiling keeps it out of the announced 48000 chain** — Every rate the canceller accepts reaches the announced one through the in-box resampler, and the DMO plumbing both are driven through is written once.
+- ✅ **PP711** **WasapiCapture can only be asked for the announced format, so the cleaning stage resamples both inputs itself** — A capture takes a format now, so a real microphone opened at 16000 delivering 320-byte units, and the stage has a door that skips both downward legs and cancels just as well.
 
 ## Block J — Public documentation
 

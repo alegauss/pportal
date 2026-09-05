@@ -204,17 +204,69 @@ public sealed class CleanedMicrophone : IDisposable
             ? Silence(downReference)
             : referenceDown.Process(reference, downReference).Produced;
 
+        return Cancel(down, downRef, into);
+    }
+
+    /// <summary>
+    /// PP711: the same, for a caller whose endpoints are already at <see cref="CancellerRate"/>.
+    ///
+    /// AUTOCONVERTPCM means a capture can ask its endpoint for any format, so a host that opens the
+    /// microphone and PP698's reference at the canceller's rate has already paid for the two
+    /// downward legs inside the engine - and this door skips them rather than converting bytes that
+    /// are already converted.
+    ///
+    /// The way UP is still here, because nothing is playing the cleaned stream: it goes to an
+    /// encoder that was told 48000, and no engine sits between the two.
+    ///
+    /// <see cref="Start"/> has to have run before a caller knows what rate to open at, which is the
+    /// order this door imposes and the reason the bytes-in one stays: an assertion that had to open
+    /// a device first could not run on a machine without one.
+    /// </summary>
+    /// <param name="microphone">A whole <see cref="CancellerFrameBytes"/> frame, or more.</param>
+    /// <param name="reference">The same, of the render side. Empty is silence.</param>
+    /// <param name="into">Where the cleaned unit goes, at the announced rate.</param>
+    public CleanedUnit CleanAtCancellerRate(
+        ReadOnlySpan<byte> microphone, ReadOnlySpan<byte> reference, Span<byte> into)
+    {
+        ObjectDisposedException.ThrowIf(disposed, this);
+
+        if (!started || microphoneFrames is null || referenceFrames is null)
+            return default;
+
+        int down = Math.Min(microphone.Length, downMicrophone.Length);
+        microphone[..down].CopyTo(downMicrophone);
+
+        int downRef;
+        if (reference.IsEmpty)
+        {
+            downRef = Silence(downReference);
+        }
+        else
+        {
+            downRef = Math.Min(reference.Length, downReference.Length);
+            reference[..downRef].CopyTo(downReference);
+        }
+
+        return Cancel(down, downRef, into);
+    }
+
+    /// <summary>
+    /// The half both doors share: whole frames to the transform, then the way back up.
+    /// </summary>
+    private CleanedUnit Cancel(int down, int downRef, Span<byte> into)
+    {
         // The converters hand back whatever is ready, which is not a whole frame every time. The
         // canceller wants whole frames, so the two streams are accumulated to its own unit before
-        // either reaches it.
+        // either reaches it. The device-rate door goes through the same accumulator: an endpoint
+        // delivers whole units, but a caller batching two of them would otherwise skip a frame.
         byte[] pendingMic = pendingMicrophone;
         byte[] pendingRef = pendingReference;
 
         var micFrames = new List<byte[]>();
         var refFrames = new List<byte[]>();
 
-        microphoneFrames.Take(downMicrophone.AsSpan(0, down), one => micFrames.Add(one.ToArray()));
-        referenceFrames.Take(downReference.AsSpan(0, downRef), one => refFrames.Add(one.ToArray()));
+        microphoneFrames!.Take(downMicrophone.AsSpan(0, down), one => micFrames.Add(one.ToArray()));
+        referenceFrames!.Take(downReference.AsSpan(0, downRef), one => refFrames.Add(one.ToArray()));
 
         var atCancellerRate = 0;
 

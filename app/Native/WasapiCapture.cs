@@ -68,7 +68,8 @@ public sealed class WasapiCapture : IDisposable
     public static TimeSpan PollInterval { get; } = TimeSpan.FromMilliseconds(5);
 
     private readonly Action<ReadOnlySpan<byte>> sink;
-    private readonly MicrophoneUnits units = new();
+    private readonly MicrophoneAnnouncement format;
+    private readonly MicrophoneUnits units;
     private readonly CancellationTokenSource stopping = new();
 
     private IAudioClient? client;
@@ -105,11 +106,29 @@ public sealed class WasapiCapture : IDisposable
     public CaptureHealth Health => CaptureSilence.Judge(pump is not null, RunningFor, UnitsCaptured);
 
     /// <summary>A capture that hands whole units to <paramref name="sink"/>.</summary>
-    public WasapiCapture(Action<ReadOnlySpan<byte>> sink)
+    /// <param name="format">
+    /// PP711: what to ask the engine for, which defaults to what the console was told.
+    ///
+    /// AUTOCONVERTPCM is what makes this a choice at all - the engine puts a converter in front and
+    /// the client reads exactly what it asked for, whatever the device runs at. So a caller that
+    /// wants the echo canceller's rate asks for it here and the two downward conversions PP52's
+    /// stage pays for happen inside Windows instead, for no code and no copy.
+    ///
+    /// The unit follows the format. A unit is ten milliseconds either way, so asking for 16000
+    /// makes it 320 bytes rather than 960 - and a sink sized from the announced format would be
+    /// reading three units as one.
+    /// </param>
+    public WasapiCapture(Action<ReadOnlySpan<byte>> sink, MicrophoneAnnouncement? format = null)
     {
         ArgumentNullException.ThrowIfNull(sink);
+
         this.sink = sink;
+        this.format = format ?? MicrophoneFormat.Announced;
+        units = new MicrophoneUnits(MicrophoneFormat.BytesPerUnit(this.format));
     }
+
+    /// <summary>The format this capture asked the engine for.</summary>
+    public MicrophoneAnnouncement Format => format;
 
     /// <summary>
     /// Every active capture endpoint, as an id and a name.
@@ -345,7 +364,7 @@ public sealed class WasapiCapture : IDisposable
 
             try
             {
-                int bytes = got * units.UnitBytes / MicrophoneFormat.Announced.FrameSize;
+                int bytes = got * units.UnitBytes / format.FrameSize;
 
                 if ((flags & AUDCLNT_BUFFERFLAGS_SILENT) != 0 || buffer == IntPtr.Zero)
                 {
@@ -418,10 +437,10 @@ public sealed class WasapiCapture : IDisposable
         }
     }
 
-    /// <summary>The format the C announces, allocated unmanaged for a call that takes a pointer.</summary>
-    private static IntPtr Announced()
+    /// <summary>The format this capture asked for, allocated unmanaged for a call taking a pointer.</summary>
+    private IntPtr Announced()
     {
-        MicrophoneAnnouncement announced = MicrophoneFormat.Announced;
+        MicrophoneAnnouncement announced = format;
 
         var wanted = new WaveFormatEx
         {
