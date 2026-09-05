@@ -102,7 +102,7 @@ public class StreamRunHostConsumersTests(ITestOutputHelper output)
     }
 
     /// <summary>
-    /// SEVEN ARE OWED, AND THEY ARE NAMED.
+    /// FIVE ARE OWED, AND THEY ARE NAMED.
     ///
     /// The answer this criterion exists to produce, and it is still a small number for a reason
     /// worth stating: most of what a real host needs already exists, so the work between here and a
@@ -122,33 +122,30 @@ public class StreamRunHostConsumersTests(ITestOutputHelper output)
                 "LiftInputToWire",
                 "SendBig",
                 "SendConnected",
-                "StartCongestionControl",
                 "StartFeedbackSender",
-                "StopCongestionControl",
             ],
             StreamRunHostConsumers.Owed);
     }
 
     /// <summary>
-    /// The owed members are FOUR subsystems, not seven pieces of work.
+    /// The owed members are THREE subsystems, not five pieces of work.
     ///
-    /// A start and a stop are one thread; a sender's init, its fini and the counter lifted out of
-    /// it are one object. Counting members would say seven where there are four, which is the sort
-    /// of number a plan gets made from.
+    /// A sender's init, its fini and the counter lifted out of it are one object. Counting members
+    /// would say five where there are three, which is the sort of number a plan gets made from.
     ///
-    /// PP712 moved this from two to four. SendBig and SendConnected were reported as answered by
-    /// types that have no member doing either.
+    /// PP712 moved this from two to four - SendBig and SendConnected were reported as answered by
+    /// types with no member doing either - and PP714 moved it from four to three by writing the
+    /// smallest, which took two members with it because a start and a stop are one thread.
     /// </summary>
     [Fact]
-    public void TheOwedMembersAreFourSubsystems()
+    public void TheOwedMembersAreThreeSubsystems()
     {
         output.WriteLine(string.Join(", ", StreamRunHostConsumers.OwedSubsystems));
 
-        Assert.Equal(4, StreamRunHostConsumers.OwedSubsystems.Count);
-        Assert.Equal(7, StreamRunHostConsumers.Owed.Count);
+        Assert.Equal(3, StreamRunHostConsumers.OwedSubsystems.Count);
+        Assert.Equal(5, StreamRunHostConsumers.Owed.Count);
 
-        // And the members really do fall into those four rather than the list being a wish.
-        Assert.Equal(2, StreamRunHostConsumers.Owed.Count(one => one.Contains("Congestion", StringComparison.Ordinal)));
+        // And the members really do fall into those three rather than the list being a wish.
         Assert.Equal(
             3,
             StreamRunHostConsumers.Owed.Count(
@@ -156,6 +153,11 @@ public class StreamRunHostConsumersTests(ITestOutputHelper output)
                     || one == "LiftInputToWire"));
         Assert.Contains("SendBig", StreamRunHostConsumers.Owed);
         Assert.Contains("SendConnected", StreamRunHostConsumers.Owed);
+
+        // PP714: and congestion control is gone from both, which is what shipping one looks like.
+        Assert.DoesNotContain(
+            StreamRunHostConsumers.Owed,
+            one => one.Contains("Congestion", StringComparison.Ordinal));
     }
 
     /// <summary>

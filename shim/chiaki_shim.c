@@ -15,6 +15,7 @@
 #include <chiaki/ffmpegdecoder.h>
 #include <chiaki/frameprocessor.h>
 #include <chiaki/messagetap.h>
+#include <chiaki/packetstats.h>
 
 #include <libavutil/frame.h>
 #include <libavutil/hwcontext.h>
@@ -3916,4 +3917,41 @@ CHIAKI_SHIM_API int32_t chiaki_shim_feedback_history_format(
 
 	chiaki_feedback_history_buffer_fini(&buffer);
 	return (int32_t)err;
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_packet_stats_run(
+		const uint64_t *gen_received, const uint64_t *gen_lost, int32_t gen_count,
+		const uint16_t *seqs, int32_t seq_count, int32_t seq_split,
+		bool reset, uint64_t *received, uint64_t *lost)
+{
+	ChiakiPacketStats stats;
+	ChiakiErrorCode err;
+	int32_t i;
+
+	if(!received || !lost || gen_count < 0 || seq_count < 0)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+	if(seq_split < 0 || seq_split > seq_count)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+	if((gen_count > 0 && (!gen_received || !gen_lost)) || (seq_count > 0 && !seqs))
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+
+	err = chiaki_packet_stats_init(&stats);
+	if(err != CHIAKI_ERR_SUCCESS)
+		return (int32_t)err;
+
+	for(i = 0; i < gen_count; i++)
+		chiaki_packet_stats_push_generation(&stats, gen_received[i], gen_lost[i]);
+
+	for(i = 0; i < seq_split; i++)
+		chiaki_packet_stats_push_seq(&stats, seqs[i]);
+
+	chiaki_packet_stats_get(&stats, reset, &received[0], &lost[0]);
+
+	for(i = seq_split; i < seq_count; i++)
+		chiaki_packet_stats_push_seq(&stats, seqs[i]);
+
+	chiaki_packet_stats_get(&stats, false, &received[1], &lost[1]);
+
+	chiaki_packet_stats_fini(&stats);
+	return (int32_t)CHIAKI_ERR_SUCCESS;
 }

@@ -291,14 +291,10 @@ public static class RoadmapProseReaders
             ProseReading.Incidental,
             "The tail of a note in that table, long enough to match and about a runner rather than about a backlog."),
 
-        // PP712: four names for the work PP707's host still owes. They occur in that line's own
-        // criterion because it was written FROM this list - which is the coincidence running the
-        // way PP527's does, the document copying the program - and nothing here reads a document.
-        new(
-            "congestion control",
-            @"app\Protocol\StreamRunHostConsumers.cs",
-            ProseReading.Incidental,
-            "One of the four subsystems the run's host has no counterpart for, named where the census names it."),
+        // PP712: names for the work PP707's host still owes. They occur in that line's own criterion
+        // because it was written FROM this list - which is the coincidence running the way PP527's
+        // does, the document copying the program - and nothing here reads a document. PP714 wrote
+        // one of the four and its row left with it, which is what a row falling off looks like.
         new(
             "the feedback sender",
             @"app\Protocol\StreamRunHostConsumers.cs",

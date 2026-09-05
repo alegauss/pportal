@@ -56,7 +56,7 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 46
+#define CHIAKI_SHIM_ABI 47
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -1845,6 +1845,32 @@ CHIAKI_SHIM_API void chiaki_shim_feedback_history_touchpad(
 CHIAKI_SHIM_API int32_t chiaki_shim_feedback_history_format(
 		int32_t size, const uint8_t *events, const int32_t *lens, int32_t count,
 		uint8_t *out, int32_t *out_size);
+
+/**
+ * PP714: a packet stats driven end to end - init, both kinds of push, get, get again, fini.
+ *
+ * ONE CALL BECAUSE THE RESET IS THE FINDING. chiaki_packet_stats_get with reset does not zero the
+ * sequence floor, it moves seq_min UP to the current seq_max - so the second read of a stream that
+ * kept arriving is not the first read repeated, and a port that reset to zero would report the
+ * whole run's span as the next window's loss. Two reads out of one call is what puts that in the
+ * numbers.
+ *
+ * The sequence numbers push on BOTH SIDES of that first get, split at `seq_split`, because the
+ * second window is where a ceiling can end up numerically below its floor - and that subtraction,
+ * done in int and widened, is the other half of what a port has to reproduce.
+ *
+ * @param gen_received each generation's received count, `gen_count` of them.
+ * @param gen_lost each generation's lost count, `gen_count` of them.
+ * @param seqs the sequence numbers, pushed in the order given, `seq_count` of them.
+ * @param seq_split how many of them go before the first get. The rest go after it.
+ * @param reset whether the FIRST get resets. The second always does not.
+ * @param received the first get's received, then the second's.
+ * @param lost the first get's lost, then the second's.
+ */
+CHIAKI_SHIM_API int32_t chiaki_shim_packet_stats_run(
+		const uint64_t *gen_received, const uint64_t *gen_lost, int32_t gen_count,
+		const uint16_t *seqs, int32_t seq_count, int32_t seq_split,
+		bool reset, uint64_t *received, uint64_t *lost);
 
 #ifdef __cplusplus
 }

@@ -639,6 +639,7 @@
 - ✅ **PP707 (the host's census)** **nothing managed drives a live session, so the flip that stops session.c asking removes the only path that streams** — Every member of the run host has a counterpart or is on record as owed, and the four owed are two subsystems: congestion control and the feedback sender.
 - ✅ **PP708** **nothing in the port renders audio, so a session shows a picture and plays no sound at all** — The default render endpoint opens and plays, and PP698's loopback hears the tone back off the same endpoint - two of this port's subsystems, one playing and one listening.
 - ✅ **PP712** **three rows of the run-host census name a type with no member that answers, and the check cannot see it** — An answered row names a member now, so the three that named a type alone became owed: seven members and four subsystems where the census had said four and two.
+- ✅ **PP714** **nothing managed reports congestion, so a managed run would tell the console nothing about what it lost** — The thread reports every 200ms out of stats held to the C over fifteen cases, so PP707's host owes five members across three subsystems rather than seven across four.
 
 ## Block G — Test discipline
 

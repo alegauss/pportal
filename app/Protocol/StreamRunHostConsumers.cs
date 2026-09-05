@@ -47,9 +47,9 @@ public readonly record struct HostMember(string Member, HostAnswer How, Counterp
 /// namespace, and PP669's own rule is that a mapping is not a call. So every answered row names the
 /// member that does the work, and the ones that cannot say which of the two other things they are.
 ///
-/// FOUR SUBSYSTEMS ARE OWED, not two: congestion control, the feedback sender, a BIG message, and
-/// the session's connected event. Nothing managed raises one of those, and each is its own piece of
-/// work rather than a stub.
+/// THREE SUBSYSTEMS ARE OWED. PP712 counted four and PP714 answered the smallest, so what is left
+/// is the feedback sender, a BIG message and the session's connected event. Each is its own piece
+/// of work rather than a stub, and this list falling is what shipping one looks like from here.
 /// </summary>
 public static class StreamRunHostConsumers
 {
@@ -81,9 +81,9 @@ public static class StreamRunHostConsumers
             "PP678's, over a socket it owns."),
         new(
             "StartCongestionControl",
-            HostAnswer.Owed,
-            null,
-            "A thread the C starts around the whole run, and nothing managed has one."),
+            HostAnswer.Answered,
+            new(CounterpartAssembly.App, nameof(ManagedCongestionControl), nameof(ManagedCongestionControl.Start)),
+            "PP714's thread, reporting every 200ms out of the stats the two receivers push."),
         new(
             "SendBig",
             HostAnswer.Owed,
@@ -154,9 +154,9 @@ public static class StreamRunHostConsumers
             "PP684's, sent from the label every failure passes through."),
         new(
             "StopCongestionControl",
-            HostAnswer.Owed,
-            null,
-            "With StartCongestionControl."),
+            HostAnswer.Answered,
+            new(CounterpartAssembly.App, nameof(ManagedCongestionControl), nameof(ManagedCongestionControl.Stop)),
+            "The same thread's signal and join, in that order."),
         new(
             "CloseTakion",
             HostAnswer.Answered,
@@ -205,12 +205,14 @@ public static class StreamRunHostConsumers
     /// <summary>
     /// The subsystems those members belong to, which is what a plan is made from.
     ///
-    /// Seven members and four pieces of work: a start and a stop are one thread, and a sender's
-    /// init, fini and the counter lifted out of it are one object. Counting members would say seven
-    /// where there are four.
+    /// Five members and three pieces of work: a sender's init, its fini and the counter lifted out
+    /// of it are one object. Counting members would say five where there are three.
+    ///
+    /// PP714 took congestion control off this list by writing it, which took two members with it -
+    /// a start and a stop being one thread was the other half of the same argument.
     /// </summary>
     public static IReadOnlyList<string> OwedSubsystems { get; } =
-        ["a BIG message", "congestion control", "the feedback sender", "the session's connected event"];
+        ["a BIG message", "the feedback sender", "the session's connected event"];
 
     /// <summary>The interface's file, or null outside a checkout.</summary>
     public static string? Locate() => SanitizerSource.LocateRelative(RelativePath);
