@@ -32,6 +32,7 @@
 - 💭 **PP724** (deps: —) **nothing notices when an unported wait gains a managed counterpart, which happened once already and was caught by hand** — PP723 gave two feedbacksender.c waits counterparts and the census stayed green; the rows were moved by hand in that commit. → §PP724
 - 💭 **PP734** (deps: —) **one census row is answered by an interface member nothing in app implements, and the check cannot tell that apart** — chiaki_stream_connection_stop resolves to IStreamRunHost.ShouldStop, whose only implementations are test doubles. → §PP734
 - 💭 **PP736** (deps: —) **the stats count one push per audio packet against a ceiling that advances per unit, and nothing states the ratio** — audioreceiver.c pushes only the first frame index of a packet covering source_units_count of them, so a healthy window can read as loss. → §PP736
+- 💭 **PP737** (deps: —) **the key stream makes an AES object and an array per block on every call, and nothing has held it to PP44's budget** — PP731 made on-demand generation the only path, where the C amortises the same work behind a prefetched ring. → §PP737
 
 ## Block G — Test discipline
 
