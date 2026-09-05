@@ -457,29 +457,6 @@ congestion path.
 
 ## Block G — Test discipline
 
-### §PP720 A warning compile.cmd cannot clear
-
-PP56 fixed a stale green - the suite answering about a binary older than the code - and
-scripts/test-windows.sh warns when it sees one, with `find lib test -name '*.c' -newer
-chiaki-unit`. The glob is the TREE and the question is the BUILD, and those stopped
-being the same thing.
-
-lib/src/remote/holepunch.c left the build with PP33 and stayed in the tree, because the
-drift checks read C that no target compiles - the same reason gui/ is still here. Its
-mtime is now ahead of chiaki-unit.exe, so every run of test.cmd opens with the warning,
-and the warning's own advice does not clear it: compile.cmd answers `ninja: no work to
-do`, because ninja is right and the file is in no graph.
-
-A WARNING NOBODY CAN CLEAR IS A WARNING NOBODY READS, which is the whole cost. PP56's
-guard exists to stop a reader trusting a green that answers about the previous build,
-and it now fires on every invocation - so the one run where a real lib/ edit went
-uncompiled looks exactly like all the others.
-
-The fix is to ask the build rather than the tree, which ninja can answer. What it must
-NOT become is a list of exceptions: PP279's finding about the root-file list is that a
-hand-kept list guards only what somebody thought of, and this file would have gone on it
-only after being noticed.
-
 ### §PP728 A criterion counting something that moved
 
 One criterion of the run's host said "Seven have none, and they are four subsystems",

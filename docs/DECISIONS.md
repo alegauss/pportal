@@ -77,6 +77,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP691** **checks that match a roadmap sentence literally go red when the sentence gets more precise** — A check may match an address roadkeep uses or words held on purpose; a whole sentence of governed prose is the fragile case, and a fifth one is now a decision on record.
 - ✅ **PP704** **FeedbackPayloadTests guards eight comparisons on an oracle the census does not name, and it is not the only file** — A guard has three uses and only one costs: a comparison declines, a test of the guard is the check working, and code that reads it asserts nothing.
 - ✅ **PP705** **four sweeps over app/ hand-write their own exclusion, so a new census has to be added to the others by hand** — A sweep's exclusion is asked of the swept file, not listed by the sweeper; the marker is asserted to be in exactly the census files, so it cannot become a way of opting out.
+- ✅ **PP720** **the suite's staleness warning globs every .c under lib, so a file no target builds warns on every run** — A staleness guard asks the build graph and not the tree: this checkout keeps C that no target compiles, so a glob warns about files no rebuild can bring up to date.
 
 ## Block H — Performance and telemetry
 

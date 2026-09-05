@@ -744,6 +744,7 @@
   checked **Every roadmap sentence a check holds is counted and judged** A list of the string constants in app/ that carry roadmap or ledger prose, each marked load-bearing or incidental, with the question answered for each: would a more precise sentence break it. Two are known already from PP666. A count that returns only those two is an answer, not a failure.
 - ✅ **PP704** **FeedbackPayloadTests guards eight comparisons on an oracle the census does not name, and it is not the only file** — The floor rose from eighteen to thirty-one and the list is closed: a file calling a guard the census knows and naming no row fails by name.
 - ✅ **PP705** **four sweeps over app/ hand-write their own exclusion, so a new census has to be added to the others by hand** — A recording file says so in a comment and the four sweeps ask, so a sixth needs no edit in a file it does not own - and the fixture in tests turned out to be one of them.
+- ✅ **PP720** **the suite's staleness warning globs every .c under lib, so a file no target builds warns on every run** — The launcher asks ninja whether the target has work to do rather than globbing the tree, so the warning fires on a real edit and clears when compile.cmd runs.
 
 ## Block H — Performance and telemetry
 

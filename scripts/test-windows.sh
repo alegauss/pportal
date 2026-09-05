@@ -48,12 +48,31 @@ if [[ ! -f "$UNIT" ]]; then
 fi
 
 # A stale binary is the failure PP56 fixed, and it is worth saying out loud rather than
-# reporting a green over it: anything under lib/ or test/ newer than the executable means
-# ctest is about to answer a question about code that is not in it.
-newer=$(find lib test -name '*.c' -newer "$UNIT" -print -quit 2>/dev/null)
-if [[ -n "$newer" ]]; then
-	echo "[test] WARNING: $newer is newer than $UNIT." >&2
-	echo "[test]          Run compile.cmd - this result is about the previous build." >&2
+# reporting a green over it: a suite run against the previous build is a green that answers
+# about code nobody is looking at.
+#
+# PP720: THE QUESTION IS THE BUILD AND NOT THE TREE. This globbed lib and test for a .c newer
+# than the executable, and lib/src/remote/holepunch.c left the build with PP33 and stayed in
+# the checkout - the drift checks read C that no target compiles. So the warning fired on every
+# run, and its own advice could not clear it: compile.cmd answers "ninja: no work to do",
+# because ninja is right and the file is in no graph. A warning nobody can clear is a warning
+# nobody reads, which is exactly the guard PP56 wanted.
+#
+# Ninja is asked instead. A dry run of the unit target says whether anything it is actually
+# built from has moved - the same question, and one whose answer acting on it changes. Not a
+# list of exceptions, which is PP279's finding: a hand-kept list guards what somebody thought
+# of, and this file would have been added to it only after being noticed.
+NINJA="${NINJA:-/mingw64/bin/ninja}"
+if [[ ! -x "$NINJA" ]]; then
+	echo "[test] note: no ninja at $NINJA, so the binary's freshness was not checked" >&2
+else
+	# Captured rather than piped into grep: with pipefail, grep -q closing the pipe early can
+	# leave the pipeline non-zero on the very case that matched.
+	freshness=$("$NINJA" -C "$BUILD_DIR" -n chiaki-unit 2>/dev/null)
+	if [[ "$freshness" != *"no work to do"* ]]; then
+		echo "[test] WARNING: $UNIT is out of date - ninja has work to do for it." >&2
+		echo "[test]          Run compile.cmd - this result is about the previous build." >&2
+	fi
 fi
 
 if [[ "${1:-}" == "--list" ]]; then
