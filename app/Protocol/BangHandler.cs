@@ -118,6 +118,12 @@ public static class BangHandler
             return Nothing(BangOutcome.Undecodable);
         }
 
+        // PP730: the managed parser accepts a message missing its required fields and nanopb does
+        // not, so the check goes here - ahead of every refusal, because in the C this IS the decode
+        // failing, and a decode failure writes neither flag where a refusal writes one.
+        if (!RequiredFields.AllPresentIn(message))
+            return Nothing(BangOutcome.Undecodable);
+
         if (message.Type != Tkproto.TakionMessage.Types.PayloadType.Bang || message.BangPayload is null)
             return Nothing(NotABang(message.Type, earlyStreaminfoHeld));
 

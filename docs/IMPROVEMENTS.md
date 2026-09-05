@@ -448,31 +448,6 @@ notices it, what this port must go on doing is dropping the OLDEST packet - and 
 reading the index arithmetic would hold that, which the text search PP723 wrote does
 not.
 
-### §PP730 Two generators and one required field
-
-PP25's pair is one .proto through two generators, and PP729 leaned on the managed one to
-decide a bang. They do not agree about proto2's required.
-
-MEASURED, NOT SUSPECTED. A TakionMessage of type BANG carrying an empty bang payload is
-four bytes - 08 01 1A 00. Google.Protobuf writes it, parses it and reports every
-required field absent; DecodeWithNanopb refuses the same bytes. In the C that refusal is
-the pb_decode failure: log, return, and NEITHER flag written, so the wait runs on. PP729
-reads them as a bang and answers state_failed.
-
-TODAY THE TWO ENDINGS MEET, which is why nothing caught it. PP365 established that
-state_failed is watched by no predicate, so both readings reach the run as a wait that
-times out. The port is claiming to reproduce a decision, though, and this one it does
-not: the difference is real and only the dead flag hides it.
-
-THE FIX IS THE REQUIRED SET, checked where nanopb checks it. BangPayload marks five
-fields required - the server version, the token, the two acceptances and the session key
-- and the message its type. A decode that finds any of them absent is the undecodable
-arm, ahead of every refusal.
-
-AND THE QUESTION IS WIDER THAN THE BANG. Every managed reader built on Google.Protobuf
-accepts messages the console's own decoder would reject; the bang is where it was found
-because that is where a decision hangs on it.
-
 ### §PP731 The two crypts a bang starts
 
 PP729 decides a bang and hands the keying to a seam that answers true or false. Behind

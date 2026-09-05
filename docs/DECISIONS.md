@@ -65,6 +65,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP727** **nothing turns the launch spec into the BIG's payload, and the obfuscation there is not the encryption it looks like** — Collapsing the zero-buffer encrypt and the XOR into one call changes the cipher mode: it agrees for one block, differs after it, and the symptom is a console that never answers.
 - ✅ **PP721** **nothing calls the managed event seam, so the five a pad info decides and the FEC failure still reach nobody** — The pad state belongs to the dispatch layer and not to the parse: a refused length leaves it alone, so the message after a bad one is judged against what the console actually said.
 - ✅ **PP729** **the third dispatch layer routes a protobuf to three handlers and the one that keys the session has no port** — An over-long ECDH field fails the decode and a missing one refuses the bang, so two shapes of a bad key leave the state differently: one still waiting, one refused.
+- ✅ **PP730** **nanopb refuses a bang with no required fields and this port reads it as a refusal, so one message leaves two states** — The managed parser is the lenient half of PP25's pair, so a reader that decides on a message checks its required set first or it is answering about bytes nanopb refused.
 
 ## Block G — Test discipline
 

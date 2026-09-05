@@ -648,6 +648,7 @@
 - ✅ **PP727** **nothing turns the launch spec into the BIG's payload, and the obfuscation there is not the encryption it looks like** — The spec is hidden by a key stream rather than encrypted, its terminator rides inside, and one block of agreement with a direct encrypt is what the test asserts.
 - ✅ **PP721** **nothing calls the managed event seam, so the five a pad info decides and the FEC failure still reach nobody** — The pad state is held across messages, so the same pad info decides five things and then one, and the FEC failure reaches the seam without crossing a wire.
 - ✅ **PP729** **the third dispatch layer routes a protobuf to three handlers and the one that keys the session has no port** — Four refusals in the C's order set a flag PP365 proved dead, and the four not-a-bang arms leave both flags alone, so only a keyed bang ends the wait.
+- ✅ **PP730** **nanopb refuses a bang with no required fields and this port reads it as a refusal, so one message leaves two states** — Required is read off the descriptor and checked ahead of every refusal, so what this port accepts is what nanopb accepts across four cases.
 
 ## Block G — Test discipline
 

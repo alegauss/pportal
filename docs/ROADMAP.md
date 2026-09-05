@@ -34,7 +34,6 @@
 - 💭 **PP722** (deps: —) **seven events outside the frame path have no managed raiser, and one enum member is raised by nothing at all** — ctrl.c raises three keyboard events and session.c four, and CHIAKI_EVENT_HOLEPUNCH is declared in the header and assigned nowhere in lib/src. → §PP722
 - 💭 **PP724** (deps: —) **PP718's claim check reads one note in ten, so nine unported rows can go false the way the one it was filed about did** — The trigger is a phrase in a note the author writes, and PP718 reworded two rows out of its reach in the very commit that added the check. → §PP724
 - 💭 **PP725** (deps: —) **the sender's overflow rung copies a packet buffer onto itself, and nothing records that the port left it out** — A full queue makes the destination index equal begin, so the memcpy is handed one address twice and only a comment says PP723 dropped it. → §PP725
-- 📋 **PP730** (deps: —) **nanopb refuses a bang with no required fields and this port reads it as a refusal, so one message leaves two states** — Four bytes decode here and not in the C, and PP729 then answers state_failed where the C leaves both flags alone. → §PP730
 - 📋 **PP731** (deps: —) **the step after the bang builds two gk crypts at fixed indices and hands them to takion, and none of it is ported** — PP729's keying seam ends at a bool; the derivation is OpenSSL's but the two objects, their indices and the free order are not. → §PP731
 
 ## Block G — Test discipline
