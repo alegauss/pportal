@@ -68,6 +68,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP730** **nanopb refuses a bang with no required fields and this port reads it as a refusal, so one message leaves two states** — The managed parser is the lenient half of PP25's pair, so a reader that decides on a message checks its required set first or it is answering about bytes nanopb refused.
 - ✅ **PP732** **two more managed readers decide on a message nanopb would refuse, and one of them is the streaminfo** — An absent required field and an empty one are different messages: nanopb refuses the first and keeps the second, so a reader treating them alike answers about bytes no console sent.
 - ✅ **PP713** **eleven rows of the frame path's census name a type with no member, and nothing says which are ctors** — A counterpart naming no member states which of three reasons that is, because one legitimate way to say nothing is how the other reasons get in unexamined.
+- ✅ **PP716** **packetstats' sequence arm is pushed with no mutex while three neighbours take one, and two threads reach it** — A departure is reproduced where the C's flaw is visible to a user or a console, and corrected where it is not; this one is a report off by a packet, which is jitter.
 
 ## Block G — Test discipline
 

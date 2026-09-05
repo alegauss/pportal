@@ -28,6 +28,10 @@ public readonly record struct PacketWindow(ulong Received, ulong Lost)
 /// widened into a uint64 - about 1.8e19, not the small positive difference sixteen-bit wraparound
 /// would give. <see cref="Read"/> reproduces that rather than the arithmetic the comment describes,
 /// because the console is being told the first one today.
+///
+/// PP716: AND ALL FOUR WRITERS LOCK HERE, WHERE THE C LEAVES ONE OPEN. That is a departure, and
+/// <see cref="PacketStatsLocking"/> is where it is recorded as a value rather than as this
+/// sentence - with the reading of packetstats.c that says the difference is still there.
 /// </summary>
 public sealed class ManagedPacketStats
 {

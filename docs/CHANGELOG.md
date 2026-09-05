@@ -651,6 +651,7 @@
 - ✅ **PP730** **nanopb refuses a bang with no required fields and this port reads it as a refusal, so one message leaves two states** — Required is read off the descriptor and checked ahead of every refusal, so what this port accepts is what nanopb accepts across four cases.
 - ✅ **PP732** **two more managed readers decide on a message nanopb would refuse, and one of them is the streaminfo** — The check goes where PP687's bound goes, so an absent audio header is a failed decode and an absent reason is not an empty one - and one test had said otherwise.
 - ✅ **PP713** **eleven rows of the frame path's census name a type with no member, and nothing says which are ctors** — Seven of the eleven had a member waiting, two are constructors and two are finis; the four file rows say the type itself, so no row is silent now.
+- ✅ **PP716** **packetstats' sequence arm is pushed with no mutex while three neighbours take one, and two threads reach it** — The lock stays, on PP499's reasoning rather than PP402's, and the departure is one row of five with the reading of packetstats.c that keeps it honest.
 
 ## Block G — Test discipline
 

@@ -32,6 +32,21 @@ public partial class UnreferencedExportTests(ITestOutputHelper output)
     public static IReadOnlyList<string> SearchTrees { get; } = ["lib", "gui", "shim", "test", "app"];
 
     /// <summary>
+    /// Files whose mentions are a MODEL of the C and not a use of it.
+    ///
+    /// PP716 is why this exists. Its census names five packetstats functions as strings so a check
+    /// can read which of them lock, and one of those five - chiaki_packet_stats_reset - is on the
+    /// list below as having no caller. Naming it in a table does not give it one, and counting that
+    /// as a reference would have quietly retired a row that is still true.
+    ///
+    /// The same trap as a drift check finding its own fixture, and the same answer this tree gives
+    /// it: the file that declares the names is excluded by name. A census added later that names
+    /// dead exports belongs here too, and its own commit is where that is noticed - because the
+    /// name would otherwise leave the list below and the assertion says so in both directions.
+    /// </summary>
+    public static IReadOnlyList<string> Modelling { get; } = ["PacketStatsLocking.cs"];
+
+    /// <summary>
     /// The thirteen, as of PP290. Kept in the tree rather than in a commit message, because the
     /// value of the list is that the next person can see it without re-deriving it.
     ///
@@ -95,6 +110,10 @@ public partial class UnreferencedExportTests(ITestOutputHelper output)
                 {
                     continue;
                 }
+
+                // PP716: a census that names these symbols is not a caller of them.
+                if (Modelling.Contains(Path.GetFileName(file), StringComparer.Ordinal))
+                    continue;
 
                 if (file.EndsWith(".c", StringComparison.Ordinal) || file.EndsWith(".h", StringComparison.Ordinal)
                     || file.EndsWith(".cpp", StringComparison.Ordinal) || file.EndsWith(".cs", StringComparison.Ordinal))

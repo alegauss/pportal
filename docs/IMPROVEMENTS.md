@@ -331,29 +331,6 @@ quietly disagreeing with the client. So this is a question about the console, no
 repair: whether a single maximum-loss window every few minutes is visible in the
 bitrate, which PP76's played sessions could be read for.
 
-### §PP716 The one push that does not lock
-
-chiaki_packet_stats has a mutex and three of its four writers take it.
-chiaki_packet_stats_push_generation locks, chiaki_packet_stats_reset locks,
-chiaki_packet_stats_get locks - and chiaki_packet_stats_push_seq does not. It increments
-seq_received and conditionally raises seq_max with nothing held.
-
-Both sides of that race exist. The audio receiver pushes a frame index for every packet
-it handles, on the takion thread, and PP714's congestion control thread reads the same
-two fields under the mutex every 200ms. So a read can see the count raised and the
-ceiling not, or the reset can move seq_min while an increment is in flight and lose it.
-Neither corrupts memory; both produce a report that is wrong by a little, which is the
-kind of wrong nothing notices.
-
-PP714's port took the lock on all four, because a managed field read across threads with
-no barrier is worse than the C's - and the differential could not see the difference,
-since the oracle drives one thread. That is a DEPARTURE from the C and this file is
-where it should have been recorded rather than left in a comment.
-
-The work is to decide which the port is: the C's shape, which means documenting a race
-it inherits, or a correction, which means saying so where the census can see it. PP499
-and PP402 are the two precedents and they went opposite ways.
-
 ### §PP722 The other eight events
 
 PP719 named nine of ChiakiEventType's seventeen as the frame path's, and left the other
