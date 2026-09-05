@@ -524,6 +524,29 @@ each with a verdict a person wrote - checks the required set, or says why it doe
 need to. The two in SelfTest are round trips rather than decisions, and that is a
 verdict too.
 
+### §PP735 A model is not a caller
+
+PP290 sweeps the tree for exported C functions nothing refers to, and counts a reference
+as any word-boundary match outside the line that exports it. A census naming a symbol in
+a string therefore looks exactly like a call.
+
+PP716 HIT IT AND WORKED AROUND IT. Its list names five packetstats functions so a check
+can read which of them take the mutex, and one of the five is on the dead list. Naming
+it in a table does not give it a caller, so the sweep would have retired a row that is
+still true - and the answer was to exclude that one file by name, which is a hand-kept
+list guarding what its author thought of. PP279, PP718, PP720, PP724 and PP733 are the
+same shape, and this is the sixth.
+
+A RULE IS AVAILABLE AND IS NOT FREE. A model names its symbols inside string literals; a
+caller writes them as code. Every P/Invoke entry point in app is either a shim wrapper
+or a chiaki_render name, and neither is declared in the headers this sweep reads - so no
+tracked export is reached through a literal today. But dozens of tracked names DO appear
+in literals across the other censuses, which means the rule would move an unknown number
+of exports onto the dead list at once.
+
+That count is the task, and it is the interesting half: each name it adds is C nobody
+has decided about, which is what PP290 exists to find.
+
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed
