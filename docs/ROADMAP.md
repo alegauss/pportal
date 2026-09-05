@@ -156,11 +156,11 @@
   PP606's responder and PP680's arm handles what arrives, but ManagedStreamRun's host is
   an interface whose implementations are all in the test project - so the sequence PP640
   asserts of the C has never run over a socket.
-- **Every member of the run's host has a counterpart or a line that owes one** Two of
-  them have no managed counterpart at all: congestion control and the feedback sender.
-  PP669 mapped the frame path's consumers by reflection for the same reason - a host
-  built without the census discovers them one compile error at a time, and each is a
-  decision rather than a stub.
+- **Every member of the run's host has a counterpart or a line that owes one** Seven
+  have none, and they are four subsystems: congestion control, the feedback sender, a
+  BIG message and the session's connected event. PP669 mapped the frame path's consumers
+  by reflection for the same reason - a host built without the census discovers them one
+  compile error at a time.
 - **The stream starts from the host rather than from chiaki_session_start** PP696 stops
   session.c asking and nothing else asks. StreamRun runs ctrl and senkusha through the C
   session today and waits on its events; what replaces the C's own call is a handoff,

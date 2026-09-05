@@ -2,17 +2,36 @@ using ChiakiNg.Session;
 
 namespace ChiakiNg.Protocol;
 
+/// <summary>PP712: what a member of the run's host has on the managed side.</summary>
+public enum HostAnswer
+{
+    /// <summary>Something does what the call does, and the row names the member that does it.</summary>
+    Answered,
+
+    /// <summary>Nothing does, and building it is a piece of work somebody has to take on.</summary>
+    Owed,
+
+    /// <summary>
+    /// The call has no counterpart because the runtime removes the need for one.
+    ///
+    /// The three frees and the two lock calls. A managed object is collected and a managed lock is
+    /// the language's, so a row naming a type for either would be describing C# rather than
+    /// answering for a call - which is exactly the shape PP712 was filed about.
+    /// </summary>
+    NotNeeded,
+}
+
 /// <summary>One member of the run's host, and what stands where it does.</summary>
 /// <param name="Member">The member's name, as the interface declares it.</param>
 /// <param name="Answer">
-/// Its counterpart, or null where nothing managed answers for it yet - which is the whole point of
-/// the row. An absence here is a decision somebody has to take, not a stub somebody forgot.
+/// The counterpart, present only where <paramref name="How"/> is
+/// <see cref="HostAnswer.Answered"/> - and then it always names a MEMBER, never a type alone.
 /// </param>
 /// <param name="Why">What the counterpart stands for, or what the absence costs.</param>
-public readonly record struct HostMember(string Member, Counterpart? Answer, string Why);
+public readonly record struct HostMember(string Member, HostAnswer How, Counterpart? Answer, string Why);
 
 /// <summary>
-/// PP707's second criterion: every member of <see cref="IStreamRunHost"/> answered, or owed.
+/// PP707's second criterion: every member of <see cref="IStreamRunHost"/> answered, owed, or needless.
 ///
 /// PP295 wrote the run and PP640 asserted its six orderings, and the host it walks is an interface
 /// whose implementations are all in the test project. So the sequence is right and nothing runs it,
@@ -20,17 +39,17 @@ public readonly record struct HostMember(string Member, Counterpart? Answer, str
 ///
 /// A HOST BUILT WITHOUT THIS CENSUS FINDS THE GAPS ONE COMPILE ERROR AT A TIME, which is the shape
 /// PP669 avoided for the frame path: the consumers were mapped by reflection before anything was
-/// deleted, and the two that had no counterpart were a decision rather than a surprise. This is that
-/// mapping one interface over.
+/// deleted, and the ones with no counterpart were a decision rather than a surprise.
 ///
-/// TWO ARE OWED AND THEY ARE NOT SMALL. Congestion control is a thread the C starts and stops around
-/// the whole run, and the feedback sender is the controller's own path upstream - PP676 ported its
-/// serialisers and nothing composes them. Each is its own piece of work and each is named here so
-/// building the host is a known cost rather than a discovery.
+/// PP712: AND A ROW MUST NAME A MEMBER. The first version of this let a counterpart be a type alone,
+/// and three rows took the option - SendBig pointed at a builder with no BIG in it, which the check
+/// could not see because the TYPE resolved. A counterpart with no member is a claim about a
+/// namespace, and PP669's own rule is that a mapping is not a call. So every answered row names the
+/// member that does the work, and the ones that cannot say which of the two other things they are.
 ///
-/// A COUNTERPART IS A TYPE THAT RESOLVES AND A MEMBER THAT EXISTS, verified by reflection and never
-/// a sentence. The rows that carry none say so with a null, so the census cannot be satisfied by
-/// naming something plausible.
+/// FOUR SUBSYSTEMS ARE OWED, not two: congestion control, the feedback sender, a BIG message, and
+/// the session's connected event. Nothing managed raises one of those, and each is its own piece of
+/// work rather than a stub.
 /// </summary>
 public static class StreamRunHostConsumers
 {
@@ -42,113 +61,156 @@ public static class StreamRunHostConsumers
     [
         new(
             "CreateAudioReceiver",
-            new(CounterpartAssembly.App, nameof(IAudioSink)),
+            HostAnswer.Answered,
+            new(CounterpartAssembly.App, nameof(IAudioSink), nameof(IAudioSink.Audio)),
             "PP667's seam, which is where a decrypted audio packet goes."),
         new(
             "CreateHapticsReceiver",
-            new(CounterpartAssembly.App, nameof(IAudioSink)),
-            "The same seam: audioreceiver.c is one file used twice, told apart by which arm calls it."),
+            HostAnswer.Answered,
+            new(CounterpartAssembly.App, nameof(IAudioSink), nameof(IAudioSink.Haptics)),
+            "The same seam's other arm: audioreceiver.c is one file used twice."),
         new(
             "CreateVideoReceiver",
-            new(CounterpartAssembly.App, nameof(ManagedVideoReceiver)),
-            "PP291's receiver, which PP667's route already drives."),
+            HostAnswer.Answered,
+            new(CounterpartAssembly.App, nameof(ManagedVideoReceiver), nameof(ManagedVideoReceiver.AvPacket)),
+            "PP291's receiver, taking the units PP667's route hands it."),
         new(
             "ConnectTakion",
+            HostAnswer.Answered,
             new(CounterpartAssembly.App, nameof(ManagedTakion), nameof(ManagedTakion.Connect)),
             "PP678's, over a socket it owns."),
         new(
             "StartCongestionControl",
+            HostAnswer.Owed,
             null,
-            "OWED. A thread the C starts around the whole run and nothing managed has one."),
+            "A thread the C starts around the whole run, and nothing managed has one."),
         new(
             "SendBig",
-            new(CounterpartAssembly.App, nameof(StreamMessages)),
-            "PP684 built the four unsent messages; big is the first thing the run sends."),
+            HostAnswer.Owed,
+            null,
+            "PP712: nothing assembles one. A BIG carries the session key, the launch spec, the encrypted key and an ECDH public key with its signature."),
         new(
             "StartFeedbackSender",
+            HostAnswer.Owed,
             null,
-            "OWED. PP676 ported feedback.c's serialisers and nothing composes them into a sender."),
+            "PP676 ported feedback.c's serialisers and nothing composes them into a sender."),
         new(
             "Wait",
-            new(CounterpartAssembly.App, nameof(StreamConnectionStates)),
-            "PP362's state walk, which is what each wait is waiting for."),
+            HostAnswer.Answered,
+            new(CounterpartAssembly.App, nameof(StreamConnectionStates), nameof(StreamConnectionStates.Next)),
+            "PP362's state walk, which is what decides where a wait's flags lead."),
         new(
             "HasEarlyStreaminfo",
-            new(CounterpartAssembly.App, nameof(StreamConnectionSwitch)),
-            "The buffered message the switch decides about, which PP640's fifth ordering is over."),
+            HostAnswer.Answered,
+            new(
+                CounterpartAssembly.App,
+                nameof(StreamConnectionStates),
+                nameof(StreamConnectionStates.IsBufferedWhenEarly)),
+            "The one state a message is buffered in rather than handled."),
         new(
             "ReplayEarlyStreaminfo",
-            new(CounterpartAssembly.App, nameof(StreamDispatch)),
-            "The same handler the live path uses, run over the message that arrived too early."),
+            HostAnswer.Answered,
+            new(CounterpartAssembly.App, nameof(StreamDispatch), nameof(StreamDispatch.Route)),
+            "The same routing the live path uses, over the message that arrived too early."),
         new(
             "Unlock",
-            new(CounterpartAssembly.App, nameof(ThreadPrimitives)),
-            "PP107's lock model, which is where this port keeps what a chiaki mutex is."),
+            HostAnswer.NotNeeded,
+            null,
+            "A managed lock is the language's. ThreadPrimitives models whether a chiaki mutex can FAIL, which is a different question."),
         new(
             "Lock",
-            new(CounterpartAssembly.App, nameof(ThreadPrimitives)),
+            HostAnswer.NotNeeded,
+            null,
             "The same."),
         new(
             "SendConnected",
-            new(CounterpartAssembly.App, nameof(SessionLifecycle)),
-            "The session's event surface, which is where CHIAKI_EVENT_CONNECTED goes."),
+            HostAnswer.Owed,
+            null,
+            "PP712: nothing managed raises a session event. StreamRun READS CHIAKI_EVENT_CONNECTED off the C session; no code here sends one."),
         new(
             "WaitIdle",
-            new(CounterpartAssembly.App, nameof(StreamIdleLoop)),
+            HostAnswer.Answered,
+            new(CounterpartAssembly.App, nameof(StreamIdleLoop), nameof(StreamIdleLoop.Next)),
             "PP363's loop, whose timeout is the work and whose anything-else leaves."),
         new(
             "SendHeartbeat",
+            HostAnswer.Answered,
             new(CounterpartAssembly.App, nameof(StreamMessages), nameof(StreamMessages.Heartbeat)),
             "PP684's, and its failure is logged and ignored on both sides."),
         new(
             "LiftInputToWire",
-            new(CounterpartAssembly.App, nameof(FeedbackPayload)),
-            "What the feedback sender had reached, read out before the fini takes it."),
+            HostAnswer.Owed,
+            null,
+            "PP712: the destination exists - SessionBaseline.PushInputToWire - and the SOURCE is the feedback sender, which does not."),
         new(
             "FiniFeedbackSender",
+            HostAnswer.Owed,
             null,
-            "OWED, with StartFeedbackSender: there is nothing to fini."),
+            "With StartFeedbackSender: there is nothing to fini."),
         new(
             "SendDisconnect",
+            HostAnswer.Answered,
             new(CounterpartAssembly.App, nameof(StreamMessages), nameof(StreamMessages.Disconnect)),
             "PP684's, sent from the label every failure passes through."),
         new(
             "StopCongestionControl",
+            HostAnswer.Owed,
             null,
-            "OWED, with StartCongestionControl."),
+            "With StartCongestionControl."),
         new(
             "CloseTakion",
+            HostAnswer.Answered,
             new(CounterpartAssembly.App, nameof(ManagedTakion), nameof(ManagedTakion.Dispose)),
-            "PP678's teardown, which is what joins the thread that writes the stage counters."),
+            "PP678's teardown, in the order PP703 gave it a video queue to release."),
         new(
             "LiftStages",
-            new(CounterpartAssembly.App, nameof(TakionTimingCapture)),
-            "The four stage timings, read after the close and before the free."),
+            HostAnswer.Answered,
+            new(CounterpartAssembly.AppSession, nameof(SessionBaseline), nameof(SessionBaseline.PushStage)),
+            "Where the four stage timings go. PP680's arm already pushes two of the four."),
         new(
             "FreeVideoReceiver",
-            new(CounterpartAssembly.App, nameof(ManagedVideoReceiver)),
-            "The receiver's own lifetime, which a managed one ends by going out of scope."),
+            HostAnswer.NotNeeded,
+            null,
+            "A managed receiver is collected. Naming a type for a free would be describing C#."),
         new(
             "FreeHapticsReceiver",
-            new(CounterpartAssembly.App, nameof(IAudioSink)),
-            "The seam's, and the same one twice for the same reason the creates are."),
+            HostAnswer.NotNeeded,
+            null,
+            "The same."),
         new(
             "FreeAudioReceiver",
-            new(CounterpartAssembly.App, nameof(IAudioSink)),
+            HostAnswer.NotNeeded,
+            null,
             "The same."),
         new(
             "ShouldStop",
-            new(CounterpartAssembly.App, nameof(StreamTeardown)),
-            "What the disconnect label reads, which decides whether a disconnect is sent at all."),
+            HostAnswer.Answered,
+            new(CounterpartAssembly.App, nameof(StreamIdleLoop), nameof(StreamIdleLoop.Outcome)),
+            "One of the two flags the idle loop's outcome is decided by."),
         new(
             "RemoteDisconnected",
-            new(CounterpartAssembly.App, nameof(StreamTeardown)),
-            "The other half of the same reading."),
+            HostAnswer.Answered,
+            new(CounterpartAssembly.App, nameof(StreamIdleLoop), nameof(StreamIdleLoop.Outcome)),
+            "The other."),
     ];
 
     /// <summary>The members nothing managed answers for yet, by name.</summary>
     public static IReadOnlyList<string> Owed { get; } =
-        [.. Members.Where(one => one.Answer is null).Select(one => one.Member).Order(StringComparer.Ordinal)];
+    [
+        .. Members.Where(one => one.How == HostAnswer.Owed)
+            .Select(one => one.Member)
+            .Order(StringComparer.Ordinal),
+    ];
+
+    /// <summary>
+    /// The subsystems those members belong to, which is what a plan is made from.
+    ///
+    /// Seven members and four pieces of work: a start and a stop are one thread, and a sender's
+    /// init, fini and the counter lifted out of it are one object. Counting members would say seven
+    /// where there are four.
+    /// </summary>
+    public static IReadOnlyList<string> OwedSubsystems { get; } =
+        ["a BIG message", "congestion control", "the feedback sender", "the session's connected event"];
 
     /// <summary>The interface's file, or null outside a checkout.</summary>
     public static string? Locate() => SanitizerSource.LocateRelative(RelativePath);

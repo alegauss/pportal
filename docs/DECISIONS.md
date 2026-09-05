@@ -55,6 +55,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP703** **ManagedTakion's video queue is only ever set to null, so one step of its recorded teardown is unreachable** — The dispatch seam hands a MUTABLE datagram, because the C's handler owns the buffer and the AV branch decrypts in it; a read-only view would have cost a copy per packet.
 - ✅ **PP706** **the microphone has a capture, a unit splitter, an encoder and a head, and nothing runs them as one path** — The redundancy is one frame deep and not two, because audiosender.c copies the arrival back over slot zero; a port that repaired it would send a packet the console has never been sent.
 - ✅ **PP708** **nothing in the port renders audio, so a session shows a picture and plays no sound at all** — The WASAPI surface is declared once for both directions, and a render's silence is a flag on a released buffer rather than a pass the pump skips.
+- ✅ **PP712** **three rows of the run-host census name a type with no member that answers, and the check cannot see it** — A counterpart names the member that does the work; where the runtime removes the need - a free, a lock - the row says so rather than naming a plausible type.
 
 ## Block G — Test discipline
 

@@ -290,6 +290,30 @@ public static class RoadmapProseReaders
             @"app\Session\GateAndCiAgree.cs",
             ProseReading.Incidental,
             "The tail of a note in that table, long enough to match and about a runner rather than about a backlog."),
+
+        // PP712: four names for the work PP707's host still owes. They occur in that line's own
+        // criterion because it was written FROM this list - which is the coincidence running the
+        // way PP527's does, the document copying the program - and nothing here reads a document.
+        new(
+            "congestion control",
+            @"app\Protocol\StreamRunHostConsumers.cs",
+            ProseReading.Incidental,
+            "One of the four subsystems the run's host has no counterpart for, named where the census names it."),
+        new(
+            "the feedback sender",
+            @"app\Protocol\StreamRunHostConsumers.cs",
+            ProseReading.Incidental,
+            "The second, and the one PP676's serialisers are waiting under."),
+        new(
+            "a BIG message",
+            @"app\Protocol\StreamRunHostConsumers.cs",
+            ProseReading.Incidental,
+            "The third, which PP712 found reported as answered by a builder that has no BIG."),
+        new(
+            "the session's connected event",
+            @"app\Protocol\StreamRunHostConsumers.cs",
+            ProseReading.Incidental,
+            "The fourth: StreamRun reads one off the C session and nothing managed raises one."),
     ];
 
     /// <summary>How many rows carry one verdict.</summary>

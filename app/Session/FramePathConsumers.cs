@@ -22,6 +22,16 @@ public enum CounterpartAssembly
     /// <summary>The application: <c>ChiakiNg.Protocol</c>.</summary>
     App,
 
+    /// <summary>
+    /// PP712: the application's other namespace, <c>ChiakiNg.Session</c>.
+    ///
+    /// The port's app assembly has two, and a counterpart may be in either - the baseline's
+    /// statistics are in this one. Added rather than resolved by trying both, because a name that
+    /// resolves in whichever namespace happens to have it is how a row ends up naming something
+    /// plausible instead of the thing that answers.
+    /// </summary>
+    AppSession,
+
     /// <summary>The test project: <c>ChiakiNg.Tests</c>, where a C test file's counterpart is a test class.</summary>
     Tests,
 }
@@ -35,7 +45,12 @@ public enum CounterpartAssembly
 public readonly record struct Counterpart(CounterpartAssembly In, string Type, string? Member = null)
 {
     /// <summary>The namespace-qualified name, which is what reflection resolves.</summary>
-    public string FullName => In == CounterpartAssembly.App ? "ChiakiNg.Protocol." + Type : "ChiakiNg.Tests." + Type;
+    public string FullName => In switch
+    {
+        CounterpartAssembly.App => "ChiakiNg.Protocol." + Type,
+        CounterpartAssembly.AppSession => "ChiakiNg.Session." + Type,
+        _ => "ChiakiNg.Tests." + Type,
+    };
 }
 
 /// <summary>One symbol a consumer calls, and what answers for it on the managed side.</summary>
