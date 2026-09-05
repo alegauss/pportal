@@ -129,6 +129,9 @@ public class RequiredFieldsTests(ITestOutputHelper output)
                 {
                     Type = Tkproto.TakionMessage.Types.PayloadType.Heartbeat,
                 }.ToByteArray()),
+            // PP732: the case that corrected a test. An empty buffer has no `type`, which the
+            // message itself marks required, so it is a failed decode and not an unknown message.
+            ("nothing at all", []),
             ("a bang missing only its token",
                 new Tkproto.TakionMessage
                 {

@@ -66,6 +66,13 @@ public static class DisconnectMessage
             return new DisconnectReading(false, null, Undecodable: true);
         }
 
+        // PP732, under PP730: and a reason that is ABSENT fails it too. The field is required, so
+        // nanopb refuses the whole message where protoc's parser reads an empty string - and an
+        // empty reason is a real answer a console can give, which is what makes the two easy to
+        // confuse and worth telling apart here.
+        if (!RequiredFields.AllPresentIn(decoded))
+            return new DisconnectReading(false, null, Undecodable: true);
+
         // The reason is read through a bounded buffer, so a longer one fails the decode itself.
         // protoc's parser has no such bound, which is why it is applied here.
         string? reason = decoded.DisconnectPayload?.Reason;
@@ -90,8 +97,12 @@ public static class DisconnectMessage
     {
         try
         {
-            return Tkproto.TakionMessage.Parser.ParseFrom(message.ToArray()).Type
-                == Tkproto.TakionMessage.Types.PayloadType.Disconnect;
+            var decoded = Tkproto.TakionMessage.Parser.ParseFrom(message.ToArray());
+
+            // PP732: a message nanopb would refuse never reaches the caller's switch at all, so its
+            // type is not an answer this can give.
+            return RequiredFields.AllPresentIn(decoded)
+                && decoded.Type == Tkproto.TakionMessage.Types.PayloadType.Disconnect;
         }
         catch (Google.Protobuf.InvalidProtocolBufferException)
         {

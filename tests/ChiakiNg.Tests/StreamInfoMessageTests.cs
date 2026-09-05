@@ -227,6 +227,45 @@ public class StreamInfoMessageTests(ITestOutputHelper output)
     }
 
     /// <summary>
+    /// PP732: a streaminfo with NO audio header is a failed decode, not a wrong size.
+    ///
+    /// The field is required, so nanopb refuses the message and the C's handler never gets to the
+    /// size test. Without the check this port read it as AudioHeaderWrongSize and would have gone
+    /// on to configure a stream from a message that was never valid.
+    ///
+    /// The profiles are still reported, for the reason the bound's case gives: nanopb checks the
+    /// required set after the field callbacks have run, so the resolutions were already collected.
+    /// </summary>
+    [Fact]
+    public void AStreaminfoWithNoAudioHeaderIsUndecodable()
+    {
+        var message = new Tkproto.TakionMessage
+        {
+            Type = Tkproto.TakionMessage.Types.PayloadType.Streaminfo,
+            StreamInfoPayload = new Tkproto.StreamInfoPayload(),
+        };
+
+        message.StreamInfoPayload.Resolution.Add(new Tkproto.ResolutionPayload
+        {
+            Width = 1920,
+            Height = 1080,
+            VideoHeader = ByteString.CopyFrom(new byte[8]),
+        });
+
+        StreamInfoReading reading = StreamInfoMessage.Read(message.ToByteArray());
+
+        Assert.Equal(StreamInfoVerdict.Undecodable, reading.Verdict);
+        Assert.Null(reading.AudioHeader);
+        Assert.Equal(1, reading.Announced);
+        Assert.Single(reading.Profiles);
+
+        // A header of the WRONG size is still the wrong size: the two refusals stay apart.
+        Assert.Equal(
+            StreamInfoVerdict.AudioHeaderWrongSize,
+            StreamInfoMessage.Read(Built(resolutions: 1, audioHeaderSize: 1)).Verdict);
+    }
+
+    /// <summary>
     /// A DISCONNECT arriving where a streaminfo was expected is a disconnect, not an unknown message
     /// - which is a console hanging up during setup, told apart from one talking nonsense.
     /// </summary>
@@ -239,7 +278,14 @@ public class StreamInfoMessageTests(ITestOutputHelper output)
         Assert.Empty(reading.Profiles);
     }
 
-    /// <summary>Any other message is refused as itself, and bytes that are not a protobuf as that.</summary>
+    /// <summary>
+    /// Any other message is refused as itself, and bytes that are not a protobuf as that.
+    ///
+    /// PP732 corrected the last of these. An empty buffer used to read as "not a streaminfo",
+    /// because protoc's parser is happy to return a message with no fields at all - but `type` is
+    /// required, so nanopb refuses those bytes and the C's handler logs a failed decode. The
+    /// equivalence is asserted against nanopb itself in RequiredFieldsTests.
+    /// </summary>
     [Fact]
     public void SomethingElseAndSomethingBrokenAreDifferentAnswers()
     {
@@ -252,7 +298,8 @@ public class StreamInfoMessageTests(ITestOutputHelper output)
             StreamInfoVerdict.Undecodable,
             StreamInfoMessage.Read([0x7a, 0x7f, 0x01, 0x02]).Verdict);
 
-        Assert.Equal(StreamInfoVerdict.NotStreamInfo, StreamInfoMessage.Read([]).Verdict);
+        // And nothing at all is a message with no type, which is a required field.
+        Assert.Equal(StreamInfoVerdict.Undecodable, StreamInfoMessage.Read([]).Verdict);
     }
 
     /// <summary>A resolution whose header did not decode is skipped and costs no room.</summary>

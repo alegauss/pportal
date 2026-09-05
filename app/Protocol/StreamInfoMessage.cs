@@ -139,6 +139,13 @@ public static class StreamInfoMessage
         int announced = decoded.StreamInfoPayload?.Resolution.Count ?? 0;
         IReadOnlyList<VideoProfile> profiles = ProfilesIn(decoded);
 
+        // PP732, under PP730: nanopb refuses a message missing a required field and protoc's parser
+        // does not, so the audio header being ABSENT is a failed decode rather than a wrong size.
+        // Here rather than at the top, for the same reason the profiles are read above: nanopb
+        // checks the required set after the field callbacks have already run.
+        if (!RequiredFields.AllPresentIn(decoded))
+            return new StreamInfoReading(StreamInfoVerdict.Undecodable, profiles, null, announced);
+
         if (decoded.Type != Tkproto.TakionMessage.Types.PayloadType.Streaminfo
             || decoded.StreamInfoPayload is null)
         {

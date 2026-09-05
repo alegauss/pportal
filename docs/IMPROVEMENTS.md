@@ -472,28 +472,6 @@ does.
 
 The seam PP729 left is where this lands, unchanged.
 
-### §PP732 The other two lenient readers
-
-PP730 measured that the managed parser accepts messages nanopb refuses, and put the
-check where the finding was: the bang. Three managed readers parse a TakionMessage and
-decide on it, and the other two still do not ask.
-
-A DISCONNECT REQUIRES ITS REASON. DisconnectMessage reads the reason string and the port
-shows it; without the check, a disconnect carrying no reason at all decodes here to an
-empty one and is acted on, where the console's own decoder would have thrown the message
-out. The two readings differ in what the user is told a session ended for.
-
-A STREAMINFO REQUIRES ITS AUDIO HEADER, and that is the worse of the two. PP686 hands
-the video receiver the profiles a console announced rather than headers a test wrote, so
-a streaminfo nanopb would refuse still produces profiles here - a stream configured from
-a message that was never valid, with the audio half missing and nothing saying so.
-
-THE CHECK IS ALREADY WRITTEN and reads the descriptor, so applying it is a line at each
-site and a case in each test. What is worth deciding rather than copying is where the
-refusal LANDS: the bang's undecodable arm leaves both flags alone because that is what
-the C's decode failure does, and each of these two has its own answer to the same
-question.
-
 ## Block G — Test discipline
 
 ### §PP720 A warning compile.cmd cannot clear

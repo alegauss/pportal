@@ -22,6 +22,41 @@ public class DisconnectMessageTests
             DisconnectPayload = new Tkproto.DisconnectPayload { Reason = reason },
         }.ToByteArray();
 
+    /// <summary>
+    /// PP732: a disconnect with NO reason is a failed decode, and an empty one is a disconnect.
+    ///
+    /// The field is required, so nanopb refuses a message without it while protoc's parser reads an
+    /// empty string - and an empty reason is something a console can really send, which is what
+    /// makes the two worth telling apart. Told apart in both directions here, because the readings
+    /// differ in the only thing this message decides: whether the client knows the session ended.
+    /// </summary>
+    [Fact]
+    public void AReasonThatIsAbsentIsNotAReasonThatIsEmpty()
+    {
+        byte[] none = new Tkproto.TakionMessage
+        {
+            Type = Tkproto.TakionMessage.Types.PayloadType.Disconnect,
+            DisconnectPayload = new Tkproto.DisconnectPayload(),
+        }.ToByteArray();
+
+        DisconnectReading absent = DisconnectMessage.Read(none);
+
+        Assert.True(absent.Undecodable);
+        Assert.False(absent.Disconnected);
+        Assert.Null(absent.Reason);
+
+        // And the caller's switch never sees a type for it either.
+        Assert.False(DisconnectMessage.IsDisconnect(none));
+
+        // An empty reason, by contrast, is a disconnect like any other.
+        DisconnectReading empty = DisconnectMessage.Read(WithReason(string.Empty));
+
+        Assert.False(empty.Undecodable);
+        Assert.True(empty.Disconnected);
+        Assert.Equal(string.Empty, empty.Reason);
+        Assert.True(DisconnectMessage.IsDisconnect(WithReason(string.Empty)));
+    }
+
     /// <summary>streamconnection.c, or null outside a checkout.</summary>
     private static string? Source()
         => DisconnectMessageSource.Locate(DisconnectMessageSource.RelativePath) is { } path
