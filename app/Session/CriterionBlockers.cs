@@ -119,6 +119,71 @@ public static class CriterionBlockers
     }
 
     /// <summary>
+    /// PP728: one criterion's prose, joined back into a line, or null where it is not there.
+    ///
+    /// Here rather than in a second reader, for CFunction's reason: a parser that looks general
+    /// gets reused and one named after a subsystem gets copied, and the copy is the version that
+    /// drifts. This class already walks the Done-when headings and their bullets.
+    /// </summary>
+    /// <param name="about">The task the criterion belongs to, e.g. PP295.</param>
+    /// <param name="lead">Its lead, which is how a criterion is addressed.</param>
+    public static string? TextOf(string roadmap, string about, string lead)
+    {
+        ArgumentNullException.ThrowIfNull(roadmap);
+        ArgumentException.ThrowIfNullOrEmpty(about);
+        ArgumentException.ThrowIfNullOrEmpty(lead);
+
+        string? heading = null;
+        string? found = null;
+        var body = new System.Text.StringBuilder();
+
+        foreach (string raw in roadmap.ReplaceLineEndings("\n").Split('\n'))
+        {
+            Match section = Regex.Match(raw, @"^##\s+Done when\s+[—-]\s+(PP[0-9]+)\s*$");
+            if (section.Success)
+            {
+                if (found is not null)
+                    return body.ToString();
+
+                heading = section.Groups[1].Value;
+                continue;
+            }
+
+            if (raw.StartsWith("##", StringComparison.Ordinal))
+            {
+                if (found is not null)
+                    return body.ToString();
+
+                heading = null;
+                continue;
+            }
+
+            if (heading is null)
+                continue;
+
+            Match bullet = Regex.Match(raw, @"^-\s+\*\*(.+?)\*\*\s*(.*)$");
+            if (bullet.Success)
+            {
+                if (found is not null)
+                    return body.ToString();
+
+                if (heading == about && bullet.Groups[1].Value == lead)
+                {
+                    found = lead;
+                    body.Append(bullet.Groups[2].Value);
+                }
+
+                continue;
+            }
+
+            if (found is not null)
+                body.Append(' ').Append(raw.Trim());
+        }
+
+        return found is null ? null : body.ToString();
+    }
+
+    /// <summary>
     /// The ids one criterion's prose says it is waiting for.
     ///
     /// A phrase and then an id, within the same sentence: the phrase has to reach the id rather than

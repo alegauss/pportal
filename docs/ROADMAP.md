@@ -34,8 +34,6 @@
 
 ## Block G — Test discipline
 
-- 💭 **PP728** (deps: —) **a criterion can state a count from a program and go false as that program changes, with the gate green** — PP690 holds a criterion's blocker claim against the ledger, and nothing holds its numbers against the census they were copied from. → §PP728
-
 ## Block H — Performance and telemetry
 
 - ⏳ **PP46** (deps: PP42 ✅, PP63) **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — A Chromium leaving the build should be visible in cold start and in megabytes, and stating it without measuring is how a port collects folklore. → §PP46

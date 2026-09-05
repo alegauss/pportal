@@ -381,30 +381,6 @@ congestion path.
 
 ## Block G — Test discipline
 
-### §PP728 A criterion counting something that moved
-
-One criterion of the run's host said "Seven have none, and they are four subsystems",
-naming all four. Four tasks then wrote those subsystems over four commits, each one
-shortening the census the sentence was copied from, and the sentence did not move. Every
-one of those commits was green.
-
-IT WAS FALSE BY DEGREES, which is what makes it worth a check rather than a proofread.
-After the first ship it named a subsystem that existed; after the fourth it stated seven
-where the answer was zero. Nothing in between reads as wrong at a glance, and the number
-is exactly what somebody planning the work would take from it.
-
-THE SHAPE IS PP690'S, ONE FIELD OVER. That check holds a criterion's BLOCKER claim
-against the ledger, because a sentence naming a finished task understates the work to
-zero. This is the same sentence's COUNT, and the same argument: a person deciding what
-is left reads it.
-
-AND THE JOIN IS AVAILABLE, which is the part that makes this cheap. The census is a
-program value, not a document - a list in app whose length is the number the criterion
-states. CountedClaim already does this for line counts in C files, matching a filename
-and a number in the same sentence and recounting it. The same reading over "N have none"
-against a named list would have gone red on the first of the four commits rather than on
-none of them.
-
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed

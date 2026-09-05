@@ -85,6 +85,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP720** **the suite's staleness warning globs every .c under lib, so a file no target builds warns on every run** — A staleness guard asks the build graph and not the tree: this checkout keeps C that no target compiles, so a glob warns about files no rebuild can bring up to date.
 - ✅ **PP733** **nothing counts the managed readers that parse a takion message, so a fourth one can be lenient in silence** — A census that spells the call it looks for has to skip itself, and saying so by name is the only version of that a reader can check.
 - ✅ **PP735** **a census naming an export in a string counts as its caller, so the sweep's dead list is short by an unknown amount** — A symbol in quotes is a model and a symbol in code is a caller, which is a rule the sweep can apply where a list of excused files is one somebody has to remember.
+- ✅ **PP728** **a criterion can state a count from a program and go false as that program changes, with the gate green** — A criterion's count is held by a declared row, two-sided; spotting a NEW one stays a judgement, because most number phrases in these sections are prose counting nothing.
 
 ## Block H — Performance and telemetry
 

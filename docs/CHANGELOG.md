@@ -752,6 +752,7 @@
 - ✅ **PP720** **the suite's staleness warning globs every .c under lib, so a file no target builds warns on every run** — The launcher asks ninja whether the target has work to do rather than globbing the tree, so the warning fires on a real edit and clears when compile.cmd runs.
 - ✅ **PP733** **nothing counts the managed readers that parse a takion message, so a fourth one can be lenient in silence** — Four files and six sites, swept rather than remembered, and a row claiming the check is read for the call that makes it - so a verdict cannot be taken on trust.
 - ✅ **PP735** **a census naming an export in a string counts as its caller, so the sweep's dead list is short by an unknown amount** — Five, measured before the rule was applied: four new names and the one PP716 kept by hand, so the exclusion list goes and the dead list is sixteen.
+- ✅ **PP728** **a criterion can state a count from a program and go false as that program changes, with the gate green** — CriterionCounts joins three of PP295's numbers to the census each was copied from, two-sided: the stated number is the program's and the phrase spells it, so a row added anywhere goes red.
 
 ## Block H — Performance and telemetry
 
