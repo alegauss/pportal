@@ -377,7 +377,75 @@ The work is to decide which the port is: the C's shape, which means documenting 
 it inherits, or a correction, which means saying so where the census can see it. PP499
 and PP402 are the two precedents and they went opposite ways.
 
+### §PP721 The seam has no caller
+
+PP719 built the seam and PP707's census row names it, and that row is its only mention
+in app/ outside its own file. Which is exactly the shape PP707 was filed about -
+ManagedStreamRun.Run is right about the sequence and constructed nowhere - one layer
+down, arriving in the commit that answered the layer above.
+
+FOUR PRODUCERS EXIST AND NONE CALLS IT. PP689 reads a pad info message and returns the
+five reports in the C's order. StreamOutbound counts a FEC failure and sends nothing, on
+a seam whose two arguments are already that event's two fields. And the rumble and
+trigger-effects parses have no caller at all, because nothing routes a data message to
+them: StreamDispatch decides which kind one is and returns an enum.
+
+SO THE JOIN IS THE WORK, not another builder. What is owed is the layer
+streamconnection.c's data callback is - something that takes a takion data message, asks
+PP366's second layer what it is, and drives the parse and the send off the answer. That
+is the dispatch with something on the other end of it.
+
+Filed rather than folded into PP719, because a seam with no caller is honest and a seam
+wired to one caller in the same commit is two decisions in one diff - and the caller's
+shape is the run's, which PP707's first criterion still holds open.
+
+### §PP722 The other eight events
+
+PP719 named nine of ChiakiEventType's seventeen as the frame path's, and left the other
+eight unanswered rather than absent. Seven have raisers: ctrl.c raises three keyboard
+events - open, remote close, text change - and session.c four, being the login pin
+request, the quit, the auto-regist and the nickname.
+
+THE EIGHTH IS RAISED BY NOTHING. CHIAKI_EVENT_HOLEPUNCH is declared in session.h and
+assigned nowhere in lib/src; the only code mentioning it is gui/src/streamsession.cpp,
+which switches on an event the C cannot produce. Upstream's holepunch raised it and PP33
+removed that file, so the arm answers a message that stopped existing - and the member
+stays because deleting it renumbers every value after it, which NativeEnumMirrors is the
+check for.
+
+WHY THIS IS A CENSUS AND NOT A PORT. PP712's lesson is that the count is worth having
+before the work: seven owed members read as four subsystems until somebody asked which.
+The same question here is which of the seven are one piece - the three keyboard events
+are one screen - and the port already consumes two of them off the C, the pin request
+and the quit, through ConsoleSession.Translate.
+
+Nothing here waits on PP696: ctrl.c and session.c are not the frame path and no deletion
+turns on them. What waits is a managed session raising anything at all outside a stream.
+
 ## Block G — Test discipline
+
+### §PP720 A warning compile.cmd cannot clear
+
+PP56 fixed a stale green - the suite answering about a binary older than the code - and
+scripts/test-windows.sh warns when it sees one, with `find lib test -name '*.c' -newer
+chiaki-unit`. The glob is the TREE and the question is the BUILD, and those stopped
+being the same thing.
+
+lib/src/remote/holepunch.c left the build with PP33 and stayed in the tree, because the
+drift checks read C that no target compiles - the same reason gui/ is still here. Its
+mtime is now ahead of chiaki-unit.exe, so every run of test.cmd opens with the warning,
+and the warning's own advice does not clear it: compile.cmd answers `ninja: no work to
+do`, because ninja is right and the file is in no graph.
+
+A WARNING NOBODY CAN CLEAR IS A WARNING NOBODY READS, which is the whole cost. PP56's
+guard exists to stop a reader trusting a green that answers about the previous build,
+and it now fires on every invocation - so the one run where a real lib/ edit went
+uncompiled looks exactly like all the others.
+
+The fix is to ask the build rather than the tree, which ninja can answer. What it must
+NOT become is a list of exceptions: PP279's finding about the root-file list is that a
+hand-kept list guards only what somebody thought of, and this file would have gone on it
+only after being noticed.
 
 ## Block H — Performance and telemetry
 

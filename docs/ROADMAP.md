@@ -31,8 +31,12 @@
 - 💭 **PP713** (deps: —) **eleven rows of the frame path's census name a type with no member, and nothing says which are ctors** — PP712 closed the same hole one census over and found three wrong answers; this one has not been asked. → §PP713
 - 💭 **PP715** (deps: —) **one wrap past 65535 makes the client report 1.8e19 packets lost, and nothing says what the console does then** — PP714 reproduced it because the port copies the C, so the clamp fires on a healthy stream and the console is told the worst loss allowed. → §PP715
 - 💭 **PP716** (deps: —) **packetstats' sequence arm is pushed with no mutex while three neighbours take one, and two threads reach it** — PP714's port locks all four and nothing records that as a departure, so a reader would take the C for the same shape. → §PP716
+- 💭 **PP721** (deps: —) **nothing calls the managed event seam, so the five a pad info decides and the FEC failure still reach nobody** — PP719's only mention in app outside its own file is a census row, so the port has the event and no path from a datagram to it. → §PP721
+- 💭 **PP722** (deps: —) **seven events outside the frame path have no managed raiser, and one enum member is raised by nothing at all** — ctrl.c raises three keyboard events and session.c four, and CHIAKI_EVENT_HOLEPUNCH is declared in the header and assigned nowhere in lib/src. → §PP722
 
 ## Block G — Test discipline
+
+- 💭 **PP720** (deps: —) **the suite's staleness warning globs every .c under lib, so a file no target builds warns on every run** — holepunch.c left the build with PP33 and stayed in the tree, so it outdates chiaki-unit and the advice the warning gives cannot clear it. → §PP720
 
 ## Block H — Performance and telemetry
 
