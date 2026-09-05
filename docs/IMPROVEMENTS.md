@@ -353,30 +353,6 @@ WHAT WOULD HOLD IT is a question about the managed side rather than the C: does 
 constant answering this macro now exist? The port has no file-to-type map to ask
 through, and building one for eleven rows is the cost to weigh.
 
-### §PP731 The two crypts a bang starts
-
-PP729 decides a bang and hands the keying to a seam that answers true or false. Behind
-that seam is stream_connection_init_crypt, and nothing managed does any of it.
-
-TWO OBJECTS AT TWO FIXED INDICES. A local gk crypt at index 2 and a remote one at index
-3, each built from the handshake key and the ECDH secret the bang produced, and then set
-on the takion as a pair. The indices are not a detail: they are what makes one side's
-key stream the other's, so a port that swapped them would encrypt with the key the
-console decrypts with and the traffic would be noise in both directions.
-
-THE PIECES EXIST AND THE OBJECT DOES NOT. PP415's derivation, PP416's key stream and
-PP418's GMAC window are all here, so what is owed is the thing that holds them: two of
-them, at their indices, with a lifetime.
-
-AND THE FAILURE PATH IS THE PART WORTH PORTING. Where the remote one fails to build, the
-local one is released with chiaki_gkcrypt_free and not free - PP368's finding, because a
-gk crypt owns a key-buffer THREAD that fini stops and joins first. A bare free left that
-thread running over a freed struct. A managed port has no such bug to reproduce, which
-is exactly why the ORDER should be a value something reads rather than a comment nobody
-does.
-
-The seam PP729 left is where this lands, unchanged.
-
 ### §PP734 A counterpart that is only a seam
 
 PP713 made every row of the frame path's census say what kind of counterpart it names,

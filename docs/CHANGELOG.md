@@ -654,6 +654,7 @@
 - ✅ **PP716** **packetstats' sequence arm is pushed with no mutex while three neighbours take one, and two threads reach it** — The lock stays, on PP499's reasoning rather than PP402's, and the departure is one row of five with the reading of packetstats.c that keeps it honest.
 - ✅ **PP715** **one wrap past 65535 makes the client report 1.8e19 packets lost, and nothing says what the console does then** — The console is told 16425 and 49152 - three quarters - because narrowing to sixteen bits discards the clamp's ratio (design superseded: the console sees far above the ceiling).
 - ✅ **PP725** **the sender's overflow rung copies a packet buffer onto itself, and nothing records that the port left it out** — The identity holds for all sixty-four positions, so the copy is a no-op by arithmetic rather than by inspection, and the departure is a row with a reading behind it.
+- ✅ **PP731** **the step after the bang builds two gk crypts at fixed indices and hands them to takion, and none of it is ported** — Two crypts at 2 and 3 share nothing but their inputs, the window advances forward only, and the release order is a list rather than a comment.
 
 ## Block G — Test discipline
 
