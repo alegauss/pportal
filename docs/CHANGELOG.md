@@ -636,6 +636,7 @@
 - ✅ **PP702** **senkusha.c calls five takion symbols, so PP27's fourth criterion cannot be met while the file stands** — The five are read out of senkusha.c and each resolves to a managed member; a sixth would fail by name, because the reader matches takion's whole namespace.
 - ✅ **PP703** **ManagedTakion's video queue is only ever set to null, so one step of its recorded teardown is unreachable** — A takion given a sink owns an arm, so one video datagram opens the queue and the teardown step reserved for it is appended where the C releases it.
 - ✅ **PP706** **the microphone has a capture, a unit splitter, an encoder and a head, and nothing runs them as one path** — Captured bytes reach a packet through all four pieces, and the C's two surprises are reproduced: two frames of silence at the start, and the newest frame sent twice while the oldest never is.
+- ✅ **PP707 (the host's census)** **nothing managed drives a live session, so the flip that stops session.c asking removes the only path that streams** — Every member of the run host has a counterpart or is on record as owed, and the four owed are two subsystems: congestion control and the feedback sender.
 
 ## Block G — Test discipline
 

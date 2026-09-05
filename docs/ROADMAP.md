@@ -25,9 +25,9 @@
 - 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — chiaki_fec_decode has three callers - frameprocessor.c, the C suite and this port's shim - and gf-complete has a fourth site none of them reach: chiaki_lib_init. → §PP30
 - 🛠 **PP295** (deps: PP297 ✅, PP696, PP697) **streamconnection.c is 1540 lines and calls the video receiver, so every deletion below waits on it** — Three criteria are met; the fourth is the four files leaving, which waits on the one commit that edits the C and on the shim, whose wrappers outlive it. → §PP295
 - ⏳ **PP671** (deps: PP696) **Fec.Recovers with no decoder named runs the C, so after the flip a default becomes a loader failure** — The managed decoder is the one that stays; the default should follow it on the flip, so the sixty-four recorded cases judge the port alone. → §PP671
-- 📋 **PP696** (deps: PP707) **the frame path's deletion has no commit that edits the C, so four files stay while their ports exist** — PP623's middle step is the only one touching lib, and nobody has written this path's: session.c's asks, the shim's wrappers and the suite's four files all still name them. → §PP696
+- 📋 **PP696** (deps: PP707 ⏳) **the frame path's deletion has no commit that edits the C, so four files stay while their ports exist** — PP623's middle step is the only one touching lib, and nobody has written this path's: session.c's asks, the shim's wrappers and the suite's four files all still name them. → §PP696
 - 📋 **PP697** (deps: PP696) **after the frame-path flip the models describe a C that has gone, in the present tense** — PP634 found this on the holepunch side: the predicates stay because they notice the calls coming back, and what goes stale is the prose around them. → §PP697
-- 📋 **PP707** (deps: —) **nothing managed drives a live session, so the flip that stops session.c asking removes the only path that streams** — StreamRun starts the C session and ManagedStreamRun is constructed by tests alone; PP696 would still link, and the application would have no way to show a picture. → §PP707
+- ⏳ **PP707** (deps: —) **nothing managed drives a live session, so the flip that stops session.c asking removes the only path that streams** — Nothing in app implements the host, so the run has never gone over a socket and the stream still starts from chiaki_session_start. → §PP707
 - 📋 **PP708** (deps: —) **nothing in the port renders audio, so a session shows a picture and plays no sound at all** — PP698 had to generate a tone to prove a loopback reference works, because no code here plays one; AudioRing is a model whose only consumer is the selftest. → §PP708
 
 ## Block G — Test discipline
@@ -150,6 +150,23 @@
   to the managed decoder, so the sixty-four recorded erasure cases assert on every build
   instead of declining without the C. The differential in FecCodecTests stays the one
   place the C is named, and OracleGuardCensus counts two fewer guarded theories.
+
+## Done when — PP707
+
+- **A managed run drives a stream over a real takion** PP607 connects a real takion to
+  PP606's responder and PP680's arm handles what arrives, but ManagedStreamRun's host is
+  an interface whose implementations are all in the test project - so the sequence PP640
+  asserts of the C has never run over a socket.
+- **Every member of the run's host has a counterpart or a line that owes one** Two of
+  them have no managed counterpart at all: congestion control and the feedback sender.
+  PP669 mapped the frame path's consumers by reflection for the same reason - a host
+  built without the census discovers them one compile error at a time, and each is a
+  decision rather than a stub.
+- **The stream starts from the host rather than from chiaki_session_start** PP696 stops
+  session.c asking and nothing else asks. StreamRun runs ctrl and senkusha through the C
+  session today and waits on its events; what replaces the C's own call is a handoff,
+  and where it sits - and what the C thread does afterwards - is the decision this holds
+  open.
 
 ## Non-goals
 
