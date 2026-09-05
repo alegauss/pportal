@@ -353,30 +353,6 @@ WHAT WOULD HOLD IT is a question about the managed side rather than the C: does 
 constant answering this macro now exist? The port has no file-to-type map to ask
 through, and building one for eleven rows is the cost to weigh.
 
-### §PP725 A memcpy with one address twice
-
-feedback_sender_flush_history_locked formats into history_packets[(begin + len) %
-QUEUE], then branches on whether the queue is full. The full arm copies that slot into
-history_packets[begin] - and on that arm len IS the queue size, so the index it just
-formatted into reduces to begin. The copy has one address in both arguments.
-
-IT IS NOT WRONG, IT IS NOTHING. The bytes are already where the copy would put them, and
-memcpy over an identical source and destination is undefined by the standard rather than
-merely wasted - the case memmove exists for. Nothing has ever gone wrong here because
-the queue holding sixty-four unsent history packets means the stream is already in
-trouble.
-
-THE PORT LEFT IT OUT and only a comment says so. PP723 writes the sizes and advances
-begin without the copy, which is what the arm means; that is a departure from the C, and
-this tree's rule for a departure is that it is carried as a value a check reads rather
-than as a sentence a reader has to find. PP545's bounded websocket wait is the shape:
-NativeWaits carries it as a row.
-
-AND THE ARM IS WORTH AN ASSERTION EITHER WAY. Whether the C keeps the copy or upstream
-notices it, what this port must go on doing is dropping the OLDEST packet - and a check
-reading the index arithmetic would hold that, which the text search PP723 wrote does
-not.
-
 ### §PP731 The two crypts a bang starts
 
 PP729 decides a bang and hands the keying to a seam that answers true or false. Behind

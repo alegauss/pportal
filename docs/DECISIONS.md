@@ -70,6 +70,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP713** **eleven rows of the frame path's census name a type with no member, and nothing says which are ctors** — A counterpart naming no member states which of three reasons that is, because one legitimate way to say nothing is how the other reasons get in unexamined.
 - ✅ **PP716** **packetstats' sequence arm is pushed with no mutex while three neighbours take one, and two threads reach it** — A departure is reproduced where the C's flaw is visible to a user or a console, and corrected where it is not; this one is a report off by a packet, which is jitter.
 - ✅ **PP715** **one wrap past 65535 makes the client report 1.8e19 packets lost, and nothing says what the console does then** — A clamp producing a pair too wide for the field it is sent in produces nothing: the narrowing is part of the arithmetic, not a formality after it.
+- ✅ **PP725** **the sender's overflow rung copies a packet buffer onto itself, and nothing records that the port left it out** — What a departure needs is the arithmetic that makes it one: a text search finds the call, and only the modulo says both its arguments are the same slot.
 
 ## Block G — Test discipline
 

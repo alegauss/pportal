@@ -178,6 +178,19 @@ public sealed class ManagedFeedbackSender : IDisposable
     public IReadOnlyList<ulong> InputToWireUs => inputToWire;
 
     /// <summary>
+    /// PP725: the slot a flush formats into, which is the arithmetic the overflow arm turns on.
+    ///
+    /// A named function rather than an expression buried in the flush, because the C's full arm
+    /// then copies that slot into the one at <paramref name="begin"/> - and when the queue is full
+    /// those are the SAME slot. That is provable from this line and nothing else: with a length
+    /// equal to the queue's size the modulo returns begin, so the C's memcpy is handed one address
+    /// twice. <see cref="FeedbackHistoryOverflow"/> is where the port's answer to that is recorded.
+    /// </summary>
+    /// <param name="begin">Where the queue's oldest unsent packet is.</param>
+    /// <param name="length">How many are queued.</param>
+    public static int PacketSlot(int begin, int length) => (begin + length) % PacketQueueSize;
+
+    /// <summary>
     /// controller_state_equals_for_feedback_state: whether a change is worth a state packet.
     ///
     /// The sticks compare exactly and the ten floats within <see cref="MotionEpsilon"/>. The buttons,
@@ -397,7 +410,7 @@ public sealed class ManagedFeedbackSender : IDisposable
         if (!historyDirty)
             return;
 
-        int index = (packetBegin + packetLen) % PacketQueueSize;
+        int index = PacketSlot(packetBegin, packetLen);
         var buf = new byte[PacketBufSize];
 
         if (FeedbackPayload.FormatHistory(HistoryBufferSize, history, buf, out int written)
@@ -462,6 +475,52 @@ public sealed class ManagedFeedbackSender : IDisposable
             Tick();
         }
     }
+}
+
+/// <summary>
+/// PP725: the copy on the overflow rung, which this port does not make - as a value, not a comment.
+///
+/// feedback_sender_flush_history_locked formats into <see cref="ManagedFeedbackSender.PacketSlot"/>
+/// and then branches on whether the queue is full. The full arm copies that slot into the one at
+/// begin - and on that arm the length IS the queue's size, so the slot it just formatted into
+/// reduces to begin. The copy has one address in both arguments.
+///
+/// IT IS NOT WRONG, IT IS NOTHING. The bytes are already where the copy would put them. memcpy over
+/// an identical source and destination is undefined by the standard rather than merely wasted -
+/// the case memmove exists for - and nothing has gone wrong here because sixty-four unsent history
+/// packets means the stream is in trouble already.
+///
+/// SO THE PORT LEAVES IT OUT, and this is the record. PP716's rule decided it: a departure is
+/// reproduced where the C's flaw is visible to a user or a console and corrected where it is not,
+/// and a copy whose bytes are already in place is visible to nobody. PP545's bounded websocket wait
+/// is the shape - NativeWaits carries that one as a row rather than as a sentence.
+///
+/// AND THE ARM IS HELD BY ARITHMETIC, not by a text search. What this port must go on doing is
+/// dropping the OLDEST packet, and the identity that makes the C's copy a no-op is the same
+/// identity that says which slot is overwritten. Both are the modulo, and both are asserted.
+/// </summary>
+public static class FeedbackHistoryOverflow
+{
+    /// <summary>Whether the port makes the copy. It does not, and that is the departure.</summary>
+    public const bool ThePortCopies = false;
+
+    /// <summary>What the C's full arm does that this port does not, in one sentence.</summary>
+    public const string Departure =
+        "the C copies the formatted slot onto itself before advancing begin; this port advances it";
+
+    /// <summary>
+    /// Whether the slot a full queue formats into is the slot it overwrites.
+    ///
+    /// The whole of the finding, as arithmetic. True for every begin, which is what makes the C's
+    /// copy a no-op rather than a rare one.
+    /// </summary>
+    public static bool TheFormattedSlotIsTheOldest(int begin)
+        => ManagedFeedbackSender.PacketSlot(begin, ManagedFeedbackSender.PacketQueueSize) == begin;
+
+    /// <summary>And which slot a queue that is NOT full formats into, which is a different one.</summary>
+    public static bool TheFormattedSlotIsBeyondTheQueue(int begin, int length)
+        => length is > 0 and < ManagedFeedbackSender.PacketQueueSize
+            && ManagedFeedbackSender.PacketSlot(begin, length) != begin;
 }
 
 /// <summary>
@@ -556,6 +615,28 @@ public static class ManagedFeedbackSenderSource
 
         return flushBody.Contains(
             "history_buf.len = FEEDBACK_HISTORY_RESEND_EVENT_COUNT", StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// PP725: whether the C's full arm still copies the slot it formatted into onto itself.
+    ///
+    /// Read so the departure <see cref="FeedbackHistoryOverflow"/> records stays honest: the day
+    /// upstream removes the copy, the port and the C agree again and that row can go. Both indices
+    /// are named, because a copy between two DIFFERENT slots would be a real move and not a no-op.
+    /// </summary>
+    public static bool TheFullArmStillCopiesTheSlotOntoItself(string flushBody)
+    {
+        ArgumentNullException.ThrowIfNull(flushBody);
+
+        int overflow = flushBody.IndexOf("history packet queue overflow", StringComparison.Ordinal);
+        if (overflow < 0)
+            return false;
+
+        string arm = flushBody[..overflow];
+
+        return arm.Contains("memcpy(", StringComparison.Ordinal)
+            && arm.Contains("history_packets[feedback_sender->history_packet_begin]", StringComparison.Ordinal)
+            && arm.Contains("history_packets[packet_index]", StringComparison.Ordinal);
     }
 
     /// <summary>
