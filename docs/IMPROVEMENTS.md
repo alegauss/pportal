@@ -377,28 +377,6 @@ The work is to decide which the port is: the C's shape, which means documenting 
 it inherits, or a correction, which means saying so where the census can see it. PP499
 and PP402 are the two precedents and they went opposite ways.
 
-### §PP721 The seam has no caller
-
-PP719 built the seam and PP707's census row names it, and that row is its only mention
-in app/ outside its own file. Which is exactly the shape PP707 was filed about -
-ManagedStreamRun.Run is right about the sequence and constructed nowhere - one layer
-down, arriving in the commit that answered the layer above.
-
-FOUR PRODUCERS EXIST AND NONE CALLS IT. PP689 reads a pad info message and returns the
-five reports in the C's order. StreamOutbound counts a FEC failure and sends nothing, on
-a seam whose two arguments are already that event's two fields. And the rumble and
-trigger-effects parses have no caller at all, because nothing routes a data message to
-them: StreamDispatch decides which kind one is and returns an enum.
-
-SO THE JOIN IS THE WORK, not another builder. What is owed is the layer
-streamconnection.c's data callback is - something that takes a takion data message, asks
-PP366's second layer what it is, and drives the parse and the send off the answer. That
-is the dispatch with something on the other end of it.
-
-Filed rather than folded into PP719, because a seam with no caller is honest and a seam
-wired to one caller in the same commit is two decisions in one diff - and the caller's
-shape is the run's, which PP707's first criterion still holds open.
-
 ### §PP722 The other eight events
 
 PP719 named nine of ChiakiEventType's seventeen as the frame path's, and left the other

@@ -186,12 +186,19 @@ public static class StreamMessages
 /// where the request went out, so a seam that answered true regardless would leave the receiver
 /// dropping frames while it waited for an IDR nobody asked for.
 ///
-/// THE FEC FAILURE IS NOT A MESSAGE. The C logs it and the corrupt-frame report beside it is what
-/// crosses the wire, so this counts them and sends nothing - a report the caller can read without
-/// there being a payload that does not exist.
+/// THE FEC FAILURE IS NOT A MESSAGE, AND IS AN EVENT. Nothing crosses the wire for it - the
+/// corrupt-frame report beside it is what does - so this sends no payload for one. What the C
+/// raises instead is a session event, and PP721 gives it one: the two arguments this seam already
+/// takes are that event's two fields. The count stays beside it, because a caller reading how many
+/// there were needs no sink to do it.
 /// </summary>
 /// <param name="sink">Where the two messages go.</param>
-public sealed class StreamOutbound(IStreamMessageSink sink) : IVideoReceiverOutbound
+/// <param name="events">
+/// Where a FEC failure goes, which is not the wire. Absent leaves the count and raises nothing,
+/// which is what every caller before PP721 had.
+/// </param>
+public sealed class StreamOutbound(IStreamMessageSink sink, ManagedSessionEvents? events = null)
+    : IVideoReceiverOutbound
 {
     private readonly IStreamMessageSink sink =
         sink ?? throw new ArgumentNullException(nameof(sink));
@@ -221,6 +228,9 @@ public sealed class StreamOutbound(IStreamMessageSink sink) : IVideoReceiverOutb
     {
         FecFailures++;
         LastFecFailure = frameIndex;
+
+        // PP721: the ninth of the frame path's events, and the only one videoreceiver.c raises.
+        events?.Send(ManagedSessionEvents.VideoFecFailure(frameIndex, idrRequestSent));
     }
 }
 
