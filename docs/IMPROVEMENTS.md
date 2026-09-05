@@ -381,6 +381,28 @@ congestion path.
 
 ## Block G — Test discipline
 
+### §PP739 An absent id that any file can make present
+
+PP311's test asks where an id is named, and ends on one named nowhere. The id it uses is
+the literal 9999, built by concatenation so the asking file carries no such token - and
+a comment above the line says this is the fourth time the trap has been stepped in.
+
+IT WAS THE FIFTH IN PP728. A new test file in another directory, written by nobody who
+had read that comment, spelled that same made-up id as a stand-in for a task the roadmap
+does not have. The suite went red in AssertionRatchetTests, at a line the commit did not
+touch, with the message "Collection was not empty" - naming neither the offending file
+nor the reason.
+
+THE CONSTANT IS THE DEFECT. An absent id is a fact about the whole tree, and this one is
+a literal in a single local: every other file can invalidate it, and none of them can
+see it. A comment is the only guard, and a comment reaches the readers of the file it
+sits in - precisely the people who were never going to break it.
+
+DERIVE IT INSTEAD. The sweep already reads every assertion file, so collecting the
+tokens it finds and choosing one nobody spells costs one pass and makes the choice true
+by construction. The comment would then document a mechanism rather than stand in for
+one, and no new literal could turn this test red.
+
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed
