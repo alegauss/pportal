@@ -470,4 +470,28 @@ subsystem along, and there is no display here that varies its refresh to check i
 Below the display's minimum, low framerate compensation changes the behaviour again, and
 that too is read rather than assumed.
 
+### §PP711 The conversion the engine would do for nothing
+
+PP710's decision says a rate change in this port is Windows's own DMO, and that the way
+IN stays free because the capture engine's converter already does it. PP52's stage does
+not take that route: it converts both inputs down itself, because WasapiCapture asks for
+MicrophoneFormat.Announced and has no way to be asked for anything else.
+
+THREE CONVERTERS WHERE ONE WOULD DO. The microphone comes down, the reference comes
+down, the cleaned stream goes back up - and AUTOCONVERTPCM would have done the first two
+inside the engine for no code and no copy, on a client that asked its endpoint for the
+canceller's rate.
+
+WHAT IT COSTS is small and worth stating rather than guessing at: two in-box resampler
+passes over 960 bytes, a hundred times a second, on a transform PP710 measured as taking
+every rate the canceller does. It is not a reason to change anything on its own.
+
+WHAT MAKES IT WORTH A LINE is that the stage takes BYTES and not devices, which is what
+let PP52 be asserted on a machine with no microphone at all. A version reading endpoints
+directly would be faster and untestable, so this is a trade rather than an oversight -
+and the third converter, the way up, has no engine behind it either way.
+
+The decision it owes: whether WasapiCapture takes a format, and whether the stage keeps
+a bytes-in door beside a device one so the assertions survive.
+
 ## Block J — Public documentation

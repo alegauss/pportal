@@ -41,6 +41,7 @@
 
 - ⏳ **PP49** (deps: PP11 ✅, PP47 ✅, PP700 ✅) (requires: console, a-person-looking) **the console sends SDR on most titles and an HDR display shows it flat, with nothing in the client trying** — the quality half and the integration: a decoded console frame to judge on, and a setting that turns it off. → §PP49
 - ⏳ **PP53** (deps: PP11 ✅, PP41 ✅) (requires: variable-refresh-display) **frames arrive with network jitter and are presented against a fixed refresh, so each waits for a vblank it missed** — the reading itself: a display that varies its refresh, and a trace saying the frame arrived unpaced. → §PP53
+- 📋 **PP711** (deps: PP52 ✅) **WasapiCapture can only be asked for the announced format, so the cleaning stage resamples both inputs itself** — PP710 recorded that the way in is free because the capture engine converts; PP52's stage takes bytes at 48000 and pays for two conversions the engine would do. → §PP711
 
 ## Block J — Public documentation
 
