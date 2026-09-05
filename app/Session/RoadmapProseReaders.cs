@@ -295,12 +295,7 @@ public static class RoadmapProseReaders
         // because it was written FROM this list - which is the coincidence running the way PP527's
         // does, the document copying the program - and nothing here reads a document. PP714 wrote
         // one of the four and its row left with it, which is what a row falling off looks like;
-        // PP719 wrote the connected event and took the third.
-        new(
-            "the feedback sender",
-            @"app\Protocol\StreamRunHostConsumers.cs",
-            ProseReading.Incidental,
-            "The second, and the one PP676's serialisers are waiting under."),
+        // PP719 and PP723 took two more, and this is the last of them.
         new(
             "a BIG message",
             @"app\Protocol\StreamRunHostConsumers.cs",

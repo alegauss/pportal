@@ -47,9 +47,9 @@ public readonly record struct HostMember(string Member, HostAnswer How, Counterp
 /// namespace, and PP669's own rule is that a mapping is not a call. So every answered row names the
 /// member that does the work, and the ones that cannot say which of the two other things they are.
 ///
-/// TWO SUBSYSTEMS ARE OWED. PP712 counted four, PP714 answered the smallest and PP719 the next, so
-/// what is left is the feedback sender and a BIG message. Each is its own piece of work rather than
-/// a stub, and this list falling is what shipping one looks like from here.
+/// ONE SUBSYSTEM IS OWED. PP712 counted four; PP714, PP719 and PP723 answered three of them, so
+/// what is left is a BIG message. It is its own piece of work rather than a stub, and this list
+/// falling is what shipping one looks like from here.
 /// </summary>
 public static class StreamRunHostConsumers
 {
@@ -91,9 +91,9 @@ public static class StreamRunHostConsumers
             "PP712: nothing assembles one. A BIG carries the session key, the launch spec, the encrypted key and an ECDH public key with its signature."),
         new(
             "StartFeedbackSender",
-            HostAnswer.Owed,
-            null,
-            "PP676 ported feedback.c's serialisers and nothing composes them into a sender."),
+            HostAnswer.Answered,
+            new(CounterpartAssembly.App, nameof(ManagedFeedbackSender), nameof(ManagedFeedbackSender.Start)),
+            "PP723's thread, which waits the same 200ms window and sends the same two packets."),
         new(
             "Wait",
             HostAnswer.Answered,
@@ -139,14 +139,17 @@ public static class StreamRunHostConsumers
             "PP684's, and its failure is logged and ignored on both sides."),
         new(
             "LiftInputToWire",
-            HostAnswer.Owed,
-            null,
-            "PP712: the destination exists - SessionBaseline.PushInputToWire - and the SOURCE is the feedback sender, which does not."),
+            HostAnswer.Answered,
+            new(
+                CounterpartAssembly.App,
+                nameof(ManagedFeedbackSender),
+                nameof(ManagedFeedbackSender.LiftInputToWire)),
+            "PP723's samples, handed to the destination PP712 found already existing: SessionBaseline.PushInputToWire."),
         new(
             "FiniFeedbackSender",
-            HostAnswer.Owed,
-            null,
-            "With StartFeedbackSender: there is nothing to fini."),
+            HostAnswer.Answered,
+            new(CounterpartAssembly.App, nameof(ManagedFeedbackSender), nameof(ManagedFeedbackSender.Stop)),
+            "The same thread's flag, signal and join, in the C's order."),
         new(
             "SendDisconnect",
             HostAnswer.Answered,
@@ -205,16 +208,13 @@ public static class StreamRunHostConsumers
     /// <summary>
     /// The subsystems those members belong to, which is what a plan is made from.
     ///
-    /// Five members and three pieces of work: a sender's init, its fini and the counter lifted out
-    /// of it are one object. Counting members would say five where there are three.
-    ///
-    /// PP714 took congestion control off this list by writing it, which took two members with it -
-    /// a start and a stop being one thread was the other half of the same argument. PP719 took the
-    /// connected event the same way, and that one was a single member because the event seam it
-    /// needed is nine events wide and the run makes one of them.
+    /// The count that matters is objects and not members: PP714 took congestion control off this
+    /// list and two members with it, because a start and a stop are one thread. PP723 took three at
+    /// once for the same reason - a sender's init, its fini and the counter lifted out of it are one
+    /// object. PP719 took exactly one, and was the largest of the three: nothing managed raised a
+    /// session event at all, so the run's one CONNECTED needed a seam nine events wide.
     /// </summary>
-    public static IReadOnlyList<string> OwedSubsystems { get; } =
-        ["a BIG message", "the feedback sender"];
+    public static IReadOnlyList<string> OwedSubsystems { get; } = ["a BIG message"];
 
     /// <summary>The interface's file, or null outside a checkout.</summary>
     public static string? Locate() => SanitizerSource.LocateRelative(RelativePath);

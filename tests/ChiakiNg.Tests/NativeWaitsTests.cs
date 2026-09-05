@@ -147,7 +147,7 @@ public class NativeWaitsTests
     }
 
     /// <summary>
-    /// The groups add up, and twenty of the thirty-two macros have a managed constant behind them.
+    /// The groups add up, and twenty-two of the thirty-two macros have a managed constant behind them.
     ///
     /// Written as the split rather than as a total, because "31 and 33" was the reading this task
     /// started from and the two numbers never joined to each other.
@@ -159,14 +159,17 @@ public class NativeWaitsTests
     /// PP718: twenty and twelve, not nineteen and thirteen. PP714 ported congestion control and
     /// this split stayed valid across the move, which is exactly why it was not enough on its own -
     /// see TheUnportedGroupDoesNotClaimAPortedFile.
+    ///
+    /// PP723: twenty-two and ten. The feedback sender's two ends of one window moved together,
+    /// because the thread that waits the outer one is what the task wrote.
     /// </summary>
     [Fact]
-    public void TheGroupsAreTwentyThreeOneAndTwelve()
+    public void TheGroupsAreTwentyTwoThreeOneAndTen()
     {
-        Assert.Equal(20, NativeWaits.Mirrored.Count);
+        Assert.Equal(22, NativeWaits.Mirrored.Count);
         Assert.Equal(3, NativeWaits.Literals.Count);
         Assert.Single(NativeWaits.Departures);
-        Assert.Equal(12, NativeWaits.Unported.Count);
+        Assert.Equal(10, NativeWaits.Unported.Count);
 
         // Macros are the two groups that name one; the literals and the departure name none.
         Assert.Equal(

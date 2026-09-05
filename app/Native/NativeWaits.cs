@@ -45,7 +45,7 @@ public readonly record struct NativeWait(
 /// a crash and is why nothing would report it.
 ///
 /// THE ANSWER IS NOT "MAKE THE TWO COUNTS EQUAL". The C names 32 timing constants across thirteen
-/// files. Twenty have a managed constant that follows them, twelve are in units this port has not
+/// files. Twenty-two have a managed constant that follows them, ten are in units this port has not
 /// reached, and three more managed waits follow a number the C did NOT give a name to.
 ///
 /// PP718: AND A ROW CLAIMING NO COUNTERPART IS CHECKED FOR ONE. PP714 ported congestion control and
@@ -118,7 +118,7 @@ public static class NativeWaits
         Regist, Senkusha, SessionSource, StreamConnection, Takion, TakionSend,
     ];
 
-    /// <summary>The twenty macros a managed constant follows.</summary>
+    /// <summary>The twenty-two macros a managed constant follows.</summary>
     public static IReadOnlyList<NativeWait> Mirrored { get; } =
     [
         new("SECOND_US", Holepunch, WaitKind.MirrorsAMacro, "1000000L",
@@ -164,6 +164,12 @@ public static class NativeWaits
         new("CONGESTION_CONTROL_INTERVAL_MS", CongestionControl, WaitKind.MirrorsAMacro, "200",
             ManagedCongestionControl.IntervalMs,
             "PP714 moved it out of the unported group by writing the thread that waits it"),
+        new("FEEDBACK_STATE_TIMEOUT_MIN_MS", FeedbackSender, WaitKind.MirrorsAMacro, "8",
+            ManagedFeedbackSender.StateTimeoutMinMs,
+            "PP723 wrote the thread, and this end of the window is declared and waited by neither side"),
+        new("FEEDBACK_STATE_TIMEOUT_MAX_MS", FeedbackSender, WaitKind.MirrorsAMacro, "200",
+            ManagedFeedbackSender.StateTimeoutMaxMs,
+            "the keepalive, and the ceiling on the wait - the end of the window the thread does wait"),
     ];
 
     /// <summary>
@@ -201,15 +207,11 @@ public static class NativeWaits
             + nameof(HolepunchCreate) + " carries that as a value rather than as a comment"),
     ];
 
-    /// <summary>The twelve macros in units this port has not reached.</summary>
+    /// <summary>The ten macros in units this port has not reached.</summary>
     public static IReadOnlyList<NativeWait> Unported { get; } =
     [
         new("SESSION_DELETION_TIMEOUT_SEC", Holepunch, WaitKind.NoCounterpartYet, "3",
             null, "the wait for the deletion notification; SessionDelete's 10 is the HTTP timeout beside it"),
-        new("FEEDBACK_STATE_TIMEOUT_MIN_MS", FeedbackSender, WaitKind.NoCounterpartYet, "8",
-            null, "PP717 ported the recorder, not the thread; and the C's own TODO says it waits this nowhere"),
-        new("FEEDBACK_STATE_TIMEOUT_MAX_MS", FeedbackSender, WaitKind.NoCounterpartYet, "200",
-            null, "the other end of the same window, and the one the thread does wait"),
         new("SEARCH_REQUEST_SLEEP_MS", Regist, WaitKind.NoCounterpartYet, "100",
             null, "PP29 modelled regist's shapes, not its clock"),
         new("REGIST_SEARCH_TIMEOUT_MS", Regist, WaitKind.NoCounterpartYet, "3000", null, "as above"),
@@ -243,10 +245,10 @@ public static class NativeWaits
     /// counterpart and left the note reading "congestioncontrol.c is unported"; every count still
     /// added up, so the gate stayed green over a row that was now false.
     ///
-    /// A half-ported file is not the failure - feedbacksender.c has PP717's recorder and still owes
-    /// the thread that waits its window, and its rows say so without claiming the file is untouched.
-    /// What this catches is the SENTENCE: a row cannot say a file is unported while a mirrored row
-    /// names that same file.
+    /// A half-ported file is not the failure - a file can owe part of itself and say so, the way
+    /// feedbacksender.c's rows did between PP717 and PP723, without claiming to be untouched. What
+    /// this catches is the SENTENCE: a row cannot say a file is unported while a mirrored row names
+    /// that same file.
     /// </summary>
     public static IReadOnlyList<NativeWait> Unclaimed { get; } =
     [

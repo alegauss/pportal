@@ -643,6 +643,7 @@
 - ✅ **PP717** **nothing decides which history events a controller change becomes, so PP676's serialisers have no caller** — A controller change becomes history events in the C's own order, with eleven decisions read out of feedbacksender.c and every event serialised by PP676's formatters.
 - ✅ **PP718** **PP585's wait census still calls congestioncontrol.c unported, and nothing in the gate can tell it is wrong** — The macro moved to the mirrored group, twenty against twelve, and a row calling a file unported that another row follows now fails rather than counting correctly.
 - ✅ **PP719** **nothing managed raises a session event, so the frame path's nine reach nobody and the run's CONNECTED is owed** — The nine the frame path raises go through one seam whose send drops an event where nothing is listening, so PP707's host owes two subsystems rather than three.
+- ✅ **PP723** **nothing composes PP676's serialisers into a sender, so a controller change is recorded and never reaches a wire** — A button press rides the history alone, a quiet 200ms still sends a state, and a flush leaves four events to send again - so PP707's host owes one subsystem.
 
 ## Block G — Test discipline
 
