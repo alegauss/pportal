@@ -640,6 +640,7 @@
 - ✅ **PP708** **nothing in the port renders audio, so a session shows a picture and plays no sound at all** — The default render endpoint opens and plays, and PP698's loopback hears the tone back off the same endpoint - two of this port's subsystems, one playing and one listening.
 - ✅ **PP712** **three rows of the run-host census name a type with no member that answers, and the check cannot see it** — An answered row names a member now, so the three that named a type alone became owed: seven members and four subsystems where the census had said four and two.
 - ✅ **PP714** **nothing managed reports congestion, so a managed run would tell the console nothing about what it lost** — The thread reports every 200ms out of stats held to the C over fifteen cases, so PP707's host owes five members across three subsystems rather than seven across four.
+- ✅ **PP717** **nothing decides which history events a controller change becomes, so PP676's serialisers have no caller** — A controller change becomes history events in the C's own order, with eleven decisions read out of feedbacksender.c and every event serialised by PP676's formatters.
 
 ## Block G — Test discipline
 
