@@ -521,6 +521,28 @@ and a number in the same sentence and recounting it. The same reading over "N ha
 against a named list would have gone red on the first of the four commits rather than on
 none of them.
 
+### §PP733 A census of the readers
+
+PP730 measured that the managed parser accepts messages nanopb refuses and put the check
+in the bang; PP732 carried it to the disconnect and the streaminfo. Three sites, found
+by grepping for ParseFrom, and the list is now a thing somebody remembered rather than a
+thing something reads.
+
+WHICH IS THE SHAPE THIS PORT KEEPS PAYING FOR. PP279 found it in the root-file list,
+PP718 in the wait census, PP720 in a staleness warning and PP724 in a check whose own
+commit reworded two rows out of its reach. A hand-kept list guards what its author
+thought of, and the fourth reader is by definition the one nobody thought of.
+
+AND ONE OF THE THREE HAD ALREADY BEEN WRONG IN A TEST. StreamInfoMessage read an empty
+buffer as "not a streaminfo", and a test asserted it - green for as long as it stood,
+because a message with no type at all reads perfectly well through protoc and is refused
+by nanopb. The correction came from applying the check, not from anybody noticing.
+
+THE CENSUS IS AVAILABLE, in PP669's shape: every ParseFrom in app resolved by a sweep,
+each with a verdict a person wrote - checks the required set, or says why it does not
+need to. The two in SelfTest are round trips rather than decisions, and that is a
+verdict too.
+
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed
