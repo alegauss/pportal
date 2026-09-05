@@ -172,6 +172,52 @@ public class StreamRunHostConsumersTests(ITestOutputHelper output)
             needless);
     }
 
+    /// <summary>
+    /// PP738: which rows answer with a seam nothing in app fills, computed rather than claimed.
+    ///
+    /// The second axis, and the one this census was silent about. Owed asks whether a counterpart
+    /// exists and is empty; this asks whether the one named is reached, and two rows answer with a
+    /// shape - both IAudioSink, which app CONSUMES as a parameter and nothing in it implements.
+    ///
+    /// Both directions, as PP734's is: a row arriving means a counterpart stopped being shipping
+    /// code, and a row leaving is the commit that gave the audio path an implementation.
+    /// </summary>
+    [Fact]
+    public void TheMembersAnsweredOnlyByASeamAreTheseAndNoOthers()
+    {
+        string[] found =
+        [
+            .. StreamRunHostConsumers.Members
+                .Where(one => one.Answer is { } answer && IsSeamOnly(answer))
+                .Select(one => one.Member)
+                .Order(StringComparer.Ordinal),
+        ];
+
+        output.WriteLine(found.Length == 0 ? "none" : string.Join(", ", found));
+
+        Assert.Equal(StreamRunHostConsumers.SeamOnly, found);
+
+        // PP271: a predicate that called everything a seam would also produce a matching list, so
+        // a row answered by a class has to come back as reached.
+        Assert.False(
+            IsSeamOnly(new Counterpart(
+                CounterpartAssembly.App, nameof(ManagedTakion), nameof(ManagedTakion.Connect))));
+    }
+
+    /// <summary>
+    /// Whether a counterpart is an interface no class in app implements.
+    ///
+    /// The same three lines PP734 wrote for the frame path's census. A class answers for itself; an
+    /// interface is answered by whatever implements it, and a test double is not an answer.
+    /// </summary>
+    private static bool IsSeamOnly(Counterpart counterpart)
+    {
+        Type? type = App.GetType(counterpart.FullName);
+
+        return type is { IsInterface: true }
+            && !App.GetTypes().Any(one => one.IsClass && type.IsAssignableFrom(one));
+    }
+
     /// <summary>Every row says why, because a mapping with no reason is a table.</summary>
     [Fact]
     public void EveryRowGivesAReason()

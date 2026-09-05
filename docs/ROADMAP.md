@@ -31,7 +31,6 @@
 - 💭 **PP722** (deps: —) **seven events outside the frame path have no managed raiser, and one enum member is raised by nothing at all** — ctrl.c raises three keyboard events and session.c four, and CHIAKI_EVENT_HOLEPUNCH is declared in the header and assigned nowhere in lib/src. → §PP722
 - 💭 **PP724** (deps: —) **nothing notices when an unported wait gains a managed counterpart, which happened once already and was caught by hand** — PP723 gave two feedbacksender.c waits counterparts and the census stayed green; the rows were moved by hand in that commit. → §PP724
 - 💭 **PP736** (deps: —) **the stats count one push per audio packet against a ceiling that advances per unit, and nothing states the ratio** — audioreceiver.c pushes only the first frame index of a packet covering source_units_count of them, so a healthy window can read as loss. → §PP736
-- 📋 **PP738** (deps: —) **the run-host census answers two members with an audio seam only doubles implement, and calls its list empty** — PP734 asked which counterparts are reached and answered it for the frame path; the census one layer up still cannot tell a call from a shape. → §PP738
 
 ## Block G — Test discipline
 

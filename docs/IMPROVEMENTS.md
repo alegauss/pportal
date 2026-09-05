@@ -379,29 +379,6 @@ So the work is to measure it before deciding anything: one audio packet, its uni
 and the arithmetic above either collapses to zero or becomes the loudest finding in the
 congestion path.
 
-### §PP738 The other census's two seams
-
-PP734 gave the frame path's census a verdict per row: a counterpart naming an interface
-member is a call where something outside the tests implements it, and a shape where
-nothing does. Reflection decides it, and the row that turned out to be a shape is named.
-
-THE RUN-HOST CENSUS HAS THE SAME BLIND SPOT AND TWO ROWS IN IT. CreateAudioReceiver and
-CreateHapticsReceiver both answer with IAudioSink, the seam PP667 put a decrypted audio
-packet through. ManagedAvArm and StreamAvDispatch TAKE one as a parameter, so the
-interface is consumed in app; the only things that IMPLEMENT it are SilentAudio and
-Recording, both doubles in the test project.
-
-WHAT THAT DOES TO THE CLAIM is narrower than it sounds, and worth stating exactly. Owed
-means no counterpart exists at all, and that is still empty - PP714, PP719, PP723 and
-PP727 wrote the four subsystems. Reached is a different axis, and on it two of the
-twenty-six members are answered by a shape. The census reports the first and is silent
-about the second, which is the incompleteness PP734 named rather than a falsehood.
-
-THE FIX IS THE ONE ALREADY WRITTEN. IsSeamOnly is three lines of reflection over the
-loaded assembly and the list it feeds is asserted both ways, so the work is applying it
-to a second census and deciding what that one's empty list should say when it is not
-empty.
-
 ## Block G — Test discipline
 
 ### §PP728 A criterion counting something that moved

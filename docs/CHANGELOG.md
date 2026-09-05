@@ -657,6 +657,7 @@
 - ✅ **PP731** **the step after the bang builds two gk crypts at fixed indices and hands them to takion, and none of it is ported** — Two crypts at 2 and 3 share nothing but their inputs, the window advances forward only, and the release order is a list rather than a comment.
 - ✅ **PP737** **the key stream makes an AES object and an array per block on every call, and nothing has held it to PP44's budget** — The measurement named the wrong suspect: 88 bytes a block was the one-shot cipher call, not the counter array, and one ECB call over pooled counters takes it to zero.
 - ✅ **PP734** **one census row is answered by an interface member nothing in app implements, and the check cannot tell that apart** — Reflection finds the one row on its own and proves the other interface row is filled, so the census says which counterpart is a shape rather than a call.
+- ✅ **PP738** **the run-host census answers two members with an audio seam only doubles implement, and calls its list empty** — Both censuses now answer the reached question with the same three lines, and this one names its two audio rows rather than reporting only that nothing is owed.
 
 ## Block G — Test discipline
 

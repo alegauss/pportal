@@ -51,6 +51,11 @@ public readonly record struct HostMember(string Member, HostAnswer How, Counterp
 /// and each ship shortened this list in its own commit rather than at the end. What that answers is
 /// PP707's SECOND criterion and not its first: every member has a counterpart, and a counterpart is
 /// still not a call - nothing in app implements this interface, which is what the first one is about.
+///
+/// AND OWED IS NOT THE ONLY QUESTION. PP738 added <see cref="SeamOnly"/>, which asks whether the
+/// counterpart a row names is reached rather than whether one exists. Two rows answer with an
+/// interface only test doubles implement, so this census now says both things instead of reporting
+/// the first and being silent about the second.
 /// </summary>
 public static class StreamRunHostConsumers
 {
@@ -197,6 +202,25 @@ public static class StreamRunHostConsumers
             new(CounterpartAssembly.App, nameof(StreamIdleLoop), nameof(StreamIdleLoop.Outcome)),
             "The other."),
     ];
+
+    /// <summary>
+    /// PP738: the members answered by a seam nothing in app implements.
+    ///
+    /// A SECOND AXIS, AND NOT THE ONE ABOVE. <see cref="Owed"/> asks whether a counterpart exists
+    /// at all, and it is empty. This asks whether the one named is REACHED, which is PP734's
+    /// question one census over - and on it two rows answer with a shape.
+    ///
+    /// Both are IAudioSink. ManagedAvArm and StreamAvDispatch take one as a parameter, so the
+    /// interface is consumed in app; the only things that implement it are doubles in the test
+    /// project. PP669's rule is that a mapping is not a call, and an interface member with no
+    /// implementation outside the tests is a mapping one step further out.
+    ///
+    /// Honest while somebody's open work is to fill it, which is what a list asserted in both
+    /// directions says: a row arriving is a counterpart that stopped being shipping code, and a row
+    /// leaving is the commit that gave the audio path an implementation.
+    /// </summary>
+    public static IReadOnlyList<string> SeamOnly { get; } =
+        ["CreateAudioReceiver", "CreateHapticsReceiver"];
 
     /// <summary>The members nothing managed answers for yet, by name.</summary>
     public static IReadOnlyList<string> Owed { get; } =
