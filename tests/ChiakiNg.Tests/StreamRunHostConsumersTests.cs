@@ -102,11 +102,11 @@ public class StreamRunHostConsumersTests(ITestOutputHelper output)
     }
 
     /// <summary>
-    /// FIVE ARE OWED, AND THEY ARE NAMED.
+    /// FOUR ARE OWED, AND THEY ARE NAMED.
     ///
     /// The answer this criterion exists to produce, and it is still a small number for a reason
     /// worth stating: most of what a real host needs already exists, so the work between here and a
-    /// managed run is four pieces rather than twenty-six.
+    /// managed run is two pieces rather than twenty-six.
     ///
     /// Asserted as the SET rather than as a count. One more arriving is a decision somebody takes,
     /// and one of these being answered should shorten this list in the same commit.
@@ -121,43 +121,45 @@ public class StreamRunHostConsumersTests(ITestOutputHelper output)
                 "FiniFeedbackSender",
                 "LiftInputToWire",
                 "SendBig",
-                "SendConnected",
                 "StartFeedbackSender",
             ],
             StreamRunHostConsumers.Owed);
     }
 
     /// <summary>
-    /// The owed members are THREE subsystems, not five pieces of work.
+    /// The owed members are TWO subsystems, not four pieces of work.
     ///
     /// A sender's init, its fini and the counter lifted out of it are one object. Counting members
-    /// would say five where there are three, which is the sort of number a plan gets made from.
+    /// would say four where there are two, which is the sort of number a plan gets made from.
     ///
     /// PP712 moved this from two to four - SendBig and SendConnected were reported as answered by
-    /// types with no member doing either - and PP714 moved it from four to three by writing the
-    /// smallest, which took two members with it because a start and a stop are one thread.
+    /// types with no member doing either - PP714 moved it back to three by writing the smallest,
+    /// and PP719 to two. That one took a single member and was not the smallest work: nothing
+    /// managed raised a session event at all, so the run's one CONNECTED needed the seam the whole
+    /// frame path raises nine through.
     /// </summary>
     [Fact]
-    public void TheOwedMembersAreThreeSubsystems()
+    public void TheOwedMembersAreTwoSubsystems()
     {
         output.WriteLine(string.Join(", ", StreamRunHostConsumers.OwedSubsystems));
 
-        Assert.Equal(3, StreamRunHostConsumers.OwedSubsystems.Count);
-        Assert.Equal(5, StreamRunHostConsumers.Owed.Count);
+        Assert.Equal(2, StreamRunHostConsumers.OwedSubsystems.Count);
+        Assert.Equal(4, StreamRunHostConsumers.Owed.Count);
 
-        // And the members really do fall into those three rather than the list being a wish.
+        // And the members really do fall into those two rather than the list being a wish.
         Assert.Equal(
             3,
             StreamRunHostConsumers.Owed.Count(
                 one => one.Contains("FeedbackSender", StringComparison.Ordinal)
                     || one == "LiftInputToWire"));
         Assert.Contains("SendBig", StreamRunHostConsumers.Owed);
-        Assert.Contains("SendConnected", StreamRunHostConsumers.Owed);
 
-        // PP714: and congestion control is gone from both, which is what shipping one looks like.
+        // PP714 and PP719: congestion control and the connected event are gone from both, which is
+        // what shipping one of these looks like from the census's side.
         Assert.DoesNotContain(
             StreamRunHostConsumers.Owed,
             one => one.Contains("Congestion", StringComparison.Ordinal));
+        Assert.DoesNotContain("SendConnected", StreamRunHostConsumers.Owed);
     }
 
     /// <summary>

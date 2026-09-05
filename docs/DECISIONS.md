@@ -59,6 +59,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP714** **nothing managed reports congestion, so a managed run would tell the console nothing about what it lost** — The sequence span is an int subtraction widened to 64 bits, not a 16-bit wrap: a ceiling below its floor reports about 1.8e19 lost, and the port reproduces it.
 - ✅ **PP717** **nothing decides which history events a controller change becomes, so PP676's serialisers have no caller** — A slot whose finger changed emits the old one's release and not the new one's press - the C's branch is an else, and the arrival waits for the next change.
 - ✅ **PP718** **PP585's wait census still calls congestioncontrol.c unported, and nothing in the gate can tell it is wrong** — A census asserted by group counts survives a row moving between groups, so each group also has to check the claim its rows make rather than only its size.
+- ✅ **PP719** **nothing managed raises a session event, so the frame path's nine reach nobody and the run's CONNECTED is owed** — An event raised with nobody listening is dropped and counted rather than refused, because every raiser in the frame path is written as though a send cannot fail.
 
 ## Block G — Test discipline
 

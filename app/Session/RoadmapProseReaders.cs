@@ -294,7 +294,8 @@ public static class RoadmapProseReaders
         // PP712: names for the work PP707's host still owes. They occur in that line's own criterion
         // because it was written FROM this list - which is the coincidence running the way PP527's
         // does, the document copying the program - and nothing here reads a document. PP714 wrote
-        // one of the four and its row left with it, which is what a row falling off looks like.
+        // one of the four and its row left with it, which is what a row falling off looks like;
+        // PP719 wrote the connected event and took the third.
         new(
             "the feedback sender",
             @"app\Protocol\StreamRunHostConsumers.cs",
@@ -305,11 +306,6 @@ public static class RoadmapProseReaders
             @"app\Protocol\StreamRunHostConsumers.cs",
             ProseReading.Incidental,
             "The third, which PP712 found reported as answered by a builder that has no BIG."),
-        new(
-            "the session's connected event",
-            @"app\Protocol\StreamRunHostConsumers.cs",
-            ProseReading.Incidental,
-            "The fourth: StreamRun reads one off the C session and nothing managed raises one."),
 
         // PP718: this one IS matched, and never against a document. NativeWaits.Unclaimed looks for
         // it in its own rows' notes - program data - and the backlog carries the phrase only because

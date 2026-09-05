@@ -47,9 +47,9 @@ public readonly record struct HostMember(string Member, HostAnswer How, Counterp
 /// namespace, and PP669's own rule is that a mapping is not a call. So every answered row names the
 /// member that does the work, and the ones that cannot say which of the two other things they are.
 ///
-/// THREE SUBSYSTEMS ARE OWED. PP712 counted four and PP714 answered the smallest, so what is left
-/// is the feedback sender, a BIG message and the session's connected event. Each is its own piece
-/// of work rather than a stub, and this list falling is what shipping one looks like from here.
+/// TWO SUBSYSTEMS ARE OWED. PP712 counted four, PP714 answered the smallest and PP719 the next, so
+/// what is left is the feedback sender and a BIG message. Each is its own piece of work rather than
+/// a stub, and this list falling is what shipping one looks like from here.
 /// </summary>
 public static class StreamRunHostConsumers
 {
@@ -124,9 +124,9 @@ public static class StreamRunHostConsumers
             "The same."),
         new(
             "SendConnected",
-            HostAnswer.Owed,
-            null,
-            "PP712: nothing managed raises a session event. StreamRun READS CHIAKI_EVENT_CONNECTED off the C session; no code here sends one."),
+            HostAnswer.Answered,
+            new(CounterpartAssembly.App, nameof(ManagedSessionEvents), nameof(ManagedSessionEvents.SendConnected)),
+            "PP719's seam, which drops an event where nothing is listening rather than failing, as the C's send does."),
         new(
             "WaitIdle",
             HostAnswer.Answered,
@@ -209,10 +209,12 @@ public static class StreamRunHostConsumers
     /// of it are one object. Counting members would say five where there are three.
     ///
     /// PP714 took congestion control off this list by writing it, which took two members with it -
-    /// a start and a stop being one thread was the other half of the same argument.
+    /// a start and a stop being one thread was the other half of the same argument. PP719 took the
+    /// connected event the same way, and that one was a single member because the event seam it
+    /// needed is nine events wide and the run makes one of them.
     /// </summary>
     public static IReadOnlyList<string> OwedSubsystems { get; } =
-        ["a BIG message", "the feedback sender", "the session's connected event"];
+        ["a BIG message", "the feedback sender"];
 
     /// <summary>The interface's file, or null outside a checkout.</summary>
     public static string? Locate() => SanitizerSource.LocateRelative(RelativePath);
