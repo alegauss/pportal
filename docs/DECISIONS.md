@@ -73,6 +73,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP725** **the sender's overflow rung copies a packet buffer onto itself, and nothing records that the port left it out** — What a departure needs is the arithmetic that makes it one: a text search finds the call, and only the modulo says both its arguments are the same slot.
 - ✅ **PP731** **the step after the bang builds two gk crypts at fixed indices and hands them to takion, and none of it is ported** — The C's key buffer is a cache, so computing the stream on demand is the same bytes with no thread to release - which is what makes leaving it out cost nothing.
 - ✅ **PP737** **the key stream makes an AES object and an array per block on every call, and nothing has held it to PP44's budget** — ECB carries nothing between blocks, so the counters can be built together and encrypted once - which is what turns a per-block cost into a per-call one.
+- ✅ **PP734** **one census row is answered by an interface member nothing in app implements, and the check cannot tell that apart** — An interface member is a counterpart only where something outside the tests implements it; a seam with no filler is honest, and a census that cannot name it is not.
 
 ## Block G — Test discipline
 

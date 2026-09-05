@@ -111,6 +111,54 @@ public class FramePathConsumersTests(ITestOutputHelper output)
             one => Assert.Equal(CounterpartKind.WholeType, one.Answer.Kind));
 
     /// <summary>
+    /// PP734: which rows are answered by a seam nothing in app fills, computed rather than claimed.
+    ///
+    /// The census is PP295's third criterion, and PP669's rule is that a mapping is not a call. An
+    /// interface member with no implementation outside the tests is a mapping one level further
+    /// out: a promise that something COULD answer, read as something that does.
+    ///
+    /// BOTH DIRECTIONS, as every list here is. A row arriving is a counterpart that was shipping
+    /// code and has become a shape; a row leaving is the day somebody filled the seam - which for
+    /// this one is PP707's first criterion, and is the commit where this list should shorten.
+    /// </summary>
+    [Fact]
+    public void TheRowsAnsweredOnlyByASeamAreTheseAndNoOthers()
+    {
+        string[] found =
+        [
+            .. FramePathConsumers.Session
+                .Concat(FramePathConsumers.Shim)
+                .Where(one => IsSeamOnly(one.Answer))
+                .Select(one => one.Symbol)
+                .Order(StringComparer.Ordinal),
+        ];
+
+        output.WriteLine(found.Length == 0 ? "none" : string.Join(", ", found));
+
+        Assert.Equal(FramePathConsumers.SeamOnly, found);
+
+        // PP271: a reader that called nothing a seam would satisfy an empty list. The other
+        // interface row is filled, and saying so is what proves the question is being asked.
+        Assert.Contains(
+            FramePathConsumers.Session.Concat(FramePathConsumers.Shim),
+            one => one.Answer.Type == nameof(IVideoReceiverOutbound) && !IsSeamOnly(one.Answer));
+    }
+
+    /// <summary>
+    /// Whether a counterpart is an interface no class in app implements.
+    ///
+    /// A class answers for itself. An interface is answered by whatever implements it, and a test
+    /// double is not an answer - it is the thing PP669 wrote this census to tell apart from one.
+    /// </summary>
+    private static bool IsSeamOnly(Counterpart counterpart)
+    {
+        Type? type = Resolve(counterpart);
+
+        return type is { IsInterface: true }
+            && !App.GetTypes().Any(one => one.IsClass && type.IsAssignableFrom(one));
+    }
+
+    /// <summary>
     /// What session.c and the shim actually call is exactly what is modelled - each way.
     /// </summary>
     [Theory]

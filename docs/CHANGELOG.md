@@ -656,6 +656,7 @@
 - ✅ **PP725** **the sender's overflow rung copies a packet buffer onto itself, and nothing records that the port left it out** — The identity holds for all sixty-four positions, so the copy is a no-op by arithmetic rather than by inspection, and the departure is a row with a reading behind it.
 - ✅ **PP731** **the step after the bang builds two gk crypts at fixed indices and hands them to takion, and none of it is ported** — Two crypts at 2 and 3 share nothing but their inputs, the window advances forward only, and the release order is a list rather than a comment.
 - ✅ **PP737** **the key stream makes an AES object and an array per block on every call, and nothing has held it to PP44's budget** — The measurement named the wrong suspect: 88 bytes a block was the one-shot cipher call, not the counter array, and one ECB call over pooled counters takes it to zero.
+- ✅ **PP734** **one census row is answered by an interface member nothing in app implements, and the check cannot tell that apart** — Reflection finds the one row on its own and proves the other interface row is filled, so the census says which counterpart is a shape rather than a call.
 
 ## Block G — Test discipline
 

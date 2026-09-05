@@ -141,6 +141,29 @@ public readonly record struct ConsumedTestFile(string File, Counterpart Answer);
 /// </summary>
 public static class FramePathConsumers
 {
+    /// <summary>
+    /// PP734: the symbols whose counterpart is a seam nothing in app fills yet.
+    ///
+    /// PP713 made every row say what KIND of counterpart it names. This is the question that
+    /// exposed: whether the thing named is reached. Two rows name an interface member, and only one
+    /// of them is filled - StreamOutbound implements IVideoReceiverOutbound in app, and the only
+    /// implementations of IStreamRunHost are doubles in the test project.
+    ///
+    /// THE CHECK COULD NOT SEE THE DIFFERENCE, because both resolve and both name a member that
+    /// exists. So the census reported the same confidence about a call answered by shipping code
+    /// and a call answered by a shape - and PP669's own rule is that a mapping is not a call.
+    ///
+    /// WHICH MATTERS BECAUSE THIS CENSUS IS A CRITERION. PP295's third is what the deletion of four
+    /// C files is measured against, so a promise that something COULD answer is being read as
+    /// something that DOES.
+    ///
+    /// NOT A FAILURE, A VERDICT. A seam with no implementation is honest while somebody's open work
+    /// is to fill it - which for this one is PP707's first criterion. What must not happen is the
+    /// census staying quiet about which rows they are, so this list is asserted in both directions:
+    /// a row arriving here is news, and a row leaving it is the day the seam got filled.
+    /// </summary>
+    public static IReadOnlyList<string> SeamOnly { get; } = ["chiaki_stream_connection_stop"];
+
     /// <summary>The four files the criterion is about, which no consumer below may be one of.</summary>
     public static IReadOnlyList<string> Leaving { get; } =
     [
