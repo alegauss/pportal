@@ -39,6 +39,7 @@
 ## Block G — Test discipline
 
 - 💭 **PP720** (deps: —) **the suite's staleness warning globs every .c under lib, so a file no target builds warns on every run** — holepunch.c left the build with PP33 and stayed in the tree, so it outdates chiaki-unit and the advice the warning gives cannot clear it. → §PP720
+- 💭 **PP728** (deps: —) **a criterion can state a count from a program and go false as that program changes, with the gate green** — PP690 holds a criterion's blocker claim against the ledger, and nothing holds its numbers against the census they were copied from. → §PP728
 
 ## Block H — Performance and telemetry
 
@@ -165,11 +166,11 @@
   PP606's responder and PP680's arm handles what arrives, but ManagedStreamRun's host is
   an interface whose implementations are all in the test project - so the sequence PP640
   asserts of the C has never run over a socket.
-- **Every member of the run's host has a counterpart or a line that owes one** Seven
-  have none, and they are four subsystems: congestion control, the feedback sender, a
-  BIG message and the session's connected event. PP669 mapped the frame path's consumers
-  by reflection for the same reason - a host built without the census discovers them one
-  compile error at a time.
+- **Every member of the run's host has a counterpart or a line that owes one** Met.
+  Seven members were owed across four subsystems, and PP714, PP719, PP723 and PP727
+  wrote them, each shortening the census in the commit that shipped it. Every member now
+  names a counterpart or says what the runtime makes needless - and a counterpart is
+  still not a call, which is the criterion above.
 - **The stream starts from the host rather than from chiaki_session_start** PP696 stops
   session.c asking and nothing else asks. StreamRun runs ctrl and senkusha through the C
   session today and waits on its events; what replaces the C's own call is a handoff,
