@@ -33,6 +33,8 @@
 - 💭 **PP716** (deps: —) **packetstats' sequence arm is pushed with no mutex while three neighbours take one, and two threads reach it** — PP714's port locks all four and nothing records that as a departure, so a reader would take the C for the same shape. → §PP716
 - 💭 **PP721** (deps: —) **nothing calls the managed event seam, so the five a pad info decides and the FEC failure still reach nobody** — PP719's only mention in app outside its own file is a census row, so the port has the event and no path from a datagram to it. → §PP721
 - 💭 **PP722** (deps: —) **seven events outside the frame path have no managed raiser, and one enum member is raised by nothing at all** — ctrl.c raises three keyboard events and session.c four, and CHIAKI_EVENT_HOLEPUNCH is declared in the header and assigned nowhere in lib/src. → §PP722
+- 💭 **PP724** (deps: —) **PP718's claim check reads one note in ten, so nine unported rows can go false the way the one it was filed about did** — The trigger is a phrase in a note the author writes, and PP718 reworded two rows out of its reach in the very commit that added the check. → §PP724
+- 💭 **PP725** (deps: —) **the sender's overflow rung copies a packet buffer onto itself, and nothing records that the port left it out** — A full queue makes the destination index equal begin, so the memcpy is handed one address twice and only a comment says PP723 dropped it. → §PP725
 
 ## Block G — Test discipline
 

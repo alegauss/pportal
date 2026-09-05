@@ -422,6 +422,54 @@ and the quit, through ConsoleSession.Translate.
 Nothing here waits on PP696: ctrl.c and session.c are not the frame path and no deletion
 turns on them. What waits is a managed session raising anything at all outside a stream.
 
+### §PP724 A check its own commit reworded around
+
+PP714 ported congestion control and NativeWaits went on calling congestioncontrol.c
+unported through a green gate. PP718 fixed that with Unclaimed: an unported row whose
+note says a file is unported, while a mirrored row already names that file, contradicts
+itself.
+
+THE TRIGGER IS PROSE, and prose is what the same commit changed. Unclaimed matches the
+literal claim inside a note, and PP718 rewrote the two feedbacksender.c notes at the
+same time - away from "feedbacksender.c is unported" and toward a sentence about which
+half was ported. Both rows were then outside the check's reach, and PP723 is exactly the
+ship that would have falsified them.
+
+ONE ROW IN TEN CARRIES THE PHRASE. Nine of the ten remaining unported rows say why they
+are unported without using the words the check looks for, so nine files can be ported
+with the census still calling them untouched. The count is the finding: this is not a
+rare shape, it is the ordinary one, and the row that started it was the exception.
+
+WHAT WOULD HOLD IT is the same question asked of the FILE rather than of the sentence:
+an unported row whose source path is named by a mirrored row is contradicted whatever
+its note says, because the two groups mean different things about the same file. PP718's
+own reasoning gives that; what it built stopped at the wording, which is the shape
+PP573's check warns about - a guard for a sentence rather than for a claim.
+
+### §PP725 A memcpy with one address twice
+
+feedback_sender_flush_history_locked formats into history_packets[(begin + len) %
+QUEUE], then branches on whether the queue is full. The full arm copies that slot into
+history_packets[begin] - and on that arm len IS the queue size, so the index it just
+formatted into reduces to begin. The copy has one address in both arguments.
+
+IT IS NOT WRONG, IT IS NOTHING. The bytes are already where the copy would put them, and
+memcpy over an identical source and destination is undefined by the standard rather than
+merely wasted - the case memmove exists for. Nothing has ever gone wrong here because
+the queue holding sixty-four unsent history packets means the stream is already in
+trouble.
+
+THE PORT LEFT IT OUT and only a comment says so. PP723 writes the sizes and advances
+begin without the copy, which is what the arm means; that is a departure from the C, and
+this tree's rule for a departure is that it is carried as a value a check reads rather
+than as a sentence a reader has to find. PP545's bounded websocket wait is the shape:
+NativeWaits carries it as a row.
+
+AND THE ARM IS WORTH AN ASSERTION EITHER WAY. Whether the C keeps the copy or upstream
+notices it, what this port must go on doing is dropping the OLDEST packet - and a check
+reading the index arithmetic would hold that, which the text search PP723 wrote does
+not.
+
 ## Block G — Test discipline
 
 ### §PP720 A warning compile.cmd cannot clear
