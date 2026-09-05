@@ -652,6 +652,7 @@
 - ✅ **PP732** **two more managed readers decide on a message nanopb would refuse, and one of them is the streaminfo** — The check goes where PP687's bound goes, so an absent audio header is a failed decode and an absent reason is not an empty one - and one test had said otherwise.
 - ✅ **PP713** **eleven rows of the frame path's census name a type with no member, and nothing says which are ctors** — Seven of the eleven had a member waiting, two are constructors and two are finis; the four file rows say the type itself, so no row is silent now.
 - ✅ **PP716** **packetstats' sequence arm is pushed with no mutex while three neighbours take one, and two threads reach it** — The lock stays, on PP499's reasoning rather than PP402's, and the departure is one row of five with the reading of packetstats.c that keeps it honest.
+- ✅ **PP715** **one wrap past 65535 makes the client report 1.8e19 packets lost, and nothing says what the console does then** — The console is told 16425 and 49152 - three quarters - because narrowing to sixteen bits discards the clamp's ratio (design superseded: the console sees far above the ceiling).
 
 ## Block G — Test discipline
 

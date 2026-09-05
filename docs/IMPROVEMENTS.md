@@ -307,30 +307,6 @@ joins under it and there will be more.
 Recorded as a dep of PP696 rather than folded into it, because it is a different piece
 of work and PP696's own design is right about everything except what happens next.
 
-### §PP715 The span that is not a wrap
-
-chiaki_packet_stats_get computes the sequence span as seq_max - seq_min, with a comment
-saying the overflow is on purpose. It is not the overflow the comment means. Both are
-uint16_t, so both promote to int before the minus, and a ceiling numerically below its
-floor is a NEGATIVE int assigned to a uint64_t - about 1.8e19, not the small positive
-difference sixteen-bit wraparound gives.
-
-The state is ordinary. The audio receiver pushes each packet's frame index, the ceiling
-advances only for a number greater under RFC 1982, and a stream crossing 65535 makes 100
-greater than 60000. So one wrap per 65536 audio packets puts the ceiling below the floor
-for exactly one window - and PP714's differential shows the C answering
-18446744073709545716 where the arithmetic the comment describes answers 101.
-
-What that window does downstream is the part worth knowing. Congestion control divides
-lost by received plus lost, gets a ratio at or near 1, and the clamp fires: the console
-is told the maximum reported loss the settings allow, over a stream that lost nothing.
-Its bitrate control reacts to exactly that number.
-
-The non-goals forbid patching the vendored C, and PP714 copied the behaviour rather than
-quietly disagreeing with the client. So this is a question about the console, not a
-repair: whether a single maximum-loss window every few minutes is visible in the
-bitrate, which PP76's played sessions could be read for.
-
 ### §PP722 The other eight events
 
 PP719 named nine of ChiakiEventType's seventeen as the frame path's, and left the other

@@ -3,7 +3,18 @@ namespace ChiakiNg.Protocol;
 /// <summary>The two numbers one congestion packet carries, after the clamp has had them.</summary>
 /// <param name="Received">What the console is told arrived.</param>
 /// <param name="Lost">What the console is told did not.</param>
-public readonly record struct CongestionReport(ushort Received, ushort Lost);
+public readonly record struct CongestionReport(ushort Received, ushort Lost)
+{
+    /// <summary>
+    /// PP715: the loss the CONSOLE computes, from the pair it was actually sent.
+    ///
+    /// Not the ratio the clamp aimed at. Both numbers are narrowed to sixteen bits on their way
+    /// out, and where the clamp has been working with a total that does not fit, the narrowing
+    /// discards the arithmetic that made the pair mean anything - see
+    /// <see cref="ManagedCongestionControl.ClampWide"/>, which is the pair before it happens.
+    /// </summary>
+    public double Loss => Received + Lost == 0 ? 0 : (double)Lost / (Received + Lost);
+}
 
 /// <summary>Where a report goes. The takion in the C; whatever the run gives it here.</summary>
 public interface ICongestionSink
@@ -77,6 +88,28 @@ public sealed class ManagedCongestionControl : IDisposable
     /// </summary>
     public static CongestionReport Clamp(ulong received, ulong lost, double lossMax, out double measured)
     {
+        (ulong wideReceived, ulong wideLost) = ClampWide(received, lost, lossMax, out measured);
+
+        return new CongestionReport((ushort)wideReceived, (ushort)wideLost);
+    }
+
+    /// <summary>
+    /// PP715: the same arithmetic, stopping before the narrowing - which is where it can be lost.
+    ///
+    /// The C narrows both numbers to sixteen bits at the send, and for an ordinary window that is
+    /// invisible: the pair is small and the ratio survives. For a window whose span read as a
+    /// negative int widened - PP714's finding, one per wrap of the sequence space - the clamp works
+    /// on a total near 2^64, and the two numbers it produces mean nothing once their low sixteen
+    /// bits are all that is sent.
+    ///
+    /// So the clamp aims at <paramref name="lossMax"/> and the console is told something else
+    /// entirely. Exposed rather than described, because the difference between the two is the
+    /// finding and a test that could only see the narrowed pair could not state it.
+    /// </summary>
+    /// <returns>The pair as the clamp leaves it, at full width.</returns>
+    public static (ulong Received, ulong Lost) ClampWide(
+        ulong received, ulong lost, double lossMax, out double measured)
+    {
         ulong total = received + lost;
         measured = total > 0 ? (double)lost / total : 0;
 
@@ -86,7 +119,26 @@ public sealed class ManagedCongestionControl : IDisposable
             received = total - lost;
         }
 
-        return new CongestionReport((ushort)received, (ushort)lost);
+        return (received, lost);
+    }
+
+    /// <summary>
+    /// Whether the narrowing changed what the report says, for one window.
+    ///
+    /// True where the ratio the console computes is not the ratio the clamp produced. An ordinary
+    /// window answers false; a wrap window answers true, and that is the whole of PP715.
+    /// </summary>
+    /// <param name="tolerance">How close counts as unchanged. A ratio is a double.</param>
+    public static bool NarrowingChangedTheReport(
+        ulong received, ulong lost, double lossMax, double tolerance = 0.001)
+    {
+        (ulong wideReceived, ulong wideLost) = ClampWide(received, lost, lossMax, out _);
+        ulong wideTotal = wideReceived + wideLost;
+
+        double intended = wideTotal == 0 ? 0 : (double)wideLost / wideTotal;
+        double sent = Clamp(received, lost, lossMax, out _).Loss;
+
+        return Math.Abs(intended - sent) > tolerance;
     }
 
     /// <summary>What one tick would send, without a thread. The loop's body, made askable.</summary>
