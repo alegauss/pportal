@@ -310,6 +310,15 @@ public static class RoadmapProseReaders
             @"app\Protocol\StreamRunHostConsumers.cs",
             ProseReading.Incidental,
             "The fourth: StreamRun reads one off the C session and nothing managed raises one."),
+
+        // PP718: this one IS matched, and never against a document. NativeWaits.Unclaimed looks for
+        // it in its own rows' notes - program data - and the backlog carries the phrase only because
+        // PP718's design quotes the note it was filed about.
+        new(
+            "is unported",
+            @"app\Native\NativeWaits.cs",
+            ProseReading.Incidental,
+            "A phrase matched against this census's OWN note strings, which no document supplies."),
     ];
 
     /// <summary>How many rows carry one verdict.</summary>

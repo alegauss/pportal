@@ -45,8 +45,14 @@ public readonly record struct NativeWait(
 /// a crash and is why nothing would report it.
 ///
 /// THE ANSWER IS NOT "MAKE THE TWO COUNTS EQUAL". The C names 32 timing constants across thirteen
-/// files. Nineteen have a managed constant that follows them, thirteen are in units this port has not
-/// reached, and four more managed waits follow a number the C did NOT give a name to.
+/// files. Twenty have a managed constant that follows them, twelve are in units this port has not
+/// reached, and three more managed waits follow a number the C did NOT give a name to.
+///
+/// PP718: AND A ROW CLAIMING NO COUNTERPART IS CHECKED FOR ONE. PP714 ported congestion control and
+/// this census went on saying congestioncontrol.c was unported, through a green gate - because the
+/// groups were asserted by COUNT, and a row moving from one to the other keeps every count valid.
+/// <see cref="Unclaimed"/> is the direction that was missing: a file with managed code answering for
+/// it has no business in the unported group.
 ///
 /// AND MATCHING BY VALUE WOULD GET FOUR OF THEM WRONG. Each of those four sits in a file that also
 /// defines a macro with the SAME NUMBER for a DIFFERENT wait:
@@ -112,7 +118,7 @@ public static class NativeWaits
         Regist, Senkusha, SessionSource, StreamConnection, Takion, TakionSend,
     ];
 
-    /// <summary>The nineteen macros a managed constant follows.</summary>
+    /// <summary>The twenty macros a managed constant follows.</summary>
     public static IReadOnlyList<NativeWait> Mirrored { get; } =
     [
         new("SECOND_US", Holepunch, WaitKind.MirrorsAMacro, "1000000L",
@@ -155,6 +161,9 @@ public static class NativeWaits
         new("TAKION_DATA_RESEND_WAKEUP_TIMEOUT_MS", TakionSend, WaitKind.MirrorsAMacro,
             "(TAKION_DATA_RESEND_TIMEOUT_MS/2)", TakionResendLoop.WakeupTimeoutMs,
             "the same halving as rudp's, and the same shape on the managed side"),
+        new("CONGESTION_CONTROL_INTERVAL_MS", CongestionControl, WaitKind.MirrorsAMacro, "200",
+            ManagedCongestionControl.IntervalMs,
+            "PP714 moved it out of the unported group by writing the thread that waits it"),
     ];
 
     /// <summary>
@@ -192,17 +201,15 @@ public static class NativeWaits
             + nameof(HolepunchCreate) + " carries that as a value rather than as a comment"),
     ];
 
-    /// <summary>The thirteen macros in units this port has not reached.</summary>
+    /// <summary>The twelve macros in units this port has not reached.</summary>
     public static IReadOnlyList<NativeWait> Unported { get; } =
     [
         new("SESSION_DELETION_TIMEOUT_SEC", Holepunch, WaitKind.NoCounterpartYet, "3",
             null, "the wait for the deletion notification; SessionDelete's 10 is the HTTP timeout beside it"),
-        new("CONGESTION_CONTROL_INTERVAL_MS", CongestionControl, WaitKind.NoCounterpartYet, "200",
-            null, "congestioncontrol.c is unported"),
         new("FEEDBACK_STATE_TIMEOUT_MIN_MS", FeedbackSender, WaitKind.NoCounterpartYet, "8",
-            null, "feedbacksender.c is unported"),
+            null, "PP717 ported the recorder, not the thread; and the C's own TODO says it waits this nowhere"),
         new("FEEDBACK_STATE_TIMEOUT_MAX_MS", FeedbackSender, WaitKind.NoCounterpartYet, "200",
-            null, "the other end of the same window"),
+            null, "the other end of the same window, and the one the thread does wait"),
         new("SEARCH_REQUEST_SLEEP_MS", Regist, WaitKind.NoCounterpartYet, "100",
             null, "PP29 modelled regist's shapes, not its clock"),
         new("REGIST_SEARCH_TIMEOUT_MS", Regist, WaitKind.NoCounterpartYet, "3000", null, "as above"),
@@ -224,6 +231,30 @@ public static class NativeWaits
     /// <summary>Every row, in the four groups above.</summary>
     public static IReadOnlyList<NativeWait> All { get; } =
         [.. Mirrored, .. Literals, .. Departures, .. Unported];
+
+    /// <summary>The claim an unported row makes about its file, which a ship can falsify.</summary>
+    public const string UnportedClaim = "is unported";
+
+    /// <summary>
+    /// PP718: unported rows that contradict themselves - a file said to be unported which another
+    /// row already follows a macro out of.
+    ///
+    /// The direction the census was missing. PP714 gave CONGESTION_CONTROL_INTERVAL_MS a managed
+    /// counterpart and left the note reading "congestioncontrol.c is unported"; every count still
+    /// added up, so the gate stayed green over a row that was now false.
+    ///
+    /// A half-ported file is not the failure - feedbacksender.c has PP717's recorder and still owes
+    /// the thread that waits its window, and its rows say so without claiming the file is untouched.
+    /// What this catches is the SENTENCE: a row cannot say a file is unported while a mirrored row
+    /// names that same file.
+    /// </summary>
+    public static IReadOnlyList<NativeWait> Unclaimed { get; } =
+    [
+        .. Unported.Where(
+            one => one.Note.Contains(UnportedClaim, StringComparison.OrdinalIgnoreCase)
+                && Mirrored.Any(
+                    other => string.Equals(other.SourceRelativePath, one.SourceRelativePath, StringComparison.Ordinal))),
+    ];
 
     /// <summary>One source, or null outside a checkout.</summary>
     public static string? Locate(string relativePath) => SanitizerSource.LocateRelative(relativePath);

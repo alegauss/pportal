@@ -641,6 +641,7 @@
 - ✅ **PP712** **three rows of the run-host census name a type with no member that answers, and the check cannot see it** — An answered row names a member now, so the three that named a type alone became owed: seven members and four subsystems where the census had said four and two.
 - ✅ **PP714** **nothing managed reports congestion, so a managed run would tell the console nothing about what it lost** — The thread reports every 200ms out of stats held to the C over fifteen cases, so PP707's host owes five members across three subsystems rather than seven across four.
 - ✅ **PP717** **nothing decides which history events a controller change becomes, so PP676's serialisers have no caller** — A controller change becomes history events in the C's own order, with eleven decisions read out of feedbacksender.c and every event serialised by PP676's formatters.
+- ✅ **PP718** **PP585's wait census still calls congestioncontrol.c unported, and nothing in the gate can tell it is wrong** — The macro moved to the mirrored group, twenty against twelve, and a row calling a file unported that another row follows now fails rather than counting correctly.
 
 ## Block G — Test discipline
 

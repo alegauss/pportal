@@ -58,6 +58,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP712** **three rows of the run-host census name a type with no member that answers, and the check cannot see it** — A counterpart names the member that does the work; where the runtime removes the need - a free, a lock - the row says so rather than naming a plausible type.
 - ✅ **PP714** **nothing managed reports congestion, so a managed run would tell the console nothing about what it lost** — The sequence span is an int subtraction widened to 64 bits, not a 16-bit wrap: a ceiling below its floor reports about 1.8e19 lost, and the port reproduces it.
 - ✅ **PP717** **nothing decides which history events a controller change becomes, so PP676's serialisers have no caller** — A slot whose finger changed emits the old one's release and not the new one's press - the C's branch is an else, and the arrival waits for the next change.
+- ✅ **PP718** **PP585's wait census still calls congestioncontrol.c unported, and nothing in the gate can tell it is wrong** — A census asserted by group counts survives a row moving between groups, so each group also has to check the claim its rows make rather than only its size.
 
 ## Block G — Test discipline
 

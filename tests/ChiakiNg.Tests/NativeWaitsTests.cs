@@ -147,7 +147,7 @@ public class NativeWaitsTests
     }
 
     /// <summary>
-    /// The groups add up, and nineteen of the thirty-two macros have a managed constant behind them.
+    /// The groups add up, and twenty of the thirty-two macros have a managed constant behind them.
     ///
     /// Written as the split rather than as a total, because "31 and 33" was the reading this task
     /// started from and the two numbers never joined to each other.
@@ -155,14 +155,18 @@ public class NativeWaitsTests
     /// PP632: three literals, not four. session.c's registration wait was reached only through the
     /// holepunch handle, so it went with the nine - and a row for a wait that is not in the file
     /// could not be joined to anything, which is what this list is for.
+    ///
+    /// PP718: twenty and twelve, not nineteen and thirteen. PP714 ported congestion control and
+    /// this split stayed valid across the move, which is exactly why it was not enough on its own -
+    /// see TheUnportedGroupDoesNotClaimAPortedFile.
     /// </summary>
     [Fact]
-    public void TheGroupsAreNineteenThreeOneAndThirteen()
+    public void TheGroupsAreTwentyThreeOneAndTwelve()
     {
-        Assert.Equal(19, NativeWaits.Mirrored.Count);
+        Assert.Equal(20, NativeWaits.Mirrored.Count);
         Assert.Equal(3, NativeWaits.Literals.Count);
         Assert.Single(NativeWaits.Departures);
-        Assert.Equal(13, NativeWaits.Unported.Count);
+        Assert.Equal(12, NativeWaits.Unported.Count);
 
         // Macros are the two groups that name one; the literals and the departure name none.
         Assert.Equal(
@@ -172,6 +176,32 @@ public class NativeWaitsTests
         // Nothing unported claims a managed value, and nothing mirrored omits one.
         Assert.All(NativeWaits.Unported, w => Assert.Null(w.Managed));
         Assert.All(NativeWaits.Mirrored, w => Assert.NotNull(w.Managed));
+    }
+
+    /// <summary>
+    /// PP718: no unported row calls a file unported that a mirrored row already follows a macro out of.
+    ///
+    /// The direction the census was missing, and the one a ship falsifies. PP714 wrote congestion
+    /// control, moved nothing here, and the whole gate stayed green: every macro was still accounted
+    /// for and the four counts still added to 32, because a row moving between two groups keeps both
+    /// of those true. What was false was the row's own sentence.
+    ///
+    /// A half-ported file passes this. feedbacksender.c has PP717's recorder and still owes the
+    /// thread that waits its window, and its two rows say which without claiming the file is
+    /// untouched - which is the difference between a row that is behind and a row that is wrong.
+    /// </summary>
+    [Fact]
+    public void TheUnportedGroupDoesNotClaimAPortedFile()
+    {
+        Assert.True(
+            NativeWaits.Unclaimed.Count == 0,
+            "these rows call a file unported that a mirrored row follows a macro out of: "
+                + string.Join(", ", NativeWaits.Unclaimed.Select(w => $"{w.Name}: {w.Note}")));
+
+        // And the check can still fire: the phrase it looks for is one the rows really use.
+        Assert.Contains(
+            NativeWaits.Unported,
+            w => w.Note.Contains(NativeWaits.UnportedClaim, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>
