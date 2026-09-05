@@ -446,32 +446,6 @@ picture has to be judged on a decoded console frame rather than on the synthetic
 the cost was taken from, and whatever ships is a setting that turns off with a fidelity
 mode bypassing it. Both are criteria on the line now.
 
-### §PP52 The vendor answer that is not on the machine
-
-This line was written about a dependency that has since left. PP32 established that
-speexdsp was the Qt client's - lib references it nowhere - so the half that was "delete
-a dependency the port has no answer for" is done, and removing the client did it.
-
-What was left was an addition: NVIDIA's audio effects SDK, doing noise removal and echo
-cancellation on the GPU. PP647's contract binds a vendor path to an absence a user
-cannot see, and PP648 found that a call which succeeds is not a feature that ran. Both
-bind a path that exists.
-
-`spike/audio-effects` asked the prior question. On this machine - an RTX 4060, current
-driver, the NVIDIA App installed - the SDK is not reachable. `NVAFX_SDK_DIR` is unset,
-NVIDIA Broadcast is absent, and a sweep of both NVIDIA trees finds no audio-effects
-runtime. It is not a driver feature but a redistributable this port would ship, models
-included.
-
-Windows carries a Voice Capture DSP in the box. `CLSID_CWMAudioAEC` is registered in
-both hives with `mfwmaaec.dll` present, and it has done echo cancellation and noise
-suppression for communications audio since Vista. It ships nothing.
-
-Two non-goals bound this and forbid neither: "No GPU vendor feature for the network
-path" is about a different path, and "No vendor path whose absence is visible to the
-user" allows one with a quiet fallback. The reading makes the question moot rather than
-forbidden - the fallback is better placed than what it would fall back from.
-
 ### §PP53 The one that removes waiting instead of adding work
 
 Nothing in the window mentions VRR, G-SYNC or adaptive sync. Frames from a console

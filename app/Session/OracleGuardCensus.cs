@@ -120,6 +120,10 @@ public static class OracleGuardCensus
         // the day they landed, and eight comparisons went uncounted.
         new(@"tests\ChiakiNg.Tests\FeedbackPayloadTests.cs", FeedbackGuard),
 
+        // PP52: the cleaning stage's end-to-end runs the encoder, so it declines with libopus. Found
+        // by the sweep above rather than remembered, which is what PP704 built it for.
+        new(@"tests\ChiakiNg.Tests\CleanedMicrophoneTests.cs", OpusGuard),
+
         // And the files that test the GUARDS rather than what the guards protect. Named so the
         // sweep is closed, and NOT counted: a guard test declining on a build without the oracle is
         // the check doing its job, not an assertion somebody lost.

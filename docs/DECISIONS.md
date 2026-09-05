@@ -69,5 +69,6 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP76** **the decoder preference is measured on synthetic frames, and drops under network jitter are what a stream is judged by** — PP48's copy ranking does not carry: this port downloads every vulkan frame to NV12 for D3D11, so vulkan's no-copy path is not the one a live session measures.
 - ✅ **PP709** **nothing drives the in-box echo canceller, so PP52's second criterion has a reading of it and no stage** — The in-box canceller's rates stop at 22050, so no cleaning stage can sit in a 48000 chain until something in the port converts between them.
 - ✅ **PP710** **the port cannot change an audio rate, so the cleaner's 22050 ceiling keeps it out of the announced 48000 chain** — A rate change in this port is Windows's own DMO, not a filter it owns; the way in stays free, because the capture engine's converter already does it.
+- ✅ **PP52** **nothing runs echo cancellation, and the vendor answer is absent on a machine with the card** — The stage runs at the best rate a ten-millisecond unit divides evenly into, not the canceller's own best; and what it removed is read off the samples rather than off a return code.
 
 ## Block J — Public documentation

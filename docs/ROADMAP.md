@@ -40,7 +40,6 @@
 ## Block I — NVIDIA path
 
 - ⏳ **PP49** (deps: PP11 ✅, PP47 ✅, PP700 ✅) (requires: console, a-person-looking) **the console sends SDR on most titles and an HDR display shows it flat, with nothing in the client trying** — the quality half and the integration: a decoded console frame to judge on, and a setting that turns it off. → §PP49
-- ⏳ **PP52** (deps: PP32 ✅, PP652 ✅, PP698 ✅, PP709 ✅, PP710 ✅, PP706 ✅) **nothing runs echo cancellation, and the vendor answer is absent on a machine with the card** — PP709's transform cleans and refuses the announced 48000; what is left is a rate bridge and a chain for a stage to sit in. → §PP52
 - ⏳ **PP53** (deps: PP11 ✅, PP41 ✅) (requires: variable-refresh-display) **frames arrive with network jitter and are presented against a fixed refresh, so each waits for a vblank it missed** — the reading itself: a display that varies its refresh, and a trace saying the frame arrived unpaced. → §PP53
 
 ## Block J — Public documentation
@@ -125,18 +124,6 @@
   chiaki_render_tearing_probe does. Integration means the video plane's own swapchain
   carries it and presents at sync interval zero, which is the half that waits on there
   being a video plane at all.
-
-## Done when — PP52
-
-- **Both paths are read from the machine before either is integrated**
-  spike/audio-effects reports whether the vendor SDK is reachable and whether the in-box
-  Voice Capture DSP is registered, with the evidence for each so a no is refutable. A
-  model reads its committed file rather than restating the numbers, and names what each
-  path would ship.
-- **Something actually cleans the captured samples** A stage sits between the capture
-  and the encoder and is read back rather than assumed to have run, which is PP648's
-  rule. If it is a vendor path its absence is quiet, which the hardware contract
-  requires; if it is the in-box transform there is no absence to be quiet about.
 
 ## Done when — PP696
 
