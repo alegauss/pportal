@@ -330,29 +330,28 @@ and the quit, through ConsoleSession.Translate.
 Nothing here waits on PP696: ctrl.c and session.c are not the frame path and no deletion
 turns on them. What waits is a managed session raising anything at all outside a stream.
 
-### §PP724 A check its own commit reworded around
+### §PP724 The move nothing asks for
 
 PP714 ported congestion control and NativeWaits went on calling congestioncontrol.c
-unported through a green gate. PP718 fixed that with Unclaimed: an unported row whose
-note says a file is unported, while a mirrored row already names that file, contradicts
-itself.
+unported through a green gate. PP718 fixed that case: an unported row whose note says a
+FILE is unported, while a mirrored row already names that file, contradicts itself.
 
-THE TRIGGER IS PROSE, and prose is what the same commit changed. Unclaimed matches the
-literal claim inside a note, and PP718 rewrote the two feedbacksender.c notes at the
-same time - away from "feedbacksender.c is unported" and toward a sentence about which
-half was ported. Both rows were then outside the check's reach, and PP723 is exactly the
-ship that would have falsified them.
+THE FIRST READING OF THIS TASK WAS WRONG, and measuring it is what showed that. It
+counted one note in ten carrying the phrase and proposed asking the question of the file
+instead of the sentence. That rule fires falsely: holepunch.c is in both groups today,
+legitimately - much of it is ported and one wait is not - and PP718's own text says a
+half-ported file is not the failure. The other nine notes claim something about a WAIT
+rather than about a file, so a file rule has nothing to say about them either.
 
-ONE ROW IN TEN CARRIES THE PHRASE. Nine of the ten remaining unported rows say why they
-are unported without using the words the check looks for, so nine files can be ported
-with the census still calling them untouched. The count is the finding: this is not a
-rare shape, it is the ordinary one, and the row that started it was the exception.
+THE REAL GAP IS THE MOVE. What goes false is a row left in the unported group after its
+wait gains a counterpart, and nothing looks for that. It has happened once: PP723 wrote
+the feedback sender, both FEEDBACK_STATE macros gained managed constants, and the census
+stayed green because that commit moved the rows by hand. A commit that had not would
+have left two false rows behind a passing gate.
 
-WHAT WOULD HOLD IT is the same question asked of the FILE rather than of the sentence:
-an unported row whose source path is named by a mirrored row is contradicted whatever
-its note says, because the two groups mean different things about the same file. PP718's
-own reasoning gives that; what it built stopped at the wording, which is the shape
-PP573's check warns about - a guard for a sentence rather than for a claim.
+WHAT WOULD HOLD IT is a question about the managed side rather than the C: does a
+constant answering this macro now exist? The port has no file-to-type map to ask
+through, and building one for eleven rows is the cost to weigh.
 
 ### §PP725 A memcpy with one address twice
 
