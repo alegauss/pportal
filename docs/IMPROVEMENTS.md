@@ -406,29 +406,6 @@ So the work is to measure it before deciding anything: one audio packet, its uni
 and the arithmetic above either collapses to zero or becomes the loudest finding in the
 congestion path.
 
-### §PP737 The stream that allocates per block
-
-PP731 left the C's key buffer out on the grounds that it is a cache: the bytes are
-identical and there is no thread to release. That is true about the OUTPUT and says
-nothing about what producing it costs.
-
-FOUR ALLOCATIONS, AND ONE OF THEM IS A KEY SCHEDULE. GkKeyStream.Generate calls
-Aes.Create per invocation, assigns the key - which copies it and builds the schedule -
-allocates the output array, and allocates a fresh sixteen-byte counter block for every
-block it writes. The C does the schedule once per crypt and fills an aligned ring ahead
-of the stream, so the per-packet cost there is the AES and nothing else.
-
-PP44 SET THE BUDGET BEFORE ANY OF THIS EXISTED, and its own words are the case:
-thousands of small packets a second, each an allocation if written carelessly, with Span
-and ArrayPool named as the answer. The transport's criterion says the budget is met; the
-decrypt path has never been measured against it, and PP731 is what made this the only
-path there is.
-
-WHAT IS OWED IS A NUMBER FIRST. Allocations per packet at a real frame rate, taken the
-way PP610 and PP633 took their timings, and then the decision: a reusable AES per crypt
-is nearly free to make and the counter block can be a stack span, while a prefetch ring
-is the C's answer and a thread this port has so far done without.
-
 ## Block G — Test discipline
 
 ### §PP728 A criterion counting something that moved

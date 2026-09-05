@@ -86,6 +86,16 @@ public sealed class ManagedGkCrypt
         => GkKeyStream.Generate(keyBase, iv, keyPos, length);
 
     /// <summary>
+    /// PP737: the same, into a caller's span - which is what a packet path should be calling.
+    ///
+    /// The overload above allocates the stream by signature, once per packet. This one allocates
+    /// nothing but the Aes the generator makes, which is the remainder PP737 measured and the one
+    /// piece that cannot go without giving this object something to release.
+    /// </summary>
+    public void KeyStream(ulong keyPos, Span<byte> into)
+        => GkKeyStream.Generate(keyBase, iv, keyPos, into);
+
+    /// <summary>
     /// The GMAC key a packet at <paramref name="keyPos"/> is authenticated under.
     ///
     /// THE WINDOW IS STATE AND ONLY ONE DIRECTION MOVES IT. A packet ahead of the window refreshes
