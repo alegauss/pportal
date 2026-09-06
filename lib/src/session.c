@@ -213,11 +213,12 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_session_init(ChiakiSession *session, Chiaki
 		goto error_stop_pipe;
 	}
 
-	// PP696: the StreamConnection init stood here. There is nothing to initialise - streamconnection.c
-	// has left the build, and what runs the stream phase is now installed with
-	// chiaki_session_set_stream_run_cb, by whoever owns the port above this. The packet loss maximum
-	// the init took stays on the session, because ctrl reads it and the managed congestion control
-	// takes it from there.
+	err = chiaki_stream_connection_init(&session->stream_connection, session, connect_info->packet_loss_max);
+	if(err != CHIAKI_ERR_SUCCESS)
+	{
+		CHIAKI_LOGE(session->log, "StreamConnection init failed");
+		goto error_ctrl;
+	}
 
 	// PP632: the PSN half of this fork is gone with the handle, so what was the `else` is the whole
 	// of it. The account id it used to copy is set on the connect info by nobody: PP596 established
@@ -263,10 +264,8 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_session_init(ChiakiSession *session, Chiaki
 
 	return CHIAKI_ERR_SUCCESS;
 
-	// PP696: error_ctrl stood here, and the StreamConnection init was the only thing that reached
-	// it - nothing between the ctrl init and the return can fail any more. The rung is dropped
-	// rather than left with no way in: an unreachable label is a warning, and a cleanup nothing
-	// arrives at is a claim about a failure path that does not exist.
+error_ctrl:
+	chiaki_ctrl_fini(&session->ctrl);
 error_stop_pipe:
 	chiaki_stop_pipe_fini(&session->stop_pipe);
 error_state_mutex:
@@ -286,9 +285,7 @@ CHIAKI_EXPORT void chiaki_session_fini(ChiakiSession *session)
 	free(session->login_pin);
 	free(session->quit_reason_str);
 	chiaki_mutex_unlock(&session->state_mutex);
-	// PP696: the StreamConnection fini stood here, and there is nothing left to release - the object
-	// was never built. What replaced it is owned by the installer of the run callback, which frees
-	// it on its own side.
+	chiaki_stream_connection_fini(&session->stream_connection);
 	chiaki_ctrl_fini(&session->ctrl);
 	// PP632: the holepunch fini stood here and is gone with the handle. The rudp one is kept: the
 	// field is still declared and still read by ctrl.c, so a teardown that stopped releasing it
@@ -319,11 +316,7 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_session_stop(ChiakiSession *session)
 	chiaki_stop_pipe_stop(&session->stop_pipe);
 	chiaki_cond_signal(&session->state_cond);
 
-	// PP696: the fourth wake-up, which is the one that is no longer this library's to make. Stopping
-	// is four pokes and not a flag - the thread can be blocked in a condition wait, in a socket
-	// select, or down in the run - and the run is now on the far side of a callback.
-	if(session->stream_stop_cb)
-		session->stream_stop_cb(session->stream_stop_cb_user);
+	chiaki_stream_connection_stop(&session->stream_connection);
 
 	chiaki_mutex_unlock(&session->state_mutex);
 	return CHIAKI_ERR_SUCCESS;
@@ -334,35 +327,20 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_session_join(ChiakiSession *session)
 	return chiaki_thread_join(&session->session_thread, NULL);
 }
 
-/**
- * PP696: kept as an export with nothing to ask.
- *
- * The keyframe request went to the stream connection, and the port asks for one through its video
- * receiver's own outbound seam instead - no C in that path. The function stays because deleting a
- * public export is a separate decision from deleting the file behind it, and it answers
- * UNINITIALIZED rather than SUCCESS: a caller told its request went out, when nothing was built to
- * send it, would wait for a keyframe that is never coming.
- */
 CHIAKI_EXPORT ChiakiErrorCode chiaki_session_request_idr(ChiakiSession *session)
 {
-	(void)session;
-	return CHIAKI_ERR_UNINITIALIZED;
+	return stream_connection_send_idr_request(&session->stream_connection);
 }
 
-/**
- * PP696: the state is still kept, and there is no longer a sender here to pass it on to.
- *
- * The feedback sender lived inside the stream connection, and its mutex was initialised by an init
- * that no longer runs - so taking that lock would be locking something nobody set up. What stays is
- * the half of this function that was never the stream connection's: the state on the session, which
- * is what the C always stored before deciding whether anything was listening.
- *
- * The port holds the other half. Its sink keeps the last state and hands it to a feedback sender
- * when one is armed, which is this body's `if` with the lifetime moved to where the sender is.
- */
 CHIAKI_EXPORT ChiakiErrorCode chiaki_session_set_controller_state(ChiakiSession *session, ChiakiControllerState *state)
 {
+	ChiakiErrorCode err = chiaki_mutex_lock(&session->stream_connection.feedback_sender_mutex);
+	if(err != CHIAKI_ERR_SUCCESS)
+		return err;
 	session->controller_state = *state;
+	if(session->stream_connection.feedback_sender_active)
+		chiaki_feedback_sender_set_controller_state(&session->stream_connection.feedback_sender, &session->controller_state);
+	chiaki_mutex_unlock(&session->stream_connection.feedback_sender_mutex);
 	return CHIAKI_ERR_SUCCESS;
 }
 
@@ -678,33 +656,20 @@ ctrl_failed:
 		QUIT(quit_ctrl);
 	}
 
-	// PP696: the one step of the seven that becomes managed, and the lock discipline around it is
-	// unchanged - the mutex is released for exactly the run's length, because ctrl's thread, the
-	// stop path and every handler take it. The callback blocks until the session is over, as the
-	// call it replaces did, so the three steps below still run on this thread afterwards.
-	//
-	// The reason is written out rather than returned, and is borrowed: the strdup below is what
-	// copies it, and a callee that handed back owned memory would leak one string per session.
-	const char *disconnect_reason = NULL;
-
 	chiaki_mutex_unlock(&session->state_mutex);
-	if(session->stream_run_cb)
-		err = session->stream_run_cb(data_sock, &disconnect_reason, session->stream_run_cb_user);
-	else
-	{
-		CHIAKI_LOGE(session->log, "No stream run installed, so the stream phase has nowhere to go");
-		err = CHIAKI_ERR_UNINITIALIZED;
-	}
+	err = chiaki_stream_connection_run(&session->stream_connection, data_sock);
 	chiaki_mutex_lock(&session->state_mutex);
 	if(err == CHIAKI_ERR_DISCONNECTED)
 	{
 		CHIAKI_LOGE(session->log, "Remote disconnected from StreamConnection");
 
-		// PP371: the reason can be NULL. remote_disconnected was set before the strdup that filled
+		// PP371: the reason can be NULL. remote_disconnected is set before the strdup that fills
 		// it, so a failed allocation over there left both reads below dereferencing nothing - on the
 		// one path that runs when a console hangs up. The comparison itself is unchanged and stays
 		// exact, which is what PP336 asserts: a reason merely CONTAINING the phrase is the other
 		// quit reason.
+		const char *disconnect_reason = session->stream_connection.remote_disconnect_reason;
+
 		if(disconnect_reason && !strcmp(disconnect_reason, "Server shutting down"))
 			session->quit_reason = CHIAKI_QUIT_REASON_STREAM_CONNECTION_REMOTE_SHUTDOWN;
 		else

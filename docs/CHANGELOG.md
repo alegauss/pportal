@@ -686,6 +686,7 @@
 - ✅ **PP697** **after the frame-path flip the models describe a C that has gone, in the present tense** — Eight models say what the frame path was rather than what it is, and a swept floor of 101 predicates over the four files says none was deleted with them.
   checked **The predicates stay and the tense around them turns** PP634's correction, applied to the frame path: each predicate is a shape the C could return in, so none is deleted. What changes is prose asserting the tree still has what the flip removed, turned to say what it was rather than what it is, the way PP591 and PP652 turned theirs.
 - ✅ **PP757** **the port's resting feedback state is ten zeroes and the C's is not, so a still pad reports free fall** — FeedbackSnapshot.Idle rests under gravity as the C's does, asserted as a round trip off a fresh state rather than against a constant of this side's own.
+- ✅ **PP763** **the frame path's deletion shipped and left no way to stream, so the four files and the C's run are back** — The four files, session.c's run and the floor are back and a five-second capture records 4025 datagrams again; the callback, the trampoline and the runner stay unused.
 
 ## Block G — Test discipline
 

@@ -30,14 +30,4 @@
 # 149 the same day: PP76's readable half added the two over chiaki_session_baseline_decoder_drops
 # - that the decoder's own loss is the difference between the record's two counters, and that
 # the difference never wraps when the receiver ends a session ahead of the presenter.
-
-# 77 on 2026-09-06: PP696 took the frame path out of the build, and the C suite's four files went
-# with it. 72 cases left - 64 of them the parameterised /fec/fec run over the recorded frame
-# buffers, which was the largest single thing this oracle knew, plus frameprocessor.c's three,
-# allocbudget.c's three and videoreceiver.c's two.
-#
-# THIS IS THE ONE FALL THIS FILE ALLOWS, and it is allowed because the cases did not stop being
-# checked - they moved. FecCodecTests, FrameAssemblerTests, ManagedVideoReceiverTests and
-# AllocBudgetTests are their counterparts, and PP669 asserts that each of the four has one. A fall
-# with no such answer is the thing the paragraph above refuses.
-77
+149

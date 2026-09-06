@@ -159,6 +159,37 @@ public class StreamRunHandoffTests(ITestOutputHelper output)
     }
 
     /// <summary>
+    /// PP763: THE CONTRACT SURVIVED THE REVERT, which is the half worth keeping.
+    ///
+    /// PP696 landed this and PP762 found what it cost: nothing installs the callback, no composition
+    /// root builds a live managed run, and a five-second capture recorded 23 datagrams where the
+    /// same run had recorded four thousand. So the build went back - the four files, session.c's
+    /// run, the suite's floor - and everything the deletion TAUGHT stayed.
+    ///
+    /// The scaffolding is unused on purpose and must not be tidied away: re-deriving it would be a
+    /// second version of a contract that was already argued, and PP762 is what needs it. This is the
+    /// check that notices the tidying.
+    /// </summary>
+    [Fact]
+    public void TheHandoffSurvivesTheBuildGoingBack()
+    {
+        if (Header() is not { } header)
+            return;
+
+        // The hook the C session would call, still declared beside the other two.
+        Assert.True(StreamRunHandoffSource.TheHookIsInstalled(header));
+        Assert.True(StreamRunHandoffSource.TheTwoSettersAreStillThere(header));
+
+        // And the managed side of it, which is what a composition root will reach for.
+        using var handover = new StreamHandover();
+        Assert.True(handover.IsOpen);
+        Assert.False(handover.Stopped);
+
+        Assert.NotNull(typeof(ManagedStreamRunner).GetMethod(nameof(ManagedStreamRunner.Run)));
+        Assert.NotNull(typeof(StreamHandover).GetMethod(nameof(StreamHandover.InstallOn)));
+    }
+
+    /// <summary>
     /// The setter is not there yet, which is what tells this tree from the one PP696 leaves.
     ///
     /// Asserted in both directions, as every two-shape reader in this tree is: once the hook is in,

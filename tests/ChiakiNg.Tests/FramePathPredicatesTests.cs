@@ -46,29 +46,35 @@ public class FramePathPredicatesTests(ITestOutputHelper output)
     }
 
     /// <summary>
-    /// The four files are still THERE, which is what makes those predicates answerable.
+    /// The four files are THERE, whichever side of the flip the build is on.
     ///
-    /// PP696 took them out of the build and left the source, the way PP33 left holepunch.c and PP598
-    /// left gui/. A deletion of the text is a separate decision with its own line, and until one is
-    /// taken these readers have something to read.
+    /// That is what makes the predicates answerable, and it is the half that does not move: PP696
+    /// took them out of the build and left the source, the way PP33 left holepunch.c and PP598 left
+    /// gui/. A deletion of the text is a separate decision with its own line.
+    ///
+    /// PP762: AND THE BUILD SIDE IS ASKED AS A SHAPE, not asserted as one. This said Silent, which
+    /// was true for exactly as long as PP696 stood - and PP696 was reverted, because it took the C's
+    /// stream connection out and nothing installed the managed replacement. A check that named one
+    /// side went red on the commit that put the tree back, which is the third time this file has
+    /// learned the same lesson.
     /// </summary>
     [Fact]
-    public void TheFourFilesAreOutOfTheBuildAndStillInTheTree()
+    public void TheFourFilesAreInTheTreeOnEitherSideOfTheFlip()
     {
-        if (SanitizerSource.LocateRelative(@"lib\CMakeLists.txt") is not { } path)
-            return;
-
-        string cmake = File.ReadAllText(path);
-
-        // Out of the build - the shape PP761 taught, asked here as the other half of the sentence.
-        Assert.Equal(ConsumerShape.Silent, StreamConnectionConsumers.ShapeOfTheList(cmake));
-
         foreach (string relative in FramePathPredicates.Subjects)
         {
             Assert.True(
                 SanitizerSource.LocateRelative(relative) is not null,
                 $"{relative} is gone from the tree, so every predicate over it now reads nothing");
         }
+
+        if (SanitizerSource.LocateRelative(@"lib\CMakeLists.txt") is not { } path)
+            return;
+
+        // Either shape, and never the half-done one: PP565's rule is that the four move together.
+        Assert.NotEqual(
+            ConsumerShape.Partial,
+            StreamConnectionConsumers.ShapeOfTheList(File.ReadAllText(path)));
     }
 
     /// <summary>

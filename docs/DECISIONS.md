@@ -93,8 +93,9 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP753** **the session thread has no way to hand the stream phase over and take an outcome back, so the deletion cannot land** — The C waits on a condition the managed side signals rather than calling a managed pointer, because the shim installs every libchiaki callback as a C trampoline for that reason.
 - ✅ **PP754** **nothing in the application builds a run host or calls the run, so the deletion would leave it with no streaming** — The runner reports through the seam before it returns to its own caller, because the session thread is blocked on that and would otherwise wait out a run already over.
 - ✅ **PP755** **the disconnect reason is parsed and the host holds no field for it, so the runner takes it as a parameter** — The disconnect flag and its reason are written in one call, because a wait ending on the flag has to find a reason belonging to it rather than the previous session's.
-- ✅ **PP696** **the frame path's deletion has no commit that edits the C, so four files stay while their ports exist** — The four files stay in the tree as unbuilt source, so putting the oracle back is one option and one list entry each rather than a recovery.
-- ✅ **PP295** **streamconnection.c is 1540 lines and calls the video receiver, so every deletion below waits on it** — Every deletion below this one is unblocked: takion's end state waited on streamconnection.c calling it, and nothing in the build does now.
+- 🗑 **PP696** **the frame path's deletion has no commit that edits the C, so four files stay while their ports exist** — The four files stay in the tree as unbuilt source, so putting the oracle back is one option and one list entry each rather than a recovery (superseded by PP763).
+- 🗑 **PP295** **streamconnection.c is 1540 lines and calls the video receiver, so every deletion below waits on it** — Every deletion below this one is unblocked: takion's end state waited on streamconnection.c calling it, and nothing in the build does now (superseded by PP763).
+- ✅ **PP763** **the frame path's deletion shipped and left no way to stream, so the four files and the C's run are back** — The frame path stays in the build until something installs a managed run on a live session, because a deletion that leaves a client unable to stream is not one.
 
 ## Block G — Test discipline
 
