@@ -41,10 +41,16 @@ public static class AudioUnitCounts
     public const int NeededBytes = AvHeadFields.MinimumHead;
 
     /// <summary>What PP608's capture holds, of each kind, so a re-recording that differs says so.</summary>
-    public const int AudioHeads = 450;
+    /// <remarks>
+    /// PP742: 478 on the wider recording, where it was 450. The eleven senkusha probes below are
+    /// unchanged - they are a fixed part of the handshake - so what moved is the opus count, and
+    /// this stays derived from the two rather than measured a third time.
+    /// </remarks>
+    public const int AudioHeads = 478;
 
     /// <summary>Of those, the ones the receiver would accept.</summary>
-    public const int OpusHeads = 439;
+    /// <remarks>PP742: 467 on the wider recording, where it was 439 on the narrower one.</remarks>
+    public const int OpusHeads = 467;
 
     /// <summary>And the ones it refuses: senkusha's probes, sharing the audio base type.</summary>
     public const int SenkushaProbes = AudioHeads - OpusHeads;
@@ -64,7 +70,11 @@ public static class AudioUnitCounts
     public const int MeasuredUnitSize = 80;
 
     /// <summary>Before this arrival the capture is senkusha's takion, in microseconds.</summary>
-    public const long FirstOpusMicroseconds = 282204;
+    /// <remarks>
+    /// PP742: 163542 on the wider recording. The first opus packet arrives when it arrives - this
+    /// says the audio does not wait on the video, and the sample it is measured over changed.
+    /// </remarks>
+    public const long FirstOpusMicroseconds = 163542;
 
     /// <summary>
     /// The unit fields of an audio head, or null where it is not one or is too short.

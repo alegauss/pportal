@@ -122,14 +122,27 @@ public class WholeDatagramReplayTests
     /// <summary>
     /// PP633: and the corpus still keeps heads, which is the decision this reading rests on.
     ///
-    /// PP608 gives the reason and it has not changed: eighteen bytes is committable - no account, no
+    /// PP608 gives the reason and it has not changed: a head is committable - no account, no
     /// console, no frame - and a whole-datagram capture of a live session is none of those. A corpus
     /// that grew payloads would be this task quietly reversing somebody else's decision.
+    ///
+    /// PP742: EIGHTEEN BECAME TWENTY-EIGHT AND THE DECISION IS THE SAME ONE. Twenty-eight is where
+    /// the longest AV header ends, so the keep still stops at the end of a header and every byte
+    /// past it is still content. What moved is which header - the MAC gate's furthest read, or the
+    /// whole AV head the port's own parser wants before it reads any of it.
+    ///
+    /// Asserted against the constant rather than the number, so this says "still a head" instead of
+    /// "still eighteen". A capture that grew to WholeDatagramBytes is what it is here to catch, and
+    /// that is a different number by two orders of magnitude.
     /// </summary>
     [Fact]
     public void TheCorpusStillKeepsHeads()
     {
-        Assert.Equal(18, DatagramCorpus.HeadBytes);
+        Assert.Equal(TakionTimingCapture.HeadBytes, DatagramCorpus.HeadBytes);
+        Assert.True(
+            DatagramCorpus.HeadBytes < TakionTimingCapture.WholeDatagramBytes / 10,
+            $"the corpus keeps {DatagramCorpus.HeadBytes} bytes, which is no longer a head");
+
         Assert.Equal(WholeDatagramReplay.Datagrams, DatagramCorpus.Datagrams);
     }
 }

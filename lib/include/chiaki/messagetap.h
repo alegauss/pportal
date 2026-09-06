@@ -159,11 +159,22 @@ CHIAKI_EXPORT void chiaki_message_tap_emit(
  * offset chiaki_takion_packet_mac reads, so it answers the dispatch and the MAC layout both and
  * carries no frame of anybody's screen. Truncating at the emit rather than in a consumer is what
  * makes that true of every consumer.
+ *
+ * PP742: TWENTY-EIGHT, AND STILL NO FRAME. Eighteen reached the MAC gate and stopped, which left
+ * AvPacketParse refusing all 3681 AV heads a PS5 sent with BufTooSmall - two bytes short of the
+ * cheapest audio layout at twenty, and short of video at twenty-five and nalu info at twenty-eight.
+ * So the port's own parser could never meet the traffic it was written for.
+ *
+ * The privacy argument is unchanged rather than weakened, and that is the point of the number: an
+ * AV packet's header is twenty-eight bytes at its longest and the frame begins after it, so this
+ * reaches the end of the header and stops exactly as eighteen did. What it adds is the key
+ * position, the adaptive stream index and the haptics byte - protocol fields, per session, and not
+ * a pixel of anybody's screen.
  */
 #define CHIAKI_MESSAGE_TAP_CHANNEL_TAKION "takion"
 
-/** PP511: how much of a datagram crosses. Derived in the port, spelled once here. */
-#define CHIAKI_MESSAGE_TAP_TAKION_HEAD 18
+/** PP511: how much of a datagram crosses. Derived in the port, spelled once here. PP742: 18 to 28. */
+#define CHIAKI_MESSAGE_TAP_TAKION_HEAD 28
 
 /**
  * PP397: what a stream or senkusha message's `type` is when the protobuf would not decode.

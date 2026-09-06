@@ -47,10 +47,22 @@ public static class DatagramCorpus
     /// Stated so a reader knows what spacing this is without recomputing it, and checked against
     /// the rows so the number cannot drift from the file it describes.
     /// </summary>
-    public const int MeanGapMicros = 1159;
+    /// <remarks>
+    /// PP742: 1201, and it was 1159. The file was recorded again to widen its heads, so every
+    /// number derived from it is a number about the new sample - the same console, the same five
+    /// seconds, a different five seconds of it. This one is checked against the rows below, which
+    /// is what keeps it a claim rather than a decoration.
+    /// </remarks>
+    public const int MeanGapMicros = 1201;
 
-    /// <summary>How many bytes of each datagram were kept.</summary>
-    public const int HeadBytes = 18;
+    /// <summary>
+    /// How many bytes of each datagram were kept.
+    ///
+    /// PP742: twenty-eight, and the file was recorded again to get them. Eighteen reached the MAC
+    /// gate and stopped, two bytes short of the cheapest AV layout, so the port's own parser refused
+    /// every AV head this capture holds.
+    /// </summary>
+    public const int HeadBytes = 28;
 
     /// <summary>The capture, or null outside a checkout.</summary>
     public static string? Locate() => SanitizerSource.LocateRelative(RelativePath);

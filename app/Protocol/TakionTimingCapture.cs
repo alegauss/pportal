@@ -52,11 +52,22 @@ public sealed class TakionTimingCapture
     /// <summary>
     /// How much of each datagram is kept.
     ///
-    /// Eighteen is what PP497's gate reads at its furthest - the key position of a video or audio
-    /// packet ends at offset eighteen - so a head of that length answers the dispatch and the MAC
-    /// layout both. Nothing downstream of those needs a byte, and every byte past here is content.
+    /// Eighteen was what PP497's gate reads at its furthest - the key position of a video or audio
+    /// packet ends at offset eighteen - so a head of that length answered the dispatch and the MAC
+    /// layout both.
+    ///
+    /// PP742: TWENTY-EIGHT, BECAUSE THE PARSER READS FURTHER THAN THE GATE. AvPacketParse checks
+    /// the WHOLE AV header is present before reading any of it - twenty bytes for the cheapest
+    /// audio layout, twenty-five for video, twenty-eight with nalu info - so eighteen made it refuse
+    /// all 3681 AV heads a PS5 sent, with BufTooSmall, two bytes short in the best case. The port's
+    /// own parser had never met the traffic it was written for.
+    ///
+    /// Still no content: twenty-eight is where the longest AV header ENDS, so this reaches the end
+    /// of the header and stops exactly as eighteen did. It has to match the C's define, which is
+    /// what truncates at the emit - <see cref="Native.ChiakiMessageTap.TakionHeadBytes"/> mirrors it
+    /// and TakionDatagramTap reads it out of the header, so the three cannot drift apart quietly.
     /// </summary>
-    public const int HeadBytes = 18;
+    public const int HeadBytes = 28;
 
     /// <summary>
     /// PP616: enough to keep any datagram whole, for a capture PP613's relay fills.

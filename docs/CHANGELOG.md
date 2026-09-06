@@ -687,6 +687,7 @@
   checked **The predicates stay and the tense around them turns** PP634's correction, applied to the frame path: each predicate is a shape the C could return in, so none is deleted. What changes is prose asserting the tree still has what the flip removed, turned to say what it was rather than what it is, the way PP591 and PP652 turned theirs.
 - ✅ **PP757** **the port's resting feedback state is ten zeroes and the C's is not, so a still pad reports free fall** — FeedbackSnapshot.Idle rests under gravity as the C's does, asserted as a round trip off a fresh state rather than against a constant of this side's own.
 - ✅ **PP763** **the frame path's deletion shipped and left no way to stream, so the four files and the C's run are back** — The four files, session.c's run and the floor are back and a five-second capture records 4025 datagrams again; the callback, the trampoline and the runner stay unused.
+- ✅ **PP742** **the port holds 3681 real AV heads and its own parser can read none of them, two bytes short of the cheapest layout** — The tap keeps twenty-eight bytes, the capture was recorded again, and the differential parses 7506 real heads across three passes where every AV head used to be refused.
 
 ## Block G — Test discipline
 

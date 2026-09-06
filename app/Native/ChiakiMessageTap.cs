@@ -95,8 +95,13 @@ public sealed unsafe class ChiakiMessageTap : IDisposable
     ///
     /// Derived in PP510 from the furthest offset the MAC gate reads, and spelled in the C header so
     /// the emit truncates rather than every consumer.
+    ///
+    /// PP742: eighteen to twenty-eight. The gate's furthest read is not the parser's - AvPacketParse
+    /// wants the whole AV header before it reads any of it, and twenty-eight covers every layout - so
+    /// the narrower keep refused all 3681 real AV heads. Mirrored here and read out of the header by
+    /// TakionDatagramTap, so this constant cannot drift from the define that does the truncating.
     /// </summary>
-    public const int TakionHeadBytes = 18;
+    public const int TakionHeadBytes = 28;
 
     /// <summary>
     /// PP397: CHIAKI_MESSAGE_TAP_TYPE_UNKNOWN - a message whose protobuf would not decode.

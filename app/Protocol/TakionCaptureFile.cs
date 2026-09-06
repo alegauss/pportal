@@ -28,7 +28,32 @@ namespace ChiakiNg.Protocol;
 public static class TakionCaptureFile
 {
     /// <summary>What the first line says.</summary>
-    public const string FormatVersion = "chiaki-datagrams-2";
+    public const string FormatVersion = "chiaki-datagrams-3";
+
+    /// <summary>
+    /// PP742: the version before this one, whose heads stop at eighteen bytes.
+    ///
+    /// Recognised so a refusal can name it, which is the lesson PP520 recorded one version earlier:
+    /// PP515 changed what a column MEANT without moving the version, and the file written under it
+    /// replayed without complaint reporting every video packet as eighteen bytes.
+    ///
+    /// The same trap was available here. A capture with eighteen-byte heads read as this version
+    /// would not fail - AvPacketParse would refuse every AV head with BufTooSmall, exactly as it
+    /// does today, and the run would look like a parser that cannot read real traffic rather than a
+    /// file that predates the wider keep.
+    /// </summary>
+    public const string NarrowHeadVersion = "chiaki-datagrams-2";
+
+    /// <summary>
+    /// Whether text is a capture written before PP742, whose heads stop short of an AV header.
+    /// </summary>
+    public static bool IsNarrowHeadVersion(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+
+        string[] lines = text.Split('\n');
+        return lines.Length > 0 && lines[0].Trim() == NarrowHeadVersion;
+    }
 
     /// <summary>
     /// PP520: the version before PP515, whose Length column holds the HEAD's length.

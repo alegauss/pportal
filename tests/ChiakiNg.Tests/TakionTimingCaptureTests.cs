@@ -67,7 +67,14 @@ public class TakionTimingCaptureTests
 
         int furthest = av.Value.KeyPosOffset + TakionPacketMac.KeyPosSize;
 
-        Assert.Equal(TakionTimingCapture.HeadBytes, furthest);
+        // PP742: COVERS, and it used to be exactly. The keep was the MAC gate's furthest read -
+        // a video packet's key position ends at eighteen - and AvPacketParse wants the whole AV
+        // header before it reads any of it, which is twenty-eight at its longest. So the head is
+        // now the further of the two bounds, and both models still find every byte they read.
+        Assert.True(
+            TakionTimingCapture.HeadBytes >= furthest,
+            $"the head keeps {TakionTimingCapture.HeadBytes} bytes and the MAC gate reads to {furthest}");
+
         Assert.True(TakionTimingCapture.HeadBytes > 0);
     }
 

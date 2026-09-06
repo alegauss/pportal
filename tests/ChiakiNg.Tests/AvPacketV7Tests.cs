@@ -94,9 +94,19 @@ public class AvPacketV7Tests(ITestOutputHelper output)
     ///
     /// They are v9 traffic and that is the point - the two parsers read the same bytes differently,
     /// so a managed v7 body that had quietly become v9's would agree with the shim's v9 export and
-    /// disagree with this one. Eighteen bytes is exactly a v7 audio header, so the audio rows parse
-    /// with an empty payload, the video rows are refused for want of three more bytes, and the
-    /// control rows are refused by kind. All three outcomes are asserted to occur.
+    /// disagree with this one.
+    ///
+    /// PP742: THE RECORDED HEADS NOW REACH THE PARSE. Eighteen bytes was exactly a v7 audio header,
+    /// so the audio rows parsed with an empty payload and every video row was refused for want of
+    /// three more bytes - the differential met real traffic only through the padded pass. The keep
+    /// is twenty-eight now, which is where the longest AV header ends, so both kinds parse as
+    /// recorded and the key position, the adaptive stream index and the haptics byte are read from
+    /// bytes a PS5 actually sent rather than from a pad this file wrote.
+    ///
+    /// WHICH TAKES THE REFUSAL ARM AWAY, so it is put back deliberately. Nothing in the corpus is
+    /// too small any more, and a comparison that had stopped exercising the bound would be the
+    /// PP271 failure this test's other half already guards against - so a third pass truncates each
+    /// head below every layout, and both parsers have to refuse it for the same reason.
     /// </summary>
     [Fact]
     public void TheManagedParseAgreesWithTheCOverTheRecordedHeads()
@@ -108,10 +118,15 @@ public class AvPacketV7Tests(ITestOutputHelper output)
 
         foreach (CapturedDatagram datagram in corpus)
         {
-            // Twice: as recorded, and padded out so the video rows reach the parse too. Eighteen
-            // bytes is exactly a v7 audio header, so without the second pass the video arm of this
-            // comparison would only ever see a refusal.
-            foreach (byte[] head in new[] { datagram.Head, Padded(datagram.Head, 32) })
+            // Three times: as recorded, padded so a longer layout reaches the walk, and cut below
+            // every layout so the length bound is still exercised on a capture that no longer
+            // trips it by accident.
+            foreach (byte[] head in new[]
+            {
+                datagram.Head,
+                Padded(datagram.Head, 32),
+                datagram.Head[..Math.Min(16, datagram.Head.Length)],
+            })
             {
                 V7AvHeader? theirs = NativeAvPacketV7.Parse((byte[])head.Clone(), out ChiakiError theirError);
                 V7AvHeader? ours = AvPacketV7.Parse(head, out ChiakiError ourError);
