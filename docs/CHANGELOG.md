@@ -717,6 +717,8 @@
 - ✅ **PP794** **the record says one export dies with the flip and a trial says four, because the measurement counted prose** — Four, measured through a sweep that reads code - and the idr request is the one PP758 was right about, referenced through the shim.
 - ✅ **PP795** **the takion takes its AV arm at construction and the keys arrive with the bang, so video reaches nothing** — The arm is installed where the C installs its crypt - inside the keying - and a live console went from zero decoded frames to 2675.
 - ✅ **PP799** **the port streams and never says it connected, so a window waiting on the event holds a spinner over a live picture** — The composition root attaches PP747's router now, and the run's CONNECTED travels on to the session's own handler - so a caller hears the port's stream as it hears the C's.
+- ✅ **PP783** **session.c runs the stream itself and nothing in app installs the port's phase, so PP295's four files cannot leave** — session.c stops asking and StreamRun installs the phase; a live PS5 gave 890 shown against the C path's 972, with the pad's sink armed and pushing.
+  checked **The flip matches the C path's own baseline, frame for frame** A run on the C path with d3d11va gave 1020 decoded, 972 shown and 426 pad states over twenty seconds, recorded in chiaki_baseline.jsonl. PP763 shipped on a green gate because nobody had a number; the flip is checked against that one, by compare-baselines rather than by looking.
 
 ## Block G — Test discipline
 

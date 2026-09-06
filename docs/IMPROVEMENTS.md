@@ -189,30 +189,6 @@ flag, its count loop is guarded by the return above it, peek writes both out-poi
 where pull guards its own, and takion still passes NULL and still drops on a bad MAC.
 Repair any upstream and the port's copy becomes the divergence, on the next run.
 
-### §PP783 The flip, with the reason it was reverted answered
-
-PP696 handed session.c's stream phase to a callback, put the shim's fourteen and the
-suite's four behind defines, and took streamconnection.c, videoreceiver.c,
-frameprocessor.c and fec.c out of lib's source list. It was green and the client could
-not stream, because nothing installed a run - PP763 put all four back and PP764 wrote
-the check that would have caught it.
-
-WHAT WAS MISSING IS THERE NOW. PP762 built the composition root, PP773 wired the
-arrivals to the flags and gave the takion a receive thread, PP777 read the BIG's
-material off the session and PP778 put the data type in the channel field. A live PS5
-answered that BIG with a bang the managed ECDH keyed, sent a streaminfo the port
-accepted, and streamed audio - through a run the port drove end to end.
-
-SO WHAT IS MISSING IS THE INSTALL, NOT THE RUN. StreamPhaseDriver names four states and
-the tree is on TheC; the flip moves it to ThePort, which needs session.c to call
-stream_run_cb and stream_stop_cb, and a path in app that opens a session to construct a
-phase before it starts. Both halves in one commit, because Both is a tree mid-transition
-rather than a state to ship - the C's run wins, and a port that thought it had taken
-over would be wrong about which code runs.
-
-THE CONSOLE IS THE GATE. PP763's lesson is that a passing suite cannot see this: a
-capture recording 4025 datagrams is what says the flip held.
-
 ### §PP784 The caller that does not go with the stream
 
 PP780 asked the linker what takion's deletion costs and got four lib files. Three of

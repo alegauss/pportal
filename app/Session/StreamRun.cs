@@ -1,4 +1,5 @@
-﻿using System.Windows;
+﻿using System.Net;
+using System.Windows;
 using System.Windows.Controls;
 using ChiakiNg.Native;
 using ChiakiNg.Protocol;
@@ -150,11 +151,27 @@ public static class StreamRun
 
         using var decoder = new SessionDecoder(log.Handle, codec: 0, maxFps: 60, decoderName);
 
-        if (!SessionDecoder.AttachTo(session.Handle, decoder.Handle))
-        {
-            Say(window, model, "The decoder would not attach.");
-            return 1;
-        }
+        // PP783: THE PORT DRIVES THE STREAM, and this is the path that installs it.
+        //
+        // PP696 handed session.c's stream phase to a callback and no file put one there, so a live
+        // session reached the phase and stopped. PP763 put the C's run back and PP764 named the four
+        // states; the tree was on TheC because this call did not exist. It moves to ThePort here.
+        //
+        // BEFORE Start, and that is not a style. The session thread reaches the stream phase on its
+        // own and does not ask twice, so a handover installed afterwards races the one moment it
+        // looks - the same rule SetEventHandler and the decoder's own door already follow.
+        //
+        // SessionDecoder.AttachTo is GONE from this path rather than left inert. It installs the sink
+        // on the SESSION, so what decodes through it is the C's run calling the C's callback - and
+        // the C no longer runs the stream. PP787 opened the second door for exactly this: the phase
+        // takes decoder.Sample and feeds the same decoder from the managed receiver. Two doors into
+        // one decoder with only one of them driven is the two-facts-in-two-files shape PP764 exists
+        // about, so the undriven one does not stay.
+        using var baseline = new SessionBaseline();
+        using var phase = new ManagedStreamPhase(
+            session, IPAddress.Parse(found.Address), decoder.Sample, baseline);
+
+        phase.InstallOn();
 
         // PP76: armed before the start, so no frame is decoded while the reader is still asleep.
         decoder.SignalWhenReady();
@@ -187,7 +204,10 @@ public static class StreamRun
         // NOT a reason to refuse the session. A machine with nothing plugged in still streams, and
         // that is the state every version of this before it shipped in - what was wrong was that it
         // was the only state available.
-        using var pad = new PadFeed(session);
+        // PP783: at the port's sender and no longer at the C session. The C's own body handed the
+        // state to stream_connection.feedback_sender, and the flip leaves that call storing a value
+        // nothing sends - so a pad wired to it would push 426 states into a struct nobody reads.
+        using var pad = new PadFeed(phase.Pad);
         Console.WriteLine(
             pad.Start()
                 ? $"[stream] pad: {pad.PadName}"
@@ -200,6 +220,25 @@ public static class StreamRun
 
         clock.Stop();
         session.Stop();
+
+        // PP783: what the port's run did, printed whatever it was. A flip that streams and a flip
+        // that reaches the idle loop and draws nothing look identical from the frame counts alone -
+        // both report zero - and these are the readings that tell them apart.
+        phase.Join(TimeSpan.FromSeconds(2));
+
+        IReadOnlyList<ArrivalReading> readings = phase.Arrivals?.Readings ?? [];
+
+        Console.WriteLine(
+            $"[stream] phase: outcome {phase.Outcome?.Error.ToString() ?? "none"}, "
+                + $"connected {phase.Events?.Connected ?? 0}, "
+                + $"{phase.Arrivals?.Seen ?? 0} arrival(s), {phase.Arrivals?.Handled ?? 0} handled"
+                + (readings.Count > 0 ? $", last {readings[^1]}" : string.Empty));
+
+        // PP783: whether the pad's sink found a sender, which the state count alone cannot say. A
+        // run nobody touched pushes zero states, and so does a run whose sink was never armed - the
+        // two are the same number and only one of them is a defect.
+        Console.WriteLine(
+            $"[stream] pad sink: armed {phase.Pad.Active}, {pad.Pushed} state(s) pushed");
 
         // PP76: every decoded frame is now in exactly one column, which is what makes the last
         // number the decoder's rather than this loop's. FrameLedger holds the arithmetic and the
@@ -214,9 +253,7 @@ public static class StreamRun
                 + $"{Counted.DecoderDropsAgainst(Lost)} attributable to the decoder"
                 + (residue != 0 ? $", {residue} unaccounted" : string.Empty));
 
-        Console.WriteLine($"[stream] {pad.Pushed} controller state(s) sent");
-
-        RecordBaseline(decoderName, started, clock.Elapsed);
+        RecordBaseline(baseline, decoderName, started, clock.Elapsed);
 
         return drawn > 0 ? 0 : 1;
     }
@@ -345,13 +382,17 @@ public static class StreamRun
     /// A ROW THAT SILENTLY FAILS TO LAND reads afterwards as a session that never ran, which is the
     /// one way this record can mislead the comparison it exists for. The client says so in a
     /// comment and warns; so does this.
+    ///
+    /// PP783: THE RECORD IS TAKEN RATHER THAN MADE HERE, because the stream phase has been pushing
+    /// its four stage timings into one since the run started. Building a second one at the end would
+    /// write a row with those fields empty, and the comparison this ledger exists for is exactly the
+    /// one that would then be missing half its evidence.
     /// </summary>
-    private static void RecordBaseline(string decoderName, DateTimeOffset started, TimeSpan duration)
+    private static void RecordBaseline(
+        SessionBaseline baseline, string decoderName, DateTimeOffset started, TimeSpan duration)
     {
         try
         {
-            using var baseline = new SessionBaseline();
-
             baseline.SetStarted(started);
             baseline.SetDuration(duration);
             // PP1: one version, one place. The assembly's own, so a row cannot claim a build the

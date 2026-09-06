@@ -96,6 +96,7 @@ are read from the spike's committed file rather than typed.
 - 🗑 **PP696** **the frame path's deletion has no commit that edits the C, so four files stay while their ports exist** — The four files stay in the tree as unbuilt source, so putting the oracle back is one option and one list entry each rather than a recovery (superseded by PP763).
 - 🗑 **PP295** **streamconnection.c is 1540 lines and calls the video receiver, so every deletion below waits on it** — Every deletion below this one is unblocked: takion's end state waited on streamconnection.c calling it, and nothing in the build does now (superseded by PP763).
 - ✅ **PP763** **the frame path's deletion shipped and left no way to stream, so the four files and the C's run are back** — The frame path stays in the build until something installs a managed run on a live session, because a deletion that leaves a client unable to stream is not one.
+- ✅ **PP783** **session.c runs the stream itself and nothing in app installs the port's phase, so PP295's four files cannot leave** — Stopping session.c asking is one edit and not four: set_controller_state's lock belongs to a struct no init ran, so the run and the init cannot leave on different days.
 
 ## Block G — Test discipline
 

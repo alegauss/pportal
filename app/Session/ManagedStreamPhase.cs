@@ -106,6 +106,21 @@ public sealed class ManagedStreamPhase : IDisposable
     public bool Stopped => handover.Stopped;
 
     /// <summary>
+    /// PP783: where a pad pushes now, which is not the C session any more.
+    ///
+    /// chiaki_session_set_controller_state handed what it took to the stream connection's feedback
+    /// sender, and the flip leaves that call storing a state nothing will ever send. PP756 wrote the
+    /// managed replacement and nothing built one, so a client that flipped and kept pushing at the
+    /// session would stream a picture and send no input - a regression no frame count would show.
+    ///
+    /// BUILT IN THE CONSTRUCTOR AND ARMED IN THE RUN, which is the C's own split: the session holds
+    /// controller_state from the moment it exists, and the sender is handed it when one starts. A
+    /// caller therefore has somewhere to push before the console has answered, and PP756's hold is
+    /// what makes those pushes count rather than being dropped for arriving early.
+    /// </summary>
+    public ManagedControllerStateSink Pad { get; } = new();
+
+    /// <summary>
     /// Install this as the session's stream phase and start waiting for it.
     ///
     /// Before <see cref="ChiakiSession.Start"/>, and the runner's thread goes up first: the C
@@ -163,11 +178,18 @@ public sealed class ManagedStreamPhase : IDisposable
         // that was counted Unheard four states before the window gave up waiting for it.
         Events = ListenerFor(session, events);
 
+        // PP783: THE PAD'S SENDER, held rather than passed straight in, because two things need it.
+        // The host runs it; the controller sink replays into it. streamconnection.c does the same in
+        // one line after its own init, and PP756 wrote the managed half of that - what was missing is
+        // the line that hands one to the other, which only a composition root can write.
+        var sender = new ManagedFeedbackSender(new TakionFeedbackSink(takion));
+        Pad.Arm(sender);
+
         var host = new ManagedStreamRunHost(
             takion,
             peer,
             new ManagedCongestionControl(new ManagedPacketStats(), new TakionCongestionSink(takion), lossMax),
-            new ManagedFeedbackSender(new TakionFeedbackSink(takion)),
+            sender,
             events,
             messages,
             new BaselineStages(baseline),

@@ -152,15 +152,16 @@ public class RunEventsReachTheApplicationTests(ITestOutputHelper output)
     }
 
     /// <summary>
-    /// PP783 IS WHAT THIS UNBLOCKS, and the reason it is a dependency rather than a neighbour.
+    /// PP783 IS WHAT THIS UNBLOCKED, and the reason it was a dependency rather than a neighbour.
     ///
-    /// The flip hands the stream phase to the port, and CHIAKI_EVENT_CONNECTED is raised inside
-    /// streamconnection.c - so the moment the C stops running the stream, the only session event
-    /// StreamRun waits on stops existing. Its wait is not a poll it can outlive: WaitAny answers
-    /// non-zero on a timeout and the run returns having drawn nothing.
+    /// CHIAKI_EVENT_CONNECTED is raised inside streamconnection.c, so the moment the C stopped
+    /// running the stream, the only session event StreamRun waits on stopped existing. Its wait is
+    /// not a poll it can outlive: WaitAny answers non-zero on a timeout and the run returns having
+    /// drawn nothing. This forward is now the ONLY source of that event on this tree, which is why
+    /// the two tasks could not land in either order.
     /// </summary>
     [Fact]
-    public void TheEventTheFlipWouldOtherwiseRemoveIsTheOneForwardedHere()
+    public void TheEventTheFlipRemovedIsTheOneForwardedHere()
     {
         Assert.Contains(ChiakiEventType.Connected, ManagedSessionEvents.RaisedByTheFramePath);
         Assert.Contains(ChiakiEventType.Connected, SessionEventRouter.Routed);
@@ -168,8 +169,8 @@ public class RunEventsReachTheApplicationTests(ITestOutputHelper output)
         if (StreamPhaseDriver.LocateSession() is not { } session)
             return;
 
-        // The C still raises it today, from the file the flip takes out of the run.
-        Assert.True(StreamPhaseDriver.TheCRunsIt(File.ReadAllText(session)));
+        // The C no longer runs the stream, so nothing in lib raises it any more.
+        Assert.False(StreamPhaseDriver.TheCRunsIt(File.ReadAllText(session)));
     }
 
     /// <summary>The phase still composes with the listener attached, and takes no new argument for it.</summary>
