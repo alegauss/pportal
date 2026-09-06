@@ -243,7 +243,10 @@ public sealed class ManagedStreamPhase : IDisposable
             ecdhPubKey: ecdh.PublicKey,
             ecdhSig: ecdh.Signature);
 
-        return new StreamMessage(DataType: 0, PayloadType: 0, Body: body);
+        // PP778: the BIG goes out on channel ONE, and this spelled zero. The C's two senders both
+        // pass 1 there - chiaki_takion_send_message_data(&takion, 1, 1, ...) - and the payload type
+        // is zero because a BIG has none: it is not one of the typed stream messages.
+        return new StreamMessage(DataType: StreamMessages.OrdinaryData, PayloadType: 0, Body: body);
     }
 
     /// <summary>

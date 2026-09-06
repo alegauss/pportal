@@ -86,6 +86,25 @@ public class TakionMessageSinkTests(ITestOutputHelper output) : IDisposable
         Assert.Equal(TakionSendStage.SentAndHeld, sink.Last?.Stage);
         Assert.Equal(1, sink.Sent);
         Assert.Equal(1, takion.DataSent);
+
+        // PP778: AND THE TWO FIELDS ARE THE RIGHT WAY ROUND, read off the datagram that arrived.
+        //
+        // The C calls chiaki_takion_send_message_data(takion, chunk_flags, channel, ...) as
+        // (takion, 1, data_type, ...), so the flags are always one and the data type is the CHANNEL
+        // at payload+4. This sink held them exchanged: every message went out on channel zero with
+        // its data type in the flags, which a console acknowledges and acts on none of.
+        Assert.True(TakionMessageIntake.HeadParses(arrived, 0x0000_4a4a, out TakionInboundHeader header));
+        Assert.Equal(TakionMessageSink.StreamChunkFlags, header.ChunkFlags);
+
+        ReadOnlySpan<byte> payload = arrived.AsSpan(1 + TakionHandshake.MessageHeaderSize);
+        Assert.Equal(
+            heartbeat.DataType,
+            System.Buffers.Binary.BinaryPrimitives.ReadUInt16BigEndian(
+                payload[TakionDataPush.ChannelOffset..]));
+
+        // And the byte the receive side reads as a type is written as zero by every send, which is
+        // the line in takion.c directly under the channel.
+        Assert.Equal(0, payload[TakionDataDrain.DataTypeOffset]);
     }
 
     /// <summary>

@@ -26,7 +26,6 @@
 - ⏳ **PP773** (deps: PP777) **nothing turns a takion event into the host's signal, so every state the run waits on times out** — The wire is built and holds over loopback; what it cannot be shown against is a console, which acks the BIG and never bangs. → §PP773
 - 💭 **PP776** (deps: PP773 ⏳) **a seam filled by a refusal reads as reached, so the sweep cannot tell a stub from an implementation** — PP773 filled IBangKeying with a class that says no at the derive, and SeamReach's last row left - reporting a seam closed while the derivation it stands for is unwritten. → §PP776
 - 📋 **PP777** (deps: —) **the BIG's launch spec is hidden with a zeroed rpcrypt, so the console acks it and never bangs** — The four values come off the session now, and the console still only acks: the framing under them puts the data type in the wrong field. → §PP777
-- 📋 **PP778** (deps: —) **every stream message goes out with the data type in the chunk flags and the channel left at zero** — The C puts the data type in the channel field and always sends chunk flags of one; the sink does the reverse, so a console acks each message and acts on none. → §PP778
 
 ## Block G — Test discipline
 
