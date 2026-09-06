@@ -1,4 +1,4 @@
-using ChiakiNg.Native;
+﻿using ChiakiNg.Native;
 
 namespace ChiakiNg.Protocol;
 
@@ -34,8 +34,15 @@ public interface IStreamRunHost
     /// member of the host alone, so the walk could not call it and did not - which
     /// <see cref="StreamConnectionStatesSource.EveryStateStillClearsBothFlags"/> already refuses of
     /// the C, in a check that was only ever pointed outward.
+    ///
+    /// PP773: AND THE STATE ITSELF, because the C writes all three together and this carried two.
+    /// Five times in streamconnection.c the state is assigned and the two flags cleared on the next
+    /// two lines, and the state is what the handler thread reads to decide which of three handlers a
+    /// protobuf reaches. A run that cleared the flags without saying which state it had entered left
+    /// that decision with nothing to make it on.
     /// </summary>
-    void BeginState();
+    /// <param name="state">The state being entered, which is where arriving messages are routed by.</param>
+    void BeginState(StreamState state);
 
     /// <summary>stream_connection_send_big.</summary>
     bool SendBig();
@@ -250,7 +257,7 @@ public static class ManagedStreamRun
         // where the C puts it. An event raised while the connect is running must count; one raised
         // before it must not. Clearing after the action drops the first, and clearing at the wait
         // drops both.
-        host.BeginState();
+        host.BeginState(StreamState.TakionConnect);
 
         if (!host.ConnectTakion())
             return Unwind(host, StreamBuilt.VideoReceiver, ChiakiError.Unknown, unlockFirst: true);
@@ -281,7 +288,7 @@ public static class ManagedStreamRun
         rung = StreamRung.TakionConnectAwaited;
 
         // STATE_EXPECT_BANG, cleared before the send for PP774's reason.
-        host.BeginState();
+        host.BeginState(StreamState.ExpectBang);
 
         if (!host.SendBig())
             return Disconnect(host, ChiakiError.Unknown);
@@ -307,7 +314,7 @@ public static class ManagedStreamRun
         // STATE_EXPECT_STREAMINFO. Cleared before the replay, which is the action here - a
         // streaminfo buffered during the bang is replayed INTO this state, so a clear after it
         // would throw away the very arrival the replay exists to deliver.
-        host.BeginState();
+        host.BeginState(StreamState.ExpectStreaminfo);
 
         StreamWaitState after = default;
         if (host.HasEarlyStreaminfo)
@@ -348,7 +355,7 @@ public static class ManagedStreamRun
 
         // STATE_IDLE, the fourth the C clears - so a flag left over from the streaminfo does not
         // end the idle loop on its first pass.
-        host.BeginState();
+        host.BeginState(StreamState.Idle);
 
         rung = StreamRung.Connected;
 

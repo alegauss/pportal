@@ -117,6 +117,7 @@ public sealed class ManagedTakion : ITakionLoopHost, IDisposable
         uint tagLocal, Action<ReadOnlySpan<byte>>? dispatch = null, IAvArmSink? av = null)
     {
         Handshake = new TakionHandshakeClient(tagLocal);
+        TagLocal = tagLocal;
         SeqNumLocal = tagLocal;
         this.dispatch = dispatch;
 
@@ -128,6 +129,15 @@ public sealed class ManagedTakion : ITakionLoopHost, IDisposable
 
     /// <summary>The handshake, which owns both tags.</summary>
     public TakionHandshakeClient Handshake { get; }
+
+    /// <summary>
+    /// PP773: tag_local, which every inbound control message must carry to be this session's.
+    ///
+    /// Kept because a reader of the datagrams needs it and the handshake's copy is not reachable
+    /// without asking that object what it is for. <see cref="TakionMessageIntake.Read"/> refuses a
+    /// header carrying any other tag, which is the C's first gate on a message.
+    /// </summary>
+    public uint TagLocal { get; }
 
     /// <summary>The key-position ledger, which PP677 put in managed code.</summary>
     public ManagedKeyState Ledger { get; } = new();

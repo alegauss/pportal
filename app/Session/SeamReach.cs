@@ -39,20 +39,23 @@ public static class SeamReach
     /// <summary>
     /// The seams nothing in app fills, and what each is waiting for.
     ///
-    /// ONE, and it is a seam on purpose. PP745 took IStreamRunHost off this list, PP747 the event
-    /// sink, PP748 the message sink, PP749 the congestion sink, PP750 the feedback sink and PP751
-    /// the audio frames - none of them adding a row doing it, which is what PP741 counted the cost
-    /// of when PP740 closed one seam and opened another in a single commit.
+    /// NONE. PP745 took IStreamRunHost off this list, PP747 the event sink, PP748 the message sink,
+    /// PP749 the congestion sink, PP750 the feedback sink, PP751 the audio frames and PP773 the last
+    /// one - none of them adding a row doing it, which is what PP741 counted the cost of when PP740
+    /// closed one seam and opened another in a single commit.
+    ///
+    /// PP773 IS THE ROW WORTH READING TWICE, because what filled IBangKeying REFUSES. StreamArrivals
+    /// hands the bang handler a keying that says no at the derive, so a console's bang now reaches
+    /// the handler and fails there rather than reaching nothing at all. That is a real change to the
+    /// shape - the interface is consumed by something constructible in app, which is the only
+    /// question this sweep asks - and it is NOT the derivation being ported. What reports the
+    /// missing derivation is a roadmap line, not this list, and a reader who takes an empty list for
+    /// a finished port would be reading it as a census of behaviour rather than of shape.
     ///
     /// The list is kept rather than deleted with its last output row: what would report a
     /// counterpart going back to being a shape is this list, and its absence would report nothing.
     /// </summary>
-    public static IReadOnlyList<UnreachedSeam> Expected { get; } =
-    [
-        new(
-            "IBangKeying",
-            "Deliberate: the keying a bang leads to is OpenSSL's, and the port keeps it behind a seam."),
-    ];
+    public static IReadOnlyList<UnreachedSeam> Expected { get; } = [];
 
     /// <summary>Every public interface the assembly declares.</summary>
     public static IReadOnlyList<string> DeclaredIn(Assembly app)

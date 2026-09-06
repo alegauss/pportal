@@ -301,12 +301,17 @@ public class ManagedStreamRunHostTests(ITestOutputHelper output)
         ManagedStreamRunHost host = Host();
 
         host.Signal(finished: true, shouldStop: true, remoteDisconnected: true, failed: true);
-        host.BeginState();
+        host.BeginState(StreamState.ExpectBang);
 
         Assert.False(host.Flags.Finished);
         Assert.False(host.Flags.Failed);
         Assert.True(host.Flags.ShouldStop);
         Assert.True(host.Flags.RemoteDisconnected);
+
+        // PP773: and the state moved with them, which is the third line of the C's triple. A host
+        // that cleared the flags without recording where the walk had got to left the dispatch's
+        // third layer deciding by a state nobody had written.
+        Assert.Equal(StreamState.ExpectBang, host.State);
     }
 
     /// <summary>

@@ -75,16 +75,22 @@ public class ProtobufReadersTests(ITestOutputHelper output)
         }
     }
 
-    /// <summary>Three readers decide on a console's message, and one round trip does not.</summary>
+    /// <summary>
+    /// Four readers decide on a console's message, and one round trip does not.
+    ///
+    /// PP773 is the fourth: the idle arm switches on the payload type, which the C reaches only past
+    /// a pb_decode that has already enforced the required set. A row arriving here is a new place
+    /// this port DECIDES on bytes a console sent, which is the count PP733 wanted stated.
+    /// </summary>
     [Fact]
-    public void ThreeDecideAndOneComparesGenerators()
+    public void FourDecideAndOneComparesGenerators()
     {
-        Assert.Equal(3, ProtobufReaders.All.Count(one => one.Reading == ProtobufReading.ChecksRequired));
+        Assert.Equal(4, ProtobufReaders.All.Count(one => one.Reading == ProtobufReading.ChecksRequired));
         Assert.Single(ProtobufReaders.All, one => one.Reading == ProtobufReading.RoundTrip);
 
-        // Four sites decide and two compare, which is the number a reader of the count wants.
+        // Five sites decide and two compare, which is the number a reader of the count wants.
         Assert.Equal(
-            4,
+            5,
             ProtobufReaders.All.Where(one => one.Reading == ProtobufReading.ChecksRequired).Sum(one => one.Sites));
     }
 

@@ -91,6 +91,11 @@ public static class ProtobufReaders
             ProtobufReading.ChecksRequired,
             "PP732: the audio header is required, and a stream configured without one was never valid."),
         new(
+            @"app\Protocol\StreamArrivals.cs",
+            1,
+            ProtobufReading.ChecksRequired,
+            "PP773: the idle arm switches on the type, and the C reaches that switch only past pb_decode."),
+        new(
             @"app\SelfTest.cs",
             2,
             ProtobufReading.RoundTrip,

@@ -78,6 +78,9 @@ public sealed class ManagedStreamRunHost : IStreamRunHost
     private byte[]? early;
     private string? reason;
 
+    // STATE_IDLE, which is what chiaki_stream_connection_init leaves it at.
+    private StreamState current = StreamState.Idle;
+
     /// <summary>Everything the run needs from the world, none of it built here.</summary>
     public ManagedStreamRunHost(
         ManagedTakion takion,
@@ -240,11 +243,35 @@ public sealed class ManagedStreamRunHost : IStreamRunHost
             early = held;
     }
 
-    /// <summary>Clears the flags a state's step begins with, as the C does before each wait.</summary>
-    public void BeginState()
+    /// <summary>
+    /// PP773: where the walk is, which is what an ARRIVING message is routed by.
+    ///
+    /// The C keeps it on the stream connection beside the two flags, and its handlers read it under
+    /// the same mutex the run's wait takes - so a protobuf reaching the dispatch is a bang, a
+    /// streaminfo or an idle message depending on nothing but this. Read under the lock for that
+    /// reason: the reader is the takion's thread and the writer is the run's.
+    ///
+    /// It starts at <see cref="StreamState.Idle"/> because chiaki_stream_connection_init does, which
+    /// is not the state the run's first entry sets - so a message arriving before the walk begins
+    /// goes to the idle handler rather than to a bang nobody has asked for yet.
+    /// </summary>
+    public StreamState State
+    {
+        get
+        {
+            lock (gate)
+                return current;
+        }
+    }
+
+    /// <summary>Enters a state: the assignment and the two clears, which the C writes together.</summary>
+    public void BeginState(StreamState state)
     {
         lock (gate)
+        {
+            current = state;
             flags = flags with { Finished = false, Failed = false };
+        }
     }
 
     /// <inheritdoc/>
@@ -365,6 +392,16 @@ public sealed class ManagedStreamRunHost : IStreamRunHost
         }
     }
 
+    /// <summary>
+    /// PP773: where a replayed streaminfo goes, which is the same handler the live one reaches.
+    ///
+    /// Installed rather than constructed, because the handler needs this host and this host holds
+    /// the buffer - <see cref="StreamArrivals.Replay"/> is the method the composition root joins
+    /// here. Absent leaves the replay doing what it did before this task: freeing the message and
+    /// answering with the flags as they stood, which is the C's replay minus the handler.
+    /// </summary>
+    public Action<byte[]>? ReplayHandler { get; set; }
+
     /// <inheritdoc/>
     public StreamWaitState ReplayEarlyStreaminfo()
     {
@@ -372,7 +409,15 @@ public sealed class ManagedStreamRunHost : IStreamRunHost
         {
             // Freed after the handler runs, as the C frees the buffered message; a second replay
             // would be the same message handled twice.
+            byte[]? held = early;
             early = null;
+
+            // Under the lock, which is where the C runs it: the state mutex spans the whole handler,
+            // so a wait that returns has always seen the flag the handler left. A managed monitor is
+            // re-entrant, so the Signal inside takes the lock this call already holds.
+            if (held is not null)
+                ReplayHandler?.Invoke(held);
+
             return flags;
         }
     }

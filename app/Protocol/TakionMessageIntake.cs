@@ -73,8 +73,15 @@ public static class TakionMessageIntake
     /// <param name="keyState">
     /// The ledger the position is committed to. The C commits on every parsed message, so this is
     /// called before the switch and its answer is kept whatever the switch then decides.
+    ///
+    /// PP773: THE INTERFACE AND NOT THE NATIVE CLASS, which is what let a live takion reach this. It
+    /// was <see cref="KeyState"/>, the OpenSSL-backed one, and <see cref="ManagedTakion"/> keeps a
+    /// <see cref="ManagedKeyState"/> - so the only callers this function could ever have were tests
+    /// holding the other implementation. Both are ledgers and the C has one; the parameter now says
+    /// so.
     /// </param>
-    public static TakionMessageReading Read(ReadOnlySpan<byte> datagram, uint tagLocal, KeyState keyState)
+    public static TakionMessageReading Read(
+        ReadOnlySpan<byte> datagram, uint tagLocal, IKeyPositionLedger keyState)
     {
         ArgumentNullException.ThrowIfNull(keyState);
 

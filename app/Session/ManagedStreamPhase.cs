@@ -124,22 +124,45 @@ public sealed class ManagedStreamPhase : IDisposable
         SessionBaseline baseline,
         double lossMax)
     {
-        var takion = new ManagedTakion(Tag());
+        // PP773: THE CALLBACK IS TIED IN A KNOT, and the knot is the C's own. The takion's dispatch
+        // reaches the arrivals, the arrivals raise the host's flags, and the host owns the takion -
+        // so one of the three has to be built before something it needs exists. The C resolves it
+        // the same way, passing &stream_connection to chiaki_takion_connect after the struct is
+        // there and before it is finished; here the closure reads a local the line below assigns.
+        StreamArrivals? arrivals = null;
+
+        var takion = new ManagedTakion(Tag(), datagram => arrivals?.Datagram(datagram));
+
         var messages = new TakionMessageSink(takion);
         var outbound = new StreamOutbound(messages);
+        var events = new ManagedSessionEvents();
 
-        return new ManagedStreamRunHost(
+        var host = new ManagedStreamRunHost(
             takion,
             peer,
             new ManagedCongestionControl(new ManagedPacketStats(), new TakionCongestionSink(takion), lossMax),
             new ManagedFeedbackSender(new TakionFeedbackSink(takion)),
-            new ManagedSessionEvents(),
+            events,
             messages,
             new BaselineStages(baseline),
             () => Big(session),
             () => new ManagedVideoReceiver(video, outbound),
             () => new ManagedAudioReceiverPair(new NoFrames(), new NoFrames()),
             () => new ManagedAudioReceiverPair(new NoFrames(), new NoFrames()));
+
+        // No keying: the derivation is OpenSSL's and IBangKeying is a seam on purpose, so a
+        // console's bang reaches the handler and is refused at the derive. That is the rung this
+        // root can carry a live session to, and it is one wait further than it could before.
+        arrivals = new StreamArrivals(host, messages, keying: null, data: new ManagedStreamData(events))
+        {
+            TagLocal = takion.TagLocal,
+            Ledger = takion.Ledger,
+        };
+
+        // And the replay, which is the same handler over the message the bang state buffered.
+        host.ReplayHandler = arrivals.Replay;
+
+        return host;
     }
 
     /// <summary>
