@@ -53,8 +53,19 @@ public static class SeamReach
     ///
     /// The list is kept rather than deleted with its last output row: what would report a
     /// counterpart going back to being a shape is this list, and its absence would report nothing.
+    ///
+    /// PP790 PUT A ROW BACK ON IT, which is the sweep doing its job on the commit that made the
+    /// gap rather than three commits later. A run that takes a host interface has a shape until
+    /// something implements it, and PP773 is what leaving that unsaid costs.
     /// </summary>
-    public static IReadOnlyList<UnreachedSeam> Expected { get; } = [];
+    public static IReadOnlyList<UnreachedSeam> Expected { get; } =
+    [
+        new(
+            "ISenkushaRunHost",
+            "PP790's run takes it and PP791 writes what fills it. A run whose host only doubles "
+                + "implement is a sequence nothing performs - PP669's rule, and the state PP745 "
+                + "took the stream connection's own host out of."),
+    ];
 
     /// <summary>Every public interface the assembly declares.</summary>
     public static IReadOnlyList<string> DeclaredIn(Assembly app)

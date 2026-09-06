@@ -286,29 +286,6 @@ WHAT IS OWED HERE IS THAT GUARD FOR TAKION'S THREE, and the floor arithmetic bes
 how many cases each of the three carries, so the new floor is derived from the removal
 rather than read off a failing run.
 
-### §PP790 The run, over a host that records what it asks
-
-PP788 gives the states and PP789 the measurements; neither is a run. What joins them is
-one function walking nine states: connect the takion, wait, set the version, wait for
-the protocol ack, send the BIG, wait for the bang, then the three tests, then a
-disconnect from the label every exit passes through.
-
-THE ORDERING IS THE DELIVERABLE, which is PP295's own sentence and the reason its run
-takes a host interface. A senkusha that made every one of these calls in some other
-order would pass any comparison of messages and fail a session - and there is no console
-in a gate, so the only way to assert a sequence is to record what it ASKS and read the
-trace.
-
-PP295 ALSO FOUND ITS TEARDOWN TABLE WRONG while writing the run, at every rung, and
-three of the four were hidden by null-safe frees. That is the failure this shape
-catches: a port reproducing every function and not their sequence. Senkusha's teardown
-is smaller - one disconnect and a close - and its `disconnect:` label is reached from
-eleven places, which is eleven chances to leave by a path nobody wrote down.
-
-WHAT THIS DOES NOT DO is talk to anything. The host is an interface and its
-implementation is the next line's; PP746 is the shape after that, where the same run
-goes over a real socket against a responder rather than a script.
-
 ### §PP791 The host, and the wire from an arrival to a flag
 
 PP790's run takes a host interface, and an interface only test doubles implement is a
