@@ -214,6 +214,30 @@ layout. That waits on a console, which is why this is a line rather than a chang
 the capture's format already refuses a file written to the older shape, so widening it
 is a version the reader can tell apart.
 
+### §PP762 The handover nobody installs
+
+Found by running one, which is the only way it could have been. PP696's gate is green
+and every piece exists: the handover is two predicate conditions and a reason, the
+runner waits on it and builds a host, the trampoline is C and installs both callbacks in
+one call. Nothing calls the install.
+
+So a live session reaches the stream phase, finds stream_run_cb null, logs that it has
+nowhere to go and returns UNINITIALIZED. A five-second capture recorded 23 datagrams
+where the same run used to record four thousand: senkusha's, and then the session ends.
+
+WHY NO CHECK SAW IT. SeamReach counts interfaces no class implements, and these are
+classes. The run-host census counts members with no counterpart, and every member has
+one. What is missing is not a type or a member - it is a CALL, at a composition root
+nothing models, on the one path the gate cannot run.
+
+THE SHAPE IS PP741'S, one level up. That task made every seam-closing commit ship its
+own consumer. PP696 shipped one for the run and left the wiring that reaches it to
+nobody, which is the same failure where the seam is a function pointer.
+
+What this owes is the composition root - a handover made beside the session, installed
+before it starts, a runner on its own thread - and a check that notices the day nothing
+calls it.</section_body> </invoke>
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry
