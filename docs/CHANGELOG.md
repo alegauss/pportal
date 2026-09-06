@@ -660,6 +660,7 @@
 - ✅ **PP738** **the run-host census answers two members with an audio seam only doubles implement, and calls its list empty** — Both censuses now answer the reached question with the same three lines, and this one names its two audio rows rather than reporting only that nothing is owed.
 - ✅ **PP740** **nothing managed receives audio, so the run's two audio arms answer with a seam only the test project implements** — ManagedAudioReceiver ports the jitter buffer and a pair puts two behind IAudioSink, so the run host's seam-only axis is empty and both sound arms reach shipping code.
 - ✅ **PP736** **the stats count one push per audio packet against a ceiling that advances per unit, and nothing states the ratio** — Measured on the 439 Opus heads a PS5 sent: one source unit per packet, so the stats' count and span advance together and the feared loss report does not exist.
+- ✅ **PP741** **seven interfaces in app are implemented only by test doubles, and only two of them were ever counted** — SeamReach asks the reached question of every public interface the assembly declares, so the seven are a declared list with a reason each rather than two censuses' blind spot.
 
 ## Block G — Test discipline
 

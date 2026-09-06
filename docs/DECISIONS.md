@@ -77,6 +77,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP738** **the run-host census answers two members with an audio seam only doubles implement, and calls its list empty** — Owed and reached are two axes and a census owes both: a counterpart that exists and a counterpart something calls are different claims about the same row.
 - ✅ **PP740** **nothing managed receives audio, so the run's two audio arms answer with a seam only the test project implements** — The audio seam is answered by two receivers and not one object: the C holds two instances, and sharing frame_index_prev between sound and haptics compiles and desynchronises both.
 - ✅ **PP736** **the stats count one push per audio packet against a ceiling that advances per unit, and nothing states the ratio** — The audio units-per-packet ratio is one, held against PP608's capture; senkusha's probes share the audio base type and are excluded on the codec the receiver already refuses.
+- ✅ **PP741** **seven interfaces in app are implemented only by test doubles, and only two of them were ever counted** — The reached question is asked of the assembly, not of a census's rows; and it is asked by reflection, because the grep that filed this missed one seam and invented two.
 
 ## Block G — Test discipline
 

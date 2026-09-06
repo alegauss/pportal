@@ -353,31 +353,6 @@ WHAT WOULD HOLD IT is a question about the managed side rather than the C: does 
 constant answering this macro now exist? The port has no file-to-type map to ask
 through, and building one for eleven rows is the cost to weigh.
 
-### §PP741 A seam census that watches one census
-
-PP738 asked a second question of the run host's census: not whether a member has a
-counterpart, but whether the counterpart is REACHED. It found two rows answering with
-IAudioSink, an interface only test doubles implemented. PP740 wrote that implementation
-and the axis went to empty.
-
-IT WENT EMPTY AND THE SHAPE DID NOT GO AWAY. ManagedAudioReceiver takes IAudioFrameSink,
-and nothing in app implements that either - so the same gap moved one layer out, in the
-commit that closed it, and the census reported success. A sweep of app's own interfaces
-counts eight in that state: IAudioFrameSink, IAvArmSink, IBangKeying, ICongestionSink,
-IFeedbackSink, ISessionEventSink, IStreamRunHost and IVideoReceiverOutbound. Two of them
-were ever watched.
-
-THE PREDICATE ALREADY EXISTS AND IS SCOPED TOO NARROWLY. IsSeamOnly is three lines of
-reflection over one census's rows; asked of every public interface the assembly
-declares, it answers the same question about all eight. That is PP705's shape - four
-sweeps each hand-writing an exclusion, replaced by one rule.
-
-AND NOT ALL EIGHT ARE DEFECTS. IStreamRunHost is a seam on purpose until something
-drives a live stream; a bang keying is handed in by whatever holds the keys. So the
-deliverable is a declared list with a reason each, asserted in both directions, rather
-than a demand that the count be zero - which is what SeamOnly already is, one scope
-wider.
-
 ### §PP742 Real AV heads no parser will take
 
 PP608's capture keeps eighteen bytes of each datagram, chosen to reach the takion header
