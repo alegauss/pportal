@@ -72,6 +72,14 @@ public sealed class ManagedStreamRunner
 
         Host = build();
 
+        // PP769: THE SOCKET THE SESSION HANDED OVER, given to the host before it connects.
+        //
+        // The C's stream connection never opens one - chiaki_takion_connect takes data_sock, which
+        // senkusha established and measured the link on. A run that opened its own started a second
+        // conversation on the well-known port, and a live console did not answer it. Set here rather
+        // than in the builder because only the seam knows it, and only after the start.
+        Host.AdoptSocket(handover.Socket);
+
         ChiakiError error = ManagedStreamRun.Run(Host);
 
         // PP755: read off the host rather than handed in. The disconnect handler writes it there,

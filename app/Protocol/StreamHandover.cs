@@ -97,6 +97,24 @@ public sealed class StreamHandover : IDisposable
     }
 
     /// <summary>
+    /// PP769: the socket the session handed the run, or null where it handed none.
+    ///
+    /// The far side adopts it instead of connecting: the C's stream connection never opens one, and
+    /// a managed run that did started a conversation the console was not in. BORROWED - the session
+    /// frees it after the run returns - so whoever wraps it must not own it.
+    /// </summary>
+    public nint? Socket
+    {
+        get
+        {
+            ObjectDisposedException.ThrowIf(handle == IntPtr.Zero, this);
+
+            long raw = HandoverSocket(handle);
+            return raw < 0 ? null : (nint)raw;
+        }
+    }
+
+    /// <summary>
     /// PP696: whether the C session's stop has reached this handover.
     ///
     /// The session thread stops with four wake-ups and this is the fourth - the one that used to be
@@ -167,6 +185,10 @@ public sealed class StreamHandover : IDisposable
         CallingConvention = CallingConvention.Cdecl)]
     [return: MarshalAs(UnmanagedType.I1)]
     private static extern bool HandoverStopped(IntPtr handover);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_stream_handover_socket",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern long HandoverSocket(IntPtr handover);
 
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_stream_handover_create",
         CallingConvention = CallingConvention.Cdecl)]

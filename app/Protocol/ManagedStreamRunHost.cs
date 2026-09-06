@@ -268,6 +268,15 @@ public sealed class ManagedStreamRunHost : IStreamRunHost
         return Haptics is not null;
     }
 
+    /// <summary>
+    /// PP769: the socket the session handed over, which the takion runs on instead of connecting.
+    ///
+    /// Null leaves it opening its own, which is what every test does and what a run driven from
+    /// nowhere has to do. A live session hands one: the C's stream connection never opens a socket,
+    /// and a managed run that did started a conversation the console was not in the middle of.
+    /// </summary>
+    public void AdoptSocket(nint? socket) => takion.Adopted = socket;
+
     /// <inheritdoc/>
     public bool ConnectTakion() => takion.Connect(peer, ConnectTimeoutMs).Error == ChiakiError.Success;
 

@@ -189,6 +189,31 @@ flag, its count loop is guarded by the return above it, peek writes both out-poi
 where pull guards its own, and takion still passes NULL and still drops on a bad MAC.
 Repair any upstream and the port's copy becomes the divergence, on the next run.
 
+### §PP770 One code for eight rungs
+
+PP769 got a live handover as far as the run: the C hands over, the runner takes it, the
+takion adopts the session's socket. The run then answered Unknown, and Unknown is what
+it answers for every rung it has.
+
+ManagedStreamRun.Run walks eight steps - three receivers, the connect, congestion
+control, the BIG, the feedback sender, then the wait - and each failure leaves by the
+same cascade with the same code. So a run that failed at the connect and one that failed
+at the BIG are the same sentence, and locating either costs instrumenting the tree and
+asking a console again.
+
+THE C DOES NOT DO THIS. Every one of those steps logs what it was before it goes, which
+is how a person reading a session log knows where it stopped. The port reproduced the
+ordering and the teardown faithfully and dropped the half that says which.
+
+WHAT IS OWED IS THE RUNG, not a new error code per step. The codes are the C's and
+changing them would be a departure; what is missing is which step the run got to, which
+the host already knows because it is the thing being called. A field on the outcome, or
+a sink the run pushes each step into, and the ordering checks already written stay
+exactly as they are.
+
+Found the expensive way, which is the argument: a rebuild, a console and eight seconds
+to learn one word.</section_body> </invoke>
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry

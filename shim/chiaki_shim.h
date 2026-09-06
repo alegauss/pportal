@@ -250,6 +250,19 @@ CHIAKI_SHIM_API void chiaki_shim_stream_run_install(void *session, void *handove
  */
 CHIAKI_SHIM_API int32_t chiaki_shim_stream_handover_cancel(void *handover);
 
+/**
+ * PP769: the socket the session handed the run, or -1 where it handed none.
+ *
+ * The C's stream connection does not open a socket - chiaki_takion_connect takes the caller's, and
+ * for the stream phase that is data_sock, which senkusha established and measured the link on. A
+ * managed run that opened its own started a second conversation on the well-known port and the
+ * console did not answer it, which PP759's contract had reasoned would be fine.
+ *
+ * BORROWED. The session owns it and frees it after the run returns, so the far side wraps it
+ * without owning it and closes nothing.
+ */
+CHIAKI_SHIM_API int64_t chiaki_shim_stream_handover_socket(void *handover);
+
 /** Whether the session's stop has reached this handover. */
 CHIAKI_SHIM_API bool chiaki_shim_stream_handover_stopped(void *handover);
 

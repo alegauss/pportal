@@ -289,6 +289,35 @@ public sealed class TakionUdpWire : ITakionHandshakeWire, IDisposable
         return new TakionUdpWire(socket);
     }
 
+    /// <summary>
+    /// PP769: a wire over a socket somebody else made, connected and owns.
+    ///
+    /// The C's stream connection does not open one. chiaki_takion_connect takes the caller's socket,
+    /// and for the stream phase that caller is session.c handing over data_sock - the socket senkusha
+    /// established and measured the link on. A run that opened its own instead started a second
+    /// conversation on the well-known port, and a console in the middle of the first one does not
+    /// answer it. That is measured: a live handover failed the moment it tried.
+    ///
+    /// OWNERSHIP DOES NOT CROSS. The handle stays the C's, so this wraps it without owning it and
+    /// closing it is not this side's to do - a Socket built the ordinary way would close the
+    /// session's socket underneath it the first time anything disposed a takion.
+    /// </summary>
+    /// <param name="handle">A connected UDP socket the caller keeps.</param>
+    public static TakionUdpWire Adopt(nint handle)
+    {
+        var borrowed = new SafeSocketHandle(handle, ownsHandle: false);
+
+        try
+        {
+            return new TakionUdpWire(new Socket(borrowed));
+        }
+        catch
+        {
+            borrowed.Dispose();
+            throw;
+        }
+    }
+
     /// <summary>The address the socket bound to on connect, which is what the peer sees.</summary>
     public IPEndPoint LocalEndPoint => (IPEndPoint)socket.LocalEndPoint!;
 

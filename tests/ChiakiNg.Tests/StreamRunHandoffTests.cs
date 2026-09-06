@@ -115,21 +115,35 @@ public class StreamRunHandoffTests(ITestOutputHelper output)
     }
 
     /// <summary>
-    /// The socket crosses even though nothing on the far side reads it.
+    /// PP769: THE SOCKET IS READ, and this contract said it would not be.
     ///
-    /// The managed runner opens its own through the host it builds - it takes a builder and no
-    /// socket, which is read here rather than claimed. Passing it anyway keeps the signature the one
-    /// a runner that wanted it could use, instead of a change every caller has to be found for.
+    /// PP759 reasoned the managed runner opens its own through the host it builds, so the parameter
+    /// was parity and nothing more. It was right about what the runner did and wrong about what that
+    /// costs: a live handover failed the moment it connected, because the C's stream connection never
+    /// opens a socket - chiaki_takion_connect takes data_sock, and a second conversation on the
+    /// well-known port is not the one the console is in the middle of.
+    ///
+    /// So the parameter was right and its stated reason was the part that had to be measured. This
+    /// holds the correction rather than deleting the claim, because the claim is what the trial was
+    /// against.
     /// </summary>
     [Fact]
-    public void TheSocketCrossesEvenThoughTheRunnerOpensItsOwn()
+    public void TheSocketIsReadAfterAll()
     {
-        Assert.True(StreamRunHandoff.TheSocketCrossesUnused);
+        Assert.False(StreamRunHandoff.TheSocketCrossesUnused);
 
-        // The runner's only constructor takes how to build a host, and nothing else.
+        // The runner still takes only a builder - what changed is that it hands the host the
+        // handover's socket after the start, which is the only moment the seam has one.
         Assert.Equal(
             typeof(Func<ManagedStreamRunHost>),
             typeof(ManagedStreamRunner).GetConstructors().Single().GetParameters().Single().ParameterType);
+
+        // And the host takes one, which is what a run driven from a live session hands it.
+        Assert.NotNull(typeof(ManagedStreamRunHost).GetMethod(nameof(ManagedStreamRunHost.AdoptSocket)));
+
+        // A handover nobody started has none, so a host built from one opens its own as before.
+        using var handover = new StreamHandover();
+        Assert.Null(handover.Socket);
     }
 
     /// <summary>

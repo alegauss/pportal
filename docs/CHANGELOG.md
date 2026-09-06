@@ -694,6 +694,7 @@
 - ✅ **PP762** **the stream phase is a callback now and nothing installs one, so a live session ends at senkusha** — The eleven parts compose in one class, the runner's thread goes up before the install, and the BIG is built late and refuses by naming which of its four pieces is missing.
 - ✅ **PP767** **the driver check counts a call inside a class nothing constructs, so a phase nobody uses reads as a driver** — The port's half is a path that opens a session and installs on it, so a composition root nothing constructs no longer reads as a driver.
 - ✅ **PP768** **the phase frees its handover while the runner still waits on it, so the gate crashes intermittently** — A cancel that sets the flag before both signals, a runner that reads it rather than building, and a Dispose that joins first and leaks rather than freeing under a waiter.
+- ✅ **PP769** **the managed run opens its own socket and the console's stream rides the one senkusha left, so a handover fails at once** — The socket crosses the trampoline, the runner and the host, and the takion adopts it without owning it; a live handover now reaches the run instead of failing at the connect.
 
 ## Block G — Test discipline
 

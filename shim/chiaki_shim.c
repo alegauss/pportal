@@ -2888,6 +2888,10 @@ typedef struct chiaki_shim_stream_handover_t
 	ChiakiBoolPredCond finished;
 	int32_t error;
 	char *reason;
+	/* PP769: the socket session.c hands the run, which the managed takion adopts rather than
+	 * opening its own. Kept as the value the callback was given: the session owns it and frees it
+	 * after the run, so nothing here closes it. */
+	int64_t data_sock;
 	/* PP696: set by the stop trampoline, read by the run's wait loop. A plain bool rather than a
 	 * third condition: the loop is already waking every slice, so nothing needs to be signalled -
 	 * and a stop that arrives between two slices is acted on at the next one either way. */
@@ -2903,6 +2907,11 @@ CHIAKI_SHIM_API void *chiaki_shim_stream_handover_create(void)
 	ChiakiShimStreamHandover *self = calloc(1, sizeof(ChiakiShimStreamHandover));
 	if(!self)
 		return NULL;
+
+	/* PP769: -1 and not the zero calloc leaves. Zero is a socket handle a caller could believe in,
+	 * and the far side has to tell "the session handed one" from "nobody has yet" - a run that
+	 * adopted handle zero would ask the runtime about something that is not a socket. */
+	self->data_sock = -1;
 
 	if(chiaki_bool_pred_cond_init(&self->started) != CHIAKI_ERR_SUCCESS)
 	{
@@ -3049,13 +3058,14 @@ static ChiakiErrorCode chiaki_shim_stream_run_trampoline(
 	ChiakiShimStreamHandover *self = (ChiakiShimStreamHandover *)user;
 	int32_t err;
 
-	/* The socket crosses for parity with the call this replaces and is not read: the managed runner
-	 * opens its own through the host it builds. Named rather than cast away, so the day one wants it
-	 * the parameter is already here. */
-	(void)data_sock;
-
 	if(!self)
 		return CHIAKI_ERR_INVALID_DATA;
+
+	/* PP769: THE SOCKET IS READ, and PP759 said it would not be. That contract reasoned the managed
+	 * runner opens its own - which it did, and a second conversation on the well-known port is not
+	 * the one the console is in the middle of. Recorded before the start so the far side finds it
+	 * already there when its wait returns. */
+	self->data_sock = data_sock ? (int64_t)*data_sock : -1;
 
 	err = chiaki_shim_stream_handover_start(self);
 	if(err != (int32_t)CHIAKI_ERR_SUCCESS)
@@ -3226,6 +3236,14 @@ CHIAKI_SHIM_API int32_t chiaki_shim_stream_handover_cancel(void *handover)
 	chiaki_bool_pred_cond_unlock(&self->finished);
 
 	return (int32_t)CHIAKI_ERR_SUCCESS;
+}
+
+/* PP769: the socket the run adopts, or -1 where the session handed none. */
+CHIAKI_SHIM_API int64_t chiaki_shim_stream_handover_socket(void *handover)
+{
+	ChiakiShimStreamHandover *self = (ChiakiShimStreamHandover *)handover;
+
+	return self ? self->data_sock : -1;
 }
 
 CHIAKI_SHIM_API bool chiaki_shim_stream_handover_stopped(void *handover)

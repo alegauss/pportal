@@ -115,12 +115,18 @@ public static class StreamRunHandoff
     public static bool TheReasonIsBorrowed => true;
 
     /// <summary>
-    /// Whether the socket crosses even though the managed runner opens its own.
+    /// Whether the socket crosses unused.
     ///
-    /// True. Stated rather than left implicit so that the day a runner wants it, what changes is a
-    /// body and not a signature every caller has to be found for.
+    /// FALSE, AND THIS CONTRACT SAID TRUE. PP759 reasoned that the managed runner opens its own
+    /// through the host it builds, so the parameter was parity and nothing more. It was right about
+    /// what the runner did and wrong about what that costs: PP769 drove a live handover and the run
+    /// failed the moment it connected, because the C's stream connection never opens a socket -
+    /// chiaki_takion_connect takes data_sock, which senkusha established and measured the link on,
+    /// and a second conversation on the well-known port is not the one the console is in.
+    ///
+    /// The parameter was right. The reason given for it was the part that had to be measured.
     /// </summary>
-    public static bool TheSocketCrossesUnused => true;
+    public static bool TheSocketCrossesUnused => false;
 
     /// <summary>
     /// How long one slice of the trampoline's wait is.

@@ -153,6 +153,19 @@ public sealed class ManagedTakion : ITakionLoopHost, IDisposable
     /// <summary>Whether this takion made the socket, which decides whether the teardown closes it.</summary>
     public bool OwnsSocket { get; private set; }
 
+    /// <summary>
+    /// PP769: a connected socket to run over instead of opening one, or null to open one.
+    ///
+    /// The stream phase's takion is handed session.c's data_sock rather than connecting: senkusha
+    /// established it, measured the link on it, and the console's stream continues over it. Set
+    /// before <see cref="Connect"/>, because that is where the choice is made and a takion that has
+    /// already connected has made it.
+    ///
+    /// The handle is BORROWED. It stays the C session's, which frees it after the run - so nothing
+    /// here closes it, and <see cref="OwnsSocket"/> is what carries that.
+    /// </summary>
+    public nint? Adopted { get; set; }
+
     /// <summary>Whether the video queue was ever initialised, which the teardown reads.</summary>
     public bool VideoQueueInitialised => avArm?.VideoQueue is not null;
 
@@ -370,8 +383,22 @@ public sealed class ManagedTakion : ITakionLoopHost, IDisposable
         Flushes = 0;
 
         Stage = TakionStage.Connecting;
-        wire = TakionUdpWire.Connect(peer);
-        OwnsSocket = true;
+
+        // PP769: over the caller's socket where there is one, which is what the C does.
+        // chiaki_takion_connect takes data_sock - the socket senkusha established - and a run that
+        // opened its own started a conversation the console was not in. OwnsSocket is what keeps a
+        // borrowed one from being closed here; it has existed since this class did and this is the
+        // first path that sets it false.
+        if (Adopted is { } handle)
+        {
+            wire = TakionUdpWire.Adopt(handle);
+            OwnsSocket = false;
+        }
+        else
+        {
+            wire = TakionUdpWire.Connect(peer);
+            OwnsSocket = true;
+        }
 
         TakionHandshakeOutcome outcome = Handshake.Run(wire, expectTimeoutMs);
         if (outcome.Error != ChiakiError.Success)
