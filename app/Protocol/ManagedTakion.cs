@@ -188,6 +188,67 @@ public sealed class ManagedTakion : ITakionLoopHost, IDisposable
     /// <summary>How many times it flushed on a timeout, either kind.</summary>
     public int Flushes { get; private set; }
 
+    /// <summary>How many data messages this takion has put on its socket.</summary>
+    public int DataSent { get; private set; }
+
+    /// <summary>
+    /// PP748: chiaki_takion_send_message_data, over the socket the handshake used.
+    ///
+    /// THE PIECES ALL EXISTED AND NOTHING JOINED THEM. PP675 wrote the bytes, PP678 gave this class
+    /// the wire and the send buffer, and PP671 modelled the stages one send passes through. What
+    /// was missing was the member that spends them in that order - so a message the port could
+    /// build had no way out, and three of the run's output seams were waiting on it.
+    ///
+    /// THE ORDER IS <see cref="TakionDataSend"/>'S, not a convenient one. The key position is taken
+    /// first because it is the one thing a refusal spends nothing of; the sequence number is taken
+    /// after the packet exists; the push that holds the packet for resend happens last and its
+    /// failure is IGNORED, which is the C reporting success over a packet nothing will resend.
+    ///
+    /// A SEND BEFORE THE HANDSHAKE IS A REFUSAL AND NOT A THROW. The C's caller is the stream
+    /// connection, which cannot reach a send before its takion connected; a port that threw here
+    /// would turn a sequencing mistake into a crash where the C returns an error.
+    /// </summary>
+    /// <param name="channel">Which channel the payload belongs to.</param>
+    /// <param name="payload">The message's own bytes.</param>
+    /// <param name="chunkFlags">The C's type_b.</param>
+    public TakionSendOutcome SendData(
+        ushort channel, ReadOnlySpan<byte> payload, byte chunkFlags = TakionDataPush.ExpectedTypeB)
+    {
+        ObjectDisposedException.ThrowIf(Stage == TakionStage.Closed, this);
+
+        if (wire is null || sendBuffer is null)
+        {
+            return new TakionSendOutcome(
+                TakionSendStage.KeyPositionRefused, ChiakiError.Uninitialized, false, false, 0, false);
+        }
+
+        // The ledger's position for this packet, which a refusal spends nothing of.
+        ulong keyPos = Ledger.RequestPos(0, commit: true);
+
+        var datagram = new byte[TakionDataDatagrams.DataSize(payload.Length)];
+        uint seqNum = SeqNumLocal++;
+
+        TakionDataDatagrams.WriteData(
+            datagram, Handshake.TagRemote, (uint)keyPos, chunkFlags, seqNum, channel, payload);
+
+        ChiakiError sent = wire.Send(datagram);
+        if (sent != ChiakiError.Success)
+        {
+            return new TakionSendOutcome(
+                TakionSendStage.SendFailed, ChiakiError.Network, true, true, seqNum, false);
+        }
+
+        DataSent++;
+
+        // Last, and its failure is not the caller's: the C ignores what the push returns, so a
+        // packet the buffer would not hold is reported as sent and will never be resent.
+        ChiakiError held = sendBuffer.Push(seqNum, datagram.Length);
+
+        return held == ChiakiError.Success
+            ? new TakionSendOutcome(TakionSendStage.SentAndHeld, ChiakiError.Success, true, true, seqNum, false)
+            : new TakionSendOutcome(TakionSendStage.SentButNotHeld, ChiakiError.Success, true, true, seqNum, false);
+    }
+
     /// <summary>
     /// takion_handshake, over a socket this takion opens and owns.
     /// </summary>

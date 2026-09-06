@@ -39,11 +39,14 @@ public static class SeamReach
     /// <summary>
     /// The seams nothing in app fills, and what each is waiting for.
     ///
-    /// Five: four outputs whose consumer is the run, and the OpenSSL keying which is a seam on
-    /// purpose. PP745 took IStreamRunHost off this list by writing the host and PP747 took the
-    /// event sink off it by writing somewhere for the nine to land, neither adding a row doing it -
-    /// which is what PP741 counted the cost of when PP740 closed one seam and opened another in the
-    /// same commit. What is left wants a takion send or an Opus decoder.
+    /// Four: three outputs whose consumer is the run, and the OpenSSL keying which is a seam on
+    /// purpose. PP745 took IStreamRunHost off this list, PP747 the event sink and PP748 the message
+    /// sink, none of them adding a row doing it - which is what PP741 counted the cost of when
+    /// PP740 closed one seam and opened another in the same commit.
+    ///
+    /// THE TWO THAT REMAIN ARE ONE CALL EACH NOW. PP748 gave the takion a send, so the feedback and
+    /// congestion sinks want what the message sink wanted and no longer wait on a decision; the
+    /// audio frames want an Opus decoder, which is the audio path's own work.
     /// </summary>
     public static IReadOnlyList<UnreachedSeam> Expected { get; } =
     [
@@ -59,9 +62,6 @@ public static class SeamReach
         new(
             "IFeedbackSink",
             "PP723's sender output, which the takion answers in the C and nothing answers yet."),
-        new(
-            "IStreamMessageSink",
-            "Where a built message goes, so a builder needs no socket. The run is what would hold one."),
     ];
 
     /// <summary>Every public interface the assembly declares.</summary>
