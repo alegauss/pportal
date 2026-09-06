@@ -185,9 +185,35 @@ public sealed class ManagedStreamPhase : IDisposable
         return BitConverter.ToUInt32(four);
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// PP768: cancel, join, then free - in that order and never any other.
+    ///
+    /// The first version of this freed the handover while the runner's thread was still blocked in
+    /// await_start on it, so the wait ran on memory the allocator had taken back. It did not fail
+    /// reliably: three runs of the gate gave one truncated run and two clean ones, and the phase's
+    /// own tests passed every time because the process exited before the thread noticed.
+    ///
+    /// The join is bounded because a free is not worth hanging a shutdown over, and it is longer
+    /// than a cancelled wait needs: cancel signals the condition the thread is on, so the only way
+    /// this waits the whole window is a thread that is not where this thinks it is - and in that
+    /// case NOT freeing is the right answer, which is what the guard below does.
+    /// </summary>
     public void Dispose()
     {
+        if (thread is { } running)
+        {
+            handover.Cancel();
+
+            if (!running.Join(TimeSpan.FromSeconds(2)))
+            {
+                // Leaked deliberately. A handover freed under a live waiter is the defect this
+                // whole method exists for, and a leak of one object at shutdown is the cheaper of
+                // the two by a long way.
+                GC.SuppressFinalize(this);
+                return;
+            }
+        }
+
         handover.Dispose();
         GC.SuppressFinalize(this);
     }

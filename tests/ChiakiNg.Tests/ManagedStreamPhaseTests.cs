@@ -90,6 +90,44 @@ public class ManagedStreamPhaseTests(ITestOutputHelper output)
     }
 
     /// <summary>
+    /// PP768: DISPOSING ENDS THE WAIT BEFORE IT FREES WHAT IS BEING WAITED ON.
+    ///
+    /// The first version freed the handover while the runner's thread was inside await_start on it,
+    /// and a wait on freed memory fails when it feels like it: three runs of the gate gave one
+    /// truncated run and two clean ones. The phase's own tests passed every time, because the
+    /// process exited before the thread noticed - which is why this asserts the thread has ENDED
+    /// rather than that nothing crashed.
+    /// </summary>
+    [Fact]
+    public void DisposingCancelsTheWaitAndTheRunnerAnswersCancelled()
+    {
+        using ChiakiSession? session = Build();
+        if (session is null)
+            return;
+
+        using var baseline = new SessionBaseline();
+        var phase = new ManagedStreamPhase(
+            session,
+            new IPEndPoint(IPAddress.Loopback, 9295),
+            (_, _, _) => true,
+            baseline);
+
+        phase.InstallOn();
+        phase.Dispose();
+
+        // The thread is gone, which is what makes the free that follows it safe.
+        Assert.True(phase.Join(TimeSpan.FromSeconds(2)));
+
+        // And it answered rather than being killed: a cancelled wait is not a start, so no host was
+        // built and no socket was opened for a phase that was going away.
+        StreamRunnerOutcome outcome = Assert.NotNull(phase.Outcome);
+        Assert.False(outcome.Started);
+        Assert.Equal(ChiakiError.Canceled, outcome.Error);
+
+        output.WriteLine($"outcome: started={outcome.Started} error={outcome.Error}");
+    }
+
+    /// <summary>
     /// And the phase is what PP764's check sees, which is the join between the two.
     ///
     /// PP764 refuses a tree where session.c hands over and nothing installs. This is the file that

@@ -237,6 +237,19 @@ CHIAKI_SHIM_API bool chiaki_shim_session_ecdh_material(
 
 CHIAKI_SHIM_API void chiaki_shim_stream_run_install(void *session, void *handover);
 
+/**
+ * PP768: end both waits and mark the handover stopped, so a waiter can be shut down.
+ *
+ * Without this a caller holding a thread inside await_start had no correct way to stop it: start
+ * would end the wait and make a runner build a host and open a socket, and finish ends the other
+ * wait. Freeing the object the thread is blocked on is what a caller did instead, and a wait on
+ * freed memory fails intermittently rather than reliably.
+ *
+ * The stopped flag is set BEFORE either signal, because a waiter reads it the moment its wait
+ * returns - the other order lets one see a start with stopped still false and go on to build.
+ */
+CHIAKI_SHIM_API int32_t chiaki_shim_stream_handover_cancel(void *handover);
+
 /** Whether the session's stop has reached this handover. */
 CHIAKI_SHIM_API bool chiaki_shim_stream_handover_stopped(void *handover);
 

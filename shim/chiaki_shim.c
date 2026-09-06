@@ -3192,6 +3192,42 @@ CHIAKI_SHIM_API void chiaki_shim_stream_run_install(void *session, void *handove
 	chiaki_session_set_stream_stop_cb(self, chiaki_shim_stream_stop_trampoline, handover);
 }
 
+/* PP768: the way out of a wait, which this seam did not have.
+ *
+ * A caller holding a thread inside await_start had no correct way to stop it. Start would end the
+ * wait and make the runner build a host and open a socket - worse than leaving it - and finish ends
+ * the other wait. So a phase that wanted to shut down could only free the object its own thread was
+ * blocked on, which is what PP762 did and what made the gate flaky rather than red.
+ *
+ * BOTH FLAGS TOGETHER, and stopped is set FIRST. The waiter reads it the moment its wait returns, so
+ * setting started first would let a runner see a start with stopped still false and go on to build. */
+CHIAKI_SHIM_API int32_t chiaki_shim_stream_handover_cancel(void *handover)
+{
+	ChiakiShimStreamHandover *self = (ChiakiShimStreamHandover *)handover;
+
+	if(!self)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+
+	self->stopped = true;
+
+	if(chiaki_bool_pred_cond_lock(&self->started) != CHIAKI_ERR_SUCCESS)
+		return (int32_t)CHIAKI_ERR_UNKNOWN;
+
+	self->started.pred = true;
+	chiaki_bool_pred_cond_signal(&self->started);
+	chiaki_bool_pred_cond_unlock(&self->started);
+
+	/* And the other wait, so a thread that had already started is released too. */
+	if(chiaki_bool_pred_cond_lock(&self->finished) != CHIAKI_ERR_SUCCESS)
+		return (int32_t)CHIAKI_ERR_UNKNOWN;
+
+	self->finished.pred = true;
+	chiaki_bool_pred_cond_signal(&self->finished);
+	chiaki_bool_pred_cond_unlock(&self->finished);
+
+	return (int32_t)CHIAKI_ERR_SUCCESS;
+}
+
 CHIAKI_SHIM_API bool chiaki_shim_stream_handover_stopped(void *handover)
 {
 	ChiakiShimStreamHandover *self = (ChiakiShimStreamHandover *)handover;

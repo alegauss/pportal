@@ -60,6 +60,16 @@ public sealed class ManagedStreamRunner
             return new StreamRunnerOutcome(false, ChiakiError.Timeout, null);
         }
 
+        // PP768: A CANCELLED WAIT IS NOT A START. The seam had no way out of AwaitStart, so a caller
+        // shutting down could only free the object this thread was blocked on. Cancel ends the wait
+        // and sets the flag together, and this is the read that keeps that from looking like a
+        // session arriving - the same build, the same socket, for a phase that is going away.
+        if (handover.Stopped)
+        {
+            handover.Finish(ChiakiError.Canceled);
+            return new StreamRunnerOutcome(false, ChiakiError.Canceled, null);
+        }
+
         Host = build();
 
         ChiakiError error = ManagedStreamRun.Run(Host);

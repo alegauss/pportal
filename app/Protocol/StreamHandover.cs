@@ -130,6 +130,20 @@ public sealed class StreamHandover : IDisposable
         StreamRunInstall(session.Handle, handle);
     }
 
+    /// <summary>
+    /// PP768: end both waits and mark this stopped, so a waiter can be shut down.
+    ///
+    /// The seam had no way out. A caller holding a thread inside <see cref="AwaitStart"/> could only
+    /// free the object that thread was blocked on, which is what PP762's phase did - and a wait on
+    /// freed memory fails intermittently rather than reliably, which is how it was found.
+    /// </summary>
+    public ChiakiError Cancel()
+    {
+        ObjectDisposedException.ThrowIf(handle == IntPtr.Zero, this);
+
+        return (ChiakiError)HandoverCancel(handle);
+    }
+
     /// <inheritdoc/>
     public void Dispose()
     {
@@ -144,6 +158,10 @@ public sealed class StreamHandover : IDisposable
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_stream_run_install",
         CallingConvention = CallingConvention.Cdecl)]
     private static extern void StreamRunInstall(IntPtr session, IntPtr handover);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_stream_handover_cancel",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern int HandoverCancel(IntPtr handover);
 
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_stream_handover_stopped",
         CallingConvention = CallingConvention.Cdecl)]
