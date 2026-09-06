@@ -712,6 +712,7 @@
 - ✅ **PP788** **senkusha's nine states and the flags its waits end on have no managed model, so nothing can drive its run** — Nine states, eight reachable, and the predicate reads two of three flags - each held against the file, so a repair upstream turns a check red.
 - ✅ **PP789** **senkusha's three measurements have no managed model, and they are the numbers the launch spec spends** — The average divides by the pings that answered, the two searches start apart and answer with the floor, and the timeout is five round trips clamped.
 - ✅ **PP790** **chiaki_senkusha_run's sequence has no managed counterpart, so the ordering that is its behaviour cannot be held** — The nine calls in the C's order over a host that records them, and three exits that differ in whether the console is told at all.
+- ✅ **PP791 (the arrivals)** **nothing implements senkusha's run host or turns its arrivals into the flags its waits end on** — The state and the two flags live where both sides touch them, and four arms write them - including the ack arm and the two AV states that disagree about video.
 
 ## Block G — Test discipline
 

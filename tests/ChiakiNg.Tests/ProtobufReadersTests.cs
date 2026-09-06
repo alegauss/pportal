@@ -1,4 +1,4 @@
-using ChiakiNg.Session;
+﻿using ChiakiNg.Session;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -76,21 +76,22 @@ public class ProtobufReadersTests(ITestOutputHelper output)
     }
 
     /// <summary>
-    /// Four readers decide on a console's message, and one round trip does not.
+    /// Five readers decide on a console's message, and one round trip does not.
     ///
-    /// PP773 is the fourth: the idle arm switches on the payload type, which the C reaches only past
-    /// a pb_decode that has already enforced the required set. A row arriving here is a new place
-    /// this port DECIDES on bytes a console sent, which is the count PP733 wanted stated.
+    /// PP773 was the fourth and PP791 is the fifth: senkusha's data arm routes by state and refuses
+    /// by type, which the C reaches only past a pb_decode that has already enforced the required
+    /// set. A row arriving here is a new place this port DECIDES on bytes a console sent, which is
+    /// the count PP733 wanted stated.
     /// </summary>
     [Fact]
-    public void FourDecideAndOneComparesGenerators()
+    public void FiveDecideAndOneComparesGenerators()
     {
-        Assert.Equal(4, ProtobufReaders.All.Count(one => one.Reading == ProtobufReading.ChecksRequired));
+        Assert.Equal(5, ProtobufReaders.All.Count(one => one.Reading == ProtobufReading.ChecksRequired));
         Assert.Single(ProtobufReaders.All, one => one.Reading == ProtobufReading.RoundTrip);
 
-        // Five sites decide and two compare, which is the number a reader of the count wants.
+        // Six sites decide and two compare, which is the number a reader of the count wants.
         Assert.Equal(
-            5,
+            6,
             ProtobufReaders.All.Where(one => one.Reading == ProtobufReading.ChecksRequired).Sum(one => one.Sites));
     }
 

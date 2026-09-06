@@ -91,6 +91,11 @@ public static class ProtobufReaders
             ProtobufReading.ChecksRequired,
             "PP732: the audio header is required, and a stream configured without one was never valid."),
         new(
+            @"app\Protocol\SenkushaArrivals.cs",
+            1,
+            ProtobufReading.ChecksRequired,
+            "PP791: senkusha's data arm routes by state and refuses by type, which is deciding on a console's message."),
+        new(
             @"app\Protocol\StreamArrivals.cs",
             1,
             ProtobufReading.ChecksRequired,
