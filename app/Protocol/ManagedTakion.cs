@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using System.Buffers.Binary;
+using System.Net;
 using ChiakiNg.Native;
 
 namespace ChiakiNg.Protocol;
@@ -193,6 +194,67 @@ public sealed class ManagedTakion : ITakionLoopHost, IDisposable
 
     /// <summary>How many congestion packets this takion has put on its socket.</summary>
     public int CongestionSent { get; private set; }
+
+    /// <summary>
+    /// PP750: the local cipher, handed in rather than derived here.
+    ///
+    /// Deriving one needs the bang's keys, which is the session's work and not the takion's. Null
+    /// until a caller supplies it, and a feedback send without it is a refusal - the C's own send
+    /// takes the gkcrypt_local mutex and would find nothing behind it.
+    /// </summary>
+    public ManagedGkCrypt? LocalCrypt { get; set; }
+
+    /// <summary>How many feedback packets this takion has put on its socket.</summary>
+    public int FeedbackSent { get; private set; }
+
+    /// <summary>
+    /// PP750: takion_send_feedback_packet - advance, encrypt, write the position, sign, send.
+    ///
+    /// THREE POSITIONS AND THEY ARE NOT THE SAME. The ledger advances by the payload PLUS a block;
+    /// the payload is encrypted at the position PLUS a block; the MAC is taken at the position
+    /// itself. Collapsing any two desynchronises the stream cipher rather than failing, so the
+    /// console decodes noise and nothing here reports a problem.
+    ///
+    /// AND THE MAC COVERS ITS OWN FIELD, zeroed. That is why the head writer zeroes both the
+    /// position and the MAC, the position is written before the tag is taken, and the tag is
+    /// written last.
+    /// </summary>
+    /// <param name="type">One of the two feedback packet types.</param>
+    /// <param name="seqNum">The sixteen-bit feedback sequence number.</param>
+    /// <param name="payload">The formatted state or history, which this encrypts in place.</param>
+    public ChiakiError SendFeedback(byte type, ushort seqNum, ReadOnlySpan<byte> payload)
+    {
+        ObjectDisposedException.ThrowIf(Stage == TakionStage.Closed, this);
+
+        if (wire is null || LocalCrypt is not { } crypt)
+            return ChiakiError.Uninitialized;
+
+        int head = TakionFeedbackSends.Feedback.HeadSize;
+        var packet = new byte[head + payload.Length];
+
+        TakionFeedbackSends.WriteFeedbackHead(packet, type, seqNum);
+        payload.CopyTo(packet.AsSpan(head));
+
+        ulong keyPos = Ledger.RequestPos(0, commit: true);
+
+        // A block past the position, which is the gap the ledger advanced for.
+        crypt.Encrypt(keyPos + (ulong)TakionFeedbackSends.BlockSize, packet.AsSpan(head));
+
+        BinaryPrimitives.WriteUInt32BigEndian(
+            packet.AsSpan(TakionFeedbackSends.Feedback.KeyPosOffset), (uint)keyPos);
+
+        // At the position itself, over the whole packet with the MAC field still zero.
+        crypt.Gmac(
+            keyPos,
+            packet,
+            packet.AsSpan(TakionFeedbackSends.Feedback.MacOffset, TakionFeedbackSends.GmacSize));
+
+        ChiakiError sent = wire.Send(packet);
+        if (sent == ChiakiError.Success)
+            FeedbackSent++;
+
+        return sent;
+    }
 
     /// <summary>
     /// PP749: chiaki_takion_send_congestion - the key position, the fifteen bytes, the socket.

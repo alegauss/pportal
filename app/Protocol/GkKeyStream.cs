@@ -92,6 +92,33 @@ public static class GkKeyStream
     }
 
     /// <summary>
+    /// PP750: the stream XORed over a buffer at ANY position, which is what the C's encrypt is.
+    ///
+    /// <see cref="Generate(ReadOnlySpan{byte}, ReadOnlySpan{byte}, ulong, Span{byte})"/> demands
+    /// both alignments and is right to: a caller asking for a partial block has a bug. But
+    /// chiaki_gkcrypt_decrypt rounds DOWN to the block before the position and reads from the
+    /// padding in, then rounds the length UP to whole blocks - so every real caller needs this
+    /// arithmetic, and both of the port's had written it out separately.
+    /// </summary>
+    /// <param name="keyPos">Where in the stream, block-aligned or not.</param>
+    /// <param name="buffer">XORed in place.</param>
+    public static void Apply(
+        ReadOnlySpan<byte> keyBase, ReadOnlySpan<byte> iv, ulong keyPos, Span<byte> buffer)
+    {
+        if (buffer.IsEmpty)
+            return;
+
+        // padding_pre and full_size, as gkcrypt.c names them.
+        ulong paddingPre = keyPos % BlockSize;
+        int fullSize = (int)((paddingPre + (ulong)buffer.Length + BlockSize - 1) / BlockSize) * BlockSize;
+
+        byte[] stream = Generate(keyBase, iv, keyPos - paddingPre, fullSize);
+
+        for (var i = 0; i < buffer.Length; i++)
+            buffer[i] ^= stream[(int)paddingPre + i];
+    }
+
+    /// <summary>
     /// PP737: the stream into a caller's span, which is the shape the packet path needs.
     ///
     /// The byte[] overload above is one allocation per call by signature, and this one is none -

@@ -1,3 +1,4 @@
+using System.Buffers;
 using ChiakiNg.Session;
 
 namespace ChiakiNg.Protocol;
@@ -126,6 +127,43 @@ public sealed class ManagedGkCrypt
 
     /// <summary>The IV this packet's GMAC is computed under, which advances per block.</summary>
     public byte[] GmacIvFor(ulong keyPos) => GmacKeyWindow.IvFor(iv, keyPos);
+
+    /// <summary>
+    /// PP750: chiaki_gkcrypt_encrypt - the key stream at a position, XORed over a payload in place.
+    ///
+    /// The stream cipher IS the XOR, so encrypt and decrypt are one operation and the C has one
+    /// function for both. Every part of this existed and nothing performed it, which is why nothing
+    /// in the port had ever encrypted a packet.
+    ///
+    /// THE POSITION NEED NOT BE ALIGNED, and that is the piece a first attempt gets wrong: the C
+    /// rounds down to the block before it and reads from the padding in.
+    /// <see cref="GkKeyStream.Apply"/> is where that arithmetic lives, so this and PP667's decrypt
+    /// share one copy of it.
+    /// </summary>
+    public void Encrypt(ulong keyPos, Span<byte> payload)
+        => GkKeyStream.Apply(keyBase, iv, keyPos, payload);
+
+    /// <summary>
+    /// PP750: chiaki_gkcrypt_gmac - the four-byte tag over a whole packet, written where it goes.
+    ///
+    /// TAKEN OVER THE PACKET INCLUDING ITS OWN MAC FIELD, which the caller has already zeroed. That
+    /// is the C's order and it is the reason the field is written after the tag rather than before:
+    /// a MAC computed over its own value could not be checked by anyone.
+    /// </summary>
+    /// <param name="keyPos">The packet's position - NOT the one its payload was encrypted at.</param>
+    /// <param name="packet">The whole datagram, with the MAC field zeroed.</param>
+    /// <param name="into">Where the tag goes, which is <see cref="TakionFeedbackSends.GmacSize"/> bytes.</param>
+    public void Gmac(ulong keyPos, ReadOnlySpan<byte> packet, Span<byte> into)
+    {
+        if (into.Length != TakionFeedbackSends.GmacSize)
+        {
+            throw new ArgumentException(
+                $"a gmac is {TakionFeedbackSends.GmacSize} bytes", nameof(into));
+        }
+
+        Ghash.Tag(GmacKeyFor(keyPos), GmacIvFor(keyPos), packet, TakionFeedbackSends.GmacSize)
+            .CopyTo(into);
+    }
 }
 
 /// <summary>

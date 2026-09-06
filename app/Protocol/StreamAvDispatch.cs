@@ -77,20 +77,13 @@ public static class StreamAvDispatch
     /// <param name="iv">The session's IV.</param>
     /// <param name="keyPos">Where in the stream - the packet's key_pos PLUS one block, per the C.</param>
     /// <param name="buffer">The payload, xor'd in place.</param>
+    /// <remarks>
+    /// PP750: the padding arithmetic moved to <see cref="GkKeyStream.Apply"/>, which is where the
+    /// feedback send needed it too. It was written out here first and copied nowhere - the second
+    /// caller is what turned it into a shared one.
+    /// </remarks>
     public static void Decrypt(ReadOnlySpan<byte> keyBase, ReadOnlySpan<byte> iv, ulong keyPos, Span<byte> buffer)
-    {
-        int block = GkKeyStream.BlockSize;
-
-        // padding_pre and full_size, as gkcrypt.c names them: the stream starts at the block
-        // before the position, and covers whole blocks to the end of the payload.
-        ulong paddingPre = keyPos % (ulong)block;
-        int fullSize = (int)((paddingPre + (ulong)buffer.Length + (ulong)block - 1) / (ulong)block) * block;
-
-        byte[] stream = GkKeyStream.Generate(keyBase, iv, keyPos - paddingPre, fullSize);
-
-        for (int i = 0; i < buffer.Length; i++)
-            buffer[i] ^= stream[(int)paddingPre + i];
-    }
+        => GkKeyStream.Apply(keyBase, iv, keyPos, buffer);
 
     /// <summary>
     /// The route: decrypt or drop, then video, haptics, audio - in that order.
