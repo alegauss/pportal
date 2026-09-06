@@ -153,10 +153,11 @@
 
 ## Done when — PP707
 
-- **A managed run drives a stream over a real takion** PP607 connects a real takion to
-  PP606's responder and PP680's arm handles what arrives, but ManagedStreamRun's host is
-  an interface whose implementations are all in the test project - so the sequence PP640
-  asserts of the C has never run over a socket.
+- **A managed run drives a stream over a real takion** Met. PP745 wrote the host and
+  PP746 ran the sequence over a loopback socket: a real takion handshakes with PP606's
+  responder, the flags are signalled from another thread as the C's handlers do, and the
+  run answers SUCCESS. It does not stream - nothing answers a BIG over loopback - which
+  the criterion below is about.
 - **Every member of the run's host has a counterpart or a line that owes one** Met.
   Seven members were owed across four subsystems, and PP714, PP719, PP723 and PP727
   wrote them, each shortening the census in the commit that shipped it. Every member now
