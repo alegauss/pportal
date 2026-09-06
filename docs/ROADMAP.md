@@ -35,8 +35,6 @@
 
 ## Block G — Test discipline
 
-- 📋 **PP739** (deps: —) **the ratchet's absent id is a constant any other file can spell, and a comment is what guards it** — PP311's comment counts four missteps and PP728 made it five from a file that never read it, so an id derived to be absent would replace a guard only its own readers see. → §PP739
-
 ## Block H — Performance and telemetry
 
 - ⏳ **PP46** (deps: PP42 ✅, PP63) **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — A Chromium leaving the build should be visible in cold start and in megabytes, and stating it without measuring is how a port collects folklore. → §PP46

@@ -45,6 +45,20 @@ public static partial class AssertionRatchet
     public const string IndexRelativePath = @"tests\assertion-index.txt";
 
     /// <summary>
+    /// PP739: this project's id prefix, on its own so an id can be built without being spelled.
+    ///
+    /// Two characters and no digits, which is what makes it safe to write here: the pattern that
+    /// finds a named id wants digits after it, so this constant is not one.
+    /// </summary>
+    public const string Prefix = "PP";
+
+    /// <summary>Where <see cref="AnAbsentId"/> starts looking - above any id this project will reach.</summary>
+    public const int AbsentFloor = 20000;
+
+    /// <summary>And where it gives up, which would mean 80000 ids are spoken for in the suites.</summary>
+    public const int AbsentCeiling = 99999;
+
+    /// <summary>
     /// The trees an assertion can live in, and the one file outside them that is also assertions.
     /// </summary>
     public static IReadOnlyList<string> AssertionPaths { get; } =
@@ -137,6 +151,49 @@ public static partial class AssertionRatchet
         }
 
         return found;
+    }
+
+    /// <summary>
+    /// PP739: an id no assertion file names, found by looking rather than by being chosen well.
+    ///
+    /// A TEST THAT ASKS ABOUT AN ABSENT ID NEEDS ONE, and the obvious way to get one is to write a
+    /// number nothing uses. That fails in a way nothing warns about: an id spelled in an assertion
+    /// file IS an id named in an assertion file, so the file asking the question becomes the answer
+    /// to it. PP311's test carries a comment saying so and the comment had been stepped past four
+    /// times; PP728 made it five, from a file whose author had no reason to open PP311.
+    ///
+    /// A COMMENT REACHES THE READERS OF THE FILE IT SITS IN, which is exactly the set of people who
+    /// were never going to break it. This is the same fact as a rule: whatever any file spells, the
+    /// id this returns is not among them, so no future literal can turn that test red.
+    ///
+    /// The candidates start above every id this project will plausibly reach and below the fixture
+    /// band's own ceiling, and the walk is what makes the answer true rather than the floor.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">Every candidate is spoken for, which is news.</exception>
+    public static string AnAbsentId(string root)
+    {
+        ArgumentNullException.ThrowIfNull(root);
+
+        var taken = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (string file in AssertionFiles(root))
+        {
+            foreach (string one in Named(File.ReadAllText(file)))
+                taken.Add(one);
+        }
+
+        for (int number = AbsentFloor; number <= AbsentCeiling; number++)
+        {
+            // Built, never written: a literal here would be a name this file gives the id, which is
+            // the whole defect. `Prefix` alone matches no id, so these bytes carry no such token.
+            string candidate = Prefix + number.ToString(CultureInfo.InvariantCulture);
+
+            if (!taken.Contains(candidate))
+                return candidate;
+        }
+
+        throw new InvalidOperationException(
+            $"every id from {AbsentFloor} to {AbsentCeiling} is named in an assertion file");
     }
 
     /// <summary>

@@ -143,12 +143,65 @@ public class AssertionRatchetTests(ITestOutputHelper output)
 
         // And something no assertion mentions answers nothing rather than throwing.
         //
-        // BUILT rather than written, and it is the fourth time this trap has been stepped in. An id
+        // PP739: DERIVED rather than chosen, which is what stopped this being stepped in. An id
         // spelled here is an id named in an assertion file, so the obvious form of this line -
-        // asking where a made-up id is named - finds itself and fails. Concatenated, the file
-        // carries no such token at all, which is the only way to ask about an absent one.
-        string absent = "PP" + 9999.ToString(CultureInfo.InvariantCulture);
+        // asking where a made-up id is named - finds itself and fails. It had happened four times
+        // when the comment above this said so, and a fifth time to the file that read the comment
+        // and put the literal somewhere else. AnAbsentId asks the suites what they spell, so no
+        // literal in any file can make this red again.
+        string absent = AssertionRatchet.AnAbsentId(root);
         Assert.Empty(AssertionRatchet.WhereNamed(root, absent));
+    }
+
+    /// <summary>
+    /// PP739: the absent id is absent because it was checked, not because it looked unused.
+    ///
+    /// The property that matters is not which number comes back - it is that whatever the suites
+    /// spell, this is not one of them. So the test asserts against the union the sweep itself
+    /// reads, which is the same set the derivation walked.
+    /// </summary>
+    [Fact]
+    public void TheAbsentIdIsNamedByNoAssertionFile()
+    {
+        string? root = SanitizerSource.RepositoryRoot();
+        Assert.True(root is not null, "not running out of a checkout");
+
+        string absent = AssertionRatchet.AnAbsentId(root);
+
+        output.WriteLine($"derived: {absent}");
+
+        Assert.StartsWith(AssertionRatchet.Prefix, absent, StringComparison.Ordinal);
+        Assert.True(
+            int.Parse(absent[AssertionRatchet.Prefix.Length..], CultureInfo.InvariantCulture)
+                >= AssertionRatchet.AbsentFloor,
+            $"{absent} is below the floor the walk starts at");
+
+        var spelled = new HashSet<string>(StringComparer.Ordinal);
+        foreach (string file in AssertionRatchet.AssertionFiles(root))
+        {
+            foreach (string one in AssertionRatchet.Named(File.ReadAllText(file)))
+                spelled.Add(one);
+        }
+
+        output.WriteLine($"{spelled.Count} distinct id(s) spelled across the suites");
+
+        Assert.DoesNotContain(absent, spelled);
+
+        // PP271: a derivation that returned something no file could ever name would also pass the
+        // line above, so the sweep has to be shown finding an id that IS spelled. Built, not
+        // written, or naming it here would be the very defect this closes.
+        string fixture = AssertionRatchet.Prefix + 900.ToString(CultureInfo.InvariantCulture);
+        Assert.Contains(fixture, spelled);
+    }
+
+    /// <summary>And it is stable: two calls over the same tree agree.</summary>
+    [Fact]
+    public void TheAbsentIdIsTheSameOnEveryCall()
+    {
+        string? root = SanitizerSource.RepositoryRoot();
+        Assert.True(root is not null, "not running out of a checkout");
+
+        Assert.Equal(AssertionRatchet.AnAbsentId(root), AssertionRatchet.AnAbsentId(root));
     }
 
     /// <summary>
