@@ -35,6 +35,8 @@
 
 ## Block G — Test discipline
 
+- 📋 **PP743** (deps: —) **eleven fixture ids sit 158 ids ahead of the ledger, so the tasks that reach them are born counted as covered** — The ratchet's join is an id appearing in an assertion file, and PP900 is spelled in six of them as synthetic roadmap data. → §PP743
+
 ## Block H — Performance and telemetry
 
 - ⏳ **PP46** (deps: PP42 ✅, PP63) **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — A Chromium leaving the build should be visible in cold start and in megabytes, and stating it without measuring is how a port collects folklore. → §PP46
