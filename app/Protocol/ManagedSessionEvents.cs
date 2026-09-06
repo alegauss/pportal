@@ -294,9 +294,13 @@ public sealed class ManagedSessionEvents
 /// <summary>
 /// PP719: the nine raisers and the null-callback return, read out of the C rather than trusted.
 ///
-/// The events are the last thing streamconnection.c and videoreceiver.c do that had no managed
-/// counterpart, so what this holds is the join PP696 will delete: which events those two files
-/// raise, in what order, and whether the send still returns where nobody is listening.
+/// The events were the last thing streamconnection.c and videoreceiver.c did that had no managed
+/// counterpart, so what this holds is the join PP696 deleted: which events those two files raise,
+/// in what order, and whether the send returns where nobody is listening.
+///
+/// PP697: the two files are still in the tree and no longer in the build, so every sentence here is
+/// about their source rather than about what runs. The reads stay, and are the reason they can:
+/// what they compare against is text, and text is what a file left unbuilt still has.
 /// </summary>
 public static class ManagedSessionEventsSource
 {

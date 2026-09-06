@@ -12,10 +12,15 @@ namespace ChiakiNg.Protocol;
 /// TAKEN THE WAY PP565 TOOK PP33'S: the four files out of the source list, and the build asked.
 /// Seventeen symbols across three kinds of consumer, and one of them was not written down anywhere.
 ///
-/// SESSION.C IS THAT ONE. Six references - init, run, stop, fini twice, and the IDR request - so
-/// streamconnection.c cannot leave until session.c stops driving the stream, and session.c is PP28's
-/// subject. The same shape PP564 found for ctrl.c: a consumer three readings missed and a linker
-/// named in thirty seconds.
+/// SESSION.C WAS THAT ONE. Six references - init, run, stop, fini twice, and the IDR request - so
+/// streamconnection.c could not leave until session.c stopped driving the stream, and session.c is
+/// PP28's subject. The same shape PP564 found for ctrl.c: a consumer three readings missed and a
+/// linker named in thirty seconds.
+///
+/// PP697: IT HAS STOPPED. PP696 replaced the run with an installed callback and dropped the other
+/// four references, and the four files left lib's source list in the same commit. The census is
+/// kept and not deleted with the work it measured: what it reads is which side of that the tree is
+/// on, and a file coming back is exactly what it would be needed to notice.
 /// </summary>
 public static class StreamConnectionConsumers
 {

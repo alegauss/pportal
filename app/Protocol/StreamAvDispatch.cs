@@ -36,7 +36,10 @@ public interface IAudioSink
 }
 
 /// <summary>
-/// PP667, under PP295: stream_connection_takion_av, the one call that holds four files in the build.
+/// PP667, under PP295: stream_connection_takion_av, the one call that held four files in the build.
+///
+/// PP697: HELD, past tense. This route is what made them replaceable, and PP696 took all four out -
+/// so what follows describes a C the tree still carries as source and no longer compiles.
 ///
 /// PP366 modelled the AV route as three checks on the C - the decrypt adds a block, video reaches
 /// the native receiver, haptics is tested before the audio fallback. This is the route itself,

@@ -97,6 +97,11 @@ public static class FecConsumers
     /// caller of that function in the tree. So after fec.c and the shim's two wrappers leave,
     /// gf-complete is still linked - by a function every session calls before it does anything.
     ///
+    /// PP697: AND THEY HAVE LEFT. PP696 took fec.c out of the build and put the shim's two behind
+    /// an #ifdef, and this paragraph's prediction is now a description: gf-complete is still linked,
+    /// still by chiaki_lib_init, and PP30 still has that to delete. The row below for fec.c is a row
+    /// about a file the tree keeps as source, which is what the includer sweep reads.
+    ///
     /// <c>audiosender.c</c> takes NEITHER, which makes its include dead. Recorded rather than
     /// removed: this port does not patch the vendored C, and a dead include is a fact about the
     /// deletion's surface either way.

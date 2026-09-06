@@ -683,6 +683,8 @@
 - ✅ **PP696** **the frame path's deletion has no commit that edits the C, so four files stay while their ports exist** — session.c hands the run to a callback, the shim's fourteen and the suite's four are behind their defines, and the four library files have left the build.
 - ✅ **PP671** **Fec.Recovers with no decoder named runs the C, so after the flip a default becomes a loader failure** — Fec.Recovers defaults to the managed decoder, so the sixty-four recorded cases assert on the build this tree ships and the guarded differentials fall from six to five.
   checked **The recorded cases judge the managed decoder on a bare build** Fec.Recovers defaults to the managed decoder, so the sixty-four recorded erasure cases assert on every build instead of declining without the C. The differential in FecCodecTests stays the one place the C is named, and OracleGuardCensus counts two fewer guarded theories.
+- ✅ **PP697** **after the frame-path flip the models describe a C that has gone, in the present tense** — Eight models say what the frame path was rather than what it is, and a swept floor of 101 predicates over the four files says none was deleted with them.
+  checked **The predicates stay and the tense around them turns** PP634's correction, applied to the frame path: each predicate is a shape the C could return in, so none is deleted. What changes is prose asserting the tree still has what the flip removed, turned to say what it was rather than what it is, the way PP591 and PP652 turned theirs.
 
 ## Block G — Test discipline
 

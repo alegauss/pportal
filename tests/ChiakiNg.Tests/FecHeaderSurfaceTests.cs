@@ -18,6 +18,10 @@ namespace ChiakiNg.Tests;
 /// WSAStartup. fec.c never calls it. So the day fec.c and the shim's two create_matrix wrappers
 /// leave, gf-complete is still linked by a function every session calls first.
 ///
+/// PP697: THAT DAY WAS PP696, and the sentence above held. fec.c is out of the build, the two
+/// wrappers are behind an #ifdef that is off, and gf-complete is linked exactly as before - which
+/// is what leaves PP30 something to delete rather than a job already done by somebody else.
+///
 /// Which makes this the same lesson one question over: a census is short unless it counted the
 /// consumer that is not in the module. Both criteria below therefore SWEEP rather than trust the
 /// list - a seventh includer or a second field-init caller fails here, and so does the day

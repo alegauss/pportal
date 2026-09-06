@@ -213,29 +213,6 @@ sends.
 Deleting is the deliverable, not just porting. The C video receiver leaving the build is
 what makes the five ports beneath it real.
 
-### §PP697 The prose that outlives the C it describes
-
-PP623's third step, for the frame path.
-
-PP634 corrected what that step is. It had said "the models drop the first of their two
-states", written before either of the earlier steps had landed, and the landing showed
-it wrong. The predicates ARE the guard: each is a different shape the C could come back
-in, and PP630's counterpart catches only the wholesale return, which is a tripwire's
-granularity rather than a guard's.
-
-So the predicates stay. What goes stale is the present tense around them - a docstring
-saying `streamconnection.c:1309 hands packets to chiaki_video_receiver_av_packet` reads
-as a fact about the tree, and after the flip it is a fact about the tree's history.
-
-The work is to turn that prose over rather than delete it, the way PP591 turned the
-harness's assertions and PP652 turned the microphone census. A sentence that says what
-WAS is worth as much as one saying what is, and worth nothing at all if a reader cannot
-tell which it is.
-
-What makes this its own line rather than part of the flip is PP623's own discipline: the
-flip edits `lib/` and no test file, so every prose change waits for a green tree after
-it. Doing both at once is the thing that plan exists to prevent.
-
 ### §PP742 Real AV heads no parser will take
 
 PP608's capture keeps eighteen bytes of each datagram, chosen to reach the takion header

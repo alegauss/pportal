@@ -136,11 +136,16 @@ public readonly record struct ConsumedTestFile(string File, Counterpart Answer);
 /// PP669, under PP295's third criterion: every consumer PP638's linker run named has a counterpart.
 ///
 /// PP638 asked the build what deleting streamconnection.c, videoreceiver.c, frameprocessor.c and
-/// fec.c would leave undefined, and it answered with three consumers: session.c, which drives the
-/// stream connection; this port's shim, which wraps the frame path so PP286 through PP291 could be
-/// held against the C; and the C suite, which links four of the files through four test files. The
-/// criterion says each of those must have a counterpart before the four leave - because a port that
-/// answered the library's own callers alone leaves the gate red at link time.
+/// fec.c would leave undefined, and it answered with three consumers: session.c, which drove the
+/// stream connection; this port's shim, which wrapped the frame path so PP286 through PP291 could
+/// be held against the C; and the C suite, which linked four of the files through four test files.
+/// The criterion said each of those must have a counterpart before the four left - because a port
+/// that answered the library's own callers alone leaves the gate red at link time.
+///
+/// PP697: ALL THREE HAVE STOPPED, in PP696. session.c calls none of the five, the shim's fourteen
+/// are behind an #ifdef that is off, and the suite's four files are out of its list. The rows stay
+/// and so does every reader: what this census answers now is which side of that a tree is on, and
+/// the counterparts it names are the ground those consumers used to hold.
 ///
 /// THIS IS THE CRITERION AS A CHECK, in the shape the tree gives every count it has learned not to
 /// type. <see cref="FecConsumers"/> is the lesson: "one caller" stayed in the prose for two ports

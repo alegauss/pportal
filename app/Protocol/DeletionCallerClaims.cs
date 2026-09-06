@@ -13,8 +13,12 @@ public readonly record struct DeletionLine(string Id, string Module);
 /// Three lines have now stated how many callers their target has, and three have been short by the
 /// same one. PP33's said session.c was the only caller of holepunch and there were four (PP573).
 /// PP30's said the FEC decode had one caller left and there were three (PP574). PP295's said
-/// streamconnection.c was the last C caller of the video receiver, and the shim wraps five of its
-/// exports - including one streamconnection does not use.
+/// streamconnection.c was the last C caller of the video receiver, and the shim wrapped five of its
+/// exports - including one streamconnection never used.
+///
+/// PP697: WRAPPED, because PP696 put those five behind an #ifdef that is off. The claim they
+/// falsified is unchanged - a line counting callers was short by this port's own seam, and it was
+/// short at the moment somebody was deciding what the deletion cost.
 ///
 /// IT IS THE SAME OMISSION EVERY TIME AND IT IS NOT A COINCIDENCE. PP574 counted it: the shim wraps
 /// 130 chiaki_ entry points across every module this port has. It is therefore a caller of
