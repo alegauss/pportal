@@ -3191,6 +3191,36 @@ CHIAKI_SHIM_API bool chiaki_shim_session_ecdh_material(
 	return true;
 }
 
+CHIAKI_SHIM_API bool chiaki_shim_session_derive_secret(
+		void *session,
+		const uint8_t *remote_key, int32_t remote_key_size,
+		const uint8_t *remote_sig, int32_t remote_sig_size,
+		uint8_t *out_secret, int32_t secret_capacity)
+{
+	ChiakiSession *self = (ChiakiSession *)session;
+
+	if(!self || !remote_key || !remote_sig || !out_secret)
+		return false;
+
+	if(remote_key_size <= 0 || remote_sig_size <= 0)
+		return false;
+
+	/* Refused rather than partly filled. The derivation writes exactly CHIAKI_ECDH_SECRET_SIZE and
+	 * takes no size, so a shorter buffer is a stack overrun and not a truncation. */
+	if(secret_capacity < CHIAKI_ECDH_SECRET_SIZE)
+		return false;
+
+	/* The session's own pair, against the session's own handshake key. A fresh ecdh would derive a
+	 * secret from a private key whose public half the console was never sent. */
+	return chiaki_ecdh_derive_secret(
+			&self->ecdh,
+			out_secret,
+			remote_key, (size_t)remote_key_size,
+			self->handshake_key,
+			remote_sig, (size_t)remote_sig_size)
+		== CHIAKI_ERR_SUCCESS;
+}
+
 CHIAKI_SHIM_API void chiaki_shim_stream_run_install(void *session, void *handover)
 {
 	ChiakiSession *self = (ChiakiSession *)session;

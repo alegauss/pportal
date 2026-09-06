@@ -150,10 +150,12 @@ public sealed class ManagedStreamPhase : IDisposable
             () => new ManagedAudioReceiverPair(new NoFrames(), new NoFrames()),
             () => new ManagedAudioReceiverPair(new NoFrames(), new NoFrames()));
 
-        // No keying: the derivation is OpenSSL's and IBangKeying is a seam on purpose, so a
-        // console's bang reaches the handler and is refused at the derive. That is the rung this
-        // root can carry a live session to, and it is one wait further than it could before.
-        arrivals = new StreamArrivals(host, messages, keying: null, data: new ManagedStreamData(events))
+        // PP773: AND THE KEYING, which this root passed null for in the commit that wired the
+        // arrivals. A bang then reached the handler and was refused at the derive - one wait further
+        // than before and still not a stream. SessionBangKeying derives against the session's OWN
+        // ecdh pair, which is the only one whose public half the console was ever sent.
+        arrivals = new StreamArrivals(
+            host, messages, new SessionBangKeying(session, takion), new ManagedStreamData(events))
         {
             TagLocal = takion.TagLocal,
             Ledger = takion.Ledger,

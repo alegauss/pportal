@@ -121,6 +121,48 @@ public static class SessionBigMaterial
         return new SessionEcdhMaterial(key[..keySize], sig[..sigSize]);
     }
 
+    /// <summary>
+    /// PP773: the console's half of the same exchange, derived against the session's own pair.
+    ///
+    /// <see cref="EcdhOf"/> sends the local public key out in the BIG and this takes the answer back
+    /// in, so the two are one exchange read from both ends. It must be the SESSION's ecdh: the
+    /// private half that signed the outbound key is the only one that derives against the reply, and
+    /// a freshly created pair produces thirty-two bytes that key a session no console can read.
+    ///
+    /// Null is the C's refusal - a key or a signature the pair will not accept - and is what
+    /// <see cref="Protocol.BangHandler"/> already has a path for.
+    /// </summary>
+    public static byte[]? DeriveSecret(
+        ChiakiSession session, ReadOnlySpan<byte> remotePubKey, ReadOnlySpan<byte> remoteSig)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+
+        if (remotePubKey.IsEmpty || remoteSig.IsEmpty)
+            return null;
+
+        var secret = new byte[EcdhSecretBytes];
+
+        return SessionDeriveSecret(
+            session.Handle,
+            remotePubKey.ToArray(), remotePubKey.Length,
+            remoteSig.ToArray(), remoteSig.Length,
+            secret, secret.Length)
+            ? secret
+            : null;
+    }
+
+    /// <summary>CHIAKI_ECDH_SECRET_SIZE, which the derivation writes and does not take a size for.</summary>
+    public const int EcdhSecretBytes = 32;
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_session_derive_secret",
+        CallingConvention = CallingConvention.Cdecl)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    private static extern bool SessionDeriveSecret(
+        IntPtr session,
+        byte[] remoteKey, int remoteKeySize,
+        byte[] remoteSig, int remoteSigSize,
+        byte[] secret, int secretCapacity);
+
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_session_id",
         CallingConvention = CallingConvention.Cdecl)]
     [return: MarshalAs(UnmanagedType.I1)]

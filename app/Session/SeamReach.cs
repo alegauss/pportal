@@ -44,13 +44,12 @@ public static class SeamReach
     /// one - none of them adding a row doing it, which is what PP741 counted the cost of when PP740
     /// closed one seam and opened another in a single commit.
     ///
-    /// PP773 IS THE ROW WORTH READING TWICE, because what filled IBangKeying REFUSES. StreamArrivals
-    /// hands the bang handler a keying that says no at the derive, so a console's bang now reaches
-    /// the handler and fails there rather than reaching nothing at all. That is a real change to the
-    /// shape - the interface is consumed by something constructible in app, which is the only
-    /// question this sweep asks - and it is NOT the derivation being ported. What reports the
-    /// missing derivation is a roadmap line, not this list, and a reader who takes an empty list for
-    /// a finished port would be reading it as a census of behaviour rather than of shape.
+    /// PP773 TOOK THE LAST ROW IN TWO STEPS, and the first is why PP776 exists. It filled
+    /// IBangKeying with a REFUSAL - StreamArrivals hands the bang handler a keying that says no at
+    /// the derive, so a console's bang reached the handler and failed there - and this list went
+    /// empty on a stub, because a refusing class and a real one are the same shape. The second step
+    /// is <see cref="SessionBangKeying"/>, which derives against the session's own ecdh pair; the
+    /// row would be gone either way, which is the finding rather than the fix.
     ///
     /// The list is kept rather than deleted with its last output row: what would report a
     /// counterpart going back to being a shape is this list, and its absence would report nothing.

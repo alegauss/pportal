@@ -235,6 +235,26 @@ CHIAKI_SHIM_API bool chiaki_shim_session_ecdh_material(
 		uint8_t *out_pub_key, int32_t *pub_key_size,
 		uint8_t *out_sig, int32_t *sig_size);
 
+/**
+ * PP773: the other half of the same pair - the secret the console's bang derives.
+ *
+ * `chiaki_shim_session_ecdh_material` sends the local public key out in the BIG and this takes the
+ * console's answer back in. It has to be the SESSION's ecdh and not a fresh one: the private key
+ * that signs the outbound half is the only one that can derive against the console's reply, and
+ * `chiaki_shim_ecdh_create` makes a pair no console has ever seen.
+ *
+ * The handshake key is the session's for the same reason the material function gives - it is what
+ * both signatures are over - so this takes a session and never asks the caller for one.
+ *
+ * CHIAKI_ECDH_SECRET_SIZE bytes out, and a smaller buffer is refused rather than partly filled: a
+ * short secret keys a session the console cannot read and nothing says why.
+ */
+CHIAKI_SHIM_API bool chiaki_shim_session_derive_secret(
+		void *session,
+		const uint8_t *remote_key, int32_t remote_key_size,
+		const uint8_t *remote_sig, int32_t remote_sig_size,
+		uint8_t *out_secret, int32_t secret_capacity);
+
 CHIAKI_SHIM_API void chiaki_shim_stream_run_install(void *session, void *handover);
 
 /**

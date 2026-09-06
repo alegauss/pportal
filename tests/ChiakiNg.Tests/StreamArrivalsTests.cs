@@ -37,7 +37,8 @@ public class StreamArrivalsTests(ITestOutputHelper output)
         public bool InitCrypt() => keys;
     }
 
-    private sealed class Sent : IStreamMessageSink
+    /// <summary>Shared with SessionBangKeyingTests, which drives the same join over a real session.</summary>
+    internal sealed class Sent : IStreamMessageSink
     {
         private readonly bool answer;
 
@@ -94,8 +95,11 @@ public class StreamArrivalsTests(ITestOutputHelper output)
         }
     }
 
-    private static ManagedStreamRunHost Host(Sent sent) => new(
-        new ManagedTakion(0x0000_7773),
+    private static ManagedStreamRunHost Host(Sent sent) => HostOn(new ManagedTakion(0x0000_7773), sent);
+
+    /// <summary>The same host over a takion the caller owns, which a keying needs to install on.</summary>
+    internal static ManagedStreamRunHost HostOn(ManagedTakion takion, Sent sent) => new(
+        takion,
         new IPEndPoint(IPAddress.Loopback, 9296),
         new ManagedCongestionControl(new ManagedPacketStats(), new Quieter(), 0.05),
         new ManagedFeedbackSender(new Quiet()),
@@ -117,6 +121,9 @@ public class StreamArrivalsTests(ITestOutputHelper output)
         {
         }
     }
+
+    /// <summary>A well-formed bang, shared with the tests that drive the same path over a session.</summary>
+    internal static byte[] BangBytes() => Bang();
 
     private static byte[] Bang() => new Tkproto.TakionMessage
     {
