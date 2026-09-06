@@ -104,8 +104,8 @@ public partial class UnreferencedExportTests(ITestOutputHelper output)
     }
 
     /// <summary>
-    /// Sixteen, as of PP735 - twelve PP290 found and four the literal rule uncovered. Kept in the
-    /// tree rather than in a commit message, because the
+    /// Twenty-three, as of PP793 - twelve PP290 found, four the literal rule uncovered and seven
+    /// the comment rule did. Kept in the tree rather than in a commit message, because the
     /// value of the list is that the next person can see it without re-deriving it.
     ///
     /// They are NOT deleted here. They span keyboard input, the ambassador key derivation, the
@@ -136,6 +136,23 @@ public partial class UnreferencedExportTests(ITestOutputHelper output)
         "chiaki_holepunch_session_set_recorded",
         "chiaki_regist_fini",
         "chiaki_regist_stop",
+
+        // PP793: the seven the COMMENT rule added, each named only in prose and called by nothing.
+        // Six are holepunch, rudp and regist - the subtree PP632 established has no producer, whose
+        // remaining mentions are the sentences explaining that. The seventh is a hexdump helper
+        // whose callers all reach the wrapper above it.
+        //
+        // They read as referenced for as long as the sweep read a file as text rather than as code,
+        // which is the same argument PP735 made about literals and the same fix four checks written
+        // since have used. Nobody had decided about any of them; what changed is that the question
+        // is now askable.
+        "chiaki_get_holepunch_sock",
+        "chiaki_get_ps_ctrl_port",
+        "chiaki_get_ps_selected_addr",
+        "chiaki_get_regist_info",
+        "chiaki_holepunch_session_fini",
+        "chiaki_log_hexdump_raw",
+        "chiaki_rudp_init",
     ];
 
     /// <summary>
@@ -200,7 +217,18 @@ public partial class UnreferencedExportTests(ITestOutputHelper output)
                 if (file.EndsWith(".c", StringComparison.Ordinal) || file.EndsWith(".h", StringComparison.Ordinal)
                     || file.EndsWith(".cpp", StringComparison.Ordinal) || file.EndsWith(".cs", StringComparison.Ordinal))
                 {
-                    sources.Add(File.ReadAllText(file));
+                    // PP793: AS CODE, which the sweep read as text. PP735 taught it that a symbol in
+                    // a string literal is a model rather than a caller and said nothing about the
+                    // other way a name appears without being a use - a sentence explaining what a C
+                    // function does. Two of those, written by PP773 to say where a state starts,
+                    // were enough to hold an export PP758 had measured as dead after the flip.
+                    //
+                    // CodeOnly is what every check written since PP735 reads through, and this one
+                    // predates the habit. It blanks literals as well, so the guard below is now
+                    // belt and braces rather than the only rule - kept, because it is tested in its
+                    // own right and because a stripper that stopped working should not silently
+                    // hand this sweep raw text.
+                    sources.Add(DeadAssertions.CodeOnly(File.ReadAllText(file)));
                 }
             }
         }
@@ -274,6 +302,47 @@ public partial class UnreferencedExportTests(ITestOutputHelper output)
             gone.Length == 0,
             "these are referenced again, or were deleted - either way the list in this file is "
                 + "stale and should shrink:\n  " + string.Join("\n  ", gone));
+    }
+
+    /// <summary>
+    /// PP793: A SENTENCE IS NOT A CALLER EITHER, which the literal rule below did not cover.
+    ///
+    /// PP735 taught this sweep that a symbol in quotes is a model, and left the other way a name
+    /// appears without being a use: a comment explaining what a C function does. Two of those - in
+    /// ManagedStreamRunHost, written by PP773 to say where the state starts - were enough to hold
+    /// chiaki_stream_connection_init alive against PP758's measurement that the flip kills it.
+    ///
+    /// Asserted over text this test writes, because a tree where the rule works cannot show what
+    /// happens to one where it does not. All four shapes: a call is a reference, a line comment is
+    /// not, a block comment is not, and a docstring is not.
+    /// </summary>
+    [Fact]
+    public void ASymbolNamedOnlyInACommentIsNotAReference()
+    {
+        const string Called = "\tchiaki_regist_stop(regist);";
+        const string Line = "\t// chiaki_regist_stop is what the teardown would call here.";
+        const string Block = "/* chiaki_regist_stop leaves the thread running, which is why. */";
+        const string Doc = "    /// It stops at <see cref=\"X\"/> because chiaki_regist_stop does.";
+
+        Assert.Contains("chiaki_regist_stop", DeadAssertions.CodeOnly(Called), StringComparison.Ordinal);
+
+        foreach (string prose in new[] { Line, Block, Doc })
+        {
+            Assert.DoesNotContain(
+                "chiaki_regist_stop",
+                DeadAssertions.CodeOnly(prose),
+                StringComparison.Ordinal);
+        }
+
+        // And the two sentences that actually caused this, in the shape they are written in.
+        const string Real =
+            "    // STATE_IDLE, which is what chiaki_stream_connection_init leaves it at.\n"
+                + "    private StreamState current = StreamState.Idle;";
+
+        string code = DeadAssertions.CodeOnly(Real);
+
+        Assert.DoesNotContain("chiaki_stream_connection_init", code, StringComparison.Ordinal);
+        Assert.Contains("StreamState.Idle", code, StringComparison.Ordinal);
     }
 
     /// <summary>
