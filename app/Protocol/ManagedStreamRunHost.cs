@@ -136,6 +136,15 @@ public sealed class ManagedStreamRunHost : IStreamRunHost
     /// </summary>
     public int ConnectTimeoutMs { get; init; } = TakionHandshake.ExpectTimeoutMs;
 
+    /// <summary>
+    /// PP773: the takion this run drives, for a caller reading why a wait ended in nothing.
+    ///
+    /// Its Dispatched count and its receive thread are the two facts that separate "nothing arrived"
+    /// from "something arrived and no handler claimed it", and a live run that stops at a wait says
+    /// neither. The same ladder PP770 and PP771 built one level down.
+    /// </summary>
+    public ManagedTakion Takion => takion;
+
     /// <summary>How deep the C's state mutex would be held, which PP640's third ordering is about.</summary>
     public int LockDepth { get; private set; }
 
@@ -325,6 +334,15 @@ public sealed class ManagedStreamRunHost : IStreamRunHost
 
         if (outcome.Error != ChiakiError.Success)
             return false;
+
+        // PP773: AND THE RECEIVE THREAD, which chiaki_takion_connect starts before it returns. Every
+        // caller of the loop before this was a test reading its trace, so a live run connected, sent
+        // a BIG and read nothing - the arrivals were wired to a dispatch nobody was calling.
+        //
+        // Here rather than in Connect because a takion that connected is not always one that should
+        // start reading: PP607's responder tests drive the loop themselves, and the C's own thread
+        // is started by the connect the RUN makes.
+        takion.StartReceiving();
 
         // PP773: THIS IS THE CONNECTED EVENT, and it is raised here because here is where it
         // happens. In the C, chiaki_takion_connect starts a thread and returns, and the takion's

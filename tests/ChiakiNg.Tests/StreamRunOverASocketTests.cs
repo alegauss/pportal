@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Sockets;
 using ChiakiNg.Native;
 using ChiakiNg.Protocol;
@@ -29,6 +29,9 @@ namespace ChiakiNg.Tests;
 public class StreamRunOverASocketTests(ITestOutputHelper output) : IDisposable
 {
     private readonly UdpClient peer = new(new IPEndPoint(IPAddress.Loopback, 0));
+
+    // PP773: the client's address, recorded by the answering thread.
+    private volatile IPEndPoint? client;
 
     private IPEndPoint PeerEndPoint => (IPEndPoint)peer.Client.LocalEndPoint!;
 
@@ -120,6 +123,10 @@ public class StreamRunOverASocketTests(ITestOutputHelper output) : IDisposable
             while (responder.State != TakionResponderState.Done)
             {
                 byte[] datagram = peer.Receive(ref from);
+
+                // PP773: where the client is, which a test sending it something afterwards needs.
+                // The responder only ever replies to whoever spoke, so this is the same address.
+                client = new IPEndPoint(from.Address, from.Port);
 
                 if (responder.Answer(datagram) is { } answer)
                     peer.Send(answer, answer.Length, from);
@@ -334,6 +341,64 @@ public class StreamRunOverASocketTests(ITestOutputHelper output) : IDisposable
         Assert.Equal(ChiakiError.Unknown, outcome);
         Assert.Equal(TakionStage.Closed, takion.Stage);
         Assert.Equal(StreamMessages.DisconnectType, sent.Snapshot()[^1]);
+    }
+
+    /// <summary>
+    /// PP773: THE LOOP ON A THREAD, which is the half this port did not have.
+    ///
+    /// PP488 wrote takion_thread_func's loop and every caller ran it for a bounded number of
+    /// iterations to read its trace. Nothing ran it against a live socket, so a managed run
+    /// connected to a real PS5, sent a real BIG - and never read the answer. A console trial showed
+    /// it: zero datagrams dispatched over fifteen seconds, on a session the console was acking.
+    ///
+    /// Here the peer sends one after the handshake and the run's own takion picks it up, on a thread
+    /// nobody in this test started. Without StartReceiving the count stays at zero and the assertion
+    /// below is the difference between a stream and a wait.
+    /// </summary>
+    [Fact]
+    public void TheReceiveLoopRunsOnAThreadOfItsOwn()
+    {
+        var responder = new TakionHandshakeResponder(0x0000_5745, [.. Enumerable.Repeat((byte)0x77, 32)]);
+        Thread answering = AnswerHandshake(responder);
+
+        var seen = new List<int>();
+        var takion = new ManagedTakion(
+            0x0000_4746,
+            datagram =>
+            {
+                lock (seen)
+                    seen.Add(datagram.Length);
+            });
+
+        try
+        {
+            Assert.Equal(ChiakiError.Success, takion.Connect(PeerEndPoint, 4000).Error);
+
+            answering.Join(TimeSpan.FromSeconds(10));
+            takion.StartReceiving();
+
+            Assert.True(takion.ReceiveThreadAlive, "the receive thread did not start");
+
+            // The console's side of the socket, which the responder has finished with. A datagram
+            // sent here has to reach the callback with nobody in this test reading the socket.
+            byte[] one = [0x00, 0x11, 0x22, 0x33, 0x44];
+            peer.Send(one, one.Length, client ?? throw new InvalidOperationException("the handshake left no address"));
+
+            SpinWait.SpinUntil(() => takion.Dispatched > 0, TimeSpan.FromSeconds(5));
+
+            output.WriteLine($"dispatched {takion.Dispatched}, lengths {string.Join(", ", seen)}");
+
+            Assert.True(takion.Dispatched > 0, "nothing was dispatched, so nothing is receiving");
+            Assert.Contains(one.Length, seen);
+        }
+        finally
+        {
+            takion.Dispose();
+        }
+
+        // And the teardown stopped it, which is the C's close joining its thread before it frees a
+        // queue the loop is still pushing into.
+        Assert.False(takion.ReceiveThreadAlive);
     }
 
     /// <summary>A loopback endpoint with nothing bound to it, so a handshake can only time out.</summary>

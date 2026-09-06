@@ -19,7 +19,9 @@ public readonly record struct ArrivalReading(
     BangOutcome? Bang = null,
     StreamInfoVerdict? StreamInfo = null,
     IdleAction? Idle = null,
-    StreamFlagRaised? Raised = null);
+    StreamFlagRaised? Raised = null,
+    TakionMessageVerdict? Verdict = null,
+    int BaseType = -1);
 
 /// <summary>Which of the host's flags an arrival raised.</summary>
 public enum StreamFlagRaised
@@ -136,16 +138,27 @@ public sealed class StreamArrivals
         if (Ledger is not { } ledger)
             return Record(new ArrivalReading(TakionRoute.Ignored));
 
+        // PP773: the base type is layer zero and it is not this object's switch - the takion's own
+        // dispatch routes video and audio to the AV arm. What reaches here is EVERY datagram, so a
+        // reading has to be able to say "that was a video packet" rather than only "ignored".
+        int baseType = TakionDispatch.BaseTypeOf(datagram);
+
+        if (baseType != TakionDispatch.Control)
+            return Record(new ArrivalReading(TakionRoute.Ignored, BaseType: baseType));
+
         TakionMessageReading message = TakionMessageIntake.Read(datagram, TagLocal, ledger);
 
         if (message.Verdict != TakionMessageVerdict.Data)
-            return Record(new ArrivalReading(TakionRoute.Ignored));
+            return Record(new ArrivalReading(TakionRoute.Ignored, Verdict: message.Verdict, BaseType: baseType));
 
         TakionDataPushReading push = TakionDataPush.Read(
             datagram, message.PayloadOffset, message.PayloadSize, message.Header.ChunkFlags);
 
         if (push.Verdict != TakionDataPushVerdict.Pushed)
-            return Record(new ArrivalReading(TakionRoute.ToData));
+        {
+            return Record(new ArrivalReading(
+                TakionRoute.ToData, Verdict: message.Verdict, BaseType: baseType));
+        }
 
         // One entry through the drain, which is what decides whether the type is one of the four and
         // where the body starts. The queue between the push and the drain is takion's own ordering
@@ -154,7 +167,10 @@ public sealed class StreamArrivals
         TakionDrainOutcomeSet drained = TakionDataDrain.Drain([push.Entry]);
 
         if (drained.Deliveries.Count == 0)
-            return Record(new ArrivalReading(TakionRoute.ToData));
+        {
+            return Record(new ArrivalReading(
+                TakionRoute.ToData, Verdict: message.Verdict, BaseType: baseType));
+        }
 
         TakionDelivery delivery = drained.Deliveries[0];
 

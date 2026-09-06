@@ -89,6 +89,10 @@ public sealed class ManagedTakion : ITakionLoopHost, IDisposable
     private readonly List<byte[]> postponed = [];
     private readonly Action<ReadOnlySpan<byte>>? dispatch;
 
+    // PP773: takion_thread_func, and the flag its slices are checked against.
+    private Thread? receiver;
+    private volatile bool receiving;
+
     private readonly ManagedAvArm? avArm;
 
     private TakionUdpWire? wire;
@@ -437,6 +441,69 @@ public sealed class ManagedTakion : ITakionLoopHost, IDisposable
         return TakionReceiveLoop.Run(this, enableCrypt, iterationLimit);
     }
 
+    /// <summary>
+    /// PP773: the loop on a thread of its own, which is what takion_thread_func is.
+    ///
+    /// THE PORT HAD THE LOOP AND NOT THE THREAD, and the difference is a whole session. PP488 wrote
+    /// the loop and every caller was a test running a bounded number of iterations to read its
+    /// trace; nothing ran it against a live socket. So a managed run connected, sent a real BIG to a
+    /// real PS5, and never read the answer - the arrivals reach the dispatch and the dispatch was
+    /// never called, because nothing was receiving.
+    ///
+    /// IN SLICES, WHICH IS THE ONE DEPARTURE. <see cref="TakionReceiveLoop.Run"/> accumulates a
+    /// trace for its callers to assert over, so a single call lasting a session would grow a list
+    /// per datagram. Slicing discards each slice's trace and keeps the loop itself untouched, which
+    /// is better than a second loop that would be the model's twin and drift from it.
+    ///
+    /// AND THE STOP IS THE SOCKET, as the C's is the stop pipe. Closing the socket makes a blocked
+    /// receive fail, the loop leaves on the failure branch it already has, and the slice boundary is
+    /// only what bounds how long a shutdown waits when nothing is arriving.
+    /// </summary>
+    public void StartReceiving(bool enableCrypt = true)
+    {
+        if (Stage != TakionStage.Connected)
+            throw new InvalidOperationException("the loop runs on a connected takion");
+
+        if (receiver is not null)
+            throw new InvalidOperationException("this takion is already receiving");
+
+        receiving = true;
+
+        receiver = new Thread(() =>
+        {
+            while (receiving)
+            {
+                TakionLoopOutcome slice;
+
+                try
+                {
+                    slice = TakionReceiveLoop.Run(this, enableCrypt, ReceiveSlice);
+                }
+                catch (ObjectDisposedException)
+                {
+                    // The socket went out from under a blocked receive, which IS the stop: the C's
+                    // pipe wakes its select and this is the same event one runtime over.
+                    return;
+                }
+
+                if (slice.ExitedOnFailure)
+                    return;
+            }
+        })
+        {
+            IsBackground = true,
+            Name = "takion receive",
+        };
+
+        receiver.Start();
+    }
+
+    /// <summary>How many iterations one slice runs, which bounds a shutdown and nothing else.</summary>
+    public const int ReceiveSlice = 64;
+
+    /// <summary>Whether the loop is on a thread of its own right now.</summary>
+    public bool ReceiveThreadAlive => receiver is { IsAlive: true };
+
     /// <summary>Hold a datagram back until the cipher exists, which is what postponing is.</summary>
     public void Postpone(ReadOnlySpan<byte> datagram) => postponed.Add(datagram.ToArray());
 
@@ -524,6 +591,16 @@ public sealed class ManagedTakion : ITakionLoopHost, IDisposable
         if (Stage == TakionStage.Closed)
             return;
 
+        // PP773: the thread first, because everything below is what it is reading. The C's close
+        // pokes the stop pipe and JOINS before it frees a queue, and a teardown that released the
+        // data queue under a live receive would be freeing what the loop is pushing into.
+        //
+        // The flag alone does not wake a blocked receive - the socket close below does - so the
+        // join here is bounded and the join after it is the one that matters. Ordered this way
+        // rather than closing first because the C's order is event, then socket, and a listener
+        // told the session ended can still read what it needs.
+        StopReceiving();
+
         if (sendBuffer is not null)
         {
             sendBuffer = null;
@@ -562,6 +639,23 @@ public sealed class ManagedTakion : ITakionLoopHost, IDisposable
             teardown.Add(TakionTeardownStep.Socket);
         }
 
+        // And the join that the close makes finite: a receive blocked on a socket that is gone
+        // fails at once, which is the branch the loop already leaves by.
+        if (receiver is { } thread)
+        {
+            thread.Join(TimeSpan.FromSeconds(2));
+            receiver = null;
+        }
+
         Stage = TakionStage.Closed;
     }
+
+    /// <summary>
+    /// Asks the loop to stop at its next slice boundary, without waiting for it.
+    ///
+    /// What makes this prompt is the socket closing under it, which <see cref="Dispose"/> does two
+    /// steps later. On its own it bounds a shutdown at one slice, which is what the C's stop pipe
+    /// makes immediate.
+    /// </summary>
+    public void StopReceiving() => receiving = false;
 }

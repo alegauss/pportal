@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using ChiakiNg.Native;
 using ChiakiNg.Protocol;
 
@@ -70,6 +70,17 @@ public sealed class ManagedStreamPhase : IDisposable
         runner = new ManagedStreamRunner(() => Build(session, peer, video, baseline, lossMax));
     }
 
+    /// <summary>
+    /// PP773: what arrived and what each arrival came to, or null before the run built a host.
+    ///
+    /// The next rung of the ladder PP770, PP771 and PP772 built. Those say how far the walk got and
+    /// what the handshake answered; a walk that stops at a wait says nothing about WHY, and the two
+    /// causes look identical from outside - nothing arrived, or something arrived and no handler
+    /// claimed it. This is the reading that separates them, and it cost a console trial to learn
+    /// that the first was the case.
+    /// </summary>
+    public StreamArrivals? Arrivals { get; private set; }
+
     /// <summary>What the run answered, or null while it has not finished.</summary>
     public StreamRunnerOutcome? Outcome { get; private set; }
 
@@ -117,7 +128,7 @@ public sealed class ManagedStreamPhase : IDisposable
     /// gives: a start that never comes should build no host, because constructing one takes a
     /// socket.
     /// </summary>
-    private static ManagedStreamRunHost Build(
+    private ManagedStreamRunHost Build(
         ChiakiSession session,
         IPEndPoint peer,
         VideoSampleHandler video,
@@ -163,6 +174,7 @@ public sealed class ManagedStreamPhase : IDisposable
 
         // And the replay, which is the same handler over the message the bang state buffered.
         host.ReplayHandler = arrivals.Replay;
+        Arrivals = arrivals;
 
         return host;
     }
