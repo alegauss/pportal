@@ -359,6 +359,30 @@ to a list nothing drains, which on this reading is fourteen thousand in twenty s
 
 ## Block G — Test discipline
 
+### §PP796 A warning the failure below it contradicts
+
+scripts/test-windows.sh asks ninja whether chiaki-unit is up to date and says so when it
+is not - to stderr, as a WARNING, and then runs the stale binary anyway. The case count
+comes out of that binary and is compared against a floor that describes the tree on
+disk, so the two disagree whenever a working tree has moved since the last build.
+
+AND THE MESSAGE UNDER IT NAMES THE WRONG CAUSE. "A suite got smaller. Check whether
+ffmpeg was found" is right about the case it was written for -
+CHIAKI_ENABLE_FFMPEG_DECODER going OFF drops seven - and wrong about the far more common
+one. A reader who acts on it goes looking at a build option while the answer is
+compile.cmd.
+
+WHICH IS NOT HYPOTHETICAL. In one session it produced five misdiagnoses: the gate came
+back red with every managed test passing, a rerun after an unrelated rebuild came back
+green, and the conclusion drawn each time was that the gate is flaky. It is not; the
+binary was from a different tree each time, after files were restored or reverted.
+
+THE FIX IS THE SEVERITY AND THE ORDER. A binary ninja says is out of date makes the
+count meaningless, so the run should refuse there rather than carry a number nobody can
+read - PP56's own argument for why the freshness check exists at all. Where it does
+report a shrunken suite, the ffmpeg sentence should come second and say the stale case
+was already ruled out.
+
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed

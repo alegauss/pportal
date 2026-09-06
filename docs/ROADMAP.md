@@ -33,6 +33,8 @@
 
 ## Block G — Test discipline
 
+- 📋 **PP796** (deps: —) **a stale suite binary is a warning and the floor then fails naming ffmpeg, so it reads as a shrunken suite** — The two are printed by the same run and the second explains the first wrongly; a reader who acts on the message checks a build option instead of rebuilding. → §PP796
+
 ## Block H — Performance and telemetry
 
 - ⏳ **PP46** (deps: PP42 ✅, PP63) **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — A Chromium leaving the build should be visible in cold start and in megabytes, and stating it without measuring is how a port collects folklore. → §PP46
@@ -111,6 +113,14 @@
   and ManagedTakion exposes no raw send for the pings. Checked as PP745's was:
   SeamReach's row for ISenkushaRunHost leaves, which needs a class in app rather than a
   double in the test project.
+
+## Done when — PP783
+
+- **The flip matches the C path's own baseline, frame for frame** A run on the C path
+  with d3d11va gave 1020 decoded, 972 shown and 426 pad states over twenty seconds,
+  recorded in chiaki_baseline.jsonl. PP763 shipped on a green gate because nobody had a
+  number; the flip is checked against that one, by compare-baselines rather than by
+  looking.
 
 ## Non-goals
 
