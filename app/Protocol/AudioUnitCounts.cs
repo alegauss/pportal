@@ -24,10 +24,11 @@ public readonly record struct AudioUnitCount(
 /// is what keeps that an answer rather than an assumption.
 ///
 /// MEASURED FROM PP608's CAPTURE, which is real PS5 traffic and the only audio this tree has. Its
-/// heads are eighteen bytes and a whole AV parse needs nineteen, so <see cref="AvPacketParse"/>
-/// refuses them - but the three counts sit in the dword at byte five, well inside what was kept.
-/// That is why this reads the fields directly instead of calling the parser: the parser is right to
-/// refuse a head it cannot finish, and this asks a smaller question of the same bytes.
+/// heads are eighteen bytes and a whole AV parse needs twenty, so <see cref="AvPacketParse"/>
+/// refuses every one of them - which is what <see cref="AvHeadFields"/> already exists for, and
+/// this composes rather than re-reading the bytes. The offsets are PP524's, the unpacking of the
+/// packed dword is <see cref="ManagedAudioReceiver.Units"/>, and nothing here is a third copy of
+/// either: a second reader of a header layout is the thing that drifts, not a shortcut past it.
 ///
 /// AND ELEVEN OF THE 450 ARE NOT AUDIO. They carry codec 255, arrive between 37ms and 84ms, and are
 /// 548 or 1426 bytes - senkusha's MTU probes on the other of the two takions PP608's capture holds,
@@ -36,8 +37,8 @@ public readonly record struct AudioUnitCount(
 /// </summary>
 public static class AudioUnitCounts
 {
-    /// <summary>How many bytes of a head this needs: through the codec at byte nine.</summary>
-    public const int NeededBytes = 10;
+    /// <summary>How many bytes of a head this needs, which is PP524's bound and not a second one.</summary>
+    public const int NeededBytes = AvHeadFields.MinimumHead;
 
     /// <summary>What PP608's capture holds, of each kind, so a re-recording that differs says so.</summary>
     public const int AudioHeads = 450;
@@ -70,20 +71,24 @@ public static class AudioUnitCounts
     /// </summary>
     public static AudioUnitCount? Read(ReadOnlySpan<byte> head)
     {
+        // The base type is checked here and not in AvHeadFields, which answers for video too: the
+        // two pack that dword differently, so an audio reading of a video head is plausible numbers.
         if (head.Length < NeededBytes || (head[0] & AvPacketParse.BaseTypeMask) != TakionDispatch.Audio)
             return null;
 
-        // av is rebased past the type byte, so the C's `av + 4` is head[5..].
-        uint dword2 = (uint)((head[5] << 24) | (head[6] << 16) | (head[7] << 8) | head[8]);
-        ushort unitsFec = (ushort)(dword2 & 0xffff);
+        if (AvHeadFields.Read(head) is not { } counts)
+            return null;
+
+        (byte source, byte fec, byte unitSize) =
+            ManagedAudioReceiver.Units((ushort)counts.UnitsInFrameFec);
 
         return new AudioUnitCount(
-            (byte)((dword2 >> 0x18) & 0xff),
-            (ushort)(((dword2 >> 0x10) & 0xff) + 1),
-            (byte)(unitsFec & 0xf),
-            (byte)((unitsFec >> 4) & 0xf),
-            (byte)(unitsFec >> 8),
-            head[9]);
+            (byte)counts.UnitIndex,
+            (ushort)counts.UnitsInFrameTotal,
+            source,
+            fec,
+            unitSize,
+            counts.Codec);
     }
 
     /// <summary>Every audio head in a capture, senkusha's probes included.</summary>

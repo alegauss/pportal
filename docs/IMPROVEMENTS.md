@@ -378,6 +378,31 @@ deliverable is a declared list with a reason each, asserted in both directions, 
 than a demand that the count be zero - which is what SeamOnly already is, one scope
 wider.
 
+### §PP742 Real AV heads no parser will take
+
+PP608's capture keeps eighteen bytes of each datagram, chosen to reach the takion header
+and stop. AvPacketParse checks that the WHOLE AV header is present before reading any of
+it - twenty bytes for the cheapest audio layout, twenty-five for video and twenty-eight
+with nalu info - so it refuses all 3681 AV heads in that file with BufTooSmall, two
+bytes short in the best case.
+
+SO THE DIFFERENTIAL HAS NEVER MET REAL TRAFFIC. TheManagedV9ParseAgreesWithTheShim
+drives four synthetic lead bytes through both parsers, which is a genuine oracle and is
+what makes the v12 arm trustworthy. It is not the same as running it over 3231 video and
+450 audio heads a PS5 actually sent, and those are sitting in the tree unreadable by the
+thing they would test.
+
+THE FIELDS INSIDE EIGHTEEN ARE ALREADY REACHED. PP524's AvHeadFields reads the unit
+counts and the codec byte at their offsets, held against the C's own av_packet_parse,
+and PP736 measured the audio ratio through it. So this is not about those four fields:
+it is about the key position, the adaptive stream index and the haptics byte, which sit
+past what was kept.
+
+THE FIX IS A WIDER HEAD ON THE NEXT RECORDING, and twenty-eight bytes covers every
+layout. That waits on a console, which is why this is a line rather than a change - and
+the capture's format already refuses a file written to the older shape, so widening it
+is a version the reader can tell apart.
+
 ## Block G — Test discipline
 
 ### §PP739 An absent id that any file can make present

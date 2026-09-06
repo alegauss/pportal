@@ -122,8 +122,8 @@ public sealed class ManagedAudioReceiver
     /// <summary>CHIAKI_AUDIO_JITTER_BUFFER_SIZE.</summary>
     public const int JitterBufferSize = 8;
 
-    /// <summary>The one codec the receiver accepts.</summary>
-    public const byte OpusCodec = 5;
+    /// <summary>The one codec the receiver accepts, which PP524 already measured and named.</summary>
+    public const byte OpusCodec = AvHeadFields.AudioCodec;
 
     private readonly IAudioFrameSink sink;
     private readonly ManagedPacketStats? stats;
