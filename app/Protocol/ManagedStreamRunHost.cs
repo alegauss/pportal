@@ -122,6 +122,16 @@ public sealed class ManagedStreamRunHost : IStreamRunHost
     /// <summary>And the idle loop's, which is the heartbeat interval it wakes on.</summary>
     public int IdleTimeoutMs { get; init; } = StreamIdleLoop.HeartbeatIntervalMs;
 
+    /// <summary>
+    /// PP754: how long the takion's handshake is given, which was the C's fifteen seconds and
+    /// nothing else.
+    ///
+    /// The two waits above were knobs from the start and this was not, so a caller could shorten
+    /// every wait the run makes except the longest one. Found by a runner whose own timeout was
+    /// shorter than a connect nobody was answering.
+    /// </summary>
+    public int ConnectTimeoutMs { get; init; } = TakionHandshake.ExpectTimeoutMs;
+
     /// <summary>How deep the C's state mutex would be held, which PP640's third ordering is about.</summary>
     public int LockDepth { get; private set; }
 
@@ -219,7 +229,7 @@ public sealed class ManagedStreamRunHost : IStreamRunHost
     }
 
     /// <inheritdoc/>
-    public bool ConnectTakion() => takion.Connect(peer).Error == ChiakiError.Success;
+    public bool ConnectTakion() => takion.Connect(peer, ConnectTimeoutMs).Error == ChiakiError.Success;
 
     /// <inheritdoc/>
     public bool StartCongestionControl()
