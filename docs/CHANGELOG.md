@@ -674,6 +674,7 @@
 - ✅ **PP752** **the handoff that replaces the C's stream run is undecided, so the commit that edits the C has nothing to aim at** — One of PP28's seven steps becomes managed and six stay, held against session.c: the run is replaced, unlocked across as the C leaves it, and the C thread waits rather than returns.
 - ✅ **PP753** **the session thread has no way to hand the stream phase over and take an outcome back, so the deletion cannot land** — Two bool-pred conds and a copied reason let the C thread block where its run was and take back the error and the disconnect reason, with no managed pointer crossing.
 - ✅ **PP754** **nothing in the application builds a run host or calls the run, so the deletion would leave it with no streaming** — ManagedStreamRunner waits on the seam, builds the host from parts a caller supplies, runs and reports both values - so a session thread handing over is answered rather than timing out.
+- ✅ **PP755** **the disconnect reason is parsed and the host holds no field for it, so the runner takes it as a parameter** — The host carries the reason where the C keeps it, set with the flag in one call as the disconnect handler sets them, and the runner reads it rather than being handed one.
 
 ## Block G — Test discipline
 

@@ -309,6 +309,45 @@ public class ManagedStreamRunHostTests(ITestOutputHelper output)
         Assert.True(host.Flags.RemoteDisconnected);
     }
 
+    /// <summary>
+    /// PP755: THE DISCONNECT PAIR MOVES TOGETHER, as the C's handler moves it.
+    ///
+    /// stream_connection_takion_data_disconnect writes remote_disconnected AND the reason before it
+    /// signals, so a wait that ends on the flag always finds a reason belonging to it. Two calls
+    /// would leave a window where the flag is true and the reason is the previous session's.
+    /// </summary>
+    [Fact]
+    public void TheDisconnectFlagAndItsReasonArriveTogether()
+    {
+        ManagedStreamRunHost host = Host();
+
+        Assert.Null(host.RemoteDisconnectReason);
+        Assert.False(host.RemoteDisconnected);
+
+        host.SignalRemoteDisconnected("the console went away");
+
+        Assert.True(host.RemoteDisconnected);
+        Assert.Equal("the console went away", host.RemoteDisconnectReason);
+    }
+
+    /// <summary>
+    /// And an absent reason stays absent, which PP371 is the reason for.
+    ///
+    /// The C's strdup can fail, leaving the flag true and the reason NULL - a case its session
+    /// thread dereferences twice without testing. Smoothing it into an empty string here would
+    /// make a console that gave no reason indistinguishable from one that gave a blank.
+    /// </summary>
+    [Fact]
+    public void ADisconnectWithNoReasonKeepsNone()
+    {
+        ManagedStreamRunHost host = Host();
+
+        host.SignalRemoteDisconnected(null);
+
+        Assert.True(host.RemoteDisconnected);
+        Assert.Null(host.RemoteDisconnectReason);
+    }
+
     /// <summary>And the two flags the teardown reads come off those same fields.</summary>
     [Fact]
     public void TheTeardownFlagsAreTheOnesTheWaitSets()

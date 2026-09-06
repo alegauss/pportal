@@ -48,12 +48,7 @@ public sealed class ManagedStreamRunner
     /// Waits for the handover, runs, and reports - which is the whole of what this owns.
     /// </summary>
     /// <param name="handover">PP753's seam, whose far side is the C session thread.</param>
-    /// <param name="reason">
-    /// The remote disconnect reason to report, where the run ends in one. Supplied rather than read
-    /// off the run: the reason is a string the console sent, and what carries it to here is the
-    /// disconnect message's own path rather than the sequence's.
-    /// </param>
-    public StreamRunnerOutcome Run(StreamHandover handover, string? reason = null)
+    public StreamRunnerOutcome Run(StreamHandover handover)
     {
         ArgumentNullException.ThrowIfNull(handover);
 
@@ -68,6 +63,10 @@ public sealed class ManagedStreamRunner
         Host = build();
 
         ChiakiError error = ManagedStreamRun.Run(Host);
+
+        // PP755: read off the host rather than handed in. The disconnect handler writes it there,
+        // which is where the C keeps it, so a caller cannot report a reason the run never had.
+        string? reason = Host.RemoteDisconnectReason;
 
         // Reported before returning, because the session thread is blocked on it: a runner that
         // answered its caller first would leave that thread waiting on a run already over.

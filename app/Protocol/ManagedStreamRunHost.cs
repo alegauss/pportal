@@ -76,6 +76,7 @@ public sealed class ManagedStreamRunHost : IStreamRunHost
 
     private StreamWaitState flags;
     private byte[]? early;
+    private string? reason;
 
     /// <summary>Everything the run needs from the world, none of it built here.</summary>
     public ManagedStreamRunHost(
@@ -186,6 +187,45 @@ public sealed class ManagedStreamRunHost : IStreamRunHost
                 shouldStop ?? flags.ShouldStop,
                 remoteDisconnected ?? flags.RemoteDisconnected,
                 failed ?? flags.Failed);
+
+            Monitor.PulseAll(gate);
+        }
+    }
+
+    /// <summary>
+    /// PP755: the reason the console gave for going away, which the session thread writes its quit
+    /// reason from.
+    ///
+    /// The C keeps it on the stream connection, set by the disconnect handler and read after the
+    /// run - so this is where it lives here too, and <see cref="ManagedStreamRunner"/> reads it off
+    /// the host rather than being handed one.
+    /// </summary>
+    public string? RemoteDisconnectReason
+    {
+        get
+        {
+            lock (gate)
+                return reason;
+        }
+    }
+
+    /// <summary>
+    /// PP755: the disconnect handler's own pair, set together as the C sets them.
+    ///
+    /// stream_connection_takion_data_disconnect writes remote_disconnected AND the reason before it
+    /// signals, so a wait that ends on the flag always finds a reason that belongs to it. Two calls
+    /// would leave a window where the flag is true and the reason is the last session's.
+    ///
+    /// A NULL REASON IS A CASE THE C HAS. Its strdup can fail, and PP371 found the session thread
+    /// dereferencing the result twice without testing - so absent stays representable here rather
+    /// than being smoothed into an empty string.
+    /// </summary>
+    public void SignalRemoteDisconnected(string? disconnectReason)
+    {
+        lock (gate)
+        {
+            reason = disconnectReason;
+            flags = flags with { RemoteDisconnected = true };
 
             Monitor.PulseAll(gate);
         }

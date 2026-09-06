@@ -145,7 +145,7 @@ public class ManagedStreamRunnerTests(ITestOutputHelper output) : IDisposable
 
         sessionThread.Start();
 
-        StreamRunnerOutcome outcome = runner.Run(handover, "the console hung up");
+        StreamRunnerOutcome outcome = runner.Run(handover);
 
         Assert.True(sessionThread.Join(TimeSpan.FromSeconds(20)));
 
@@ -158,7 +158,10 @@ public class ManagedStreamRunnerTests(ITestOutputHelper output) : IDisposable
         // exactly what PP746 asserts about it. What matters here is that it RAN and reported.
         Assert.Equal(ChiakiError.Unknown, outcome.Error);
         Assert.Equal(taken, outcome.Error);
-        Assert.Equal("the console hung up", handover.Reason);
+        // PP755: the run never saw a disconnect, so there is no reason - and the runner reports
+        // the absence rather than whatever a caller might have passed.
+        Assert.Null(handover.Reason);
+        Assert.Null(outcome.Reason);
     }
 
     /// <summary>
@@ -211,7 +214,7 @@ public class ManagedStreamRunnerTests(ITestOutputHelper output) : IDisposable
 
         var runner = new ManagedStreamRunner(() => Host(new Sent(), takion)) { StartTimeoutMs = 5000 };
 
-        StreamRunnerOutcome outcome = runner.Run(handover, reason: null);
+        StreamRunnerOutcome outcome = runner.Run(handover);
 
         // Zero timeout: it is already there, or it was reported too late.
         Assert.Equal(outcome.Error, handover.AwaitFinish(0));
