@@ -85,6 +85,41 @@ public class ManagedControllerStateSinkTests
     }
 
     /// <summary>
+    /// PP757: A SNAPSHOT OFF AN IDLE STATE IS THE IDLE SNAPSHOT, which it was not.
+    ///
+    /// FeedbackSnapshot.Idle named chiaki_controller_state_set_idle and used default(FeedbackMotion)
+    /// - ten zeroes - where that function writes accel_y = 1 and orient_w = 1. So the sender's three
+    /// starting states described a pad in free fall holding a quaternion with no largest component,
+    /// and the state loop sends one every 200ms whether anything moved or not.
+    ///
+    /// Asserted as the join between the two sides rather than as a constant: the C builds the state,
+    /// this side reads it back, and the two have to agree about what "still" is. A constant compared
+    /// against itself would have passed on the day this was wrong.
+    /// </summary>
+    [Fact]
+    public void TheIdleSnapshotIsWhatAFreshStateActuallyReports()
+    {
+        using var state = new ChiakiControllerState();
+
+        Assert.Equal(FeedbackSnapshot.Idle, FeedbackSnapshot.From(state));
+
+        // And explicitly the two the C sets and a zeroed record does not.
+        Assert.Equal(1f, FeedbackSnapshot.Idle.Motion.AccelY);
+        Assert.Equal(1f, FeedbackSnapshot.Idle.Motion.OrientW);
+
+        // SetIdle puts a moved state back, which is the same function reached the other way.
+        state.SetMotion(1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f, 10f);
+        state.Buttons = ChiakiControllerButton.Cross;
+        state.SetIdle();
+
+        Assert.Equal(FeedbackSnapshot.Idle, FeedbackSnapshot.From(state));
+
+        // The default record is still free fall, and is no longer what idle means - which is the
+        // distinction the old value collapsed.
+        Assert.NotEqual(FeedbackSnapshot.Idle.Motion, default(FeedbackMotion));
+    }
+
+    /// <summary>
     /// A PUSH WITH NOTHING ARMED IS KEPT AND IS A SUCCESS, which is the C's own branch.
     ///
     /// chiaki_session_set_controller_state assigns session-&gt;controller_state before it tests

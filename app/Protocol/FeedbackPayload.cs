@@ -27,6 +27,28 @@ public readonly record struct FeedbackMotion(
     short LeftX, short LeftY, short RightX, short RightY)
 {
     /// <summary>
+    /// PP757: what a pad reports lying still, which is NOT ten zeroes.
+    ///
+    /// chiaki_controller_state_set_idle writes accel_y = 1 and orient_w = 1 and leaves the other
+    /// eight at zero. Neither is a convenience: a pad on a table feels one g down its Y axis, and
+    /// the identity quaternion is the rotation that means not turned.
+    ///
+    /// SO default(FeedbackMotion) IS FREE FALL, and it is what this record's default was used as
+    /// until now. Two things came of that. The state loop sends one every 200ms whether anything
+    /// moved or not, so before a pad's first push the console was told the controller was falling,
+    /// with a quaternion whose four components were all zero - and the format picks the largest by
+    /// magnitude, which among four zeroes is arbitrary rather than wrong. And the suppression
+    /// inverted: feedbacksender.c returns early when the state equals the previous one, so a pad
+    /// held still sends nothing, while here a resting pad read accel_y = 1 against a prev of zero
+    /// and sent a packet the C suppresses.
+    /// </summary>
+    public static FeedbackMotion Idle { get; } = new(
+        GyroX: 0f, GyroY: 0f, GyroZ: 0f,
+        AccelX: 0f, AccelY: 1f, AccelZ: 0f,
+        OrientX: 0f, OrientY: 0f, OrientZ: 0f, OrientW: 1f,
+        LeftX: 0, LeftY: 0, RightX: 0, RightY: 0);
+
+    /// <summary>
     /// PP756: the fourteen read off a live state, which nothing could do until the gyro and the
     /// accelerometer had a reader.
     ///

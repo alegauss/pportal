@@ -214,31 +214,6 @@ layout. That waits on a console, which is why this is a line rather than a chang
 the capture's format already refuses a file written to the older shape, so widening it
 is a version the reader can tell apart.
 
-### §PP757 The resting state the port does not reproduce
-
-chiaki_controller_state_set_idle sets accel_y to 1 and orient_w to 1, leaving the other
-eight motion floats at zero. Not a convenience: a pad lying still feels one g down its Y
-axis, and the identity quaternion is the rotation that means not turned.
-
-THE PORT'S IS default(FeedbackMotion), which is ten zeroes. FeedbackSnapshot.Idle's own
-comment names set_idle and does not reproduce it, and all three of the sender's states
-start there, as feedbacksender.c starts its three.
-
-TWO THINGS COME OF IT. The state loop sends one every 200ms whether anything moved or
-not, so before a pad's first push the console is told the controller is falling, with a
-quaternion whose four components are all zero. The compressor picks the largest by
-magnitude, and among four zeroes that pick is arbitrary rather than wrong - a
-well-formed number describing no orientation.
-
-AND THE SUPPRESSION INVERTS. feedbacksender.c returns early when the state equals
-controller_state_prev, so a pad held still sends nothing at all. Here a pad held still
-reads accel_y = 1 and the prev reads zero, so the first push sends a state packet the C
-suppresses.
-
-Found while giving the native state its motion reader: a snapshot taken off a live idle
-state is not FeedbackSnapshot.Idle, and both of them claim to be the same C
-function.</section_body> </invoke>
-
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry

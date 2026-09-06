@@ -47,8 +47,15 @@ public sealed class MonotonicClock : IMonotonicClock
 /// <param name="Motion">Sticks and the ten motion floats - what becomes a feedback state.</param>
 public readonly record struct FeedbackSnapshot(PadSnapshot Pad, FeedbackMotion Motion)
 {
-    /// <summary>chiaki_controller_state_set_idle, which is where all three of the C's start.</summary>
-    public static FeedbackSnapshot Idle => new(PadSnapshot.Idle, default);
+    /// <summary>
+    /// chiaki_controller_state_set_idle, which is where all three of the C's start.
+    ///
+    /// PP757: AND IT IS NOW ACTUALLY THAT. The motion half was default(FeedbackMotion) - ten zeroes
+    /// - while the C's idle rests under gravity at accel_y = 1 with the identity quaternion. The
+    /// comment named the function and the value did not reproduce it, on the three fields
+    /// feedbacksender.c initialises with it.
+    /// </summary>
+    public static FeedbackSnapshot Idle => new(PadSnapshot.Idle, FeedbackMotion.Idle);
 
     /// <summary>
     /// PP756: both halves off one live state, which is what a pad's push carries.
