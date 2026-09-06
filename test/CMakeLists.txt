@@ -37,6 +37,14 @@ endif()
 add_executable(chiaki-unit ${CHIAKI_UNIT_SOURCES})
 add_test(NAME unit COMMAND chiaki-unit)
 
+# PP760: whether the four frame-path suites are compiled in, which main.c reads.
+#
+# On the test target rather than in config.h, where CHIAKI_LIB_ENABLE_FFMPEG_DECODER lives: that one
+# is set in lib/CMakeLists.txt, and PP623's shape gives this deletion exactly one commit that edits
+# lib/. So the switch sits next to the list it has to agree with - the four files above and this line
+# turn off together, in the commit that removes them.
+target_compile_definitions(chiaki-unit PRIVATE CHIAKI_UNIT_HAVE_FRAMEPATH=1)
+
 target_link_libraries(chiaki-unit chiaki-lib munit)
 
 # PP44 counts allocations per packet, which needs the allocator itself to be observable. --wrap

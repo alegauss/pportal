@@ -10,14 +10,29 @@ extern MunitTest tests_http[];
 extern MunitTest tests_rpcrypt[];
 extern MunitTest tests_gkcrypt[];
 extern MunitTest tests_takion[];
-extern MunitTest tests_fec[];
 extern MunitTest tests_regist[];
 extern MunitTest tests_bitstream[];
 extern MunitTest tests_session_baseline[];
+extern MunitTest tests_decoderchoice[];
+
+/* PP760: the frame path's four suites, behind the option that builds their files.
+ *
+ * fec.c, frameprocessor.c, allocbudget.c and videoreceiver.c link streamconnection.c,
+ * videoreceiver.c, frameprocessor.c and fec.c, which PP696 takes out of the build. An extern with
+ * no definition is a link failure, so the entry point has to know both shapes before the commit
+ * that changes which one it is - and that commit may not edit a test file.
+ *
+ * The shape is ffmpegdecoder.c's, three lines down: a conditional suite in this file is already an
+ * #if around the extern and around the suites[] entry. What differs is where the macro comes from.
+ * That one rides on config.h out of lib/, and a definition added there would be an edit to lib/ in
+ * a commit that is not the one allowed to make it - so this comes off the test target instead,
+ * where the same list that drops the four files turns it off. */
+#if CHIAKI_UNIT_HAVE_FRAMEPATH
+extern MunitTest tests_fec[];
 extern MunitTest tests_frame_processor[];
 extern MunitTest tests_alloc_budget[];
 extern MunitTest tests_video_receiver[];
-extern MunitTest tests_decoderchoice[];
+#endif
 #if CHIAKI_LIB_ENABLE_FFMPEG_DECODER
 extern MunitTest tests_ffmpegdecoder[];
 #endif
@@ -72,6 +87,7 @@ static MunitSuite suites[] = {
 		1,
 		MUNIT_SUITE_OPTION_NONE
 	},
+#if CHIAKI_UNIT_HAVE_FRAMEPATH
 	{
 		"/fec",
 		tests_fec,
@@ -79,6 +95,7 @@ static MunitSuite suites[] = {
 		1,
 		MUNIT_SUITE_OPTION_NONE
 	},
+#endif
 	{
 		"/regist",
 		tests_regist,
@@ -100,6 +117,7 @@ static MunitSuite suites[] = {
 		1,
 		MUNIT_SUITE_OPTION_NONE
 	},
+#if CHIAKI_UNIT_HAVE_FRAMEPATH
 	{
 		"/frame_processor",
 		tests_frame_processor,
@@ -121,6 +139,7 @@ static MunitSuite suites[] = {
 		1,
 		MUNIT_SUITE_OPTION_NONE
 	},
+#endif
 	{
 		"/decoderchoice",
 		tests_decoderchoice,
