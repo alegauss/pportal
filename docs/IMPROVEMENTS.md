@@ -307,29 +307,6 @@ joins under it and there will be more.
 Recorded as a dep of PP696 rather than folded into it, because it is a different piece
 of work and PP696's own design is right about everything except what happens next.
 
-### §PP724 The move nothing asks for
-
-PP714 ported congestion control and NativeWaits went on calling congestioncontrol.c
-unported through a green gate. PP718 fixed that case: an unported row whose note says a
-FILE is unported, while a mirrored row already names that file, contradicts itself.
-
-THE FIRST READING OF THIS TASK WAS WRONG, and measuring it is what showed that. It
-counted one note in ten carrying the phrase and proposed asking the question of the file
-instead of the sentence. That rule fires falsely: holepunch.c is in both groups today,
-legitimately - much of it is ported and one wait is not - and PP718's own text says a
-half-ported file is not the failure. The other nine notes claim something about a WAIT
-rather than about a file, so a file rule has nothing to say about them either.
-
-THE REAL GAP IS THE MOVE. What goes false is a row left in the unported group after its
-wait gains a counterpart, and nothing looks for that. It has happened once: PP723 wrote
-the feedback sender, both FEEDBACK_STATE macros gained managed constants, and the census
-stayed green because that commit moved the rows by hand. A commit that had not would
-have left two false rows behind a passing gate.
-
-WHAT WOULD HOLD IT is a question about the managed side rather than the C: does a
-constant answering this macro now exist? The port has no file-to-type map to ask
-through, and building one for eleven rows is the cost to weigh.
-
 ### §PP742 Real AV heads no parser will take
 
 PP608's capture keeps eighteen bytes of each datagram, chosen to reach the takion header

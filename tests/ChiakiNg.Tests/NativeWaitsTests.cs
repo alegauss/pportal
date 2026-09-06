@@ -1,5 +1,7 @@
 using ChiakiNg.Native;
+using ChiakiNg.Session;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace ChiakiNg.Tests;
 
@@ -10,7 +12,7 @@ namespace ChiakiNg.Tests;
 /// against the C. This is the same question for waits, and the failure it catches is quieter: a macro
 /// moved upstream leaves the port waiting a different length, which no crash reports.
 /// </summary>
-public class NativeWaitsTests
+public class NativeWaitsTests(ITestOutputHelper output)
 {
     private static string? Read(string relativePath)
     {
@@ -162,14 +164,17 @@ public class NativeWaitsTests
     ///
     /// PP723: twenty-two and ten. The feedback sender's two ends of one window moved together,
     /// because the thread that waits the outer one is what the task wrote.
+    ///
+    /// PP724: twenty-three and nine. SESSION_EXPECT_TIMEOUT_MS was in the unported group with a
+    /// counterpart already written - the move nobody made, which is what this task was about.
     /// </summary>
     [Fact]
-    public void TheGroupsAreTwentyTwoThreeOneAndTen()
+    public void TheGroupsAreTwentyThreeThreeOneAndNine()
     {
-        Assert.Equal(22, NativeWaits.Mirrored.Count);
+        Assert.Equal(23, NativeWaits.Mirrored.Count);
         Assert.Equal(3, NativeWaits.Literals.Count);
         Assert.Single(NativeWaits.Departures);
-        Assert.Equal(10, NativeWaits.Unported.Count);
+        Assert.Equal(9, NativeWaits.Unported.Count);
 
         // Macros are the two groups that name one; the literals and the departure name none.
         Assert.Equal(
@@ -179,6 +184,68 @@ public class NativeWaitsTests
         // Nothing unported claims a managed value, and nothing mirrored omits one.
         Assert.All(NativeWaits.Unported, w => Assert.Null(w.Managed));
         Assert.All(NativeWaits.Mirrored, w => Assert.NotNull(w.Managed));
+    }
+
+    /// <summary>
+    /// PP724: no unported row names a macro whose define a managed file already reads.
+    ///
+    /// THE MOVE, which is the half PP718 could not see. That one holds a row's NOTE against the
+    /// census; this holds the row's own group against the managed tree. A wait that gains a
+    /// counterpart is carried across by hand, both counts stay valid, and nothing looks.
+    ///
+    /// It found one when it was written: SESSION_EXPECT_TIMEOUT_MS, with StreamConnectionSwitch
+    /// naming it and reading its define, sitting in the group that says nothing answers it.
+    /// </summary>
+    [Fact]
+    public void NoUnportedRowHasACounterpartAlreadyWritten()
+    {
+        (string, string)[] managed = [.. ManagedSources()];
+
+        IReadOnlyList<string> answered = NativeWaits.UnportedRowsAnsweredInApp(managed);
+
+        Assert.True(
+            answered.Count == 0,
+            "these rows say nothing answers their macro, and something reads its define:\n"
+                + string.Join("\n", answered));
+
+        // PP271: a sweep that read nothing would report the same empty list. The mirrored group is
+        // the positive control - five of its rows hold their macro exactly this way.
+        IReadOnlyList<string> control = NativeWaits.MirroredRowsReadingTheirDefine(managed);
+
+        output.WriteLine($"mirrored rows whose define is read: {string.Join(", ", control)}");
+
+        Assert.True(
+            control.Count >= 5,
+            $"only {control.Count} mirrored rows read their own define, so the sweep is finding little");
+
+        Assert.Contains("SESSION_EXPECT_TIMEOUT_MS", control);
+    }
+
+    /// <summary>Every managed source, which is what both sweeps above are asked of.</summary>
+    private static IEnumerable<(string File, string Source)> ManagedSources()
+    {
+        string? root = SanitizerSource.RepositoryRoot();
+        if (root is null)
+            yield break;
+
+        string app = Path.Combine(root, "app");
+        if (!Directory.Exists(app))
+            yield break;
+
+        foreach (string file in Directory.EnumerateFiles(app, "*.cs", SearchOption.AllDirectories))
+        {
+            string relative = Path.GetRelativePath(root, file).Replace('\\', '/');
+
+            // The census names every macro by definition, and the build's own output is not source.
+            if (relative.Contains("/obj/", StringComparison.Ordinal)
+                || relative.Contains("/bin/", StringComparison.Ordinal)
+                || relative.EndsWith("NativeWaits.cs", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            yield return (relative, File.ReadAllText(file));
+        }
     }
 
     /// <summary>

@@ -45,8 +45,8 @@ public readonly record struct NativeWait(
 /// a crash and is why nothing would report it.
 ///
 /// THE ANSWER IS NOT "MAKE THE TWO COUNTS EQUAL". The C names 32 timing constants across thirteen
-/// files. Twenty-two have a managed constant that follows them, ten are in units this port has not
-/// reached, and three more managed waits follow a number the C did NOT give a name to.
+/// files. Twenty-three have a managed constant that follows them, nine are in units this port has
+/// not reached, and three more managed waits follow a number the C did NOT give a name to.
 ///
 /// PP718: AND A ROW CLAIMING NO COUNTERPART IS CHECKED FOR ONE. PP714 ported congestion control and
 /// this census went on saying congestioncontrol.c was unported, through a green gate - because the
@@ -170,6 +170,10 @@ public static class NativeWaits
         new("FEEDBACK_STATE_TIMEOUT_MAX_MS", FeedbackSender, WaitKind.MirrorsAMacro, "200",
             ManagedFeedbackSender.StateTimeoutMaxMs,
             "the keepalive, and the ceiling on the wait - the end of the window the thread does wait"),
+        new("SESSION_EXPECT_TIMEOUT_MS", SessionSource, WaitKind.MirrorsAMacro, "5000",
+            StreamConnectionSwitch.TimeoutMilliseconds,
+            "PP724 found it in the unported group with a counterpart already written: "
+            + nameof(StreamConnectionSwitch) + " names it and reads its own define"),
     ];
 
     /// <summary>
@@ -222,8 +226,6 @@ public static class NativeWaits
         new("CONNECT_TIMEOUT_MS", Senkusha, WaitKind.NoCounterpartYet, "30000",
             null, "the longest wait in the tree"),
         new("EXPECT_PONG_TIMEOUT_MS", Senkusha, WaitKind.NoCounterpartYet, "1000", null, "as above"),
-        new("SESSION_EXPECT_TIMEOUT_MS", SessionSource, WaitKind.NoCounterpartYet, "5000",
-            null, "session.c's send and recv wait; PP28 is where it lands"),
         new("SESSION_EXPECT_CTRL_START_MS", SessionSource, WaitKind.NoCounterpartYet, "10000",
             null, "the ctrl-start wait, and NOT what SessionRegistFork.RegistWaitMs follows"),
         new("CTRL_EXPECT_TIMEOUT", Ctrl, WaitKind.NoCounterpartYet, "5000",
@@ -233,6 +235,75 @@ public static class NativeWaits
     /// <summary>Every row, in the four groups above.</summary>
     public static IReadOnlyList<NativeWait> All { get; } =
         [.. Mirrored, .. Literals, .. Departures, .. Unported];
+
+    /// <summary>What a managed file writes when it holds a macro against the C's own definition.</summary>
+    public const string DefineOf = "#define ";
+
+    /// <summary>
+    /// PP724: unported rows whose macro a managed file already reads the definition of.
+    ///
+    /// THE MOVE IS WHAT NOTHING WATCHED. PP718 caught a row whose NOTE had gone false; this catches
+    /// the row itself. A wait that gains a counterpart has to be carried from one group to the
+    /// other by hand, every count stays valid either way, and the gate stays green over a row
+    /// saying nothing answers a macro that something answers.
+    ///
+    /// IT HAD HAPPENED TWICE. PP723 moved two feedbacksender rows in the commit that ported them,
+    /// which is the case that got noticed; SESSION_EXPECT_TIMEOUT_MS was the case that did not, and
+    /// it sat in the unported group with <see cref="StreamConnectionSwitch"/> already following it.
+    ///
+    /// THE SIGNAL IS THE DEFINE AND NOT THE NAME. Naming a macro proves nothing - the port's prose
+    /// mentions macros it has not ported, and two files carry a macro called EXPECT_TIMEOUT_MS, so
+    /// a name match reports senkusha's because streamconnection's is discussed. Reading the macro's
+    /// own <c>#define</c> is what a counterpart's check does, and nothing else has a reason to.
+    ///
+    /// SUFFICIENT RATHER THAN NECESSARY, which is the honest limit: five of the mirrored rows read
+    /// their define and the rest hold their number another way, so an empty answer here is not a
+    /// promise that every row is in the right group. It is a promise about the ones it can prove.
+    /// </summary>
+    public static IReadOnlyList<string> UnportedRowsAnsweredInApp(IEnumerable<(string File, string Source)> managed)
+    {
+        ArgumentNullException.ThrowIfNull(managed);
+
+        var found = new List<string>();
+
+        foreach ((string file, string source) in managed)
+        {
+            foreach (NativeWait row in Unported)
+            {
+                if (!source.Contains(DefineOf + row.Name, StringComparison.Ordinal))
+                    continue;
+
+                string entry = $"{row.Name}  read by {file}";
+
+                if (!found.Contains(entry))
+                    found.Add(entry);
+            }
+        }
+
+        found.Sort(StringComparer.Ordinal);
+        return found;
+    }
+
+    /// <summary>The mirrored rows whose define a managed file reads, which is the positive control.</summary>
+    public static IReadOnlyList<string> MirroredRowsReadingTheirDefine(
+        IEnumerable<(string File, string Source)> managed)
+    {
+        ArgumentNullException.ThrowIfNull(managed);
+
+        var found = new List<string>();
+
+        foreach ((_, string source) in managed)
+        {
+            foreach (NativeWait row in Mirrored)
+            {
+                if (source.Contains(DefineOf + row.Name, StringComparison.Ordinal) && !found.Contains(row.Name))
+                    found.Add(row.Name);
+            }
+        }
+
+        found.Sort(StringComparer.Ordinal);
+        return found;
+    }
 
     /// <summary>The claim an unported row makes about its file, which a ship can falsify.</summary>
     public const string UnportedClaim = "is unported";

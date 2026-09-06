@@ -663,6 +663,7 @@
 - ✅ **PP741** **seven interfaces in app are implemented only by test doubles, and only two of them were ever counted** — SeamReach asks the reached question of every public interface the assembly declares, so the seven are a declared list with a reason each rather than two censuses' blind spot.
 - ✅ **PP722** **seven events outside the frame path have no managed raiser, and one enum member is raised by nothing at all** — All seventeen are held against the C that raises them: the eight outside are four subsystems, two already consumed, and the owed pair is one callback where only one can fire.
 - ✅ **PP744** **the pad-info order is read by a copy of the raiser sweep, still anchored on the local name PP722 widened** — ReportOrderIn composes on the widened sweep and strips the prefix, so the second copy is gone and a renamed local no longer reads as a handler that sends nothing.
+- ✅ **PP724** **nothing notices when an unported wait gains a managed counterpart, which happened once already and was caught by hand** — The define-reading sweep found SESSION_EXPECT_TIMEOUT_MS answered while filed as unported, and now holds every unported row's group against the managed tree.
 
 ## Block G — Test discipline
 
