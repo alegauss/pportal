@@ -55,9 +55,9 @@
   to meet it.
 - **takion.c, takionsendbuffer.c and reorderqueue.c leave the build** An end state, not
   a progress bar: porting into app removes no C, and this cannot land until the three
-  criteria above it have. PP295 has shipped, so streamconnection.c no longer calls
-  takion from the build and what is left is this line's own work. The three files' sizes
-  are stated in the section.
+  criteria above it have. PP763 adds the other half - the frame path's deletion was
+  green and left the client unable to stream, so a departure waits on something driving
+  a live session, not on a passing gate.
 
 ## Done when — PP46
 
