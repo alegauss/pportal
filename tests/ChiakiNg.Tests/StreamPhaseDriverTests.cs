@@ -53,8 +53,14 @@ public class StreamPhaseDriverTests(ITestOutputHelper output)
         const string CRuns = "\terr = chiaki_stream_connection_run(&session->stream_connection, data_sock);";
         const string CSilent = "\terr = session->stream_run_cb(data_sock, &reason, session->stream_run_cb_user);";
 
-        (string, string) installs = ("Composition.cs", "handover.InstallOn(session);");
-        (string, string) doesNot = ("Composition.cs", "session.Start();");
+        // PP767: a path that OPENS a session and installs, which is what the port's half now means.
+        // An install anywhere says a composition root exists; this says one is reached.
+        (string, string) installs = (
+            "Composition.cs",
+            "var s = ChiakiSession.TryCreate(info, log, out _); new ManagedStreamPhase(s, peer, v, b);");
+
+        (string, string) doesNot = (
+            "Composition.cs", "var s = ChiakiSession.TryCreate(info, log, out _); s.Start();");
 
         Assert.Equal(StreamDriver.TheC, StreamPhaseDriver.DriverOf(CRuns, [doesNot]));
         Assert.Equal(StreamDriver.ThePort, StreamPhaseDriver.DriverOf(CSilent, [installs]));
@@ -62,6 +68,45 @@ public class StreamPhaseDriverTests(ITestOutputHelper output)
 
         // THE ONE THAT SHIPPED. session.c hands over and nobody takes it.
         Assert.Equal(StreamDriver.Nobody, StreamPhaseDriver.DriverOf(CSilent, [doesNot]));
+    }
+
+    /// <summary>
+    /// PP767: AN INSTALL THAT NO SESSION PATH MAKES IS NOT A DRIVER.
+    ///
+    /// The first version of this check asked any file in app, and PP762 answered it from inside
+    /// ManagedStreamPhase - the class that would do the driving, which nothing constructs. So it
+    /// passed on a tree where the C hands over, a composition root exists, and no session ever
+    /// builds one: a client that cannot stream and a gate saying it can.
+    ///
+    /// The state that was live when this was written, asserted as the case it must refuse.
+    /// </summary>
+    [Fact]
+    public void AComposisitionRootNoSessionPathBuildsIsNotADriver()
+    {
+        // The phase itself: it installs, and it opens no session.
+        (string, string) phase = (
+            @"app\Session\ManagedStreamPhase.cs", "handover.InstallOn(session);");
+
+        // A path that opens one and does not reach for the phase.
+        (string, string) path = (
+            @"app\Session\StreamRun.cs", "var s = ChiakiSession.TryCreate(info, log, out _); s.Start();");
+
+        // The old question says yes, and it is the one that let PP762's state look driven.
+        Assert.NotEmpty(StreamPhaseDriver.InstallersIn([phase, path]));
+
+        // The one this task adds says no, because no path that opens a session installs on it.
+        Assert.Empty(StreamPhaseDriver.DrivingSessionPathsIn([phase, path]));
+
+        const string CSilent = "\terr = session->stream_run_cb(data_sock, &reason, session->stream_run_cb_user);";
+        Assert.Equal(StreamDriver.Nobody, StreamPhaseDriver.DriverOf(CSilent, [phase, path]));
+
+        // And the path reaching for the phase is what makes it a driver.
+        (string, string) driving = (
+            @"app\Session\StreamRun.cs",
+            "var s = ChiakiSession.TryCreate(info, log, out _); new ManagedStreamPhase(s, p, v, b);");
+
+        Assert.Single(StreamPhaseDriver.DrivingSessionPathsIn([phase, driving]));
+        Assert.Equal(StreamDriver.ThePort, StreamPhaseDriver.DriverOf(CSilent, [phase, driving]));
     }
 
     /// <summary>

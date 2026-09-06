@@ -189,28 +189,6 @@ flag, its count loop is guarded by the return above it, peek writes both out-poi
 where pull guards its own, and takion still passes NULL and still drops on a bad MAC.
 Repair any upstream and the port's copy becomes the divergence, on the next run.
 
-### §PP767 A driver nobody constructs
-
-PP764 refuses a tree where session.c has stopped running the stream and nothing in app
-installs a callback. It was written when there was no install anywhere, and PP762 added
-one - inside ManagedStreamPhase, which is the class that would do the driving.
-
-Nothing constructs that class. So the check now passes on a tree where the C hands over,
-a composition root exists, and no session ever builds one - which is a client that
-cannot stream and a gate that says it can. The check has not stopped working; it has
-stopped being about the thing that matters, which is the quieter failure.
-
-WHAT IT SHOULD ASK is not whether an install exists but whether a path that STARTS a
-session performs one. Three files call ChiakiSession.Start - the console list, the
-capture and the stream run - and each of them either installs a phase before the start
-or is a path with no managed stream. That is the pair, and it is as readable as the one
-PP764 already reads.
-
-THE SHAPE PP764 GOT RIGHT STAYS. A call is what is missing, not a type or a member, and
-code is what has to be read rather than text - the contract still spells the install's
-name in a literal. What changes is which files the question is asked of: any file, or
-the ones that start something.</section_body> </invoke>
-
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry

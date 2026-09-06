@@ -692,6 +692,7 @@
 - ✅ **PP765** **the run host takes eleven parts and nothing says which a live session supplies, so the wiring is unsized** — Eleven rows held against the constructor by reflection: none is missing, two reach into the session, and the BIG is a factory every test has been handing a heartbeat.
 - ✅ **PP766** **a managed BIG needs four things out of a live session - the id, the handshake key, senkusha's numbers and an ecdh pair** — Four shim readers over fields the C holds, each answering null before a session has one, and a real BIG of 1346 bytes built from what they return.
 - ✅ **PP762** **the stream phase is a callback now and nothing installs one, so a live session ends at senkusha** — The eleven parts compose in one class, the runner's thread goes up before the install, and the BIG is built late and refuses by naming which of its four pieces is missing.
+- ✅ **PP767** **the driver check counts a call inside a class nothing constructs, so a phase nobody uses reads as a driver** — The port's half is a path that opens a session and installs on it, so a composition root nothing constructs no longer reads as a driver.
 
 ## Block G — Test discipline
 

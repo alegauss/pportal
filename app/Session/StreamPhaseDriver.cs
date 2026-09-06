@@ -72,6 +72,21 @@ public static class StreamPhaseDriver
     /// <summary>Where that method is declared, which is not a call of it.</summary>
     public const string DeclaringFile = "StreamHandover.cs";
 
+    /// <summary>
+    /// PP767: what makes a file one of the paths this question is about.
+    ///
+    /// The first version asked ANY file in app, and PP762 answered it from inside
+    /// ManagedStreamPhase - the class that would do the driving, which nothing constructs. So the
+    /// check passed on a tree where the C hands over, a composition root exists, and no session ever
+    /// builds one: a client that cannot stream and a gate saying it can.
+    ///
+    /// A path that opens a session is what has to install, and this is how one is recognised.
+    /// </summary>
+    public const string BuildsASession = "ChiakiSession.TryCreate(";
+
+    /// <summary>And the composition root, whose construction is the other way to install one.</summary>
+    public const string ThePortsPhase = "new ManagedStreamPhase(";
+
     /// <summary>Whether session.c still runs the stream itself.</summary>
     public static bool TheCRunsIt(string sessionSource)
     {
@@ -105,11 +120,56 @@ public static class StreamPhaseDriver
         return found;
     }
 
-    /// <summary>Which of the four states a tree is in.</summary>
+    /// <summary>
+    /// PP767: the files that open a session AND put a managed phase on it.
+    ///
+    /// This is the question <see cref="InstallersIn"/> should have been asking. An install anywhere
+    /// says a composition root exists; an install on a path that BUILDS A SESSION says one is
+    /// actually reached. PP762 made the difference visible by adding the first without the second.
+    ///
+    /// Either spelling counts: constructing the phase, or calling the install directly. The phase is
+    /// what a caller normally reaches for and the install is what the phase itself does, so a path
+    /// that did its own composition is not a path this should refuse.
+    /// </summary>
+    public static IReadOnlyList<string> DrivingSessionPathsIn(IEnumerable<(string Name, string Text)> files)
+    {
+        ArgumentNullException.ThrowIfNull(files);
+
+        var found = new List<string>();
+
+        foreach ((string name, string text) in files)
+        {
+            if (Path.GetFileName(name).Equals(DeclaringFile, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            string code = DeadAssertions.CodeOnly(text);
+
+            if (!code.Contains(BuildsASession, StringComparison.Ordinal))
+                continue;
+
+            if (code.Contains(ThePortsPhase, StringComparison.Ordinal)
+                || code.Contains(ThePortsInstall, StringComparison.Ordinal))
+            {
+                found.Add(name);
+            }
+        }
+
+        return found;
+    }
+
+    /// <summary>
+    /// Which of the four states a tree is in.
+    ///
+    /// PP767: the port's half is now a session path that installs, not an install anywhere. The
+    /// weaker reading passed on a tree whose only install was inside the class that would do the
+    /// driving, which nothing constructed.
+    /// </summary>
     public static StreamDriver DriverOf(string sessionSource, IEnumerable<(string Name, string Text)> appFiles)
     {
+        IReadOnlyList<(string Name, string Text)> files = [.. appFiles];
+
         bool c = TheCRunsIt(sessionSource);
-        bool port = InstallersIn(appFiles).Count > 0;
+        bool port = DrivingSessionPathsIn(files).Count > 0;
 
         return (c, port) switch
         {
