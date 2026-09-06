@@ -246,6 +246,11 @@ public static class RoadmapProseReaders
 
         // ---- Incidental: the file reads no governed document at all. ---------------------------
         new(
+            "the frame path",
+            @"app\Protocol\SessionEventRaisers.cs",
+            ProseReading.Incidental,
+            "PP722's label for one of that census's four subsystems. It groups rows and reads no document; the ledger says the same words because they are what the thing is called."),
+        new(
             "dotnet test",
             @"app\Session\GateAndCiAgree.cs",
             ProseReading.Incidental,

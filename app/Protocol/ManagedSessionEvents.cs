@@ -309,8 +309,16 @@ public static class ManagedSessionEventsSource
     /// <summary>Where the send itself is.</summary>
     public const string SessionRelativePath = @"lib\src\session.c";
 
-    /// <summary>What a raiser writes, which is how one is found.</summary>
-    public const string RaiserPrefix = "event.type = CHIAKI_EVENT_";
+    /// <summary>
+    /// What a raiser writes, which is how one is found.
+    ///
+    /// PP722 WIDENED IT BY ONE WORD. It read "event.type = " and every raiser in the two files this
+    /// was written for names its local `event`, so it was right about all nine. session.c names two
+    /// of its four `event_auto_regist` and `event_start`, and those the old prefix walked straight
+    /// past - a sweep that reported two raisers in a file that has four. The local's name is not
+    /// part of the C's shape, so the member access is where the pattern should start.
+    /// </summary>
+    public const string RaiserPrefix = ".type = CHIAKI_EVENT_";
 
     /// <summary>The prefix the C's own members carry, for the join to the managed enum.</summary>
     public const string EventPrefix = "CHIAKI_EVENT_";

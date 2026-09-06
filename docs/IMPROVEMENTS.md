@@ -307,29 +307,6 @@ joins under it and there will be more.
 Recorded as a dep of PP696 rather than folded into it, because it is a different piece
 of work and PP696's own design is right about everything except what happens next.
 
-### §PP722 The other eight events
-
-PP719 named nine of ChiakiEventType's seventeen as the frame path's, and left the other
-eight unanswered rather than absent. Seven have raisers: ctrl.c raises three keyboard
-events - open, remote close, text change - and session.c four, being the login pin
-request, the quit, the auto-regist and the nickname.
-
-THE EIGHTH IS RAISED BY NOTHING. CHIAKI_EVENT_HOLEPUNCH is declared in session.h and
-assigned nowhere in lib/src; the only code mentioning it is gui/src/streamsession.cpp,
-which switches on an event the C cannot produce. Upstream's holepunch raised it and PP33
-removed that file, so the arm answers a message that stopped existing - and the member
-stays because deleting it renumbers every value after it, which NativeEnumMirrors is the
-check for.
-
-WHY THIS IS A CENSUS AND NOT A PORT. PP712's lesson is that the count is worth having
-before the work: seven owed members read as four subsystems until somebody asked which.
-The same question here is which of the seven are one piece - the three keyboard events
-are one screen - and the port already consumes two of them off the C, the pin request
-and the quit, through ConsoleSession.Translate.
-
-Nothing here waits on PP696: ctrl.c and session.c are not the frame path and no deletion
-turns on them. What waits is a managed session raising anything at all outside a stream.
-
 ### §PP724 The move nothing asks for
 
 PP714 ported congestion control and NativeWaits went on calling congestioncontrol.c
