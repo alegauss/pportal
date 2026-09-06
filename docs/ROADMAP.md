@@ -163,11 +163,11 @@
   wrote them, each shortening the census in the commit that shipped it. Every member now
   names a counterpart or says what the runtime makes needless - and a counterpart is
   still not a call, which is the criterion above.
-- **The stream starts from the host rather than from chiaki_session_start** PP696 stops
-  session.c asking and nothing else asks. StreamRun runs ctrl and senkusha through the C
-  session today and waits on its events; what replaces the C's own call is a handoff,
-  and where it sits - and what the C thread does afterwards - is the decision this holds
-  open.
+- **The stream starts from the host rather than from chiaki_session_start** Met as far
+  as this line owns it. PP752 decided the handoff: one of PP28's seven steps becomes
+  managed, six stay, the run is unlocked across as the C leaves it and the C thread
+  waits rather than returns. Making that edit is PP696, which waits on this line - so
+  what was held open was the decision, and it is made.
 - **The run leaves only the seams that are seams on purpose** Met. PP745 wrote the host,
   PP747 the event router, PP748 the message sink, PP749 the congestion sink, PP750 the
   feedback sink and PP751 the Opus decoder - each closing a row without opening one,
