@@ -688,6 +688,7 @@
 - ✅ **PP757** **the port's resting feedback state is ten zeroes and the C's is not, so a still pad reports free fall** — FeedbackSnapshot.Idle rests under gravity as the C's does, asserted as a round trip off a fresh state rather than against a constant of this side's own.
 - ✅ **PP763** **the frame path's deletion shipped and left no way to stream, so the four files and the C's run are back** — The four files, session.c's run and the floor are back and a five-second capture records 4025 datagrams again; the callback, the trampoline and the runner stay unused.
 - ✅ **PP742** **the port holds 3681 real AV heads and its own parser can read none of them, two bytes short of the cheapest layout** — The tap keeps twenty-eight bytes, the capture was recorded again, and the differential parses 7506 real heads across three passes where every AV head used to be refused.
+- ✅ **PP764** **the gate passes on a tree whose stream phase has no driver, which is how it shipped a client that cannot stream** — The C's run and the port's install are read together as four states, and putting session.c back the way PP696 left it turns the gate red on Nobody.
 
 ## Block G — Test discipline
 
