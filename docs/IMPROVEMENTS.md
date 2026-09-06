@@ -189,27 +189,6 @@ flag, its count loop is guarded by the return above it, peek writes both out-poi
 where pull guards its own, and takion still passes NULL and still drops on a bad MAC.
 Repair any upstream and the port's copy becomes the divergence, on the next run.
 
-### §PP773 The signal only tests raise
-
-PP772's ladder named it. A live run reaches CongestionStarted and stops in the wait
-after it - the takion connect state - and that wait ends on a flag the host raises
-through Signal. Nothing in app calls Signal. The only callers are doubles.
-
-WHICH MAKES EVERY WAIT IN THE RUN A TIMEOUT. There are three: the takion connect state,
-the bang, and the streaminfo. Each waits on the same flags and each would end the same
-way, so this is not one rung failing but the first of three that cannot pass.
-
-THE C RAISES THEM FROM ITS HANDLERS. takion's connected event sets state_finished and
-signals; the bang handler does the same; so does the streaminfo. PP721 and PP729 ported
-the handlers' DECISIONS - what a bang means, which flag a refusal leaves alone - and
-PP745 built the host that holds the flags. What was never written is the wire between
-them: the arrivals reach the dispatch and the dispatch tells nobody.
-
-SO THE SEAM IS THE ONE PP741 COUNTS. The host's Signal is a member with no caller
-outside a test, which is the shape that census was written for - and it did not report
-it, because the host is a class and the member exists. A seam is not only an interface
-with no implementor; it is also a method only doubles call.</section_body> </invoke>
-
 ### §PP776 A refusal counts as an implementation
 
 PP741 sweeps app for public interfaces with no class on the other side, and the answer
@@ -233,35 +212,6 @@ AND IT WOULD FIND MORE THAN ONE. ManagedStreamPhase's NoFrames is the same shape
 that goes nowhere, so a receiver can be built. That one is honest and documented, which
 is the point - the sweep should say which seams are filled by a stand-in rather than
 refuse them.
-
-### §PP777 A BIG the console acknowledges and will not answer
-
-PP773 gave the run a receive thread and a wire from an arrival to a flag, and the first
-live trial past it read this: two datagrams, both DataAck, no bang. The console received
-the BIG - it acknowledged it twice - and had nothing to say back.
-
-WHICH MEANS THE MESSAGE IS WRONG AND NOT THE PLUMBING. PP726 formats the spec and PP727
-hides it, both against the C's own oracle; what is wrong is the material the composition
-root hands them. stream_connection_send_big reads four things this root invents:
-
-the crypt is `&session->rpcrypt`, established by ctrl's handshake from the nonce and the
-morning. ManagedStreamPhase.Big builds `new RpCrypt(Ps5_1, new byte[16], new byte[16])`
-- sixteen zero bytes each way. A spec hidden under the wrong key stream is well-formed
-base64 the console cannot read;
-
-the mtu is `session->mtu_in`, and the root passes MtuOut. Senkusha measures the two
-separately and they need not agree;
-
-the width, height, fps, codec and bitrate come from
-`session->connect_info.video_profile`, and the root spells 1280x720, 60 and 10000 -
-right for the preset this tree happens to ask for and wrong the moment a caller asks for
-another;
-
-the target is `session->target`, and the root spells Ps5_1.
-
-THE NONCE IS THE PIECE THAT NEEDS A READER. The other three are already reachable or
-nearly so; the session's rpcrypt is not, and PP766's four readers are the shape that
-answer takes.
 
 ## Block G — Test discipline
 
