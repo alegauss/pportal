@@ -286,30 +286,6 @@ WHAT IS OWED HERE IS THAT GUARD FOR TAKION'S THREE, and the floor arithmetic bes
 how many cases each of the three carries, so the new floor is derived from the removal
 rather than read off a failing run.
 
-### §PP789 The three measurements, and what each narrows
-
-Senkusha exists to measure a link and stop. Three sub-runs do it, and the run function
-is mostly the handshake that gets to them: an RTT test over ten pings, an inbound MTU
-test and an outbound one, each bisecting between 576 and 1454 with three retries per
-step.
-
-THE TIMEOUT IS DERIVED AND THE DERIVATION IS THE INTERESTING PART. The MTU tests do not
-use the five-second wait the other states use - they compute the round trip times five,
-in milliseconds, and clamp it to between 5 and 500. So a fast link probes fast and a
-slow one is given room, and both are bounded by numbers that appear nowhere else. A port
-that reached for EXPECT_TIMEOUT_MS here would spend twenty-five seconds probing what the
-C does in a tenth of one.
-
-AND THE PACKET SIZE IS NOT THE MTU. The tests measure a payload and the answer has to be
-the IP packet, so the C adds MTU_PING_DATA_ADD - twenty-eight bytes of IPv4 and UDP
-header, plus the V7 AV header's own base. Get that addend wrong and the console is told
-an MTU the link cannot carry, which does not fail: it fragments, and the stream degrades
-for a reason nothing logs.
-
-THESE ARE THE NUMBERS PP777 FOUND THE BIG SPENDING. The launch spec carries mtu_in and
-the round trip in milliseconds, and a session that measured them wrongly describes a
-link nobody has.
-
 ### §PP790 The run, over a host that records what it asks
 
 PP788 gives the states and PP789 the measurements; neither is a run. What joins them is

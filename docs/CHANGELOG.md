@@ -710,6 +710,7 @@
 - ✅ **PP782** **the deletion's blocker list names six lib files and the link answers four, two of them never reaching it** — Four, and the two that came off are kept beside it with the reason each is not a blocker - one permanent, one true of this tree.
 - ✅ **PP787** **the decoder is reachable only through the C's video callback, so a managed run has no way to hand it a frame** — The C's own sample callback is reachable with the same decoder, and its managed shape is the delegate a composition root already takes.
 - ✅ **PP788** **senkusha's nine states and the flags its waits end on have no managed model, so nothing can drive its run** — Nine states, eight reachable, and the predicate reads two of three flags - each held against the file, so a repair upstream turns a check red.
+- ✅ **PP789** **senkusha's three measurements have no managed model, and they are the numbers the launch spec spends** — The average divides by the pings that answered, the two searches start apart and answer with the floor, and the timeout is five round trips clamped.
 
 ## Block G — Test discipline
 
