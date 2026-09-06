@@ -381,6 +381,30 @@ three values in a log line that costs nothing on a path taken once. Whether the 
 then deserves a repair is a second question, and this one refuses to pretend it is
 already answered.
 
+### §PP800 The seam a test double reaches
+
+PP741 counts an interface in app implemented only by test doubles, and
+SessionEventRouterTests asserts its row has left the unreached list. That row went green
+when PP747 wrote the router - and PP799 then found that nothing in app had ever
+CONSTRUCTED one. The events the router exists to route were still being counted Unheard
+eight tasks later, on a tree where every census, every drift check and every gate was
+green.
+
+PP767 HAS ALREADY MET THIS EXACT WEAKNESS one level up. Its first driver check asked
+whether any file in app installs a run, and PP762 answered it from inside the class that
+would do the driving, which nothing constructed. The repair was to ask a narrower
+question: not an install anywhere, but an install on a path that BUILDS A SESSION.
+SeamReach still asks the wide version - is there an implementation in this assembly -
+and a class only a test project builds satisfies it.
+
+WHAT A CONSTRUCTION SITE IS, is the question to answer before writing the check.
+StreamPhaseDriver recognises one by the call that opens a session, which works because
+sessions have one door. Seams have no such door, so the honest reading is probably a
+`new` of the implementing type in a non-test file, read as code rather than text -
+PP793's rule, and the trap PP735 named: a symbol in quotes is a model and not a caller.
+
+An assertion inverts here: the census gains a row it currently reports as covered.
+
 ## Block G — Test discipline
 
 ### §PP796 A warning the failure below it contradicts

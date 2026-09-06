@@ -31,6 +31,7 @@
 - 📋 **PP792** (deps: PP791 ⏳) (requires: console) **session.c runs senkusha itself and there is no callback to hand it to, so a managed run is unreachable** — PP753 built this seam for the stream phase and senkusha needs its own; PP28's placement already says what each outcome decides. → §PP792
 - 📋 **PP797** (deps: —) **the console's audio reaches a receiver whose output goes nowhere, and nothing drains the ring into a speaker** — Every piece is written and two joins are missing: the root hands the arms a no-op sink, and the ring the opus decoder fills has no reader. → §PP797
 - 📋 **PP798** (deps: —) **one access unit per session is refused by the decoder and the log says which error, never which frame** — A benign first unit before the codec has its header and a real corruption print the same line, so neither can be told from the other. → §PP798
+- 📋 **PP800** (deps: —) **SeamReach counts an implementation that no path in app ever constructs, so a sink only tests build reads as reached** — PP767 answered this for the driver check by requiring a path that opens a session, and the same weakness is still in the census that judges all seven seams. → §PP800
 
 ## Block G — Test discipline
 
