@@ -85,6 +85,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP746** **the run's sequence has never executed against a socket, so every ordering is asserted over a script** — A wait's flags are signalled from another thread, because that is where the C's handlers write them and a run completing from its own thread would prove nothing.
 - ✅ **PP747** **the nine events reach a seam nothing in app implements, so the pad state they carry is counted unheard and dropped** — A value an event carries stops at the router that receives it, because closing a seam by inventing the next one is what PP741 had to count after PP740 did it.
 - ✅ **PP748** **the takion frames a data message and owns a wire, and nothing joins the two, so no managed message ever leaves** — A send before the handshake is refused where nothing has been spent, because the C's caller cannot reach one and a throw would make a sequencing mistake worse than the C makes it.
+- ✅ **PP749** **the congestion report has no bytes and no way out, so the thread that produces one reports into a double** — word_0 is written as zero rather than taken as an argument, because the C zeroes the packet and assigns only received and lost, and a parameter would invite a caller to fill it.
 
 ## Block G — Test discipline
 

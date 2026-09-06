@@ -668,6 +668,7 @@
 - ✅ **PP746** **the run's sequence has never executed against a socket, so every ordering is asserted over a script** — The sequence runs to SUCCESS over a loopback socket on a real takion, congestion thread and feedback sender, and the failed connect unwinds without closing one that never opened.
 - ✅ **PP747** **the nine events reach a seam nothing in app implements, so the pad state they carry is counted unheard and dropped** — SessionEventRouter holds what each of the nine decides - rumble, triggers, LED, index, both intensities, the motion reset and the FEC failure - so the seam stops counting them unheard.
 - ✅ **PP748** **the takion frames a data message and owns a wire, and nothing joins the two, so no managed message ever leaves** — ManagedTakion.SendData spends the key position, the sequence number and the socket in PP671's order, and TakionMessageSink puts the run's built messages through it onto a real wire.
+- ✅ **PP749** **the congestion report has no bytes and no way out, so the thread that produces one reports into a double** — TakionCongestion writes the fifteen bytes at the C's offsets and SendCongestion puts them on the socket, so PP714's thread reports to a wire instead of a double.
 
 ## Block G — Test discipline
 

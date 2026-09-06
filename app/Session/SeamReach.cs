@@ -39,14 +39,13 @@ public static class SeamReach
     /// <summary>
     /// The seams nothing in app fills, and what each is waiting for.
     ///
-    /// Four: three outputs whose consumer is the run, and the OpenSSL keying which is a seam on
-    /// purpose. PP745 took IStreamRunHost off this list, PP747 the event sink and PP748 the message
-    /// sink, none of them adding a row doing it - which is what PP741 counted the cost of when
-    /// PP740 closed one seam and opened another in the same commit.
+    /// Three: two outputs whose consumer is the run, and the OpenSSL keying which is a seam on
+    /// purpose. PP745 took IStreamRunHost off this list, PP747 the event sink, PP748 the message
+    /// sink and PP749 the congestion sink, none of them adding a row doing it - which is what PP741
+    /// counted the cost of when PP740 closed one seam and opened another in the same commit.
     ///
-    /// THE TWO THAT REMAIN ARE ONE CALL EACH NOW. PP748 gave the takion a send, so the feedback and
-    /// congestion sinks want what the message sink wanted and no longer wait on a decision; the
-    /// audio frames want an Opus decoder, which is the audio path's own work.
+    /// WHAT REMAINS WANTS REAL WORK. The feedback sink is the takion's crypt path rather than a
+    /// plain datagram, and the audio frames want an Opus decoder; neither is one call.
     /// </summary>
     public static IReadOnlyList<UnreachedSeam> Expected { get; } =
     [
@@ -56,9 +55,6 @@ public static class SeamReach
         new(
             "IBangKeying",
             "Deliberate: the keying a bang leads to is OpenSSL's, and the port keeps it behind a seam."),
-        new(
-            "ICongestionSink",
-            "Where a congestion report goes. The takion in the C; whatever the run gives it here."),
         new(
             "IFeedbackSink",
             "PP723's sender output, which the takion answers in the C and nothing answers yet."),

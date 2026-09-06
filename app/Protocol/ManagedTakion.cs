@@ -191,6 +191,38 @@ public sealed class ManagedTakion : ITakionLoopHost, IDisposable
     /// <summary>How many data messages this takion has put on its socket.</summary>
     public int DataSent { get; private set; }
 
+    /// <summary>How many congestion packets this takion has put on its socket.</summary>
+    public int CongestionSent { get; private set; }
+
+    /// <summary>
+    /// PP749: chiaki_takion_send_congestion - the key position, the fifteen bytes, the socket.
+    ///
+    /// A RAW SEND AND NOT A DATA MESSAGE. The congestion packet carries its own type byte and its
+    /// own key position and goes out whole; it is not wrapped in the message header
+    /// <see cref="SendData"/> writes, which is why it does not take a channel and is not held for
+    /// resend. The C's own send would MAC it where a local cipher exists, and this takion has none
+    /// wired yet, so what leaves here is plain.
+    /// </summary>
+    public ChiakiError SendCongestion(ushort received, ushort lost)
+    {
+        ObjectDisposedException.ThrowIf(Stage == TakionStage.Closed, this);
+
+        if (wire is null)
+            return ChiakiError.Uninitialized;
+
+        // The C advances by the packet's own size, before anything is formatted.
+        ulong keyPos = Ledger.RequestPos(0, commit: true);
+
+        Span<byte> datagram = stackalloc byte[TakionCongestion.PacketSize];
+        TakionCongestion.Write(datagram, received, lost, keyPos);
+
+        ChiakiError sent = wire.Send(datagram);
+        if (sent == ChiakiError.Success)
+            CongestionSent++;
+
+        return sent;
+    }
+
     /// <summary>
     /// PP748: chiaki_takion_send_message_data, over the socket the handshake used.
     ///
