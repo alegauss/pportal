@@ -189,6 +189,27 @@ flag, its count loop is guarded by the return above it, peek writes both out-poi
 where pull guards its own, and takion still passes NULL and still drops on a bad MAC.
 Repair any upstream and the port's copy becomes the divergence, on the next run.
 
+### §PP773 The signal only tests raise
+
+PP772's ladder named it. A live run reaches CongestionStarted and stops in the wait
+after it - the takion connect state - and that wait ends on a flag the host raises
+through Signal. Nothing in app calls Signal. The only callers are doubles.
+
+WHICH MAKES EVERY WAIT IN THE RUN A TIMEOUT. There are three: the takion connect state,
+the bang, and the streaminfo. Each waits on the same flags and each would end the same
+way, so this is not one rung failing but the first of three that cannot pass.
+
+THE C RAISES THEM FROM ITS HANDLERS. takion's connected event sets state_finished and
+signals; the bang handler does the same; so does the streaminfo. PP721 and PP729 ported
+the handlers' DECISIONS - what a bang means, which flag a refusal leaves alone - and
+PP745 built the host that holds the flags. What was never written is the wire between
+them: the arrivals reach the dispatch and the dispatch tells nobody.
+
+SO THE SEAM IS THE ONE PP741 COUNTS. The host's Signal is a member with no caller
+outside a test, which is the shape that census was written for - and it did not report
+it, because the host is a class and the member exists. A seam is not only an interface
+with no implementor; it is also a method only doubles call.</section_body> </invoke>
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry

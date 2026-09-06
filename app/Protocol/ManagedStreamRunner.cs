@@ -11,8 +11,16 @@ namespace ChiakiNg.Protocol;
 /// same code, so a connect that failed and a BIG that failed were one sentence - and telling them
 /// apart cost a rebuild and a console.
 /// </param>
+/// <param name="Rung">
+/// PP772: how far the WALK got, which Reached stops saying at congestion control - past that nothing
+/// more is built and the six steps that follow are where a live run now fails.
+/// </param>
 public readonly record struct StreamRunnerOutcome(
-    bool Started, ChiakiError Error, string? Reason, StreamBuilt Reached = StreamBuilt.Nothing);
+    bool Started,
+    ChiakiError Error,
+    string? Reason,
+    StreamBuilt Reached = StreamBuilt.Nothing,
+    StreamRung Rung = StreamRung.Start);
 
 /// <summary>
 /// PP754, under PP696: the managed side of PP753's seam - wait, build, run, report.
@@ -78,15 +86,16 @@ public sealed class ManagedStreamRunner
 
         Host = build();
 
-        // PP769: THE SOCKET THE SESSION HANDED OVER, given to the host before it connects.
+        // PP769: THE SOCKET THE SESSION HANDED OVER, where it handed one.
         //
-        // The C's stream connection never opens one - chiaki_takion_connect takes data_sock, which
-        // senkusha established and measured the link on. A run that opened its own started a second
-        // conversation on the well-known port, and a live console did not answer it. Set here rather
-        // than in the builder because only the seam knows it, and only after the start.
+        // PP771 corrected why this is here. session.c declares data_sock NULL and never assigns it,
+        // so the C's takion opens its own with close_socket true and what crosses is -1 on every
+        // path this tree runs - a host given null opens its own too, exactly as before. What a
+        // holepunch path would supply is the case this carries. Set here rather than in the builder
+        // because only the seam knows it, and only after the start.
         Host.AdoptSocket(handover.Socket);
 
-        ChiakiError error = ManagedStreamRun.Run(Host, out StreamBuilt reached);
+        ChiakiError error = ManagedStreamRun.Run(Host, out StreamBuilt reached, out StreamRung rung);
 
         // PP755: read off the host rather than handed in. The disconnect handler writes it there,
         // which is where the C keeps it, so a caller cannot report a reason the run never had.
@@ -96,6 +105,6 @@ public sealed class ManagedStreamRunner
         // answered its caller first would leave that thread waiting on a run already over.
         handover.Finish(error, reason);
 
-        return new StreamRunnerOutcome(true, error, reason, reached);
+        return new StreamRunnerOutcome(true, error, reason, reached, rung);
     }
 }

@@ -697,6 +697,7 @@
 - ✅ **PP769** **the managed run opens its own socket and the console's stream rides the one senkusha left, so a handover fails at once** — The socket crosses the trampoline, the runner and the host, and the takion adopts it without owning it; a live handover now reaches the run instead of failing at the connect.
 - ✅ **PP770** **the run collapses every rung's failure into Unknown, so a live one cannot be told from any other** — The run carries out the rung its cascade already computes, so five failures that answered one code now say which of the five, and the old one-argument shape is unchanged.
 - ✅ **PP771** **the phase lets a caller pick the port and the first one picked 9295, so a console answered nothing at all** — The phase takes an address and aims at 9296 itself, and the same handshake then completed with a real PS5 first try each way - the run now stops at CongestionControl.
+- ✅ **PP772** **the rung report stops at congestion control, and the six steps after it are where a live run now fails** — The walk climbs its own eleven-step ladder beside the teardown's six, and a live run now names the step it stops at: CongestionStarted, the wait after it.
 
 ## Block G — Test discipline
 

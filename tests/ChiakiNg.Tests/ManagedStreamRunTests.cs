@@ -335,4 +335,51 @@ public class ManagedStreamRunTests(ITestOutputHelper output)
         var host = new Scripted { Takion = false };
         Assert.Equal(ChiakiError.Unknown, ManagedStreamRun.Run(host));
     }
+
+    /// <summary>
+    /// PP772: THE WALK HAS ITS OWN LADDER, and it keeps climbing past what a teardown frees.
+    ///
+    /// StreamBuilt stops at CongestionControl because nothing more is built after it, and the six
+    /// steps that follow are where a live run now fails - the connect wait, the BIG, the bang, the
+    /// streaminfo, the feedback sender and the idle loop. All six reported one word.
+    ///
+    /// Two ladders because they answer two questions. Asserted together here, so a walk that
+    /// advanced one and not the other is the finding rather than a silence.
+    /// </summary>
+    [Theory]
+    [InlineData("big", StreamRung.TakionConnectAwaited)]
+    [InlineData("feedback", StreamRung.StreaminfoAwaited)]
+    public void TheWalkSaysWhichStepItStoppedAtPastTheTeardownLadder(string fails, StreamRung expected)
+    {
+        var host = new Scripted();
+        if (fails == "big")
+        {
+            host.Big = false;
+        }
+        else
+        {
+            host.Feedback = false;
+        }
+
+        ChiakiError error = ManagedStreamRun.Run(host, out StreamBuilt reached, out StreamRung rung);
+
+        output.WriteLine($"{fails} failed: built {reached}, rung {rung}, error {error}");
+
+        // The teardown ladder says the same thing for both, which is the whole point.
+        Assert.Equal(StreamBuilt.CongestionControl, reached);
+
+        // The walk's own says which.
+        Assert.Equal(expected, rung);
+    }
+
+    /// <summary>And a run that goes the whole way reports the last rung rather than a middle one.</summary>
+    [Fact]
+    public void ARunThatCompletesReportsTheIdleLoop()
+    {
+        ChiakiError error = ManagedStreamRun.Run(new Scripted(), out _, out StreamRung rung);
+
+        output.WriteLine($"complete: rung {rung}, error {error}");
+
+        Assert.Equal(StreamRung.Idle, rung);
+    }
 }

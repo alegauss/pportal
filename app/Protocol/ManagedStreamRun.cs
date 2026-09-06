@@ -98,6 +98,54 @@ public interface IStreamRunHost
 }
 
 /// <summary>
+/// PP772: how far the run's walk got, which is not what a teardown frees.
+///
+/// <see cref="StreamBuilt"/> answers what has to be released and stops moving at congestion control,
+/// because past that nothing more is built. The walk keeps going for six more steps - the takion
+/// connect wait, the BIG, the bang, the streaminfo, the feedback sender and the idle loop - and a
+/// live run failing in any of them reported the same word.
+///
+/// Two ladders because they answer two questions. Conflating them is what produced the gap: a
+/// teardown ladder read as a progress one is right until they stop agreeing, and they stop agreeing
+/// at exactly the rung this port has reached.
+/// </summary>
+public enum StreamRung
+{
+    /// <summary>Nothing yet: not even the audio receiver.</summary>
+    Start,
+
+    /// <summary>The three receivers exist.</summary>
+    Receivers,
+
+    /// <summary>And takion is connected.</summary>
+    TakionConnected,
+
+    /// <summary>And congestion control is running.</summary>
+    CongestionStarted,
+
+    /// <summary>And the takion connect state finished.</summary>
+    TakionConnectAwaited,
+
+    /// <summary>And the BIG went out - the message that starts a stream.</summary>
+    BigSent,
+
+    /// <summary>And the console answered it with a bang.</summary>
+    BangAwaited,
+
+    /// <summary>And the stream info arrived.</summary>
+    StreaminfoAwaited,
+
+    /// <summary>And the feedback sender is running, so the pad reaches the console.</summary>
+    FeedbackStarted,
+
+    /// <summary>And CONNECTED went out: from here the run is streaming.</summary>
+    Connected,
+
+    /// <summary>The idle loop ended, which is a session that ran and stopped.</summary>
+    Idle,
+}
+
+/// <summary>
 /// PP295: chiaki_stream_connection_run as a sequence, driving the models PP362 to PP366 wrote apart.
 ///
 /// Those five modelled the pieces - the state walk, the idle loop, the teardown cascade, the three
@@ -121,6 +169,7 @@ public interface IStreamRunHost
 /// judge a run: the tap sits on ctrl and the session request, and none of this crosses either.
 /// What can be judged is the sequence, against the six checks that already hold the C.
 /// </summary>
+
 public static class ManagedStreamRun
 {
     /// <summary>
@@ -143,10 +192,22 @@ public static class ManagedStreamRun
     /// </summary>
     /// <param name="reached">What had been built when it returned, which is where it stopped.</param>
     public static ChiakiError Run(IStreamRunHost host, out StreamBuilt reached)
+        => Run(host, out reached, out _);
+
+    /// <summary>
+    /// PP772: the same run, saying how far the WALK got as well as what was built.
+    ///
+    /// StreamBuilt stops at congestion control because past it nothing more is built, and the six
+    /// steps after that are where a live run now fails. Two ladders, because they answer two
+    /// questions - and the second one is the one a person reading a failure wants.
+    /// </summary>
+    /// <param name="rung">The furthest step the walk completed.</param>
+    public static ChiakiError Run(IStreamRunHost host, out StreamBuilt reached, out StreamRung rung)
     {
         ArgumentNullException.ThrowIfNull(host);
 
         reached = StreamBuilt.Nothing;
+        rung = StreamRung.Start;
 
         host.Lock();
 
@@ -170,6 +231,7 @@ public static class ManagedStreamRun
             return Unwind(host, StreamBuilt.HapticsReceiver, ChiakiError.Unknown, unlockFirst: true);
 
         reached = StreamBuilt.VideoReceiver;
+        rung = StreamRung.Receivers;
 
         // STATE_TAKION_CONNECT. A connect that fails goes to err_video_receiver: takion is not up,
         // so it is not closed. This is the rung the old table got wrong.
@@ -177,11 +239,13 @@ public static class ManagedStreamRun
             return Unwind(host, StreamBuilt.VideoReceiver, ChiakiError.Unknown, unlockFirst: true);
 
         reached = StreamBuilt.Takion;
+        rung = StreamRung.TakionConnected;
 
         if (!host.StartCongestionControl())
             return Unwind(host, StreamBuilt.Takion, ChiakiError.Unknown, unlockFirst: false);
 
         reached = StreamBuilt.CongestionControl;
+        rung = StreamRung.CongestionStarted;
 
         (StreamWaitState flags, bool timedOut) = host.Wait(StreamState.TakionConnect);
         switch (StreamConnectionStates.Next(flags, timedOut))
@@ -197,8 +261,12 @@ public static class ManagedStreamRun
 
         // STATE_EXPECT_BANG. From here every failure goes to disconnect, which is ordering 6: the
         // console is told on the paths that failed as well as the one that did not.
+        rung = StreamRung.TakionConnectAwaited;
+
         if (!host.SendBig())
             return Disconnect(host, ChiakiError.Unknown);
+
+        rung = StreamRung.BigSent;
 
         (flags, timedOut) = host.Wait(StreamState.ExpectBang);
         switch (StreamConnectionStates.Next(flags, timedOut))
@@ -211,6 +279,8 @@ public static class ManagedStreamRun
             default:
                 break;
         }
+
+        rung = StreamRung.BangAwaited;
 
         // STATE_EXPECT_STREAMINFO, and ordering 2: the early buffer is replayed BEFORE the wait, and
         // the wait is skipped where the replay already finished the state.
@@ -238,14 +308,20 @@ public static class ManagedStreamRun
                 break;
         }
 
+        rung = StreamRung.StreaminfoAwaited;
+
         if (!host.StartFeedbackSender())
             return Disconnect(host, ChiakiError.Unknown);
+
+        rung = StreamRung.FeedbackStarted;
 
         // STATE_IDLE, and ordering 3: CONNECTED goes out with the state mutex released and taken
         // again after, because a handler may call back into the session.
         host.Unlock();
         host.SendConnected();
         host.Lock();
+
+        rung = StreamRung.Connected;
 
         // The idle loop, where a timeout is the work.
         ChiakiError held;
@@ -263,6 +339,8 @@ public static class ManagedStreamRun
         }
 
         // Ordering 4: the input delay is lifted BEFORE the sender is finished.
+        rung = StreamRung.Idle;
+
         host.LiftInputToWire();
         host.FiniFeedbackSender();
 
