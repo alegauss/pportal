@@ -250,6 +250,8 @@ public static class ManagedStreamRun
         // where the C puts it. An event raised while the connect is running must count; one raised
         // before it must not. Clearing after the action drops the first, and clearing at the wait
         // drops both.
+        host.BeginState();
+
         if (!host.ConnectTakion())
             return Unwind(host, StreamBuilt.VideoReceiver, ChiakiError.Unknown, unlockFirst: true);
 
@@ -279,6 +281,8 @@ public static class ManagedStreamRun
         rung = StreamRung.TakionConnectAwaited;
 
         // STATE_EXPECT_BANG, cleared before the send for PP774's reason.
+        host.BeginState();
+
         if (!host.SendBig())
             return Disconnect(host, ChiakiError.Unknown);
 
@@ -303,6 +307,8 @@ public static class ManagedStreamRun
         // STATE_EXPECT_STREAMINFO. Cleared before the replay, which is the action here - a
         // streaminfo buffered during the bang is replayed INTO this state, so a clear after it
         // would throw away the very arrival the replay exists to deliver.
+        host.BeginState();
+
         StreamWaitState after = default;
         if (host.HasEarlyStreaminfo)
             after = host.ReplayEarlyStreaminfo();
@@ -342,6 +348,8 @@ public static class ManagedStreamRun
 
         // STATE_IDLE, the fourth the C clears - so a flag left over from the streaminfo does not
         // end the idle loop on its first pass.
+        host.BeginState();
+
         rung = StreamRung.Connected;
 
         // The idle loop, where a timeout is the work.

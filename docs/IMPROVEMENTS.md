@@ -210,30 +210,6 @@ outside a test, which is the shape that census was written for - and it did not 
 it, because the host is a class and the member exists. A seam is not only an interface
 with no implementor; it is also a method only doubles call.</section_body> </invoke>
 
-### §PP774 A rule the port holds the C to and does not keep
-
-StreamConnectionStates.EveryStateStillClearsBothFlags reads the C's run and refuses a
-state entered without clearing state_finished and state_failed. Its own comment gives
-the reason: a state that inherits the previous answer returns immediately from the wait
-after it, with the wrong verdict.
-
-ManagedStreamRun walks the same four states and clears nothing. The host has BeginState
-and it has no caller in the run - PP745 wrote it and the tests are what exercise it.
-
-IT HAS NOT BITTEN YET BECAUSE NOTHING SIGNALS. PP773 found the flags have no raiser
-outside the doubles, so every wait times out and none of them inherits anything. The two
-defects have been hiding each other: fix the signal alone and the first arrival
-satisfies all three waits at once, and the run reports a stream that reached idle
-without a bang or a streaminfo.
-
-SO THE ORDER MATTERS AND IT IS THE C'S. The clear goes after the state is entered and
-BEFORE the action that will raise it - connect, send big, replay - because an event that
-arrives during the action must count, and one that arrived before it must not. Clearing
-after the action would drop the first; clearing at the wait would drop both.
-
-The model was right the whole time and was only ever pointed at the C. This is the same
-sentence turned on the port.</section_body> </invoke>
-
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry

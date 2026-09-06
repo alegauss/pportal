@@ -24,7 +24,6 @@
 - ⏳ **PP27** (deps: PP672 ✅, PP673 ✅, PP674 ✅, PP675 ✅, PP676 ✅, PP677 ✅, PP678 ✅, PP679 ✅, PP680 ✅, PP702 ✅) (requires: console) **takion.c is 2007 lines of C over raw sockets and timers, and the whole stream rides on it** — Its ten tasks are the managed transport; after them, the three files leave the build. → §PP27
 - 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — chiaki_fec_decode has three callers - frameprocessor.c, the C suite and this port's shim - and gf-complete has a fourth site none of them reach: chiaki_lib_init. → §PP30
 - 📋 **PP773** (deps: —) **nothing turns a takion event into the host's signal, so every state the run waits on times out** — The host's Signal has no caller outside the tests, so a live run connects, starts congestion control and then waits for something no arrival ever raises. → §PP773
-- 📋 **PP774** (deps: —) **the run enters four states without clearing the flags, which its own model requires of the C** — StreamConnectionStates asserts every state clears both on entry, and ManagedStreamRun never calls BeginState - so one signal would satisfy every wait after it. → §PP774
 
 ## Block G — Test discipline
 

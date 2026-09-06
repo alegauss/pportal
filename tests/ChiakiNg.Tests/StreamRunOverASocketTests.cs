@@ -170,19 +170,23 @@ public class StreamRunOverASocketTests(ITestOutputHelper output) : IDisposable
             IdleTimeoutMs = 4000,
         };
 
-        // The handler thread. Finished is set once and left set, which is what the C's flag does
-        // between the states the run walks; then it keeps pulsing, because the idle loop leaves on
-        // a wait that returns for any reason other than its timeout and a pulse landing between
-        // two waits is simply lost. Signalling from HERE is the point: these flags are written by
-        // the takion's receive thread in the C, never by the run's own.
+        // The handler thread. Signalling from HERE is the point: these flags are written by the
+        // takion's receive thread in the C, never by the run's own.
+        //
+        // PP774: IT KEEPS SETTING FINISHED, and it used to set it once. The comment here said that
+        // was "what the C's flag does between the states the run walks", and the C clears both
+        // flags at every state entry - which the run now does too. A driver that set it once was
+        // right only about a run that never cleared, and the two agreed by both being wrong.
+        //
+        // A pulse landing between two waits is simply lost, so this keeps setting rather than
+        // setting once: what it stands for is a console answering every state, which is the case
+        // this test is about.
         using var finished = new ManualResetEventSlim();
 
         var driver = new Thread(() =>
         {
-            host.Signal(finished: true);
-
             while (!finished.Wait(5))
-                host.Signal();
+                host.Signal(finished: true);
         })
         {
             IsBackground = true,
