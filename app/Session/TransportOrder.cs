@@ -37,18 +37,39 @@ public static class TransportOrder
     /// Named rather than counted, for <see cref="Protocol.HolepunchConsumers"/>'s reason: a deletion
     /// needs which, not how many. streamconnection.c is PP295's own subject, which is the whole
     /// point - the criterion cannot land until PP295 does.
+    ///
+    /// PP782: FOUR, AND IT WAS SIX. The list was read out of the sources and PP780 asked the linker
+    /// the same question, which is the difference between a call and a reference. Two files came
+    /// off, for two different reasons, and <see cref="CallButNotLinked"/> holds both - because a row
+    /// leaving a blocker list should be a decision rather than a tidy-up.
     /// </summary>
     public static IReadOnlyList<string> StillCallTakion { get; } =
     [
-        @"lib\src\audioreceiver.c",
-        @"lib\src\audiosender.c",
         @"lib\src\congestioncontrol.c",
         @"lib\src\feedbacksender.c",
         @"lib\src\senkusha.c",
         @"lib\src\streamconnection.c",
     ];
 
-    /// <summary>PP295's own subject, and the last of the six a deletion would have to answer for.</summary>
+    /// <summary>
+    /// PP782: the two that CALL takion and are not what the deletion waits on, and why each is not.
+    ///
+    /// Kept rather than dropped, because their absence from the list above is a claim: one of them
+    /// is permanent and the other is about this tree rather than about the file, and a reader who
+    /// only saw four would have no way to tell that a fifth had quietly gone missing.
+    /// </summary>
+    public static IReadOnlyList<(string File, string Why)> CallButNotLinked { get; } =
+    [
+        (@"lib\src\audioreceiver.c",
+            "Its three calls are static inline in takion.h, so they compile into the caller and the "
+                + "link asks nobody for them. Permanent: eight of takion's symbols are like that."),
+        (@"lib\src\audiosender.c",
+            "chiaki_takion_send_mic_packet is a real export, and nothing reachable references "
+                + "audiosender - its caller is opusencoder.c, which nothing references either. So "
+                + "the object is never pulled. True of this tree: driving the microphone brings it back."),
+    ];
+
+    /// <summary>PP295's own subject, and the last of the four a deletion would have to answer for.</summary>
     public const string StreamConnection = @"lib\src\streamconnection.c";
 
     /// <summary>The criterion the release turns on, as the roadmap spells its lead.</summary>

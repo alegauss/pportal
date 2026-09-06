@@ -1,3 +1,4 @@
+﻿using ChiakiNg.Protocol;
 using ChiakiNg.Session;
 using Xunit;
 
@@ -160,14 +161,14 @@ public class TransportOrderTests
     }
 
     /// <summary>
-    /// PP636: and the six callers are really there, which is what makes the fourth unreachable now.
+    /// PP636: and the callers are really there, which is what makes the fourth unreachable now.
     ///
     /// Read from lib/ rather than trusted: the list is the argument, so a file that stopped calling
     /// takion should shorten it and one that started should lengthen it. streamconnection.c being
     /// among them is the whole point - PP295's own subject is what the criterion waits on.
     /// </summary>
     [Fact]
-    public void TheSixCallersAreStillThere()
+    public void TheCallersAreStillThere()
     {
         Assert.Contains(TransportOrder.StreamConnection, TransportOrder.StillCallTakion);
 
@@ -183,5 +184,50 @@ public class TransportOrderTests
             Assert.Contains(
                 "chiaki_takion_", File.ReadAllText(path), StringComparison.Ordinal);
         }
+    }
+    /// <summary>
+    /// PP782: THE TWO THAT CALL TAKION AND ARE NOT BLOCKERS, each for its own reason.
+    ///
+    /// The list above was read out of the sources and PP780 asked the linker, which is the
+    /// difference between a call and a reference. audioreceiver.c calls three functions that are
+    /// static inline in the header, so the link asks nobody for them; audiosender.c calls a real
+    /// export from an object nothing pulls. Both still CALL takion, which is why an absence from
+    /// the blocker list needs a row saying so rather than being a shorter list.
+    /// </summary>
+    [Fact]
+    public void TheTwoThatCallItAreNotWhatTheDeletionWaitsOn()
+    {
+        Assert.Equal(2, TransportOrder.CallButNotLinked.Count);
+
+        foreach ((string file, string why) in TransportOrder.CallButNotLinked)
+        {
+            Assert.False(string.IsNullOrWhiteSpace(why));
+            Assert.DoesNotContain(file, TransportOrder.StillCallTakion);
+
+            if (SanitizerSource.LocateRelative(file) is not { } path)
+                continue;
+
+            // It really does call takion, which is what makes its absence a claim.
+            Assert.Contains("chiaki_takion_", File.ReadAllText(path), StringComparison.Ordinal);
+        }
+    }
+
+    /// <summary>
+    /// AND EVERY SYMBOL AUDIORECEIVER NAMES IS ONE THE HEADER DEFINES INLINE.
+    ///
+    /// The permanent half of PP782. If it ever calls an exported takion function, it becomes a
+    /// blocker and this is what says so - the other row's reason is about this tree and would need
+    /// a different check.
+    /// </summary>
+    [Fact]
+    public void EverySymbolTheReceiverNamesIsInline()
+    {
+        if (SanitizerSource.LocateRelative(TransportOrder.CallButNotLinked[0].File) is not { } path)
+            return;
+
+        IReadOnlyList<string> called = TakionConsumers.CallsIn(File.ReadAllText(path));
+
+        Assert.NotEmpty(called);
+        Assert.All(called, one => Assert.Contains(one, TakionConsumers.InlineInTheHeader));
     }
 }
