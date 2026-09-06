@@ -381,31 +381,6 @@ three values in a log line that costs nothing on a path taken once. Whether the 
 then deserves a repair is a second question, and this one refuses to pretend it is
 already answered.
 
-### §PP799 The connected event that reaches nobody
-
-PP719 gave the run a managed ManagedSessionEvents, whose Send hands an event to a
-listener or counts it Unheard - the C's own shape, where chiaki_session_send_event drops
-an event when no callback is installed rather than failing. ManagedStreamPhase builds
-one and never calls Listen.
-
-SO THE STREAM WORKS AND NOTHING SAYS SO. A live run reached the idle loop, took sixteen
-thousand datagrams and decoded 2675 frames while the application waited for a CONNECTED
-that was raised, counted and dropped four states earlier. The two paths that open a
-session disagree about what that costs: the capture waits and carries on regardless, so
-it reports frames; StreamRun waits and gives up, so its window holds a loading overlay
-over a picture that is arriving.
-
-WHICH IS THE WORST SHAPE A DEFECT CAN HAVE. Nothing is red. The gate passes, the frames
-are counted, the console is streaming, and the client shows a spinner - and the two
-readings a session offers disagree in a way that reads as "the console did not connect"
-when the console did.
-
-THE JOIN IS ONE CALL AND THE QUESTION IS WHOSE. The C's session raises events through
-chiaki_session_set_event_cb, which app already installs for the front door and both
-captures. What a managed run raises has to reach that same handler, so the sink the root
-builds needs a listener that forwards - and the ordering PP640 asserts, unlock, send,
-lock, is about where it is called from and stays untouched.
-
 ## Block G — Test discipline
 
 ### §PP796 A warning the failure below it contradicts

@@ -344,6 +344,40 @@ public sealed unsafe class ChiakiSession : IDisposable, Session.IControllerState
     }
 
     /// <summary>
+    /// PP799: hand this session's handler an event libchiaki did not raise.
+    ///
+    /// The port's stream phase raises the frame path's nine of its own accord, and they stopped
+    /// there. An application installs exactly one handler - <see cref="SetEventHandler"/>'s - and it
+    /// heard only the C, so a run that streamed for twenty seconds reported its CONNECTED to a
+    /// counter while the window waiting on that event gave up.
+    ///
+    /// NOTHING IS LOST BY NOT GOING THROUGH THE C. chiaki_shim_session_dispatch decodes the quit arm
+    /// and hands every other event over as its type alone, so this carries exactly what the C's own
+    /// path carries for the same event - and a round trip into libchiaki to be flattened again would
+    /// only move where the payload is dropped.
+    ///
+    /// QUIT IS REFUSED, because it is the one arm that does carry something: a reason, and the
+    /// sentence the console sent with it. Raised here it would be a screen printing the wrong ending,
+    /// and the session thread is the only thing that knows the right one.
+    /// </summary>
+    /// <param name="type">Which event. Anything but <see cref="ChiakiEventType.Quit"/>.</param>
+    /// <returns>Whether a handler was there - which the C answers by silently doing nothing.</returns>
+    public bool Raise(ChiakiEventType type)
+    {
+        if (type == ChiakiEventType.Quit)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(type), "a quit carries a reason and a sentence this door cannot express.");
+        }
+
+        if (_handler is not { } handler)
+            return false;
+
+        handler(new ChiakiSessionEvent(type, ChiakiQuitReason.None, null));
+        return true;
+    }
+
+    /// <summary>
     /// chiaki_session_start: spawns the session thread and returns at once. Success means a
     /// thread exists, not that a console answered - that arrives as
     /// <see cref="ChiakiEventType.Quit"/> when it does not.

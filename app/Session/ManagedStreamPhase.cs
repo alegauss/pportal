@@ -85,6 +85,15 @@ public sealed class ManagedStreamPhase : IDisposable
     public StreamRunnerOutcome? Outcome { get; private set; }
 
     /// <summary>
+    /// PP799: where the run's nine events land, or null before the run built a host.
+    ///
+    /// Held so a caller can read what the session's handler cannot carry - the rumble bytes, the LED
+    /// colour, the player index - which is why PP747 made the router hold them rather than translate
+    /// them into a second seam.
+    /// </summary>
+    public SessionEventRouter? Events { get; private set; }
+
+    /// <summary>
     /// PP771: the host the run built, or null where no start ever came.
     ///
     /// Reached through so a caller can read what the outcome cannot carry - the handshake's own
@@ -148,6 +157,12 @@ public sealed class ManagedStreamPhase : IDisposable
         var outbound = new StreamOutbound(messages);
         var events = new ManagedSessionEvents();
 
+        // PP799: AND SOMEBODY LISTENING TO IT, which no file had ever been. PP719 built the seam and
+        // PP747 built the sink, and the root that would have joined them made the seam and stopped -
+        // so a live run took sixteen thousand datagrams, decoded 2675 frames, and raised a CONNECTED
+        // that was counted Unheard four states before the window gave up waiting for it.
+        Events = ListenerFor(session, events);
+
         var host = new ManagedStreamRunHost(
             takion,
             peer,
@@ -185,6 +200,32 @@ public sealed class ManagedStreamPhase : IDisposable
         Arrivals = arrivals;
 
         return host;
+    }
+
+    /// <summary>
+    /// PP799: attach the run's events to the application, and answer with what holds them.
+    ///
+    /// Public and static for <see cref="Big"/>'s reason: <see cref="Build"/> runs only once a start
+    /// arrives, so on a machine with no console this join is unreachable through the object - and it
+    /// is the join whose absence let a streaming session report "the console did not connect".
+    ///
+    /// CONNECTED IS THE ONE THAT TRAVELS. The other eight stop at the router by design, which PP747
+    /// argues: a screen saying "Rumble" would be reading the enum aloud, and what a pad driver wants
+    /// is the value rather than the occurrence. This one goes on to the session's own handler, so a
+    /// caller that installed one hears the port's run exactly as it hears the C's - which is what
+    /// makes the driver behind <see cref="StreamPhaseDriver"/> invisible from outside.
+    /// </summary>
+    /// <param name="session">The session whose handler the connected event is forwarded to.</param>
+    /// <param name="events">The run's seam, which drops what it raises until this is called.</param>
+    public static SessionEventRouter ListenerFor(ChiakiSession session, ManagedSessionEvents events)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        ArgumentNullException.ThrowIfNull(events);
+
+        var router = new SessionEventRouter(() => session.Raise(ChiakiEventType.Connected));
+        events.Listen(router);
+
+        return router;
     }
 
     /// <summary>

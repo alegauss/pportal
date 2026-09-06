@@ -23,7 +23,7 @@
 
 - ⏳ **PP27** (deps: PP672 ✅, PP673 ✅, PP674 ✅, PP675 ✅, PP676 ✅, PP677 ✅, PP678 ✅, PP679 ✅, PP680 ✅, PP702 ✅, PP783, PP784, PP785, PP786) (requires: console) **takion.c is 2007 lines of C over raw sockets and timers, and the whole stream rides on it** — Ten tasks wrote it; four more take the C out. → §PP27
 - 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — chiaki_fec_decode has three callers - frameprocessor.c, the C suite and this port's shim - and gf-complete has a fourth site none of them reach: chiaki_lib_init. → §PP30
-- 📋 **PP783** (deps: PP787 ✅, PP795 ✅) (requires: console) **session.c runs the stream itself and nothing in app installs the port's phase, so PP295's four files cannot leave** — It runs to the idle loop against a console and draws nothing, which is PP763's failure exactly. → §PP783
+- 📋 **PP783** (deps: PP787 ✅, PP795 ✅, PP799 ✅) (requires: console) **session.c runs the stream itself and nothing in app installs the port's phase, so PP295's four files cannot leave** — It runs to the idle loop against a console and draws nothing, which is PP763's failure exactly. → §PP783
 - 📋 **PP784** (deps: PP788 ✅, PP789 ✅, PP790 ✅, PP791 ⏳, PP792) **senkusha runs before the stream phase and calls four of takion's exports, so the transport cannot leave with it** — Porting is the call; five lines carry it, and the file stops calling takion when the last lands. → §PP784
 - 📋 **PP785** (deps: PP780 ✅) **the shim's eighteen takion symbols are the oracle, so the deletion takes away what proves the port right** — PP33 met this and answered it: a define like the frame path's, and a recording of what the C answers, so the comparison outlives the C. → §PP785
 - 📋 **PP786** (deps: PP780 ✅) **three of the C suite's files exercise takion directly and the case floor counts them, so the deletion drops it silently** — PP696 put the suite's four behind a define for the frame path and takion's three have none, so the floor of 149 falls with no line saying it should. → §PP786
@@ -31,7 +31,6 @@
 - 📋 **PP792** (deps: PP791 ⏳) (requires: console) **session.c runs senkusha itself and there is no callback to hand it to, so a managed run is unreachable** — PP753 built this seam for the stream phase and senkusha needs its own; PP28's placement already says what each outcome decides. → §PP792
 - 📋 **PP797** (deps: —) **the console's audio reaches a receiver whose output goes nowhere, and nothing drains the ring into a speaker** — Every piece is written and two joins are missing: the root hands the arms a no-op sink, and the ring the opus decoder fills has no reader. → §PP797
 - 📋 **PP798** (deps: —) **one access unit per session is refused by the decoder and the log says which error, never which frame** — A benign first unit before the codec has its header and a real corruption print the same line, so neither can be told from the other. → §PP798
-- 📋 **PP799** (deps: —) **the port streams and never says it connected, so a window waiting on the event holds a spinner over a live picture** — The composition root builds an event sink with nothing listening, so every session event the run raises is counted as unheard and dropped. → §PP799
 
 ## Block G — Test discipline
 
