@@ -294,6 +294,30 @@ public class PadInfoMessageTests(ITestOutputHelper output)
         Assert.Equal(PadInfoMessage.ReportOrder.Count, order.Count);
     }
 
+    /// <summary>
+    /// PP744: and it is read whatever the C calls the local, which is what the copy could not do.
+    ///
+    /// This sweep used to start at "event.type" - correct only because every raiser in the handler
+    /// it reads is named event. PP722 found the same pattern reporting two of session.c's four
+    /// raisers for exactly that reason, so the shared sweep now starts at the member access. A
+    /// handler that renamed its local would otherwise read as sending nothing at all, and an order
+    /// check over an empty list passes every claim about a sequence.
+    /// </summary>
+    [Fact]
+    public void TheOrderIsReadWhateverTheCCallsItsLocal()
+    {
+        const string renamed = """
+                ChiakiEvent pad_event = { 0 };
+                pad_event.type = CHIAKI_EVENT_MOTION_RESET;
+                chiaki_session_send_event(session, &pad_event);
+                ChiakiEvent second = { 0 };
+                second.type = CHIAKI_EVENT_LED_COLOR;
+                chiaki_session_send_event(session, &second);
+            """;
+
+        Assert.Equal(["MOTION_RESET", "LED_COLOR"], PadInfoMessageSource.ReportOrderIn(renamed));
+    }
+
     /// <summary>And still names these two lengths, and still returns on anything else.</summary>
     [Fact]
     public void TheCStillNamesTheseTwoLengthsAndReturnsOnOthers()

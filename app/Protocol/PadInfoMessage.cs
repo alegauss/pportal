@@ -259,27 +259,24 @@ public static class PadInfoMessageSource
     ///
     /// The sequence is the deliverable: both layouts share it, and it is decided where the parse is
     /// already over.
+    ///
+    /// PP744: PP719'S SWEEP, not a second copy of it. This was the same walk over the same literal,
+    /// and when PP722 found that literal was anchored on a local's name - session.c calls two of its
+    /// four raisers something other than event, and the sweep reported two in a file with four - the
+    /// correction landed on one copy. This one was right for a reason that was not its own: every
+    /// raiser in the handler it reads happens to be named event, exactly as the two files the sweep
+    /// was written for were. The prefix on each name is the only difference, so it is stripped here
+    /// rather than kept as a parallel loop that has already drifted once.
     /// </summary>
     public static IReadOnlyList<string> ReportOrderIn(string handlerBody)
     {
         ArgumentNullException.ThrowIfNull(handlerBody);
 
-        const string prefix = "event.type = CHIAKI_EVENT_";
-        var found = new List<string>();
-
-        for (int at = handlerBody.IndexOf(prefix, StringComparison.Ordinal);
-             at >= 0;
-             at = handlerBody.IndexOf(prefix, at + prefix.Length, StringComparison.Ordinal))
-        {
-            int from = at + prefix.Length;
-            int end = handlerBody.IndexOf(';', from);
-            if (end < 0)
-                break;
-
-            found.Add(handlerBody[from..end].Trim());
-        }
-
-        return found;
+        return
+        [
+            .. ManagedSessionEventsSource.EventsRaisedIn(handlerBody)
+                .Select(one => one[ManagedSessionEventsSource.EventPrefix.Length..]),
+        ];
     }
 
     /// <summary>

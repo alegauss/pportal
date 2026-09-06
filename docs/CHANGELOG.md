@@ -662,6 +662,7 @@
 - ✅ **PP736** **the stats count one push per audio packet against a ceiling that advances per unit, and nothing states the ratio** — Measured on the 439 Opus heads a PS5 sent: one source unit per packet, so the stats' count and span advance together and the feared loss report does not exist.
 - ✅ **PP741** **seven interfaces in app are implemented only by test doubles, and only two of them were ever counted** — SeamReach asks the reached question of every public interface the assembly declares, so the seven are a declared list with a reason each rather than two censuses' blind spot.
 - ✅ **PP722** **seven events outside the frame path have no managed raiser, and one enum member is raised by nothing at all** — All seventeen are held against the C that raises them: the eight outside are four subsystems, two already consumed, and the owed pair is one callback where only one can fire.
+- ✅ **PP744** **the pad-info order is read by a copy of the raiser sweep, still anchored on the local name PP722 widened** — ReportOrderIn composes on the widened sweep and strips the prefix, so the second copy is gone and a renamed local no longer reads as a handler that sends nothing.
 
 ## Block G — Test discipline
 
