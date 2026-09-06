@@ -49,6 +49,16 @@ public readonly record struct FeedbackSnapshot(PadSnapshot Pad, FeedbackMotion M
 {
     /// <summary>chiaki_controller_state_set_idle, which is where all three of the C's start.</summary>
     public static FeedbackSnapshot Idle => new(PadSnapshot.Idle, default);
+
+    /// <summary>
+    /// PP756: both halves off one live state, which is what a pad's push carries.
+    ///
+    /// The two were readable separately and never together: PadSnapshot.From has existed since the
+    /// recorder, and the motion half could not be read at all. So a state arriving from a pad could
+    /// only reach this sender as buttons, and its sticks and motion were dropped on the way.
+    /// </summary>
+    public static FeedbackSnapshot From(ChiakiControllerState state)
+        => new(PadSnapshot.From(state), FeedbackMotion.From(state));
 }
 
 /// <summary>

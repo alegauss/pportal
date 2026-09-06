@@ -24,7 +24,30 @@ public readonly record struct FeedbackMotion(
     float GyroX, float GyroY, float GyroZ,
     float AccelX, float AccelY, float AccelZ,
     float OrientX, float OrientY, float OrientZ, float OrientW,
-    short LeftX, short LeftY, short RightX, short RightY);
+    short LeftX, short LeftY, short RightX, short RightY)
+{
+    /// <summary>
+    /// PP756: the fourteen read off a live state, which nothing could do until the gyro and the
+    /// accelerometer had a reader.
+    ///
+    /// Three calls and not one, because the C keeps them in three groups and the shim wraps each -
+    /// six floats, four, and the four stick axes that are not floats at all.
+    /// </summary>
+    public static FeedbackMotion From(ChiakiControllerState state)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+
+        (float gyroX, float gyroY, float gyroZ, float accelX, float accelY, float accelZ) = state.Motion();
+        (float orientX, float orientY, float orientZ, float orientW) = state.Orientation();
+        (short leftX, short leftY, short rightX, short rightY) = state.Sticks;
+
+        return new FeedbackMotion(
+            gyroX, gyroY, gyroZ,
+            accelX, accelY, accelZ,
+            orientX, orientY, orientZ, orientW,
+            leftX, leftY, rightX, rightY);
+    }
+}
 
 /// <summary>
 /// PP676: feedback.c's two serialisers and its history events, in managed code.

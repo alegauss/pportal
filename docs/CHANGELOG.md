@@ -675,6 +675,7 @@
 - ✅ **PP753** **the session thread has no way to hand the stream phase over and take an outcome back, so the deletion cannot land** — Two bool-pred conds and a copied reason let the C thread block where its run was and take back the error and the disconnect reason, with no managed pointer crossing.
 - ✅ **PP754** **nothing in the application builds a run host or calls the run, so the deletion would leave it with no streaming** — ManagedStreamRunner waits on the seam, builds the host from parts a caller supplies, runs and reports both values - so a session thread handing over is answered rather than timing out.
 - ✅ **PP755** **the disconnect reason is parsed and the host holds no field for it, so the runner takes it as a parameter** — The host carries the reason where the C keeps it, set with the flag in one call as the disconnect handler sets them, and the runner reads it rather than being handed one.
+- ✅ **PP756** **the pad's state goes to the C session, and the deletion leaves that call with no feedback sender to reach** — PadFeed takes an IControllerStateSink, satisfied by the C session and by a managed sink over the port's own sender; gyro and accel now read back in one call.
 
 ## Block G — Test discipline
 

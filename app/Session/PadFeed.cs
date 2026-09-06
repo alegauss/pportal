@@ -3,6 +3,26 @@ using ChiakiNg.Native;
 namespace ChiakiNg.Session;
 
 /// <summary>
+/// PP756: where a pad's state goes, as an interface rather than as the C session.
+///
+/// <see cref="PadFeed"/> pushed at ChiakiSession directly, and chiaki_session_set_controller_state
+/// hands what it takes to stream_connection.feedback_sender - the struct PP696 deletes. So the one
+/// live caller of the pad path was wired to the half of the session that is going away, with no way
+/// to be pointed at the port's own sender instead.
+///
+/// TWO THINGS SATISFY IT, which is what keeps it from being a rename: the C session today, and
+/// ManagedControllerStateSink, which is the same contract over the port's own feedback sender.
+/// </summary>
+public interface IControllerStateSink
+{
+    /// <summary>
+    /// chiaki_session_set_controller_state: keep the state, and pass it on if a sender is armed.
+    /// </summary>
+    /// <returns>Success, or what taking the sender's lock failed with - never the sender's own answer.</returns>
+    ChiakiError SetControllerState(ChiakiControllerState state);
+}
+
+/// <summary>
 /// PP701: a real pad opened, translated and pushed at the session, for as long as one is held.
 ///
 /// <see cref="PadTranslation"/> is the mapping and this is the wiring: SDL on its own thread, the
@@ -24,18 +44,18 @@ public sealed class PadFeed : IDisposable
 {
     private readonly PadTranslation translation = new();
     private readonly ChiakiControllerState state = new();
-    private readonly ChiakiSession session;
+    private readonly IControllerStateSink sink;
     private readonly object gate = new();
 
     private SdlThread? sdl;
     private IntPtr controller;
     private long pushed;
 
-    /// <param name="session">The session to push at. Not owned, and outlives this.</param>
-    public PadFeed(ChiakiSession session)
+    /// <param name="sink">Where the state goes. Not owned, and outlives this.</param>
+    public PadFeed(IControllerStateSink sink)
     {
-        ArgumentNullException.ThrowIfNull(session);
-        this.session = session;
+        ArgumentNullException.ThrowIfNull(sink);
+        this.sink = sink;
     }
 
     /// <summary>How many states have been pushed. Zero after a session is a pad that never reached it.</summary>
@@ -99,7 +119,7 @@ public sealed class PadFeed : IDisposable
                 return;
 
             translation.WriteTo(state);
-            session.SetControllerState(state);
+            sink.SetControllerState(state);
         }
 
         Interlocked.Increment(ref pushed);

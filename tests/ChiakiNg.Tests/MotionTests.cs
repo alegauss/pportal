@@ -120,6 +120,37 @@ public class MotionTests
             $"orientation was {x},{y},{z},{w}");
     }
 
+    /// <summary>
+    /// PP756: AND THE GYRO AND ACCELEROMETER READ BACK, which nothing could do before.
+    ///
+    /// SetMotion writes ten floats and Orientation read four of them; the other six were
+    /// write-only. A managed FeedbackSnapshot built from a state therefore carried zeroes for both
+    /// - motion control switched off rather than ported, whose symptom is a game that does not tilt
+    /// rather than an error. Asserted as a round trip, because a getter reading the wrong fields
+    /// would return zeroes just as convincingly.
+    /// </summary>
+    [Fact]
+    public void TheGyroAndAccelerometerReadBackAsTheyWereSet()
+    {
+        using var state = new ChiakiControllerState();
+
+        // A fresh state is not zero in motion: chiaki_controller_state_set_idle rests it under
+        // gravity, accel_y = 1 and the other five at zero. This assertion was written expecting six
+        // zeroes and was corrected against controller.c - a port that idled at zero would tell the
+        // console the pad is in free fall before the first sample arrives.
+        Assert.Equal((0f, 0f, 0f, 0f, 1f, 0f), state.Motion());
+
+        state.SetMotion(
+            gyroX: 1.5f, gyroY: -2.5f, gyroZ: 3.5f,
+            accelX: -4.5f, accelY: 5.5f, accelZ: -6.5f,
+            orientX: 0f, orientY: 0f, orientZ: 0f, orientW: 1f);
+
+        Assert.Equal((1.5f, -2.5f, 3.5f, -4.5f, 5.5f, -6.5f), state.Motion());
+
+        // And the orientation is still its own four, so the two getters read different fields.
+        Assert.Equal((0f, 0f, 0f, 1f), state.Orientation());
+    }
+
     /// <summary>The two conversions are still the Qt client's, and only one of them applies.</summary>
     [Fact]
     public void TheConversionsAreStillTheQtClients()

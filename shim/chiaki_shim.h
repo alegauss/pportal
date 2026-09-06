@@ -1197,6 +1197,14 @@ CHIAKI_SHIM_API void chiaki_shim_orientation_tracker_update(
 /** The orientation a controller state carries, which is what the console is actually sent. */
 CHIAKI_SHIM_API bool chiaki_shim_controller_state_orient(void *state, float *out_orient);
 
+/**
+ * PP756: gyro then accelerometer, six floats, which had setters and no reader.
+ *
+ * Six out in one call because they are set in one call: a caller reading gyro without accel has
+ * half a sample, and the managed snapshot the deletion needs is built from both.
+ */
+CHIAKI_SHIM_API bool chiaki_shim_controller_state_motion(void *state, float *out_motion);
+
 /** Writes the tracker's orientation into a controller state, which is what the console reads. */
 CHIAKI_SHIM_API void chiaki_shim_orientation_tracker_apply(void *tracker, void *state);
 

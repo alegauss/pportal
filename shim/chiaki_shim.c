@@ -2014,6 +2014,32 @@ CHIAKI_SHIM_API bool chiaki_shim_controller_state_orient(void *state, float *out
 	return true;
 }
 
+/**
+ * PP756: the gyro and accelerometer a controller state carries, which had setters and no reader.
+ *
+ * chiaki_shim_controller_state_set_motion writes six floats and the orient getter above reads four
+ * of the ten back. The other six were write-only, so a managed FeedbackSnapshot built from a state
+ * carried zeroes for both - which is not a port of motion control, it is motion control switched
+ * off on a path whose symptom is a game that does not tilt.
+ *
+ * Six out rather than two calls, because they are set together and a caller reading one without
+ * the other has half a sample.
+ */
+CHIAKI_SHIM_API bool chiaki_shim_controller_state_motion(void *state, float *out_motion)
+{
+	ChiakiControllerState *self = (ChiakiControllerState *)state;
+	if(!self || !out_motion)
+		return false;
+
+	out_motion[0] = self->gyro_x;
+	out_motion[1] = self->gyro_y;
+	out_motion[2] = self->gyro_z;
+	out_motion[3] = self->accel_x;
+	out_motion[4] = self->accel_y;
+	out_motion[5] = self->accel_z;
+	return true;
+}
+
 CHIAKI_SHIM_API void chiaki_shim_orientation_tracker_apply(void *tracker, void *state)
 {
 	if(!tracker || !state)

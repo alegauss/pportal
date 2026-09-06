@@ -290,7 +290,7 @@ public enum ChiakiQuitReason
 /// ownership rule at this seam that the managed side cannot check for itself, and therefore the
 /// one worth stating twice.
 /// </summary>
-public sealed unsafe class ChiakiSession : IDisposable
+public sealed unsafe class ChiakiSession : IDisposable, Session.IControllerStateSink
 {
     private IntPtr _handle;
     private GCHandle _self;

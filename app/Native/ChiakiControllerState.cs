@@ -113,6 +113,26 @@ public sealed class ChiakiControllerState : IDisposable
         return (orient[0], orient[1], orient[2], orient[3]);
     }
 
+    /// <summary>
+    /// PP756: the gyro and accelerometer the state carries, which had a setter and no reader.
+    ///
+    /// SetMotion writes ten floats and Orientation reads four of them back; the other six were
+    /// write-only. A managed snapshot built from a state therefore carried zeroes for both, which
+    /// is motion control switched off rather than ported - and its symptom is a game that does not
+    /// tilt rather than an error anybody sees.
+    ///
+    /// Both in one call because they are written in one: a caller with gyro and no accelerometer
+    /// has half a sample.
+    /// </summary>
+    public (float GyroX, float GyroY, float GyroZ, float AccelX, float AccelY, float AccelZ) Motion()
+    {
+        var motion = new float[6];
+        if (!ControllerStateMotion(Handle, motion))
+            throw new InvalidOperationException("chiaki_shim_controller_state_motion failed.");
+
+        return (motion[0], motion[1], motion[2], motion[3], motion[4], motion[5]);
+    }
+
     /// <summary>Gyro, accelerometer and orientation, in that order.</summary>
     public void SetMotion(
         float gyroX, float gyroY, float gyroZ,
@@ -213,6 +233,11 @@ public sealed class ChiakiControllerState : IDisposable
         CallingConvention = CallingConvention.Cdecl)]
     [return: MarshalAs(UnmanagedType.I1)]
     private static extern bool ControllerStateOrient(IntPtr state, float[] orient);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_controller_state_motion",
+        CallingConvention = CallingConvention.Cdecl)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    private static extern bool ControllerStateMotion(IntPtr state, float[] motion);
 
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_controller_state_set_motion",
         CallingConvention = CallingConvention.Cdecl)]
