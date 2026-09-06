@@ -255,6 +255,39 @@ CHIAKI_SHIM_API bool chiaki_shim_session_derive_secret(
 		const uint8_t *remote_sig, int32_t remote_sig_size,
 		uint8_t *out_secret, int32_t secret_capacity);
 
+/**
+ * PP777: what the launch spec is HIDDEN under, which the port was inventing.
+ *
+ * stream_connection_send_big encrypts the spec with `&session->rpcrypt`, and that crypt is
+ * `chiaki_rpcrypt_init_auth(target, session->nonce, connect_info.morning)` - the nonce arriving with
+ * ctrl's handshake and the morning being the registration's key. A managed root that built one from
+ * zeroes produced well-formed base64 the console could not read, and a console answers that by
+ * acknowledging the message and saying nothing.
+ *
+ * All three or none, as the transport reader is: a caller holding a target and no nonce would build
+ * a crypt that is wrong in a way nothing reports. The nonce is all zeroes before ctrl's handshake
+ * fills it, and that is refused rather than handed back, because sixteen zero bytes make a perfectly
+ * valid crypt for a session nobody agreed to.
+ */
+CHIAKI_SHIM_API bool chiaki_shim_session_auth_material(
+		void *session,
+		int32_t *out_target,
+		uint8_t *out_nonce, int32_t nonce_capacity,
+		uint8_t *out_morning, int32_t morning_capacity);
+
+/**
+ * PP777: and what the spec DESCRIBES, which the port was spelling as constants.
+ *
+ * The five fields come off `session->connect_info.video_profile`, set by whoever built the connect
+ * info. A root that wrote 1280x720 at 60 was right for the preset this tree happens to ask for and
+ * wrong the moment a caller asks for another - and the console is told a stream shape its answer
+ * will not match.
+ */
+CHIAKI_SHIM_API bool chiaki_shim_session_video_profile(
+		void *session,
+		uint32_t *out_width, uint32_t *out_height, uint32_t *out_max_fps,
+		uint32_t *out_bitrate, int32_t *out_codec);
+
 CHIAKI_SHIM_API void chiaki_shim_stream_run_install(void *session, void *handover);
 
 /**

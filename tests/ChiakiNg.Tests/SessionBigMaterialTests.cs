@@ -53,6 +53,11 @@ public class SessionBigMaterialTests(ITestOutputHelper output)
         Assert.Null(SessionBigMaterial.TransportOf(session));
         Assert.Null(SessionBigMaterial.HandshakeKeyOf(session));
 
+        // PP777: and the crypt material, which is the fifth and the one a live console proved was
+        // being invented. The nonce arrives with ctrl's handshake, so before one there is none -
+        // and sixteen zero bytes make a perfectly valid crypt for a session nobody agreed to.
+        Assert.Null(SessionBigMaterial.AuthOf(session));
+
         // The ecdh is created on the line before the run and freed on the line after, so outside
         // the stream phase there is nothing to copy.
         SessionEcdhMaterial? ecdh = SessionBigMaterial.EcdhOf(session);

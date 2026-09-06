@@ -205,19 +205,33 @@ public sealed class ManagedStreamPhase : IDisposable
         SessionEcdhMaterial ecdh = SessionBigMaterial.EcdhOf(session)
             ?? throw new InvalidOperationException("the session's ecdh pair does not exist yet.");
 
+        // PP777: the two the root used to invent. A console acked a BIG built from zeroes and a
+        // fixed 720p and answered nothing at all, which is what a message it cannot read looks like
+        // from this side - there is no refusal to log.
+        SessionAuthMaterial auth = SessionBigMaterial.AuthOf(session)
+            ?? throw new InvalidOperationException("ctrl's handshake has not produced a nonce yet.");
+
+        SessionVideoProfile profile = SessionBigMaterial.ProfileOf(session)
+            ?? throw new InvalidOperationException("the connect info describes no stream.");
+
         var fields = new LaunchSpecFields(
-            Width: 1280,
-            Height: 720,
-            MaxFps: 60,
-            BwKbpsSent: 10000,
-            Mtu: transport.MtuOut,
+            Width: profile.Width,
+            Height: profile.Height,
+            MaxFps: profile.MaxFps,
+            BwKbpsSent: profile.BitrateKbps,
+
+            // PP777: MTU_IN and not out. The C reads session->mtu_in here; senkusha measures the two
+            // separately and they need not agree, so the other one describes a link in the wrong
+            // direction.
+            Mtu: transport.MtuIn,
 
             // Milliseconds, which is what the spec's field is - senkusha measures microseconds.
             Rtt: (uint)(transport.RoundTripMicroseconds / 1000),
-            Target: ChiakiTarget.Ps5_1,
-            Codec: ChiakiCodec.H264);
+            Target: auth.Target,
+            Codec: profile.Codec);
 
-        var crypt = new RpCrypt(ChiakiTarget.Ps5_1, new byte[16], new byte[16]);
+        // The SESSION's crypt, which is chiaki_rpcrypt_init_auth over the same three values.
+        using var crypt = new RpCrypt(auth.Target, auth.Nonce, auth.Morning);
 
         string spec = BigMessage.EncodedLaunchSpec(crypt, fields, handshakeKey)
             ?? throw new InvalidOperationException("the launch spec would not fit the C's buffer.");

@@ -3221,6 +3221,62 @@ CHIAKI_SHIM_API bool chiaki_shim_session_derive_secret(
 		== CHIAKI_ERR_SUCCESS;
 }
 
+CHIAKI_SHIM_API bool chiaki_shim_session_auth_material(
+		void *session,
+		int32_t *out_target,
+		uint8_t *out_nonce, int32_t nonce_capacity,
+		uint8_t *out_morning, int32_t morning_capacity)
+{
+	ChiakiSession *self = (ChiakiSession *)session;
+	int i;
+	bool nonce_set = false;
+
+	if(!self || !out_target || !out_nonce || !out_morning)
+		return false;
+
+	if(nonce_capacity < CHIAKI_RPCRYPT_KEY_SIZE || morning_capacity < (int32_t)sizeof(self->connect_info.morning))
+		return false;
+
+	/* All zeroes is what the nonce holds until ctrl's handshake base64-decodes one into it, and a
+	 * crypt built from zeroes is valid, wrong, and silent about being either. */
+	for(i = 0; i < CHIAKI_RPCRYPT_KEY_SIZE; i++)
+	{
+		if(self->nonce[i] != 0)
+		{
+			nonce_set = true;
+			break;
+		}
+	}
+
+	if(!nonce_set)
+		return false;
+
+	*out_target = (int32_t)self->target;
+	memcpy(out_nonce, self->nonce, CHIAKI_RPCRYPT_KEY_SIZE);
+	memcpy(out_morning, self->connect_info.morning, sizeof(self->connect_info.morning));
+
+	return true;
+}
+
+CHIAKI_SHIM_API bool chiaki_shim_session_video_profile(
+		void *session,
+		uint32_t *out_width, uint32_t *out_height, uint32_t *out_max_fps,
+		uint32_t *out_bitrate, int32_t *out_codec)
+{
+	ChiakiSession *self = (ChiakiSession *)session;
+
+	if(!self || !out_width || !out_height || !out_max_fps || !out_bitrate || !out_codec)
+		return false;
+
+	*out_width = self->connect_info.video_profile.width;
+	*out_height = self->connect_info.video_profile.height;
+	*out_max_fps = self->connect_info.video_profile.max_fps;
+	*out_bitrate = self->connect_info.video_profile.bitrate;
+	*out_codec = (int32_t)self->connect_info.video_profile.codec;
+
+	return true;
+}
+
 CHIAKI_SHIM_API void chiaki_shim_stream_run_install(void *session, void *handover)
 {
 	ChiakiSession *self = (ChiakiSession *)session;

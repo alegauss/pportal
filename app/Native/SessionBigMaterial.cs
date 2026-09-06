@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Text;
+using ChiakiNg.Session;
 
 namespace ChiakiNg.Native;
 
@@ -8,6 +9,21 @@ namespace ChiakiNg.Native;
 /// <param name="MtuOut">The outbound one, which is measured separately and need not match.</param>
 /// <param name="RoundTripMicroseconds">The round trip, in microseconds.</param>
 public readonly record struct SessionTransport(uint MtuIn, uint MtuOut, ulong RoundTripMicroseconds);
+
+/// <summary>PP777: what the session's own rpcrypt was built from, which is what hides the spec.</summary>
+/// <param name="Target">session-&gt;target, which the crypt's schedule differs by.</param>
+/// <param name="Nonce">The nonce ctrl's handshake decoded, sixteen bytes.</param>
+/// <param name="Morning">The registration's key, the same size.</param>
+public readonly record struct SessionAuthMaterial(ChiakiTarget Target, byte[] Nonce, byte[] Morning);
+
+/// <summary>PP777: the stream shape the connect info asked for, which the spec announces.</summary>
+/// <param name="Width">The picture's width.</param>
+/// <param name="Height">And its height.</param>
+/// <param name="MaxFps">The frame rate ceiling.</param>
+/// <param name="BitrateKbps">What the spec spends as bw_kbps_sent.</param>
+/// <param name="Codec">Which codec the preset chose.</param>
+public readonly record struct SessionVideoProfile(
+    uint Width, uint Height, uint MaxFps, uint BitrateKbps, ChiakiCodec Codec);
 
 /// <summary>The ecdh half of a BIG: a public key and the signature over the handshake key.</summary>
 /// <param name="PublicKey">Copied out, because the pair it came from is freed a step later.</param>
@@ -153,6 +169,69 @@ public static class SessionBigMaterial
 
     /// <summary>CHIAKI_ECDH_SECRET_SIZE, which the derivation writes and does not take a size for.</summary>
     public const int EcdhSecretBytes = 32;
+
+    /// <summary>CHIAKI_RPCRYPT_KEY_SIZE, which both halves of the auth crypt are.</summary>
+    public const int RpCryptKeyBytes = 0x10;
+
+    /// <summary>
+    /// PP777: what the launch spec is HIDDEN under, which the composition root was inventing.
+    ///
+    /// The C encrypts the spec with session-&gt;rpcrypt, and that crypt is init_auth over the target,
+    /// the nonce ctrl's handshake decoded and the morning the registration holds. A root that built
+    /// one from sixteen zero bytes each way produced base64 the console cannot read - and a console
+    /// answers that by ACKNOWLEDGING the message and never banging, which is the failure a live
+    /// trial read as two DataAcks and no answer.
+    ///
+    /// All three or none, as <see cref="TransportOf"/> is: a caller with a target and no nonce would
+    /// build a crypt wrong in a way nothing reports.
+    /// </summary>
+    public static SessionAuthMaterial? AuthOf(ChiakiSession session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+
+        var nonce = new byte[RpCryptKeyBytes];
+        var morning = new byte[RpCryptKeyBytes];
+
+        return SessionAuthMaterialRaw(session.Handle, out int target, nonce, nonce.Length, morning, morning.Length)
+            ? new SessionAuthMaterial((ChiakiTarget)target, nonce, morning)
+            : null;
+    }
+
+    /// <summary>
+    /// PP777: and what the spec DESCRIBES, which the root was spelling as constants.
+    ///
+    /// Right for the preset this tree happens to ask for and wrong the moment a caller asks for
+    /// another - and a console told a shape the stream will not have has been told something false
+    /// about the session it is about to serve.
+    /// </summary>
+    public static SessionVideoProfile? ProfileOf(ChiakiSession session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+
+        if (!SessionVideoProfileRaw(
+                session.Handle, out uint width, out uint height, out uint maxFps, out uint bitrate, out int codec))
+        {
+            return null;
+        }
+
+        // Zero is what the preset writes for a resolution it does not know, and a spec describing a
+        // stream of no size is one the console refuses with nothing to say why.
+        return width == 0 || height == 0
+            ? null
+            : new SessionVideoProfile(width, height, maxFps, bitrate, (ChiakiCodec)codec);
+    }
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_session_auth_material",
+        CallingConvention = CallingConvention.Cdecl)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    private static extern bool SessionAuthMaterialRaw(
+        IntPtr session, out int target, byte[] nonce, int nonceCapacity, byte[] morning, int morningCapacity);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_session_video_profile",
+        CallingConvention = CallingConvention.Cdecl)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    private static extern bool SessionVideoProfileRaw(
+        IntPtr session, out uint width, out uint height, out uint maxFps, out uint bitrate, out int codec);
 
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_session_derive_secret",
         CallingConvention = CallingConvention.Cdecl)]

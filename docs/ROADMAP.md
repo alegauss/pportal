@@ -25,7 +25,7 @@
 - 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — chiaki_fec_decode has three callers - frameprocessor.c, the C suite and this port's shim - and gf-complete has a fourth site none of them reach: chiaki_lib_init. → §PP30
 - ⏳ **PP773** (deps: PP777) **nothing turns a takion event into the host's signal, so every state the run waits on times out** — The wire is built and holds over loopback; what it cannot be shown against is a console, which acks the BIG and never bangs. → §PP773
 - 💭 **PP776** (deps: PP773 ⏳) **a seam filled by a refusal reads as reached, so the sweep cannot tell a stub from an implementation** — PP773 filled IBangKeying with a class that says no at the derive, and SeamReach's last row left - reporting a seam closed while the derivation it stands for is unwritten. → §PP776
-- 📋 **PP777** (deps: —) **the BIG's launch spec is hidden with a zeroed rpcrypt, so the console acks it and never bangs** — A live trial read two DataAcks and no bang, because the C keys the spec with the session's rpcrypt and sizes it from mtu_in where the root passes zeroes and constants. → §PP777
+- 📋 **PP777** (deps: —) **the BIG's launch spec is hidden with a zeroed rpcrypt, so the console acks it and never bangs** — The four values come off the session now, and the console still only acks: the framing under them puts the data type in the wrong field. → §PP777
 
 ## Block G — Test discipline
 
