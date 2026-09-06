@@ -75,7 +75,7 @@ public class ManagedStreamPhaseTests(ITestOutputHelper output)
         using var baseline = new SessionBaseline();
         using var phase = new ManagedStreamPhase(
             session,
-            new IPEndPoint(IPAddress.Loopback, 9295),
+            IPAddress.Loopback,
             (_, _, _) => true,
             baseline);
 
@@ -108,7 +108,7 @@ public class ManagedStreamPhaseTests(ITestOutputHelper output)
         using var baseline = new SessionBaseline();
         var phase = new ManagedStreamPhase(
             session,
-            new IPEndPoint(IPAddress.Loopback, 9295),
+            IPAddress.Loopback,
             (_, _, _) => true,
             baseline);
 
@@ -144,5 +144,30 @@ public class ManagedStreamPhaseTests(ITestOutputHelper output)
                 ?? throw new InvalidOperationException("the phase is not in this checkout.")));
 
         Assert.Single(StreamPhaseDriver.InstallersIn([file]));
+    }
+
+    /// <summary>
+    /// PP771: THE PHASE AIMS AT THE STREAM PORT, which the caller no longer gets to choose.
+    ///
+    /// The first version took an endpoint and the first caller passed 9295 - the ctrl and discovery
+    /// port, which is the number everything about a session says. A console answers nothing on it:
+    /// three INIT attempts, no reply, and a run that stopped at the connect looking like a handshake
+    /// this port had got wrong. Aimed at 9296 the same handshake completed with a real PS5 on the
+    /// first attempt each way.
+    ///
+    /// So the constructor takes an ADDRESS. The mistake is not one a caller can make any more, which
+    /// is the only kind of fix worth making for a mistake that cost a console trial to find.
+    /// </summary>
+    [Fact]
+    public void ThePhaseTakesAnAddressAndAimsAtTheStreamPort()
+    {
+        // An address, not an endpoint: there is no parameter to put the wrong number in.
+        Assert.Equal(
+            typeof(IPAddress),
+            typeof(ManagedStreamPhase).GetConstructors().Single().GetParameters()[1].ParameterType);
+
+        // And the port it uses is the stream takion's, which is not the ctrl one.
+        Assert.Equal(9296, SessionRelay.StreamPort);
+        Assert.NotEqual(CtrlConnect.CtrlPort, SessionRelay.StreamPort);
     }
 }

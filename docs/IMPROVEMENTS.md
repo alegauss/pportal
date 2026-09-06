@@ -189,28 +189,6 @@ flag, its count loop is guarded by the return above it, peek writes both out-poi
 where pull guards its own, and takion still passes NULL and still drops on a bad MAC.
 Repair any upstream and the port's copy becomes the divergence, on the next run.
 
-### §PP771 The handshake a test peer answered
-
-Measured, and the measurement is what PP770 bought. A live handover now reports where it
-stopped: Started true, three receivers built, Reached VideoReceiver - which is the rung
-before ConnectTakion, so the connect is what failed.
-
-EVERYTHING BEFORE IT IS THE PORT'S OWN. The three receivers are factories that cannot
-fail against a console; the socket is the session's, adopted rather than opened, which
-PP769 established by watching the alternative fail earlier. So this is the first rung
-whose far side is a PlayStation rather than something this tree wrote.
-
-AND THAT IS EXACTLY WHERE THE EVIDENCE THINS. PP606 built a responder and PP607 runs a
-real takion against it to the connected event, which is a genuine oracle for the
-handshake's SHAPE. It is not evidence about a console mid-session: the tag is drawn
-fresh inside connect, senkusha has already talked over this socket, and what the console
-expects of a stream takion at that moment is not something a loopback peer models.
-
-WHAT IS OWED IS THE FAILURE'S OWN NAME. The connect answers a bool and the handshake
-behind it has an outcome with an error - which the host discards. Carrying that out is
-the same shape PP770 just gave the run one level up, and it is what turns the next trial
-into a reading rather than another guess.</section_body> </invoke>
-
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry

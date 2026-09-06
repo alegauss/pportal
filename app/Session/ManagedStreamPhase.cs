@@ -34,30 +34,53 @@ public sealed class ManagedStreamPhase : IDisposable
 
     private Thread? thread;
 
+    /// <summary>
+    /// PP771: THE PORT IS THIS OBJECT'S AND NOT THE CALLER'S, which is what an address takes.
+    ///
+    /// A caller handed an endpoint, and the first one written passed 9295 - the ctrl and discovery
+    /// port, which is the number everything about a session says. The stream takion is on 9296, and
+    /// a console answers nothing at all on the other one: three INIT attempts, no reply, and a run
+    /// that stopped at the connect looking like a handshake this port had got wrong.
+    ///
+    /// It had not. Aimed at 9296 the same handshake completed with a real PS5 on the first attempt
+    /// each way. So the number is taken here rather than asked for, and it is
+    /// <see cref="SessionRelay.StreamPort"/> rather than a second 9296 - the rule CtrlConnect's own
+    /// port follows, for the same reason.
+    /// </summary>
     /// <param name="session">The C session, whose stream phase this takes. Not owned.</param>
-    /// <param name="peer">The console's endpoint, which discovery already answered with.</param>
+    /// <param name="console">The console's address, which discovery already answered with.</param>
     /// <param name="video">Where a decoded frame goes, which is the caller's decoder.</param>
     /// <param name="baseline">The record the four stage timings are pushed into.</param>
     /// <param name="lossMax">The packet loss maximum, which rides on the connect info.</param>
     public ManagedStreamPhase(
         ChiakiSession session,
-        IPEndPoint peer,
+        IPAddress console,
         VideoSampleHandler video,
         SessionBaseline baseline,
         double lossMax = 0.05)
     {
         ArgumentNullException.ThrowIfNull(session);
-        ArgumentNullException.ThrowIfNull(peer);
+        ArgumentNullException.ThrowIfNull(console);
         ArgumentNullException.ThrowIfNull(video);
         ArgumentNullException.ThrowIfNull(baseline);
 
         this.session = session;
 
+        var peer = new IPEndPoint(console, SessionRelay.StreamPort);
         runner = new ManagedStreamRunner(() => Build(session, peer, video, baseline, lossMax));
     }
 
     /// <summary>What the run answered, or null while it has not finished.</summary>
     public StreamRunnerOutcome? Outcome { get; private set; }
+
+    /// <summary>
+    /// PP771: the host the run built, or null where no start ever came.
+    ///
+    /// Reached through so a caller can read what the outcome cannot carry - the handshake's own
+    /// error and its attempt counts, which are what say which of takion's four messages went
+    /// unanswered. The outcome says which rung; this says what happened on it.
+    /// </summary>
+    public ManagedStreamRunHost? Host => runner.Host;
 
     /// <summary>Whether the session's stop has reached the handover.</summary>
     public bool Stopped => handover.Stopped;

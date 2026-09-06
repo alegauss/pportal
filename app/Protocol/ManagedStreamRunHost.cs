@@ -277,8 +277,27 @@ public sealed class ManagedStreamRunHost : IStreamRunHost
     /// </summary>
     public void AdoptSocket(nint? socket) => takion.Adopted = socket;
 
+    /// <summary>
+    /// PP771: what the last connect's handshake answered, or null before one ran.
+    ///
+    /// <see cref="ConnectTakion"/> answers a bool because the C's rung does, and the handshake
+    /// behind it knows far more: the error, and how many INIT and COOKIE attempts it spent. A live
+    /// run stopping here told nobody which of the four messages went unanswered, so locating it
+    /// meant instrumenting the tree and asking a console again.
+    ///
+    /// The same shape PP770 gave the run one level up: the value is already computed, and what was
+    /// missing is that it left.
+    /// </summary>
+    public TakionHandshakeOutcome? LastHandshake { get; private set; }
+
     /// <inheritdoc/>
-    public bool ConnectTakion() => takion.Connect(peer, ConnectTimeoutMs).Error == ChiakiError.Success;
+    public bool ConnectTakion()
+    {
+        TakionHandshakeOutcome outcome = takion.Connect(peer, ConnectTimeoutMs);
+        LastHandshake = outcome;
+
+        return outcome.Error == ChiakiError.Success;
+    }
 
     /// <inheritdoc/>
     public bool StartCongestionControl()

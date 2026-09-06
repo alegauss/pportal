@@ -117,14 +117,19 @@ public static class StreamRunHandoff
     /// <summary>
     /// Whether the socket crosses unused.
     ///
-    /// FALSE, AND THIS CONTRACT SAID TRUE. PP759 reasoned that the managed runner opens its own
-    /// through the host it builds, so the parameter was parity and nothing more. It was right about
-    /// what the runner did and wrong about what that costs: PP769 drove a live handover and the run
-    /// failed the moment it connected, because the C's stream connection never opens a socket -
-    /// chiaki_takion_connect takes data_sock, which senkusha established and measured the link on,
-    /// and a second conversation on the well-known port is not the one the console is in.
+    /// FALSE: the far side reads it, which PP759 said it would not. The runner hands it to the host
+    /// before the connect, and a host given one adopts it instead of opening its own.
     ///
-    /// The parameter was right. The reason given for it was the part that had to be measured.
+    /// PP771 CORRECTS WHY. PP769 shipped this reading the socket on the grounds that the C's stream
+    /// connection never opens one and a live run failed at the connect for want of it. The first
+    /// half is wrong: session.c declares data_sock NULL and never assigns it, so the C's takion
+    /// opens its own with close_socket true, and what crosses here is -1 on every path this tree
+    /// runs. The second half was a misdiagnosis - the run failed because the trial aimed at 9295,
+    /// the ctrl port, and the stream takion is on 9296.
+    ///
+    /// So the machinery is kept and the claim is narrowed to what it is: a socket CAN cross and is
+    /// read where one is given, which is what a holepunch path would supply. Nothing supplies one
+    /// today, and saying otherwise is what this correction is for.
     /// </summary>
     public static bool TheSocketCrossesUnused => false;
 
