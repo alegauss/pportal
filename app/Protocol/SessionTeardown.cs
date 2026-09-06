@@ -191,11 +191,22 @@ public static class SessionTeardownSource
 
         // Stated as evidence and not as an absence, so an empty file answers no. Both reads have to
         // be THERE, and both have to be tested - which they are by going through one local that is
-        // read out of the struct once and null-checked at each use.
-        int read = core.IndexOf(
+        // filled once and null-checked at each use.
+        //
+        // PP761: WHERE THE LOCAL COMES FROM IS THE HALF THAT MOVES. It was read off
+        // session->stream_connection, and PP696 replaces the run with a callback that writes the
+        // reason out through a parameter - so the local is declared and passed rather than assigned
+        // from the struct. What PP371 is about is untouched by that: both dereferences still go
+        // through one local, and both are still tested. Either declaration counts, and neither
+        // counts twice - a file with both would be reading two different pointers under one name.
+        bool offTheStruct = core.Contains(
             "disconnect_reason = session->stream_connection.remote_disconnect_reason",
             StringComparison.Ordinal);
-        if (read < 0)
+
+        bool fromTheCallback = core.Contains("const char *disconnect_reason = NULL;", StringComparison.Ordinal)
+            && core.Contains("&disconnect_reason", StringComparison.Ordinal);
+
+        if (offTheStruct == fromTheCallback)
             return false;
 
         bool comparisonGuarded = core.Contains(

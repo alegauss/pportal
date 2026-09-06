@@ -679,6 +679,7 @@
 - ✅ **PP758** **PP696 may edit no test file, and twelve assertions still demand the calls and files it deletes** — Twelve assertions in seven classes ask the shape first, and a trial deletion runs the managed suite green on both sides of the flip.
 - ✅ **PP759** **the handoff names the call it replaces and not what replaces it, and lib cannot reach the shim's handover** — The callback's shape, the borrowed reason, the sliced wait and the stop's replacement are written and asserted, so PP696 writes against a contract.
 - ✅ **PP760** **test/main.c names the four suites unguarded, so removing their files breaks the link** — The four suites sit behind a switch the test target defines, read in both directions; the suite still runs 149 cases, which is the no-op it should be.
+- ✅ **PP761** **two readers hold lib's build list and session.c's reason line, which the deletion rewrites** — Both read the shape first, and a second trial of the whole deletion leaves only the two new exports the port has yet to import.
 
 ## Block G — Test discipline
 

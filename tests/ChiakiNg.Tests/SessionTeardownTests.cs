@@ -110,6 +110,44 @@ public class SessionTeardownTests
     }
 
     /// <summary>
+    /// PP761: and it finds the guard whichever way the local is filled.
+    ///
+    /// PP696 replaces the run with a callback that writes the reason out through a parameter, so the
+    /// local is declared and passed instead of being assigned off session->stream_connection. What
+    /// PP371 is about does not move: both dereferences still go through one local and both are still
+    /// tested. Asserted here because the tree only ever has one of the two spellings, and the one it
+    /// will have next is the one nothing would have exercised.
+    /// </summary>
+    [Fact]
+    public void TheGuardIsFoundWhenTheReasonComesFromTheCallback()
+    {
+        const string AsItWillBe = """
+            	const char *disconnect_reason = NULL;
+
+            	chiaki_mutex_unlock(&session->state_mutex);
+            	err = session->stream_run_cb(data_sock, &disconnect_reason, session->stream_run_cb_user);
+            	chiaki_mutex_lock(&session->state_mutex);
+            	if(disconnect_reason && !strcmp(disconnect_reason, "Server shutting down"))
+            		session->quit_reason = CHIAKI_QUIT_REASON_STREAM_CONNECTION_REMOTE_SHUTDOWN;
+            	session->quit_reason_str = disconnect_reason ? strdup(disconnect_reason) : NULL;
+            """;
+
+        Assert.True(SessionTeardownSource.TheDisconnectReasonIsStillGuarded(AsItWillBe));
+
+        // Both spellings at once is two pointers under one name, and is neither shape.
+        string both = AsItWillBe
+            + "\n\tdisconnect_reason = session->stream_connection.remote_disconnect_reason;\n";
+        Assert.False(SessionTeardownSource.TheDisconnectReasonIsStillGuarded(both));
+
+        // And the new spelling with an unguarded read is still caught, which is the whole point.
+        string unguarded = AsItWillBe.Replace(
+            "disconnect_reason ? strdup(disconnect_reason) : NULL",
+            "strdup(disconnect_reason)",
+            StringComparison.Ordinal);
+        Assert.False(SessionTeardownSource.TheDisconnectReasonIsStillGuarded(unguarded));
+    }
+
+    /// <summary>
     /// Which exit is taken depends on one thing: whether ctrl was ever started.
     ///
     /// Before it, the thread goes straight to the quit event; after it, through the ctrl teardown -

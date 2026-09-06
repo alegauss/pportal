@@ -28,6 +28,50 @@ public static class StreamConnectionConsumers
         @"lib\src\fec.c",
     ];
 
+    /// <summary>The name lib's list spells each of them with, which is a relative path with slashes.</summary>
+    public static IReadOnlyList<string> MeasuredAsTheListSpellsThem { get; } =
+        [.. Measured.Select(one => one.Replace(@"lib\", string.Empty, StringComparison.Ordinal).Replace('\\', '/'))];
+
+    /// <summary>
+    /// PP761: which side of PP696's flip lib's own source list is on.
+    ///
+    /// PP565's rule is that a recorded result is about a TREE, so a file that left on its own would
+    /// leave seventeen symbols measured against something else. PP696 is the four leaving TOGETHER,
+    /// which is that rule satisfied rather than broken - and one leaving alone still is not.
+    ///
+    /// The three answers are the same three <see cref="ConsumerShape"/> gives everywhere else, and
+    /// Partial is the one that matters here: it is exactly "a file left on its own".
+    /// </summary>
+    public static ConsumerShape ShapeOfTheList(string cmake)
+    {
+        ArgumentNullException.ThrowIfNull(cmake);
+
+        int found = MeasuredAsTheListSpellsThem.Count(
+            one => cmake.Contains(one, StringComparison.Ordinal));
+
+        if (found == 0)
+            return ConsumerShape.Silent;
+
+        return found == Measured.Count ? ConsumerShape.Asking : ConsumerShape.Partial;
+    }
+
+    /// <summary>
+    /// What lib's list still holds once the four have gone, so silence can be told from a file
+    /// nobody read.
+    ///
+    /// takion.c and session.c: the first is what streamconnection.c sat beside and the second is the
+    /// caller PP638 found. Neither leaves with this deletion, and a list naming neither is not lib's.
+    /// </summary>
+    public static IReadOnlyList<string> SurvivesTheFlip { get; } = ["src/takion.c", "src/session.c"];
+
+    /// <summary>Whether the text really is lib's list, by what survives the flip in it.</summary>
+    public static bool TheListWasActuallyRead(string cmake)
+    {
+        ArgumentNullException.ThrowIfNull(cmake);
+
+        return SurvivesTheFlip.All(one => cmake.Contains(one, StringComparison.Ordinal));
+    }
+
     /// <summary>lib's own caller of streamconnection, which §PP295 does not name.</summary>
     public const string SessionRelativePath = @"lib\src\session.c";
 

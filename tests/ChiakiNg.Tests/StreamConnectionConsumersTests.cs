@@ -86,13 +86,53 @@ public class StreamConnectionConsumersTests
             return;
 
         string cmake = File.ReadAllText(path);
+        ConsumerShape shape = StreamConnectionConsumers.ShapeOfTheList(cmake);
 
-        foreach (string relative in StreamConnectionConsumers.Measured)
+        // PP761: OR THE FOUR HAVE GONE TOGETHER, which is that same rule satisfied rather than
+        // broken. Partial is the case PP565 was actually about - one file leaving on its own - and
+        // it fails on either side, which is why the shape has three answers and not two.
+        Assert.NotEqual(ConsumerShape.Partial, shape);
+
+        foreach (string relative in StreamConnectionConsumers.MeasuredAsTheListSpellsThem)
         {
-            Assert.Contains(
-                relative.Replace(@"lib\", "", StringComparison.Ordinal).Replace('\\', '/'),
-                cmake, StringComparison.Ordinal);
+            if (shape == ConsumerShape.Asking)
+                Assert.Contains(relative, cmake, StringComparison.Ordinal);
+            else
+                Assert.DoesNotContain(relative, cmake, StringComparison.Ordinal);
         }
+
+        // And an unreadable list cannot pass for a deletion: what stays has to still be there.
+        Assert.True(
+            StreamConnectionConsumers.TheListWasActuallyRead(cmake),
+            "lib's list names none of the files that stay, so it is not lib's list");
+    }
+
+    /// <summary>
+    /// PP761: the shape reader itself, on text rather than on whichever tree this runs against.
+    ///
+    /// One side of the flip exists here at a time, and it is the side that already worked. So both
+    /// are asked directly - and the middle answer, the one file that left alone, is the whole reason
+    /// PP565 wrote the rule this check enforces.
+    /// </summary>
+    [Fact]
+    public void TheListReaderTellsTheThreeStatesApart()
+    {
+        const string Stays = "src/takion.c\n\t\tsrc/session.c\n\t\tsrc/ctrl.c";
+
+        string asking = $"{Stays}\n\t\tsrc/streamconnection.c\n\t\tsrc/videoreceiver.c"
+            + "\n\t\tsrc/frameprocessor.c\n\t\tsrc/fec.c";
+        Assert.Equal(ConsumerShape.Asking, StreamConnectionConsumers.ShapeOfTheList(asking));
+
+        // One gone on its own, which is a tree the seventeen symbols were not measured against.
+        string partial = $"{Stays}\n\t\tsrc/videoreceiver.c\n\t\tsrc/frameprocessor.c\n\t\tsrc/fec.c";
+        Assert.Equal(ConsumerShape.Partial, StreamConnectionConsumers.ShapeOfTheList(partial));
+
+        Assert.Equal(ConsumerShape.Silent, StreamConnectionConsumers.ShapeOfTheList(Stays));
+        Assert.True(StreamConnectionConsumers.TheListWasActuallyRead(Stays));
+
+        // And an empty list is silent about the four and is not lib's.
+        Assert.Equal(ConsumerShape.Silent, StreamConnectionConsumers.ShapeOfTheList(""));
+        Assert.False(StreamConnectionConsumers.TheListWasActuallyRead(""));
     }
 
     /// <summary>
