@@ -714,6 +714,7 @@
 - ✅ **PP790** **chiaki_senkusha_run's sequence has no managed counterpart, so the ordering that is its behaviour cannot be held** — The nine calls in the C's order over a host that records them, and three exits that differ in whether the console is told at all.
 - ✅ **PP791 (the arrivals)** **nothing implements senkusha's run host or turns its arrivals into the flags its waits end on** — The state and the two flags live where both sides touch them, and four arms write them - including the ack arm and the two AV states that disagree about video.
 - ✅ **PP793** **the export sweep counts a symbol named in a comment as a reference, so prose keeps dead C looking alive** — The sweep reads code and not text, and seven exports that prose alone was holding alive are now on the record as dead C nobody has decided about.
+- ✅ **PP794** **the record says one export dies with the flip and a trial says four, because the measurement counted prose** — Four, measured through a sweep that reads code - and the idr request is the one PP758 was right about, referenced through the shim.
 
 ## Block G — Test discipline
 

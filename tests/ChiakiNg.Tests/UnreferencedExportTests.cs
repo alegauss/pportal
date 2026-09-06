@@ -158,16 +158,26 @@ public partial class UnreferencedExportTests(ITestOutputHelper output)
     /// <summary>
     /// PP758: what loses its last caller when PP696 takes session.c's five calls out.
     ///
-    /// ONE, WHICH IS THE MEASUREMENT AND NOT THE GUESS. The reading was that all five would go dead;
-    /// the trial deletion says the other four keep a reference - the run and the stop through the
-    /// header's own uses, the idr request through the shim - and only the init is left with nobody.
-    /// A list of five here would have turned this guard red from the other direction, reporting four
-    /// names as referenced again on the day the deletion landed.
+    /// PP758 SAID ONE AND PP794 SAYS FOUR, and the difference is the instrument. That trial was run
+    /// through a sweep that counted a symbol named in a COMMENT as a reference, so the run, the stop
+    /// and the fini read as alive on the strength of the sentences describing them. PP793 taught the
+    /// sweep to read code, and the trial repeated against a working tree with the flip in it answers
+    /// four.
+    ///
+    /// THE IDR REQUEST IS THE PART THAT SURVIVES, which is worth saying because it is what made the
+    /// original reading plausible: it really is referenced, through the shim, in code. One of the
+    /// four PP758 expected to keep a caller does.
     ///
     /// Held apart from <see cref="Known"/> rather than merged into it, because the two are different
-    /// facts: those are dead today, and this is dead after a commit that has not happened.
+    /// facts: those are dead today, and these are dead after a commit that has not happened.
     /// </summary>
-    public static IReadOnlyList<string> DeadAfterTheFlip { get; } = ["chiaki_stream_connection_init"];
+    public static IReadOnlyList<string> DeadAfterTheFlip { get; } =
+    [
+        "chiaki_stream_connection_fini",
+        "chiaki_stream_connection_init",
+        "chiaki_stream_connection_run",
+        "chiaki_stream_connection_stop",
+    ];
 
     /// <summary>The record for the shape the tree is in.</summary>
     public static IReadOnlyList<string> KnownIn(ConsumerShape session)
