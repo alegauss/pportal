@@ -353,32 +353,6 @@ WHAT WOULD HOLD IT is a question about the managed side rather than the C: does 
 constant answering this macro now exist? The port has no file-to-type map to ask
 through, and building one for eleven rows is the cost to weigh.
 
-### §PP736 A count and a span in different units
-
-chiaki_packet_stats_get subtracts a floor from a ceiling to get a span, and compares it
-against a COUNT of pushes. PP715 established what the span is when it goes negative.
-This is about the ordinary case.
-
-THE TWO NUMBERS ADVANCE ON DIFFERENT THINGS. An audio AV packet carries
-source_units_count units and covers frame indices from its own upward, one per unit -
-but audioreceiver.c pushes exactly one number per packet, the first. So the count rises
-once per packet while the ceiling rises once per UNIT, and the span is the
-units-per-packet ratio times the count.
-
-WHICH MEANS THE ANSWER TURNS ON A NUMBER NOBODY HERE HAS. At one unit per packet the two
-agree and a clean window reports nothing lost. At two, a window in which every packet
-arrived reports half of them missing, congestion control measures 50%, and the clamp
-pins the report at the configured ceiling for the whole session - not once per wrap, but
-always.
-
-NOTHING IN THIS TREE STATES IT. The port has no recorded audio AV packet to read
-source_units_count from; PP297's capture is ctrl and the session request, and the
-datagram captures PP516 replays have not been asked this question.
-
-So the work is to measure it before deciding anything: one audio packet, its unit count,
-and the arithmetic above either collapses to zero or becomes the loudest finding in the
-congestion path.
-
 ### §PP741 A seam census that watches one census
 
 PP738 asked a second question of the run host's census: not whether a member has a

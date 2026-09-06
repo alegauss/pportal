@@ -30,7 +30,6 @@
 - ⏳ **PP707** (deps: —) **nothing managed drives a live session, so the flip that stops session.c asking removes the only path that streams** — Nothing in app implements the host, so the run has never gone over a socket and the stream still starts from chiaki_session_start. → §PP707
 - 💭 **PP722** (deps: —) **seven events outside the frame path have no managed raiser, and one enum member is raised by nothing at all** — ctrl.c raises three keyboard events and session.c four, and CHIAKI_EVENT_HOLEPUNCH is declared in the header and assigned nowhere in lib/src. → §PP722
 - 💭 **PP724** (deps: —) **nothing notices when an unported wait gains a managed counterpart, which happened once already and was caught by hand** — PP723 gave two feedbacksender.c waits counterparts and the census stayed green; the rows were moved by hand in that commit. → §PP724
-- 💭 **PP736** (deps: —) **the stats count one push per audio packet against a ceiling that advances per unit, and nothing states the ratio** — audioreceiver.c pushes only the first frame index of a packet covering source_units_count of them, so a healthy window can read as loss. → §PP736
 - 📋 **PP741** (deps: —) **eight interfaces in app are implemented only by test doubles, and only two of them were ever counted** — PP738's axis reads the run host's rows alone, so it went empty in the commit that gave IAudioFrameSink the same shape, with nothing left to report it. → §PP741
 
 ## Block G — Test discipline
