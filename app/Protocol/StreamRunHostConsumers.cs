@@ -53,9 +53,10 @@ public readonly record struct HostMember(string Member, HostAnswer How, Counterp
 /// still not a call - nothing in app implements this interface, which is what the first one is about.
 ///
 /// AND OWED IS NOT THE ONLY QUESTION. PP738 added <see cref="SeamOnly"/>, which asks whether the
-/// counterpart a row names is reached rather than whether one exists. Two rows answer with an
-/// interface only test doubles implement, so this census now says both things instead of reporting
-/// the first and being silent about the second.
+/// counterpart a row names is reached rather than whether one exists, and found two rows answering
+/// with an interface only test doubles implement. PP740 wrote that implementation, so both axes are
+/// empty now - and the census says both things rather than reporting the first and being silent
+/// about the second, which is what let those two rows read as answered for four commits.
 /// </summary>
 public static class StreamRunHostConsumers
 {
@@ -210,17 +211,20 @@ public static class StreamRunHostConsumers
     /// at all, and it is empty. This asks whether the one named is REACHED, which is PP734's
     /// question one census over - and on it two rows answer with a shape.
     ///
-    /// Both are IAudioSink. ManagedAvArm and StreamAvDispatch take one as a parameter, so the
-    /// interface is consumed in app; the only things that implement it are doubles in the test
+    /// Both were IAudioSink. ManagedAvArm and StreamAvDispatch take one as a parameter, so the
+    /// interface was consumed in app while the only things implementing it were doubles in the test
     /// project. PP669's rule is that a mapping is not a call, and an interface member with no
     /// implementation outside the tests is a mapping one step further out.
     ///
-    /// Honest while somebody's open work is to fill it, which is what a list asserted in both
-    /// directions says: a row arriving is a counterpart that stopped being shipping code, and a row
-    /// leaving is the commit that gave the audio path an implementation.
+    /// PP740 EMPTIED IT, which is what this list said would close it - "a row leaving is the commit
+    /// that gave the audio path an implementation". <see cref="ManagedAudioReceiverPair"/> is that
+    /// implementation: audioreceiver.c's eight-slot jitter buffer, twice, because the C holds two
+    /// receivers and this interface is one object with two methods.
+    ///
+    /// Kept rather than deleted with its last entry, for the reason Owed is: what would report a
+    /// counterpart going back to being a shape nothing fills is this list, not its absence.
     /// </summary>
-    public static IReadOnlyList<string> SeamOnly { get; } =
-        ["CreateAudioReceiver", "CreateHapticsReceiver"];
+    public static IReadOnlyList<string> SeamOnly { get; } = [];
 
     /// <summary>The members nothing managed answers for yet, by name.</summary>
     public static IReadOnlyList<string> Owed { get; } =
