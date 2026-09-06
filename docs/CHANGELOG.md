@@ -689,6 +689,7 @@
 - ✅ **PP763** **the frame path's deletion shipped and left no way to stream, so the four files and the C's run are back** — The four files, session.c's run and the floor are back and a five-second capture records 4025 datagrams again; the callback, the trampoline and the runner stay unused.
 - ✅ **PP742** **the port holds 3681 real AV heads and its own parser can read none of them, two bytes short of the cheapest layout** — The tap keeps twenty-eight bytes, the capture was recorded again, and the differential parses 7506 real heads across three passes where every AV head used to be refused.
 - ✅ **PP764** **the gate passes on a tree whose stream phase has no driver, which is how it shipped a client that cannot stream** — The C's run and the port's install are read together as four states, and putting session.c back the way PP696 left it turns the gate red on Nobody.
+- ✅ **PP765** **the run host takes eleven parts and nothing says which a live session supplies, so the wiring is unsized** — Eleven rows held against the constructor by reflection: none is missing, two reach into the session, and the BIG is a factory every test has been handing a heartbeat.
 
 ## Block G — Test discipline
 
