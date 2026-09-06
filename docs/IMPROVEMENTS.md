@@ -357,6 +357,55 @@ construction order and moves the question into the hot path.
 AND THE FAR END HAS PP779'S SHAPE ALREADY. StreamAvArmSink appends an AvRoute per packet
 to a list nothing drains, which on this reading is fourteen thousand in twenty seconds.
 
+### §PP797 A sound path with both ends built
+
+audioreceiver.c is ported twice over - PP740's ManagedAudioReceiverPair is the
+eight-slot jitter buffer, once for audio and once for haptics - and PP751's
+ManagedOpusDecoder decodes what comes out of it. AudioRingSink puts the samples in
+PP32's ring, and WasapiRender plays bytes through IAudioRenderClient. Four objects, and
+the sound stops twice on the way between them.
+
+THE FIRST IS IN THE COMPOSITION ROOT. ManagedStreamPhase hands both audio arms a
+NoFrames whose two methods are empty, and says so in a comment: the picture has a
+decoder to reach and the sound has none yet. So a decoded audio frame is produced and
+dropped, which is a sentence in a lambda rather than a fact anything reports.
+
+THE SECOND IS THE RING'S FAR SIDE. AudioRingSink fills it and nothing reads it.
+WasapiRender takes bytes through Write and needs a pump - a thread on the render
+client's own cadence, which is what PollInterval is for and what the capture direction
+has.
+
+AND THE C PATH HAS NO SOUND EITHER, so this is not a regression the flip introduces.
+Nothing in app installs a ChiakiAudioSink, so the baseline runs that counted 1020 frames
+counted no audio: there was nothing to count. A port that flipped the stream and lost
+the sound would be losing what it never had.
+
+WHETHER IT SOUNDS RIGHT IS NOT COUNTABLE. A total says a decoder ran; a periodic click
+or an eighth of a second of lag appears in no number here.
+
+### §PP798 The refusal that will not say which frame
+
+Two baseline runs on the C path, one software and one d3d11va, each printed "Failed to
+push frame: Invalid data found when processing input" exactly once and then decoded a
+thousand frames. The line comes from ffmpegdecoder.c, where avcodec_send_packet answered
+something that is not EAGAIN and the decoder gives up on that unit.
+
+WHAT IT DOES NOT SAY IS WHICH ONE. Not the frame index, not its size, not whether the
+codec context had been given its header yet - so the most likely reading, that this is
+the first unit arriving before the extradata a decoder needs, is a guess and stays one.
+A corrupted unit halfway through a session prints exactly the same sentence.
+
+WHICH MATTERS MORE NOW THAN IT DID. PP783 will compare a managed run against a baseline
+of 1020 decoded and 972 shown, and a run that printed this line twice instead of once
+would be reporting something the numbers do not carry. A per-session refusal that is
+understood is a footnote; one that is not is a difference nobody can attribute.
+
+THE READING IS CHEAP AND THE FILING IS NOT THE FIX. The frame index and the size are on
+the packet the C already holds, and the decoder knows whether it has been configured -
+three values in a log line that costs nothing on a path taken once. Whether the answer
+then deserves a repair is a second question, and this one refuses to pretend it is
+already answered.
+
 ## Block G — Test discipline
 
 ### §PP796 A warning the failure below it contradicts

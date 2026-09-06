@@ -30,6 +30,8 @@
 - ⏳ **PP791** (deps: PP790 ✅) **nothing implements senkusha's run host or turns its arrivals into the flags its waits end on** — The host is owed: senkusha's six senders have no managed builders, and ManagedTakion exposes no raw send for the pings. → §PP791
 - 📋 **PP792** (deps: PP791 ⏳) (requires: console) **session.c runs senkusha itself and there is no callback to hand it to, so a managed run is unreachable** — PP753 built this seam for the stream phase and senkusha needs its own; PP28's placement already says what each outcome decides. → §PP792
 - 📋 **PP795** (deps: —) **the takion takes its AV arm at construction and the keys arrive with the bang, so video reaches nothing** — A live run walked to the idle loop with 14325 datagrams and decoded no frame: the arm needs a key stream that does not exist when the takion is built. → §PP795
+- 📋 **PP797** (deps: —) **the console's audio reaches a receiver whose output goes nowhere, and nothing drains the ring into a speaker** — Every piece is written and two joins are missing: the root hands the arms a no-op sink, and the ring the opus decoder fills has no reader. → §PP797
+- 📋 **PP798** (deps: —) **one access unit per session is refused by the decoder and the log says which error, never which frame** — A benign first unit before the codec has its header and a real corruption print the same line, so neither can be told from the other. → §PP798
 
 ## Block G — Test discipline
 
