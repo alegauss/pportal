@@ -153,7 +153,7 @@ public class RemainingQueriesTests(ITestOutputHelper output)
             return;
 
         string apart = Assert.Single(RemainingQueries.Disagreements(
-            root, "`remaining PP999` reads 7\n"));
+            root, "`remaining PP9999` reads 7\n"));
 
         Assert.Contains("no section declares a query", apart, StringComparison.Ordinal);
     }

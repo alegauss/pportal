@@ -74,14 +74,14 @@ public class CriterionBlockersTests(ITestOutputHelper output)
     public void APartialShipIsNotAShip()
     {
         const string ledger = """
-            - ✅ **PP900** **a whole one** — it is done.
-            - ✅ **PP901 (half of it)** **a partial one** — the rest is still open.
+            - ✅ **PP9900** **a whole one** — it is done.
+            - ✅ **PP9901 (half of it)** **a partial one** — the rest is still open.
             """;
 
         IReadOnlySet<string> shipped = CriterionBlockers.ShippedIn(ledger);
 
-        Assert.Contains("PP900", shipped);
-        Assert.DoesNotContain("PP901", shipped);
+        Assert.Contains("PP9900", shipped);
+        Assert.DoesNotContain("PP9901", shipped);
     }
 
     /// <summary>
@@ -141,13 +141,13 @@ public class CriterionBlockersTests(ITestOutputHelper output)
     public void WaitingOnAnOpenTaskIsFine()
     {
         const string roadmap = """
-            ## Done when — PP900
+            ## Done when — PP9900
 
-            - **The thing happens** It cannot land until PP901 has landed.
+            - **The thing happens** It cannot land until PP9901 has landed.
             """;
 
         Assert.Empty(
-            CriterionBlockers.BlockersIn(roadmap, new HashSet<string>(StringComparer.Ordinal) { "PP902" }));
+            CriterionBlockers.BlockersIn(roadmap, new HashSet<string>(StringComparer.Ordinal) { "PP9902" }));
     }
 
     /// <summary>
@@ -159,8 +159,8 @@ public class CriterionBlockersTests(ITestOutputHelper output)
     [Fact]
     public void AWaitAndACitationInOneCriterionAreToldApart()
     {
-        Assert.Equal(["PP902"], CriterionBlockers.WaitedOnIn("Met by PP901. It waits on PP902."));
-        Assert.Empty(CriterionBlockers.WaitedOnIn("Met by PP901, which mapped every one."));
+        Assert.Equal(["PP9902"], CriterionBlockers.WaitedOnIn("Met by PP9901. It waits on PP9902."));
+        Assert.Empty(CriterionBlockers.WaitedOnIn("Met by PP9901, which mapped every one."));
 
         // And the phrase before the id in the same sentence, which is the shape PP295 had.
         Assert.Equal(["PP28"], CriterionBlockers.WaitedOnIn("this cannot land until PP28 stops it"));
@@ -171,15 +171,15 @@ public class CriterionBlockersTests(ITestOutputHelper output)
     public void EveryCriterionUnderAHeadingIsRead()
     {
         const string roadmap = """
-            ## Done when — PP900
+            ## Done when — PP9900
 
             - **First** Nothing here.
-            - **Second** It waits on PP901.
-            - **Third** And this one until PP902.
+            - **Second** It waits on PP9901.
+            - **Third** And this one until PP9902.
             """;
 
         IReadOnlyList<CriterionBlocker> waiting = CriterionBlockers.BlockersIn(
-            roadmap, new HashSet<string>(StringComparer.Ordinal) { "PP901", "PP902" });
+            roadmap, new HashSet<string>(StringComparer.Ordinal) { "PP9901", "PP9902" });
 
         Assert.Equal(2, waiting.Count);
         Assert.Equal(["Second", "Third"], waiting.Select(one => one.Lead));
@@ -193,18 +193,18 @@ public class CriterionBlockersTests(ITestOutputHelper output)
     public void AnotherHeadingEndsTheList()
     {
         const string roadmap = """
-            ## Done when — PP900
+            ## Done when — PP9900
 
-            - **First** It waits on PP901.
+            - **First** It waits on PP9901.
 
             ## Non-goals
 
-            - **Something** which waits on PP901 too.
+            - **Something** which waits on PP9901 too.
             """;
 
         CriterionBlocker one = Assert.Single(
             CriterionBlockers.BlockersIn(
-                roadmap, new HashSet<string>(StringComparer.Ordinal) { "PP901" }));
+                roadmap, new HashSet<string>(StringComparer.Ordinal) { "PP9901" }));
 
         Assert.Equal("First", one.Lead);
     }

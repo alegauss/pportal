@@ -52,6 +52,20 @@ public static partial class AssertionRatchet
     /// </summary>
     public const string Prefix = "PP";
 
+    /// <summary>
+    /// PP743: the lowest number a FIXTURE id may use, so no real task is ever born covered.
+    ///
+    /// The join is that an id named anywhere in an assertion file counts as covered. Test data
+    /// spelling an id is therefore a coverage claim about whatever task eventually gets that
+    /// number, and the claim is paid before the task exists. Above this floor nothing real ever
+    /// arrives, so a fixture there claims nothing.
+    ///
+    /// The rule was written twice as a comment - once here and once in StackedSummariesTests - and
+    /// seven files broke it anyway, with eleven ids between 900 and 999 against a ledger at 742.
+    /// <see cref="FixturesBelowTheFloor"/> is the same sentence as a check.
+    /// </summary>
+    public const int FixtureFloor = 9000;
+
     /// <summary>Where <see cref="AnAbsentId"/> starts looking - above any id this project will reach.</summary>
     public const int AbsentFloor = 20000;
 
@@ -194,6 +208,72 @@ public static partial class AssertionRatchet
 
         throw new InvalidOperationException(
             $"every id from {AbsentFloor} to {AbsentCeiling} is named in an assertion file");
+    }
+
+    /// <summary>
+    /// PP743: the governed files, which are the only places an id becomes a real task.
+    /// </summary>
+    public static IReadOnlyList<string> GovernedRelativePaths { get; } =
+    [
+        @"docs\ROADMAP.md", @"docs\CHANGELOG.md", @"docs\DEFERRED.md", @"docs\DECISIONS.md",
+    ];
+
+    /// <summary>
+    /// PP743: every id those files carry as a LINE, which is what makes it a task.
+    ///
+    /// The line and not the prose. A design paragraph naming an id is describing one, and reading
+    /// prose would let a fixture excuse itself the day somebody wrote its number into a sentence -
+    /// which is exactly what filing this task did to the number it was filed about.
+    /// </summary>
+    public static IReadOnlySet<string> TaskIds(string root)
+    {
+        ArgumentNullException.ThrowIfNull(root);
+
+        var found = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (string relative in GovernedRelativePaths)
+        {
+            string path = Path.Combine(root, relative);
+            if (!File.Exists(path))
+                continue;
+
+            foreach (Match line in TaskLineRegex().Matches(File.ReadAllText(path)))
+                found.Add(line.Groups["id"].Value);
+        }
+
+        return found;
+    }
+
+    /// <summary>
+    /// PP743: ids spelled in the suites that are neither a task nor above the fixture floor.
+    ///
+    /// Empty is the rule holding. A row is a fixture squatting on a number the backlog will reach,
+    /// and the day it does, that task ships covered by test data with nothing to do with it.
+    /// </summary>
+    public static IReadOnlyList<string> FixturesBelowTheFloor(string root)
+    {
+        ArgumentNullException.ThrowIfNull(root);
+
+        IReadOnlySet<string> tasks = TaskIds(root);
+        var found = new List<string>();
+
+        foreach (string file in AssertionFiles(root))
+        {
+            foreach (string id in Named(File.ReadAllText(file)))
+            {
+                if (tasks.Contains(id) || NumberOf(id) >= FixtureFloor)
+                    continue;
+
+                string relative = Path.GetRelativePath(root, file).Replace('\\', '/');
+                string row = $"{relative}  {id}";
+
+                if (!found.Contains(row))
+                    found.Add(row);
+            }
+        }
+
+        found.Sort(StringComparer.Ordinal);
+        return found;
     }
 
     /// <summary>
@@ -511,6 +591,15 @@ public static partial class AssertionRatchet
         @"^\s*#?\s*exempt\s+(?<id>[A-Za-z]+[0-9]+)(?<reason>[^\r\n]*)$",
         RegexOptions.Multiline | RegexOptions.IgnoreCase)]
     private static partial Regex ExemptionRegex();
+
+    // - 📋 **PP743** (deps: —) **symptom** — why. → §PP743
+    // - ✅ **PP739** **symptom** — outcome.
+    //
+    // PP743: a LINE and not a mention. The marker is one glyph in the governed files and an emoji
+    // is two UTF-16 units, so the span is bounded rather than counted; what makes this a task line
+    // is the leading dash and the id in its own bold run, which prose never has.
+    [GeneratedRegex(@"^-\s+\S{1,4}\s+\*\*(?<id>PP[0-9]+)", RegexOptions.Multiline)]
+    private static partial Regex TaskLineRegex();
 
     [GeneratedRegex(@"[0-9]+")]
     private static partial Regex NumberRegex();

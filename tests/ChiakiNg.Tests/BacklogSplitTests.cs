@@ -70,15 +70,15 @@ public class BacklogSplitTests(ITestOutputHelper output)
     public void ALineWithTwoRequirementsIsStillOneLine()
     {
         const string roadmap = """
-            - 📋 **PP900** (deps: —) **plain** — a reason. → §PP900
-            - 📋 **PP901** (deps: —) (requires: console, a-person-looking) **needs two** — a reason. → §PP901
+            - 📋 **PP9900** (deps: —) **plain** — a reason. → §PP9900
+            - 📋 **PP9901** (deps: —) (requires: console, a-person-looking) **needs two** — a reason. → §PP9901
             """;
 
         Assert.Equal(2, BacklogRequirements.OpenLines(roadmap).Count);
-        Assert.Equal(["PP900"], BacklogRequirements.Startable(roadmap).Select(one => one.Id));
+        Assert.Equal(["PP9900"], BacklogRequirements.Startable(roadmap).Select(one => one.Id));
 
         BacklogRequirements.OpenLine waiting = Assert.Single(BacklogRequirements.Waiting(roadmap));
-        Assert.Equal("PP901", waiting.Id);
+        Assert.Equal("PP9901", waiting.Id);
         Assert.Equal(["console", "a-person-looking"], waiting.Requirements);
     }
 
@@ -87,14 +87,14 @@ public class BacklogSplitTests(ITestOutputHelper output)
     public void EveryOpenMarkerIsAnOpenLine()
     {
         const string roadmap = """
-            - 📋 **PP900** (deps: —) **planned** — a. → §PP900
-            - 💭 **PP901** (deps: —) **idea** — a. → §PP901
-            - ⏳ **PP902** (deps: —) **partial** — a. → §PP902
-            - ✅ **PP903** **shipped** — a.
+            - 📋 **PP9900** (deps: —) **planned** — a. → §PP9900
+            - 💭 **PP9901** (deps: —) **idea** — a. → §PP9901
+            - ⏳ **PP9902** (deps: —) **partial** — a. → §PP9902
+            - ✅ **PP9903** **shipped** — a.
             """;
 
         Assert.Equal(
-            ["PP900", "PP901", "PP902"],
+            ["PP9900", "PP9901", "PP9902"],
             BacklogRequirements.OpenLines(roadmap).Select(one => one.Id));
     }
 }

@@ -89,6 +89,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP735** **a census naming an export in a string counts as its caller, so the sweep's dead list is short by an unknown amount** — A symbol in quotes is a model and a symbol in code is a caller, which is a rule the sweep can apply where a list of excused files is one somebody has to remember.
 - ✅ **PP728** **a criterion can state a count from a program and go false as that program changes, with the gate green** — A criterion's count is held by a declared row, two-sided; spotting a NEW one stays a judgement, because most number phrases in these sections are prose counting nothing.
 - ✅ **PP739** **the ratchet's absent id is a constant any other file can spell, and a comment is what guards it** — A test needing a made-up id derives one from what the suites spell; a literal is what made the asking file the answer, five times, and a comment only reached readers of its own file.
+- ✅ **PP743** **eleven fixture ids sit 158 ids ahead of the ledger, so the tasks that reach them are born counted as covered** — A fixture id lives above 9000, and an id is a task only where a governed file carries it as a LINE: reading prose would have let filing this task excuse the very fixture it was about.
 
 ## Block H — Performance and telemetry
 

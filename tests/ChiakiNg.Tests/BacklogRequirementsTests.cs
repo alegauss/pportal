@@ -164,10 +164,10 @@ public class BacklogRequirementsTests(ITestOutputHelper output)
     public void AGapIsWhereTheProseSaysItAndTheGroupDoesNot()
     {
         IReadOnlyList<BacklogRequirements.RequirementGap> gaps = BacklogRequirements.Gaps(
-            "- 📋 **PP999** (deps: —) **no test can exercise one without a live console** — why. → §PP999");
+            "- 📋 **PP9999** (deps: —) **no test can exercise one without a live console** — why. → §PP9999");
 
         BacklogRequirements.RequirementGap gap = Assert.Single(gaps);
-        Assert.Equal("PP999", gap.Id);
+        Assert.Equal("PP9999", gap.Id);
         Assert.Equal("console", gap.Requirement);
     }
 
@@ -176,10 +176,10 @@ public class BacklogRequirementsTests(ITestOutputHelper output)
     public void ALineThatDeclaresWhatItNeedsIsNotAGap()
     {
         Assert.Empty(BacklogRequirements.Gaps(
-            "- ⏳ **PP998** (deps: —) (requires: console) **nothing without a live console** — why."));
+            "- ⏳ **PP9998** (deps: —) (requires: console) **nothing without a live console** — why."));
 
         Assert.Empty(BacklogRequirements.Gaps(
-            "- ⏳ **PP997** (deps: —) (requires: a-person-looking) **needs a person looking** — why."));
+            "- ⏳ **PP9997** (deps: —) (requires: a-person-looking) **needs a person looking** — why."));
     }
 
     /// <summary>
@@ -187,8 +187,8 @@ public class BacklogRequirementsTests(ITestOutputHelper output)
     /// constantly and a guard that flagged every one of those would be switched off in a week.
     /// </summary>
     [Theory]
-    [InlineData("- 📋 **PP996** (deps: —) **the console sends SDR on most titles** — why.")]
-    [InlineData("- 📋 **PP995** (deps: —) **a console answers with its own version** — why.")]
+    [InlineData("- 📋 **PP9996** (deps: —) **the console sends SDR on most titles** — why.")]
+    [InlineData("- 📋 **PP9995** (deps: —) **a console answers with its own version** — why.")]
     public void MentioningAConsoleIsNotNeedingOne(string line)
         => Assert.Empty(BacklogRequirements.Gaps(line));
 
@@ -202,7 +202,7 @@ public class BacklogRequirementsTests(ITestOutputHelper output)
     [Fact]
     public void APhraseAboutAnotherLineIsAReportAndNotANeed()
         => Assert.Empty(BacklogRequirements.Gaps(
-            "- 📋 **PP994** (deps: —) **PP481 says no test runs without a live console and declares "
+            "- 📋 **PP9994** (deps: —) **PP481 says no test runs without a live console and declares "
                 + "nothing** — why."));
 
     /// <summary>
@@ -213,7 +213,7 @@ public class BacklogRequirementsTests(ITestOutputHelper output)
     public void CitingAnotherLineAfterTheClaimStillLeavesTheClaim()
     {
         IReadOnlyList<BacklogRequirements.RequirementGap> gaps = BacklogRequirements.Gaps(
-            "- 📋 **PP993** (deps: —) **no test can run without a live console** — as PP481 found.");
+            "- 📋 **PP9993** (deps: —) **no test can run without a live console** — as PP481 found.");
 
         Assert.Equal("console", Assert.Single(gaps).Requirement);
     }

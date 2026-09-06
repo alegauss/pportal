@@ -55,18 +55,18 @@ public class PartialCriteriaTests(ITestOutputHelper output)
     public void APartialLineWithNoCriteriaIsNamed()
     {
         const string roadmap = """
-            - ⏳ **PP900** (deps: —) **something half done** — a reason. → §PP900
-            - 📋 **PP901** (deps: —) **not started** — a reason. → §PP901
+            - ⏳ **PP9900** (deps: —) **something half done** — a reason. → §PP9900
+            - 📋 **PP9901** (deps: —) **not started** — a reason. → §PP9901
 
-            ## Done when — PP901
+            ## Done when — PP9901
 
             - **Irrelevant** this one is not partial.
             """;
 
-        Assert.Equal(["PP900"], PartialCriteria.WithoutCriteria(roadmap));
+        Assert.Equal(["PP9900"], PartialCriteria.WithoutCriteria(roadmap));
 
         // The planned line is not asked for criteria: partial is the state that raises the question.
-        Assert.Equal(["PP900"], PartialCriteria.PartialIds(roadmap));
+        Assert.Equal(["PP9900"], PartialCriteria.PartialIds(roadmap));
     }
 
     /// <summary>And a heading of its own satisfies it.</summary>
@@ -74,9 +74,9 @@ public class PartialCriteriaTests(ITestOutputHelper output)
     public void AHeadingSatisfiesTheLine()
     {
         const string roadmap = """
-            - ⏳ **PP900** (deps: —) **something half done** — a reason. → §PP900
+            - ⏳ **PP9900** (deps: —) **something half done** — a reason. → §PP9900
 
-            ## Done when — PP900
+            ## Done when — PP9900
 
             - **A thing that must be true** how it is checked.
             """;

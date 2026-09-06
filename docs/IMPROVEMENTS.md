@@ -405,31 +405,6 @@ is a version the reader can tell apart.
 
 ## Block G — Test discipline
 
-### §PP743 Fixture ids the backlog will walk into
-
-The ratchet's join is deliberately coarse: an id named anywhere in an assertion file
-counts as covered, because proving that a particular assertion would fail without a
-particular line is the halting problem with extra steps. What it catches is the case
-worth catching - a task shipped with no test mentioning it at all.
-
-SEVENTEEN IDS IN THE SUITES ARE NOT TASKS. They are fixture data: synthetic roadmap and
-ledger lines that the parsers are driven over, and their ids were chosen to look
-obviously fake. Eleven sit between 900 and 999, and the ledger's highest is 742.
-
-SO THOSE ELEVEN TASKS WILL BE BORN COVERED. The first of them is spelled in six
-assertion files; the day it is allocated, the ratchet reads it as named and the commit
-that ships it needs no test at all. The ceiling is zero, so the gate that exists to make
-the non-goal real would pass a task with nothing holding it - silently, and for
-whichever of the eleven arrives first.
-
-ONE HUNDRED AND FIFTY-EIGHT IDS AWAY, which is what makes this worth doing now rather
-than noticing then. The last dozen commits spent eight of them.
-
-THE FLOOR ALREADY EXISTS. PP739 put its candidates at 20000 because nothing real reaches
-there. Moving the fixtures above that same floor costs a search and replace, and a check
-that no id in an assertion file falls between the ledger's highest and the floor is what
-keeps them there.
-
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed

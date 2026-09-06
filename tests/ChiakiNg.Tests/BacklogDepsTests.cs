@@ -170,19 +170,19 @@ public class BacklogDepsTests
     public void OnlyTheUndeclaredOpenMentionIsReported()
     {
         const string roadmap = """
-            - 📋 **PP900** (deps: PP901) **something** — waits on PP901 and on PP902. → §PP900
-            - 📋 **PP901** (deps: —) **declared** — names PP903 ✅, which shipped. → §PP901
-            - 📋 **PP902** (deps: —) **the one nobody declared** — nothing here. → §PP902
+            - 📋 **PP9900** (deps: PP9901) **something** — waits on PP9901 and on PP9902. → §PP9900
+            - 📋 **PP9901** (deps: —) **declared** — names PP9903 ✅, which shipped. → §PP9901
+            - 📋 **PP9902** (deps: —) **the one nobody declared** — nothing here. → §PP9902
 
-            ## Done when — PP900
+            ## Done when — PP9900
 
-            - **A criterion naming PP902** which is prose about a line and not a line.
+            - **A criterion naming PP9902** which is prose about a line and not a line.
             """;
 
         IReadOnlyList<(string Id, string Names)> mentions =
             BacklogDeps.MentionedButNotDepended(roadmap);
 
-        Assert.Equal([("PP900", "PP902")], mentions);
+        Assert.Equal([("PP9900", "PP9902")], mentions);
     }
 
     /// <summary>
@@ -198,8 +198,8 @@ public class BacklogDepsTests
     public void ALineNamingWhatItUnblocksIsNotWaitingOnIt()
     {
         const string roadmap = """
-            - 📋 **PP900** (deps: PP901) **the one that waits** — needs PP901 first. → §PP900
-            - 📋 **PP901** (deps: —) **the one that unblocks** — without this PP900 cannot start. → §PP901
+            - 📋 **PP9900** (deps: PP9901) **the one that waits** — needs PP9901 first. → §PP9900
+            - 📋 **PP9901** (deps: —) **the one that unblocks** — without this PP9900 cannot start. → §PP9901
             """;
 
         Assert.Empty(BacklogDeps.MentionedButNotDepended(roadmap));
@@ -254,8 +254,8 @@ public class BacklogDepsTests
     public void TheProseIsWhatWasWrittenRatherThanWhatWasDerived()
     {
         Assert.Equal(
-            " **something** — waits on PP901 and on PP902. ",
+            " **something** — waits on PP9901 and on PP9902. ",
             BacklogDeps.Prose(
-                "- 📋 **PP900** (deps: PP901) (requires: console) **something** — waits on PP901 and on PP902. → §PP900"));
+                "- 📋 **PP9900** (deps: PP9901) (requires: console) **something** — waits on PP9901 and on PP9902. → §PP9900"));
     }
 }

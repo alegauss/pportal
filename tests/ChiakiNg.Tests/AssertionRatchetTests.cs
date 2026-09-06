@@ -190,8 +190,70 @@ public class AssertionRatchetTests(ITestOutputHelper output)
         // PP271: a derivation that returned something no file could ever name would also pass the
         // line above, so the sweep has to be shown finding an id that IS spelled. Built, not
         // written, or naming it here would be the very defect this closes.
-        string fixture = AssertionRatchet.Prefix + 900.ToString(CultureInfo.InvariantCulture);
+        string fixture = AssertionRatchet.Prefix + 9901.ToString(CultureInfo.InvariantCulture);
         Assert.Contains(fixture, spelled);
+    }
+
+    /// <summary>
+    /// PP743: THE FIXTURE FLOOR, as a check rather than as the comment it had been twice.
+    ///
+    /// An id named in an assertion file counts as covered, so a fixture spelling a number the
+    /// backlog has not reached pays that task's debt before the task exists. The rule was written
+    /// in this file's own fixture summary and again in StackedSummariesTests, and seven files broke
+    /// it anyway - eleven ids between 900 and 999 against a ledger whose highest was 742.
+    ///
+    /// Empty is the rule holding. A row names the file and the id, because the fix is to move that
+    /// id and the useful failure says which one.
+    /// </summary>
+    [Fact]
+    public void NoFixtureIdSitsWhereTheBacklogWillReachIt()
+    {
+        string? root = SanitizerSource.RepositoryRoot();
+        Assert.True(root is not null, "not running out of a checkout");
+
+        IReadOnlyList<string> squatting = AssertionRatchet.FixturesBelowTheFloor(root);
+
+        output.WriteLine(squatting.Count == 0 ? "none" : string.Join("\n", squatting));
+
+        Assert.True(
+            squatting.Count == 0,
+            "these are fixture ids the backlog will reach, and each will be born covered:\n"
+                + string.Join("\n", squatting));
+
+        // PP271: empty would also be what a check that sees nothing reports. The suites DO carry
+        // fixture ids, and what keeps them out of the list above is the floor - so both halves are
+        // stated, and a sweep that stopped reading would fail here rather than pass quietly.
+        string fixture = AssertionRatchet.Prefix + 9901.ToString(CultureInfo.InvariantCulture);
+
+        Assert.DoesNotContain(fixture, AssertionRatchet.TaskIds(root));
+        Assert.True(AssertionRatchet.NumberOf(fixture) >= AssertionRatchet.FixtureFloor);
+        Assert.NotEmpty(AssertionRatchet.WhereNamed(root, fixture));
+    }
+
+    /// <summary>
+    /// And the check reads TASK LINES rather than prose, which is what keeps it honest.
+    ///
+    /// Filing this task wrote its own example id into a roadmap sentence. Read as prose, that
+    /// sentence would have excused the very fixture the task is about.
+    /// </summary>
+    [Fact]
+    public void OnlyALineMakesAnIdATask()
+    {
+        string? root = SanitizerSource.RepositoryRoot();
+        Assert.True(root is not null, "not running out of a checkout");
+
+        IReadOnlySet<string> tasks = AssertionRatchet.TaskIds(root);
+
+        output.WriteLine($"{tasks.Count} task id(s) across the governed files");
+
+        // The ledger's own entries are lines, so a task this suite names is in there.
+        Assert.Contains("PP38", tasks);
+
+        // And every id the ratchet calls shipped is one of them, which is the join both rest on.
+        string? ledger = AssertionRatchet.LocateLedger();
+        Assert.True(ledger is not null, "no ledger");
+
+        Assert.All(AssertionRatchet.Shipped(File.ReadAllText(ledger)), id => Assert.Contains(id, tasks));
     }
 
     /// <summary>And it is stable: two calls over the same tree agree.</summary>
@@ -323,9 +385,12 @@ public class AssertionRatchetTests(ITestOutputHelper output)
     {
         IReadOnlySet<string> named = AssertionRatchet.Named("/// PP9001: the wrap, and PP9000 beside it.");
 
-        Assert.Contains("PP9001", named);
-        Assert.Contains("PP9000", named);
-        Assert.DoesNotContain("PP900", named);
+        // PP743: EXACTLY these two, which is the negative case without spelling one. Written as a
+        // DoesNotContain over a truncation of PP9000, the expected value is itself an id named in
+        // an assertion file - and the shorter it is the likelier it is a real task. Asserting the
+        // whole set says the same thing and leaves no such literal behind.
+        string[] found = [.. named.Order(StringComparer.Ordinal)];
+        Assert.Equal(["PP9000", "PP9001"], found);
     }
 
     /// <summary>The ceiling file explains itself, so the number is read past the comments.</summary>

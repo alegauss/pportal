@@ -124,12 +124,12 @@ public class RecordedDesignsTests(ITestOutputHelper output)
     public void TheReaderFindsAClause()
     {
         const string ledger =
-            "- ✅ **PP900** **something did not work** — it does now "
+            "- ✅ **PP9900** **something did not work** — it does now "
             + "(design recorded in `some/where.md`).";
 
         RecordedDesign one = Assert.Single(RecordedDesigns.In(ledger));
 
-        Assert.Equal("PP900", one.Id);
+        Assert.Equal("PP9900", one.Id);
         Assert.Equal("some/where.md", one.Where);
     }
 
@@ -137,7 +137,7 @@ public class RecordedDesignsTests(ITestOutputHelper output)
     [Fact]
     public void AnEntryWithNoClauseYieldsNothing()
     {
-        Assert.Empty(RecordedDesigns.In("- ✅ **PP900** **something** — it does now."));
+        Assert.Empty(RecordedDesigns.In("- ✅ **PP9900** **something** — it does now."));
         Assert.Empty(RecordedDesigns.In(""));
     }
 
@@ -149,9 +149,9 @@ public class RecordedDesignsTests(ITestOutputHelper output)
     public void TheTwoFailuresAreToldApart()
     {
         const string ledger =
-            "- ✅ **PP900** **a** — b (design recorded in `gone.md`).\n"
-            + "- ✅ **PP901** **c** — d (design recorded in `silent.md`).\n"
-            + "- ✅ **PP902** **e** — f (design recorded in `good.md`).";
+            "- ✅ **PP9900** **a** — b (design recorded in `gone.md`).\n"
+            + "- ✅ **PP9901** **c** — d (design recorded in `silent.md`).\n"
+            + "- ✅ **PP9902** **e** — f (design recorded in `good.md`).";
 
         IReadOnlyList<string> missing = RecordedDesigns.NotRecorded(
             ledger,
@@ -159,23 +159,23 @@ public class RecordedDesignsTests(ITestOutputHelper output)
             {
                 "gone.md" => null,
                 "silent.md" => "a file with no id in it",
-                _ => "this one mentions PP902 by name",
+                _ => "this one mentions PP9902 by name",
             });
 
         Assert.Equal(2, missing.Count);
-        Assert.Contains("PP900: gone.md does not resolve", missing);
-        Assert.Contains("PP901: silent.md does not name it", missing);
+        Assert.Contains("PP9900: gone.md does not resolve", missing);
+        Assert.Contains("PP9901: silent.md does not name it", missing);
     }
 
     /// <summary>
-    /// The id join matches a whole id and not a prefix, so PP90 in a file does not answer for PP900.
+    /// The id join matches a whole id and not a prefix, so PP90 in a file does not answer for PP9900.
     /// </summary>
     [Fact]
     public void TheIdJoinMatchesAWholeId()
     {
-        Assert.True(RecordedDesigns.NamesTheId("the reason is PP900's", "PP900"));
-        Assert.False(RecordedDesigns.NamesTheId("the reason is PP9001's", "PP900"));
-        Assert.False(RecordedDesigns.NamesTheId("nothing here", "PP900"));
+        Assert.True(RecordedDesigns.NamesTheId("the reason is PP9900's", "PP9900"));
+        Assert.False(RecordedDesigns.NamesTheId("the reason is PP9001's", "PP9900"));
+        Assert.False(RecordedDesigns.NamesTheId("nothing here", "PP9900"));
     }
 
     /// <summary>An exemption is by PAIR, so the same file exempted for one id does not cover another.</summary>
@@ -185,7 +185,7 @@ public class RecordedDesignsTests(ITestOutputHelper output)
         Assert.True(RecordedDesigns.IsExempt(
             new RecordedDesign("PP396", "tests/corpus/exchange-ps5-four-channels.txt")));
         Assert.False(RecordedDesigns.IsExempt(
-            new RecordedDesign("PP900", "tests/corpus/exchange-ps5-four-channels.txt")));
+            new RecordedDesign("PP9900", "tests/corpus/exchange-ps5-four-channels.txt")));
         Assert.False(RecordedDesigns.IsExempt(new RecordedDesign("PP396", "somewhere/else.md")));
     }
 }
