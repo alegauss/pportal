@@ -49,13 +49,19 @@ the trap, not a false alarm. Use `Edit`.
 
 Before creating any `app/Protocol/*.cs` or `app/Session/*.cs`:
 
-1. **Search the CHANGELOG by the BEHAVIOUR, never by the class name you intend to use.**
+1. **`roadkeep delivered <block> --near "<the sentence you would file>"`** — the five nearest
+   deliveries in that block, ranked. This is the read that exists for exactly this question,
+   and nothing in this repo's workflow was calling it: for the sentence PP736 was about to
+   propose, PP524 — the port it duplicated — comes back **rank 1**. An order, not a verdict;
+   you still read it.
+2. **Then search the CHANGELOG by the BEHAVIOUR, never by the class name you intend to use.**
    The port's classes are named for behaviour (`PortGuessing`, `OfferAck`), never for the C
    function they came from, so grepping `app/` for a C name always answers "unported".
    Grep the concept, a distinctive literal, a `#define`'s value, an offset.
-2. **List the directory filtered by the name's first word.** ~35 `Session*.cs` classes exist;
+3. **List the directory filtered by the name's first word.** ~35 `Session*.cs` classes exist;
    an obvious name is usually taken.
-3. **Read the `near` list `roadkeep add` prints.** It runs this search for you.
+4. **Read the `near` list `roadkeep add` prints.** It runs the same search — but only after
+   the id is minted, which is why PP736 was caught after its commit rather than before it.
 
 **Grep is the wrong instrument for a TYPE question.** A line-oriented pattern cannot see a
 primary-constructor class whose base list sits on a continuation line — it got 3 of 7 answers
@@ -107,8 +113,18 @@ same way, so check `git diff` before believing a file is damaged.
   capture as the requirement being false.
 - **A deferral needs a re-entry trigger and a review date.** "Set aside" without the condition
   that revives it goes stale silently — one deferral's stated reason had been false for months.
-- **Use `claim` for work in flight.** A session that dies mid-task otherwise leaves its only
-  trace in the working tree.
+- **`roadkeep claim <id> --path <p>` declares what a task will touch; `roadkeep claim <id>`
+  with no `--path` reads it back and names what the tree holds that ANOTHER live claim owns.**
+  That is the analysis `git add -A` cannot make, and it is the check to run immediately before
+  committing. A claim is dated by a marker write and released when the marker moves
+  (`[claims] held = 60` minutes); `roadkeep claims` lists held, expired and stale. On
+  2026-09-06 two sessions were live here, `claims` reported **0 held**, and `5755f959`
+  committed four files of unrelated work under its own title.
+- **The five governed files merge structurally** — `roadkeep merge` is registered, so two
+  sessions appending under one heading is two additions and not a conflict. `roadkeep merge
+  --check` reads the wiring back. The `.gitattributes` half is committed; the `git config`
+  half is per-clone, so **a fresh clone must run `roadkeep merge --register` again** or a
+  conflict silently falls back to git's text markers.
 
 ## Filing a defect in `lib/`
 

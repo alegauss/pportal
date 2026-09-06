@@ -66,3 +66,8 @@ chiaki.conf
 !/.claude/settings.json
 !/.claude/hooks/
 !/.claude/skills/
+
+# Python's bytecode cache under hooks/. `!/.claude/hooks/` un-ignores that directory, so a
+# hook the interpreter has imported or byte-compiled once leaves a .pyc beside it that
+# `git add -A` then commits — which is how one arrived in 5755f959.
+/.claude/hooks/__pycache__/

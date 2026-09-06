@@ -30,6 +30,14 @@ run-commit.cmd -m "<conventional-commits title, ASCII>"
   hand-roll a loop that defers commits to the end.
 - **Self-check before starting task N+1:** `git status` / `git log -1`. If the previous
   task's work is still in the working tree, stop and commit it first.
+- **Declare your paths, then read them back at the moment of committing.** A claim is dated
+  by a marker write and released when the marker moves (`[claims] held = 60` minutes).
+  `roadkeep claim PP<n> --path <p>` says what the task will touch; **`roadkeep claim PP<n>`
+  with no `--path` answers what you declared plus what the tree holds that another live claim
+  says is its own — the analysis `git add -A` cannot make.** `roadkeep claims` lists held,
+  expired and stale. This rule assumes one writer and two sessions run here regularly: on
+  2026-09-06 two were live, `claims` reported **0 held**, and `5755f959` swallowed four files
+  of unrelated work under its own title.
 
 The same rule applies to any finished unit of work in this repo, roadmap task or not:
 when the work is done and validated, commit it with `run-commit.cmd -m "…"` rather than
@@ -103,6 +111,13 @@ Each file has one job — never duplicate content between them:
 
 - **Shipping is `ship <id>`** — one transaction (ledger entry, roadmap line deleted,
   `§PP<n>` dropped, dependents re-annotated) or none of it. Then commit (rule above).
+- **The read BEFORE an add is `delivered <block> --near "<the sentence you would file>"`.**
+  It ranks that block's nearest deliveries against the sentence you are about to propose,
+  which is the duplicate question asked *before* an id is spent. This tree was not calling it:
+  PP736 restated PP524's `AvHeadFields` and was committed before anyone noticed, and PP524
+  comes back **rank 1** for PP736's own sentence. `add` prints the same ranking as `near`, but
+  only after the line exists — that is the difference between catching a duplicate and
+  recording one. `non-goal list` is the other read, and non-goals are binding.
 - **Adding is `add --block <x> --symptom "…" --why "…"`.** `ref_scheme = "id"` means the
   `§PP<n>` pointer is derived, not hand-numbered; the section prose is `section add`.
   **Reuse an existing block** — `stats` lists the ones still holding open lines,
