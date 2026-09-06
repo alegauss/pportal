@@ -700,6 +700,7 @@
 - ✅ **PP772** **the rung report stops at congestion control, and the six steps after it are where a live run now fails** — The walk climbs its own eleven-step ladder beside the teardown's six, and a live run now names the step it stops at: CongestionStarted, the wait after it.
 - ✅ **PP775** **the state wait restarts its whole timeout on every pulse, so anything pulsing faster than it never times out** — The wait honours an absolute deadline across every wake, so a 300ms timeout under a 5ms pulse now returns in 320ms where it used to return never.
 - ✅ **PP774** **the run enters four states without clearing the flags, which its own model requires of the C** — The run clears both flags at all four state entries, in the C's position - after the state and before the action - and PP746's driver stops setting finished once.
+- ✅ **PP773 (the connect state)** **nothing turns a takion event into the host's signal, so every state the run waits on times out** — The takion's connect raises finished where it happens, because this port's Connect blocks - so a live run passes that wait and sends a real BIG to a PS5.
 
 ## Block G — Test discipline
 

@@ -23,7 +23,7 @@
 
 - ⏳ **PP27** (deps: PP672 ✅, PP673 ✅, PP674 ✅, PP675 ✅, PP676 ✅, PP677 ✅, PP678 ✅, PP679 ✅, PP680 ✅, PP702 ✅) (requires: console) **takion.c is 2007 lines of C over raw sockets and timers, and the whole stream rides on it** — Its ten tasks are the managed transport; after them, the three files leave the build. → §PP27
 - 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — chiaki_fec_decode has three callers - frameprocessor.c, the C suite and this port's shim - and gf-complete has a fourth site none of them reach: chiaki_lib_init. → §PP30
-- 📋 **PP773** (deps: —) **nothing turns a takion event into the host's signal, so every state the run waits on times out** — The host's Signal has no caller outside the tests, so a live run connects, starts congestion control and then waits for something no arrival ever raises. → §PP773
+- ⏳ **PP773** (deps: —) **nothing turns a takion event into the host's signal, so every state the run waits on times out** — The bang and the streaminfo wait on flags raised by arrivals the dispatch reaches and tells nobody about. → §PP773
 
 ## Block G — Test discipline
 
@@ -97,6 +97,14 @@
   chiaki_render_tearing_probe does. Integration means the video plane's own swapchain
   carries it and presents at sync interval zero, which is the half that waits on there
   being a video plane at all.
+
+## Done when — PP773
+
+- **A bang and a streaminfo from a console raise the flags their states wait on** The
+  connect state is done: its flag is raised where the handshake completes, and a live
+  run passes that wait and sends a real BIG. The other two wait on arrivals - the
+  dispatch reaches a bang and a streaminfo and tells nobody. Checked the way the connect
+  was: a live run reporting a rung past BigSent.
 
 ## Non-goals
 

@@ -267,6 +267,75 @@ public class StreamRunOverASocketTests(ITestOutputHelper output) : IDisposable
         Assert.Empty(sent.Snapshot());
     }
 
+    /// <summary>
+    /// PP773: A RUN WITH NO DRIVER STILL GETS PAST THE CONNECT STATE, and it used to stop there.
+    ///
+    /// The test above hands the run a thread that pulses finished every 5ms, standing for a console
+    /// answering every state - so it proves the sequence and hides which flags the port raises for
+    /// itself. Against a real console nothing pulsed, and the run reached CongestionStarted and
+    /// timed out with a handshake that had SUCCEEDED: the connect state waits on an event nothing
+    /// turned the takion's return into.
+    ///
+    /// THE SAME READING, OVER LOOPBACK. Take the driver away and the rung the run reports is the
+    /// rung the console reported - BigSent, which is one wait and one send past where it stopped.
+    /// The bang after it still times out because no responder here answers a BIG, and that is the
+    /// remainder this ship left rather than a gap in the assertion.
+    ///
+    /// Without the signal in ConnectTakion this stops at CongestionStarted, which is what makes the
+    /// rung the thing worth asserting: the error is Unknown either way.
+    /// </summary>
+    [Fact]
+    public void TheConnectStateEndsOnItsOwnHandshake()
+    {
+        var responder = new TakionHandshakeResponder(0x0000_5745, [.. Enumerable.Repeat((byte)0x77, 32)]);
+        Thread answering = AnswerHandshake(responder);
+
+        var takion = new ManagedTakion(0x0000_3746);
+        var sent = new Sent();
+
+        var host = new ManagedStreamRunHost(
+            takion,
+            PeerEndPoint,
+            new ManagedCongestionControl(new ManagedPacketStats(), new Quieter(), 0.05),
+            new ManagedFeedbackSender(new Quiet()),
+            new ManagedSessionEvents(),
+            sent,
+            new Stages(),
+            StreamMessages.Heartbeat,
+            () => new ManagedVideoReceiver((_, _, _) => true, new NoOutbound()),
+            () => new ManagedAudioReceiverPair(new NoFrames(), new NoFrames()),
+            () => new ManagedAudioReceiverPair(new NoFrames(), new NoFrames()))
+        {
+            // Nothing signals the bang, so this is what the run spends waiting for it. Short, because
+            // the wait timing out is the expected end and not a failure.
+            ExpectTimeoutMs = 500,
+            IdleTimeoutMs = 500,
+        };
+
+        ChiakiError outcome = ManagedStreamRun.Run(host, out StreamBuilt reached, out StreamRung rung);
+
+        answering.Join(TimeSpan.FromSeconds(10));
+
+        output.WriteLine($"outcome {outcome}, reached {reached}, rung {rung}, handshake {host.LastHandshake}");
+
+        // The handshake really happened, which is the premise: this is a connect that SUCCEEDED and
+        // whose state then waited for something that had already occurred.
+        Assert.Equal(ChiakiError.Success, host.LastHandshake?.Error);
+
+        // And the run walked out of the connect state and sent the BIG, with nobody signalling it.
+        // The BIG is a heartbeat here, as it is in the test above - PP726's real one needs a session
+        // and this test owns a socket. What is asserted is that SendBig ran at all, and the idle loop
+        // that sends the other heartbeats is three states further on than this run ever gets.
+        Assert.Equal(StreamRung.BigSent, rung);
+        Assert.Contains(StreamMessages.HeartbeatType, sent.Snapshot());
+
+        // The bang is the remainder. It times out, so the run leaves by the disconnect label - which
+        // is ordering 6 again, and the takion closed because this time it had connected.
+        Assert.Equal(ChiakiError.Unknown, outcome);
+        Assert.Equal(TakionStage.Closed, takion.Stage);
+        Assert.Equal(StreamMessages.DisconnectType, sent.Snapshot()[^1]);
+    }
+
     /// <summary>A loopback endpoint with nothing bound to it, so a handshake can only time out.</summary>
     private static IPEndPoint Unanswered()
     {

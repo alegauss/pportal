@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using ChiakiNg.Native;
 using ChiakiNg.Session;
 
@@ -296,7 +296,21 @@ public sealed class ManagedStreamRunHost : IStreamRunHost
         TakionHandshakeOutcome outcome = takion.Connect(peer, ConnectTimeoutMs);
         LastHandshake = outcome;
 
-        return outcome.Error == ChiakiError.Success;
+        if (outcome.Error != ChiakiError.Success)
+            return false;
+
+        // PP773: THIS IS THE CONNECTED EVENT, and it is raised here because here is where it
+        // happens. In the C, chiaki_takion_connect starts a thread and returns, and the takion's
+        // CONNECTED event reaches the handler later and sets state_finished - so the run's wait is
+        // what turns an asynchronous arrival into a synchronous step.
+        //
+        // This port's Connect BLOCKS until the handshake is complete, so by the time it answers
+        // Success the event has already happened. Signalling on the return is that same fact, and
+        // waiting for an arrival that will never come again is how the live run reached
+        // CongestionStarted and stopped.
+        Signal(finished: true);
+
+        return true;
     }
 
     /// <inheritdoc/>
