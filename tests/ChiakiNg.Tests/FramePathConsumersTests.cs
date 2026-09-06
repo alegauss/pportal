@@ -160,6 +160,11 @@ public class FramePathConsumersTests(ITestOutputHelper output)
 
     /// <summary>
     /// What session.c and the shim actually call is exactly what is modelled - each way.
+    ///
+    /// PP758: AND ON WHICHEVER SIDE OF THE FLIP THE TREE IS. session.c's five calls are text PP696
+    /// deletes, so "every row has a call" is an assertion about one shape of the tree, and the commit
+    /// that changes the shape is the one commit forbidden from editing a test. The stale-model
+    /// direction is asked on both sides - a call with no row is wrong whichever shape it turns up in.
     /// </summary>
     [Theory]
     [InlineData(ConsumerKind.Session)]
@@ -170,17 +175,36 @@ public class FramePathConsumersTests(ITestOutputHelper output)
             return;
 
         IReadOnlyList<string> found = FramePathConsumers.CallsIn(source);
-        output.WriteLine($"{kind}: {string.Join(", ", found)}");
-
         IReadOnlyList<string> modelled = [.. FramePathConsumers.Modelled(kind).Select(s => s.Symbol)];
 
+        ConsumerShape shape = FramePathConsumers.ShapeOf(kind, source);
+        output.WriteLine($"{kind} is {shape}: {string.Join(", ", found)}");
+
+        // Either way round: a symbol called with no row is a model that fell behind its consumer.
         Assert.Empty(found.Except(modelled));
-        Assert.Empty(modelled.Except(found));
+
+        if (shape == ConsumerShape.Asking)
+        {
+            Assert.Empty(modelled.Except(found));
+            return;
+        }
+
+        // And the silent side, which is the tree PP696 leaves. Nothing is called - and the file was
+        // read, which an empty string or a path resolving elsewhere would otherwise satisfy.
+        Assert.Equal(ConsumerShape.Silent, shape);
+        Assert.Empty(found);
+        Assert.True(
+            FramePathConsumers.WasActuallyRead(kind, source),
+            $"{kind} calls none of them, and holds none of what survives the flip either");
     }
 
     /// <summary>
     /// The unprefixed two are among what is found: PP638's finding was that a sweep for chiaki_
     /// misses them, and a reader that missed them would agree with a model that omitted them.
+    ///
+    /// PP758: the session half is asked only while session.c is still asking. The shim's stays
+    /// unconditional - create_matrix goes inside an #ifdef and stays in the text, which is the whole
+    /// reason this census is not two-shape for that consumer.
     /// </summary>
     [Fact]
     public void TheUnprefixedSymbolsAreSeen()
@@ -188,13 +212,22 @@ public class FramePathConsumersTests(ITestOutputHelper output)
         if (Read(ConsumerKind.Session) is not { } session || Read(ConsumerKind.Shim) is not { } shim)
             return;
 
-        Assert.Contains("stream_connection_send_idr_request", FramePathConsumers.CallsIn(session));
         Assert.Contains("create_matrix", FramePathConsumers.CallsIn(shim));
+
+        if (FramePathConsumers.ShapeOf(ConsumerKind.Session, session) == ConsumerShape.Asking)
+            Assert.Contains("stream_connection_send_idr_request", FramePathConsumers.CallsIn(session));
+        else
+            Assert.DoesNotContain("stream_connection_send_idr_request", FramePathConsumers.CallsIn(session));
     }
 
     /// <summary>
-    /// The four C test files are still in the suite's list - still consumers - and each has its
-    /// managed class in this assembly.
+    /// The four C test files are in the suite's list - still consumers - and each has its managed
+    /// class in this assembly.
+    ///
+    /// PP758: the CLASS half is asserted on both shapes and the LISTING half only on one. That split
+    /// is the point of the census: the managed counterpart is what has to exist after the C file
+    /// goes, so a flip that took the four files out and let their classes rot would pass a check
+    /// that stopped asking anything once the list was empty.
     /// </summary>
     [Fact]
     public void EveryLinkedTestFileHasAManagedClass()
@@ -205,11 +238,83 @@ public class FramePathConsumersTests(ITestOutputHelper output)
         IReadOnlyList<string> listed = FramePathConsumers.SuiteFilesIn(cmake);
         Assert.NotEmpty(listed);
 
+        ConsumerShape shape = FramePathConsumers.ShapeOf(ConsumerKind.Suite, cmake);
+        output.WriteLine($"suite is {shape}: {string.Join(", ", listed)}");
+
         foreach (ConsumedTestFile file in FramePathConsumers.Suite)
         {
-            Assert.Contains(file.File, listed);
+            if (shape == ConsumerShape.Asking)
+                Assert.Contains(file.File, listed);
+            else
+                Assert.DoesNotContain(file.File, listed);
+
             Assert.True(Resolve(file.Answer) is not null, $"{file.Answer.FullName} does not resolve");
         }
+
+        Assert.NotEqual(ConsumerShape.Partial, shape);
+        Assert.True(
+            FramePathConsumers.WasActuallyRead(ConsumerKind.Suite, cmake),
+            "the list names none of the files that stay, so it is not the suite's list");
+    }
+
+    /// <summary>
+    /// PP758: THE SHAPE READER ITSELF, on texts rather than on whichever tree this runs against.
+    ///
+    /// The two-shape checks above can only ever exercise one side, and the side they exercise is the
+    /// one that already worked. So the reader is asked both questions here directly - which is what
+    /// makes the silent branch something that was tested rather than something that was written.
+    /// </summary>
+    [Fact]
+    public void TheShapeReaderTellsTheThreeStatesApart()
+    {
+        const string Asking = """
+            	err = chiaki_stream_connection_init(&session->stream_connection, session, max);
+            	chiaki_stream_connection_fini(&session->stream_connection);
+            	chiaki_stream_connection_stop(&session->stream_connection);
+            	return stream_connection_send_idr_request(&session->stream_connection);
+            	err = chiaki_stream_connection_run(&session->stream_connection, data_sock);
+            	chiaki_session_start(); chiaki_session_stop(); chiaki_session_join();
+            """;
+
+        Assert.Equal(ConsumerShape.Asking, FramePathConsumers.ShapeOf(ConsumerKind.Session, Asking));
+
+        // One call left behind is a transaction that stopped halfway, and says so rather than
+        // rounding to either side.
+        const string Halfway = "\tchiaki_stream_connection_stop(&session->stream_connection);";
+        Assert.Equal(ConsumerShape.Partial, FramePathConsumers.ShapeOf(ConsumerKind.Session, Halfway));
+
+        const string Silent = """
+            	chiaki_session_start(); chiaki_session_stop(); chiaki_session_join();
+            """;
+
+        Assert.Equal(ConsumerShape.Silent, FramePathConsumers.ShapeOf(ConsumerKind.Session, Silent));
+        Assert.True(FramePathConsumers.WasActuallyRead(ConsumerKind.Session, Silent));
+
+        // And silence alone is not the silent shape: an empty file calls nothing either.
+        Assert.Equal(ConsumerShape.Silent, FramePathConsumers.ShapeOf(ConsumerKind.Session, ""));
+        Assert.False(FramePathConsumers.WasActuallyRead(ConsumerKind.Session, ""));
+    }
+
+    /// <summary>And the same three, for the suite's list, which is read as files rather than calls.</summary>
+    [Fact]
+    public void TheShapeReaderTellsThemApartForTheSuitesList()
+    {
+        const string Stays = "main.c\n\thttp.c\n\ttakion.c\n\tseqnum.c";
+
+        string asking = $"set(CHIAKI_UNIT_SOURCES\n\t{Stays}\n\tfec.c\n\tframeprocessor.c"
+            + "\n\tallocbudget.c\n\tvideoreceiver.c)";
+        Assert.Equal(ConsumerShape.Asking, FramePathConsumers.ShapeOf(ConsumerKind.Suite, asking));
+
+        string halfway = $"set(CHIAKI_UNIT_SOURCES\n\t{Stays}\n\tfec.c)";
+        Assert.Equal(ConsumerShape.Partial, FramePathConsumers.ShapeOf(ConsumerKind.Suite, halfway));
+
+        string silent = $"set(CHIAKI_UNIT_SOURCES\n\t{Stays})";
+        Assert.Equal(ConsumerShape.Silent, FramePathConsumers.ShapeOf(ConsumerKind.Suite, silent));
+        Assert.True(FramePathConsumers.WasActuallyRead(ConsumerKind.Suite, silent));
+
+        // A list that lost everything is not the flip: it is a file that could not be parsed.
+        Assert.Equal(ConsumerShape.Silent, FramePathConsumers.ShapeOf(ConsumerKind.Suite, ""));
+        Assert.False(FramePathConsumers.WasActuallyRead(ConsumerKind.Suite, ""));
     }
 
     /// <summary>No consumer is one of the four files themselves, which would make the census circular.</summary>

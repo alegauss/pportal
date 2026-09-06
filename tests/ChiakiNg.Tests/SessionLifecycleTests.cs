@@ -1,4 +1,5 @@
 using ChiakiNg.Protocol;
+using ChiakiNg.Session;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -109,7 +110,13 @@ public class SessionLifecycleTests
         Assert.Contains("stream_connection_stop", SessionLifecycle.StopWakesUp[3], StringComparison.Ordinal);
     }
 
-    /// <summary>And session.c still behaves the way this describes.</summary>
+    /// <summary>
+    /// And session.c still behaves the way this describes.
+    ///
+    /// PP758: WITH ONE FEWER WAKE-UP ONCE PP696 HAS RUN. The fourth is the stream connection's stop,
+    /// which that commit deletes - so the list this is held against is the one for the shape the
+    /// tree is in, and the other three still have to be there and still in order.
+    /// </summary>
     [Fact]
     public void SessionStillDeclaresTheContract()
     {
@@ -120,7 +127,8 @@ public class SessionLifecycleTests
         string core = File.ReadAllText(path);
 
         Assert.True(
-            SessionLifecycleSource.StopStillWakesEverything(core, SessionLifecycle.StopWakesUp),
+            SessionLifecycleSource.StopStillWakesEverything(
+                core, SessionLifecycle.StopWakesUpIn(FramePathConsumers.SessionShape())),
             "chiaki_session_stop no longer performs every wake-up, in order");
         Assert.True(
             SessionLifecycleSource.JoinStillOnlyJoins(core),

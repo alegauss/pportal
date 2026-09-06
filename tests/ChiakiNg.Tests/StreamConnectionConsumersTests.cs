@@ -19,6 +19,10 @@ public class StreamConnectionConsumersTests
     /// THE ONE THE MEASUREMENT ADDED. Its section names the video receiver's callers - lib and the
     /// shim - and streamconnection.c has a caller of its own that no reading had recorded. It is
     /// PP28's subject, so the deletion cannot land before PP28 does.
+    ///
+    /// PP758: OR DROVE IT, once PP696 has run. The consumer this recorded is the one that commit
+    /// removes, so the claim is about a shape of the tree - and it is asserted in both directions,
+    /// because a check that stopped asking after the flip would not notice a call coming back.
     /// </summary>
     [Fact]
     public void SessionDrivesTheStreamConnection()
@@ -26,9 +30,19 @@ public class StreamConnectionConsumersTests
         if (StreamConnectionConsumers.LocateSession() is not { } path)
             return;
 
-        Assert.Equal(
-            StreamConnectionConsumers.SessionCalls,
-            StreamConnectionConsumers.StillCalledBySession(File.ReadAllText(path)));
+        string source = File.ReadAllText(path);
+        IReadOnlyList<string> called = StreamConnectionConsumers.StillCalledBySession(source);
+
+        if (FramePathConsumers.SessionShape() == ConsumerShape.Asking)
+        {
+            Assert.Equal(StreamConnectionConsumers.SessionCalls, called);
+            return;
+        }
+
+        Assert.Empty(called);
+        Assert.True(
+            FramePathConsumers.WasActuallyRead(ConsumerKind.Session, source),
+            "session.c drives nothing, and holds none of what survives the flip either");
     }
 
     /// <summary>

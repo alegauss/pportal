@@ -76,6 +76,23 @@ public static class SessionLifecycle
         "chiaki_stream_connection_stop(&session->stream_connection);",
     ];
 
+    /// <summary>
+    /// PP758: the same list once PP696 has run, which is the first three.
+    ///
+    /// The fourth wake-up is the one the deletion removes, and this contract is asserted against
+    /// session.c's text - so a model with four entries goes red in the commit that takes the call
+    /// out, and that commit is the one PP623's shape forbids from editing a test file.
+    ///
+    /// FILTERED RATHER THAN RETYPED, so the two lists cannot drift into disagreeing about which of
+    /// the four the stream connection's is.
+    /// </summary>
+    public static IReadOnlyList<string> StopWakesUpAfterTheFlip { get; } =
+        [.. StopWakesUp.Where(one => !one.Contains("stream_connection", StringComparison.Ordinal))];
+
+    /// <summary>Whichever list the tree in front of the reader is on.</summary>
+    public static IReadOnlyList<string> StopWakesUpIn(ConsumerShape session)
+        => session == ConsumerShape.Silent ? StopWakesUpAfterTheFlip : StopWakesUp;
+
     /// <summary>What stopping a session in this phase does.</summary>
     public static LifecycleVerdict Stopping(SessionPhase phase) => phase switch
     {

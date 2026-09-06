@@ -138,6 +138,24 @@ public partial class UnreferencedExportTests(ITestOutputHelper output)
         "chiaki_regist_stop",
     ];
 
+    /// <summary>
+    /// PP758: what loses its last caller when PP696 takes session.c's five calls out.
+    ///
+    /// ONE, WHICH IS THE MEASUREMENT AND NOT THE GUESS. The reading was that all five would go dead;
+    /// the trial deletion says the other four keep a reference - the run and the stop through the
+    /// header's own uses, the idr request through the shim - and only the init is left with nobody.
+    /// A list of five here would have turned this guard red from the other direction, reporting four
+    /// names as referenced again on the day the deletion landed.
+    ///
+    /// Held apart from <see cref="Known"/> rather than merged into it, because the two are different
+    /// facts: those are dead today, and this is dead after a commit that has not happened.
+    /// </summary>
+    public static IReadOnlyList<string> DeadAfterTheFlip { get; } = ["chiaki_stream_connection_init"];
+
+    /// <summary>The record for the shape the tree is in.</summary>
+    public static IReadOnlyList<string> KnownIn(ConsumerShape session)
+        => session == ConsumerShape.Silent ? [.. Known, .. DeadAfterTheFlip] : Known;
+
     /// <summary>Every name declared CHIAKI_EXPORT in the public headers.</summary>
     public static IReadOnlyList<string> Exported(string root)
     {
@@ -238,10 +256,14 @@ public partial class UnreferencedExportTests(ITestOutputHelper output)
         Assert.True(exported.Count > 200, $"only {exported.Count} exports found - the scan is not working");
 
         IReadOnlyList<string> dead = Unreferenced(root);
-        output.WriteLine($"{exported.Count} exports, {dead.Count} referenced nowhere");
 
-        string[] appeared = [.. dead.Where(n => !Known.Contains(n, StringComparer.Ordinal)).Order(StringComparer.Ordinal)];
-        string[] gone = [.. Known.Where(n => !dead.Contains(n, StringComparer.Ordinal)).Order(StringComparer.Ordinal)];
+        // PP758: the record grows by one when PP696 takes session.c's calls out, and that commit is
+        // the one forbidden from editing a test file - so both records are here and the tree picks.
+        IReadOnlyList<string> known = KnownIn(FramePathConsumers.SessionShape());
+        output.WriteLine($"{exported.Count} exports, {dead.Count} referenced nowhere, {known.Count} on record");
+
+        string[] appeared = [.. dead.Where(n => !known.Contains(n, StringComparer.Ordinal)).Order(StringComparer.Ordinal)];
+        string[] gone = [.. known.Where(n => !dead.Contains(n, StringComparer.Ordinal)).Order(StringComparer.Ordinal)];
 
         Assert.True(
             appeared.Length == 0,

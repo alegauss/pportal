@@ -676,6 +676,7 @@
 - ✅ **PP754** **nothing in the application builds a run host or calls the run, so the deletion would leave it with no streaming** — ManagedStreamRunner waits on the seam, builds the host from parts a caller supplies, runs and reports both values - so a session thread handing over is answered rather than timing out.
 - ✅ **PP755** **the disconnect reason is parsed and the host holds no field for it, so the runner takes it as a parameter** — The host carries the reason where the C keeps it, set with the flag in one call as the disconnect handler sets them, and the runner reads it rather than being handed one.
 - ✅ **PP756** **the pad's state goes to the C session, and the deletion leaves that call with no feedback sender to reach** — PadFeed takes an IControllerStateSink, satisfied by the C session and by a managed sink over the port's own sender; gyro and accel now read back in one call.
+- ✅ **PP758** **PP696 may edit no test file, and twelve assertions still demand the calls and files it deletes** — Twelve assertions in seven classes ask the shape first, and a trial deletion runs the managed suite green on both sides of the flip.
 
 ## Block G — Test discipline
 

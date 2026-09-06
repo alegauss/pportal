@@ -1,4 +1,5 @@
 using ChiakiNg.Protocol;
+using ChiakiNg.Session;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -59,6 +60,19 @@ public class StreamHandoverPlanTests(ITestOutputHelper output)
         if (Session() is not { } source)
             return;
 
+        // PP758: or has been replaced, which is this plan carried out. The plan aims a commit at a
+        // line, so both "the line moved" and "the line is gone" are answers - and only one of them
+        // means the plan failed.
+        if (FramePathConsumers.SessionShape() != ConsumerShape.Asking)
+        {
+            Assert.False(StreamHandoverPlanSource.TheReplacedCallIsStillThere(source));
+            Assert.True(
+                FramePathConsumers.WasActuallyRead(ConsumerKind.Session, source),
+                "session.c makes no such call, and holds none of what survives the flip either");
+
+            return;
+        }
+
         Assert.True(
             StreamHandoverPlanSource.TheReplacedCallIsStillThere(source),
             $"session.c no longer makes {StreamHandoverPlan.ReplacedCall}");
@@ -74,15 +88,24 @@ public class StreamHandoverPlanTests(ITestOutputHelper output)
     [Fact]
     public void TheRunIsStillUnlockedAcross()
     {
+        // PP28's own model, which is a claim about the port and holds on either shape.
+        Assert.False(SessionStreamHandover.HoldsTheStateMutex(HandoverStep.Run));
+
         if (Session() is not { } source)
             return;
+
+        // PP758: the bracket is a property of a call that is there. Once the call has gone the
+        // question is answered by the run that replaced it, and asserting the bracket would be
+        // asking session.c about a line PP696 removed.
+        if (FramePathConsumers.SessionShape() != ConsumerShape.Asking)
+        {
+            Assert.Equal([HandoverStep.Run], StreamHandoverPlan.Managed);
+            return;
+        }
 
         Assert.True(
             StreamHandoverPlanSource.TheRunIsStillUnlockedAcross(source),
             "the run is no longer between an unlock and a lock, so the plan is wrong about the one thing it is for");
-
-        // PP28's own model agrees: the run is the step that does NOT hold the mutex.
-        Assert.False(SessionStreamHandover.HoldsTheStateMutex(HandoverStep.Run));
     }
 
     /// <summary>

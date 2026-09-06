@@ -16,6 +16,32 @@ public enum ConsumerKind
     Suite,
 }
 
+/// <summary>
+/// PP758: which side of PP696's flip a consumer's own text is on.
+///
+/// PP670 asked this of the BUILT shim, because the flip leaves the shim's declarations in the header
+/// and only the DLL can say whether they are exported. The other three consumers are the opposite
+/// case: what the flip does to session.c and to the suite's list is delete text, so the text is the
+/// only thing that can answer and there is nothing built to ask.
+/// </summary>
+public enum ConsumerShape
+{
+    /// <summary>Every call, or every file, is there - which is every tree before the flip.</summary>
+    Asking,
+
+    /// <summary>None of them is, which is the tree the flip leaves.</summary>
+    Silent,
+
+    /// <summary>
+    /// Some but not all, which is neither shape and is what a half-finished deletion looks like.
+    ///
+    /// Named rather than folded into either: PP696 lands in one transaction, so a tree in this state
+    /// is a commit that stopped halfway, and reporting it as Asking or Silent would hide exactly the
+    /// failure the one-transaction rule exists to prevent.
+    /// </summary>
+    Partial,
+}
+
 /// <summary>Where a symbol's managed counterpart lives.</summary>
 public enum CounterpartAssembly
 {
@@ -133,11 +159,17 @@ public readonly record struct ConsumedTestFile(string File, Counterpart Answer);
 /// same ground. None of this deletes anything - that is the fourth criterion, and PP639 made it a
 /// rule rather than a step - but it is what the deletion is measured against.
 ///
-/// NOT TWO-SHAPE, AND DELIBERATELY. The flip that removes the four files will put the shim's
-/// wrappers inside an #ifdef, and PP662 found that text-keyed readers keep seeing what an #ifdef
-/// hides. That is the right answer here: this census reads calls to say what a counterpart is owed
-/// for, and a call still in the text is still owed one. The readers that must NOT keep seeing the
-/// wrappers are the differentials that CALL them, and those are the next slice's, not this one's.
+/// THE SHIM IS NOT TWO-SHAPE, AND DELIBERATELY. The flip that removes the four files will put the
+/// shim's wrappers inside an #ifdef, and PP662 found that text-keyed readers keep seeing what an
+/// #ifdef hides. That is the right answer for this one: the census reads calls to say what a
+/// counterpart is owed for, and a call still in the text is still owed one. The readers that must
+/// NOT keep seeing the wrappers are the differentials that CALL them, and PP670 taught those.
+///
+/// PP758: THE OTHER TWO ARE, because the flip deletes their text rather than guarding it. session.c
+/// stops calling and the suite's list stops naming four files, so a check written for one shape goes
+/// red in the commit that does it - and PP623's whole discipline is that the commit editing the C
+/// may not edit a test file. <see cref="ShapeOf"/> is that question, and <see cref="WasActuallyRead"/>
+/// is what keeps the silent answer from being one an unreadable file could give.
 /// </summary>
 public static class FramePathConsumers
 {
@@ -351,4 +383,93 @@ public static class FramePathConsumers
         ConsumerKind.Shim => Shim,
         _ => throw new ArgumentOutOfRangeException(nameof(kind), "the suite is modelled by file, not by symbol"),
     };
+
+    /// <summary>
+    /// PP758: how many of a consumer's modelled rows its text still answers for.
+    ///
+    /// Counted against the MODEL rather than against everything found, because the two directions
+    /// are different questions: this one is how far through the flip the file is, and a call with no
+    /// row at all is the stale-model direction that is asked separately and on either shape.
+    /// </summary>
+    public static int StillAskedIn(ConsumerKind kind, string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+
+        if (kind == ConsumerKind.Suite)
+        {
+            IReadOnlyList<string> listed = SuiteFilesIn(text);
+            return Suite.Count(one => listed.Contains(one.File, StringComparer.Ordinal));
+        }
+
+        IReadOnlyList<string> called = CallsIn(text);
+        return Modelled(kind).Count(row => called.Contains(row.Symbol, StringComparer.Ordinal));
+    }
+
+    /// <summary>How many rows a kind is modelled with, which is what a full count is measured against.</summary>
+    public static int ModelledCount(ConsumerKind kind)
+        => kind == ConsumerKind.Suite ? Suite.Count : Modelled(kind).Count;
+
+    /// <summary>Which shape a consumer's text is in.</summary>
+    public static ConsumerShape ShapeOf(ConsumerKind kind, string text)
+    {
+        int found = StillAskedIn(kind, text);
+
+        if (found == 0)
+            return ConsumerShape.Silent;
+
+        return found == ModelledCount(kind) ? ConsumerShape.Asking : ConsumerShape.Partial;
+    }
+
+    /// <summary>
+    /// PP758: what a consumer's file still holds after the flip, so silence can be told from a file
+    /// nobody managed to read.
+    ///
+    /// A check that only says the calls are gone is satisfied by an empty string, a path that
+    /// resolved to the wrong file, and a checkout that is not there - which is how PP749's first
+    /// drift check passed while asserting nothing. The Silent side has to name something that STAYS.
+    ///
+    /// Not the four files' own symbols, obviously, and not something incidental either: these are
+    /// exports and files whose removal would be a different task with its own line.
+    /// </summary>
+    public static IReadOnlyList<string> SurvivesTheFlip(ConsumerKind kind) => kind switch
+    {
+        ConsumerKind.Session => ["chiaki_session_start", "chiaki_session_stop", "chiaki_session_join"],
+        ConsumerKind.Shim => ["chiaki_shim_has_framepath"],
+        ConsumerKind.Suite => ["main.c", "http.c", "takion.c"],
+        _ => throw new ArgumentOutOfRangeException(nameof(kind)),
+    };
+
+    /// <summary>
+    /// PP758: the shape session.c is in on this tree, or Asking outside a checkout.
+    ///
+    /// Asked once and in app, rather than five times in the five test classes that need it. Five
+    /// copies of "read the file and decide" is five chances for one of them to answer differently on
+    /// the day it matters, and the day it matters is the single commit that changes the answer.
+    ///
+    /// Asking is the answer with no file, because that is the shape every published tree is in until
+    /// PP696 lands - and a reader outside a checkout that guessed Silent would skip the half of each
+    /// check that is doing the work today.
+    /// </summary>
+    public static ConsumerShape SessionShape()
+        => Locate(SessionRelativePath) is { } path
+            ? ShapeOf(ConsumerKind.Session, File.ReadAllText(path))
+            : ConsumerShape.Asking;
+
+    /// <summary>And the suite's list, the same way.</summary>
+    public static ConsumerShape SuiteShape()
+        => Locate(SuiteListRelativePath) is { } path
+            ? ShapeOf(ConsumerKind.Suite, File.ReadAllText(path))
+            : ConsumerShape.Asking;
+
+    /// <summary>Whether the text really is the consumer's, by what survives the flip in it.</summary>
+    public static bool WasActuallyRead(ConsumerKind kind, string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+
+        if (kind != ConsumerKind.Suite)
+            return SurvivesTheFlip(kind).All(one => text.Contains(one, StringComparison.Ordinal));
+
+        IReadOnlyList<string> listed = SuiteFilesIn(text);
+        return SurvivesTheFlip(kind).All(one => listed.Contains(one, StringComparer.Ordinal));
+    }
 }

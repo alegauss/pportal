@@ -1,4 +1,5 @@
 using ChiakiNg.Protocol;
+using ChiakiNg.Session;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -14,6 +15,30 @@ public class SessionStreamHandoverTests
 {
     private static string? Source()
         => SessionStreamHandover.Locate() is { } path ? File.ReadAllText(path) : null;
+
+    /// <summary>
+    /// PP758: the three checks below hold session.c to this model, and PP696 deletes the handover
+    /// they read - in the one commit that may not edit a test file.
+    ///
+    /// So each asks the shape first. The silent side is not a skip: it asserts the run really has
+    /// gone and that the file was read, because "no handover found" is also what an empty string,
+    /// a moved path and a checkout that is not there all say.
+    /// </summary>
+    private static bool TheCStillHandsOver(string source)
+    {
+        if (FramePathConsumers.SessionShape() == ConsumerShape.Asking)
+            return true;
+
+        Assert.DoesNotContain(StreamHandoverPlan.ReplacedCall, source, StringComparison.Ordinal);
+        Assert.True(
+            FramePathConsumers.WasActuallyRead(ConsumerKind.Session, source),
+            "session.c hands nothing over, and holds none of what survives the flip either");
+
+        // And what took it over is named rather than assumed absent, which is PP752's decision.
+        Assert.Equal("ManagedStreamRun.Run", StreamHandoverPlan.Replacement);
+
+        return false;
+    }
 
     /// <summary>
     /// The state mutex is held for everything except the run itself.
@@ -65,7 +90,7 @@ public class SessionStreamHandoverTests
     [Fact]
     public void TheHandoverInTheCIsTheOneModelledHere()
     {
-        if (Source() is not { } source)
+        if (Source() is not { } source || !TheCStillHandsOver(source))
             return;
 
         Assert.True(
@@ -84,7 +109,7 @@ public class SessionStreamHandoverTests
     [Fact]
     public void NothingElseHappensWhileTheLockIsReleased()
     {
-        if (Source() is not { } source)
+        if (Source() is not { } source || !TheCStillHandsOver(source))
             return;
 
         Assert.True(
@@ -103,7 +128,7 @@ public class SessionStreamHandoverTests
     [Fact]
     public void TheEcdhExistsOnlyAcrossTheRun()
     {
-        if (Source() is not { } source)
+        if (Source() is not { } source || !TheCStillHandsOver(source))
             return;
 
         Assert.True(

@@ -14,6 +14,10 @@ public class CSuiteFloorTests(ITestOutputHelper output)
 {
     /// <summary>
     /// The floor is a number, and one big enough to be the whole suite.
+    ///
+    /// PP758: WHICH SUITE, THOUGH. PP696 takes four C test files out of the list and 72 munit cases
+    /// with them, so the bound moves with the deletion - and PP696 is the one commit forbidden from
+    /// editing a test file, which means the bound has to already know both answers.
     /// </summary>
     [Fact]
     public void TheFloorIsARecordedCount()
@@ -22,14 +26,38 @@ public class CSuiteFloorTests(ITestOutputHelper output)
             return;
 
         int? floor = CSuiteFloor.Read(File.ReadAllText(path));
-        output.WriteLine($"floor: {floor}");
+
+        ConsumerShape suite = FramePathConsumers.SuiteShape();
+        int minimum = CSuiteFloor.MinimumFor(suite);
+        output.WriteLine($"floor: {floor}, suite is {suite}, minimum {minimum}");
 
         Assert.NotNull(floor);
 
         // PP271 as a constant: a floor of 1 would let the suite shrink to nothing and still pass.
         Assert.True(
-            floor >= CSuiteFloor.PlausibleMinimum,
+            floor >= minimum,
             $"the floor is {floor}, which is too small to be the suite it stands for");
+    }
+
+    /// <summary>
+    /// PP758: and the two bounds are one decision, which is what keeps the second from drifting.
+    ///
+    /// The smaller one is the larger less what the four files take. Asserted rather than left to the
+    /// expression, because the failure it guards against is somebody lowering the constant to make a
+    /// red go away and taking the other bound down with it unnoticed.
+    /// </summary>
+    [Fact]
+    public void TheSmallerBoundIsTheLargerLessWhatTheFourFilesTake()
+    {
+        Assert.Equal(CSuiteFloor.PlausibleMinimum, CSuiteFloor.MinimumFor(ConsumerShape.Asking));
+        Assert.Equal(CSuiteFloor.PlausibleMinimum, CSuiteFloor.MinimumFor(ConsumerShape.Partial));
+
+        Assert.Equal(
+            CSuiteFloor.PlausibleMinimum - CSuiteFloor.FramePathCases,
+            CSuiteFloor.MinimumFor(ConsumerShape.Silent));
+
+        // Both stay bounds rather than becoming nothing, which a subtraction is one edit away from.
+        Assert.True(CSuiteFloor.MinimumFor(ConsumerShape.Silent) > 1);
     }
 
     /// <summary>

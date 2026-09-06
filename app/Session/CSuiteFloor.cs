@@ -43,6 +43,31 @@ public static partial class CSuiteFloor
     /// </summary>
     public const int PlausibleMinimum = 100;
 
+    /// <summary>
+    /// PP758: the munit cases the four C test files take with them when PP696 removes them.
+    ///
+    /// 72 of them, and 64 are one case: /fec/fec is parameterised over the recorded frame buffers,
+    /// which the floor file's own header already calls the largest single thing the oracle knows.
+    /// The other eight are frameprocessor.c's three, allocbudget.c's three and videoreceiver.c's two.
+    ///
+    /// A MEASURED NUMBER AND NOT A DERIVED ONE, which is why it is written down rather than counted:
+    /// what a munit entry expands to is a parameter table the C builds, and a managed reader that
+    /// counted case NAMES would answer 9 for a suite that runs 72. The floor file has always been a
+    /// recorded number for the same reason, and PP696 is the commit that confirms this one - it
+    /// records the new floor, and 149 minus that is this.
+    /// </summary>
+    public const int FramePathCases = 72;
+
+    /// <summary>
+    /// The smallest plausible count on the side of the flip a suite list is on.
+    ///
+    /// The bound has to move with the suite: 100 is generous against 149 and impossible against the
+    /// 77 that remain, so leaving it fixed would turn the deletion red in the one commit that is not
+    /// allowed to touch a test. Subtracted rather than typed again, so the two stay one decision.
+    /// </summary>
+    public static int MinimumFor(ConsumerShape suite)
+        => suite == ConsumerShape.Silent ? PlausibleMinimum - FramePathCases : PlausibleMinimum;
+
     /// <summary>The floor file, or null outside a checkout.</summary>
     public static string? LocateFloor() => SanitizerSource.LocateRelative(FloorRelativePath);
 
