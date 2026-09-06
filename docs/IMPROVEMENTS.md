@@ -307,6 +307,27 @@ layout. That waits on a console, which is why this is a line rather than a chang
 the capture's format already refuses a file written to the older shape, so widening it
 is a version the reader can tell apart.
 
+### §PP755 A reason with no carrier
+
+PP753's seam takes two values back because the session thread writes its quit reason
+from both: the error the run answered, and the remote disconnect reason. PP754 reports
+both. Only one of them comes from anywhere.
+
+THE PARSE EXISTS AND SO DOES THE READER. DisconnectMessage.Read answers a reading with a
+Reason, bounded at 255 and refusing past it, and the session thread compares that string
+against the shutdown phrase PP336 holds exactly to choose between two quit reasons. What
+is missing is the field between them: the C keeps it on the stream connection, set by
+the handler and read after the run, and no managed object holds one.
+
+SO THE RUNNER TAKES IT AS A PARAMETER, which is a stand-in and is written down as one.
+That is PP712's shape a layer out - a counterpart that names a type and no member - and
+the same objection applies: a caller can pass anything, including nothing, and the call
+still looks right.
+
+WHAT WOULD CLOSE IT is a field on the host that the disconnect handler writes and the
+runner reads, because that is where the C keeps it and the run is what has to survive
+between the two.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry

@@ -28,6 +28,7 @@
 - 📋 **PP696** (deps: PP707 ✅, PP753 ✅) **the frame path's deletion has no commit that edits the C, so four files stay while their ports exist** — PP623's middle step is the only one touching lib and nobody has written this path's: session.c's asks, the shim's wrappers and the suite's four files all name them. → §PP696
 - 📋 **PP697** (deps: PP696) **after the frame-path flip the models describe a C that has gone, in the present tense** — PP634 found this on the holepunch side: the predicates stay because they notice the calls coming back, and what goes stale is the prose around them. → §PP697
 - 📋 **PP742** (deps: —) (requires: console) **the port holds 3681 real AV heads and its own parser can read none of them, two bytes short of the cheapest layout** — PP608 kept eighteen bytes for timing and AvPacketParse needs twenty, so its differential with the shim has only ever run on synthetic heads. → §PP742
+- 📋 **PP755** (deps: —) **the disconnect reason is parsed and the host holds no field for it, so the runner takes it as a parameter** — The C sets it on the stream connection and session.c reads it after the run, and nothing managed carries it from the parse to the seam. → §PP755
 
 ## Block G — Test discipline
 
