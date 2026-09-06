@@ -379,6 +379,31 @@ So the work is to measure it before deciding anything: one audio packet, its uni
 and the arithmetic above either collapses to zero or becomes the loudest finding in the
 congestion path.
 
+### §PP741 A seam census that watches one census
+
+PP738 asked a second question of the run host's census: not whether a member has a
+counterpart, but whether the counterpart is REACHED. It found two rows answering with
+IAudioSink, an interface only test doubles implemented. PP740 wrote that implementation
+and the axis went to empty.
+
+IT WENT EMPTY AND THE SHAPE DID NOT GO AWAY. ManagedAudioReceiver takes IAudioFrameSink,
+and nothing in app implements that either - so the same gap moved one layer out, in the
+commit that closed it, and the census reported success. A sweep of app's own interfaces
+counts eight in that state: IAudioFrameSink, IAvArmSink, IBangKeying, ICongestionSink,
+IFeedbackSink, ISessionEventSink, IStreamRunHost and IVideoReceiverOutbound. Two of them
+were ever watched.
+
+THE PREDICATE ALREADY EXISTS AND IS SCOPED TOO NARROWLY. IsSeamOnly is three lines of
+reflection over one census's rows; asked of every public interface the assembly
+declares, it answers the same question about all eight. That is PP705's shape - four
+sweeps each hand-writing an exclusion, replaced by one rule.
+
+AND NOT ALL EIGHT ARE DEFECTS. IStreamRunHost is a seam on purpose until something
+drives a live stream; a bang keying is handed in by whatever holds the keys. So the
+deliverable is a declared list with a reason each, asserted in both directions, rather
+than a demand that the count be zero - which is what SeamOnly already is, one scope
+wider.
+
 ## Block G — Test discipline
 
 ### §PP739 An absent id that any file can make present
