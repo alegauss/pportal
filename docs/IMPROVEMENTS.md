@@ -233,9 +233,10 @@ carries. Answering the four where they stand is a seam: senkusha keeps its logic
 and its transport calls reach a managed takion through the shim, which is smaller and
 leaves a file the port does not own calling into code it does.
 
-WHICH ONE IS THE DELIVERABLE HERE. The census exists so that is a decision rather than a
-discovery, and the decision belongs in this line's commit rather than in a sentence
-somebody reads later.
+PORTING IS THE CALL, and it is the author's. The seam was cheaper and leaves a file this
+port does not own calling code it does - a boundary needing explaining at every later
+reading. Five lines carry the port, and the file stops calling takion when the last
+lands.
 
 ### §PP785 Recording the transport's second opinion
 
@@ -284,6 +285,123 @@ outside.
 WHAT IS OWED HERE IS THAT GUARD FOR TAKION'S THREE, and the floor arithmetic beside it:
 how many cases each of the three carries, so the new floor is derived from the removal
 rather than read off a failing run.
+
+### §PP788 Senkusha's own state walk
+
+senkusha.c declares nine states - idle, takion connect, expect streaminfo ack, expect
+bang, expect data ack, expect protocol ack, expect pong, expect mtu, expect client mtu
+command - and walks them with the same pair of flags the stream connection uses:
+state_finished and state_failed, cleared at every entry and read by
+chiaki_cond_timedwait_pred through state_finished_cond_check.
+
+FIVE MODELS OF SENKUSHA EXIST AND NONE IS THIS ONE. PP28's placement says where it sits
+in session.c and what each outcome decides; PP380's wait outcomes say why a wait came
+back; PP379's send results say every answer is read; PP421 replays its handshake; PP702
+counts the takion symbols it calls. Between them there is no answer to "which state is
+the machine in, and what ends this wait" - the first thing a port of the run needs.
+
+PP362 IS THE SHAPE, ONE MODULE OVER. It found that state_failed is written and read by
+nobody, so a wait ends on finished, stopped or the remote going away and NOT on failure
+- a fact nobody could state without writing the predicate down. Senkusha has the same
+pair and PP365 already found the same silence in it: ten writes and a two-field
+predicate.
+
+WHAT THIS OWES is the nine states, the predicate each wait uses, and the two timeouts
+they use it with - five seconds for most and thirty for the connect, with the pong's own
+second sitting apart from both.
+
+### §PP789 The three measurements, and what each narrows
+
+Senkusha exists to measure a link and stop. Three sub-runs do it, and the run function
+is mostly the handshake that gets to them: an RTT test over ten pings, an inbound MTU
+test and an outbound one, each bisecting between 576 and 1454 with three retries per
+step.
+
+THE TIMEOUT IS DERIVED AND THE DERIVATION IS THE INTERESTING PART. The MTU tests do not
+use the five-second wait the other states use - they compute the round trip times five,
+in milliseconds, and clamp it to between 5 and 500. So a fast link probes fast and a
+slow one is given room, and both are bounded by numbers that appear nowhere else. A port
+that reached for EXPECT_TIMEOUT_MS here would spend twenty-five seconds probing what the
+C does in a tenth of one.
+
+AND THE PACKET SIZE IS NOT THE MTU. The tests measure a payload and the answer has to be
+the IP packet, so the C adds MTU_PING_DATA_ADD - twenty-eight bytes of IPv4 and UDP
+header, plus the V7 AV header's own base. Get that addend wrong and the console is told
+an MTU the link cannot carry, which does not fail: it fragments, and the stream degrades
+for a reason nothing logs.
+
+THESE ARE THE NUMBERS PP777 FOUND THE BIG SPENDING. The launch spec carries mtu_in and
+the round trip in milliseconds, and a session that measured them wrongly describes a
+link nobody has.
+
+### §PP790 The run, over a host that records what it asks
+
+PP788 gives the states and PP789 the measurements; neither is a run. What joins them is
+one function walking nine states: connect the takion, wait, set the version, wait for
+the protocol ack, send the BIG, wait for the bang, then the three tests, then a
+disconnect from the label every exit passes through.
+
+THE ORDERING IS THE DELIVERABLE, which is PP295's own sentence and the reason its run
+takes a host interface. A senkusha that made every one of these calls in some other
+order would pass any comparison of messages and fail a session - and there is no console
+in a gate, so the only way to assert a sequence is to record what it ASKS and read the
+trace.
+
+PP295 ALSO FOUND ITS TEARDOWN TABLE WRONG while writing the run, at every rung, and
+three of the four were hidden by null-safe frees. That is the failure this shape
+catches: a port reproducing every function and not their sequence. Senkusha's teardown
+is smaller - one disconnect and a close - and its `disconnect:` label is reached from
+eleven places, which is eleven chances to leave by a path nobody wrote down.
+
+WHAT THIS DOES NOT DO is talk to anything. The host is an interface and its
+implementation is the next line's; PP746 is the shape after that, where the same run
+goes over a real socket against a responder rather than a script.
+
+### §PP791 The host, and the wire from an arrival to a flag
+
+PP790's run takes a host interface, and an interface only test doubles implement is a
+mapping rather than a call - PP669's rule, and PP741 counts what happens when a tree
+forgets it. This is the implementation: a host that delegates to the port's own takion,
+and the callback that turns what arrives into the flags a wait ends on.
+
+BOTH HALVES, BECAUSE PP773 IS WHAT ONE HALF COSTS. The stream connection had a host,
+every handler's decisions ported, and three layers of dispatch modelled - and no wire
+between them. A live PS5 answered every message and the run timed out at every wait,
+because the arrivals reached the dispatch and the dispatch told nobody. Senkusha's
+callback has the same three arms - data, data ack and AV - and the ack arm is its own:
+senkusha waits on ACKS in a way the stream connection never does.
+
+AND ITS TAKION IS NOT THE STREAM'S. protocol_version is 7 rather than 9, enable_crypt is
+FALSE, and the port is 9297. So the AV packets it sends are v7 - which is why PP679 had
+to give the v7 header formatter an owner before PP702's census could say anything about
+it - and nothing it sends is encrypted, which removes the whole key-position ledger from
+this path.
+
+WHAT ENDS THIS LINE is a host nothing in the test project implements, which is the
+question PP741's sweep asks of the assembly rather than of a list.
+
+### §PP792 The seam senkusha does not have
+
+PP753 gave the stream phase a handover: session.c calls a function pointer, the far side
+runs, and the outcome comes back with a disconnect reason. Senkusha has no such thing -
+session.c calls chiaki_senkusha_run directly, three lines after it inits and two before
+it finis, and reads three out-parameters.
+
+THREE NUMBERS OUT AND A FALLBACK BEHIND THEM. PP28's placement already models what
+happens on each outcome: canceled ends the session and anything else falls back to 1454,
+1454 and a millisecond of round trip, which is the C carrying on with numbers it did not
+measure. So the seam has to carry the three values AND the outcome that decides whether
+they are used - a handover answering only an error code would lose the half the fallback
+turns on.
+
+THE STOP HAS TO CROSS TOO. chiaki_session_stop pokes senkusha's own stop pipe, and a
+managed run on the far side of a callback is a thread that poke no longer reaches -
+which is the third of PP696's four wake-ups and the one a port forgets, because a
+session that stops cleanly in a test still hangs when somebody quits a live stream.
+
+AND THE CONSOLE IS THE GATE, for PP763's reason. Senkusha measures a real link; a
+measurement that the suite agrees with and a console does not is exactly the shape that
+ships green and streams nothing.
 
 ## Block G — Test discipline
 
