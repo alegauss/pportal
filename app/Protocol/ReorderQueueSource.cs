@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using ChiakiNg.Session;
 
 namespace ChiakiNg.Protocol;
@@ -6,8 +6,9 @@ namespace ChiakiNg.Protocol;
 /// <summary>
 /// PP107: the check that makes an ACCEPTED defect expire loudly.
 ///
-/// chiaki_reorder_queue_drop and chiaki_reorder_queue_peek are the two functions of that module
-/// the C suite never calls, and both are broken - drop announces an element to the callback and
+/// chiaki_reorder_queue_drop and chiaki_reorder_queue_peek are both broken - PP562 established that
+/// the suite calls and pins both, contrary to what this used to open with. Drop announces an
+/// element to the callback and
 /// then leaves it in the queue, and peek writes through a seq_num pointer that takion hands it as
 /// NULL. Neither is fixed here, and PP483 narrowed the reason for that. The port does patch lib/:
 /// files under lib/src carry markers naming this port's own repairs, and the practice is to move
@@ -62,11 +63,15 @@ public static partial class ReorderQueueSource
     /// <summary>
     /// PP562: THE SIXTH FACT, and the one that had gone the other way.
     ///
-    /// §PP107 is titled "The two nobody called" and opens by saying these are the two functions of
+    /// §PP107 was titled "The two nobody called" and opened by saying these are the two functions of
     /// the module the C suite never calls. It does call them - and its test names PP107 while doing
     /// it. The decision that section reaches is untouched by this, because it rests on not forking
     /// a vendored library rather than on nobody running the code; but the fact it opens with had
     /// silently inverted, and five drift checks watched the C while nothing watched the claim.
+    ///
+    /// PP781: THE CORRECTION STOPPED AT THE SECTION. This retitled it and put the retraction in its
+    /// first paragraph, and the deferral LINE kept the sentence for as long again -
+    /// <see cref="TheDeferralStillCarriesTheRetractedClaim"/> is the half that watches it.
     /// </summary>
     public static bool TheSuiteCallsBoth(string suiteText)
     {
@@ -92,6 +97,47 @@ public static partial class ReorderQueueSource
             "chiaki_reorder_queue_drop(&queue, 2)",
             "munit_assert(chiaki_reorder_queue_peek(&queue, 2, &seq_num, &user))",
             "munit_assert_uint64(chiaki_reorder_queue_count(&queue), ==, 3)");
+    }
+
+    /// <summary>
+    /// PP781: THE SEVENTH FACT, and it watches the LINE that the sixth's correction did not reach.
+    ///
+    /// PP562 retitled §PP107 and put its retraction in the section's first paragraph, and the
+    /// DEFERRED.md line went on rendering the sentence PP562 had just filed as false. Both are
+    /// governed and only one was fixed - a deferral's why is the roadmap line's why wrapped by the
+    /// reason, so correcting the prose the pointer addresses leaves the line that points.
+    ///
+    /// AND THE LINE IS THE HALF A READER MEETS FIRST: `list`, `brief` and the file itself render it,
+    /// while the section is one hop further on and PP562's retraction is inside it.
+    ///
+    /// Scoped to PP107's own line rather than the file, because another entry may legitimately say
+    /// something about a suite not calling something. And it is the CLAIM that is refused, not a
+    /// wording: a line that stopped making it any other way satisfies this, which is what
+    /// <see cref="TheSuiteCallsBoth"/> is for on the other side.
+    /// </summary>
+    public const string DeferredRelativePath = @"docs\DEFERRED.md";
+
+    /// <summary>The sentence PP562 refuted, which PP781 found still on the line.</summary>
+    public const string RetractedClaim = "the C suite never calls";
+
+    /// <summary>docs/DEFERRED.md, or null outside a checkout.</summary>
+    public static string? LocateDeferred() => SanitizerSource.LocateRelative(DeferredRelativePath);
+
+    /// <summary>
+    /// Whether PP107's own line still claims the suite never calls the two.
+    ///
+    /// Spelled as the DETECTION rather than as its absence, which is the convention every drift
+    /// check here follows: an empty file answers no, because a file with nothing in it makes no
+    /// claim. A resumed task has no deferral to be wrong on and answers the same way.
+    /// </summary>
+    public static bool TheDeferralStillCarriesTheRetractedClaim(string deferredText)
+    {
+        ArgumentNullException.ThrowIfNull(deferredText);
+
+        return Array.Exists(
+            deferredText.Split('\n'),
+            line => line.Contains("**PP107**", StringComparison.Ordinal)
+                && line.Contains(RetractedClaim, StringComparison.Ordinal));
     }
 
     /// <summary>The port's own seam, which is where the fini callbacks are deliberately lost.</summary>

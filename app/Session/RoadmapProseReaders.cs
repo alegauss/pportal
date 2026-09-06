@@ -142,6 +142,11 @@ public static class RoadmapProseReaders
             @"app\Protocol\HolepunchConsumers.cs",
             ProseReading.Fragile,
             "PP622 narrowed this from a count word plus a fixed plural and left the zero case a single sentence the line must be spelled with."),
+        new(
+            "the C suite never calls",
+            @"app\Protocol\ReorderQueueSource.cs",
+            ProseReading.Held,
+            "PP781: the claim PP562 refuted, kept to five words so the line can be rewritten any way that stops making it - and a line that makes it again is what this is for."),
 
         // ---- Held: the words ARE the claim, kept short so the sentence can move. ---------------
         new(

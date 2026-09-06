@@ -1,4 +1,4 @@
-using ChiakiNg.Protocol;
+﻿using ChiakiNg.Protocol;
 using Xunit;
 
 namespace ChiakiNg.Tests;
@@ -64,5 +64,48 @@ public class ReorderQueueSuiteClaimTests
 
         Assert.True(ReorderQueueSource.TheSuiteCallsBoth(touched));
         Assert.False(ReorderQueueSource.TheSuitePinsTheDropDefect(touched));
+    }
+
+    /// <summary>
+    /// PP781: AND THE LINE HAS DROPPED IT TOO, which the correction above did not reach.
+    ///
+    /// PP562 retitled the section and put its retraction in the first paragraph, and the deferral
+    /// line went on rendering the sentence for as long again. Both are governed; one was fixed. The
+    /// line is the half a reader meets first - `list`, `brief` and the file itself render it, and
+    /// the section is one hop further on with the retraction inside it.
+    /// </summary>
+    [Fact]
+    public void TheDeferralLineHasDroppedTheClaimAsWell()
+    {
+        if (ReorderQueueSource.LocateDeferred() is not { } path)
+            return;
+
+        Assert.False(
+            ReorderQueueSource.TheDeferralStillCarriesTheRetractedClaim(File.ReadAllText(path)),
+            "PP107's deferral still says the suite never calls the two, which PP562 refuted");
+    }
+
+    /// <summary>
+    /// And a line that carries it again is caught, which is the negative side a fixed tree cannot
+    /// show. Another entry saying something similar is not this one: the check is scoped to PP107.
+    /// </summary>
+    [Fact]
+    public void ALineThatMakesTheClaimAgainIsCaught()
+    {
+        // The stand-in id is concatenated rather than spelled: a fixture holding a whole PP number
+        // is one the backlog reaches when it gets there, which AssertionRatchetTests refuses.
+        const string Other = "PP" + "999";
+
+        string carrying =
+            "- PAUSED **PP107** (deps) **the queue is broken** - set aside: the C suite never calls them.";
+
+        string elsewhere =
+            $"- PAUSED **{Other}** (deps) **something else** - set aside: the C suite never calls those.";
+
+        Assert.True(ReorderQueueSource.TheDeferralStillCarriesTheRetractedClaim(carrying));
+        Assert.False(ReorderQueueSource.TheDeferralStillCarriesTheRetractedClaim(elsewhere));
+
+        // A resumed task has no deferral to be wrong on, which is not a finding.
+        Assert.False(ReorderQueueSource.TheDeferralStillCarriesTheRetractedClaim(string.Empty));
     }
 }

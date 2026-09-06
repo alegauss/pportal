@@ -706,6 +706,7 @@
 - ✅ **PP776** **a seam filled by a refusal reads as reached, so the sweep cannot tell a stub from an implementation** — A seam every one of whose fillers has a constant-bodied member is reported as filled by a stand-in, which the type graph cannot say.
 - ✅ **PP779** **every arrival is appended to a list nothing releases, so a session holds one reading per datagram** — A ring of the last thirty-two, and twenty thousand arrivals through the AV path allocate zero bytes, measured.
 - ✅ **PP780** **nothing counts what deleting takion's three files leaves undefined, and the biggest consumer is this port's oracle** — Twenty-four symbols across eight units, in three groups - and eighteen are the shim's, which is the oracle the deletion would take with it.
+- ✅ **PP781** **the deferral line still says the suite never calls the two broken queue functions, which its section retracts** — The line carries the corrected sentence, and a seventh fact refuses the retracted one on PP107's own row rather than in its section.
 
 ## Block G — Test discipline
 

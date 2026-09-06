@@ -14,7 +14,7 @@
 
 ## Block F — Managed core
 
-- ⏸ **PP107** (deps: —) **the reorder queue's drop does not remove the element and its peek dereferences a null takion passes it** — set aside (accepted; five assertions pin both.): they are the only two functions of the module the C suite never calls, and both are on takion's re-check-MACs path. → §PP107
+- ⏸ **PP107** (deps: —) **the reorder queue's drop does not remove the element and its peek dereferences a null takion passes it** — set aside (accepted; five assertions pin both.): The suite calls and pins both, and both are on takion's re-check-MACs path, where a rejected packet is delivered anyway. → §PP107
 
 ## Block G — Test discipline
 
