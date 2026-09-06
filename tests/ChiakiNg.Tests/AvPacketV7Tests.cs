@@ -42,7 +42,19 @@ public class AvPacketV7Tests(ITestOutputHelper output)
 
     /// <summary>The wrappers are in this build, so the differentials below are comparisons.</summary>
     [Fact]
-    public void TheShimCarriesBothWrappers() => Assert.True(NativeAvPacketV7.IsAvailable());
+    public void TheShimCarriesBothWrappers()
+    {
+        // PP785: both wrappers are takion.c's v7 arm, so this asserts what the shape reports rather
+        // than asserting present unconditionally - which is the one way this becomes a false red on
+        // the day PP27's deletion lands.
+        if (ShimTakionShape.WrappingHeader() is null)
+        {
+            Assert.False(NativeAvPacketV7.IsAvailable());
+            return;
+        }
+
+        Assert.True(NativeAvPacketV7.IsAvailable());
+    }
 
     /// <summary>
     /// THE PARSE DIFFERENTIAL, over every length either side of the bound and all four lead bytes.
@@ -58,6 +70,9 @@ public class AvPacketV7Tests(ITestOutputHelper output)
     [InlineData(VideoWithNaluFlag)]
     public void TheManagedParseAgreesWithTheC(byte lead)
     {
+        if (ShimTakionShape.WrappingHeader() is null)
+            return;
+
         int agreed = 0, refusedBoth = 0;
 
         for (var size = 1; size <= 64; size++)
@@ -111,6 +126,9 @@ public class AvPacketV7Tests(ITestOutputHelper output)
     [Fact]
     public void TheManagedParseAgreesWithTheCOverTheRecordedHeads()
     {
+        if (ShimTakionShape.WrappingHeader() is null)
+            return;
+
         if (DatagramCorpus.Read() is not { } corpus)
             return;
 
@@ -211,6 +229,9 @@ public class AvPacketV7Tests(ITestOutputHelper output)
     [Fact]
     public void TheManagedFormatterWritesTheCsBytes()
     {
+        if (ShimTakionShape.WrappingHeader() is null)
+            return;
+
         const byte Pattern = 0xa5;
         const int Room = 64;
 
@@ -253,6 +274,9 @@ public class AvPacketV7Tests(ITestOutputHelper output)
     [InlineData(true, true)]
     public void ABufferTooSmallIsRefusedAndTheSizeIsStillReported(bool isVideo, bool nalu)
     {
+        if (ShimTakionShape.WrappingHeader() is null)
+            return;
+
         int needed = AvPacketV7.HeaderSize(isVideo, nalu);
         var header = new V7AvHeader(isVideo, nalu, 1, 2, 3, 4, 5, 6, 7, 1, 8, 0, 0);
 
@@ -291,6 +315,9 @@ public class AvPacketV7Tests(ITestOutputHelper output)
     [InlineData(true, true)]
     public void TheFormattersOutputIsReadBackByTheCsOwnParse(bool isVideo, bool nalu)
     {
+        if (ShimTakionShape.WrappingHeader() is null)
+            return;
+
         var header = new V7AvHeader(
             isVideo, nalu,
             PacketIndex: 0x1234,
@@ -352,6 +379,9 @@ public class AvPacketV7Tests(ITestOutputHelper output)
     [InlineData(0xdeadbeefu)]
     public void TheKeyPositionIsTheOneFieldThatIsNotByteSwapped(uint keyPos)
     {
+        if (ShimTakionShape.WrappingHeader() is null)
+            return;
+
         var header = new V7AvHeader(false, false, 1, 2, 3, 4, 5, 6, 0, 0, keyPos, 0, 0);
 
         byte[] ours = new byte[AvPacketV7.HeaderBase];
@@ -430,6 +460,9 @@ public class AvPacketV7Tests(ITestOutputHelper output)
     [Fact]
     public void ThePackedWordTakesTheVideoLayoutForAudioToo()
     {
+        if (ShimTakionShape.WrappingHeader() is null)
+            return;
+
         byte[] audio = Packet(AudioPlain, 40);
 
         using var keyState = new KeyState();
@@ -467,6 +500,9 @@ public class AvPacketV7Tests(ITestOutputHelper output)
     [Fact]
     public void TheKeyPositionIsRawThirtyTwoBitsWithNoState()
     {
+        if (ShimTakionShape.WrappingHeader() is null)
+            return;
+
         static byte[] WithKeyPos(byte lead, uint keyPos)
         {
             byte[] packet = Packet(lead, 40);
@@ -534,6 +570,9 @@ public class AvPacketV7Tests(ITestOutputHelper output)
     [InlineData((byte)0x0f)]
     public void ADatagramThatIsNeitherIsRefusedAsInvalid(byte lead)
     {
+        if (ShimTakionShape.WrappingHeader() is null)
+            return;
+
         Assert.Null(AvPacketV7.Parse(Packet(lead, 60), out ChiakiError error));
         Assert.Equal(ChiakiError.InvalidData, error);
         Assert.Null(NativeAvPacketV7.Parse(Packet(lead, 60), out ChiakiError theirs));

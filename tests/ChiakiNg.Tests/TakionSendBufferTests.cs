@@ -17,6 +17,10 @@ public class TakionSendBufferTests(ITestOutputHelper output)
     /// <summary>Runs the same pushes and acks through both and compares what each holds.</summary>
     private static void Both(int capacity, Action<TakionSendBuffer, SendBuffer> script)
     {
+        // PP785: "both" is the claim, and the C half of it is takionsendbuffer.c.
+        if (ShimTakionShape.WrappingHeader() is null)
+            return;
+
         Assert.Equal(ChiakiError.Success, ChiakiSession.LibInit());
 
         var managed = new TakionSendBuffer(capacity);

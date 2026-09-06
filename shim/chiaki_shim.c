@@ -123,6 +123,20 @@ CHIAKI_SHIM_API bool chiaki_shim_has_opus(void)
 #endif
 }
 
+/* PP785: takion's oracles, asked the same way. PP780 measured that this shim holds eighteen of the
+ * twenty-four symbols PP27's deletion leaves undefined - the send buffer, the reorder queue, the
+ * congestion formatter, the MAC gate and both AV parsers. The define is set unconditionally in
+ * shim/CMakeLists.txt today; the deletion makes it follow an option and wraps those wrappers in it,
+ * and nothing managed needs editing on that day because every caller already asks here first. */
+CHIAKI_SHIM_API bool chiaki_shim_has_takion(void)
+{
+#ifdef CHIAKI_SHIM_HAVE_TAKION
+	return true;
+#else
+	return false;
+#endif
+}
+
 CHIAKI_SHIM_API const char *chiaki_shim_error_string(int32_t error_code)
 {
 	return chiaki_error_string((ChiakiErrorCode)error_code);

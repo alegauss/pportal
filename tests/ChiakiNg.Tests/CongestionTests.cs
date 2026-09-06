@@ -26,6 +26,10 @@ public class CongestionTests
     [Fact]
     public void TheFormattedPacketIsTheRecordedFifteenBytes()
     {
+        // PP785: the formatter and the MAC gate are takion.c's, so all five here ask first.
+        if (ShimTakionShape.WrappingHeader() is null)
+            return;
+
         if (File is null)
             return;
 
@@ -43,6 +47,9 @@ public class CongestionTests
     [Fact]
     public void TheMacIsWrittenInsideThePacketAtTheRecordedOffset()
     {
+        if (ShimTakionShape.WrappingHeader() is null)
+            return;
+
         if (File is null)
             return;
 
@@ -63,6 +70,9 @@ public class CongestionTests
     [Fact]
     public void TheMacOccupiesFourBytesThatWereZero()
     {
+        if (ShimTakionShape.WrappingHeader() is null)
+            return;
+
         if (File is null)
             return;
 
@@ -88,6 +98,9 @@ public class CongestionTests
     [InlineData(0x42, 26, 11)]
     public void EveryFieldChangesThePacket(int word0, int received, int lost)
     {
+        if (ShimTakionShape.WrappingHeader() is null)
+            return;
+
         if (File is null)
             return;
 
@@ -99,6 +112,9 @@ public class CongestionTests
     [Fact]
     public void TheKeyPositionChangesThePacket()
     {
+        if (ShimTakionShape.WrappingHeader() is null)
+            return;
+
         if (File is null)
             return;
 

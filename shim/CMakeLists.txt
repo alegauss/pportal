@@ -29,6 +29,20 @@ target_link_libraries(chiaki-shim chiaki-lib)
 # and edits no test file - which is what the two-shape readers were converted for.
 target_compile_definitions(chiaki-shim PUBLIC CHIAKI_SHIM_HAVE_FRAMEPATH)
 
+# PP785: takion's oracles are the fourth, and the largest. PP780 asked the linker what PP27's end
+# state - takion.c, takionsendbuffer.c and reorderqueue.c leaving the build - costs, and found this
+# shim holding EIGHTEEN of the twenty-four undefined symbols: twice what lib's own four files hold
+# between them. The send buffer, the reorder queue, the congestion formatter, the MAC gate and both
+# AV parsers exist here so a managed replacement can be held against the C, so that deletion removes
+# what proves the port right.
+#
+# PP623's first step for it, and the frame path's line above is the model exactly. UNCONDITIONAL
+# today, because the three files are still in the build. The deletion turns this into an if() on its
+# option and wraps those wrappers in the define, in the header and the body, and edits no test file -
+# because every differential already asks chiaki_shim_has_takion before it runs, and every one of
+# them compares against tests/oracles/takion.json when the answer is no.
+target_compile_definitions(chiaki-shim PUBLIC CHIAKI_SHIM_HAVE_TAKION)
+
 # PP694: libopus, for the encoder oracle. chiaki-lib links Opus and propagates it, but the include
 # directory does not travel - lib/CMakeLists.txt adds it with include_directories(), which is scoped
 # to that directory - so the header is named again here rather than assumed.

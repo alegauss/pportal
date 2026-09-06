@@ -55,6 +55,11 @@ public class AvPacketParseTests(ITestOutputHelper output)
     [InlineData(VideoWithNaluFlag)]
     public void TheManagedV9ParseAgreesWithTheShim(byte lead)
     {
+        // PP785: the shim's v9 parse is takion.c's, and this is the one differential in this file -
+        // every other test here asserts the managed parse on its own and runs on any build.
+        if (ShimTakionShape.WrappingHeader() is null)
+            return;
+
         int agreed = 0, refusedBoth = 0;
 
         for (int size = 1; size <= 60; size++)

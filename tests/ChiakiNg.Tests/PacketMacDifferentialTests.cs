@@ -41,6 +41,10 @@ public class PacketMacDifferentialTests
     [Fact]
     public void TheModelAndTheCAgreeOnEveryTypeAndLength()
     {
+        // PP785: the MAC gate is takion.c's, and every comparison in this file is against it.
+        if (ShimTakionShape.WrappingHeader() is null)
+            return;
+
         var compared = 0;
 
         for (var baseType = 0; baseType <= TakionDispatch.BaseTypeMask; baseType++)
@@ -76,6 +80,9 @@ public class PacketMacDifferentialTests
     [Fact]
     public void TheTwoRefusalsAgreeAndAreDistinct()
     {
+        if (ShimTakionShape.WrappingHeader() is null)
+            return;
+
         var seen = new HashSet<ChiakiError>();
 
         foreach ((int baseType, int size) in new[] { (0, 0), (0, 12), (2, 17), (6, 32), (1, 40) })
@@ -109,6 +116,9 @@ public class PacketMacDifferentialTests
     [InlineData(TakionPacketMac.Congestion, 32)]
     public void TheCZeroesTheFieldTheLayoutNames(int baseType, int size)
     {
+        if (ShimTakionShape.WrappingHeader() is null)
+            return;
+
         byte[] original = Packet(baseType, size);
         byte[] after = Packet(baseType, size);
 
@@ -139,6 +149,9 @@ public class PacketMacDifferentialTests
     [InlineData(TakionPacketMac.Congestion)]
     public void TheKeyPositionSurvivesForEveryType(int baseType)
     {
+        if (ShimTakionShape.WrappingHeader() is null)
+            return;
+
         byte[] original = Packet(baseType, 32);
         byte[] after = Packet(baseType, 32);
 
@@ -161,6 +174,9 @@ public class PacketMacDifferentialTests
     [Fact]
     public void TheGmacSizeIsTheSameOnBothSides()
     {
+        if (ShimTakionShape.WrappingHeader() is null)
+            return;
+
         byte[] packet = Packet(TakionDispatch.Video, 32);
 
         Assert.Equal(ChiakiError.Success, Takion.PacketMacWithoutCrypt(packet, 0, out byte[]? before));

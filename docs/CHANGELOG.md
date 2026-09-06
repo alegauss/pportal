@@ -719,6 +719,7 @@
 - ✅ **PP799** **the port streams and never says it connected, so a window waiting on the event holds a spinner over a live picture** — The composition root attaches PP747's router now, and the run's CONNECTED travels on to the session's own handler - so a caller hears the port's stream as it hears the C's.
 - ✅ **PP783** **session.c runs the stream itself and nothing in app installs the port's phase, so PP295's four files cannot leave** — session.c stops asking and StreamRun installs the phase; a live PS5 gave 890 shown against the C path's 972, with the pad's sink armed and pushing.
   checked **The flip matches the C path's own baseline, frame for frame** A run on the C path with d3d11va gave 1020 decoded, 972 shown and 426 pad states over twenty seconds, recorded in chiaki_baseline.jsonl. PP763 shipped on a green gate because nobody had a number; the flip is checked against that one, by compare-baselines rather than by looking.
+- ✅ **PP785 (the define, the export and the guards)** **the shim's eighteen takion symbols are the oracle, so the deletion takes away what proves the port right** — chiaki_shim_has_takion answers for the built DLL, fifty-two guards in fourteen files ask it first, and NativeSeam allows the twenty-five once bare.
 
 ## Block G — Test discipline
 

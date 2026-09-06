@@ -65,6 +65,10 @@ public class VideoStreamTests : IDisposable
     [MemberData(nameof(PacketIndices))]
     public void EachRecordedPacketDecryptsToItsNalu(int index)
     {
+        // PP785: the parse is takion.c's v9 arm; the decrypt beside it is gkcrypt's and stays.
+        if (ShimTakionShape.WrappingHeader() is null)
+            return;
+
         if (file is null)
             return;
 
@@ -98,6 +102,9 @@ public class VideoStreamTests : IDisposable
     [Fact]
     public void DecryptingAtThePacketsOwnPositionDoesNotGiveTheNalu()
     {
+        if (ShimTakionShape.WrappingHeader() is null)
+            return;
+
         if (file is null)
             return;
 
@@ -122,6 +129,9 @@ public class VideoStreamTests : IDisposable
     [Fact]
     public void TheAudioCryptIndexDoesNotDecryptVideo()
     {
+        if (ShimTakionShape.WrappingHeader() is null)
+            return;
+
         if (file is null)
             return;
 

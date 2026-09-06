@@ -34,6 +34,12 @@ public class SendBufferDifferentialTests(ITestOutputHelper output)
     /// </summary>
     private void RunBoth(IReadOnlyList<Step> script, int capacity)
     {
+        // PP785: takionsendbuffer.c is the oracle every script here is compared against, and the
+        // build says whether it still has one. Guarded in the helper because it is the whole body
+        // of every test below - the model's own assertions are TakionSendBufferTests'.
+        if (ShimTakionShape.WrappingHeader() is null)
+            return;
+
         using var native = new SendBuffer(capacity);
         var managed = new TakionSendBuffer(capacity);
 

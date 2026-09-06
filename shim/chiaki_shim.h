@@ -89,6 +89,23 @@ CHIAKI_SHIM_API bool chiaki_shim_has_framepath(void);
 CHIAKI_SHIM_API bool chiaki_shim_has_opus(void);
 
 /**
+ * PP785: and whether it carries takion's - the send buffer, the reorder queue, the congestion
+ * formatter, the MAC gate and both AV parsers, over takion.c, takionsendbuffer.c and reorderqueue.c.
+ *
+ * PP780 asked the linker what PP27's end state costs and found this shim holding EIGHTEEN of the
+ * twenty-four symbols it leaves undefined - twice what lib's own four files hold between them. Those
+ * exports are not consumers in the ordinary sense: they exist so a managed queue, send buffer, MAC
+ * gate and parser can be held against the C being replaced. Deleting takion.c deletes the second
+ * opinion along with the thing it is an opinion about.
+ *
+ * True on every build today, exactly as the frame path's is: the define is unconditional in
+ * shim/CMakeLists.txt until PP27's deletion makes it follow an option and wraps the wrappers in it.
+ * This export is what lets the differentials be guarded BEFORE that day rather than turned red by it,
+ * which is PP623's order and the reason PP670 exists as its own task.
+ */
+CHIAKI_SHIM_API bool chiaki_shim_has_takion(void);
+
+/**
  * PP694: what opusencoder.c does to a microphone frame, as the oracle for a managed encoder.
  *
  * chiaki_opus_encoder_frame itself is out of reach - it needs an audio sender, which needs a

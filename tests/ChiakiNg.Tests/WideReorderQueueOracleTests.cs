@@ -87,6 +87,10 @@ public class WideReorderQueueOracleTests(ITestOutputHelper output)
     public void BothWideQueuesAgreeStepForStep(
         uint seed, int sizeExp, ReorderDropStrategy strategy, uint start)
     {
+        // PP785: reorderqueue.c is the oracle here, and the build says whether it still has one.
+        if (ShimTakionShape.WrappingHeader() is null)
+            return;
+
         using ReorderQueue managed = ReorderQueue.Wide(sizeExp, start);
         using NativeReorderQueue native = NativeReorderQueue.Wide(sizeExp, start);
 
@@ -175,6 +179,10 @@ public class WideReorderQueueOracleTests(ITestOutputHelper output)
     [Fact]
     public void TheWideQueuePullsAcrossZeroInOrder()
     {
+        // PP785: the wrap is asserted against the C's own, so it needs the C.
+        if (ShimTakionShape.WrappingHeader() is null)
+            return;
+
         using ReorderQueue managed = ReorderQueue.Wide(3, 0xFFFFFFFE);
         using NativeReorderQueue native = NativeReorderQueue.Wide(3, 0xFFFFFFFE);
 
@@ -203,6 +211,10 @@ public class WideReorderQueueOracleTests(ITestOutputHelper output)
     [Fact]
     public void TheNarrowQueueIsUntouched()
     {
+        // PP785: the claim is that both widths still agree, which needs the C's queue.
+        if (ShimTakionShape.WrappingHeader() is null)
+            return;
+
         using var managed = new ReorderQueue(3, (ushort)0x1000);
         using var native = new NativeReorderQueue(3, (ushort)0x1000);
 

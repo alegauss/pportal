@@ -20,6 +20,10 @@ public class SendBufferTests
     [Fact]
     public void ItFillsToItsSizeAndThenRefuses()
     {
+        // PP785: every test here drives takionsendbuffer.c itself, so all of them ask first.
+        if (ShimTakionShape.WrappingHeader() is null)
+            return;
+
         using var buffer = new SendBuffer(Size);
 
         for (uint i = 0; i < Size; i++)
@@ -40,6 +44,9 @@ public class SendBufferTests
     [Fact]
     public void AnAckReleasesEverythingOlderAsWell()
     {
+        if (ShimTakionShape.WrappingHeader() is null)
+            return;
+
         using var buffer = new SendBuffer(Size);
 
         for (uint i = 0; i < 10; i++)
@@ -60,6 +67,9 @@ public class SendBufferTests
     [Fact]
     public void ReleasedRoomCanBeUsedAgain()
     {
+        if (ShimTakionShape.WrappingHeader() is null)
+            return;
+
         using var buffer = new SendBuffer(Size);
 
         for (uint i = 0; i < Size; i++)
@@ -80,6 +90,9 @@ public class SendBufferTests
     [Fact]
     public void AnAckOlderThanEverythingHeldReleasesNothing()
     {
+        if (ShimTakionShape.WrappingHeader() is null)
+            return;
+
         using var buffer = new SendBuffer(Size);
 
         for (uint i = 0; i < 5; i++)
@@ -97,6 +110,9 @@ public class SendBufferTests
     [Fact]
     public void OlderIsSerialOrderAndNotIntegerOrder()
     {
+        if (ShimTakionShape.WrappingHeader() is null)
+            return;
+
         using var buffer = new SendBuffer(Size);
 
         uint[] acrossTheWrap = [0xfffffffd, 0xfffffffe, 0xffffffff, 0, 1, 2];
@@ -120,6 +136,9 @@ public class SendBufferTests
     [Fact]
     public void NothingLeavesTheBufferUntilItIsAcked()
     {
+        if (ShimTakionShape.WrappingHeader() is null)
+            return;
+
         using var buffer = new SendBuffer(Size);
 
         for (uint i = 0; i < 20; i++)

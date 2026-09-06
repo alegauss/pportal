@@ -158,6 +158,19 @@ public static partial class NativeSeam
             : new HashSet<string>(Protocol.ShimFramePathShape.GoneWhenBare, StringComparer.Ordinal);
 
     /// <summary>
+    /// PP785: and the same allowance for takion's, which PP27's end state removes.
+    ///
+    /// The largest of the four by some way - PP780 measured the shim holding eighteen of the
+    /// twenty-four C symbols that deletion leaves undefined, twice what lib's own files hold. Empty
+    /// while the build carries them, so every one is checked exactly as before, and derived from the
+    /// shape for PP656's reason: the deletion edits this file not at all.
+    /// </summary>
+    public static IReadOnlySet<string> ImportsOnlyATakionBuildResolves()
+        => Protocol.ShimTakionShape.BareHeader() is null
+            ? new HashSet<string>(StringComparer.Ordinal)
+            : new HashSet<string>(Protocol.ShimTakionShape.GoneWhenBare, StringComparer.Ordinal);
+
+    /// <summary>
     /// PP661: and the json oracle's, which is the same allowance for PP33's other library.
     ///
     /// BY PREFIX RATHER THAN BY LIST, and that is forced rather than chosen. The holepunch nine are
@@ -220,6 +233,7 @@ public static partial class NativeSeam
 
         IReadOnlySet<string> allowed = ImportsOnlyAHolepunchBuildResolves();
         IReadOnlySet<string> framePath = ImportsOnlyAFramePathBuildResolves();
+        IReadOnlySet<string> takion = ImportsOnlyATakionBuildResolves();
 
         return
         [
@@ -227,6 +241,7 @@ public static partial class NativeSeam
                 .Where(name => !exported.Contains(name))
                 .Where(name => !allowed.Contains(name))
                 .Where(name => !framePath.Contains(name))
+                .Where(name => !takion.Contains(name))
                 .Where(name => !IsAJsonOracleImport(name))
                 .Where(name => !IsAHolepunchOracleImport(name))
                 .Order(StringComparer.Ordinal),
