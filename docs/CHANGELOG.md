@@ -709,6 +709,7 @@
 - ✅ **PP781** **the deferral line still says the suite never calls the two broken queue functions, which its section retracts** — The line carries the corrected sentence, and a seventh fact refuses the retracted one on PP107's own row rather than in its section.
 - ✅ **PP782** **the deletion's blocker list names six lib files and the link answers four, two of them never reaching it** — Four, and the two that came off are kept beside it with the reason each is not a blocker - one permanent, one true of this tree.
 - ✅ **PP787** **the decoder is reachable only through the C's video callback, so a managed run has no way to hand it a frame** — The C's own sample callback is reachable with the same decoder, and its managed shape is the delegate a composition root already takes.
+- ✅ **PP788** **senkusha's nine states and the flags its waits end on have no managed model, so nothing can drive its run** — Nine states, eight reachable, and the predicate reads two of three flags - each held against the file, so a repair upstream turns a check red.
 
 ## Block G — Test discipline
 

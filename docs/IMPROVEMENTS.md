@@ -286,30 +286,6 @@ WHAT IS OWED HERE IS THAT GUARD FOR TAKION'S THREE, and the floor arithmetic bes
 how many cases each of the three carries, so the new floor is derived from the removal
 rather than read off a failing run.
 
-### §PP788 Senkusha's own state walk
-
-senkusha.c declares nine states - idle, takion connect, expect streaminfo ack, expect
-bang, expect data ack, expect protocol ack, expect pong, expect mtu, expect client mtu
-command - and walks them with the same pair of flags the stream connection uses:
-state_finished and state_failed, cleared at every entry and read by
-chiaki_cond_timedwait_pred through state_finished_cond_check.
-
-FIVE MODELS OF SENKUSHA EXIST AND NONE IS THIS ONE. PP28's placement says where it sits
-in session.c and what each outcome decides; PP380's wait outcomes say why a wait came
-back; PP379's send results say every answer is read; PP421 replays its handshake; PP702
-counts the takion symbols it calls. Between them there is no answer to "which state is
-the machine in, and what ends this wait" - the first thing a port of the run needs.
-
-PP362 IS THE SHAPE, ONE MODULE OVER. It found that state_failed is written and read by
-nobody, so a wait ends on finished, stopped or the remote going away and NOT on failure
-- a fact nobody could state without writing the predicate down. Senkusha has the same
-pair and PP365 already found the same silence in it: ten writes and a two-field
-predicate.
-
-WHAT THIS OWES is the nine states, the predicate each wait uses, and the two timeouts
-they use it with - five seconds for most and thirty for the connect, with the pong's own
-second sitting apart from both.
-
 ### §PP789 The three measurements, and what each narrows
 
 Senkusha exists to measure a link and stop. Three sub-runs do it, and the run function
