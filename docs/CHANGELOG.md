@@ -715,6 +715,7 @@
 - ✅ **PP791 (the arrivals)** **nothing implements senkusha's run host or turns its arrivals into the flags its waits end on** — The state and the two flags live where both sides touch them, and four arms write them - including the ack arm and the two AV states that disagree about video.
 - ✅ **PP793** **the export sweep counts a symbol named in a comment as a reference, so prose keeps dead C looking alive** — The sweep reads code and not text, and seven exports that prose alone was holding alive are now on the record as dead C nobody has decided about.
 - ✅ **PP794** **the record says one export dies with the flip and a trial says four, because the measurement counted prose** — Four, measured through a sweep that reads code - and the idr request is the one PP758 was right about, referenced through the shim.
+- ✅ **PP795** **the takion takes its AV arm at construction and the keys arrive with the bang, so video reaches nothing** — The arm is installed where the C installs its crypt - inside the keying - and a live console went from zero decoded frames to 2675.
 
 ## Block G — Test discipline
 

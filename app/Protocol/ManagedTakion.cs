@@ -93,7 +93,9 @@ public sealed class ManagedTakion : ITakionLoopHost, IDisposable
     private Thread? receiver;
     private volatile bool receiving;
 
-    private readonly ManagedAvArm? avArm;
+    // PP795: not readonly any more. The arm's far end needs the keys a bang produces, so it is
+    // installed after the fact - the same lateness the C's own chiaki_takion_set_crypt has.
+    private ManagedAvArm? avArm;
 
     private TakionUdpWire? wire;
     private ReorderQueue? dataQueue;
@@ -129,6 +131,33 @@ public sealed class ManagedTakion : ITakionLoopHost, IDisposable
         // and every parse in the session advances the same counter.
         if (av is not null)
             avArm = new ManagedAvArm(av, ledger: Ledger);
+    }
+
+    /// <summary>
+    /// PP795: the arm, installed after the fact - which is when its far end can exist.
+    ///
+    /// THE SINK NEEDS KEYS AND THE TAKION IS BUILT BEFORE THERE ARE ANY.
+    /// <see cref="StreamAvArmSink"/> decrypts each packet against a key base and an IV that come
+    /// out of the gk crypt, and that crypt is derived from the secret the BANG produces - four
+    /// states after this object has to exist. So a run that could only pass an arm to the
+    /// constructor could never pass a real one, and PP783's first live trial reached the idle loop
+    /// with fourteen thousand datagrams and decoded nothing.
+    ///
+    /// THE C INSTALLS ITS CRYPT LATE FOR THE SAME REASON. chiaki_takion_set_crypt is called by
+    /// stream_connection_init_crypt, from inside the bang handler; this is the same moment and the
+    /// same argument, and <see cref="LocalCrypt"/> is already set there.
+    ///
+    /// Refused where one is already installed rather than swapped: an arm holds the video queue,
+    /// and replacing it mid-session would leave the packets in flight pointing at the old one.
+    /// </summary>
+    public void InstallAvArm(IAvArmSink av)
+    {
+        ArgumentNullException.ThrowIfNull(av);
+
+        if (avArm is not null)
+            throw new InvalidOperationException("this takion already has an AV arm.");
+
+        avArm = new ManagedAvArm(av, ledger: Ledger);
     }
 
     /// <summary>The handshake, which owns both tags.</summary>

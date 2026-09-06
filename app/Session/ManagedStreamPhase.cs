@@ -165,8 +165,16 @@ public sealed class ManagedStreamPhase : IDisposable
         // arrivals. A bang then reached the handler and was refused at the derive - one wait further
         // than before and still not a stream. SessionBangKeying derives against the session's OWN
         // ecdh pair, which is the only one whose public half the console was ever sent.
+        // PP795: and the arm is joined here, because this is the one line that can see both ends -
+        // the keying, which learns the crypt, and the host, which holds the receivers. Neither
+        // knows the other and a composition root is what a knot like that is for.
+        var keying = new SessionBangKeying(session, takion)
+        {
+            InstallArm = crypt => host.InstallAvArm(crypt),
+        };
+
         arrivals = new StreamArrivals(
-            host, messages, new SessionBangKeying(session, takion), new ManagedStreamData(events))
+            host, messages, keying, new ManagedStreamData(events))
         {
             TagLocal = takion.TagLocal,
             Ledger = takion.Ledger,

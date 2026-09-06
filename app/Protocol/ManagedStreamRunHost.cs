@@ -137,6 +137,36 @@ public sealed class ManagedStreamRunHost : IStreamRunHost
     public int ConnectTimeoutMs { get; init; } = TakionHandshake.ExpectTimeoutMs;
 
     /// <summary>
+    /// PP795: give the takion its AV arm, now that the bang has produced the keys it needs.
+    ///
+    /// THE ONE MOMENT WHEN EVERY PART EXISTS. The video receiver and the audio pair are made at the
+    /// top of the run, the crypt comes out of the bang four states later, and the takion has been
+    /// there since before either. This is the join, and it is called from the keying because that
+    /// is where the last of the three arrives - the same place the C calls chiaki_takion_set_crypt.
+    ///
+    /// THE REMOTE CRYPT AND NOT THE LOCAL ONE. The console sends under index three and this side
+    /// sends under two; an arm decrypting arrivals against the local key produces plausible
+    /// garbage that a decoder reports as a corrupt frame, which is PP366's warning about the key
+    /// position one field over.
+    ///
+    /// False where the receivers are not there, which is a run that has not started them - and is
+    /// answered rather than thrown, because the keying's own answer is a bool the handler reads.
+    /// </summary>
+    public bool InstallAvArm(ManagedGkCryptPair crypt)
+    {
+        ArgumentNullException.ThrowIfNull(crypt);
+
+        if (Video is not { } video || Audio is not { } audio)
+            return false;
+
+        takion.InstallAvArm(
+            new StreamAvArmSink(
+                [.. crypt.Remote.KeyBase], [.. crypt.Remote.Iv], video, audio));
+
+        return true;
+    }
+
+    /// <summary>
     /// PP773: the takion this run drives, for a caller reading why a wait ended in nothing.
     ///
     /// Its Dispatched count and its receive thread are the two facts that separate "nothing arrived"

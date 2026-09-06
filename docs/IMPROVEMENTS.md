@@ -332,31 +332,6 @@ AND THE CONSOLE IS THE GATE, for PP763's reason. Senkusha measures a real link; 
 measurement that the suite agrees with and a console does not is exactly the shape that
 ships green and streams nothing.
 
-### §PP795 An arm that cannot be built when the takion is
-
-The flip runs. A live PS5 carried a managed run to the idle loop - connected, protocol,
-bang, streaminfo, feedback sender, CONNECTED - and hung up twenty seconds later with
-"Server shutting down". 14325 datagrams arrived, video and audio among them, and the
-decoder produced nothing.
-
-BECAUSE THE ARM IS NULL. ManagedTakion takes an IAvArmSink in its constructor and builds
-the arm there; ManagedStreamPhase passes none, so every video and audio packet reaches
-the dispatch and stops. StreamAvArmSink is the far end and it is written - PP667's
-route, per packet - and it takes a key base and an IV.
-
-WHICH DO NOT EXIST WHEN THE TAKION IS BUILT. They come out of the gk crypt, which
-SessionBangKeying derives from the secret the BANG produces - and the bang arrives four
-states after the takion has to exist. Not a wire somebody forgot: the object needing the
-keys is created before there are any.
-
-TWO SHAPES, AND THE CHOICE IS THE TASK. The takion could take the arm after the fact,
-the way it takes its adopted socket - an install the run makes when the keying succeeds.
-Or the sink could hold the crypt by reference and read it per packet, which keeps the
-construction order and moves the question into the hot path.
-
-AND THE FAR END HAS PP779'S SHAPE ALREADY. StreamAvArmSink appends an AvRoute per packet
-to a list nothing drains, which on this reading is fourteen thousand in twenty seconds.
-
 ### §PP797 A sound path with both ends built
 
 audioreceiver.c is ported twice over - PP740's ManagedAudioReceiverPair is the
@@ -405,6 +380,31 @@ the packet the C already holds, and the decoder knows whether it has been config
 three values in a log line that costs nothing on a path taken once. Whether the answer
 then deserves a repair is a second question, and this one refuses to pretend it is
 already answered.
+
+### §PP799 The connected event that reaches nobody
+
+PP719 gave the run a managed ManagedSessionEvents, whose Send hands an event to a
+listener or counts it Unheard - the C's own shape, where chiaki_session_send_event drops
+an event when no callback is installed rather than failing. ManagedStreamPhase builds
+one and never calls Listen.
+
+SO THE STREAM WORKS AND NOTHING SAYS SO. A live run reached the idle loop, took sixteen
+thousand datagrams and decoded 2675 frames while the application waited for a CONNECTED
+that was raised, counted and dropped four states earlier. The two paths that open a
+session disagree about what that costs: the capture waits and carries on regardless, so
+it reports frames; StreamRun waits and gives up, so its window holds a loading overlay
+over a picture that is arriving.
+
+WHICH IS THE WORST SHAPE A DEFECT CAN HAVE. Nothing is red. The gate passes, the frames
+are counted, the console is streaming, and the client shows a spinner - and the two
+readings a session offers disagree in a way that reads as "the console did not connect"
+when the console did.
+
+THE JOIN IS ONE CALL AND THE QUESTION IS WHOSE. The C's session raises events through
+chiaki_session_set_event_cb, which app already installs for the front door and both
+captures. What a managed run raises has to reach that same handler, so the sink the root
+builds needs a listener that forwards - and the ordering PP640 asserts, unlock, send,
+lock, is about where it is called from and stays untouched.
 
 ## Block G — Test discipline
 

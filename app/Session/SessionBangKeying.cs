@@ -79,6 +79,26 @@ public sealed class SessionBangKeying(ChiakiSession session, ManagedTakion takio
         takion.LocalCrypt = pair.Local;
         takion.CryptAvailable = true;
 
+        // PP795: AND THE AV ARM, which is the same moment for the same reason. Its sink decrypts
+        // each arriving packet against the remote crypt's key base and IV, so it could not have
+        // been built when the takion was - and a run without it reaches the idle loop, receives
+        // fourteen thousand datagrams and decodes none of them.
+        //
+        // Whoever holds the receivers installs it, because this object holds neither. A caller
+        // that supplies no installer keys the session and leaves the picture where it was, which
+        // is what every test of the keying does.
+        InstallArm?.Invoke(pair);
+
         return true;
     }
+
+    /// <summary>
+    /// PP795: what to do with the pair once it exists, which is where the AV arm is joined.
+    ///
+    /// A callback rather than a receiver, because this object knows the session and the takion and
+    /// deliberately not the video receiver: the run makes those and the composition root wires the
+    /// two together. Absent leaves the crypt built and the arm uninstalled, which is every case
+    /// that is not a live stream.
+    /// </summary>
+    public Action<ManagedGkCryptPair>? InstallArm { get; set; }
 }
