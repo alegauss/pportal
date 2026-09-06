@@ -381,6 +381,30 @@ PP793's rule, and the trap PP735 named: a symbol in quotes is a model and not a 
 
 An assertion inverts here: the census gains a row it currently reports as covered.
 
+### §PP801 The two session paths the flip left behind
+
+PP767 established that the question is not whether app installs a phase but which paths
+that OPEN A SESSION do. DrivingSessionPathsIn answers it, and on this tree it names
+exactly one file. Three call ChiakiSession.TryCreate: StreamRun, which PP783 wired;
+ExchangeCapture, behind --capture-exchange, --capture-datagrams and --measure-decoder;
+and NativeConsoleSessionStarter, which is the front door a person actually clicks.
+
+SO THE FLIP COST THE OTHER TWO their stream phase, and each loses something different.
+The exchange capture records the ctrl conversation, all of which happens before the
+stream phase, so it still writes its file and merely stops holding afterwards.
+--measure-decoder decodes frames the C no longer produces. --capture-datagrams taps the
+C's own socket and the port opens its own, so the tap records silence where a relay run
+would still record traffic. The front door reports Ended where it reported Connected.
+
+WHAT EACH NEEDS IS NOT THE SAME CALL, which is why this is one line and not a rename of
+PP783. The capture wants a phase whose video goes to its own decoder or nowhere; the
+front door has no decoder, no window and no address of its own beyond the connect
+request. A helper that installed one for all three would be inventing a shared shape
+none of them asked for, which is the seam PP741 measured the cost of.
+
+THE ORACLE QUESTION RIDES ON THIS. PP785 keeps the C's answers as a recording precisely
+because the C stops producing them, and --capture-datagrams is how a recording is made.
+
 ## Block G — Test discipline
 
 ### §PP796 A warning the failure below it contradicts

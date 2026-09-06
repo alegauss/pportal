@@ -31,6 +31,7 @@
 - 📋 **PP797** (deps: —) **the console's audio reaches a receiver whose output goes nowhere, and nothing drains the ring into a speaker** — Every piece is written and two joins are missing: the root hands the arms a no-op sink, and the ring the opus decoder fills has no reader. → §PP797
 - 📋 **PP798** (deps: —) **one access unit per session is refused by the decoder and the log says which error, never which frame** — A benign first unit before the codec has its header and a real corruption print the same line, so neither can be told from the other. → §PP798
 - 📋 **PP800** (deps: —) **SeamReach counts an implementation that no path in app ever constructs, so a sink only tests build reads as reached** — PP767 answered this for the driver check by requiring a path that opens a session, and the same weakness is still in the census that judges all seven seams. → §PP800
+- 📋 **PP801** (deps: —) **two of the three paths that open a session install no phase, so the captures and the front door stop where the port runs** — PP783 flipped the run and only StreamRun installs one, so the other two reach a callback that is not there and quit with UNINITIALIZED. → §PP801
 
 ## Block G — Test discipline
 
