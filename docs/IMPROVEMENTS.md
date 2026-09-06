@@ -307,28 +307,6 @@ layout. That waits on a console, which is why this is a line rather than a chang
 the capture's format already refuses a file written to the older shape, so widening it
 is a version the reader can tell apart.
 
-### §PP753 The handover with no mechanism
-
-PP752 decided which of PP28's seven steps becomes managed and what the C thread does
-after: it waits, then writes the quit reason from what the run returned. PP696 is the
-commit that makes that edit and its design says session.c stops asking. Neither says HOW
-the two sides meet, and nothing in the tree does it.
-
-A MANAGED FUNCTION POINTER IS NOT THE ANSWER, and the shim already says why. Every one
-of libchiaki's twenty-two callbacks is installed as a C trampoline rather than a managed
-delegate, because an enum's underlying type is the compiler's choice and a pinned
-managed struct is one GC compaction from a callback into freed memory. A run installed
-the other way would be the same bet on a longer wire.
-
-SO THE THREAD HAS TO BLOCK ON SOMETHING THE MANAGED SIDE SIGNALS, and two values have to
-come back: the error the run answered, and the remote disconnect reason. That reason is
-read off the struct being deleted - session.c compares it against the shutdown phrase
-PP336 holds exactly, to choose between two quit reasons - so it has to cross before
-streamconnection.c can go.
-
-MEASURED RATHER THAN ASSUMED. session.c embeds the connection by value and reads four of
-its fields; deleting it moves a public export's body as well as a member.
-
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry

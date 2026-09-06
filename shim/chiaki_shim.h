@@ -132,6 +132,59 @@ CHIAKI_SHIM_API int32_t chiaki_shim_opus_decode(
 		void *decoder, const uint8_t *data, int32_t size, int16_t *pcm, int32_t frame_size);
 
 /**
+ * PP753: the seam a session thread hands its stream phase across, and takes an outcome back on.
+ *
+ * PP752 decided that exactly one of the session thread's seven steps becomes managed - the run -
+ * and that the C thread WAITS rather than returns, because its steps five to seven still have to
+ * happen on it. What it did not have was any way for the two sides to meet.
+ *
+ * NOT A MANAGED FUNCTION POINTER, for the reason ChiakiShimLogCb gives above: every one of
+ * libchiaki's twenty-two callbacks is installed as a C trampoline, because an enum's underlying
+ * type is the compiler's choice and a pinned managed object is one GC compaction away from a call
+ * into freed memory. A run installed that way would be the same bet held for the length of a
+ * session rather than for one log line.
+ *
+ * SO THE THREAD BLOCKS AND THE MANAGED SIDE SIGNALS. Two waits, one each way:
+ *
+ *   - `started` is raised by the C thread when it reaches the stream phase, so the managed side
+ *     knows when to begin rather than polling for it.
+ *   - `finished` is raised by the managed side when its run returns, carrying the two values the
+ *     session thread needs: the error code, and the remote disconnect reason it compares against
+ *     the shutdown phrase to choose between two quit reasons.
+ *
+ * THE REASON IS COPIED IN, not borrowed. It is a managed string on the other side of the seam, and
+ * the session thread reads it after the run is over - so a pointer would outlive whatever held it.
+ * The copy is the handover's and is freed with it.
+ *
+ * Nothing here edits session.c. Wiring this in place of the run, and deleting what the run drives,
+ * is the one commit that touches lib.
+ */
+CHIAKI_SHIM_API void *chiaki_shim_stream_handover_create(void);
+CHIAKI_SHIM_API void chiaki_shim_stream_handover_free(void *handover);
+
+/** Raised by the C session thread when it reaches the stream phase. */
+CHIAKI_SHIM_API int32_t chiaki_shim_stream_handover_start(void *handover);
+
+/** Waits for that, so the managed side begins when the thread is there. False on timeout. */
+CHIAKI_SHIM_API bool chiaki_shim_stream_handover_await_start(void *handover, int32_t timeout_ms);
+
+/** Raised by the managed side when its run returns, with what the session thread has to write. */
+CHIAKI_SHIM_API int32_t chiaki_shim_stream_handover_finish(
+		void *handover, int32_t error, const char *reason);
+
+/**
+ * What the session thread calls in place of the run: blocks until finish, then answers its error.
+ *
+ * The reason is left where `chiaki_shim_stream_handover_reason` can read it, rather than returned,
+ * because a NULL reason is a case the C already has - PP371 found both reads dereferencing it -
+ * and an out parameter would make the absent one indistinguishable from an empty one.
+ */
+CHIAKI_SHIM_API int32_t chiaki_shim_stream_handover_await_finish(void *handover, int32_t timeout_ms);
+
+/** The remote disconnect reason the managed side reported, or NULL where it reported none. */
+CHIAKI_SHIM_API const char *chiaki_shim_stream_handover_reason(void *handover);
+
+/**
  * chiaki_error_string for a ChiakiErrorCode, as a UTF-8 string the caller does not own.
  *
  * Here because it is the smallest thing that proves a real property of the seam: a pointer to a

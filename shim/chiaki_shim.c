@@ -2838,6 +2838,151 @@ CHIAKI_SHIM_API int32_t chiaki_shim_opus_decode(
 }
 #endif
 
+/* PP753: the stream handover. Two bool-pred conds, one each way, and a copied reason.
+ *
+ * ChiakiBoolPredCond is exactly this shape already - a flag, a mutex and a condition, with a
+ * timed wait that re-checks the flag - so nothing here invents a primitive libchiaki has. */
+typedef struct chiaki_shim_stream_handover_t
+{
+	ChiakiBoolPredCond started;
+	ChiakiBoolPredCond finished;
+	int32_t error;
+	char *reason;
+} ChiakiShimStreamHandover;
+
+CHIAKI_SHIM_API void *chiaki_shim_stream_handover_create(void)
+{
+	ChiakiShimStreamHandover *self = calloc(1, sizeof(ChiakiShimStreamHandover));
+	if(!self)
+		return NULL;
+
+	if(chiaki_bool_pred_cond_init(&self->started) != CHIAKI_ERR_SUCCESS)
+	{
+		free(self);
+		return NULL;
+	}
+
+	if(chiaki_bool_pred_cond_init(&self->finished) != CHIAKI_ERR_SUCCESS)
+	{
+		chiaki_bool_pred_cond_fini(&self->started);
+		free(self);
+		return NULL;
+	}
+
+	self->error = (int32_t)CHIAKI_ERR_UNKNOWN;
+	return self;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_stream_handover_free(void *handover)
+{
+	ChiakiShimStreamHandover *self = (ChiakiShimStreamHandover *)handover;
+	if(!self)
+		return;
+
+	chiaki_bool_pred_cond_fini(&self->finished);
+	chiaki_bool_pred_cond_fini(&self->started);
+	free(self->reason);
+	free(self);
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_stream_handover_start(void *handover)
+{
+	ChiakiShimStreamHandover *self = (ChiakiShimStreamHandover *)handover;
+	if(!self)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+
+	if(chiaki_bool_pred_cond_lock(&self->started) != CHIAKI_ERR_SUCCESS)
+		return (int32_t)CHIAKI_ERR_UNKNOWN;
+
+	self->started.pred = true;
+	chiaki_bool_pred_cond_signal(&self->started);
+	chiaki_bool_pred_cond_unlock(&self->started);
+	return (int32_t)CHIAKI_ERR_SUCCESS;
+}
+
+CHIAKI_SHIM_API bool chiaki_shim_stream_handover_await_start(void *handover, int32_t timeout_ms)
+{
+	ChiakiShimStreamHandover *self = (ChiakiShimStreamHandover *)handover;
+	bool started;
+
+	if(!self || timeout_ms < 0)
+		return false;
+
+	if(chiaki_bool_pred_cond_lock(&self->started) != CHIAKI_ERR_SUCCESS)
+		return false;
+
+	/* The flag is re-checked rather than trusted: a wait that returns has said nothing until it
+	 * is read, which is the same rule the session's own predicates follow. */
+	if(!self->started.pred)
+		chiaki_bool_pred_cond_timedwait(&self->started, (uint64_t)timeout_ms);
+
+	started = self->started.pred;
+	chiaki_bool_pred_cond_unlock(&self->started);
+	return started;
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_stream_handover_finish(
+		void *handover, int32_t error, const char *reason)
+{
+	ChiakiShimStreamHandover *self = (ChiakiShimStreamHandover *)handover;
+	char *copy = NULL;
+
+	if(!self)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+
+	/* Copied before the lock is taken: a strdup under it would hold the session thread for an
+	 * allocation, and a failed one still has to leave the handover consistent. */
+	if(reason)
+	{
+		copy = strdup(reason);
+		if(!copy)
+			return (int32_t)CHIAKI_ERR_MEMORY;
+	}
+
+	if(chiaki_bool_pred_cond_lock(&self->finished) != CHIAKI_ERR_SUCCESS)
+	{
+		free(copy);
+		return (int32_t)CHIAKI_ERR_UNKNOWN;
+	}
+
+	free(self->reason);
+	self->reason = copy;
+	self->error = error;
+	self->finished.pred = true;
+
+	chiaki_bool_pred_cond_signal(&self->finished);
+	chiaki_bool_pred_cond_unlock(&self->finished);
+	return (int32_t)CHIAKI_ERR_SUCCESS;
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_stream_handover_await_finish(void *handover, int32_t timeout_ms)
+{
+	ChiakiShimStreamHandover *self = (ChiakiShimStreamHandover *)handover;
+	int32_t error;
+
+	if(!self || timeout_ms < 0)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+
+	if(chiaki_bool_pred_cond_lock(&self->finished) != CHIAKI_ERR_SUCCESS)
+		return (int32_t)CHIAKI_ERR_UNKNOWN;
+
+	if(!self->finished.pred)
+		chiaki_bool_pred_cond_timedwait(&self->finished, (uint64_t)timeout_ms);
+
+	/* A wait that ran out answers TIMEOUT rather than the error it was initialised with: the
+	 * session thread has to tell "the run failed" from "the run never reported". */
+	error = self->finished.pred ? self->error : (int32_t)CHIAKI_ERR_TIMEOUT;
+	chiaki_bool_pred_cond_unlock(&self->finished);
+	return error;
+}
+
+CHIAKI_SHIM_API const char *chiaki_shim_stream_handover_reason(void *handover)
+{
+	ChiakiShimStreamHandover *self = (ChiakiShimStreamHandover *)handover;
+
+	return self ? self->reason : NULL;
+}
+
 /* PP679: the v7 parse, whose key_state parameter the C declares and never reads.
  *
  * NULL is passed for it deliberately rather than forwarded. The v7 body takes its key position

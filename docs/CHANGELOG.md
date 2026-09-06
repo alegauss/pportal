@@ -672,6 +672,7 @@
 - ✅ **PP750** **the port derives a gmac key and a key stream and composes neither, so nothing encrypts or signs a packet** — ManagedGkCrypt gained Encrypt and Gmac, and the takion's feedback send spends the three positions the C uses, so a state arrives encrypted and signed on a real socket.
 - ✅ **PP751** **the audio path decodes nothing, so a frame the receiver delivers has no way to become sound** — Four shim exports and ManagedOpusDecoder turn a received frame into PCM, and PP740's concealed frame becomes the NULL packet Opus fills in rather than a dropped one.
 - ✅ **PP752** **the handoff that replaces the C's stream run is undecided, so the commit that edits the C has nothing to aim at** — One of PP28's seven steps becomes managed and six stay, held against session.c: the run is replaced, unlocked across as the C leaves it, and the C thread waits rather than returns.
+- ✅ **PP753** **the session thread has no way to hand the stream phase over and take an outcome back, so the deletion cannot land** — Two bool-pred conds and a copied reason let the C thread block where its run was and take back the error and the disconnect reason, with no managed pointer crossing.
 
 ## Block G — Test discipline
 
