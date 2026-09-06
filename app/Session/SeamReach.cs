@@ -39,19 +39,16 @@ public static class SeamReach
     /// <summary>
     /// The seams nothing in app fills, and what each is waiting for.
     ///
-    /// Two: the audio frames, and the OpenSSL keying which is a seam on purpose. PP745 took
-    /// IStreamRunHost off this list, PP747 the event sink, PP748 the message sink, PP749 the
-    /// congestion sink and PP750 the feedback sink, none of them adding a row doing it - which is
-    /// what PP741 counted the cost of when PP740 closed one seam and opened another in one commit.
+    /// ONE, and it is a seam on purpose. PP745 took IStreamRunHost off this list, PP747 the event
+    /// sink, PP748 the message sink, PP749 the congestion sink, PP750 the feedback sink and PP751
+    /// the audio frames - none of them adding a row doing it, which is what PP741 counted the cost
+    /// of when PP740 closed one seam and opened another in a single commit.
     ///
-    /// WHAT REMAINS IS NOT PLUMBING. The audio frames want an Opus decoder and a device, which is
-    /// the audio path's own work rather than another call the run is missing.
+    /// The list is kept rather than deleted with its last output row: what would report a
+    /// counterpart going back to being a shape is this list, and its absence would report nothing.
     /// </summary>
     public static IReadOnlyList<UnreachedSeam> Expected { get; } =
     [
-        new(
-            "IAudioFrameSink",
-            "PP740's own output: the C's ChiakiAudioSink. Opus and a device are the audio path's work."),
         new(
             "IBangKeying",
             "Deliberate: the keying a bang leads to is OpenSSL's, and the port keeps it behind a seam."),

@@ -670,6 +670,7 @@
 - ✅ **PP748** **the takion frames a data message and owns a wire, and nothing joins the two, so no managed message ever leaves** — ManagedTakion.SendData spends the key position, the sequence number and the socket in PP671's order, and TakionMessageSink puts the run's built messages through it onto a real wire.
 - ✅ **PP749** **the congestion report has no bytes and no way out, so the thread that produces one reports into a double** — TakionCongestion writes the fifteen bytes at the C's offsets and SendCongestion puts them on the socket, so PP714's thread reports to a wire instead of a double.
 - ✅ **PP750** **the port derives a gmac key and a key stream and composes neither, so nothing encrypts or signs a packet** — ManagedGkCrypt gained Encrypt and Gmac, and the takion's feedback send spends the three positions the C uses, so a state arrives encrypted and signed on a real socket.
+- ✅ **PP751** **the audio path decodes nothing, so a frame the receiver delivers has no way to become sound** — Four shim exports and ManagedOpusDecoder turn a received frame into PCM, and PP740's concealed frame becomes the NULL packet Opus fills in rather than a dropped one.
 
 ## Block G — Test discipline
 

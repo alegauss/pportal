@@ -109,6 +109,12 @@ public static class OracleGuardCensus
         // them and this is what says how many.
         new(@"tests\ChiakiNg.Tests\ManagedOpusEncoderTests.cs", OpusGuard),
 
+        // PP751: the decoder's side of the same library. The class branches on the guard because it
+        // has to - a build with no libopus must not call into it - and its tests decline four
+        // comparisons, which is what the row below counts.
+        new(@"app\Session\ManagedOpusDecoder.cs", OpusGuard, GuardKind.Reads),
+        new(@"tests\ChiakiNg.Tests\ManagedOpusDecoderTests.cs", OpusDecoderGuard),
+
         // PP683: the host, which is not a test file and guards all the same. Its one comparison is
         // the device id's shape against holepunch.c's, and it asks OfTheBuild through the predicate
         // PP681 corrected rather than through the two names above - so the row names the call as it
@@ -150,6 +156,16 @@ public static class OracleGuardCensus
 
     /// <summary>PP694's, which is a fifth.</summary>
     public const string OpusGuard = "NativeOpusEncoder.IsAvailable";
+
+    /// <summary>
+    /// PP751's, which is the same oracle asked through the decoder rather than the encoder.
+    ///
+    /// A second name for one library, and it is spelled rather than folded into the one above for
+    /// the reason every row here is qualified: the sweep matches what is WRITTEN at the call, and a
+    /// file asking ManagedOpusDecoder.IsAvailable is invisible to a census that only knows the
+    /// encoder's spelling - which is how four declining comparisons would go uncounted.
+    /// </summary>
+    public const string OpusDecoderGuard = "ManagedOpusDecoder.IsAvailable";
 
     /// <summary>The json oracle, qualified so its own definition is not read as a caller.</summary>
     public const string JsonGuard = "DeletedLibraryOracles.JsonOracleIsAvailable";

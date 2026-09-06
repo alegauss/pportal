@@ -114,6 +114,24 @@ CHIAKI_SHIM_API int32_t chiaki_shim_opus_encode(
 		void *encoder, const int16_t *pcm, int32_t frame_size, uint8_t *out, int32_t out_size);
 
 /**
+ * PP751: the decoder's four, which opusdecoder.c needs and the encoder's did not provide.
+ *
+ * chiaki_shim_opus_decode returns opus_decode's own code: the SAMPLE COUNT per channel, with
+ * anything below one an error the C logs and drops.
+ *
+ * A size of zero decodes a NULL packet, which is Opus's loss concealment rather than an empty
+ * frame - and it is exactly what audioreceiver.c's concealed frame becomes. Passing an empty
+ * buffer instead would be a different call with a different result.
+ *
+ * Guarded by CHIAKI_SHIM_HAVE_OPUS, like the encoder's. Ask chiaki_shim_has_opus first.
+ */
+CHIAKI_SHIM_API void *chiaki_shim_opus_decoder_create(
+		int32_t rate, int32_t channels, int32_t *error_out);
+CHIAKI_SHIM_API void chiaki_shim_opus_decoder_destroy(void *decoder);
+CHIAKI_SHIM_API int32_t chiaki_shim_opus_decode(
+		void *decoder, const uint8_t *data, int32_t size, int16_t *pcm, int32_t frame_size);
+
+/**
  * chiaki_error_string for a ChiakiErrorCode, as a UTF-8 string the caller does not own.
  *
  * Here because it is the smallest thing that proves a real property of the seam: a pointer to a

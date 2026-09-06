@@ -2788,6 +2788,54 @@ CHIAKI_SHIM_API int32_t chiaki_shim_opus_encode(
 	return (int32_t)opus_encode((OpusEncoder *)encoder, (const opus_int16 *)pcm, (int)frame_size,
 			out, (opus_int32)out_size);
 }
+
+/* PP751: the decoder's four, mirroring the encoder's above.
+ *
+ * opusdecoder.c creates its decoder from the STREAMINFO's rate and channels and rebuilds it every
+ * time one arrives, so the create takes both rather than reading a header the managed side owns.
+ */
+CHIAKI_SHIM_API void *chiaki_shim_opus_decoder_create(
+		int32_t rate, int32_t channels, int32_t *error_out)
+{
+	int error = 0;
+	OpusDecoder *decoder = opus_decoder_create((opus_int32)rate, (int)channels, &error);
+
+	if(error_out)
+		*error_out = (int32_t)error;
+
+	if(error != OPUS_OK)
+	{
+		/* Same shape as the encoder's: a refused configuration can still leave a pointer. */
+		if(decoder)
+			opus_decoder_destroy(decoder);
+		return NULL;
+	}
+
+	return decoder;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_opus_decoder_destroy(void *decoder)
+{
+	if(decoder)
+		opus_decoder_destroy((OpusDecoder *)decoder);
+}
+
+/* opus_decode, with the return code handed back unchanged: it is the SAMPLE COUNT per channel and
+ * the C treats anything below one as an error.
+ *
+ * A NULL data pointer is not a mistake here - it is Opus's packet loss concealment, and it is what
+ * opusdecoder.c passes when audioreceiver.c hands it a frame with no buffer. So the size being
+ * zero has to reach opus_decode as NULL rather than as an empty buffer, which is a different call.
+ */
+CHIAKI_SHIM_API int32_t chiaki_shim_opus_decode(
+		void *decoder, const uint8_t *data, int32_t size, int16_t *pcm, int32_t frame_size)
+{
+	if(!decoder || !pcm || frame_size <= 0 || size < 0)
+		return (int32_t)OPUS_BAD_ARG;
+
+	return (int32_t)opus_decode((OpusDecoder *)decoder, size ? data : NULL, (opus_int32)size,
+			(opus_int16 *)pcm, (int)frame_size, 0);
+}
 #endif
 
 /* PP679: the v7 parse, whose key_state parameter the C declares and never reads.
