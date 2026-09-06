@@ -690,6 +690,7 @@
 - ✅ **PP742** **the port holds 3681 real AV heads and its own parser can read none of them, two bytes short of the cheapest layout** — The tap keeps twenty-eight bytes, the capture was recorded again, and the differential parses 7506 real heads across three passes where every AV head used to be refused.
 - ✅ **PP764** **the gate passes on a tree whose stream phase has no driver, which is how it shipped a client that cannot stream** — The C's run and the port's install are read together as four states, and putting session.c back the way PP696 left it turns the gate red on Nobody.
 - ✅ **PP765** **the run host takes eleven parts and nothing says which a live session supplies, so the wiring is unsized** — Eleven rows held against the constructor by reflection: none is missing, two reach into the session, and the BIG is a factory every test has been handing a heartbeat.
+- ✅ **PP766** **a managed BIG needs four things out of a live session - the id, the handshake key, senkusha's numbers and an ecdh pair** — Four shim readers over fields the C holds, each answering null before a session has one, and a real BIG of 1346 bytes built from what they return.
 
 ## Block G — Test discipline
 

@@ -195,6 +195,46 @@ CHIAKI_SHIM_API const char *chiaki_shim_stream_handover_reason(void *handover);
  * Both callbacks take the same handover, so one install is the whole wiring. A session with none
  * reaches the stream phase and answers UNINITIALIZED rather than pretending to stream.
  */
+/**
+ * PP766: the three things a managed BIG needs out of a live session.
+ *
+ * The BIG is the message that starts a stream, and it is the one part of a run host that cannot be
+ * composed from managed pieces: the session id comes out of ctrl's handshake, the mtu and round
+ * trip out of senkusha, and the ecdh public key and its signature exist only for the span the
+ * stream does.
+ *
+ * `chiaki_shim_session_id` writes a zero-terminated id and refuses a buffer too small for one,
+ * rather than truncating - a short id is a different id.
+ *
+ * `chiaki_shim_session_transport` answers all three numbers or none: the launch spec spends them
+ * together, and a caller holding two would describe a link nobody measured.
+ *
+ * `chiaki_shim_session_ecdh_material` COPIES the key and the signature out, because session.c
+ * creates the pair on the line before the run and frees it on the line after. Both sizes are in and
+ * out: the caller offers room and is told what was written. It takes a session rather than an ecdh
+ * because the signature is over the session's handshake key, and the two are only meaningful
+ * together.
+ */
+CHIAKI_SHIM_API bool chiaki_shim_session_id(void *session, char *out, int32_t capacity);
+
+CHIAKI_SHIM_API bool chiaki_shim_session_transport(
+		void *session, uint32_t *out_mtu_in, uint32_t *out_mtu_out, uint64_t *out_rtt_us);
+
+/**
+ * The handshake key, which is the fourth and was not in this task's first reading.
+ *
+ * It signs the ecdh material AND is base64'd into the launch spec's JSON, so the managed side needs
+ * it in its own right and not only inside a signature. Sixteen bytes; a smaller buffer is refused
+ * rather than partly filled, because a short key base64s to a shorter string and a console refuses
+ * the spec with nothing said about why.
+ */
+CHIAKI_SHIM_API bool chiaki_shim_session_handshake_key(void *session, uint8_t *out, int32_t capacity);
+
+CHIAKI_SHIM_API bool chiaki_shim_session_ecdh_material(
+		void *session,
+		uint8_t *out_pub_key, int32_t *pub_key_size,
+		uint8_t *out_sig, int32_t *sig_size);
+
 CHIAKI_SHIM_API void chiaki_shim_stream_run_install(void *session, void *handover);
 
 /** Whether the session's stop has reached this handover. */

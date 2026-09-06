@@ -3082,6 +3082,105 @@ static void chiaki_shim_stream_stop_trampoline(void *user)
 		self->stopped = true;
 }
 
+/* PP766: the three things a managed BIG needs out of a live session.
+ *
+ * PP765 measured the eleven parts a run host takes and found ten compose from work that shipped.
+ * The eleventh is the BIG - the message that STARTS a stream - and BigMessage.Encode wants five
+ * arguments, three of which belong to the C: the session id ctrl's handshake produced, the mtu and
+ * round trip senkusha measured, and the ecdh public key with its signature.
+ *
+ * READERS AND NOT A STRUCT, which is PP4's rule at this seam: the session is twenty-odd fields and
+ * an ECDH, and marshalling its layout would make an offset that is wrong by two bytes surface as a
+ * console refusing a stream for no stated reason.
+ *
+ * AND THE ECDH IS COPIED, NOT POINTED AT. session.c creates the pair on the line before the run and
+ * frees it on the line after, so a reader handing back a pointer would hand back something freed a
+ * step later. chiaki_ecdh_get_local_pub_key writes into buffers the caller owns, which is what the
+ * C's own send_big does with two stack arrays - so this does the same and copies out. */
+CHIAKI_SHIM_API bool chiaki_shim_session_id(void *session, char *out, int32_t capacity)
+{
+	ChiakiSession *self = (ChiakiSession *)session;
+	size_t len;
+
+	if(!self || !out || capacity <= 0)
+		return false;
+
+	/* The field is zero-terminated by the C's own contract, and the bound is this side's: a session
+	 * id longer than the caller's buffer is a refusal rather than a truncation somebody reads as an
+	 * id. */
+	len = strlen(self->session_id);
+	if(len + 1 > (size_t)capacity)
+		return false;
+
+	memcpy(out, self->session_id, len + 1);
+	return true;
+}
+
+CHIAKI_SHIM_API bool chiaki_shim_session_transport(
+		void *session, uint32_t *out_mtu_in, uint32_t *out_mtu_out, uint64_t *out_rtt_us)
+{
+	ChiakiSession *self = (ChiakiSession *)session;
+
+	if(!self || !out_mtu_in || !out_mtu_out || !out_rtt_us)
+		return false;
+
+	/* All three or none: the launch spec spends them together, and a caller that got two would
+	 * build a spec describing a link nobody measured. */
+	*out_mtu_in = self->mtu_in;
+	*out_mtu_out = self->mtu_out;
+	*out_rtt_us = self->rtt_us;
+	return true;
+}
+
+/* And the handshake key, which is the fourth and was not in this task's first reading.
+ *
+ * It signs the ecdh material above AND goes into the launch spec's JSON, base64'd - so the managed
+ * side needs it in its own right rather than only inside the signature. Sixteen bytes, and the
+ * caller's buffer is checked against that rather than trusted: a short read here would base64 to a
+ * shorter string and the console would refuse a spec for a reason nothing states. */
+CHIAKI_SHIM_API bool chiaki_shim_session_handshake_key(void *session, uint8_t *out, int32_t capacity)
+{
+	ChiakiSession *self = (ChiakiSession *)session;
+
+	if(!self || !out || capacity < CHIAKI_HANDSHAKE_KEY_SIZE)
+		return false;
+
+	memcpy(out, self->handshake_key, CHIAKI_HANDSHAKE_KEY_SIZE);
+	return true;
+}
+
+CHIAKI_SHIM_API bool chiaki_shim_session_ecdh_material(
+		void *session,
+		uint8_t *out_pub_key, int32_t *pub_key_size,
+		uint8_t *out_sig, int32_t *sig_size)
+{
+	ChiakiSession *self = (ChiakiSession *)session;
+	size_t pub = 0, sig = 0;
+
+	if(!self || !out_pub_key || !pub_key_size || !out_sig || !sig_size)
+		return false;
+
+	if(*pub_key_size <= 0 || *sig_size <= 0)
+		return false;
+
+	pub = (size_t)*pub_key_size;
+	sig = (size_t)*sig_size;
+
+	/* The signature is over the handshake key, which is the session's own and is why this takes a
+	 * session rather than an ecdh: the two are only meaningful together, and a caller holding one
+	 * without the other would sign with something the console never agreed to. */
+	if(chiaki_ecdh_get_local_pub_key(
+			&self->ecdh, out_pub_key, &pub, self->handshake_key, out_sig, &sig)
+		!= CHIAKI_ERR_SUCCESS)
+	{
+		return false;
+	}
+
+	*pub_key_size = (int32_t)pub;
+	*sig_size = (int32_t)sig;
+	return true;
+}
+
 CHIAKI_SHIM_API void chiaki_shim_stream_run_install(void *session, void *handover)
 {
 	ChiakiSession *self = (ChiakiSession *)session;
