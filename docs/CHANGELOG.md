@@ -666,6 +666,7 @@
 - ✅ **PP724** **nothing notices when an unported wait gains a managed counterpart, which happened once already and was caught by hand** — The define-reading sweep found SESSION_EXPECT_TIMEOUT_MS answered while filed as unported, and now holds every unported row's group against the managed tree.
 - ✅ **PP745** **the run's host has twenty-five counterparts and no implementation outside the test project** — ManagedStreamRunHost delegates twenty-four members to the counterparts the census names and waits on the C's own predicate, so three censuses lost the row that said the host was a shape.
 - ✅ **PP746** **the run's sequence has never executed against a socket, so every ordering is asserted over a script** — The sequence runs to SUCCESS over a loopback socket on a real takion, congestion thread and feedback sender, and the failed connect unwinds without closing one that never opened.
+- ✅ **PP747** **the nine events reach a seam nothing in app implements, so the pad state they carry is counted unheard and dropped** — SessionEventRouter holds what each of the nine decides - rumble, triggers, LED, index, both intensities, the motion reset and the FEC failure - so the seam stops counting them unheard.
 
 ## Block G — Test discipline
 

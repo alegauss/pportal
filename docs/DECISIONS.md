@@ -83,6 +83,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP724** **nothing notices when an unported wait gains a managed counterpart, which happened once already and was caught by hand** — A row's group is checked by whether managed code reads that macro's define, because naming it proves nothing where two files carry an EXPECT_TIMEOUT_MS.
 - ✅ **PP745** **the run's host has twenty-five counterparts and no implementation outside the test project** — A host takes its collaborators in and its receivers as factories, so a null return is the C's allocation failure and the socket stays the next task's decision.
 - ✅ **PP746** **the run's sequence has never executed against a socket, so every ordering is asserted over a script** — A wait's flags are signalled from another thread, because that is where the C's handlers write them and a run completing from its own thread would prove nothing.
+- ✅ **PP747** **the nine events reach a seam nothing in app implements, so the pad state they carry is counted unheard and dropped** — A value an event carries stops at the router that receives it, because closing a seam by inventing the next one is what PP741 had to count after PP740 did it.
 
 ## Block G — Test discipline
 
