@@ -355,6 +355,30 @@ layout. That waits on a console, which is why this is a line rather than a chang
 the capture's format already refuses a file written to the older shape, so widening it
 is a version the reader can tell apart.
 
+### §PP744 One sweep, two copies, one correction
+
+PP722 widened the raiser sweep by a word. Its pattern began at a local named event, and
+session.c calls two of its four event_auto_regist and event_start, so the sweep reported
+two raisers in a file that has four. The fix was to start the pattern at the member
+access, which is syntax the C cannot rename, rather than at a local's name, which it
+can.
+
+THERE ARE TWO COPIES OF THAT LOOP. PadInfoMessage.ReportOrderIn is the other: the same
+IndexOf walk over the same literal, differing only in whether the result keeps the
+CHIAKI_EVENT_ prefix. It still carries the old pattern, so the correction landed on one
+of them.
+
+IT IS RIGHT TODAY AND FOR A REASON THAT IS NOT ITS OWN. Every raiser in the handler it
+reads names its local event, exactly as the two files PP719 wrote its sweep for did.
+That was also true of the session.c sweep until somebody looked at the other half of the
+file. A check that is correct because of what the C happens to be called is one line of
+upstream tidying from being wrong and green.
+
+THE FIX IS COMPOSITION, not a second widening. EventsRaisedIn already returns the events
+a source raises in order, which is what this wants; the only difference is the prefix on
+each name, and stripping one is cheaper than keeping a parallel loop that has already
+drifted once.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry
