@@ -166,6 +166,34 @@ public sealed class SessionDecoder : IDisposable
     public void SignalWhenReady()
         => DecoderSetReadyEvent(Handle, Ready.SafeWaitHandle.DangerousGetHandle());
 
+    /// <summary>
+    /// PP787: hand this decoder one frame, from a caller that is not the C's stream connection.
+    ///
+    /// <see cref="AttachTo"/> is the door PP700 opened and it installs the sink on the SESSION, so
+    /// what decodes a frame is the C's run calling the C's callback. A managed run produces the
+    /// same frames and had nowhere to put them - which is a flip that streams and shows nothing,
+    /// and the failure PP763 already paid for once.
+    ///
+    /// The SAME callback with the same decoder, so this is a second door rather than a second
+    /// decoder. Its shape is <see cref="VideoSampleHandler"/>'s on purpose: the delegate
+    /// ManagedStreamPhase already takes is this method group.
+    /// </summary>
+    /// <param name="frame">The access unit, as the video receiver assembled it.</param>
+    /// <param name="framesLost">How many the receiver could not rebuild before this one.</param>
+    /// <param name="frameRecovered">Whether FEC put this one back together.</param>
+    /// <returns>What the decoder answered; false is a frame it would not take.</returns>
+    public bool Sample(ReadOnlySpan<byte> frame, int framesLost, bool frameRecovered)
+    {
+        if (handle == IntPtr.Zero || frame.IsEmpty)
+            return false;
+
+        unsafe
+        {
+            fixed (byte* bytes = frame)
+                return DecoderVideoSample(handle, (IntPtr)bytes, frame.Length, framesLost, frameRecovered);
+        }
+    }
+
     /// <summary>One decoded frame's planes, borrowed until the next pull.</summary>
     /// <param name="Width">The picture's own width.</param>
     /// <param name="Height">And its height.</param>
@@ -297,6 +325,12 @@ public sealed class SessionDecoder : IDisposable
         CallingConvention = CallingConvention.Cdecl)]
     [return: MarshalAs(UnmanagedType.I1)]
     public static extern bool AttachTo(IntPtr session, IntPtr decoder);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_decoder_video_sample",
+        CallingConvention = CallingConvention.Cdecl)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    private static extern bool DecoderVideoSample(
+        IntPtr decoder, IntPtr buf, int bufSize, int framesLost, [MarshalAs(UnmanagedType.I1)] bool frameRecovered);
 }
 
 

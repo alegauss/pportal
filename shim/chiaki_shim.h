@@ -599,6 +599,27 @@ CHIAKI_SHIM_API void chiaki_shim_decoder_free(void *decoder);
 CHIAKI_SHIM_API bool chiaki_shim_session_set_decoder(void *session, void *decoder);
 
 /**
+ * PP787: the same decoder, reached by a caller that is not the C's stream connection.
+ *
+ * The function above is the only door PP700 opened, and it installs the sink on the SESSION - so
+ * what decodes a frame is the C's stream connection calling the C's callback. A managed run
+ * produces the same frames and had nowhere to put them, which is a flip that streams and shows
+ * nothing.
+ *
+ * This is that callback with the same user, called directly. Not a second decoder and not a second
+ * implementation: one function, one decoder, and the only difference is which side of the boundary
+ * the caller is on. Its shape is `VideoSampleHandler`'s on the managed side, deliberately - the
+ * delegate a composition root already takes.
+ *
+ * Answers what the callback answers: false is the decoder refusing the sample, which the C's own
+ * caller treats as a frame that did not decode rather than as an error.
+ */
+CHIAKI_SHIM_API bool chiaki_shim_decoder_video_sample(
+		void *decoder,
+		const uint8_t *buf, int32_t buf_size,
+		int32_t frames_lost, bool frame_recovered);
+
+/**
  * PP76: an event set whenever a frame becomes available, so a reader waits rather than polls.
  *
  * chiaki_ffmpeg_decoder_pull_frame DRAINS the codec and returns only the last frame - its own

@@ -708,6 +708,7 @@
 - ✅ **PP780** **nothing counts what deleting takion's three files leaves undefined, and the biggest consumer is this port's oracle** — Twenty-four symbols across eight units, in three groups - and eighteen are the shim's, which is the oracle the deletion would take with it.
 - ✅ **PP781** **the deferral line still says the suite never calls the two broken queue functions, which its section retracts** — The line carries the corrected sentence, and a seventh fact refuses the retracted one on PP107's own row rather than in its section.
 - ✅ **PP782** **the deletion's blocker list names six lib files and the link answers four, two of them never reaching it** — Four, and the two that came off are kept beside it with the reason each is not a blocker - one permanent, one true of this tree.
+- ✅ **PP787** **the decoder is reachable only through the C's video callback, so a managed run has no way to hand it a frame** — The C's own sample callback is reachable with the same decoder, and its managed shape is the delegate a composition root already takes.
 
 ## Block G — Test discipline
 

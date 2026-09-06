@@ -814,6 +814,23 @@ CHIAKI_SHIM_API bool chiaki_shim_session_set_decoder(void *session, void *decode
 	return true;
 }
 
+CHIAKI_SHIM_API bool chiaki_shim_decoder_video_sample(
+		void *decoder,
+		const uint8_t *buf, int32_t buf_size,
+		int32_t frames_lost, bool frame_recovered)
+{
+	chiaki_shim_decoder *dec = (chiaki_shim_decoder *)decoder;
+
+	if(!dec || !buf || buf_size <= 0)
+		return false;
+
+	/* The SAME callback the function above installs, with the same user - which is what makes this
+	 * a second door into one decoder rather than a second decoder. The cast drops const because the
+	 * C's signature takes a mutable buffer and does not write to it. */
+	return chiaki_ffmpeg_decoder_video_sample_cb(
+			(uint8_t *)buf, (size_t)buf_size, frames_lost, frame_recovered, &dec->decoder);
+}
+
 /*
  * PP76: the event to set when a frame is ready, or NULL to stop signalling.
  *

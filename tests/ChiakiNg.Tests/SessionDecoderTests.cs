@@ -160,4 +160,48 @@ public class SessionDecoderTests(ITestOutputHelper output)
     [Fact]
     public void TheHardwareNamesAreTheSettingsScreens()
         => Assert.Equal(["vulkan", "cuda", "d3d11va"], SessionDecoder.HardwareNames);
+
+    /// <summary>
+    /// PP787: THE SECOND DOOR IS THERE AND IT IS THE DELEGATE A COMPOSITION ROOT TAKES.
+    ///
+    /// PP700 opened one way into the decoder and it installs the sink on the SESSION, so what
+    /// decodes a frame is the C's stream connection calling the C's callback. A managed run makes
+    /// the same frames and had nowhere to put them - a flip that streams and shows nothing, which
+    /// PP763 has already cost this port once.
+    ///
+    /// The load-bearing half is the SHAPE: Sample is a VideoSampleHandler, so it is what
+    /// ManagedStreamPhase already takes and no adapter stands between them. A method that merely
+    /// worked would still leave a root writing a lambda to bridge two signatures.
+    /// </summary>
+    [Fact]
+    public void TheSampleDoorIsAVideoSampleHandler()
+    {
+        using var decoder = new SessionDecoder(IntPtr.Zero, codec: 0, maxFps: 60, string.Empty);
+
+        VideoSampleHandler handler = decoder.Sample;
+
+        Assert.NotNull(handler);
+
+        // Reaching the export at all is the other half: a P/Invoke to one that is not there throws
+        // rather than answering, so a bool coming back is the boundary crossed.
+        byte[] annexB = [0x00, 0x00, 0x00, 0x01, 0x09, 0x10];
+
+        Assert.False(handler([], framesLost: 0, frameRecovered: false));
+        handler(annexB, framesLost: 0, frameRecovered: false);
+    }
+
+    /// <summary>
+    /// And a decoder that is gone refuses rather than calling through a freed handle.
+    ///
+    /// The one shape that takes the process with it: a sample arriving after the dispose, which on
+    /// a live path is a receive thread outliving the window it was drawing into.
+    /// </summary>
+    [Fact]
+    public void ASampleAfterTheDisposeIsRefused()
+    {
+        var decoder = new SessionDecoder(IntPtr.Zero, codec: 0, maxFps: 60, string.Empty);
+        decoder.Dispose();
+
+        Assert.False(decoder.Sample([0x00, 0x00, 0x00, 0x01], framesLost: 0, frameRecovered: false));
+    }
 }
