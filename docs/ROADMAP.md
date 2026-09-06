@@ -169,6 +169,11 @@
   session today and waits on its events; what replaces the C's own call is a handoff,
   and where it sits - and what the C thread does afterwards - is the decision this holds
   open.
+- **The run leaves only the seams that are seams on purpose** PP741 counted seven public
+  interfaces in app that only test doubles implement, and five are outputs whose
+  consumer is this run: audio frames, congestion reports, feedback, session events and
+  built messages. The sixth is the host itself. So SeamReach.Expected holds one row when
+  this lands - the OpenSSL keying.
 
 ## Non-goals
 
