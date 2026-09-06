@@ -44,6 +44,8 @@ public class ManagedStreamRunTests(ITestOutputHelper output)
             return answer;
         }
 
+        public void BeginState() => Trace.Add("begin state");
+
         public bool CreateAudioReceiver() => Say("create audio", Audio);
         public bool CreateHapticsReceiver() => Say("create haptics", Haptics);
         public bool CreateVideoReceiver() => Say("create video", Video);

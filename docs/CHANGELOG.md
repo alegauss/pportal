@@ -698,6 +698,7 @@
 - ✅ **PP770** **the run collapses every rung's failure into Unknown, so a live one cannot be told from any other** — The run carries out the rung its cascade already computes, so five failures that answered one code now say which of the five, and the old one-argument shape is unchanged.
 - ✅ **PP771** **the phase lets a caller pick the port and the first one picked 9295, so a console answered nothing at all** — The phase takes an address and aims at 9296 itself, and the same handshake then completed with a real PS5 first try each way - the run now stops at CongestionControl.
 - ✅ **PP772** **the rung report stops at congestion control, and the six steps after it are where a live run now fails** — The walk climbs its own eleven-step ladder beside the teardown's six, and a live run now names the step it stops at: CongestionStarted, the wait after it.
+- ✅ **PP775** **the state wait restarts its whole timeout on every pulse, so anything pulsing faster than it never times out** — The wait honours an absolute deadline across every wake, so a 300ms timeout under a 5ms pulse now returns in 320ms where it used to return never.
 
 ## Block G — Test discipline
 

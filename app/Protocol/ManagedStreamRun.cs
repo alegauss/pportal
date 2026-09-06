@@ -27,6 +27,16 @@ public interface IStreamRunHost
     /// <summary>chiaki_congestion_control_start.</summary>
     bool StartCongestionControl();
 
+    /// <summary>
+    /// PP774: state_finished = false and state_failed = false, as every state entry does them.
+    ///
+    /// On the interface because the RUN is what enters a state, and the run has only this. It was a
+    /// member of the host alone, so the walk could not call it and did not - which
+    /// <see cref="StreamConnectionStatesSource.EveryStateStillClearsBothFlags"/> already refuses of
+    /// the C, in a check that was only ever pointed outward.
+    /// </summary>
+    void BeginState();
+
     /// <summary>stream_connection_send_big.</summary>
     bool SendBig();
 
@@ -235,6 +245,11 @@ public static class ManagedStreamRun
 
         // STATE_TAKION_CONNECT. A connect that fails goes to err_video_receiver: takion is not up,
         // so it is not closed. This is the rung the old table got wrong.
+        //
+        // PP774: THE CLEAR GOES HERE, before the action and after the state is entered - which is
+        // where the C puts it. An event raised while the connect is running must count; one raised
+        // before it must not. Clearing after the action drops the first, and clearing at the wait
+        // drops both.
         if (!host.ConnectTakion())
             return Unwind(host, StreamBuilt.VideoReceiver, ChiakiError.Unknown, unlockFirst: true);
 
@@ -263,6 +278,7 @@ public static class ManagedStreamRun
         // console is told on the paths that failed as well as the one that did not.
         rung = StreamRung.TakionConnectAwaited;
 
+        // STATE_EXPECT_BANG, cleared before the send for PP774's reason.
         if (!host.SendBig())
             return Disconnect(host, ChiakiError.Unknown);
 
@@ -284,6 +300,9 @@ public static class ManagedStreamRun
 
         // STATE_EXPECT_STREAMINFO, and ordering 2: the early buffer is replayed BEFORE the wait, and
         // the wait is skipped where the replay already finished the state.
+        // STATE_EXPECT_STREAMINFO. Cleared before the replay, which is the action here - a
+        // streaminfo buffered during the bang is replayed INTO this state, so a clear after it
+        // would throw away the very arrival the replay exists to deliver.
         StreamWaitState after = default;
         if (host.HasEarlyStreaminfo)
             after = host.ReplayEarlyStreaminfo();
@@ -321,6 +340,8 @@ public static class ManagedStreamRun
         host.SendConnected();
         host.Lock();
 
+        // STATE_IDLE, the fourth the C clears - so a flag left over from the streaminfo does not
+        // end the idle loop on its first pass.
         rung = StreamRung.Connected;
 
         // The idle loop, where a timeout is the work.

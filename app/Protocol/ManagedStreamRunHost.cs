@@ -327,10 +327,25 @@ public sealed class ManagedStreamRunHost : IStreamRunHost
         {
             // The predicate is the C's, not a re-statement of it: a wait that returned because the
             // flags moved has still said nothing until they are re-read, which is PP362's whole note.
-            bool signalled = Monitor.Wait(gate, ExpectTimeoutMs) || StreamConnectionStates.WaitEnds(flags);
+            //
+            // PP775: AGAINST A DEADLINE, and it used to be against the whole timeout each time round.
+            // Every pulse that did not satisfy the predicate started the clock over, so a thread
+            // pulsing faster than ExpectTimeoutMs held this here for as long as it pulsed - which
+            // PP746's driver does every 5ms. chiaki_cond_timedwait_pred computes an absolute
+            // deadline and honours it across every spurious wake, and this is that.
+            //
+            // PP457 IS THE SAME DEFECT ONE MODULE OVER: the punch loop re-armed its full timeout on
+            // every extra response. Twice now, which is what makes it a shape rather than a slip.
+            long deadline = Environment.TickCount64 + ExpectTimeoutMs;
 
-            while (signalled && !StreamConnectionStates.WaitEnds(flags))
-                signalled = Monitor.Wait(gate, ExpectTimeoutMs);
+            while (!StreamConnectionStates.WaitEnds(flags))
+            {
+                long left = deadline - Environment.TickCount64;
+                if (left <= 0)
+                    break;
+
+                Monitor.Wait(gate, (int)left);
+            }
 
             return (flags, !StreamConnectionStates.WaitEnds(flags));
         }

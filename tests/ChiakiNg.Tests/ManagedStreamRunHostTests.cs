@@ -362,4 +362,58 @@ public class ManagedStreamRunHostTests(ITestOutputHelper output)
         Assert.True(host.ShouldStop);
         Assert.True(host.RemoteDisconnected);
     }
+
+    /// <summary>
+    /// PP775: A WAIT NOTHING SATISFIES TIMES OUT EVEN WHILE SOMETHING PULSES IT.
+    ///
+    /// It used to be given the whole timeout again on every round, so a pulse that did not satisfy
+    /// the predicate started the clock over - and a thread pulsing faster than the timeout held the
+    /// run there for as long as it pulsed. PP746's driver pulses every 5ms, which turned a
+    /// two-second test into one that did not end.
+    ///
+    /// PP457 IS THE SAME DEFECT ONE MODULE OVER - the punch loop re-armed its full timeout on every
+    /// extra response - which is what makes this a shape rather than a slip.
+    ///
+    /// Asserted as an elapsed bound, because the failure has no output: a hang prints nothing and
+    /// is told from a slow pass only by the clock.
+    /// </summary>
+    [Fact]
+    public void APulsedWaitStillHonoursItsDeadline()
+    {
+        ManagedStreamRunHost host = Host(expectTimeoutMs: 300);
+
+        using var stopping = new ManualResetEventSlim();
+
+        var pulser = new Thread(() =>
+        {
+            // Signal with nothing set: the flags do not move, so the predicate stays false and only
+            // the wake is delivered. This is the shape a handler thread makes while a state is open.
+            while (!stopping.Wait(5))
+                host.Signal();
+        })
+        {
+            IsBackground = true,
+            Name = "pulser",
+        };
+
+        pulser.Start();
+
+        var clock = Stopwatch.StartNew();
+        (StreamWaitState flags, bool timedOut) = host.Wait(StreamState.ExpectBang);
+        clock.Stop();
+
+        stopping.Set();
+        pulser.Join(TimeSpan.FromSeconds(5));
+
+        output.WriteLine($"waited {clock.ElapsedMilliseconds}ms under a 5ms pulse");
+
+        Assert.True(timedOut);
+        Assert.False(StreamConnectionStates.WaitEnds(flags));
+
+        // The bound is what the old shape could not hold. Generous against a loaded machine and
+        // still two orders of magnitude below "never".
+        Assert.True(
+            clock.ElapsedMilliseconds < 5000,
+            $"the wait took {clock.ElapsedMilliseconds}ms against a 300ms timeout, so it is re-arming");
+    }
 }

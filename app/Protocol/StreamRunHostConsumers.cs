@@ -92,6 +92,14 @@ public static class StreamRunHostConsumers
             new(CounterpartAssembly.App, nameof(ManagedCongestionControl), nameof(ManagedCongestionControl.Start)),
             "PP714's thread, reporting every 200ms out of the stats the two receivers push."),
         new(
+            "BeginState",
+            HostAnswer.Answered,
+            new(
+                CounterpartAssembly.App,
+                nameof(StreamConnectionStatesSource),
+                nameof(StreamConnectionStatesSource.EveryStateStillClearsBothFlags)),
+            "PP774: the rule this port already held the C to, now kept by the run as well. The counterpart is that check, because what this member does is the thing it refuses a state for skipping."),
+        new(
             "SendBig",
             HostAnswer.Answered,
             new(CounterpartAssembly.App, nameof(BigMessage), nameof(BigMessage.Encode)),
