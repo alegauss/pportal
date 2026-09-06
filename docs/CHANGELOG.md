@@ -703,6 +703,7 @@
 - ✅ **PP773** **nothing turns a takion event into the host's signal, so every state the run waits on times out** — A live PS5 keyed the session and announced the stream: the bang and the streaminfo each finished their state, and audio arrived on the run's own thread.
 - ✅ **PP778** **every stream message goes out with the data type in the chunk flags and the channel left at zero** — The data type rides in the channel field and the flags are the constant one, so a console reads each message where it looks for it.
 - ✅ **PP777** **the BIG's launch spec is hidden with a zeroed rpcrypt, so the console acks it and never bangs** — The crypt, the mtu, the profile and the target come off the session, and a console answers the spec with a bang it accepts.
+- ✅ **PP776** **a seam filled by a refusal reads as reached, so the sweep cannot tell a stub from an implementation** — A seam every one of whose fillers has a constant-bodied member is reported as filled by a stand-in, which the type graph cannot say.
 
 ## Block G — Test discipline
 

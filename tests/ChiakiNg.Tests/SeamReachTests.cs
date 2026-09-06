@@ -58,6 +58,74 @@ public class SeamReachTests(ITestOutputHelper output)
         Assert.True(typeof(IAudioSink).IsAssignableFrom(typeof(ManagedAudioReceiverPair)));
     }
 
+    /// <summary>A seam filled with nothing: every member a constant, which is what PP776 is about.</summary>
+    private sealed class Refusing : IBangKeying
+    {
+        public bool DeriveSecret(ReadOnlySpan<byte> remotePubKey, ReadOnlySpan<byte> remoteSig) => false;
+
+        public bool InitCrypt() => false;
+    }
+
+    /// <summary>And one that does work, so the check has a negative side it can be believed on.</summary>
+    private sealed class Working : IBangKeying
+    {
+        public int Derived { get; private set; }
+
+        public bool DeriveSecret(ReadOnlySpan<byte> remotePubKey, ReadOnlySpan<byte> remoteSig)
+        {
+            Derived++;
+            return remotePubKey.Length > 0;
+        }
+
+        public bool InitCrypt() => Derived > 0;
+    }
+
+    /// <summary>
+    /// PP776: A REFUSAL IS NOT AN IMPLEMENTATION, and the sweep above cannot tell them apart.
+    ///
+    /// PP773 filled IBangKeying with a class whose derive returns false - the bang handler needs an
+    /// instance and the port had no ECDH of its own - and <see cref="SeamReach.Expected"/> went
+    /// empty on a stub. A refusing class and a real one are the same shape, which is exactly why the
+    /// stub compiles, so the type graph can never answer this: the bodies have to.
+    /// </summary>
+    [Fact]
+    public void AConstantBodiedFillerIsAStandIn()
+    {
+        Assert.True(SeamReach.IsStandIn(typeof(Refusing), typeof(IBangKeying)));
+        Assert.False(SeamReach.IsStandIn(typeof(Working), typeof(IBangKeying)));
+
+        // The real one, which is what took IBangKeying off the list honestly.
+        Assert.False(SeamReach.IsStandIn(typeof(SessionBangKeying), typeof(IBangKeying)));
+
+        // And a class that does not fill the seam at all is not a stand-in for it, which is a
+        // different answer from "fills it with nothing".
+        Assert.False(SeamReach.IsStandIn(typeof(Working), typeof(IAudioSink)));
+    }
+
+    /// <summary>
+    /// AND THE SWEEP AGREES WITH ITS OWN LIST, both ways.
+    ///
+    /// The same contract the unreached list is held to. A row arriving means a seam went back to
+    /// being a shape with nothing behind it; a row leaving is the commit that wrote one.
+    /// </summary>
+    [Fact]
+    public void TheStandInSeamsAreTheseAndNoOthers()
+    {
+        string[] found = [.. SeamReach.FilledOnlyByStandInsIn(App)];
+        string[] declared =
+            [.. SeamReach.ExpectedStandIns.Select(one => one.Interface).Order(StringComparer.Ordinal)];
+
+        output.WriteLine($"{found.Length} seam(s) filled only by stand-ins");
+        output.WriteLine(string.Join("\n", found));
+
+        Assert.Equal(declared, found);
+
+        // IBangKeying is the one this axis was filed about, and it is filled by something that
+        // works - so it appears on neither list, which is the state PP773 ended in.
+        Assert.DoesNotContain(nameof(IBangKeying), found);
+        Assert.DoesNotContain(nameof(IBangKeying), SeamReach.UnreachedIn(App));
+    }
+
     /// <summary>Every row says what it is waiting for, because a name with no reason is a list.</summary>
     [Fact]
     public void EveryRowGivesAReason()

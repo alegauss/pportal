@@ -23,7 +23,6 @@
 
 - ⏳ **PP27** (deps: PP672 ✅, PP673 ✅, PP674 ✅, PP675 ✅, PP676 ✅, PP677 ✅, PP678 ✅, PP679 ✅, PP680 ✅, PP702 ✅) (requires: console) **takion.c is 2007 lines of C over raw sockets and timers, and the whole stream rides on it** — Its ten tasks are the managed transport; after them, the three files leave the build. → §PP27
 - 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — chiaki_fec_decode has three callers - frameprocessor.c, the C suite and this port's shim - and gf-complete has a fourth site none of them reach: chiaki_lib_init. → §PP30
-- 💭 **PP776** (deps: PP773 ✅) **a seam filled by a refusal reads as reached, so the sweep cannot tell a stub from an implementation** — PP773 filled IBangKeying with a class that says no at the derive, and SeamReach's last row left - reporting a seam closed while the derivation it stands for is unwritten. → §PP776
 
 ## Block G — Test discipline
 

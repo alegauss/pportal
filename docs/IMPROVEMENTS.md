@@ -189,30 +189,6 @@ flag, its count loop is guarded by the return above it, peek writes both out-poi
 where pull guards its own, and takion still passes NULL and still drops on a bad MAC.
 Repair any upstream and the port's copy becomes the divergence, on the next run.
 
-### §PP776 A refusal counts as an implementation
-
-PP741 sweeps app for public interfaces with no class on the other side, and the answer
-is about SHAPE: something constructible consumes this interface. That was the right
-question while every row was a seam nobody had written a counterpart for. PP773 made it
-the wrong one.
-
-WHAT FILLED THE LAST ROW REFUSES. StreamArrivals holds a private IBangKeying whose
-DeriveSecret returns false, because BangHandler needs an instance and the port has no
-ECDH of its own - so a console's bang reaches the handler and fails there. The sweep saw
-a class, the row left, and the list is empty while the derivation that row stood for is
-unported. A reader taking that for a finished port is reading a census of shape as a
-census of behaviour.
-
-THE DISTINCTION IS NOT A NAME A SWEEP CAN SEE. A refusing stub and a real implementation
-are the same shape, which is why the stub compiles. What CAN be seen is that every
-member's body is a constant - `=> false`, `=> null`, an empty block. A class like that
-is a stand-in, and one arriving is worth a line the way a row arriving is.
-
-AND IT WOULD FIND MORE THAN ONE. ManagedStreamPhase's NoFrames is the same shape: audio
-that goes nowhere, so a receiver can be built. That one is honest and documented, which
-is the point - the sweep should say which seams are filled by a stand-in rather than
-refuse them.
-
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry

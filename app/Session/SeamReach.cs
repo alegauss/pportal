@@ -100,4 +100,100 @@ public static class SeamReach
 
         return [.. Expected.Select(one => one.Interface).Where(one => !declared.Contains(one))];
     }
+
+    /// <summary>
+    /// PP776: the longest a member's body may be and still be doing nothing.
+    ///
+    /// Two bytes of IL. <c>=&gt; false</c> is <c>ldc.i4.0; ret</c>, <c>=&gt; null</c> is
+    /// <c>ldnull; ret</c>, and an empty body is <c>ret</c> alone. Anything that reads a field,
+    /// calls something or branches is longer - a delegating property getter is already seven.
+    ///
+    /// A THRESHOLD AND NOT A HEURISTIC, which is why it is this tight. A wider bound would start
+    /// calling real one-line delegations stand-ins, and the point of this axis is to be believed.
+    /// </summary>
+    public const int ConstantBodyIlBytes = 2;
+
+    /// <summary>
+    /// Whether a class fills an interface with nothing: every member a constant or an empty body.
+    ///
+    /// ALL of them, because a real implementation is allowed a trivial member. PP684's outbound seam
+    /// answers <c>SendIdrRequest</c> with a constant in a test double and with a send in the real
+    /// one, and what tells them apart is the other three members.
+    /// </summary>
+    public static bool IsStandIn(Type candidate, Type seam)
+    {
+        ArgumentNullException.ThrowIfNull(candidate);
+        ArgumentNullException.ThrowIfNull(seam);
+
+        if (!candidate.IsClass || candidate.IsAbstract || !seam.IsAssignableFrom(candidate))
+            return false;
+
+        InterfaceMapping map = candidate.GetInterfaceMap(seam);
+        if (map.TargetMethods.Length == 0)
+            return false;
+
+        return Array.TrueForAll(map.TargetMethods, one => IsConstantBodied(one));
+    }
+
+    /// <summary>Whether one method's IL is short enough to be a constant or nothing at all.</summary>
+    public static bool IsConstantBodied(MethodInfo method)
+    {
+        ArgumentNullException.ThrowIfNull(method);
+
+        // An abstract or extern method has no body to read, and neither is a stand-in: what fills a
+        // seam with nothing is a body that does nothing, not the absence of one.
+        byte[]? il = method.GetMethodBody()?.GetILAsByteArray();
+
+        return il is not null && il.Length <= ConstantBodyIlBytes;
+    }
+
+    /// <summary>
+    /// PP776: the seams whose every implementation in this assembly does nothing.
+    ///
+    /// <see cref="UnreachedIn"/> asks whether a class exists on the other side and PP773 showed what
+    /// that misses: it filled IBangKeying with a refusal - a class whose derive returns false,
+    /// because the bang handler needs an instance and the port had no ECDH of its own - and the
+    /// unreached list went empty on a stub. A refusing class and a real one are the same SHAPE,
+    /// which is exactly why the stub compiles.
+    ///
+    /// So this asks the other question, and the answer is in the bodies rather than in the types.
+    /// A seam every one of whose implementations is constant-bodied is a seam nothing has been
+    /// written for yet, whatever the type graph says.
+    ///
+    /// IT IS NOT A DEMAND FOR ZERO. A stand-in can be the honest answer - audio that goes nowhere,
+    /// while the picture has a decoder to reach and the sound has none - so this reports and
+    /// <see cref="ExpectedStandIns"/> declares, the same way the list above does.
+    /// </summary>
+    public static IReadOnlyList<string> FilledOnlyByStandInsIn(Assembly app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+
+        Type[] classes = [.. app.GetTypes().Where(one => one.IsClass && !one.IsAbstract)];
+
+        return
+        [
+            .. app.GetTypes()
+                .Where(one => one.IsInterface && one.IsPublic)
+                .Where(one =>
+                {
+                    Type[] filling = [.. classes.Where(other => one.IsAssignableFrom(other))];
+
+                    return filling.Length > 0 && Array.TrueForAll(filling, other => IsStandIn(other, one));
+                })
+                .Select(one => one.Name)
+                .Order(StringComparer.Ordinal),
+        ];
+    }
+
+    /// <summary>
+    /// The seams whose only implementations are stand-ins, and why each is one.
+    ///
+    /// NONE. PP773 left IBangKeying with both - <see cref="SessionBangKeying"/> derives against the
+    /// session's own pair, and StreamArrivals keeps a refusal for a caller that supplies no keying -
+    /// so the interface is filled by something that works and this list does not name it.
+    ///
+    /// Kept empty rather than absent, for the reason <see cref="Expected"/> is: a row arriving is a
+    /// seam that went back to being a shape, and nothing would report that but this.
+    /// </summary>
+    public static IReadOnlyList<UnreachedSeam> ExpectedStandIns { get; } = [];
 }
