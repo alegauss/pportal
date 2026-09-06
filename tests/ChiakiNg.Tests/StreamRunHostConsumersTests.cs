@@ -226,13 +226,15 @@ public class StreamRunHostConsumersTests(ITestOutputHelper output)
             one => Assert.False(string.IsNullOrWhiteSpace(one.Why)));
 
     /// <summary>
-    /// The host still has no implementation outside this project, which is what PP707 is about.
+    /// PP745: the host is implemented in app now, which is the commit this check was waiting for.
     ///
-    /// The finding as a check. If somebody writes one in app/, this goes red - and that is the
-    /// commit where PP707's first criterion starts being answerable rather than a plan.
+    /// It read the other way round until this one - "still implemented only by tests" - and said so:
+    /// the day somebody writes one in app, it goes red, "and that is the commit where PP707's first
+    /// criterion starts being answerable rather than a plan". Turned over rather than deleted,
+    /// because the direction that matters now is losing the implementation again.
     /// </summary>
     [Fact]
-    public void TheHostIsStillImplementedOnlyByTests()
+    public void TheHostIsImplementedInApp()
     {
         Type[] inApp =
         [
@@ -241,9 +243,9 @@ public class StreamRunHostConsumersTests(ITestOutputHelper output)
 
         output.WriteLine(inApp.Length == 0 ? "none in app/" : string.Join(", ", inApp.Select(one => one.Name)));
 
-        Assert.Empty(inApp);
+        Assert.Contains(inApp, one => one.Name == nameof(ManagedStreamRunHost));
 
-        // And this project has at least one, or the run above is asserted by nobody.
+        // And this project still has one too, or the sequence tests are asserted against nothing.
         Assert.Contains(
             typeof(StreamRunHostConsumersTests).Assembly.GetTypes(),
             one => typeof(IStreamRunHost).IsAssignableFrom(one) && one.IsClass);

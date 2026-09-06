@@ -39,8 +39,10 @@ public static class SeamReach
     /// <summary>
     /// The seams nothing in app fills, and what each is waiting for.
     ///
-    /// Seven, and the honest split is that five are outputs whose consumer is the run that does not
-    /// exist yet, and two are seams on purpose.
+    /// Six: five outputs whose consumer is the run, and the OpenSSL keying which is a seam on
+    /// purpose. PP745 took IStreamRunHost off this list by writing the host, and added no row doing
+    /// it - its own stage seam ships with the class that fills it, which is what PP741 counted the
+    /// cost of when PP740 closed one seam and opened another in the same commit.
     /// </summary>
     public static IReadOnlyList<UnreachedSeam> Expected { get; } =
     [
@@ -62,9 +64,6 @@ public static class SeamReach
         new(
             "IStreamMessageSink",
             "Where a built message goes, so a builder needs no socket. The run is what would hold one."),
-        new(
-            "IStreamRunHost",
-            "Deliberate for now: the run's host is a shape until something drives a live stream."),
     ];
 
     /// <summary>Every public interface the assembly declares.</summary>

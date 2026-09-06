@@ -158,11 +158,16 @@ public static class FramePathConsumers
     /// something that DOES.
     ///
     /// NOT A FAILURE, A VERDICT. A seam with no implementation is honest while somebody's open work
-    /// is to fill it - which for this one is PP707's first criterion. What must not happen is the
+    /// is to fill it - which for this one was PP707's first criterion. What must not happen is the
     /// census staying quiet about which rows they are, so this list is asserted in both directions:
     /// a row arriving here is news, and a row leaving it is the day the seam got filled.
+    ///
+    /// PP745 WAS THAT DAY. ManagedStreamRunHost implements IStreamRunHost in app, so the row this
+    /// list was written for left it. Kept rather than deleted with its last entry, for the reason
+    /// the paragraph above gives: what would report a counterpart going back to being a shape is
+    /// this list, and its absence would report nothing at all.
     /// </summary>
-    public static IReadOnlyList<string> SeamOnly { get; } = ["chiaki_stream_connection_stop"];
+    public static IReadOnlyList<string> SeamOnly { get; } = [];
 
     /// <summary>The four files the criterion is about, which no consumer below may be one of.</summary>
     public static IReadOnlyList<string> Leaving { get; } =

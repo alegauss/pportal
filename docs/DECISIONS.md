@@ -81,6 +81,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP722** **seven events outside the frame path have no managed raiser, and one enum member is raised by nothing at all** — The raiser sweep starts at the member access and not at a local's name: PP719's prefix read two of session.c's four raisers, and the two it walked past are the pair this census owes.
 - ✅ **PP744** **the pad-info order is read by a copy of the raiser sweep, still anchored on the local name PP722 widened** — A drift check may quote a C local's name, but a sweep that enumerates may not: the quotation goes red on a rename and the sweep goes quiet, which is the failure worth designing against.
 - ✅ **PP724** **nothing notices when an unported wait gains a managed counterpart, which happened once already and was caught by hand** — A row's group is checked by whether managed code reads that macro's define, because naming it proves nothing where two files carry an EXPECT_TIMEOUT_MS.
+- ✅ **PP745** **the run's host has twenty-five counterparts and no implementation outside the test project** — A host takes its collaborators in and its receivers as factories, so a null return is the C's allocation failure and the socket stays the next task's decision.
 
 ## Block G — Test discipline
 
