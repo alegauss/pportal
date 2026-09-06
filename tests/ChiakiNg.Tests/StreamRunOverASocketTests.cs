@@ -381,15 +381,31 @@ public class StreamRunOverASocketTests(ITestOutputHelper output) : IDisposable
 
             // The console's side of the socket, which the responder has finished with. A datagram
             // sent here has to reach the callback with nobody in this test reading the socket.
+            //
+            // Sent repeatedly rather than once, for the reason the C's own handshake retries: a
+            // single loopback datagram is a single point of failure, and this test is about a thread
+            // reading the socket rather than about one packet surviving. Asserting on one send made
+            // it fail under a loaded gate and pass on its own, which is the worst of both.
             byte[] one = [0x00, 0x11, 0x22, 0x33, 0x44];
-            peer.Send(one, one.Length, client ?? throw new InvalidOperationException("the handshake left no address"));
+            IPEndPoint to = client ?? throw new InvalidOperationException("the handshake left no address");
 
-            SpinWait.SpinUntil(() => takion.Dispatched > 0, TimeSpan.FromSeconds(5));
+            long deadline = Environment.TickCount64 + 10000;
+            while (takion.Dispatched == 0 && Environment.TickCount64 < deadline)
+            {
+                peer.Send(one, one.Length, to);
+                Thread.Sleep(20);
+            }
 
-            output.WriteLine($"dispatched {takion.Dispatched}, lengths {string.Join(", ", seen)}");
+            int dispatched = takion.Dispatched;
+            int[] lengths;
 
-            Assert.True(takion.Dispatched > 0, "nothing was dispatched, so nothing is receiving");
-            Assert.Contains(one.Length, seen);
+            lock (seen)
+                lengths = [.. seen];
+
+            output.WriteLine($"dispatched {dispatched}, lengths {string.Join(", ", lengths)}");
+
+            Assert.True(dispatched > 0, "nothing was dispatched, so nothing is receiving");
+            Assert.Contains(one.Length, lengths);
         }
         finally
         {

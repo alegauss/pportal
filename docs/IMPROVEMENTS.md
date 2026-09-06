@@ -263,6 +263,31 @@ THE NONCE IS THE PIECE THAT NEEDS A READER. The other three are already reachabl
 nearly so; the session's rpcrypt is not, and PP766's four readers are the shape that
 answer takes.
 
+### §PP778 The data type is the channel, not the flags
+
+Two live trials read the same thing: the console acknowledges the managed BIG - twice -
+and answers nothing. PP777 corrected the four values the spec is built from and the
+reading did not move, which is what says the fault is under the message rather than in
+it.
+
+takion.c writes a data message's nine-byte header as sequence at +0, CHANNEL at +4, two
+reserved bytes at +6 and a type byte at +8 that the send hardcodes to zero. The chunk
+flags go in the message header above it. So `chiaki_takion_send_message_data(takion,
+chunk_flags, channel, ...)` takes the flags first and the channel second - and
+`stream_connection_send_data` calls it as `(takion, 1, data_type, ...)`. The flags are
+always one. THE DATA TYPE IS THE CHANNEL.
+
+TakionMessageSink has the two exchanged. It holds a `channel` of zero for every message
+and passes `message.DataType` as the chunk flags, so a heartbeat that should be flags 1
+on channel 1 goes out as flags 1 on channel 0 - and the streaminfo ack, which the C
+sends on channel 9, goes out as flags 9 on channel 0. The C's receiver warns when type_b
+is not one and pushes anyway, which is why nothing refuses: the transport is fine, and
+every message arrives somewhere nobody reads.
+
+AND THE BIG SPELLS ZERO. ManagedStreamPhase builds it with DataType 0, where the C sends
+the BIG on channel 1. A third wrong field, on the one message a stream cannot start
+without.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry
