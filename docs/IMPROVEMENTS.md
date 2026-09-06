@@ -234,6 +234,35 @@ that goes nowhere, so a receiver can be built. That one is honest and documented
 is the point - the sweep should say which seams are filled by a stand-in rather than
 refuse them.
 
+### §PP777 A BIG the console acknowledges and will not answer
+
+PP773 gave the run a receive thread and a wire from an arrival to a flag, and the first
+live trial past it read this: two datagrams, both DataAck, no bang. The console received
+the BIG - it acknowledged it twice - and had nothing to say back.
+
+WHICH MEANS THE MESSAGE IS WRONG AND NOT THE PLUMBING. PP726 formats the spec and PP727
+hides it, both against the C's own oracle; what is wrong is the material the composition
+root hands them. stream_connection_send_big reads four things this root invents:
+
+the crypt is `&session->rpcrypt`, established by ctrl's handshake from the nonce and the
+morning. ManagedStreamPhase.Big builds `new RpCrypt(Ps5_1, new byte[16], new byte[16])`
+- sixteen zero bytes each way. A spec hidden under the wrong key stream is well-formed
+base64 the console cannot read;
+
+the mtu is `session->mtu_in`, and the root passes MtuOut. Senkusha measures the two
+separately and they need not agree;
+
+the width, height, fps, codec and bitrate come from
+`session->connect_info.video_profile`, and the root spells 1280x720, 60 and 10000 -
+right for the preset this tree happens to ask for and wrong the moment a caller asks for
+another;
+
+the target is `session->target`, and the root spells Ps5_1.
+
+THE NONCE IS THE PIECE THAT NEEDS A READER. The other three are already reachable or
+nearly so; the session's rpcrypt is not, and PP766's four readers are the shape that
+answer takes.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry
