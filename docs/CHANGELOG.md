@@ -681,6 +681,8 @@
 - ✅ **PP760** **test/main.c names the four suites unguarded, so removing their files breaks the link** — The four suites sit behind a switch the test target defines, read in both directions; the suite still runs 149 cases, which is the no-op it should be.
 - ✅ **PP761** **two readers hold lib's build list and session.c's reason line, which the deletion rewrites** — Both read the shape first, and a second trial of the whole deletion leaves only the two new exports the port has yet to import.
 - ✅ **PP696** **the frame path's deletion has no commit that edits the C, so four files stay while their ports exist** — session.c hands the run to a callback, the shim's fourteen and the suite's four are behind their defines, and the four library files have left the build.
+- ✅ **PP671** **Fec.Recovers with no decoder named runs the C, so after the flip a default becomes a loader failure** — Fec.Recovers defaults to the managed decoder, so the sixty-four recorded cases assert on the build this tree ships and the guarded differentials fall from six to five.
+  checked **The recorded cases judge the managed decoder on a bare build** Fec.Recovers defaults to the managed decoder, so the sixty-four recorded erasure cases assert on every build instead of declining without the C. The differential in FecCodecTests stays the one place the C is named, and OracleGuardCensus counts two fewer guarded theories.
 
 ## Block G — Test discipline
 

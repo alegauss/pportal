@@ -3622,15 +3622,10 @@ public static class SelfTest
                     FecVectors.StrideFor(1400) == 1408 && FecVectors.StrideFor(1408) == 1408
                     && FecVectors.StrideFor(1) == 16);
 
-                // PP696: the decode itself needs the shim's fec wrapper, which a bare build does
-                // not export - the parsing above is this side's and holds either way. FecCodecTests
-                // is what carries the sixty-four cases now, against the managed decoder.
-                if (ShimFramePathShape.OfTheBuild() != ShimShape.Wrapping)
-                {
-                    Console.WriteLine("  --    the recorded cases are not decoded here (no fec wrapper in this shim)");
-                }
-                else
-                {
+                // PP671: decoded by the MANAGED decoder, which is why this runs at all. PP696 took
+                // fec.c out of the build, and Fec.Recovers defaulted to the C - so for one commit
+                // this section was skipped on the shim this tree produces. The default follows the
+                // decoder that stays, and the sixty-four cases judge the port on every build.
                 int recovered = fecCases.Count(c => Fec.Recovers(c));
                 Check("every recorded erasure is recovered byte for byte",
                     recovered == fecCases.Count, $"{recovered} of {fecCases.Count}");
@@ -3644,7 +3639,6 @@ public static class SelfTest
                 Check("told the wrong unit was lost, the frame does not come back",
                     !Fec.Recovers(probe, [lied]),
                     $"blanked {probe.Erasures[0]}, declared {lied}");
-                }
             }
 
             Console.WriteLine();

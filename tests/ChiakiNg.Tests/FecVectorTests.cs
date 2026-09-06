@@ -74,10 +74,9 @@ public class FecVectorTests
     [MemberData(nameof(CaseIndices))]
     public void TheRecordedErasureIsRecovered(int index)
     {
-        // PP670: Recovers with no decoder named is the C's, so this is a differential and asks.
-        if (ShimFramePathShape.WrappingHeader() is null)
-            return;
-
+        // PP671: Recovers with no decoder named is the MANAGED one now, so this asserts on every
+        // build. It asked the shape until PP696 took fec.c out - and a theory that declines is a
+        // pass that measured nothing, which is the cost these sixty-four cases are too good for.
         FecCase c = Cases[index];
         Assert.True(Fec.Recovers(c),
             $"k={c.K} m={c.M} unit={c.UnitSize} lost=[{string.Join(",", c.Erasures)}]");
@@ -92,10 +91,6 @@ public class FecVectorTests
     [MemberData(nameof(CaseIndices))]
     public void TheWrongDeclaredErasureDoesNotRecover(int index)
     {
-        // PP670: the C's decoder again.
-        if (ShimFramePathShape.WrappingHeader() is null)
-            return;
-
         FecCase c = Cases[index];
         uint lied = (c.Erasures[0] + 1) % c.K;
 

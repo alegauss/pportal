@@ -24,7 +24,6 @@
 - ⏳ **PP27** (deps: PP672 ✅, PP673 ✅, PP674 ✅, PP675 ✅, PP676 ✅, PP677 ✅, PP678 ✅, PP679 ✅, PP680 ✅, PP702 ✅) (requires: console) **takion.c is 2007 lines of C over raw sockets and timers, and the whole stream rides on it** — Its ten tasks are the managed transport; after them, the three files leave the build. → §PP27
 - 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — chiaki_fec_decode has three callers - frameprocessor.c, the C suite and this port's shim - and gf-complete has a fourth site none of them reach: chiaki_lib_init. → §PP30
 - 🛠 **PP295** (deps: PP297 ✅, PP696 ✅, PP697) **streamconnection.c is 1540 lines and calls the video receiver, so every deletion below waits on it** — Three criteria are met; the fourth is the four files leaving, which waits on the one commit that edits the C and on the shim, whose wrappers outlive it. → §PP295
-- ⏳ **PP671** (deps: PP696 ✅) **Fec.Recovers with no decoder named runs the C, so after the flip a default becomes a loader failure** — The managed decoder is the one that stays; the default should follow it on the flip, so the sixty-four recorded cases judge the port alone. → §PP671
 - 📋 **PP697** (deps: PP696 ✅) **after the frame-path flip the models describe a C that has gone, in the present tense** — PP634 found this on the holepunch side: the predicates stay because they notice the calls coming back, and what goes stale is the prose around them. → §PP697
 - 📋 **PP742** (deps: —) (requires: console) **the port holds 3681 real AV heads and its own parser can read none of them, two bytes short of the cheapest layout** — PP608 kept eighteen bytes for timing and AvPacketParse needs twenty, so its differential with the shim has only ever run on synthetic heads. → §PP742
 - 📋 **PP757** (deps: —) **the port's resting feedback state is ten zeroes and the C's is not, so a still pad reports free fall** — FeedbackSnapshot.Idle takes default(FeedbackMotion), but chiaki_controller_state_set_idle sets accel_y and orient_w to 1, which is where all three of the sender's states start. → §PP757
@@ -130,13 +129,6 @@
   the frame path: each predicate is a shape the C could return in, so none is deleted.
   What changes is prose asserting the tree still has what the flip removed, turned to
   say what it was rather than what it is, the way PP591 and PP652 turned theirs.
-
-## Done when — PP671
-
-- **The recorded cases judge the managed decoder on a bare build** Fec.Recovers defaults
-  to the managed decoder, so the sixty-four recorded erasure cases assert on every build
-  instead of declining without the C. The differential in FecCodecTests stays the one
-  place the C is named, and OracleGuardCensus counts two fewer guarded theories.
 
 ## Non-goals
 

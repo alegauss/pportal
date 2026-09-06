@@ -98,7 +98,15 @@ public static class OracleGuardCensus
         new(@"tests\ChiakiNg.Tests\HolepunchSessionOwnershipTests.cs", HolepunchGuard),
         new(@"tests\ChiakiNg.Tests\FecCodecTests.cs", FramePathGuard),
         new(@"tests\ChiakiNg.Tests\FecMatrixTests.cs", FramePathGuard),
-        new(@"tests\ChiakiNg.Tests\FecVectorTests.cs", FramePathGuard),
+
+        // PP671: FecVectorTests stood here and does not, and this is the list getting SHORTER for
+        // the reason it should. Its two theories are the sixty-four recorded erasure cases, and
+        // they asked the shape only because Fec.Recovers defaulted to the C. PP696 took fec.c out
+        // of the build, the default now names the decoder that stays, and the strongest evidence
+        // this port has asserts on every build instead of declining on the one it ships as.
+        //
+        // The differential did not go with it: FecCodecTests still runs the two decoders against
+        // each other, and is guarded, because that one genuinely needs the C.
         new(@"tests\ChiakiNg.Tests\FrameAssemblerTests.cs", FramePathGuard),
         new(@"tests\ChiakiNg.Tests\ManagedVideoReceiverTests.cs", FramePathGuard),
         new(@"tests\ChiakiNg.Tests\AllocBudgetTests.cs", FramePathGuard),

@@ -27,8 +27,21 @@ public static class Fec
     /// the only way to ask whether the decode did any work: a case where the two agree cannot
     /// distinguish a real repair from a decoder that returned the buffer untouched.
     /// </param>
+    /// <remarks>
+    /// PP671: THE DEFAULT IS THE MANAGED DECODER, and was the C's until PP696 landed.
+    ///
+    /// PP287 made the C the default because that was the thing being agreed with, and it was the
+    /// right default for as long as the port was the one on trial. PP696 took fec.c out of the
+    /// build, so on the shim this tree now produces that default is not a comparison - it is an
+    /// entry point that does not exist, and the sixty-four recorded cases would decline rather than
+    /// assert. A declined check is a pass that measured nothing.
+    ///
+    /// So the strongest evidence the port has now judges the port on every build, and
+    /// FecCodecTests is the one place left that names the C - which is what a differential should
+    /// be once only one of the two implementations ships.
+    /// </remarks>
     public static bool Recovers(FecCase recorded, uint[]? declaredErasures = null)
-        => Recovers(recorded, managed: false, declaredErasures);
+        => Recovers(recorded, managed: true, declaredErasures);
 
     /// <summary>
     /// PP287: the same case, through either implementation.

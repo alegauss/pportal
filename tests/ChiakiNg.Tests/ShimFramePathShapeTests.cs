@@ -115,7 +115,11 @@ public class ShimFramePathShapeTests(ITestOutputHelper output)
             .ToList();
         output.WriteLine(string.Join(", ", framePath.Select(c => $"{Path.GetFileName(c.File.Where)}={c.Guards}")));
 
-        Assert.Equal(6, framePath.Count);
+        // PP671: FIVE, and it was six. FecVectorTests left the census when Fec.Recovers stopped
+        // defaulting to the C - its sixty-four recorded cases now judge the managed decoder on every
+        // build rather than declining on a bare one. A number that FALLS here is the point of
+        // counting it: PP663 measured what a guard costs, and this is one being paid back.
+        Assert.Equal(5, framePath.Count);
         Assert.All(framePath, c => Assert.True(c.Guards >= 1, $"{c.File.Where} has no frame-path guard"));
     }
 }
