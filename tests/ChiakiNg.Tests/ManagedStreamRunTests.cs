@@ -279,5 +279,60 @@ public class ManagedStreamRunTests(ITestOutputHelper output)
             Assert.Contains(target, gotos);
             Assert.Equal(StreamTeardown.LabelOf(target), StreamTeardown.EntryAfter(built));
         }
+    
+}
+
+    /// <summary>
+    /// PP770: THE RUN SAYS HOW FAR IT GOT, which the error alone never did.
+    ///
+    /// Every rung's failure leaves by the same cascade with the same code, so a run that failed at
+    /// the connect and one that failed at the BIG were the same sentence. Found the expensive way: a
+    /// live handover reached the run, answered Unknown, and locating that one word would have cost
+    /// another rebuild and another console.
+    ///
+    /// NOT A NEW CODE PER STEP - the codes are the C's. What this carries out is the value each exit
+    /// already hands the teardown, carried out instead of only down.
+    /// </summary>
+    [Theory]
+    [InlineData("audio", StreamBuilt.Nothing)]
+    [InlineData("haptics", StreamBuilt.AudioReceiver)]
+    [InlineData("video", StreamBuilt.HapticsReceiver)]
+    [InlineData("takion", StreamBuilt.VideoReceiver)]
+    [InlineData("congestion", StreamBuilt.Takion)]
+    public void TheRunSaysWhichRungItStoppedAt(string fails, StreamBuilt expected)
+    {
+        var host = new Scripted();
+        switch (fails)
+        {
+            case "audio": host.Audio = false; break;
+            case "haptics": host.Haptics = false; break;
+            case "video": host.Video = false; break;
+            case "takion": host.Takion = false; break;
+            default: host.Congestion = false; break;
+        }
+
+        ChiakiError error = ManagedStreamRun.Run(host, out StreamBuilt reached);
+
+        output.WriteLine($"{fails} failed: reached {reached}, error {error}");
+
+        // Reported as the rung BEFORE the one that failed, which is what "how far it got" means and
+        // is the same value the cascade frees against.
+        Assert.Equal(expected, reached);
+
+        // And the code is the same for all five, which is exactly why it was never enough.
+        Assert.Equal(ChiakiError.Unknown, error);
+    }
+
+    /// <summary>
+    /// And the one-argument overload answers what it always did.
+    ///
+    /// Every caller outside this task passes a host and reads a code; making them all pass an
+    /// argument they do not want would be this task charging for itself.
+    /// </summary>
+    [Fact]
+    public void TheOldShapeStillAnswersTheCode()
+    {
+        var host = new Scripted { Takion = false };
+        Assert.Equal(ChiakiError.Unknown, ManagedStreamRun.Run(host));
     }
 }

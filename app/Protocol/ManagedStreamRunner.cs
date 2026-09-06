@@ -6,7 +6,13 @@ namespace ChiakiNg.Protocol;
 /// <param name="Started">Whether the session thread reached the stream phase at all.</param>
 /// <param name="Error">What the run answered, or Timeout where the start never came.</param>
 /// <param name="Reason">The remote disconnect reason, or null where there was none.</param>
-public readonly record struct StreamRunnerOutcome(bool Started, ChiakiError Error, string? Reason);
+/// <param name="Reached">
+/// PP770: how far the run got, which the error alone does not say. Every rung's failure carries the
+/// same code, so a connect that failed and a BIG that failed were one sentence - and telling them
+/// apart cost a rebuild and a console.
+/// </param>
+public readonly record struct StreamRunnerOutcome(
+    bool Started, ChiakiError Error, string? Reason, StreamBuilt Reached = StreamBuilt.Nothing);
 
 /// <summary>
 /// PP754, under PP696: the managed side of PP753's seam - wait, build, run, report.
@@ -80,7 +86,7 @@ public sealed class ManagedStreamRunner
         // than in the builder because only the seam knows it, and only after the start.
         Host.AdoptSocket(handover.Socket);
 
-        ChiakiError error = ManagedStreamRun.Run(Host);
+        ChiakiError error = ManagedStreamRun.Run(Host, out StreamBuilt reached);
 
         // PP755: read off the host rather than handed in. The disconnect handler writes it there,
         // which is where the C keeps it, so a caller cannot report a reason the run never had.
@@ -90,6 +96,6 @@ public sealed class ManagedStreamRunner
         // answered its caller first would leave that thread waiting on a run already over.
         handover.Finish(error, reason);
 
-        return new StreamRunnerOutcome(true, error, reason);
+        return new StreamRunnerOutcome(true, error, reason, reached);
     }
 }

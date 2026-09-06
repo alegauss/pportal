@@ -140,7 +140,12 @@ public class DrivenTablesTests(ITestOutputHelper output)
 
         // The consumer, named rather than described: a trace of one clean run, which the orderings
         // are read out of. If this type stops existing the table has lost its driver.
-        Assert.NotNull(typeof(ManagedStreamRun).GetMethod(nameof(ManagedStreamRun.Run)));
+        // PP770: by its parameters, because there are two Runs now - the one every caller uses and
+        // the one that also says which rung it reached. A bare name is ambiguous, and the exception
+        // that raises is not the finding this check is for.
+        Assert.NotNull(
+            typeof(ManagedStreamRun).GetMethod(
+                nameof(ManagedStreamRun.Run), [typeof(IStreamRunHost)]));
         Assert.NotNull(typeof(IStreamRunHost));
     }
 

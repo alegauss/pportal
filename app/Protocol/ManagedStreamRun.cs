@@ -126,9 +126,27 @@ public static class ManagedStreamRun
     /// <summary>
     /// The run. Returns what the C returns from the same exit.
     /// </summary>
-    public static ChiakiError Run(IStreamRunHost host)
+    public static ChiakiError Run(IStreamRunHost host) => Run(host, out _);
+
+    /// <summary>
+    /// PP770: the same run, saying how far it got.
+    ///
+    /// Every rung's failure leaves by the same cascade with the same code, so a run that failed at
+    /// the connect and one that failed at the BIG were the same sentence - and locating either cost
+    /// a rebuild, a console and a trial. The C logs what each step was before it goes; the port
+    /// reproduced the ordering and the teardown faithfully and dropped the half that says which.
+    ///
+    /// NOT A NEW CODE PER STEP. The codes are the C's and inventing more would be a departure. What
+    /// this adds is the rung the walk reached, which the cascade already computes for its own use -
+    /// <see cref="StreamBuilt"/> is what each exit hands the teardown, and this is the same value
+    /// carried out instead of only down.
+    /// </summary>
+    /// <param name="reached">What had been built when it returned, which is where it stopped.</param>
+    public static ChiakiError Run(IStreamRunHost host, out StreamBuilt reached)
     {
         ArgumentNullException.ThrowIfNull(host);
+
+        reached = StreamBuilt.Nothing;
 
         host.Lock();
 
@@ -141,19 +159,29 @@ public static class ManagedStreamRun
             return ChiakiError.Unknown;
         }
 
+        reached = StreamBuilt.AudioReceiver;
+
         if (!host.CreateHapticsReceiver())
             return Unwind(host, StreamBuilt.AudioReceiver, ChiakiError.Unknown, unlockFirst: true);
 
+        reached = StreamBuilt.HapticsReceiver;
+
         if (!host.CreateVideoReceiver())
             return Unwind(host, StreamBuilt.HapticsReceiver, ChiakiError.Unknown, unlockFirst: true);
+
+        reached = StreamBuilt.VideoReceiver;
 
         // STATE_TAKION_CONNECT. A connect that fails goes to err_video_receiver: takion is not up,
         // so it is not closed. This is the rung the old table got wrong.
         if (!host.ConnectTakion())
             return Unwind(host, StreamBuilt.VideoReceiver, ChiakiError.Unknown, unlockFirst: true);
 
+        reached = StreamBuilt.Takion;
+
         if (!host.StartCongestionControl())
             return Unwind(host, StreamBuilt.Takion, ChiakiError.Unknown, unlockFirst: false);
+
+        reached = StreamBuilt.CongestionControl;
 
         (StreamWaitState flags, bool timedOut) = host.Wait(StreamState.TakionConnect);
         switch (StreamConnectionStates.Next(flags, timedOut))
