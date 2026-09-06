@@ -1,0 +1,211 @@
+using System.Net;
+using ChiakiNg.Native;
+using ChiakiNg.Protocol;
+
+namespace ChiakiNg.Session;
+
+/// <summary>
+/// PP762: the composition root the handover was waiting for.
+///
+/// PP696 replaced the C's stream run with a callback and nothing installed one, so a live session
+/// reached the stream phase and stopped. Every piece existed - PP753's handover, PP754's runner,
+/// PP745's host - and no file put them together. PP763 put the C's run back; this is what has to
+/// exist before it can come out again.
+///
+/// PP765 MEASURED WHAT ONE COSTS: eleven parts, ten composing from work that shipped and one - the
+/// BIG - reaching into the session. PP766 made that reach possible with four readers over fields the
+/// C holds.
+///
+/// THE BIG IS BUILT LATE, AND THE FACTORY IS WHY. The host takes it as a Func rather than a message
+/// because none of its material exists when this object is made: the session id arrives with ctrl's
+/// handshake, the numbers with senkusha, and the ecdh pair is created on the line before the run and
+/// freed on the line after. So the factory is evaluated inside the run, when the session has all
+/// four - and a root that built the message eagerly would send a console four empty fields.
+///
+/// INSTALLED BEFORE THE SESSION STARTS. The C reaches the stream phase on its own thread and does
+/// not ask twice; a handover installed after the start races that thread for the one moment it
+/// looks.
+/// </summary>
+public sealed class ManagedStreamPhase : IDisposable
+{
+    private readonly StreamHandover handover = new();
+    private readonly ManagedStreamRunner runner;
+    private readonly ChiakiSession session;
+
+    private Thread? thread;
+
+    /// <param name="session">The C session, whose stream phase this takes. Not owned.</param>
+    /// <param name="peer">The console's endpoint, which discovery already answered with.</param>
+    /// <param name="video">Where a decoded frame goes, which is the caller's decoder.</param>
+    /// <param name="baseline">The record the four stage timings are pushed into.</param>
+    /// <param name="lossMax">The packet loss maximum, which rides on the connect info.</param>
+    public ManagedStreamPhase(
+        ChiakiSession session,
+        IPEndPoint peer,
+        VideoSampleHandler video,
+        SessionBaseline baseline,
+        double lossMax = 0.05)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        ArgumentNullException.ThrowIfNull(peer);
+        ArgumentNullException.ThrowIfNull(video);
+        ArgumentNullException.ThrowIfNull(baseline);
+
+        this.session = session;
+
+        runner = new ManagedStreamRunner(() => Build(session, peer, video, baseline, lossMax));
+    }
+
+    /// <summary>What the run answered, or null while it has not finished.</summary>
+    public StreamRunnerOutcome? Outcome { get; private set; }
+
+    /// <summary>Whether the session's stop has reached the handover.</summary>
+    public bool Stopped => handover.Stopped;
+
+    /// <summary>
+    /// Install this as the session's stream phase and start waiting for it.
+    ///
+    /// Before <see cref="ChiakiSession.Start"/>, and the runner's thread goes up first: the C
+    /// signals the handover and then blocks on it, so a runner that had not reached its wait would
+    /// make the session thread wait out a slice for nothing.
+    /// </summary>
+    public void InstallOn()
+    {
+        if (thread is not null)
+            throw new InvalidOperationException("this phase is already installed.");
+
+        thread = new Thread(() => Outcome = runner.Run(handover))
+        {
+            IsBackground = true,
+            Name = "managed stream run",
+        };
+
+        thread.Start();
+        handover.InstallOn(session);
+    }
+
+    /// <summary>Waits for the run to finish, which the session thread has already been told about.</summary>
+    public bool Join(TimeSpan timeout) => thread is null || thread.Join(timeout);
+
+    /// <summary>
+    /// The eleven parts, in the constructor's own order.
+    ///
+    /// Built inside the runner rather than in this object's own constructor, for the reason PP754
+    /// gives: a start that never comes should build no host, because constructing one takes a
+    /// socket.
+    /// </summary>
+    private static ManagedStreamRunHost Build(
+        ChiakiSession session,
+        IPEndPoint peer,
+        VideoSampleHandler video,
+        SessionBaseline baseline,
+        double lossMax)
+    {
+        var takion = new ManagedTakion(Tag());
+        var messages = new TakionMessageSink(takion);
+        var outbound = new StreamOutbound(messages);
+
+        return new ManagedStreamRunHost(
+            takion,
+            peer,
+            new ManagedCongestionControl(new ManagedPacketStats(), new TakionCongestionSink(takion), lossMax),
+            new ManagedFeedbackSender(new TakionFeedbackSink(takion)),
+            new ManagedSessionEvents(),
+            messages,
+            new BaselineStages(baseline),
+            () => Big(session),
+            () => new ManagedVideoReceiver(video, outbound),
+            () => new ManagedAudioReceiverPair(new NoFrames(), new NoFrames()),
+            () => new ManagedAudioReceiverPair(new NoFrames(), new NoFrames()));
+    }
+
+    /// <summary>
+    /// The BIG, built when the run asks for it and not before.
+    ///
+    /// Public because it is the interesting half and the only half a machine with no console can
+    /// be asked about: what each of its four refusals says when the session is not where this
+    /// thinks it is.
+    ///
+    /// Every one of its four session-side arguments arrives at a different moment, and the last is
+    /// alive only across the run - so this is evaluated inside the stream phase or not at all. A
+    /// null from any reader is a session that is not where this thinks it is, and the disconnect
+    /// that follows is better than a message the console refuses without saying why.
+    /// </summary>
+    public static StreamMessage Big(ChiakiSession session)
+    {
+        string id = SessionBigMaterial.IdOf(session)
+            ?? throw new InvalidOperationException("the session has no id yet, so a BIG cannot name one.");
+
+        byte[] handshakeKey = SessionBigMaterial.HandshakeKeyOf(session)
+            ?? throw new InvalidOperationException("the session has no handshake key yet.");
+
+        SessionTransport transport = SessionBigMaterial.TransportOf(session)
+            ?? throw new InvalidOperationException("senkusha has not measured this link yet.");
+
+        SessionEcdhMaterial ecdh = SessionBigMaterial.EcdhOf(session)
+            ?? throw new InvalidOperationException("the session's ecdh pair does not exist yet.");
+
+        var fields = new LaunchSpecFields(
+            Width: 1280,
+            Height: 720,
+            MaxFps: 60,
+            BwKbpsSent: 10000,
+            Mtu: transport.MtuOut,
+
+            // Milliseconds, which is what the spec's field is - senkusha measures microseconds.
+            Rtt: (uint)(transport.RoundTripMicroseconds / 1000),
+            Target: ChiakiTarget.Ps5_1,
+            Codec: ChiakiCodec.H264);
+
+        var crypt = new RpCrypt(ChiakiTarget.Ps5_1, new byte[16], new byte[16]);
+
+        string spec = BigMessage.EncodedLaunchSpec(crypt, fields, handshakeKey)
+            ?? throw new InvalidOperationException("the launch spec would not fit the C's buffer.");
+
+        byte[] body = BigMessage.Encode(
+            clientVersion: 9,
+            sessionKey: id,
+            encodedLaunchSpec: spec,
+            ecdhPubKey: ecdh.PublicKey,
+            ecdhSig: ecdh.Signature);
+
+        return new StreamMessage(DataType: 0, PayloadType: 0, Body: body);
+    }
+
+    /// <summary>
+    /// A takion's local tag, which is drawn per session and identifies nothing else.
+    ///
+    /// chiaki_random_32's job on the C side, and the same property is what matters: the console
+    /// echoes it, so two sessions must not share one.
+    /// </summary>
+    private static uint Tag()
+    {
+        Span<byte> four = stackalloc byte[4];
+        System.Security.Cryptography.RandomNumberGenerator.Fill(four);
+        return BitConverter.ToUInt32(four);
+    }
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        handover.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Audio that goes nowhere, which is what this root has for it today.
+    ///
+    /// Stated rather than left as a lambda: the picture has a decoder to reach and the sound has
+    /// none yet, and a reader deserves to see which of the two that is.
+    /// </summary>
+    private sealed class NoFrames : IAudioFrameSink
+    {
+        public void Header(in ManagedAudioHeader header)
+        {
+        }
+
+        public void Frame(ReadOnlySpan<byte> frame)
+        {
+        }
+    }
+}

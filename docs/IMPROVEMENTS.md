@@ -189,29 +189,27 @@ flag, its count loop is guarded by the return above it, peek writes both out-poi
 where pull guards its own, and takion still passes NULL and still drops on a bad MAC.
 Repair any upstream and the port's copy becomes the divergence, on the next run.
 
-### §PP762 The handover nobody installs
+### §PP767 A driver nobody constructs
 
-Found by running one, which is the only way it could have been. PP696's gate is green
-and every piece exists: the handover is two predicate conditions and a reason, the
-runner waits on it and builds a host, the trampoline is C and installs both callbacks in
-one call. Nothing calls the install.
+PP764 refuses a tree where session.c has stopped running the stream and nothing in app
+installs a callback. It was written when there was no install anywhere, and PP762 added
+one - inside ManagedStreamPhase, which is the class that would do the driving.
 
-So a live session reaches the stream phase, finds stream_run_cb null, logs that it has
-nowhere to go and returns UNINITIALIZED. A five-second capture recorded 23 datagrams
-where the same run used to record four thousand: senkusha's, and then the session ends.
+Nothing constructs that class. So the check now passes on a tree where the C hands over,
+a composition root exists, and no session ever builds one - which is a client that
+cannot stream and a gate that says it can. The check has not stopped working; it has
+stopped being about the thing that matters, which is the quieter failure.
 
-WHY NO CHECK SAW IT. SeamReach counts interfaces no class implements, and these are
-classes. The run-host census counts members with no counterpart, and every member has
-one. What is missing is not a type or a member - it is a CALL, at a composition root
-nothing models, on the one path the gate cannot run.
+WHAT IT SHOULD ASK is not whether an install exists but whether a path that STARTS a
+session performs one. Three files call ChiakiSession.Start - the console list, the
+capture and the stream run - and each of them either installs a phase before the start
+or is a path with no managed stream. That is the pair, and it is as readable as the one
+PP764 already reads.
 
-THE SHAPE IS PP741'S, one level up. That task made every seam-closing commit ship its
-own consumer. PP696 shipped one for the run and left the wiring that reaches it to
-nobody, which is the same failure where the seam is a function pointer.
-
-What this owes is the composition root - a handover made beside the session, installed
-before it starts, a runner on its own thread - and a check that notices the day nothing
-calls it.</section_body> </invoke>
+THE SHAPE PP764 GOT RIGHT STAYS. A call is what is missing, not a type or a member, and
+code is what has to be read rather than text - the contract still spells the install's
+name in a literal. What changes is which files the question is asked of: any file, or
+the ones that start something.</section_body> </invoke>
 
 ## Block G — Test discipline
 

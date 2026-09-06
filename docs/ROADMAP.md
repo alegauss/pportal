@@ -23,7 +23,7 @@
 
 - ⏳ **PP27** (deps: PP672 ✅, PP673 ✅, PP674 ✅, PP675 ✅, PP676 ✅, PP677 ✅, PP678 ✅, PP679 ✅, PP680 ✅, PP702 ✅) (requires: console) **takion.c is 2007 lines of C over raw sockets and timers, and the whole stream rides on it** — Its ten tasks are the managed transport; after them, the three files leave the build. → §PP27
 - 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — chiaki_fec_decode has three callers - frameprocessor.c, the C suite and this port's shim - and gf-complete has a fourth site none of them reach: chiaki_lib_init. → §PP30
-- 📋 **PP762** (deps: —) **the stream phase is a callback now and nothing installs one, so a live session ends at senkusha** — PP696 replaced the C's run and PP753, PP754 and PP745 built the far side, but nothing composes them - so the session finds no callback and answers UNINITIALIZED. → §PP762
+- 📋 **PP767** (deps: —) **the driver check counts a call inside a class nothing constructs, so a phase nobody uses reads as a driver** — PP762 put the only install inside ManagedStreamPhase, which no session-starting path builds, so the check is satisfied by the file that would drive rather than by driving. → §PP767
 
 ## Block G — Test discipline
 

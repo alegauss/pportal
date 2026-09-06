@@ -691,6 +691,7 @@
 - ✅ **PP764** **the gate passes on a tree whose stream phase has no driver, which is how it shipped a client that cannot stream** — The C's run and the port's install are read together as four states, and putting session.c back the way PP696 left it turns the gate red on Nobody.
 - ✅ **PP765** **the run host takes eleven parts and nothing says which a live session supplies, so the wiring is unsized** — Eleven rows held against the constructor by reflection: none is missing, two reach into the session, and the BIG is a factory every test has been handing a heartbeat.
 - ✅ **PP766** **a managed BIG needs four things out of a live session - the id, the handshake key, senkusha's numbers and an ecdh pair** — Four shim readers over fields the C holds, each answering null before a session has one, and a real BIG of 1346 bytes built from what they return.
+- ✅ **PP762** **the stream phase is a callback now and nothing installs one, so a live session ends at senkusha** — The eleven parts compose in one class, the runner's thread goes up before the install, and the BIG is built late and refuses by naming which of its four pieces is missing.
 
 ## Block G — Test discipline
 
