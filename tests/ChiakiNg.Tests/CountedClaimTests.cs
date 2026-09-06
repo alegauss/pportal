@@ -90,7 +90,12 @@ public class CountedClaimTests(ITestOutputHelper output)
 
         // A regex that stopped matching would pass the loop below over nothing, which is this
         // file's own subject wearing the other hat.
-        Assert.True(claims.Length >= 5, $"only {claims.Length} counted claims found - the scan is not working");
+        //
+        // FOUR, AND IT WAS FIVE. PP295's line stated streamconnection.c's length and shipped, so the
+        // claim went to the ledger - where a number records what was true rather than sizing work
+        // nobody has done. The bound falls only with a shipped line taking a claim with it; it must
+        // never fall because a regex stopped matching, which is what it is here to catch.
+        Assert.True(claims.Length >= 4, $"only {claims.Length} counted claims found - the scan is not working");
 
         IReadOnlyList<string> wrong = Stale(root, claims);
         output.WriteLine($"{claims.Length} counted claim(s) in the backlog, {wrong.Count} that no longer hold");
@@ -255,7 +260,7 @@ public class CountedClaimTests(ITestOutputHelper output)
 
         // The sweep must be finding claims at all, or this passes for PP271's reason.
         Assert.True(
-            CountedClaims.All(root).Count(c => c.Column >= 0) >= 5,
+            CountedClaims.All(root).Count(c => c.Column >= 0) >= 4,
             "the scan is not working, so this guard is vacuous");
 
         IReadOnlyList<CountedClaim> quoted = CountedClaims.QuotedClaims(root);

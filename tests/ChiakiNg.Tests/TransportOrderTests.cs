@@ -32,9 +32,23 @@ public class TransportOrderTests
         if (Roadmap() is not { } roadmap)
             return;
 
+        // PP295 HAS SHIPPED, which is the release this rule was for arriving. It is no longer an
+        // open line to declare anything, and the four behind it moved: PP696 and PP697 landed on
+        // the order this dep would have jammed. A line that came back would be read below.
         string? line = TransportOrder.LineFor(roadmap, "PP295");
+        if (line is null)
+        {
+            // And it is where a shipped line goes, rather than simply absent - which is what tells
+            // "it finished" from "somebody deleted it".
+            Assert.True(
+                TransportOrder.LocateLedger() is { } ledger
+                    && File.ReadAllText(ledger).Contains("**PP295**", StringComparison.Ordinal),
+                "PP295 is in neither the roadmap nor the ledger, so the order this rule protects "
+                    + "rests on a line nothing records");
 
-        Assert.NotNull(line);
+            return;
+        }
+
         Assert.False(
             TransportOrder.DeclaresDep(line, "PP27"),
             "PP295 declares PP27 again, so it waits on a criterion that waits on PP295");
@@ -78,10 +92,28 @@ public class TransportOrderTests
         if (Roadmap() is not { } roadmap)
             return;
 
+        // PP295 HAS SHIPPED, and that turns this premise over rather than ending it. While PP295
+        // was open, releasing it from a dep on PP27 rested on PP27's deletion waiting on PP295 - so
+        // a criterion that stopped saying so made the release unjustified. Now the order has run,
+        // and PP690's rule applies from the other side: a criterion naming a shipped id tells a
+        // planner work is left where none is. Both readings are held, on the side that is true.
+        bool shipped = TransportOrder.LocateLedger() is { } ledger
+            && File.ReadAllText(ledger).Contains("**PP295**", StringComparison.Ordinal);
+
+        if (!shipped)
+        {
+            Assert.True(
+                TransportOrder.TheEndStateIsStillTheEndState(roadmap),
+                "PP27's deletion criterion no longer reads as the end state waiting on PP295, so "
+                    + "PP636's release of PP295 was made against a line that has changed");
+
+            return;
+        }
+
         Assert.True(
-            TransportOrder.TheEndStateIsStillTheEndState(roadmap),
-            "PP27's deletion criterion no longer reads as the end state waiting on PP295, so "
-                + "PP636's release of PP295 was made against a line that has changed");
+            TransportOrder.TheEndStateIsStillAnEndState(roadmap),
+            "PP27's deletion criterion is no longer an end state, or still waits on PP295 after "
+                + "PP295 shipped - which understates what is left to whoever reads it next");
     }
 
     /// <summary>

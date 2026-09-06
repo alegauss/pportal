@@ -154,9 +154,15 @@ public class AnchoredTotalsTests(ITestOutputHelper output)
     /// file whose claim disappears, or slips back into an unreadable shape, still turns this red -
     /// and `--recount` is now the only place a .c line change is answered.
     /// </summary>
+    /// <remarks>
+    /// PP295: streamconnection.c was the second row and has gone with the line that sized it. A
+    /// shipped line's number is in the ledger, which this class deliberately does not read - an
+    /// entry saying a file was 1540 lines is a record of what was true, not a premise sizing work
+    /// nobody has done. takion.c's claim is PP27's and is still open, so the row that stays is the
+    /// one still deciding something.
+    /// </remarks>
     [Theory]
     [InlineData("takion.c")]
-    [InlineData("streamconnection.c")]
     public void TheRestatedFilesAreCheckedClaimsNow(string file)
     {
         if (SanitizerSource.RepositoryRoot() is not { } root)

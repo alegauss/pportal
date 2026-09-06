@@ -62,10 +62,13 @@ public class CriterionBlockersTests(ITestOutputHelper output)
         Assert.True(shipped.Count > 100, $"only {shipped.Count} shipped ids were found");
         Assert.Contains("PP28", shipped);
 
-        // PP666: and a PART is not a ship. `ship --part` writes `**PP295 (the run's ordering)**`
-        // and leaves the line open, so counting it would make an open line's blockers unwaitable-on
-        // and this check red about a sentence that is right.
-        Assert.DoesNotContain("PP295", shipped);
+        // PP666: and a PART is not a ship. `ship --part` writes `**PPn (the run's ordering)**` and
+        // leaves the line open, so counting it would make an open line's blockers unwaitable-on and
+        // this check red about a sentence that is right.
+        //
+        // PP295 stood here as the open half of that pair and has now shipped whole, so it belongs on
+        // the other side of it - which is the assertion doing its job rather than losing one.
+        Assert.Contains("PP295", shipped);
         Assert.DoesNotContain("PP27", shipped);
     }
 

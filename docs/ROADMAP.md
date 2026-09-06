@@ -23,7 +23,6 @@
 
 - ⏳ **PP27** (deps: PP672 ✅, PP673 ✅, PP674 ✅, PP675 ✅, PP676 ✅, PP677 ✅, PP678 ✅, PP679 ✅, PP680 ✅, PP702 ✅) (requires: console) **takion.c is 2007 lines of C over raw sockets and timers, and the whole stream rides on it** — Its ten tasks are the managed transport; after them, the three files leave the build. → §PP27
 - 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — chiaki_fec_decode has three callers - frameprocessor.c, the C suite and this port's shim - and gf-complete has a fourth site none of them reach: chiaki_lib_init. → §PP30
-- 🛠 **PP295** (deps: PP297 ✅, PP696 ✅, PP697 ✅) **streamconnection.c is 1540 lines and calls the video receiver, so every deletion below waits on it** — Three criteria are met; the fourth is the four files leaving, which waits on the one commit that edits the C and on the shim, whose wrappers outlive it. → §PP295
 - 📋 **PP742** (deps: —) (requires: console) **the port holds 3681 real AV heads and its own parser can read none of them, two bytes short of the cheapest layout** — PP608 kept eighteen bytes for timing and AvPacketParse needs twenty, so its differential with the shim has only ever run on synthetic heads. → §PP742
 - 📋 **PP757** (deps: —) **the port's resting feedback state is ten zeroes and the C's is not, so a still pad reports free fall** — FeedbackSnapshot.Idle takes default(FeedbackMotion), but chiaki_controller_state_set_idle sets accel_y and orient_w to 1, which is where all three of the sender's states start. → §PP757
 
@@ -56,10 +55,10 @@
   the answer, chosen deliberately - PP44 set the budget before this line writes what has
   to meet it.
 - **takion.c, takionsendbuffer.c and reorderqueue.c leave the build** An end state, not
-  a progress bar: porting into app removes no C, and this cannot land until PP295 has -
-  takion is called by streamconnection.c, one of the six files PP638 counted as calling
-  it, and PP696 has now taken that one out of the build. The three files' sizes are
-  stated in the section.
+  a progress bar: porting into app removes no C, and this cannot land until the three
+  criteria above it have. PP295 has shipped, so streamconnection.c no longer calls
+  takion from the build and what is left is this line's own work. The three files' sizes
+  are stated in the section.
 
 ## Done when — PP46
 
@@ -70,28 +69,6 @@
 - **And again on the WPF build, in the same record** A delta needs both halves written
   the same way. These are the two numbers most likely to be quoted in a release note,
   and a quoted number nobody measured survives long past the day it stopped being true.
-
-## Done when — PP295
-
-- **The stream connection's event ordering is ported, not only its functions** Met.
-  PP640 stated six orderings as checks on the C, ManagedStreamRun.Run reproduces all six
-  in one trace, and PP689 added the pad info's own five - decided after its switch so
-  both layouts share it. The failure this names is a port right about every function and
-  wrong about the sequence.
-- **The managed video receiver is driven by the ported stream connection** Met. PP667's
-  dispatch drives it, PP684 gave its outbound seam its first non-test implementation so
-  the corrupt frame and the IDR request reach a sink as bytes, and PP686 hands it the
-  profiles a console announced rather than headers a test wrote.
-- **Every consumer PP638's linker run named has a counterpart** Met by PP669:
-  session.c's five, the shim's thirteen and the suite's four each resolve to a managed
-  class by reflection, and a call with no row or a row with no call fails by name.
-  Seventeen was the count before it was measured; the mapping is what the criterion
-  asked for.
-- **streamconnection.c, videoreceiver.c, frameprocessor.c and fec.c leave the build** An
-  end state, not a progress bar - and it is now the state. PP696 was the one edit that
-  stops session.c asking: the run is an installed callback, the shim's fourteen and the
-  suite's four sit behind their defines, the floor moved 149 to 77, and the four files
-  stay as unbuilt source.
 
 ## Done when — PP49
 

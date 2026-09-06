@@ -302,30 +302,15 @@ public static class RoadmapProseReaders
         // here reads a document. PP714, PP719, PP723 and PP727 wrote all four, and each row left
         // with its subsystem. What a row falling off looks like is the group being empty.
 
-        // PP728: a criterion's lead is how the criterion is ADDRESSED, and its three counts are
-        // claims kept deliberately short. CriterionCounts reads the lead to find the criterion and
-        // then the phrases inside it, so a reworded SENTENCE leaves both alone and a reworded
-        // CLAIM is the finding - which is what the two verdicts below mean.
-        new(
-            "Every consumer PP638's linker run named has a counterpart",
-            @"app\Session\CriterionCounts.cs",
-            ProseReading.Address,
-            "A criterion's lead, which is its address; rewording it is a rename and not a rewrite."),
-        new(
-            "session.c's five",
-            @"app\Session\CriterionCounts.cs",
-            ProseReading.Held,
-            "The count itself. A sentence around it may be rewritten; dropping the claim is the finding."),
-        new(
-            "the shim's thirteen",
-            @"app\Session\CriterionCounts.cs",
-            ProseReading.Held,
-            "The same, for the wrappers the shim exports."),
-        new(
-            "the suite's four",
-            @"app\Session\CriterionCounts.cs",
-            ProseReading.Held,
-            "The same, for the C test files the suite links."),
+        // PP728: a criterion's lead is how the criterion is ADDRESSED, and its three counts were
+        // claims kept deliberately short - CriterionCounts read the lead to find the criterion and
+        // then the phrases inside it.
+        //
+        // PP295 HAS SHIPPED, so those four rows left with it: the criterion they addressed is in
+        // the ledger now, where a number records what was true rather than claiming what is. This
+        // is the group going empty, which the paragraph above says is what a row falling off looks
+        // like - and CriterionCounts.All is kept at zero for the next criterion that copies a count
+        // out of a census.
 
         // PP718: this one IS matched, and never against a document. NativeWaits.Unclaimed looks for
         // it in its own rows' notes - program data - and the backlog carries the phrase only because

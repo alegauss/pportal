@@ -53,16 +53,22 @@ public class DeletionCallerClaimsTests
         // PP33 was the silent one here until it shipped, and its claim - "session.c is its only
         // caller" - is why this rule exists at all. The fixture moves to a line still open rather
         // than the demonstration going with it.
+        // PP295 has shipped too, and the fixture moved again for the same reason: it demonstrates
+        // the rule on a line that is still open, because a row about a shipped line is a row this
+        // check no longer has.
         const string roadmap = """
-            - 📋 **PP295** (deps: —) **something** — session.c is its only caller. → §PP295
-            - 📋 **PP30** (deps: —) **something** — and the shim is one of them. → §PP30
+            - 📋 **PP30** (deps: —) **something** — fec.c is its only caller. → §PP30
             """;
 
         IReadOnlyList<string> silent = DeletionCallerClaims.NotNamingTheSeam(roadmap);
 
         Assert.Single(silent);
-        Assert.Contains("PP295", silent[0], StringComparison.Ordinal);
-        Assert.Contains("the video receiver", silent[0], StringComparison.Ordinal);
+        Assert.Contains("PP30", silent[0], StringComparison.Ordinal);
+        Assert.Contains("the FEC decode", silent[0], StringComparison.Ordinal);
+
+        // And a line that DOES name the seam is not reported, which is what makes this a rule.
+        Assert.Empty(DeletionCallerClaims.NotNamingTheSeam(
+            "- 📋 **PP30** (deps: —) **something** — and the shim is one of them. → §PP30"));
     }
 
     /// <summary>

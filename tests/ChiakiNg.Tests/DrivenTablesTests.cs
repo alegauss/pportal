@@ -102,7 +102,28 @@ public class DrivenTablesTests(ITestOutputHelper output)
                 found.AddRange(CriterionBlockers.WaitedOnIn(criteria));
         }
 
-        Assert.NotEmpty(found);
+        // NONE TODAY, and that is the table being right rather than the reading being vacuous.
+        // PP295 shipped and PP33 before it, so the one line left waits on its own criteria and on
+        // no other line - which is exactly the state every entry here is working towards.
+        //
+        // So the non-vacuity moves to where it can always be asked: the derivation itself, on a
+        // criterion this test owns. A reader that returned nothing for everything would agree with
+        // an empty table perfectly, and that is what this rules out.
+        Assert.Empty(found);
+
+        string about = "PP" + 9002.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        string waits = "PP" + 9003.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+        string fixture = $"""
+            ## Done when — {about}
+
+            - **The files leave the build** An end state, not a progress bar: this cannot land
+              until {waits} has.
+            """;
+
+        Assert.Equal(
+            [waits],
+            CriterionBlockers.WaitedOnIn(DeletionEndState.CriteriaOf(fixture, about)!));
     }
 
     /// <summary>

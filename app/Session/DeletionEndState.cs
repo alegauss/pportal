@@ -55,26 +55,26 @@ public static partial class DeletionEndState
             // curl, json-c, the option and both oracles have left the tree. holepunch.c stays as
             // unbuilt source the way gui/ did, so the deletion this rule was about is finished
             // even though a file with that name is still in the checkout.
-            //
-            // Two remain, and a third arriving is what the rule is for.
 
-            // PP638: six files in lib/ call takion, and streamconnection.c is PP295's subject.
-            ["PP27"] = ["PP295"],
+            // PP638: six files in lib/ call takion, and streamconnection.c was PP295's subject.
+            //
+            // PP295 HAS SHIPPED, so the entry is empty rather than gone: PP27 is still an end-state
+            // line and still constrains deps, and what its end state waits on now is its own three
+            // criteria above it. An entry naming a shipped id would be the understatement PP690's
+            // rule catches - a planner reading work that is already done.
+            ["PP27"] = [],
 
             // PP690 found this reading ["PP28"], on the grounds that session.c drives the stream
             // connection and session.c is PP28's subject. PP28 shipped, and what it shipped was
             // three modelled joins - none of which stops session.c asking. So the entry became
             // none: what the end state waited on was an edit no open line owned.
             //
-            // PP696 was that line, and it has landed: one commit editing lib/ and the build and no
-            // test file, the way PP630 to PP632 did it for the holepunch seam. The four files have
-            // left the build, so the end state IS the state and waits on nothing - which is the
-            // empty list PP33 sat at, for a different reason.
+            // PP696 was that line, and it landed: one commit editing lib/ and the build and no test
+            // file, the way PP630 to PP632 did it for the holepunch seam. Then PP295 shipped, and
+            // its entry left this table with it - a line that is no longer open has no end state to
+            // constrain, and the driver reads the criteria list that went to the ledger with it.
             //
-            // PP295 is still open, and that is the rule working rather than failing: what it waits
-            // on now is its own line being shipped, not another line's edit. The entry follows the
-            // criterion, which is what PP666's driver holds it to rather than trusting this comment.
-            ["PP295"] = [],
+            // ONE REMAINS, and a third arriving is what the rule is for.
         };
 
     /// <summary>The lines the rule is about.</summary>
@@ -156,13 +156,25 @@ public static partial class DeletionEndState
     }
 
     /// <summary>Every breach, named so a failure says which rather than that something is wrong.</summary>
-    public static IReadOnlyList<string> Breaches(string roadmap)
+    public static IReadOnlyList<string> Breaches(string roadmap) => Breaches(roadmap, WaitsOn);
+
+    /// <summary>
+    /// The same, against a table the caller supplies.
+    ///
+    /// PP295's ship emptied the last non-empty entry - its end state is the state now, and PP27's
+    /// waits on no open line - so the rule is correctly inert on this tree and cannot demonstrate
+    /// itself on any roadmap. A check that could only be exercised while a breach existed would go
+    /// quiet exactly when the backlog got into the shape it is supposed to be in.
+    /// </summary>
+    public static IReadOnlyList<string> Breaches(
+        string roadmap, IReadOnlyDictionary<string, IReadOnlyList<string>> waitsOn)
     {
         ArgumentNullException.ThrowIfNull(roadmap);
+        ArgumentNullException.ThrowIfNull(waitsOn);
 
         var found = new List<string>();
 
-        foreach (string id in Lines)
+        foreach (string id in waitsOn.Keys)
         {
             if (!CarriesAnEndState(roadmap, id))
                 found.Add($"{id} has no end-state criterion");
@@ -172,7 +184,7 @@ public static partial class DeletionEndState
             // is an ordinary dependency - PP30 on PP27 is one, and the first run of this check
             // reported it because the check was broader than its reason.
             foreach (string waiting in OpenLinesDependingOn(roadmap, id)
-                .Where(one => WaitsOn[id].Contains(one, StringComparer.Ordinal)))
+                .Where(one => waitsOn[id].Contains(one, StringComparer.Ordinal)))
             {
                 found.Add($"{waiting} declares a dep on {id}, whose end state waits on {waiting}");
             }

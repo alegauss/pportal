@@ -45,8 +45,12 @@ public static class DeletionCallerClaims
         // "session.c is its only caller", falsified three times by PP544, PP563 and PP564 without
         // ever being changed - and a shipped line's prose is in the ledger, where nothing is
         // deciding what work costs any more.
+        // PP295 stood here and has shipped too, for the same reason and on the same day its
+        // deliverable landed: the four files left the build. Its claim - "streamconnection.c was
+        // the last C caller of the video receiver" - was short by the shim's five wrappers, which
+        // is the third instance this rule was written from, and it is recorded in the paragraph
+        // above rather than in a row about an open line.
         new("PP30", "the FEC decode"),
-        new("PP295", "the video receiver"),
     ];
 
     /// <summary>What the port's own seam is called where a line names it.</summary>

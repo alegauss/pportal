@@ -220,28 +220,41 @@ public class BacklogDepsTests
     [Fact]
     public void TheEndStateEdgeIsNeverReportedAsAMissingDep()
     {
-        int pairs = 0;
+        // PP295 SHIPPED AND TOOK THE LAST NON-EMPTY ENTRY WITH IT, so there is no pair to compose
+        // the two readers on. That is the backlog reaching the shape the rule works towards, not the
+        // rule going unwritten - and the exemption cannot be shown on a pair this test invents,
+        // because being IN the table is exactly what makes a pair exempt.
+        var pairs = new List<(string EndState, string Waiter)>();
 
         foreach ((string endState, IReadOnlyList<string> waiters) in DeletionEndState.WaitsOn)
         {
             foreach (string waiter in waiters)
-            {
-                pairs++;
-
-                // The waiter names the end-state line in its own sentence and declares no dep on
-                // it, which is what a line saying "once that has landed" looks like.
-                string roadmap =
-                    $"- 📋 **{waiter}** (deps: —) **the port** — once {endState} has landed. → §{waiter}\n"
-                    + $"- 📋 **{endState}** (deps: —) **the deletion** — comes last. → §{endState}\n";
-
-                Assert.DoesNotContain(
-                    (waiter, endState),
-                    BacklogDeps.MentionedButNotDepended(roadmap));
-            }
+                pairs.Add((endState, waiter));
         }
 
-        // PP271: an empty table would satisfy the loop by iterating nothing.
-        Assert.True(pairs > 0, "DeletionEndState names no end state waiting on an open line");
+        foreach ((string endState, string waiter) in pairs)
+        {
+            // The waiter names the end-state line in its own sentence and declares no dep on it,
+            // which is what a line saying "once that has landed" looks like.
+            string roadmap =
+                $"- 📋 **{waiter}** (deps: —) **the port** — once {endState} has landed. → §{waiter}\n"
+                + $"- 📋 **{endState}** (deps: —) **the deletion** — comes last. → §{endState}\n";
+
+            Assert.DoesNotContain(
+                (waiter, endState),
+                BacklogDeps.MentionedButNotDepended(roadmap));
+        }
+
+        // PP271: and the reader really does find the shape when the dep is genuinely missing, which
+        // is what makes every DoesNotContain above a statement rather than a silence.
+        string named = "PP" + 9009.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        string mentions = "PP" + 9010.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+        Assert.Contains(
+            (mentions, named),
+            BacklogDeps.MentionedButNotDepended(
+                $"- 📋 **{mentions}** (deps: —) **the port** — it needs {named} first. → §{mentions}\n"
+                + $"- 📋 **{named}** (deps: —) **the other** — y. → §{named}\n"));
     }
 
     /// <summary>

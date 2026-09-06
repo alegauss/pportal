@@ -50,29 +50,41 @@ public class DeletionEndStateTests
     [Fact]
     public void AnOrdinaryDependencyIsNotABreach()
     {
-        Assert.DoesNotContain("PP30", DeletionEndState.WaitsOn["PP27"]);
-        Assert.Contains("PP295", DeletionEndState.WaitsOn["PP27"]);
-
-        // PP33's waited on the shim - this port's own seam and not a line at all - and has
-        // shipped, which is the one way a line leaves this set.
+        // PP295 HAS SHIPPED, and its entry emptied PP27's: the six files that call takion no longer
+        // include streamconnection.c, so what PP27's end state waits on is no open line at all.
+        // That is the shape every entry here works towards, and PP33 reached it a different way.
+        Assert.Empty(DeletionEndState.WaitsOn["PP27"]);
         Assert.False(DeletionEndState.WaitsOn.ContainsKey("PP33"));
+        Assert.False(DeletionEndState.WaitsOn.ContainsKey("PP295"));
 
-        const string ordinary =
-            "- 📋 **PP30** (deps: PP23 ✅, PP27) **fec** — y. → §PP30\n"
-                + "## Done when — PP27\n\n- **the three leave** It is an end state, not a progress bar.\n";
+        // SO THE RULE IS CORRECTLY INERT, and it demonstrates itself on a table this test owns
+        // rather than going quiet. A check exercisable only while a breach exists stops meaning
+        // anything exactly when the backlog reaches the state it is supposed to be in.
+        string ends = "PP" + 9004.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        string waits = "PP" + 9005.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        string other = "PP" + 9006.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+        var table = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
+        {
+            [ends] = [waits],
+        };
+
+        string criterion =
+            $"## Done when — {ends}\n\n- **the three leave** It is an end state, not a progress bar.\n";
+
+        // An ordinary dependency: the end state does not wait on this one, so the dep is fine.
+        string ordinary = $"- 📋 **{other}** (deps: {ends}) **fec** — y. → §{other}\n" + criterion;
 
         Assert.DoesNotContain(
-            DeletionEndState.Breaches(ordinary),
-            one => one.Contains("PP30", StringComparison.Ordinal));
+            DeletionEndState.Breaches(ordinary, table),
+            one => one.Contains(other, StringComparison.Ordinal));
 
-        // And the one that IS a breach is still reported.
-        const string breach =
-            "- 📋 **PP295** (deps: PP27) **stream** — y. → §PP295\n"
-                + "## Done when — PP27\n\n- **the three leave** It is an end state, not a progress bar.\n";
+        // And the one that IS a breach is reported: the end state waits on the line depending on it.
+        string breach = $"- 📋 **{waits}** (deps: {ends}) **stream** — y. → §{waits}\n" + criterion;
 
         Assert.Contains(
-            DeletionEndState.Breaches(breach),
-            one => one.Contains("PP295 declares a dep on PP27", StringComparison.Ordinal));
+            DeletionEndState.Breaches(breach, table),
+            one => one.Contains($"{waits} declares a dep on {ends}", StringComparison.Ordinal));
     }
 
     /// <summary>
@@ -92,7 +104,10 @@ public class DeletionEndStateTests
         if (Roadmap() is not { } roadmap)
             return;
 
-        Assert.Equal(2, DeletionEndState.Lines.Count);
+        // PP295 SHIPPED AND LEFT THIS TABLE, which is the third line to do so and the second whose
+        // deletion actually landed. One remains, and a rule counting a shipped line would be
+        // asserting about work in the ledger.
+        Assert.Single(DeletionEndState.Lines);
         Assert.DoesNotContain("PP33", DeletionEndState.Lines);
 
         foreach (string id in DeletionEndState.Lines)

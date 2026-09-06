@@ -189,30 +189,6 @@ flag, its count loop is guarded by the return above it, peek writes both out-poi
 where pull guards its own, and takion still passes NULL and still drops on a bad MAC.
 Repair any upstream and the port's copy becomes the divergence, on the next run.
 
-### §PP295 The file every deletion is waiting on
-
-The third of PP28's three, and the one that decides when C starts leaving this build.
-
-PP286 through PP291 ported the frame path from the bottom up: the Galois field, the
-Cauchy matrix, the Reed-Solomon codec, the frame processor, the video receiver. None of
-it removed a single line of C, and the reason is one call. streamconnection.c:1309 hands
-packets to chiaki_video_receiver_av_packet, so videoreceiver.c stays, so
-frameprocessor.c stays, so fec.c stays, and jerasure and gf-complete stay with them.
-PP30 has read 13 sites through five ports for exactly that reason.
-
-Which makes this the highest-leverage of the three and the hardest. It rides takion -
-hence the dependency - and it is the file where the ordering of events IS the behaviour,
-so a port that reproduces every function and not their sequence would pass a
-message-level comparison and fail a session.
-
-The managed pieces are waiting for it. ManagedVideoReceiver takes a four-method outbound
-seam precisely so that whatever drives it does not need to be a session pointer, and
-corrupt-frame and IDR requests are two of those four - both of them messages this file
-sends.
-
-Deleting is the deliverable, not just porting. The C video receiver leaving the build is
-what makes the five ports beneath it real.
-
 ### §PP742 Real AV heads no parser will take
 
 PP608's capture keeps eighteen bytes of each datagram, chosen to reach the takion header

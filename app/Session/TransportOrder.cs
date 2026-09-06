@@ -25,6 +25,12 @@ public static class TransportOrder
     /// <summary>The roadmap, or null outside a checkout.</summary>
     public static string? Locate() => SanitizerSource.LocateRelative(RoadmapRelativePath);
 
+    /// <summary>Where a line goes when it ships, which is the other place PP295 can now be.</summary>
+    public const string LedgerRelativePath = @"docs\CHANGELOG.md";
+
+    /// <summary>The ledger, or null outside a checkout.</summary>
+    public static string? LocateLedger() => SanitizerSource.LocateRelative(LedgerRelativePath);
+
     /// <summary>
     /// The files in lib/ that still call takion, which is what the fourth criterion waits on.
     ///
@@ -88,6 +94,29 @@ public static class TransportOrder
 
         return EndStateSays.All(word => criteria.Contains(word, StringComparison.OrdinalIgnoreCase))
             && CriterionBlockers.WaitedOnIn(criteria).Contains("PP295", StringComparer.Ordinal);
+    }
+
+    /// <summary>
+    /// PP295 having shipped, whether PP27's fourth criterion is still an end state.
+    ///
+    /// The premise above was the whole of it WHILE PP295 was open: releasing PP295 from a dep on
+    /// PP27 rested on PP27's own deletion waiting on PP295, so a criterion that stopped saying so
+    /// made the release unjustified. That order has now run, and PP690's rule takes over from the
+    /// other side - a criterion naming a shipped id tells a planner work is left where none is.
+    ///
+    /// So this is the same question with the wait removed: the words that make it an end state, and
+    /// nothing else. <see cref="TheEndStateIsStillTheEndState"/> keeps its meaning rather than being
+    /// inverted, because the fixtures that prove it are about a criterion that waits.
+    /// </summary>
+    public static bool TheEndStateIsStillAnEndState(string roadmap)
+    {
+        ArgumentNullException.ThrowIfNull(roadmap);
+
+        if (DeletionEndState.CriteriaOf(roadmap, "PP27") is not { } criteria)
+            return false;
+
+        return EndStateSays.All(word => criteria.Contains(word, StringComparison.OrdinalIgnoreCase))
+            && !CriterionBlockers.WaitedOnIn(criteria).Contains("PP295", StringComparer.Ordinal);
     }
 
     /// <summary>Whether a line's own text names an id among its deps.</summary>

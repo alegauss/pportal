@@ -43,33 +43,21 @@ public static class CriterionCounts
     /// <summary>
     /// Every criterion number this port can check, with what answers it.
     ///
-    /// PP295's third is the live one: three counts copied out of PP669's census in one sentence,
-    /// and a row added to any of the three groups would make it false with nothing to say so.
+    /// NONE TODAY, and the list is kept rather than deleted with its last three rows. PP295's third
+    /// criterion was the live one - three counts copied out of PP669's census in one sentence - and
+    /// PP295 has shipped, so the sentence went to the ledger where a number is a record of what was
+    /// true rather than a claim about what is.
+    ///
+    /// The rows did their job on the way out: session.c's five, the shim's thirteen and the suite's
+    /// four were still the census's counts on the day the criterion was checked off, which is the
+    /// one moment the join had to hold.
+    ///
+    /// KEPT FOR THE REASON <see cref="SeamReach.Expected"/> IS. What would report a criterion
+    /// gaining a number nobody is checking is this list, and its absence would report nothing - the
+    /// next criterion to copy a count out of a census needs a row here, and a deleted class is not
+    /// where anybody looks for one.
     /// </summary>
-    public static IReadOnlyList<CriterionCount> All { get; } =
-    [
-        new(
-            "PP295",
-            "Every consumer PP638's linker run named has a counterpart",
-            "session.c's five",
-            5,
-            () => FramePathConsumers.Session.Count,
-            "The calls session.c makes into the frame path."),
-        new(
-            "PP295",
-            "Every consumer PP638's linker run named has a counterpart",
-            "the shim's thirteen",
-            13,
-            () => FramePathConsumers.Shim.Count,
-            "The wrappers the shim exports so a differential could run."),
-        new(
-            "PP295",
-            "Every consumer PP638's linker run named has a counterpart",
-            "the suite's four",
-            4,
-            () => FramePathConsumers.Suite.Count,
-            "The C test files the suite links through the frame path."),
-    ];
+    public static IReadOnlyList<CriterionCount> All { get; } = [];
 
     /// <summary>
     /// The number in words, as a criterion spells it.

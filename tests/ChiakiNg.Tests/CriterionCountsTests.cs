@@ -87,29 +87,43 @@ public class CriterionCountsTests(ITestOutputHelper output)
     /// PP271's shape: every assertion above passes if TextOf returns the roadmap entire. A lead
     /// that does not exist has to come back null, and a criterion's text must not carry its
     /// neighbour's.
+    ///
+    /// ON A FIXTURE AND NOT ON THE LIVE ROADMAP. It read PP295's third criterion until PP295
+    /// shipped and took its list to the ledger, which made this test a question about which lines
+    /// happen to be open. The reader is the subject; a document that answers it is something this
+    /// file should own.
     /// </summary>
     [Fact]
     public void TheCriterionReaderReadsOneCriterion()
     {
-        if (Roadmap() is not { } roadmap)
-            return;
-
-        Assert.Null(CriterionBlockers.TextOf(roadmap, "PP295", "a lead no criterion has"));
-
         // BUILT rather than written, which is PP311's trap and the fifth time it has been stepped
         // in: an id spelled here is an id named in an assertion file, so a literal absent one makes
         // this file the answer to "where is it named" and turns that audit red.
+        string about = "PP" + 9001.ToString(System.Globalization.CultureInfo.InvariantCulture);
         string absent = "PP" + 9999.ToString(System.Globalization.CultureInfo.InvariantCulture);
-        Assert.Null(CriterionBlockers.TextOf(roadmap, absent, CriterionCounts.All[0].Lead));
 
-        string? text = CriterionBlockers.TextOf(roadmap, "PP295", CriterionCounts.All[0].Lead);
+        const string Lead = "Every consumer the linker named has a counterpart";
+
+        string roadmap = $"""
+            ## Done when — {about}
+
+            - **The ordering is ported, not only the functions** Six orderings stated as checks on
+              the C, reproduced in one trace.
+            - **{Lead}** Met: the caller's five, the seam's thirteen and the
+              suite's four each resolve to a class by reflection.
+            """;
+
+        Assert.Null(CriterionBlockers.TextOf(roadmap, about, "a lead no criterion has"));
+        Assert.Null(CriterionBlockers.TextOf(roadmap, absent, Lead));
+
+        string? text = CriterionBlockers.TextOf(roadmap, about, Lead);
         Assert.NotNull(text);
 
         output.WriteLine(text);
 
         // Its own words, and not the criterion above it in the same section.
-        Assert.Contains("PP669", text, StringComparison.Ordinal);
-        Assert.DoesNotContain("The stream connection's event ordering is ported", text, StringComparison.Ordinal);
+        Assert.Contains("thirteen", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("The ordering is ported", text, StringComparison.Ordinal);
     }
 
     /// <summary>Numbers past the words this list has are refused rather than rendered as digits.</summary>
