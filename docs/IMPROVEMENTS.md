@@ -189,6 +189,102 @@ flag, its count loop is guarded by the return above it, peek writes both out-poi
 where pull guards its own, and takion still passes NULL and still drops on a bad MAC.
 Repair any upstream and the port's copy becomes the divergence, on the next run.
 
+### §PP783 The flip, with the reason it was reverted answered
+
+PP696 handed session.c's stream phase to a callback, put the shim's fourteen and the
+suite's four behind defines, and took streamconnection.c, videoreceiver.c,
+frameprocessor.c and fec.c out of lib's source list. It was green and the client could
+not stream, because nothing installed a run - PP763 put all four back and PP764 wrote
+the check that would have caught it.
+
+WHAT WAS MISSING IS THERE NOW. PP762 built the composition root, PP773 wired the
+arrivals to the flags and gave the takion a receive thread, PP777 read the BIG's
+material off the session and PP778 put the data type in the channel field. A live PS5
+answered that BIG with a bang the managed ECDH keyed, sent a streaminfo the port
+accepted, and streamed audio - through a run the port drove end to end.
+
+SO WHAT IS MISSING IS THE INSTALL, NOT THE RUN. StreamPhaseDriver names four states and
+the tree is on TheC; the flip moves it to ThePort, which needs session.c to call
+stream_run_cb and stream_stop_cb, and a path in app that opens a session to construct a
+phase before it starts. Both halves in one commit, because Both is a tree mid-transition
+rather than a state to ship - the C's run wins, and a port that thought it had taken
+over would be wrong about which code runs.
+
+THE CONSOLE IS THE GATE. PP763's lesson is that a passing suite cannot see this: a
+capture recording 4025 datagrams is what says the flip held.
+
+### §PP784 The caller that does not go with the stream
+
+PP780 asked the linker what takion's deletion costs and got four lib files. Three of
+them go when the stream connection does - streamconnection.c is its own subject, and
+feedbacksender.c and congestioncontrol.c stop being linked at all once nothing pulls
+them. Senkusha is the fourth and it goes with nothing: session.c runs it BEFORE the
+stream phase, to measure the MTU and the round trip the launch spec spends.
+
+FOUR CALLS, AND PP702 NAMED A COUNTERPART FOR EACH. connect and close are
+ManagedTakion's own lifecycle, send_message_data is what TakionDataDatagrams writes, and
+send_raw is TakionSendPath's. The fifth symbol - the v7 header formatter - lives in
+takion.c and its only callers are senkusha's, which is why PP679 had to decide who owned
+it first.
+
+TWO SHAPES, AND PP702 NAMED BOTH RATHER THAN CHOOSING. Porting senkusha means taking on
+a file whose subject is a measurement, and the port would then own the numbers the BIG
+carries. Answering the four where they stand is a seam: senkusha keeps its logic in C
+and its transport calls reach a managed takion through the shim, which is smaller and
+leaves a file the port does not own calling into code it does.
+
+WHICH ONE IS THE DELIVERABLE HERE. The census exists so that is a decision rather than a
+discovery, and the decision belongs in this line's commit rather than in a sentence
+somebody reads later.
+
+### §PP785 Recording the transport's second opinion
+
+PP780's measurement found the shim holding eighteen of the twenty-four symbols takion's
+deletion leaves undefined - twice what lib's four files hold between them. Those
+wrappers are not consumers in the ordinary sense: they exist so a managed reorder queue,
+send buffer, MAC gate and AV parser can be held against the C being replaced. Deleting
+takion.c deletes the second opinion along with the thing it is an opinion about.
+
+PP33 MET THIS AND ANSWERED IT TWICE OVER. DeletedLibraryOracles asks the BUILD rather
+than the source whether an oracle is present, because the wrappers sit inside an ifdef
+and a text reader cannot see a preprocessor - 128 assertions went red at once on a build
+where every guard reported the oracle present and every call threw. JsonOracleRecorder
+walks the cases through the real library and writes down every answer, refusing on a
+build without one rather than recording a file of nulls.
+
+SO THE SHAPE IS SETTLED AND ONLY THE CASES ARE NEW. A define beside
+CHIAKI_SHIM_HAVE_FRAMEPATH, a has-takion export the host can ask, guards on the
+comparisons, and a recording of what the C answers for a queue's pushes and pulls, a
+send buffer's acks, the MAC gate over captured heads, and both AV parsers.
+
+WHAT DECLINES WHEN THE ORACLE GOES IS THE SECOND OPINION, NOT THE CHECK. The managed
+side is asserted on its own either way, which is the sentence PP33's guards already
+carry and the reason they are not a way of not looking.
+
+### §PP786 The suite's own three, and the floor under them
+
+PP780's link named eight consumers and three are the C suite's: test/takion.c,
+test/reorderqueue.c and test/allocbudget.c exercise the modules directly. They leave
+with the files they test, which is right - a suite testing code that is gone is a suite
+about nothing - and their departure is not free.
+
+test.cmd prints "C suite: 149 munit cases (floor 149)" and refuses a run that falls
+under it. That floor is what PP56's stale-green cost: a suite that quietly stopped
+running cases reads exactly like one that passes. So a deletion taking cases with it has
+to LOWER the floor in the same commit, deliberately and by the number the removal
+accounts for - which is the same rule the assertion ratchet follows on the managed side,
+and for the same reason.
+
+PP696 ALREADY DID THIS SHAPE ONCE. It put the suite's four frame-path files behind
+CHIAKI_UNIT_HAVE_FRAMEPATH, so the cases are compiled or not by the same option that
+decides whether the C is there at all - and SuiteEntryPoint holds the switch against the
+list, because a file behind a guard and a file the build forgot look identical from
+outside.
+
+WHAT IS OWED HERE IS THAT GUARD FOR TAKION'S THREE, and the floor arithmetic beside it:
+how many cases each of the three carries, so the new floor is derived from the removal
+rather than read off a failing run.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry
