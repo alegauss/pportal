@@ -435,6 +435,88 @@ public class StreamArrivalsTests(ITestOutputHelper output)
     }
 
     /// <summary>
+    /// PP779: TWENTY THOUSAND ARRIVALS COST A FIXED RING AND NOTHING PER PACKET.
+    ///
+    /// The ladder PP773 built is on the path every datagram takes, and the live trial that proved
+    /// the stream works held 20975 readings over twenty seconds - most of them audio packets this
+    /// layer ignores, since the takion hands its dispatch everything and routes AV itself. An hour
+    /// is millions, against PP44's budget of nothing allocated per packet.
+    ///
+    /// Measured as a difference over the AV path, which is the one that carries the volume: an
+    /// audio datagram leaves at the base type, before any parse. What is asserted is that the cost
+    /// does not GROW with the count, which a list would and a ring does not.
+    /// </summary>
+    [Fact]
+    public void TheAvPathCostsNothingPerDatagram()
+    {
+        var sent = new Sent();
+        ManagedStreamRunHost host = Host(sent);
+        var arrivals = new StreamArrivals(host, sent) { TagLocal = 0x0000_7773, Ledger = new ManagedKeyState() };
+
+        // Base type 3 is audio, which the takion's own dispatch routes and this layer ignores.
+        byte[] audio = new byte[1400];
+        audio[0] = 0x03;
+
+        // Warm every path this measurement crosses, so the first call's JIT is not the reading.
+        for (var i = 0; i < 64; i++)
+            arrivals.Datagram(audio);
+
+        long before = GC.GetAllocatedBytesForCurrentThread();
+
+        for (var i = 0; i < 20000; i++)
+            arrivals.Datagram(audio);
+
+        long spent = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        output.WriteLine($"{spent} bytes over 20000 arrivals, {arrivals.Seen} seen");
+
+        Assert.Equal(0, spent);
+
+        // And the ring holds its bound rather than the count, which is the whole of the fix.
+        Assert.Equal(20064, arrivals.Seen);
+        Assert.Equal(StreamArrivals.KeptReadings, arrivals.Readings.Count);
+    }
+
+    /// <summary>
+    /// AND THE LAST FEW ARE THE ONES KEPT, oldest first, which is what a stalled run is read for.
+    ///
+    /// Every reading this ladder has ever been used for was at the end: the DataAck that said the
+    /// console was acking and not answering, the Keyed bang that said it had started.
+    /// </summary>
+    [Fact]
+    public void TheRingKeepsTheNewestInOrder()
+    {
+        var sent = new Sent();
+        ManagedStreamRunHost host = Host(sent);
+        var arrivals = new StreamArrivals(host, sent) { TagLocal = 0x0000_7773, Ledger = new ManagedKeyState() };
+
+        byte[] audio = new byte[16];
+        audio[0] = 0x03;
+
+        byte[] video = new byte[16];
+        video[0] = 0x02;
+
+        for (var i = 0; i < StreamArrivals.KeptReadings + 5; i++)
+            arrivals.Datagram(audio);
+
+        arrivals.Datagram(video);
+
+        IReadOnlyList<ArrivalReading> kept = arrivals.Readings;
+
+        Assert.Equal(StreamArrivals.KeptReadings, kept.Count);
+        Assert.Equal(2, kept[^1].BaseType);
+        Assert.Equal(3, kept[^2].BaseType);
+
+        // Under the bound it is every one of them, in order, which is the case a short run is.
+        var fresh = new StreamArrivals(host, sent) { TagLocal = 0x0000_7773, Ledger = new ManagedKeyState() };
+
+        fresh.Datagram(audio);
+        fresh.Datagram(video);
+
+        Assert.Equal([3, 2], fresh.Readings.Select(one => one.BaseType));
+    }
+
+    /// <summary>
     /// A control datagram carrying one protobuf, built the way takion.c builds one.
     /// </summary>
     private static byte[] ControlDatagram(uint tag, byte[] body)

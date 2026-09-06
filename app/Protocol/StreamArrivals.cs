@@ -111,10 +111,47 @@ public sealed class StreamArrivals
     /// <summary>How many arrivals reached a handler, which is what a live run has to show.</summary>
     public int Handled { get; private set; }
 
-    /// <summary>What each arrival came to, newest last, for a caller reading a run afterwards.</summary>
-    public IReadOnlyList<ArrivalReading> Readings => readings;
+    /// <summary>
+    /// PP779: how many readings are kept, which used to be all of them.
+    ///
+    /// A live twenty-second session held 20975 - most of them audio packets this layer ignores,
+    /// because the takion hands its dispatch every datagram and routes AV itself. An hour is
+    /// millions, on a path PP44's budget says should allocate nothing per packet.
+    ///
+    /// A RING, BECAUSE WHAT A STALLED RUN NEEDS IS THE LAST THING THAT HAPPENED. Every reading this
+    /// ladder has ever been read for was at the end: the DataAck that said the console was acking
+    /// and not answering, the Keyed bang that said it had started. Thirty-two covers a setup
+    /// conversation whole and costs one array for the life of the object.
+    /// </summary>
+    public const int KeptReadings = 32;
 
-    private readonly List<ArrivalReading> readings = [];
+    /// <summary>
+    /// The last few, oldest first - and <see cref="Seen"/> says how many there were.
+    ///
+    /// Copied out under the lock, because the ring is written by the takion's receive thread and
+    /// read by whoever is asking how a run went.
+    /// </summary>
+    public IReadOnlyList<ArrivalReading> Readings
+    {
+        get
+        {
+            lock (ring)
+            {
+                int kept = (int)Math.Min(Seen, KeptReadings);
+
+                return
+                [
+                    .. Enumerable.Range(0, kept)
+                        .Select(one => ring[(int)((Seen - kept + one) % KeptReadings)]),
+                ];
+            }
+        }
+    }
+
+    /// <summary>How many arrivals there have been, which the ring cannot say on its own.</summary>
+    public long Seen { get; private set; }
+
+    private readonly ArrivalReading[] ring = new ArrivalReading[KeptReadings];
 
     /// <summary>
     /// The takion's CONNECTED event, which is heard only in the state that waits for one.
@@ -151,6 +188,11 @@ public sealed class StreamArrivals
         if (message.Verdict != TakionMessageVerdict.Data)
             return Record(new ArrivalReading(TakionRoute.Ignored, Verdict: message.Verdict, BaseType: baseType));
 
+        // PP779: this copies the payload out of the pooled buffer and the entry does not outlive the
+        // call, so the copy is spent for nothing - but it is spent on the CONTROL path, which during
+        // a stream is heartbeats and quality reports rather than the twenty thousand AV packets a
+        // twenty-second session carries. Those left above, at the base type. Keeping the ported
+        // model whole is worth more here than the copy costs.
         TakionDataPushReading push = TakionDataPush.Read(
             datagram, message.PayloadOffset, message.PayloadSize, message.Header.ChunkFlags);
 
@@ -160,21 +202,23 @@ public sealed class StreamArrivals
                 TakionRoute.ToData, Verdict: message.Verdict, BaseType: baseType));
         }
 
-        // One entry through the drain, which is what decides whether the type is one of the four and
-        // where the body starts. The queue between the push and the drain is takion's own ordering
-        // and not this layer's business: what the C hands the callback is the payload past its
-        // nine-byte header, and this is that.
-        TakionDrainOutcomeSet drained = TakionDataDrain.Drain([push.Entry]);
+        // The drain's two decisions for one entry: is the type one of the four, and where does the
+        // body start. PP779: asked directly rather than through Drain, which models a QUEUE's worth
+        // and builds three lists to answer about one message - on the path every datagram takes.
+        // The queue between the push and the drain is takion's own ordering and not this layer's
+        // business: what the C hands the callback is the payload past its nine-byte header.
+        byte[] payload = push.Entry.Payload;
 
-        if (drained.Deliveries.Count == 0)
+        if (payload.Length < TakionDataDrain.HeaderSize
+            || !TakionDataDrain.IsKnown(payload[TakionDataDrain.DataTypeOffset]))
         {
             return Record(new ArrivalReading(
                 TakionRoute.ToData, Verdict: message.Verdict, BaseType: baseType));
         }
 
-        TakionDelivery delivery = drained.Deliveries[0];
-
-        return Data(delivery.DataType, delivery.Body);
+        return Data(
+            (TakionDataType)payload[TakionDataDrain.DataTypeOffset],
+            payload.AsSpan(TakionDataDrain.HeaderSize));
     }
 
     /// <summary>
@@ -389,8 +433,11 @@ public sealed class StreamArrivals
 
     private ArrivalReading Record(ArrivalReading reading)
     {
-        lock (readings)
-            readings.Add(reading);
+        lock (ring)
+        {
+            ring[(int)(Seen % KeptReadings)] = reading;
+            Seen++;
+        }
 
         return reading;
     }
