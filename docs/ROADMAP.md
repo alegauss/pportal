@@ -25,9 +25,8 @@
 - 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — chiaki_fec_decode has three callers - frameprocessor.c, the C suite and this port's shim - and gf-complete has a fourth site none of them reach: chiaki_lib_init. → §PP30
 - 🛠 **PP295** (deps: PP297 ✅, PP696, PP697) **streamconnection.c is 1540 lines and calls the video receiver, so every deletion below waits on it** — Three criteria are met; the fourth is the four files leaving, which waits on the one commit that edits the C and on the shim, whose wrappers outlive it. → §PP295
 - ⏳ **PP671** (deps: PP696) **Fec.Recovers with no decoder named runs the C, so after the flip a default becomes a loader failure** — The managed decoder is the one that stays; the default should follow it on the flip, so the sixty-four recorded cases judge the port alone. → §PP671
-- 📋 **PP696** (deps: PP707 ⏳) **the frame path's deletion has no commit that edits the C, so four files stay while their ports exist** — PP623's middle step is the only one touching lib, and nobody has written this path's: session.c's asks, the shim's wrappers and the suite's four files all still name them. → §PP696
+- 📋 **PP696** (deps: PP707 ✅) **the frame path's deletion has no commit that edits the C, so four files stay while their ports exist** — PP623's middle step is the only one touching lib, and nobody has written this path's: session.c's asks, the shim's wrappers and the suite's four files all still name them. → §PP696
 - 📋 **PP697** (deps: PP696) **after the frame-path flip the models describe a C that has gone, in the present tense** — PP634 found this on the holepunch side: the predicates stay because they notice the calls coming back, and what goes stale is the prose around them. → §PP697
-- ⏳ **PP707** (deps: —) **nothing managed drives a live session, so the flip that stops session.c asking removes the only path that streams** — Nothing in app implements the host, so the run has never gone over a socket and the stream still starts from chiaki_session_start. → §PP707
 - 📋 **PP742** (deps: —) (requires: console) **the port holds 3681 real AV heads and its own parser can read none of them, two bytes short of the cheapest layout** — PP608 kept eighteen bytes for timing and AvPacketParse needs twenty, so its differential with the shim has only ever run on synthetic heads. → §PP742
 
 ## Block G — Test discipline
@@ -150,29 +149,6 @@
   to the managed decoder, so the sixty-four recorded erasure cases assert on every build
   instead of declining without the C. The differential in FecCodecTests stays the one
   place the C is named, and OracleGuardCensus counts two fewer guarded theories.
-
-## Done when — PP707
-
-- **A managed run drives a stream over a real takion** Met. PP745 wrote the host and
-  PP746 ran the sequence over a loopback socket: a real takion handshakes with PP606's
-  responder, the flags are signalled from another thread as the C's handlers do, and the
-  run answers SUCCESS. It does not stream - nothing answers a BIG over loopback - which
-  the criterion below is about.
-- **Every member of the run's host has a counterpart or a line that owes one** Met.
-  Seven members were owed across four subsystems, and PP714, PP719, PP723 and PP727
-  wrote them, each shortening the census in the commit that shipped it. Every member now
-  names a counterpart or says what the runtime makes needless - and a counterpart is
-  still not a call, which is the criterion above.
-- **The stream starts from the host rather than from chiaki_session_start** Met as far
-  as this line owns it. PP752 decided the handoff: one of PP28's seven steps becomes
-  managed, six stay, the run is unlocked across as the C leaves it and the C thread
-  waits rather than returns. Making that edit is PP696, which waits on this line - so
-  what was held open was the decision, and it is made.
-- **The run leaves only the seams that are seams on purpose** Met. PP745 wrote the host,
-  PP747 the event router, PP748 the message sink, PP749 the congestion sink, PP750 the
-  feedback sink and PP751 the Opus decoder - each closing a row without opening one,
-  which is what PP741 counted the cost of. SeamReach.Expected holds the OpenSSL keying
-  and nothing else.
 
 ## Non-goals
 

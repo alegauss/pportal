@@ -89,6 +89,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP750** **the port derives a gmac key and a key stream and composes neither, so nothing encrypts or signs a packet** — The unaligned-position arithmetic lives once in GkKeyStream.Apply: the C rounds down to the block before the position, and both the AV decrypt and the feedback encrypt need it.
 - ✅ **PP751** **the audio path decodes nothing, so a frame the receiver delivers has no way to become sound** — An availability guard is a method and not a property, because the oracle census counts a guard by the call it is written as and a property is invisible to it.
 - ✅ **PP752** **the handoff that replaces the C's stream run is undecided, so the commit that edits the C has nothing to aim at** — The handoff replaces one call and not the session thread, because ctrl and senkusha are models rather than runs - so a managed session cannot reach the stream phase without the C.
+- ✅ **PP707** **nothing managed drives a live session, so the flip that stops session.c asking removes the only path that streams** — A run host takes its collaborators in and its receivers as factories, so the socket, the session and every lifetime stay the caller's decision rather than the run's.
 
 ## Block G — Test discipline
 
