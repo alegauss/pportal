@@ -332,6 +332,31 @@ AND THE CONSOLE IS THE GATE, for PP763's reason. Senkusha measures a real link; 
 measurement that the suite agrees with and a console does not is exactly the shape that
 ships green and streams nothing.
 
+### §PP795 An arm that cannot be built when the takion is
+
+The flip runs. A live PS5 carried a managed run to the idle loop - connected, protocol,
+bang, streaminfo, feedback sender, CONNECTED - and hung up twenty seconds later with
+"Server shutting down". 14325 datagrams arrived, video and audio among them, and the
+decoder produced nothing.
+
+BECAUSE THE ARM IS NULL. ManagedTakion takes an IAvArmSink in its constructor and builds
+the arm there; ManagedStreamPhase passes none, so every video and audio packet reaches
+the dispatch and stops. StreamAvArmSink is the far end and it is written - PP667's
+route, per packet - and it takes a key base and an IV.
+
+WHICH DO NOT EXIST WHEN THE TAKION IS BUILT. They come out of the gk crypt, which
+SessionBangKeying derives from the secret the BANG produces - and the bang arrives four
+states after the takion has to exist. Not a wire somebody forgot: the object needing the
+keys is created before there are any.
+
+TWO SHAPES, AND THE CHOICE IS THE TASK. The takion could take the arm after the fact,
+the way it takes its adopted socket - an install the run makes when the keying succeeds.
+Or the sink could hold the crypt by reference and read it per packet, which keeps the
+construction order and moves the question into the hot path.
+
+AND THE FAR END HAS PP779'S SHAPE ALREADY. StreamAvArmSink appends an AvRoute per packet
+to a list nothing drains, which on this reading is fourteen thousand in twenty seconds.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry

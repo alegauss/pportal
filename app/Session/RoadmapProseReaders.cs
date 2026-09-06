@@ -143,6 +143,11 @@ public static class RoadmapProseReaders
             ProseReading.Fragile,
             "PP622 narrowed this from a count word plus a fixed plural and left the zero case a single sentence the line must be spelled with."),
         new(
+            "Server shutting down",
+            @"app\Protocol\SessionTeardown.cs",
+            ProseReading.Incidental,
+            "PP795: the console's own wire string, which session.c compares exactly and a rationale quoted because a live run ended on it. The constant answers to the C and to nothing a document says."),
+        new(
             "the C suite never calls",
             @"app\Protocol\ReorderQueueSource.cs",
             ProseReading.Held,
