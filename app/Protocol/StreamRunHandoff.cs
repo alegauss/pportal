@@ -74,15 +74,27 @@ public static class StreamRunHandoff
     [
         new(
             HeaderRelativePath,
-            "typedef ChiakiErrorCode (*ChiakiStreamRunCallback)(chiaki_socket_t data_sock, "
+            "typedef ChiakiErrorCode (*ChiakiStreamRunCallback)(chiaki_socket_t *data_sock, "
                 + "const char **disconnect_reason, void *user);",
             "The error is the run's own, and the reason is written out rather than returned so a run "
-                + "that had none says so without a second code."),
+                + "that had none says so without a second code. PP696: the socket is a POINTER, which "
+                + "this contract first spelled by value - it is the type the call being replaced took."),
         new(
             HeaderRelativePath,
             "static inline void " + Setter + "(ChiakiSession *session, ChiakiStreamRunCallback cb, void *user)",
             "Beside the other two and the same shape, so a host that installs one installs all three "
                 + "alike."),
+        new(
+            HeaderRelativePath,
+            "typedef void (*ChiakiStreamStopCallback)(void *user);",
+            "PP696: the fourth wake-up needs somewhere to go, and this contract named what it becomes "
+                + "without saying how the session reaches it. A second callback of the same shape, on "
+                + "the same handover, so one install is the whole wiring."),
+        new(
+            SessionRelativePath,
+            "if(session->stream_stop_cb) session->stream_stop_cb(session->stream_stop_cb_user);",
+            "In chiaki_session_stop, where chiaki_stream_connection_stop stood. Stopping is four pokes "
+                + "and not a flag, and the run is now on the far side of a callback."),
         new(
             SessionRelativePath,
             "err = session->stream_run_cb(data_sock, &disconnect_reason, session->stream_run_cb_user);",

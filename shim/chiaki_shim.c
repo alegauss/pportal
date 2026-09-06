@@ -1753,6 +1753,18 @@ CHIAKI_SHIM_API int32_t chiaki_shim_rpcrypt_decrypt(
 	return (int32_t)chiaki_rpcrypt_decrypt((ChiakiRPCrypt *)rpcrypt, counter, in, out, (size_t)size);
 }
 
+/* PP696: the frame path's fourteen wrappers, behind the define PP670 put here for this commit.
+ *
+ * They are ORACLES and nothing else - each exists so PP286 through PP291 could hold a managed port
+ * against the C it replaces, and the C they call is fec.c, frameprocessor.c and videoreceiver.c,
+ * which have just left the build. An unguarded wrapper here would be an undefined symbol at link.
+ *
+ * chiaki_shim_has_framepath answers for the build rather than for this text, which is PP661's
+ * lesson: the declarations stay in the header inside the same define, so a reader keyed on the file
+ * would say "wrapping" of a DLL that exports none of them. Every differential that calls these asks
+ * that export first - PP670 converted six test files for exactly this day. */
+#ifdef CHIAKI_SHIM_HAVE_FRAMEPATH
+
 CHIAKI_SHIM_API int32_t chiaki_shim_fec_decode(
 		uint8_t *frame_buf,
 		int32_t unit_size,
@@ -1806,6 +1818,8 @@ CHIAKI_SHIM_API int32_t chiaki_shim_fec_matrix(
 	free(matrix);
 	return (int32_t)count;
 }
+
+#endif /* CHIAKI_SHIM_HAVE_FRAMEPATH - the fec pair */
 
 CHIAKI_SHIM_API int32_t chiaki_shim_ecdh_secret_size(void)
 {
@@ -2874,7 +2888,15 @@ typedef struct chiaki_shim_stream_handover_t
 	ChiakiBoolPredCond finished;
 	int32_t error;
 	char *reason;
+	/* PP696: set by the stop trampoline, read by the run's wait loop. A plain bool rather than a
+	 * third condition: the loop is already waking every slice, so nothing needs to be signalled -
+	 * and a stop that arrives between two slices is acted on at the next one either way. */
+	volatile bool stopped;
 } ChiakiShimStreamHandover;
+
+/* PP759: one slice of the run's wait. The export refuses a negative timeout, so "until it is over"
+ * is not something it can be asked - what makes this correct is the loop, not the number. */
+#define CHIAKI_SHIM_STREAM_RUN_SLICE_MS 1000
 
 CHIAKI_SHIM_API void *chiaki_shim_stream_handover_create(void)
 {
@@ -3009,6 +3031,75 @@ CHIAKI_SHIM_API const char *chiaki_shim_stream_handover_reason(void *handover)
 	return self ? self->reason : NULL;
 }
 
+/* PP696, to PP759's contract: the trampoline the C session runs the stream phase through.
+ *
+ * THE TRAMPOLINE IS C, as every one of libchiaki's callbacks is. A managed delegate installed here
+ * would be a function pointer the collector may move, on a thread the CLR never created.
+ *
+ * THE WAIT IS A LOOP because chiaki_shim_stream_handover_await_finish refuses a negative timeout
+ * and a session lasts as long as somebody plays. A single wait would end the stream at whatever
+ * number was chosen; the slices are what make a stop act promptly without a busy loop.
+ *
+ * The reason is borrowed, which is the whole of the ownership rule: it is handed back as a pointer
+ * into the handover, the session copies it with strdup, and the handover frees its own on free. A
+ * trampoline that strdup'd here would leak one string for every session that ends this way. */
+static ChiakiErrorCode chiaki_shim_stream_run_trampoline(
+		chiaki_socket_t *data_sock, const char **disconnect_reason, void *user)
+{
+	ChiakiShimStreamHandover *self = (ChiakiShimStreamHandover *)user;
+	int32_t err;
+
+	/* The socket crosses for parity with the call this replaces and is not read: the managed runner
+	 * opens its own through the host it builds. Named rather than cast away, so the day one wants it
+	 * the parameter is already here. */
+	(void)data_sock;
+
+	if(!self)
+		return CHIAKI_ERR_INVALID_DATA;
+
+	err = chiaki_shim_stream_handover_start(self);
+	if(err != (int32_t)CHIAKI_ERR_SUCCESS)
+		return (ChiakiErrorCode)err;
+
+	do
+	{
+		err = chiaki_shim_stream_handover_await_finish(self, CHIAKI_SHIM_STREAM_RUN_SLICE_MS);
+	}
+	while(err == (int32_t)CHIAKI_ERR_TIMEOUT && !self->stopped);
+
+	if(disconnect_reason)
+		*disconnect_reason = self->reason;
+
+	return (ChiakiErrorCode)err;
+}
+
+/* And the stop, which is chiaki_session_stop's fourth wake-up on this side of the handover. */
+static void chiaki_shim_stream_stop_trampoline(void *user)
+{
+	ChiakiShimStreamHandover *self = (ChiakiShimStreamHandover *)user;
+
+	if(self)
+		self->stopped = true;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_stream_run_install(void *session, void *handover)
+{
+	ChiakiSession *self = (ChiakiSession *)session;
+
+	if(!self)
+		return;
+
+	chiaki_session_set_stream_run_cb(self, chiaki_shim_stream_run_trampoline, handover);
+	chiaki_session_set_stream_stop_cb(self, chiaki_shim_stream_stop_trampoline, handover);
+}
+
+CHIAKI_SHIM_API bool chiaki_shim_stream_handover_stopped(void *handover)
+{
+	ChiakiShimStreamHandover *self = (ChiakiShimStreamHandover *)handover;
+
+	return self ? self->stopped : false;
+}
+
 /* PP679: the v7 parse, whose key_state parameter the C declares and never reads.
  *
  * NULL is passed for it deliberately rather than forwarded. The v7 body takes its key position
@@ -3131,6 +3222,11 @@ CHIAKI_SHIM_API int32_t chiaki_shim_takion_v7_av_packet_format_header(
 
 	return (int32_t)err;
 }
+
+/* PP696: the other twelve, and the two statics only they call. The helper goes inside with them -
+ * left outside it would be a static nobody calls, which is a warning on the bare build and a
+ * reader's question about why it is there. */
+#ifdef CHIAKI_SHIM_HAVE_FRAMEPATH
 
 static void chiaki_shim_unit_packet(
 		ChiakiTakionAVPacket *packet,
@@ -3374,6 +3470,8 @@ CHIAKI_SHIM_API int32_t chiaki_shim_video_receiver_frames_lost(void *receiver)
 	chiaki_shim_video_receiver *self = (chiaki_shim_video_receiver *)receiver;
 	return self ? chiaki_video_receiver_get_frames_lost_total(&self->receiver) : 0;
 }
+
+#endif /* CHIAKI_SHIM_HAVE_FRAMEPATH - the frame processor and the video receiver */
 
 CHIAKI_SHIM_API void chiaki_shim_rpcrypt_aeropause_ps4_pre10(
 		const uint8_t *ambassador, uint8_t *aeropause)

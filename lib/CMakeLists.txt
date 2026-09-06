@@ -61,7 +61,6 @@ set(SOURCE_FILES
 		src/senkusha.c
 		src/utils.h
 		src/pb_utils.h
-		src/streamconnection.c
 		src/ecdh.c
 		src/launchspec.c
 		src/random.c
@@ -69,8 +68,6 @@ set(SOURCE_FILES
 		src/audio.c
 		src/audioreceiver.c
 		src/audiosender.c
-		src/videoreceiver.c
-		src/frameprocessor.c
 		src/packetstats.c
 		src/sessionbaseline.c
 		src/messagetap.c
@@ -85,11 +82,18 @@ set(SOURCE_FILES
 		src/controller.c
 		src/takionsendbuffer.c
 		src/time.c
-		src/fec.c
 		src/regist.c
 		src/opusdecoder.c
 		src/opusencoder.c
 		src/orientation.c
+
+		# PP696: streamconnection.c, videoreceiver.c, frameprocessor.c and fec.c left here.
+		#
+		# PP295's fourth criterion, and an end state rather than a step: every consumer PP638's
+		# linker run named has a counterpart that is shipping code, session.c has stopped asking,
+		# the shim's fourteen wrappers are behind their define and the C suite's four files are
+		# behind theirs. The files stay in the tree as unbuilt source, the way holepunch.c and gui/
+		# do - a deletion of the text is a separate decision from a deletion from the build.
 		src/bitstream.c
 		src/remote/rudp.c
 		src/remote/rudpsendbuffer.c)

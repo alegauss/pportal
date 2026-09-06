@@ -23,10 +23,9 @@
 
 - ⏳ **PP27** (deps: PP672 ✅, PP673 ✅, PP674 ✅, PP675 ✅, PP676 ✅, PP677 ✅, PP678 ✅, PP679 ✅, PP680 ✅, PP702 ✅) (requires: console) **takion.c is 2007 lines of C over raw sockets and timers, and the whole stream rides on it** — Its ten tasks are the managed transport; after them, the three files leave the build. → §PP27
 - 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — chiaki_fec_decode has three callers - frameprocessor.c, the C suite and this port's shim - and gf-complete has a fourth site none of them reach: chiaki_lib_init. → §PP30
-- 🛠 **PP295** (deps: PP297 ✅, PP696, PP697) **streamconnection.c is 1540 lines and calls the video receiver, so every deletion below waits on it** — Three criteria are met; the fourth is the four files leaving, which waits on the one commit that edits the C and on the shim, whose wrappers outlive it. → §PP295
-- ⏳ **PP671** (deps: PP696) **Fec.Recovers with no decoder named runs the C, so after the flip a default becomes a loader failure** — The managed decoder is the one that stays; the default should follow it on the flip, so the sixty-four recorded cases judge the port alone. → §PP671
-- 📋 **PP696** (deps: PP707 ✅, PP753 ✅, PP755 ✅, PP758 ✅, PP759 ✅, PP760 ✅, PP761 ✅) **the frame path's deletion has no commit that edits the C, so four files stay while their ports exist** — PP623's middle step is the only one touching lib, and nobody wrote this path's: session.c, the shim, the C suite. → §PP696
-- 📋 **PP697** (deps: PP696) **after the frame-path flip the models describe a C that has gone, in the present tense** — PP634 found this on the holepunch side: the predicates stay because they notice the calls coming back, and what goes stale is the prose around them. → §PP697
+- 🛠 **PP295** (deps: PP297 ✅, PP696 ✅, PP697) **streamconnection.c is 1540 lines and calls the video receiver, so every deletion below waits on it** — Three criteria are met; the fourth is the four files leaving, which waits on the one commit that edits the C and on the shim, whose wrappers outlive it. → §PP295
+- ⏳ **PP671** (deps: PP696 ✅) **Fec.Recovers with no decoder named runs the C, so after the flip a default becomes a loader failure** — The managed decoder is the one that stays; the default should follow it on the flip, so the sixty-four recorded cases judge the port alone. → §PP671
+- 📋 **PP697** (deps: PP696 ✅) **after the frame-path flip the models describe a C that has gone, in the present tense** — PP634 found this on the holepunch side: the predicates stay because they notice the calls coming back, and what goes stale is the prose around them. → §PP697
 - 📋 **PP742** (deps: —) (requires: console) **the port holds 3681 real AV heads and its own parser can read none of them, two bytes short of the cheapest layout** — PP608 kept eighteen bytes for timing and AvPacketParse needs twenty, so its differential with the shim has only ever run on synthetic heads. → §PP742
 - 📋 **PP757** (deps: —) **the port's resting feedback state is ten zeroes and the C's is not, so a still pad reports free fall** — FeedbackSnapshot.Idle takes default(FeedbackMotion), but chiaki_controller_state_set_idle sets accel_y and orient_w to 1, which is where all three of the sender's states start. → §PP757
 
@@ -59,10 +58,10 @@
   the answer, chosen deliberately - PP44 set the budget before this line writes what has
   to meet it.
 - **takion.c, takionsendbuffer.c and reorderqueue.c leave the build** An end state, not
-  a progress bar: porting into app removes no C, and takion.c cannot leave until PP295
-  has landed, streamconnection.c being one of the six files PP638 counted as calling
-  takion. The three files' sizes are stated in the section, where the recount reaches
-  them.
+  a progress bar: porting into app removes no C, and this cannot land until PP295 has -
+  takion is called by streamconnection.c, one of the six files PP638 counted as calling
+  it, and PP696 has now taken that one out of the build. The three files' sizes are
+  stated in the section.
 
 ## Done when — PP46
 
@@ -91,10 +90,10 @@
   Seventeen was the count before it was measured; the mapping is what the criterion
   asked for.
 - **streamconnection.c, videoreceiver.c, frameprocessor.c and fec.c leave the build** An
-  end state, not a progress bar, and the order is PP623's and PP655's: the counterparts
-  first, which PP669 mapped; then the one edit that stops session.c asking, which PP638
-  measured. That edit is PP696, so this cannot land until PP696 has. Porting into app
-  removes no C.
+  end state, not a progress bar - and it is now the state. PP696 was the one edit that
+  stops session.c asking: the run is an installed callback, the shim's fourteen and the
+  suite's four sit behind their defines, the floor moved 149 to 77, and the four files
+  stay as unbuilt source.
 
 ## Done when — PP49
 
@@ -124,18 +123,6 @@
   chiaki_render_tearing_probe does. Integration means the video plane's own swapchain
   carries it and presents at sync interval zero, which is the half that waits on there
   being a video plane at all.
-
-## Done when — PP696
-
-- **One commit edits lib and the build, and no test file** session.c stops asking, the
-  shim's wrappers go behind PP663's option, the suite's list loses its frame-path files
-  with the floor moving to match, and the four library files leave. The gate is green
-  after it because every assertion it moves was already taught where it lands.
-- **Every consumer the census names is answered before the file goes**
-  FramePathConsumers reads session.c, the shim and the suite's list from the tree and
-  resolves each symbol's counterpart by reflection. Nothing leaves the build while that
-  reading names a call with no answer, so the flip's own precondition is a check rather
-  than a reviewer's judgement.
 
 ## Done when — PP697
 

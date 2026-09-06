@@ -66,11 +66,15 @@ public static partial class DeletionEndState
             // three modelled joins - none of which stops session.c asking. So the entry became
             // none: what the end state waited on was an edit no open line owned.
             //
-            // PP696 is that line now. PP623's middle step, filed for the frame path the way PP630
-            // to PP632 filed it for the holepunch seam - one commit that edits lib/ and the build
-            // and no test file. The entry follows the criterion, which is what PP666's driver
-            // holds it to rather than trusting this comment.
-            ["PP295"] = ["PP696"],
+            // PP696 was that line, and it has landed: one commit editing lib/ and the build and no
+            // test file, the way PP630 to PP632 did it for the holepunch seam. The four files have
+            // left the build, so the end state IS the state and waits on nothing - which is the
+            // empty list PP33 sat at, for a different reason.
+            //
+            // PP295 is still open, and that is the rule working rather than failing: what it waits
+            // on now is its own line being shipped, not another line's edit. The entry follows the
+            // criterion, which is what PP666's driver holds it to rather than trusting this comment.
+            ["PP295"] = [],
         };
 
     /// <summary>The lines the rule is about.</summary>

@@ -185,6 +185,22 @@ CHIAKI_SHIM_API int32_t chiaki_shim_stream_handover_await_finish(void *handover,
 CHIAKI_SHIM_API const char *chiaki_shim_stream_handover_reason(void *handover);
 
 /**
+ * PP696: install a handover as a session's stream phase, and as what its stop reaches.
+ *
+ * The session thread's run step is a callback now, because streamconnection.c has left the build.
+ * This is what fills it: a C trampoline over `handover`, which starts it, waits in slices until it
+ * finishes or the session is stopped, and hands back the reason the handover holds - borrowed, for
+ * the session to copy.
+ *
+ * Both callbacks take the same handover, so one install is the whole wiring. A session with none
+ * reaches the stream phase and answers UNINITIALIZED rather than pretending to stream.
+ */
+CHIAKI_SHIM_API void chiaki_shim_stream_run_install(void *session, void *handover);
+
+/** Whether the session's stop has reached this handover. */
+CHIAKI_SHIM_API bool chiaki_shim_stream_handover_stopped(void *handover);
+
+/**
  * chiaki_error_string for a ChiakiErrorCode, as a UTF-8 string the caller does not own.
  *
  * Here because it is the smallest thing that proves a real property of the seam: a pointer to a
@@ -1064,6 +1080,14 @@ CHIAKI_SHIM_API int32_t chiaki_shim_rpcrypt_encrypt(
 CHIAKI_SHIM_API int32_t chiaki_shim_rpcrypt_decrypt(
 		void *rpcrypt, uint64_t counter, const uint8_t *in, uint8_t *out, int32_t size);
 
+/* PP696: declared only where the build exports them - the same define the bodies are behind.
+ *
+ * Left outside it, a header would promise fourteen entry points a bare DLL does not have, and the
+ * first a caller reached would be a loader failure rather than a compile one. PP661 is why
+ * chiaki_shim_has_framepath is exported on both sides: a reader keyed on this text cannot tell
+ * which build it got, and that export answers for the DLL. */
+#ifdef CHIAKI_SHIM_HAVE_FRAMEPATH
+
 /**
  * PP23 and PP30: forward error correction, which is the module with the largest recorded oracle.
  *
@@ -1105,6 +1129,8 @@ CHIAKI_SHIM_API int32_t chiaki_shim_fec_decode(
  */
 CHIAKI_SHIM_API int32_t chiaki_shim_fec_matrix(
 		uint32_t k, uint32_t m, int32_t *out_matrix, int32_t capacity);
+
+#endif /* CHIAKI_SHIM_HAVE_FRAMEPATH - the fec pair */
 
 /**
  * PP23: the handshake's key agreement and the session key stream it produces.
@@ -1559,6 +1585,8 @@ CHIAKI_SHIM_API int32_t chiaki_shim_takion_v7_av_packet_format_header(
 		uint8_t adaptive_stream_index,
 		uint64_t key_pos);
 
+#ifdef CHIAKI_SHIM_HAVE_FRAMEPATH
+
 /**
  * PP23: the frame processor, where units become a frame and FEC is driven.
  *
@@ -1655,6 +1683,8 @@ CHIAKI_SHIM_API void chiaki_shim_video_receiver_av_packet(
 		int32_t data_size);
 
 CHIAKI_SHIM_API int32_t chiaki_shim_video_receiver_frames_lost(void *receiver);
+
+#endif /* CHIAKI_SHIM_HAVE_FRAMEPATH - the frame processor and the video receiver */
 
 /**
  * PP23 and PP29: registration, which is the first thing a fresh install sends.

@@ -22,12 +22,20 @@ target_link_libraries(chiaki-shim chiaki-lib)
 # managed guard asks which build it got (PP662), and PP657's bare-side assertions read them.
 
 # PP670: the frame path's fourteen wrappers - fec, frame processor, video receiver - are the third
-# oracle, and this is PP623's first step for it: the define exists and chiaki_shim_has_framepath
-# reports it, so every differential that calls the fourteen can ask before it runs. UNCONDITIONAL
-# today, because the four files are still in the build. The flip (PP295's fourth criterion) turns
-# this into an if() on its option and wraps the fourteen in the define, in the header and the body,
-# and edits no test file - which is what the two-shape readers were converted for.
-target_compile_definitions(chiaki-shim PUBLIC CHIAKI_SHIM_HAVE_FRAMEPATH)
+# oracle, and the define is how a differential asks which build it got before it runs.
+#
+# PP696: THE FLIP. streamconnection.c, videoreceiver.c, frameprocessor.c and fec.c have left
+# lib/CMakeLists.txt, so the fourteen have nothing to wrap and are behind this define in both the
+# header and the body. chiaki_shim_has_framepath is exported either way and answers for the DLL,
+# which is what the six converted test files ask - a reader keyed on the header's text would say
+# "wrapping" of a build that exports none of them (PP661).
+#
+# The option exists so the oracle can be built back: a tree that wants to run the differentials
+# again turns it on and puts the four files back in one place each.
+option(CHIAKI_SHIM_FRAMEPATH_ORACLE "Wrap the frame path so its differentials can run" OFF)
+if(CHIAKI_SHIM_FRAMEPATH_ORACLE)
+	target_compile_definitions(chiaki-shim PUBLIC CHIAKI_SHIM_HAVE_FRAMEPATH)
+endif()
 
 # PP694: libopus, for the encoder oracle. chiaki-lib links Opus and propagates it, but the include
 # directory does not travel - lib/CMakeLists.txt adds it with include_directories(), which is scoped

@@ -233,32 +233,6 @@ because today the default is what makes those two theories a check on the ORACLE
 cases are the C's own, and a managed default now would silently stop asking the C
 whether it still agrees with its own recording.
 
-### §PP696 The one commit that edits the C
-
-PP623 gave PP33's deletion three steps and PP634 said the plan is reusable. PP630 to
-PP632 ran it once for the holepunch seam, and the middle step - the only one that edits
-`lib/` - was one commit that touched no test file, because every assertion it moved had
-already been taught where it would land.
-
-The frame path owes the same three and the first is done: PP670 made the oracles
-two-shape. PP671 rides ON this commit rather than before it, by its own design's
-reasoning.
-
-This is the middle step. `FramePathConsumers` already reads what it must answer for,
-which is why no number here is typed: session.c's calls into the stream connection, the
-shim's wrappers over the frame path, and the C test files `test/CMakeLists.txt` lists.
-Each is read from the tree and each has a counterpart PP669 verified by reflection.
-
-What lands in one transaction: session.c stops asking, the shim's wrappers go behind the
-option PP663 put the holepunch ones behind, the suite's four files leave its list with
-the floor moving to match, and the four library files leave the build.
-
-What does NOT land in it is any test file. That is the discipline of PP623's shape - a
-commit editing `lib/` and a test in the same breath cannot tell a mistake in the C from
-a model converted wrongly, and there is no green tree between them to ask.
-
-PP295's fourth criterion is what this closes, and PP27's waits on that.
-
 ### §PP697 The prose that outlives the C it describes
 
 PP623's third step, for the frame path.

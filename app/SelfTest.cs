@@ -2746,6 +2746,19 @@ public static class SelfTest
                         .SequenceEqual(payload));
             }
 
+            // PP696: THE THREE FRAME-PATH SECTIONS, behind the shape the built shim is in.
+            //
+            // These run against the C through the shim's fourteen wrappers, and PP696 took
+            // fec.c, frameprocessor.c and videoreceiver.c out of the build - so on a bare shim
+            // the first call is an EntryPointNotFoundException that takes the whole selftest
+            // down. PP670 converted the six xUnit differentials for this day and could not
+            // convert this one: the selftest is not xUnit and has no [Fact] to skip.
+            //
+            // ASKED OF THE DLL, NOT THE FILE (PP661). And the bare side is not silence: a check
+            // that stops asking is a pass that measured nothing (PP630), so it says which shape
+            // it got and names what still holds the ground these sections used to.
+            if (ShimFramePathShape.OfTheBuild() == ShimShape.Wrapping)
+            {
             Console.WriteLine();
             Console.WriteLine("Alloc budget - what a packet costs on this side of the seam");
 
@@ -3051,6 +3064,18 @@ public static class SelfTest
                 Check("and the library said so through the log rather than to stdout",
                     fecComplaints.Any(m => m.Contains("FEC", StringComparison.Ordinal)),
                     string.Join(" | ", fecComplaints));
+            }
+            }
+            else
+            {
+                Console.WriteLine();
+                Console.WriteLine("Frame path - not in this build");
+                Console.WriteLine(
+                    "        the alloc budget, the video receiver and the frame processor are the C's, and "
+                    + "this shim wraps none of it. FecCodecTests, FrameAssemblerTests,");
+                Console.WriteLine(
+                    "        ManagedVideoReceiverTests and AllocBudgetTests hold that ground now, and "
+                    + "ShimSurfaceTests asserts the fourteen are really gone.");
             }
 
             Console.WriteLine();
@@ -3597,6 +3622,15 @@ public static class SelfTest
                     FecVectors.StrideFor(1400) == 1408 && FecVectors.StrideFor(1408) == 1408
                     && FecVectors.StrideFor(1) == 16);
 
+                // PP696: the decode itself needs the shim's fec wrapper, which a bare build does
+                // not export - the parsing above is this side's and holds either way. FecCodecTests
+                // is what carries the sixty-four cases now, against the managed decoder.
+                if (ShimFramePathShape.OfTheBuild() != ShimShape.Wrapping)
+                {
+                    Console.WriteLine("  --    the recorded cases are not decoded here (no fec wrapper in this shim)");
+                }
+                else
+                {
                 int recovered = fecCases.Count(c => Fec.Recovers(c));
                 Check("every recorded erasure is recovered byte for byte",
                     recovered == fecCases.Count, $"{recovered} of {fecCases.Count}");
@@ -3610,6 +3644,7 @@ public static class SelfTest
                 Check("told the wrong unit was lost, the frame does not come back",
                     !Fec.Recovers(probe, [lied]),
                     $"blanked {probe.Erasures[0]}, declared {lied}");
+                }
             }
 
             Console.WriteLine();

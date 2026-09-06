@@ -213,6 +213,35 @@ typedef void (*ChiakiEventCallback)(ChiakiEvent *event, void *user);
  */
 typedef bool (*ChiakiVideoSampleCallback)(uint8_t *buf, size_t buf_size, int32_t frames_lost, bool frame_recovered, void *user);
 
+/**
+ * PP696: the stream phase, run by whoever installed this instead of by the stream connection.
+ *
+ * The session thread reaches the stream phase and has nothing left in this library to hand it to:
+ * streamconnection.c, videoreceiver.c, frameprocessor.c and fec.c have left the build and the port
+ * that replaced them lives above it. So the run becomes a callback, on the model of the two above.
+ *
+ * The error is the run's own and is read exactly as chiaki_stream_connection_run's was.
+ *
+ * disconnect_reason is written out rather than returned, and is BORROWED: the session copies it
+ * with strdup and never frees it, so a callee returning owned memory leaks one string for every
+ * session that ends with a remote disconnect. It may be left untouched, which is a run that had no
+ * reason to give - the same NULL PP371 found both of the reads below dereferencing.
+ *
+ * data_sock is the socket senkusha left, passed for parity with the call this replaces. The port's
+ * runner opens its own, so nothing reads it today; it crosses anyway, because a signature without
+ * it is a different one the day a runner wants it.
+ */
+typedef ChiakiErrorCode (*ChiakiStreamRunCallback)(chiaki_socket_t *data_sock, const char **disconnect_reason, void *user);
+
+/**
+ * PP696: and what chiaki_session_stop's fourth wake-up becomes.
+ *
+ * Stopping is four pokes and not a flag, because the thread can be blocked in a condition wait, in
+ * a socket select, or down in the run - and the third of those is now on the far side of a
+ * callback. A session that stopped poking it hangs exactly when somebody quits a live stream.
+ */
+typedef void (*ChiakiStreamStopCallback)(void *user);
+
 
 
 typedef struct chiaki_session_t
@@ -254,6 +283,11 @@ typedef struct chiaki_session_t
 	void *event_cb_user;
 	ChiakiVideoSampleCallback video_sample_cb;
 	void *video_sample_cb_user;
+	// PP696: the stream phase and its stop, installed by whoever owns the run now.
+	ChiakiStreamRunCallback stream_run_cb;
+	void *stream_run_cb_user;
+	ChiakiStreamStopCallback stream_stop_cb;
+	void *stream_stop_cb_user;
 	ChiakiAudioSink audio_sink;
 	ChiakiAudioSink haptics_sink;
 	ChiakiCtrlDisplaySink display_sink;
@@ -285,6 +319,10 @@ typedef struct chiaki_session_t
 
 	ChiakiLog *log;
 
+	// PP696: nothing initialises this any more and nothing reads it. Kept rather than deleted, the
+	// way PP33 kept holepunch.c: streamconnection.c stays in the tree as unbuilt source, and a
+	// header that stopped declaring what that file is written against would make it uncompilable
+	// text rather than source somebody could put back.
 	ChiakiStreamConnection stream_connection;
 
 	ChiakiControllerState controller_state;
@@ -320,6 +358,22 @@ static inline void chiaki_session_set_video_sample_cb(ChiakiSession *session, Ch
 {
 	session->video_sample_cb = cb;
 	session->video_sample_cb_user = user;
+}
+
+/**
+ * PP696: install the stream phase. Without one the session reaches it and stops there, which is
+ * what a build with no host above it should do rather than pretending to stream.
+ */
+static inline void chiaki_session_set_stream_run_cb(ChiakiSession *session, ChiakiStreamRunCallback cb, void *user)
+{
+	session->stream_run_cb = cb;
+	session->stream_run_cb_user = user;
+}
+
+static inline void chiaki_session_set_stream_stop_cb(ChiakiSession *session, ChiakiStreamStopCallback cb, void *user)
+{
+	session->stream_stop_cb = cb;
+	session->stream_stop_cb_user = user;
 }
 
 /**

@@ -96,6 +96,40 @@ public sealed class StreamHandover : IDisposable
         }
     }
 
+    /// <summary>
+    /// PP696: whether the C session's stop has reached this handover.
+    ///
+    /// The session thread stops with four wake-ups and this is the fourth - the one that used to be
+    /// chiaki_stream_connection_stop. The trampoline's wait loop reads it every slice, so a stop
+    /// that arrives mid-session ends the run rather than waiting out the whole thing.
+    /// </summary>
+    public bool Stopped
+    {
+        get
+        {
+            ObjectDisposedException.ThrowIf(handle == IntPtr.Zero, this);
+            return HandoverStopped(handle);
+        }
+    }
+
+    /// <summary>
+    /// PP696: install this handover as a session's stream phase, and as what its stop reaches.
+    ///
+    /// THE TRAMPOLINE IS C. What goes onto the session is a pair of C function pointers over this
+    /// handover, and never a managed delegate: the session thread is one the CLR never created, and
+    /// a delegate installed here is a pointer the collector may move under it.
+    ///
+    /// One call for both callbacks, because they take the same handover - a session wired for the
+    /// run and not for the stop is one nothing can quit, which is the failure PP338 is about.
+    /// </summary>
+    public void InstallOn(Native.ChiakiSession session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        ObjectDisposedException.ThrowIf(handle == IntPtr.Zero, this);
+
+        StreamRunInstall(session.Handle, handle);
+    }
+
     /// <inheritdoc/>
     public void Dispose()
     {
@@ -106,6 +140,15 @@ public sealed class StreamHandover : IDisposable
         handle = IntPtr.Zero;
         GC.SuppressFinalize(this);
     }
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_stream_run_install",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern void StreamRunInstall(IntPtr session, IntPtr handover);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_stream_handover_stopped",
+        CallingConvention = CallingConvention.Cdecl)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    private static extern bool HandoverStopped(IntPtr handover);
 
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_stream_handover_create",
         CallingConvention = CallingConvention.Cdecl)]
