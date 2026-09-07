@@ -451,30 +451,6 @@ slowest thing in a commit, so this is plausibly a flag rather than a step - some
 person runs before touching either flip's arrangement, and the flip's own task then runs
 as its first move.</section_body>
 
-### §PP806 The install the driver check cannot name
-
-PP764 asks two files one question: has session.c stopped calling the C's run, and does
-anything in app install a callback in its place. The second half is answered by looking
-for ".InstallOn(" in a file that opens a session, with the declaring file excluded by
-name - which was exact while StreamHandover was the only class in the tree declaring
-that method.
-
-PP792 ENDED THAT, and nothing has gone wrong yet. SenkushaHandover declares an InstallOn
-of its own and no path file calls it, so today's answer is unchanged. The moment a root
-installs a senkusha phase from StreamRun.cs, the stream's question is satisfied by an
-install with nothing to do with the stream - and what that hides is the state PP762
-shipped: the C hands the phase over, a root exists, and no session installs it.
-
-NOT A DEFECT TODAY, WHICH IS WHY THIS IS AN IDEA. Filing it as a fix would spend a
-commit on a check that currently answers correctly. What it needs is the re-entry
-condition stated: the first path file that installs anything other than a stream
-handover is when this becomes real.
-
-THE FIX IS PROBABLY THE RECEIVER, not a longer exclusion list. The check already reasons
-about receivers - the dot is what tells a call from a declaration - so requiring the
-receiver's own type is a small step from where it is, and the alternative is a list of
-file names that a rename empties in silence.
-
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed

@@ -87,6 +87,22 @@ public static class StreamPhaseDriver
     /// <summary>And the composition root, whose construction is the other way to install one.</summary>
     public const string ThePortsPhase = "new ManagedStreamPhase(";
 
+    /// <summary>
+    /// PP806: the seam's own type, which is what a path doing its own composition must name.
+    ///
+    /// <see cref="ThePortsInstall"/> was the whole of the second spelling until PP792 put a second
+    /// handover in the tree with a method of the same name. A dot tells a call from a declaration
+    /// and says nothing about WHICH seam is being installed, so the moment a session path installs a
+    /// senkusha phase the stream's question is answered by an install that has nothing to do with
+    /// the stream - and what that would hide is the state PP762 shipped: the C hands the phase over,
+    /// a root exists, and no session installs one.
+    ///
+    /// A TYPE AND NOT A LONGER EXCLUSION LIST. The receiver at a call site is a variable, so its
+    /// type is not there to be read; where it IS spelled is the construction, and no other seam can
+    /// spell this one. Excluding files by name instead would be a list a rename empties in silence.
+    /// </summary>
+    public const string ThePortsHandover = "new StreamHandover(";
+
     /// <summary>Whether session.c still runs the stream itself.</summary>
     public static bool TheCRunsIt(string sessionSource)
     {
@@ -130,6 +146,12 @@ public static class StreamPhaseDriver
     /// Either spelling counts: constructing the phase, or calling the install directly. The phase is
     /// what a caller normally reaches for and the install is what the phase itself does, so a path
     /// that did its own composition is not a path this should refuse.
+    ///
+    /// PP806: AND THE SECOND SPELLING NAMES THE SEAM AS WELL AS THE CALL. A bare install used to be
+    /// enough, which was exact while <see cref="StreamHandover"/> was the only class in the tree
+    /// declaring that method - PP792's senkusha handover ended that. A path composing its own
+    /// constructs the thing it installs, so <see cref="ThePortsHandover"/> is the evidence and the
+    /// install is what it then does with it; a path installing some OTHER seam spells neither.
     /// </summary>
     public static IReadOnlyList<string> DrivingSessionPathsIn(IEnumerable<(string Name, string Text)> files)
     {
@@ -147,11 +169,11 @@ public static class StreamPhaseDriver
             if (!code.Contains(BuildsASession, StringComparison.Ordinal))
                 continue;
 
-            if (code.Contains(ThePortsPhase, StringComparison.Ordinal)
-                || code.Contains(ThePortsInstall, StringComparison.Ordinal))
-            {
+            bool composesItsOwn = code.Contains(ThePortsHandover, StringComparison.Ordinal)
+                && code.Contains(ThePortsInstall, StringComparison.Ordinal);
+
+            if (code.Contains(ThePortsPhase, StringComparison.Ordinal) || composesItsOwn)
                 found.Add(name);
-            }
         }
 
         return found;

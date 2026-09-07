@@ -152,4 +152,59 @@ public class StreamPhaseDriverTests(ITestOutputHelper output)
         // The same call anywhere else is an install.
         Assert.Single(StreamPhaseDriver.InstallersIn([(@"app\Session\StreamRun.cs", "other.InstallOn(session);")]));
     }
+
+    /// <summary>
+    /// PP806: A SECOND SEAM'S INSTALL DOES NOT ANSWER THE STREAM'S QUESTION.
+    ///
+    /// PP792 gave senkusha a handover of its own, declaring an InstallOn with the same spelling. A
+    /// check reading the call alone would then be satisfied by a session path that installs a
+    /// senkusha phase and no stream one - which is exactly the state PP762 shipped and PP767 wrote
+    /// this question to refuse.
+    ///
+    /// The old reading is asserted beside it, because it is the one that says yes: the two answers
+    /// differing is the whole of what this task changed.
+    /// </summary>
+    [Fact]
+    public void ASessionPathInstallingSomeOtherSeamIsNotAStreamDriver()
+    {
+        (string, string) senkusha = (
+            @"app\Session\StreamRun.cs",
+            "var s = ChiakiSession.TryCreate(info, log, out _); "
+                + "var h = new SenkushaHandover(); h.InstallOn(s);");
+
+        // The call is there, so the superseded question finds one.
+        Assert.Single(StreamPhaseDriver.InstallersIn([senkusha]));
+
+        // And the one that decides does not: nothing here names the stream's own seam.
+        Assert.Empty(StreamPhaseDriver.DrivingSessionPathsIn([senkusha]));
+
+        const string CSilent = "\terr = session->stream_run_cb(data_sock, &reason, session->stream_run_cb_user);";
+        Assert.Equal(StreamDriver.Nobody, StreamPhaseDriver.DriverOf(CSilent, [senkusha]));
+    }
+
+    /// <summary>
+    /// PP806: and a path that composes the STREAM's own seam still counts, which is the half a
+    /// stricter check could have taken away.
+    ///
+    /// Two spellings have always been accepted - reaching for the composition root, or doing the
+    /// composition - and the second is the one that had to be narrowed rather than dropped. The
+    /// evidence is the type it constructs, which no other seam can spell.
+    /// </summary>
+    [Fact]
+    public void APathComposingTheStreamsOwnSeamIsStillADriver()
+    {
+        (string, string) composing = (
+            @"app\Session\StreamRun.cs",
+            "var s = ChiakiSession.TryCreate(info, log, out _); "
+                + "var h = new StreamHandover(); h.InstallOn(s);");
+
+        Assert.Single(StreamPhaseDriver.DrivingSessionPathsIn([composing]));
+
+        // And constructing one without ever installing it is not driving either.
+        (string, string) built = (
+            @"app\Session\StreamRun.cs",
+            "var s = ChiakiSession.TryCreate(info, log, out _); var h = new StreamHandover();");
+
+        Assert.Empty(StreamPhaseDriver.DrivingSessionPathsIn([built]));
+    }
 }
