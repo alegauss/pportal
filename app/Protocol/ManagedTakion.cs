@@ -71,7 +71,7 @@ public enum TakionTeardownStep
 /// <see cref="TakionReceiveBuffer"/>'s pooled span and the dispatch is handed the span itself, so
 /// a handler that copies is the handler's decision and not this one's.
 /// </summary>
-public sealed class ManagedTakion : ITakionLoopHost, IDisposable
+public sealed class ManagedTakion : ITakionLoopHost, IDataAckSink, IDisposable
 {
     /// <summary>TAKION_REORDER_QUEUE_SIZE_EXP: sixteen entries.</summary>
     public const int ReorderQueueSizeExp = 4;
@@ -339,6 +339,69 @@ public sealed class ManagedTakion : ITakionLoopHost, IDisposable
             CongestionSent++;
 
         return sent;
+    }
+
+    /// <summary>How many data acks this takion has put on its socket.</summary>
+    public int DataAckSent { get; private set; }
+
+    /// <summary>
+    /// PP807: chiaki_takion_send_message_data_ack - the twelve bytes that say a message arrived.
+    ///
+    /// PP675 wrote them and nothing sent one, so this port received acks and answered none. What
+    /// that cost depended on the console's own retry policy rather than on anything here, which is
+    /// why it had never shown up: the stream's run and senkusha's both wait for what they asked for
+    /// and act on the first copy, so a retransmission is handled twice by arms that ignore the
+    /// second - and that looks exactly like a run that worked.
+    ///
+    /// A PLAIN SEND, LIKE THE CONGESTION PACKET. The C's own send would MAC this where a local
+    /// cipher exists and this takion has none wired, so what leaves here is unsigned - the same
+    /// state <see cref="SendCongestion"/> is in, for the same reason and not a new one.
+    /// </summary>
+    /// <param name="seqNum">The cumulative number, which is the last one the queue released.</param>
+    public ChiakiError SendDataAck(uint seqNum)
+    {
+        ObjectDisposedException.ThrowIf(Stage == TakionStage.Closed, this);
+
+        if (wire is null)
+            return ChiakiError.Uninitialized;
+
+        // The C sizes this one by sizeof(buf) - the whole packet, and the only call site
+        // TakionKeyPosition records that way. What it advances is key_pos_local, which is not the
+        // ledger this class holds, so this takes the position its other four sends take rather than
+        // introducing a second answer for one of the five.
+        ulong keyPos = Ledger.RequestPos(0, commit: true);
+
+        Span<byte> datagram = stackalloc byte[TakionDataDatagrams.AckSize];
+
+        // The window is the constant the INIT advertised. takion sets a_rwnd once and never revises
+        // it, which is the same fact PP494 records from the other direction: the field arrives, is
+        // logged, and nothing acts on it.
+        TakionDataDatagrams.WriteAck(
+            datagram, Handshake.TagRemote, (uint)keyPos, seqNum, TakionHandshake.ARwnd);
+
+        ChiakiError sent = wire.Send(datagram);
+        if (sent == ChiakiError.Success)
+            DataAckSent++;
+
+        return sent;
+    }
+
+    /// <summary>
+    /// PP807: takion_flush_data_queue's ack - one arrival in, and the queue's decision out.
+    ///
+    /// The queue is this object's, which is why the seam is here and not on the router that calls
+    /// it: <see cref="TakionDataAckSend"/> is where the rule lives and this is what owns both things
+    /// it needs. A takion that has not finished its handshake has no queue and acknowledges nothing,
+    /// which is a real state rather than an error - the receive loop can be reading before the
+    /// handshake's own answer has been acted on.
+    /// </summary>
+    public TakionAckSendReading AckData(uint seqNum)
+    {
+        ObjectDisposedException.ThrowIf(Stage == TakionStage.Closed, this);
+
+        return dataQueue is { } queue
+            ? TakionDataAckSend.Arrival(queue, seqNum, SendDataAck)
+            : new TakionAckSendReading(TakionAckSendVerdict.NoQueue, 0, 0, ChiakiError.Uninitialized);
     }
 
     /// <summary>How many raw datagrams this takion has put on its socket.</summary>

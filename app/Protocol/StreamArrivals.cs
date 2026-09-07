@@ -108,6 +108,16 @@ public sealed class StreamArrivals
     /// <summary>The ledger, which is the takion's own and not a second one.</summary>
     public IKeyPositionLedger? Ledger { get; set; }
 
+    /// <summary>
+    /// PP807: where a data message's acknowledgement goes, set after construction like the two above.
+    ///
+    /// The third thing <see cref="Datagram"/> needs off the takion and the only one that is not a
+    /// value: the ack is the takion's own queue and socket, and this object cannot hold the takion
+    /// for the reason the note above gives. Absent acknowledges nothing, which is what every caller
+    /// asking about the routing rather than about a socket wants.
+    /// </summary>
+    public IDataAckSink? Acks { get; set; }
+
     /// <summary>How many arrivals reached a handler, which is what a live run has to show.</summary>
     public int Handled { get; private set; }
 
@@ -209,16 +219,23 @@ public sealed class StreamArrivals
         // business: what the C hands the callback is the payload past its nine-byte header.
         byte[] payload = push.Entry.Payload;
 
-        if (payload.Length < TakionDataDrain.HeaderSize
-            || !TakionDataDrain.IsKnown(payload[TakionDataDrain.DataTypeOffset]))
-        {
-            return Record(new ArrivalReading(
-                TakionRoute.ToData, Verdict: message.Verdict, BaseType: baseType));
-        }
+        ArrivalReading reading =
+            payload.Length < TakionDataDrain.HeaderSize
+                || !TakionDataDrain.IsKnown(payload[TakionDataDrain.DataTypeOffset])
+            ? Record(new ArrivalReading(
+                TakionRoute.ToData, Verdict: message.Verdict, BaseType: baseType))
+            : Data(
+                (TakionDataType)payload[TakionDataDrain.DataTypeOffset],
+                payload.AsSpan(TakionDataDrain.HeaderSize));
 
-        return Data(
-            (TakionDataType)payload[TakionDataDrain.DataTypeOffset],
-            payload.AsSpan(TakionDataDrain.HeaderSize));
+        // PP807: AND THE ACK LAST, which is where takion_flush_data_queue has it - below the loop
+        // that delivered, and reached whatever each entry turned out to be. So the two arms above
+        // that hand nothing on are acknowledged too, and a streaminfo's own three sends are already
+        // on the wire when this one leaves. The number is the arrival's; what is done with it is the
+        // takion's queue's decision and not this layer's.
+        Acks?.AckData(push.Entry.SeqNum);
+
+        return reading;
     }
 
     /// <summary>

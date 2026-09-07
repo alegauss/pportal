@@ -237,11 +237,15 @@ public sealed class ManagedStreamPhase : IDisposable
             InstallArm = crypt => host.InstallAvArm(crypt),
         };
 
+        // PP807: and the acks, which is the third thing the arrivals take off the takion. Without it
+        // a run reads every data message the console sends and tells it nothing arrived - the C's
+        // flush answers each drained message and this port answered none.
         arrivals = new StreamArrivals(
             host, messages, keying, new ManagedStreamData(events))
         {
             TagLocal = takion.TagLocal,
             Ledger = takion.Ledger,
+            Acks = takion,
         };
 
         // And the replay, which is the same handler over the message the bang state buffered.

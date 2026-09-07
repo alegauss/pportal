@@ -24,7 +24,7 @@
 - ⏳ **PP27** (deps: PP672 ✅, PP673 ✅, PP674 ✅, PP675 ✅, PP676 ✅, PP677 ✅, PP678 ✅, PP679 ✅, PP680 ✅, PP702 ✅, PP783 ✅, PP784, PP785 ✅, PP786 ✅) (requires: console) **takion.c is 2007 lines of C over raw sockets and timers, and the whole stream rides on it** — Ten tasks wrote it; four more take the C out. → §PP27
 - 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — chiaki_fec_decode has three callers - frameprocessor.c, the C suite and this port's shim - and gf-complete has a fourth site none of them reach: chiaki_lib_init. → §PP30
 - 📋 **PP784** (deps: PP788 ✅, PP789 ✅, PP790 ✅, PP791 ✅, PP792 ✅, PP805 ✅, PP809 ⏳) (requires: console) **senkusha runs before the stream phase and calls four of takion's exports, so the transport cannot leave with it** — Porting was the call; its lines shipped and takion loses its last caller when this does. → §PP784
-- 📋 **PP807** (deps: —) **the port never sends the data ack the C sends after a drained message, so nothing tells the console it arrived** — WriteAck has no caller outside the tests, and PP805 found it while wiring the arm that reads the console's acks - the same message going the other way. → §PP807
+- ⏳ **PP807** (deps: —) **the port never sends the data ack the C sends after a drained message, so nothing tells the console it arrived** — senkusha's router reads its data messages through the same push and acknowledges none, so the measurement's own exchange still answers nothing. → §PP807
 - 📋 **PP808** (deps: —) **nothing raises a takion disconnect, so a wait on a transport that died runs its whole timeout** — Senkusha's disconnect arm is reached by tests alone after PP805, and the stream's connect wait has the same silence PP366 named in the C. → §PP808
 - ⏳ **PP809** (deps: PP792 ✅, PP805 ✅, PP813) (requires: console) **no path installs a senkusha phase, so every session still measures the link with the C's run** — A live run measured through it and the phase stalled at the bang, so the numbers read back are the C's fallback; PP813 carries the census. → §PP809
 - 📋 **PP810** (deps: PP797 ✅) **the render pump plays as much of a unit as the engine had room for and drops the rest of it** — The dequeue is unconditional and the copy is clamped, so a full engine costs whatever did not fit; PP797 made it reachable by keeping the sink deliberately full. → §PP810
@@ -113,6 +113,14 @@
   many arrivals an arm acted on, and what the session then carries. A rung short of
   MtuOutMeasured, or 1454/1454/1000, is PP28's fallback and says the port measured
   nothing. The console has to reach ready first, which it does not today.
+
+## Done when — PP807
+
+- **Senkusha's router acknowledges what its own queue releases** SenkushaRouter.Data
+  reads its entry through TakionDataPush and hands it to the protobuf arm; the ack is
+  one call beside that, over the takion's own queue. Checked as the stream path is: a
+  datagram whose type the router refuses is still acknowledged, because the C's flag is
+  set on the pull and not on a delivery.
 
 ## Non-goals
 
