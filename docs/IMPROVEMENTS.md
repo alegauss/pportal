@@ -300,10 +300,11 @@ milliseconds missing from the middle of a stream that carries on, which is a cli
 counters say nothing - FramesWritten counts what reached the engine and is exactly right
 about it, and the ring reports no overflow because the ring is not where the loss is.
 
-TWO SHAPES OF FIX AND THEY ARE NOT EQUAL. Putting the tail back at the head of the queue
-keeps the audio and adds a partial-unit state; asking the room BEFORE dequeuing and
-leaving the unit alone keeps the queue simple and costs a pass. The second is what the
-capture direction does, which is the argument for it.
+BOTH SHAPES WERE MEASURED on 2026-09-07 and both moved the loss rather than ending it:
+2374 ring evictions for asking the room first, 2410 for putting the tail back, against
+ONE while truncating - that build kept the ring empty by discarding audio below it.
+PP797's drain target is in scope: a full engine offers 240 frames against a 480-frame
+unit.
 
 ### §PP811 The send path nothing sends through
 
