@@ -214,29 +214,6 @@ port does not own calling code it does - a boundary needing explaining at every 
 reading. Five lines carry the port, and the file stops calling takion when the last
 lands.
 
-### §PP792 The seam senkusha does not have
-
-PP753 gave the stream phase a handover: session.c calls a function pointer, the far side
-runs, and the outcome comes back with a disconnect reason. Senkusha has no such thing -
-session.c calls chiaki_senkusha_run directly, three lines after it inits and two before
-it finis, and reads three out-parameters.
-
-THREE NUMBERS OUT AND A FALLBACK BEHIND THEM. PP28's placement already models what
-happens on each outcome: canceled ends the session and anything else falls back to 1454,
-1454 and a millisecond of round trip, which is the C carrying on with numbers it did not
-measure. So the seam has to carry the three values AND the outcome that decides whether
-they are used - a handover answering only an error code would lose the half the fallback
-turns on.
-
-THE STOP HAS TO CROSS TOO. chiaki_session_stop pokes senkusha's own stop pipe, and a
-managed run on the far side of a callback is a thread that poke no longer reaches -
-which is the third of PP696's four wake-ups and the one a port forgets, because a
-session that stops cleanly in a test still hangs when somebody quits a live stream.
-
-AND THE CONSOLE IS THE GATE, for PP763's reason. Senkusha measures a real link; a
-measurement that the suite agrees with and a console does not is exactly the shape that
-ships green and streams nothing.
-
 ### §PP797 A sound path with both ends built
 
 audioreceiver.c is ported twice over - PP740's ManagedAudioReceiverPair is the

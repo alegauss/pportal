@@ -334,6 +334,14 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_session_stop(ChiakiSession *session)
 	if(session->stream_stop_cb)
 		session->stream_stop_cb(session->stream_stop_cb_user);
 
+	// PP792: and a fifth, to whoever owns the measurement. Senkusha's own stop is a flag its waits
+	// re-read, and a managed run has a flag this library cannot reach - so a session stopped during
+	// the measurement would wait out ten pings and two binary searches before it noticed. The two
+	// pokes are separate because the phases are: only one of them is running when this is called, and
+	// a session that installed one and not the other must still be stoppable.
+	if(session->senkusha_stop_cb)
+		session->senkusha_stop_cb(session->senkusha_stop_cb_user);
+
 	chiaki_mutex_unlock(&session->state_mutex);
 	return CHIAKI_ERR_SUCCESS;
 }
@@ -627,15 +635,45 @@ ctrl_failed:
 	}
 
 #ifdef ENABLE_SENKUSHA
-	CHIAKI_LOGI(session->log, "Starting Senkusha");
+	// PP792: THE MEASUREMENT IS HANDED OVER WHERE SOMEBODY TOOK IT, and run here where nobody did.
+	//
+	// PP753 built the stream phase's seam and senkusha had none, so PP788 to PP791's managed run was
+	// unreachable from a session however complete it was. This is the seam: the same three
+	// out-parameters and the same error, through a callback that whoever owns the port installs.
+	//
+	// AND THE C'S RUN STAYS, which is the difference from the stream phase's flip. PP783 removed the
+	// fallback deliberately - streamconnection.c had left the build, so keeping one would hide which
+	// code was running. Senkusha is still here and still correct, and PP763's lesson is that a
+	// measurement the gate agrees with and a console does not ships green and streams nothing. So the
+	// branch below is what a tree with nothing installed runs, unchanged, until a live link says the
+	// managed one measures the same thing.
+	//
+	// The order the two arms share is PP28's and is asserted as a sequence: init, run, fini, and only
+	// then the outcome - so the fini is unconditional and happens before anything reads err.
+	if(session->senkusha_run_cb)
+	{
+		CHIAKI_LOGI(session->log, "Handing Senkusha to the installed run");
 
-	ChiakiSenkusha senkusha;
-	err = chiaki_senkusha_init(&senkusha, session);
-	if(err != CHIAKI_ERR_SUCCESS)
-		QUIT(quit_ctrl);
+		// Unlocked across the call, as the stream phase's is: the callee is another thread's work and
+		// holding the session's state mutex through ten pings and two searches would block every
+		// reader of it, chiaki_session_stop included - which is the one caller that must get in.
+		chiaki_mutex_unlock(&session->state_mutex);
+		err = session->senkusha_run_cb(data_sock, &session->mtu_in, &session->mtu_out, &session->rtt_us,
+				session->senkusha_run_cb_user);
+		chiaki_mutex_lock(&session->state_mutex);
+	}
+	else
+	{
+		CHIAKI_LOGI(session->log, "Starting Senkusha");
 
-	err = chiaki_senkusha_run(&senkusha, &session->mtu_in, &session->mtu_out, &session->rtt_us, data_sock);
-	chiaki_senkusha_fini(&senkusha);
+		ChiakiSenkusha senkusha;
+		err = chiaki_senkusha_init(&senkusha, session);
+		if(err != CHIAKI_ERR_SUCCESS)
+			QUIT(quit_ctrl);
+
+		err = chiaki_senkusha_run(&senkusha, &session->mtu_in, &session->mtu_out, &session->rtt_us, data_sock);
+		chiaki_senkusha_fini(&senkusha);
+	}
 	CHECK_STOP(quit_ctrl);
 	if(session->ctrl_failed)
 	{

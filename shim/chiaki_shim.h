@@ -337,6 +337,71 @@ CHIAKI_SHIM_API int64_t chiaki_shim_stream_handover_socket(void *handover);
 CHIAKI_SHIM_API bool chiaki_shim_stream_handover_stopped(void *handover);
 
 /**
+ * PP792, under PP784: the seam a session thread hands its SENKUSHA phase across.
+ *
+ * The stream's handover above is the model and this is not a copy of it, because what comes back is
+ * a different thing. A stream run answers an error and a remote disconnect reason; senkusha answers
+ * an error and THREE MEASUREMENTS - the two MTUs and the round trip - and PP28's placement is what
+ * spends them: SUCCESS keeps them, CANCELED ends the session, and every other code throws them away
+ * for 1454, 1454 and a millisecond. So a handover carrying only an error would lose the half the
+ * fallback turns on.
+ *
+ * THE NUMBERS ARE PLAIN SCALARS AND NOT A STRUCT, for ChiakiShimLogCb's reason one level down: a
+ * struct crossing here would be a layout two compilers have to agree about, and the failure of that
+ * agreement is a console refusing a stream because the launch spec asked for an MTU nobody measured.
+ *
+ * AND THEY ARE WRITTEN OUT ONLY ON SUCCESS, which is what chiaki_senkusha_run does: a run that
+ * measured nothing leaves the session's own fields as they were rather than filling them with the
+ * zeroes it never reached.
+ */
+CHIAKI_SHIM_API void *chiaki_shim_senkusha_handover_create(void);
+CHIAKI_SHIM_API void chiaki_shim_senkusha_handover_free(void *handover);
+
+/** Raised by the C session thread when it reaches the senkusha phase. */
+CHIAKI_SHIM_API int32_t chiaki_shim_senkusha_handover_start(void *handover);
+
+/** Waits for that, so the managed side begins when the thread is there. False on timeout. */
+CHIAKI_SHIM_API bool chiaki_shim_senkusha_handover_await_start(void *handover, int32_t timeout_ms);
+
+/** Raised by the managed side when its run returns, with the error and what it measured. */
+CHIAKI_SHIM_API int32_t chiaki_shim_senkusha_handover_finish(
+		void *handover, int32_t error, uint32_t mtu_in, uint32_t mtu_out, uint64_t rtt_us);
+
+/** What the session thread calls in place of the run: blocks until finish, then answers its error. */
+CHIAKI_SHIM_API int32_t chiaki_shim_senkusha_handover_await_finish(void *handover, int32_t timeout_ms);
+
+/**
+ * The three the far side reported, for a caller that wants them without being the session thread.
+ *
+ * False before a finish, so an unmeasured link is distinguishable from one measured as zeroes -
+ * which the session thread gets for free from the error and a reader of this does not.
+ */
+CHIAKI_SHIM_API bool chiaki_shim_senkusha_handover_measurements(
+		void *handover, uint32_t *out_mtu_in, uint32_t *out_mtu_out, uint64_t *out_rtt_us);
+
+/** The socket the session handed the measurement, or -1 where it handed none. Borrowed. */
+CHIAKI_SHIM_API int64_t chiaki_shim_senkusha_handover_socket(void *handover);
+
+/** Whether the session's stop has reached this handover. */
+CHIAKI_SHIM_API bool chiaki_shim_senkusha_handover_stopped(void *handover);
+
+/** End both waits and mark it stopped, so a waiter can be shut down. PP768's export, one seam over. */
+CHIAKI_SHIM_API int32_t chiaki_shim_senkusha_handover_cancel(void *handover);
+
+/**
+ * PP792: install a handover as a session's senkusha phase, and as what its stop reaches.
+ *
+ * Both callbacks take the same handover, so one install is the whole wiring - the rule the stream's
+ * install already follows, and for the same reason: a phase wired for the run and not for the stop
+ * is one nothing can quit.
+ *
+ * A SESSION WITH NONE RUNS THE C's, which is where the two seams differ. session.c has no stream
+ * connection left to fall back to and answers UNINITIALIZED; senkusha.c is still in the build and
+ * still measures the link, so not installing this is a supported state rather than a broken one.
+ */
+CHIAKI_SHIM_API void chiaki_shim_senkusha_run_install(void *session, void *handover);
+
+/**
  * chiaki_error_string for a ChiakiErrorCode, as a UTF-8 string the caller does not own.
  *
  * Here because it is the smallest thing that proves a real property of the seam: a pointer to a

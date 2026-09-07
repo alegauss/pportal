@@ -242,6 +242,40 @@ typedef ChiakiErrorCode (*ChiakiStreamRunCallback)(chiaki_socket_t *data_sock, c
  */
 typedef void (*ChiakiStreamStopCallback)(void *user);
 
+/**
+ * PP792, under PP784: the senkusha phase, measured by whoever installed this instead of by
+ * senkusha.c.
+ *
+ * PP753 gave the stream phase a handover and senkusha was left with none - session.c calls
+ * chiaki_senkusha_run directly, three lines after it inits and two before it finis. So PP788 to
+ * PP791 wrote a managed run that no session could reach, which is what this is for.
+ *
+ * THREE NUMBERS AND THE OUTCOME, because the outcome decides whether the numbers are used at all.
+ * PP28's placement is the whole contract: SUCCESS keeps what the callee wrote, CANCELED ends the
+ * session, and every other code falls back to 1454, 1454, a millisecond and the don't-fragment bit
+ * cleared. A callback answering only an error code would lose the half the fallback turns on.
+ *
+ * THE THREE CROSS AS OUT PARAMETERS and not as a struct, which is the shape the call this replaces
+ * has: they are the session's own fields, so a callee that measured nothing leaves them as they
+ * were and the fallback overwrites them. A struct would need an answer for what an unmeasured field
+ * holds, and the C has never had to give one.
+ *
+ * data_sock is the socket the session established, or NULL for the ordinary one - handed over
+ * exactly as chiaki_senkusha_run is handed it.
+ */
+typedef ChiakiErrorCode (*ChiakiSenkushaRunCallback)(
+		chiaki_socket_t *data_sock, uint32_t *mtu_in, uint32_t *mtu_out, uint64_t *rtt_us, void *user);
+
+/**
+ * PP792: and what a stop becomes when the measurement is not on this thread.
+ *
+ * chiaki_session_stop wakes the session thread three ways, and none of them reaches a run behind a
+ * callback: senkusha's own stop is a flag its waits re-read, and a managed run has a flag of its
+ * own that this library cannot see. Senkusha is ten pings and two binary searches long, so a
+ * session that stopped poking here would wait all of that out before it noticed it had quit.
+ */
+typedef void (*ChiakiSenkushaStopCallback)(void *user);
+
 
 
 typedef struct chiaki_session_t
@@ -288,6 +322,11 @@ typedef struct chiaki_session_t
 	void *stream_run_cb_user;
 	ChiakiStreamStopCallback stream_stop_cb;
 	void *stream_stop_cb_user;
+	// PP792: and senkusha's pair, for whoever measures the link now.
+	ChiakiSenkushaRunCallback senkusha_run_cb;
+	void *senkusha_run_cb_user;
+	ChiakiSenkushaStopCallback senkusha_stop_cb;
+	void *senkusha_stop_cb_user;
 	ChiakiAudioSink audio_sink;
 	ChiakiAudioSink haptics_sink;
 	ChiakiCtrlDisplaySink display_sink;
@@ -374,6 +413,24 @@ static inline void chiaki_session_set_stream_stop_cb(ChiakiSession *session, Chi
 {
 	session->stream_stop_cb = cb;
 	session->stream_stop_cb_user = user;
+}
+
+/**
+ * PP792: install the senkusha phase. Without one the session runs the C's, which is every build
+ * this port has ever produced and is what PP763's lesson says must stay true: a measurement the
+ * gate agrees with and a console does not is the shape that ships green and streams nothing, so the
+ * C's run is not removed by the seam that makes it replaceable.
+ */
+static inline void chiaki_session_set_senkusha_run_cb(ChiakiSession *session, ChiakiSenkushaRunCallback cb, void *user)
+{
+	session->senkusha_run_cb = cb;
+	session->senkusha_run_cb_user = user;
+}
+
+static inline void chiaki_session_set_senkusha_stop_cb(ChiakiSession *session, ChiakiSenkushaStopCallback cb, void *user)
+{
+	session->senkusha_stop_cb = cb;
+	session->senkusha_stop_cb_user = user;
 }
 
 /**

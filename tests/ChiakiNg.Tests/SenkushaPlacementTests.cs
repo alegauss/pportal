@@ -141,4 +141,44 @@ public class SenkushaPlacementTests
             "session.c's senkusha fallback no longer sets mtu_in, mtu_out, rtt_us and dontfrag in "
                 + "that order, or the numbers moved away from the ones modelled here");
     }
+
+    /// <summary>
+    /// PP792, under PP784: the seam is there AND the C's run is still behind it.
+    ///
+    /// Both halves fail differently and both matter. Without the first, PP788 to PP791's run is a
+    /// run no session can reach - which is the symptom that opened the line. Without the second,
+    /// this tree is where PP763 had to revert from: the C taken out on the strength of a gate, with
+    /// a link no console has measured.
+    /// </summary>
+    [Fact]
+    public void AnInstalledRunIsPreferredAndTheCsIsStillTheOtherArm()
+    {
+        if (Source() is not { } source)
+            return;
+
+        Assert.True(
+            SenkushaPlacementSource.TheInstalledRunIsPreferredAndTheCsRunRemains(source),
+            "session.c no longer asks for an installed senkusha run before starting its own, or the "
+                + "C's init has left the file - and a measurement nothing has checked against a "
+                + "console is the shape PP763 reverted");
+    }
+
+    /// <summary>
+    /// PP792: and a stop still reaches a measurement that is on somebody else's thread.
+    ///
+    /// The wake-up a port forgets, because a session that stops cleanly in a gate still hangs when
+    /// somebody quits: senkusha's own stop is a flag its waits re-read, and an installed run has one
+    /// this library cannot see.
+    /// </summary>
+    [Fact]
+    public void TheSessionsStopReachesAnInstalledRun()
+    {
+        if (Source() is not { } source)
+            return;
+
+        Assert.True(
+            SenkushaPlacementSource.TheStopReachesTheInstalledRun(source),
+            "chiaki_session_stop no longer pokes an installed senkusha run, so a session stopped "
+                + "mid-measurement waits out ten pings and two searches before it notices");
+    }
 }

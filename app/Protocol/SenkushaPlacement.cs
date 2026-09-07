@@ -224,4 +224,53 @@ public static class SenkushaPlacementSource
             $"session->rtt_us = {SenkushaPlacement.Fallback.RttMicroseconds};",
             "session->dontfrag = false;");
     }
+
+    /// <summary>The test session.c asks before it measures anything itself.</summary>
+    public const string TheInstalledRunIsAskedFor = "if(session->senkusha_run_cb)";
+
+    /// <summary>And the call it makes when the answer is yes.</summary>
+    public const string TheInstalledRunIsCalled = "session->senkusha_run_cb(";
+
+    /// <summary>The fifth poke chiaki_session_stop makes, which is the run's own.</summary>
+    public const string TheInstalledStopIsCalled = "session->senkusha_stop_cb(";
+
+    /// <summary>
+    /// PP792: whether an installed run is preferred, with the C's own left as the other arm.
+    ///
+    /// BOTH HALVES, and the second is the one worth asserting. A seam that replaced
+    /// chiaki_senkusha_run would pass a check asking only that the callback is reached, and it would
+    /// be the state PP763 reverted: the C removed on the strength of a gate, with a link nothing has
+    /// measured against a console. So the order is the claim - the question first, the C's init
+    /// after it - and <see cref="FiniRunsBeforeTheOutcomeIsRead"/> still holds the arm itself.
+    /// </summary>
+    public static bool TheInstalledRunIsPreferredAndTheCsRunRemains(string source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        string compact = CCall.Compact(source);
+
+        int asked = CCall.Mark(compact, TheInstalledRunIsAskedFor);
+        if (asked < 0)
+            return false;
+
+        int called = CCall.Mark(compact, TheInstalledRunIsCalled, asked);
+        if (called < 0)
+            return false;
+
+        return CCall.Mark(compact, "chiaki_senkusha_init(", called) >= 0;
+    }
+
+    /// <summary>
+    /// PP792: whether a stop still reaches a measurement that is not on the session thread.
+    ///
+    /// Its own check rather than a clause of the one above, because the two are in different
+    /// functions and only one of them is about the session thread's own walk. Senkusha is ten pings
+    /// and two binary searches long, so this is the difference between a quit and a wait.
+    /// </summary>
+    public static bool TheStopReachesTheInstalledRun(string source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        return CCall.Mark(CCall.Compact(source), TheInstalledStopIsCalled) >= 0;
+    }
 }

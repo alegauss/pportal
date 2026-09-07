@@ -3370,6 +3370,274 @@ CHIAKI_SHIM_API bool chiaki_shim_stream_handover_stopped(void *handover)
 	return self ? self->stopped : false;
 }
 
+/* PP792, under PP784: the senkusha handover. The stream's shape with a different cargo.
+ *
+ * Three numbers instead of a reason string, and that changes the ownership question rather than
+ * complicating it: scalars are copied by being assigned, so nothing here allocates, nothing strdups
+ * and the free is the two conditions. `measured` is what a reason's NULL was - the way to tell a
+ * link nobody measured from one measured as zeroes. */
+typedef struct chiaki_shim_senkusha_handover_t
+{
+	ChiakiBoolPredCond started;
+	ChiakiBoolPredCond finished;
+	int32_t error;
+	uint32_t mtu_in;
+	uint32_t mtu_out;
+	uint64_t rtt_us;
+	bool measured;
+	/* The socket session.c hands the measurement, kept as the value the callback was given: the
+	 * session owns it and closes it, so nothing here does. PP769's rule at the other seam. */
+	int64_t data_sock;
+	/* Set by the stop trampoline, read by the run's wait loop, for the reason the stream's is a plain
+	 * bool: the loop already wakes every slice, so there is nothing to signal. */
+	volatile bool stopped;
+} ChiakiShimSenkushaHandover;
+
+CHIAKI_SHIM_API void *chiaki_shim_senkusha_handover_create(void)
+{
+	ChiakiShimSenkushaHandover *self = calloc(1, sizeof(ChiakiShimSenkushaHandover));
+	if(!self)
+		return NULL;
+
+	/* -1 and not the zero calloc leaves, which is PP769's finding: zero is a handle a caller could
+	 * believe in, and the far side has to tell "the session handed one" from "nobody has yet". */
+	self->data_sock = -1;
+
+	if(chiaki_bool_pred_cond_init(&self->started) != CHIAKI_ERR_SUCCESS)
+	{
+		free(self);
+		return NULL;
+	}
+
+	if(chiaki_bool_pred_cond_init(&self->finished) != CHIAKI_ERR_SUCCESS)
+	{
+		chiaki_bool_pred_cond_fini(&self->started);
+		free(self);
+		return NULL;
+	}
+
+	self->error = (int32_t)CHIAKI_ERR_UNKNOWN;
+	return self;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_senkusha_handover_free(void *handover)
+{
+	ChiakiShimSenkushaHandover *self = (ChiakiShimSenkushaHandover *)handover;
+	if(!self)
+		return;
+
+	chiaki_bool_pred_cond_fini(&self->finished);
+	chiaki_bool_pred_cond_fini(&self->started);
+	free(self);
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_senkusha_handover_start(void *handover)
+{
+	ChiakiShimSenkushaHandover *self = (ChiakiShimSenkushaHandover *)handover;
+	if(!self)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+
+	if(chiaki_bool_pred_cond_lock(&self->started) != CHIAKI_ERR_SUCCESS)
+		return (int32_t)CHIAKI_ERR_UNKNOWN;
+
+	self->started.pred = true;
+	chiaki_bool_pred_cond_signal(&self->started);
+	chiaki_bool_pred_cond_unlock(&self->started);
+	return (int32_t)CHIAKI_ERR_SUCCESS;
+}
+
+CHIAKI_SHIM_API bool chiaki_shim_senkusha_handover_await_start(void *handover, int32_t timeout_ms)
+{
+	ChiakiShimSenkushaHandover *self = (ChiakiShimSenkushaHandover *)handover;
+	bool started;
+
+	if(!self || timeout_ms < 0)
+		return false;
+
+	if(chiaki_bool_pred_cond_lock(&self->started) != CHIAKI_ERR_SUCCESS)
+		return false;
+
+	/* Re-checked rather than trusted, which is the rule every predicate in this tree follows. */
+	if(!self->started.pred)
+		chiaki_bool_pred_cond_timedwait(&self->started, (uint64_t)timeout_ms);
+
+	started = self->started.pred;
+	chiaki_bool_pred_cond_unlock(&self->started);
+	return started;
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_senkusha_handover_finish(
+		void *handover, int32_t error, uint32_t mtu_in, uint32_t mtu_out, uint64_t rtt_us)
+{
+	ChiakiShimSenkushaHandover *self = (ChiakiShimSenkushaHandover *)handover;
+
+	if(!self)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+
+	if(chiaki_bool_pred_cond_lock(&self->finished) != CHIAKI_ERR_SUCCESS)
+		return (int32_t)CHIAKI_ERR_UNKNOWN;
+
+	self->mtu_in = mtu_in;
+	self->mtu_out = mtu_out;
+	self->rtt_us = rtt_us;
+	self->measured = true;
+	self->error = error;
+	self->finished.pred = true;
+
+	chiaki_bool_pred_cond_signal(&self->finished);
+	chiaki_bool_pred_cond_unlock(&self->finished);
+	return (int32_t)CHIAKI_ERR_SUCCESS;
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_senkusha_handover_await_finish(void *handover, int32_t timeout_ms)
+{
+	ChiakiShimSenkushaHandover *self = (ChiakiShimSenkushaHandover *)handover;
+	int32_t error;
+
+	if(!self || timeout_ms < 0)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+
+	if(chiaki_bool_pred_cond_lock(&self->finished) != CHIAKI_ERR_SUCCESS)
+		return (int32_t)CHIAKI_ERR_UNKNOWN;
+
+	if(!self->finished.pred)
+		chiaki_bool_pred_cond_timedwait(&self->finished, (uint64_t)timeout_ms);
+
+	/* TIMEOUT and not the code it was initialised with, so the session thread can tell a run that
+	 * failed from one that never reported - the difference between a fallback and a hang. */
+	error = self->finished.pred ? self->error : (int32_t)CHIAKI_ERR_TIMEOUT;
+	chiaki_bool_pred_cond_unlock(&self->finished);
+	return error;
+}
+
+CHIAKI_SHIM_API bool chiaki_shim_senkusha_handover_measurements(
+		void *handover, uint32_t *out_mtu_in, uint32_t *out_mtu_out, uint64_t *out_rtt_us)
+{
+	ChiakiShimSenkushaHandover *self = (ChiakiShimSenkushaHandover *)handover;
+
+	if(!self || !self->measured)
+		return false;
+
+	if(out_mtu_in)
+		*out_mtu_in = self->mtu_in;
+	if(out_mtu_out)
+		*out_mtu_out = self->mtu_out;
+	if(out_rtt_us)
+		*out_rtt_us = self->rtt_us;
+
+	return true;
+}
+
+CHIAKI_SHIM_API int64_t chiaki_shim_senkusha_handover_socket(void *handover)
+{
+	ChiakiShimSenkushaHandover *self = (ChiakiShimSenkushaHandover *)handover;
+
+	return self ? self->data_sock : -1;
+}
+
+CHIAKI_SHIM_API bool chiaki_shim_senkusha_handover_stopped(void *handover)
+{
+	ChiakiShimSenkushaHandover *self = (ChiakiShimSenkushaHandover *)handover;
+
+	return self ? self->stopped : false;
+}
+
+CHIAKI_SHIM_API int32_t chiaki_shim_senkusha_handover_cancel(void *handover)
+{
+	ChiakiShimSenkushaHandover *self = (ChiakiShimSenkushaHandover *)handover;
+
+	if(!self)
+		return (int32_t)CHIAKI_ERR_INVALID_DATA;
+
+	/* stopped FIRST, which is PP768's ordering: a waiter reads it the moment its wait returns, and
+	 * the other order lets one see a start with stopped still false and go on to build. */
+	self->stopped = true;
+
+	if(chiaki_bool_pred_cond_lock(&self->started) != CHIAKI_ERR_SUCCESS)
+		return (int32_t)CHIAKI_ERR_UNKNOWN;
+
+	self->started.pred = true;
+	chiaki_bool_pred_cond_signal(&self->started);
+	chiaki_bool_pred_cond_unlock(&self->started);
+
+	if(chiaki_bool_pred_cond_lock(&self->finished) != CHIAKI_ERR_SUCCESS)
+		return (int32_t)CHIAKI_ERR_UNKNOWN;
+
+	self->finished.pred = true;
+	chiaki_bool_pred_cond_signal(&self->finished);
+	chiaki_bool_pred_cond_unlock(&self->finished);
+
+	return (int32_t)CHIAKI_ERR_SUCCESS;
+}
+
+/* PP792: the trampoline session.c runs its senkusha phase through.
+ *
+ * C, and never a managed delegate, for the reason every one of libchiaki's twenty-two callbacks is:
+ * the session thread is one the CLR never created, and a pinned delegate is one collection away
+ * from a call into moved memory.
+ *
+ * THE THREE ARE WRITTEN ONLY ON SUCCESS, which is chiaki_senkusha_run's own behaviour: it fills the
+ * out-parameters at the end of a walk that got there, and every earlier exit leaves them alone. So a
+ * failed managed run leaves session->mtu_in as it was and PP28's fallback overwrites it - and a
+ * trampoline that copied the zeroes anyway would make an unmeasured link look measured to anything
+ * reading those fields before the fallback runs. */
+static ChiakiErrorCode chiaki_shim_senkusha_run_trampoline(
+		chiaki_socket_t *data_sock, uint32_t *mtu_in, uint32_t *mtu_out, uint64_t *rtt_us, void *user)
+{
+	ChiakiShimSenkushaHandover *self = (ChiakiShimSenkushaHandover *)user;
+	int32_t err;
+
+	if(!self)
+		return CHIAKI_ERR_INVALID_DATA;
+
+	/* Recorded before the start, so the far side finds it already there when its wait returns. */
+	self->data_sock = data_sock ? (int64_t)*data_sock : -1;
+
+	err = chiaki_shim_senkusha_handover_start(self);
+	if(err != (int32_t)CHIAKI_ERR_SUCCESS)
+		return (ChiakiErrorCode)err;
+
+	/* Sliced, because await_finish refuses a negative timeout and senkusha is as long as the link is
+	 * slow. A single wait would end the measurement at whatever number was chosen here. */
+	do
+	{
+		err = chiaki_shim_senkusha_handover_await_finish(self, CHIAKI_SHIM_STREAM_RUN_SLICE_MS);
+	}
+	while(err == (int32_t)CHIAKI_ERR_TIMEOUT && !self->stopped);
+
+	if(err == (int32_t)CHIAKI_ERR_SUCCESS && self->measured)
+	{
+		if(mtu_in)
+			*mtu_in = self->mtu_in;
+		if(mtu_out)
+			*mtu_out = self->mtu_out;
+		if(rtt_us)
+			*rtt_us = self->rtt_us;
+	}
+
+	return (ChiakiErrorCode)err;
+}
+
+/* And the stop, which is chiaki_session_stop's fifth poke on this side of the handover. */
+static void chiaki_shim_senkusha_stop_trampoline(void *user)
+{
+	ChiakiShimSenkushaHandover *self = (ChiakiShimSenkushaHandover *)user;
+
+	if(self)
+		self->stopped = true;
+}
+
+CHIAKI_SHIM_API void chiaki_shim_senkusha_run_install(void *session, void *handover)
+{
+	ChiakiSession *self = (ChiakiSession *)session;
+
+	if(!self)
+		return;
+
+	chiaki_session_set_senkusha_run_cb(self, chiaki_shim_senkusha_run_trampoline, handover);
+	chiaki_session_set_senkusha_stop_cb(self, chiaki_shim_senkusha_stop_trampoline, handover);
+}
+
 /* PP679: the v7 parse, whose key_state parameter the C declares and never reads.
  *
  * NULL is passed for it deliberately rather than forwarded. The v7 body takes its key position

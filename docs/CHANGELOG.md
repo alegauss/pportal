@@ -721,6 +721,7 @@
   checked **The flip matches the C path's own baseline, frame for frame** A run on the C path with d3d11va gave 1020 decoded, 972 shown and 426 pad states over twenty seconds, recorded in chiaki_baseline.jsonl. PP763 shipped on a green gate because nobody had a number; the flip is checked against that one, by compare-baselines rather than by looking.
 - ✅ **PP785** **the shim's eighteen takion symbols are the oracle, so the deletion takes away what proves the port right** — tests/oracles/takion.json holds what the C answered for the queue scripts, the send buffer, the MAC gate and both AV parsers, and the managed four are compared against it on every build.
 - ✅ **PP786** **three of the C suite's files exercise takion directly and the case floor counts them, so the deletion drops it silently** — CHIAKI_UNIT_HAVE_TAKION guards the three suites, each switch answers for its own files, and the allocator wrap follows allocbudget.c - the link failure both flips had.
+- ✅ **PP792** **session.c runs senkusha itself and there is no callback to hand it to, so a managed run is unreachable** — session.c asks for an installed run before starting its own, and the three measurements cross with the outcome that decides whether they are used; the C's run stays as the other arm.
 
 ## Block G — Test discipline
 

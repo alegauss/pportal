@@ -100,6 +100,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP785** **the shim's eighteen takion symbols are the oracle, so the deletion takes away what proves the port right** — Before a differential's oracle is deleted, what it answered is recorded and committed, so the comparison runs on every build instead of declining with the library.
 - ✅ **PP786** **three of the C suite's files exercise takion directly and the case floor counts them, so the deletion drops it silently** — A flip is prepared by BUILDING the shape it leaves, not by reading it: the bare trial found a link option tied to a file that two readings had not connected to it.
 - ✅ **PP791** **nothing implements senkusha's run host or turns its arrivals into the flags its waits end on** — A run's host interface is filled in the same block that writes the run, because a seam only doubles implement is a sequence nothing performs.
+- ✅ **PP792** **session.c runs senkusha itself and there is no callback to hand it to, so a managed run is unreachable** — Not installing a senkusha phase is a supported state: the C's run is the other arm until a live link says the managed one measures the same thing.
 
 ## Block G — Test discipline
 
