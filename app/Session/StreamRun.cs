@@ -290,12 +290,16 @@ public static class StreamRun
         // AND THE ANNOUNCED FORMAT, without which the frame counts are uninterpretable: seconds are
         // frames over the rate, and the rate is whatever STREAMINFO said rather than a constant this
         // side picks. Reading 376320 frames as 7.8s took a guess at 48000 that nothing here printed.
+        // PP816: AND THE PATH IS THE ENGINE'S NOW, so most of those numbers no longer exist. There
+        // is no ring to clear, no silence written to keep a pump fed and no break to count, because
+        // nothing here decides how much of a frame to play. What is left is what was submitted, what
+        // the engine has not finished, and whether it could be opened at all.
         Console.WriteLine(
-            $"[audio] {phase.Audio.Drained} unit(s) drained, {phase.Audio.Cleared} cleared"
-                + $", {phase.Audio.Render.FramesWritten} frame(s) written of which"
-                + $" {phase.Audio.Render.SilentFrames} silent"
-                + $" in {phase.Audio.Render.SilentEpisodes} break(s)"
-                + $", {phase.Audio.Render.Queued} still queued"
+            $"[audio] {phase.Sound.Submitted} frame(s) submitted, {phase.Sound.Unplayable} unplayable"
+                + $", device {phase.Sound.Opened?.ToString() ?? "never opened"}"
+                + $" hr {phase.Sound.Render?.LastError.ToString("X8") ?? "none"}"
+                + $", {phase.Sound.Render?.Queued ?? 0} still queued"
+                + $", {phase.Sound.Render?.SamplesPlayed ?? 0} sample(s) played"
                 + $", announced {phase.Speaker?.Announced.ToString() ?? "nothing"}");
 
         // AND THE DECODER'S OWN VIEW, which is where a lost packet shows and the render's cannot.
@@ -309,8 +313,7 @@ public static class StreamRun
             Console.WriteLine(
                 $"[audio] decoder: {speaker.Decoded} decoded, {speaker.Concealed} concealed"
                     + $", {speaker.Refused} refused, {speaker.BeforeAnyHeader} before any header"
-                    + $", ring took {phase.Audio.Sink.Written}"
-                    + $" of which {phase.Audio.Sink.Overflowed} evicted older audio");
+                    + $", engine took {phase.Sound.Submitted}");
         }
 
         // PP813: and where the ones that did nothing went, which the two counts above cannot say.

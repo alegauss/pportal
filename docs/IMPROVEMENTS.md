@@ -27,6 +27,30 @@ Whatever the right pair is, the dpad path and the mouse path should read it from
 same place - and the reason to write that down now is that the port has just copied all
 three, so it is the moment when the duplication is visible.
 
+### §PP819 SDL is the port's own dependency now, not the C's
+
+SDL is not in lib at all. It is in gui, which is being replaced, and in app itself:
+eighteen entry points in Gamepads.cs, every one of them an event, joystick or
+gamecontroller call. No audio, no video, no window and no rumble - PP97's fold has no
+output call behind it yet. So once PP816 takes the render path off it, SDL2.dll stays in
+the package for one job.
+
+STRATEGY names this case in its first paragraph, and what the port pays is not the DLL.
+It is the modelling around it: the index-versus-instance-id asymmetry a roster has to
+carry, the SDL_Event layout PP579 holds against a header, the field SDL rewrites on any
+pushed event, the four-millisecond pump PP118 gave a thread of its own, the load PP117
+had to make report rather than hang.
+
+Windows ships both halves. RawInput and the HID API carry a DualSense's touchpad,
+gyroscope and trigger reports, which is the same data SDL parses out of them;
+Windows.Gaming.Input covers XInput pads and their arrival without a pump.
+
+One cost should decide the shape rather than be discovered late. SDL's controller
+database covers thousands of third-party pads and native HID supports what this port
+writes support for, so the first question is which devices the port owes support to -
+and the mapping screen PP18 built against SDL's mapping strings changes with that
+answer.
+
 ## Block C — Video and input path
 
 ## Block D — Screens
@@ -401,29 +425,52 @@ the device format, or it is not a discontinuity at all - a listener reported the
 interval constant across runs carrying different audio, which no content-dependent
 artifact explains.
 
-### §PP816 The queue the platform already has
+### §PP817 The GHASH rests on a sentence about a different API
 
-WASAPI hands out a buffer and asks the caller how much of it to fill, so a client has to
-carry the arithmetic: how much room, how much of a unit fits, what happens to the rest.
-AudioRing, AudioPlayback and WasapiRender.Pump are that arithmetic, and PP810 is one
-line of it going wrong. XAudio2's SubmitSourceBuffer takes a whole buffer and plays
-queued buffers back to back; there is no room to ask about, so there is no tail to lose.
+PP298 is on record that the runtime will not lend this one, and its measurement is
+right: AesGcm.NonceByteSizes is 12 to 12 and TagByteSizes 12 to 16, while chiaki passes
+a sixteen-byte IV and keeps four bytes of tag. Both are legal GCM and neither is in that
+type's contract.
 
-THE SHAPE IS INHERITED AND NO LONGER OWED. AudioRing is streamsession.cpp's ring and the
-drain is its policy, both written for a client that ran on Linux and macOS through SDL.
-This port is Windows-only by non-goal, so the hedge is being maintained for platforms it
-refuses to build.
+What the sentence does not say is which one was asked. AesGcm is a wrapper whose
+contract is narrower than the algorithm, and the platform under it is CNG. gkcrypt.c
+reaches the same two departures through OpenSSL by asking for them:
+EVP_CTRL_GCM_SET_IVLEN with the block size, EVP_CTRL_GCM_GET_TAG with four.
+BCryptEncrypt takes a nonce as a buffer and a length, and BCRYPT_AUTH_TAG_LENGTH reports
+the range a provider supports rather than a constant a wrapper chose.
 
-THIS IS A REDESIGN AND THE NON-GOAL SAYS NOT TO. "No redesign while porting" is binding
-and this is squarely inside it. It is being taken deliberately, on the owner's decision
-after PP810 measured both of its own fixes making the loss worse rather than smaller:
-2374 and 2410 ring evictions against one. The argument is that repairing the hand-rolled
-pump costs more than deleting it.
+So this is two readings and not an opinion: does CNG accept a sixteen-byte nonce for
+AES-GCM, and what tag lengths does it report. A refusal settles it and the GHASH stays,
+recorded rather than assumed - which is worth having, because the file rests today on a
+sentence about a different API. Acceptance means requesting the tag at a length CNG
+supports and truncating to four, which is what the C's own GET_TAG does.
 
-IN STAGES, BECAUSE ONE COMMIT CANNOT HOLD IT. First a seam that plays PCM through
-XAudio2 at all; then the composition root moved onto it; then the ring, the drain and
-the pump retired, which is when PP810 is superseded rather than fixed. Each stage leaves
-a tree that streams.
+The oracle costs nothing: PP26 and PP298 already agree with the C on every vector, so a
+replacement is held to the same bytes or it is not one.
+
+### §PP818 The half PP650 left open
+
+PP650 asked what Media Foundation offers and answered it: one D3D11-aware transform per
+codec, the Microsoft H264 Video Decoder MFT and HEVCVideoExtension, both reporting
+MF_SA_D3D11_AWARE once the transform itself is made rather than its activate. It priced
+what leaving would remove, 87.6 MB across three FFmpeg binaries, and named what Media
+Foundation has no concept of: cuda and vulkan.
+
+Its own README states the gap in one line - no decode was timed here. The comparison is
+an enumeration and two attribute reads on one side and spike/decode-path's FFmpeg
+numbers on the other, so the two halves have never met.
+
+What has changed since is the weight of the two missing paths. decode-path measured cuda
+as the worst of the three once frames are paced at the rate a console sends them, and
+vulkan's only advantage is the copy the Qt client's snapshot path skips for Vulkan
+frames alone - which a D3D11 renderer does not pay either, and PP9 already put the
+renderer on D3D11. So the two paths Media Foundation cannot offer are the two with the
+least left to lose.
+
+Two things this produces rather than argues. A Media Foundation decode timed against
+decode-path's own frames under the same pacing, so the numbers are comparable rather
+than merely both present. And an answer about HEVCVideoExtension, which is a Store
+extension a user can uninstall where FFmpeg's HEVC decoder is not.
 
 ## Block G — Test discipline
 

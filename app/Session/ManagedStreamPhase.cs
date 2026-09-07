@@ -130,6 +130,15 @@ public sealed class ManagedStreamPhase : IDisposable
     /// </summary>
     public AudioPlayback Audio { get; } = new();
 
+    /// <summary>
+    /// PP816: where the sound actually goes now, which is the engine and nothing before it.
+    ///
+    /// <see cref="Audio"/> is still built because the counters and its tests still read it, and it
+    /// is no longer STARTED - the run does not drain a ring into a pump any more. The third stage
+    /// of PP816 is what removes it; leaving it here is what keeps this stage's tree streaming.
+    /// </summary>
+    public XAudio2Sink Sound { get; } = new();
+
     /// <summary>What decoded the sound, or null where no run built one.</summary>
     public ManagedOpusDecoder? Speaker => speaker;
 
@@ -209,8 +218,16 @@ public sealed class ManagedStreamPhase : IDisposable
         //
         // OPENED HERE AND NOT IN THE CONSTRUCTOR, which is PP754's rule: a start that never comes
         // should open no device, and this runs only once the session has handed the phase over.
-        ManagedAudioReceiverPair sound = AudioPair(Audio, out speaker);
-        Audio.Start();
+        // PP816: and the ring, the drain and the pump are out of the path. The decoder writes into
+        // the engine on the thread that decoded, so there is no drain thread to start - Audio.Start()
+        // used to put one up, and its absence IS the change.
+        //
+        // THE DEVICE IS OPENED HERE AND NOT IN THE HANDLER, which two live runs decided: opening it
+        // from the STREAMINFO callback puts a device open on the takion's receive thread, and the
+        // run completed after eleven arrivals both times. This is PP754's rule as well - a start
+        // that never comes should open no device, and Build runs only once the session hands over.
+        Sound.Prepare();
+        ManagedAudioReceiverPair sound = AudioPair(Sound, out speaker);
 
         var host = new ManagedStreamRunHost(
             takion,
@@ -286,7 +303,25 @@ public sealed class ManagedStreamPhase : IDisposable
     {
         ArgumentNullException.ThrowIfNull(audio);
 
-        speaker = new ManagedOpusDecoder(audio.Sink);
+        return AudioPair(audio.Sink, out speaker);
+    }
+
+    /// <summary>
+    /// PP816: the same pair over the engine, which is one object where the other is three.
+    ///
+    /// The two overloads differ only in what the decoder writes into, which is the whole of what
+    /// this line changes: <see cref="AudioRingSink"/> puts the frame in a ring for a thread to
+    /// drain, and <see cref="XAudio2Sink"/> hands it to the engine. Written as an overload rather
+    /// than a replacement so the ring's own tests keep the root they were written against until the
+    /// third stage retires it.
+    /// </summary>
+    /// <param name="sound">Where a decoded frame goes.</param>
+    /// <param name="speaker">The decoder, which the caller owns and must dispose.</param>
+    public static ManagedAudioReceiverPair AudioPair(IPcmSink sound, out ManagedOpusDecoder speaker)
+    {
+        ArgumentNullException.ThrowIfNull(sound);
+
+        speaker = new ManagedOpusDecoder(sound);
 
         return new ManagedAudioReceiverPair(speaker, new NoFrames());
     }
@@ -432,8 +467,13 @@ public sealed class ManagedStreamPhase : IDisposable
         // PP797: the sound path comes down with the run. The drain thread first, because the
         // decoder is what writes into the ring it is reading - the other order leaves a pass
         // looking at a ring whose writer has gone.
+        //
+        // PP816: and the same order for the engine, for the same reason turned around - the decoder
+        // is what submits, so it goes down before the voice it submits into. A voice destroyed under
+        // a live decoder would be handed a buffer it no longer owns.
         Audio.Dispose();
         speaker?.Dispose();
+        Sound.Dispose();
 
         handover.Dispose();
         GC.SuppressFinalize(this);

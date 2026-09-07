@@ -139,8 +139,18 @@ internal static class XAudio2
     private const int SourceFlushBuffers = 22;
     private const int SourceGetState = 25;
 
-    /// <summary>XAudio2Create, which is the one exported function the library has.</summary>
+    /// <summary>
+    /// XAudio2Create, which is the one exported function the library has.
+    /// </summary>
+    /// <remarks>
+    /// SYSTEM32 IS SPELLED OUT, and it has to be. <see cref="ChiakiNative"/> calls
+    /// SetDefaultDllDirectories and AddDllDirectory to pin where the shim is loaded from, which
+    /// changes the search for the whole process - so an in-box library that would be found by any
+    /// ordinary load is subject to that decision too. Naming the directory here makes this call
+    /// independent of it, which is what a system DLL should be.
+    /// </remarks>
     [DllImport(Library, ExactSpelling = true)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
     public static extern int XAudio2Create(out IntPtr engine, uint flags, uint processor);
 
     /// <summary>Whether the engine's library is present, which every supported Windows makes true.</summary>
@@ -148,12 +158,19 @@ internal static class XAudio2
     /// Asked rather than assumed for the reason <see cref="WasapiRender"/> reports instead of
     /// throwing: whether a machine can play sound is a fact about the machine, and a host that
     /// cannot still has a session to run.
+    ///
+    /// AND ASKED WITH THE SAME SEARCH THE CALL ABOVE USES. A bare TryLoad answers about the
+    /// process's current directory list rather than about the machine, so this reported the library
+    /// missing inside the application and present in the tests - on a machine where System32 holds
+    /// it either way. A run then decoded 3607 frames and played none of them.
     /// </remarks>
     public static bool IsAvailable()
     {
         try
         {
-            return NativeLibrary.TryLoad(Library, out nint handle) && handle != 0;
+            return NativeLibrary.TryLoad(
+                Library, typeof(XAudio2).Assembly, DllImportSearchPath.System32, out nint handle)
+                && handle != 0;
         }
         catch (DllNotFoundException)
         {

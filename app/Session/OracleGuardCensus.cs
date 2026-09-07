@@ -144,6 +144,12 @@ public static class OracleGuardCensus
         // no libopus loses it. It is not a differential; the kind is about what stops running.
         new(@"tests\ChiakiNg.Tests\AudioPlaybackTests.cs", OpusDecoderGuard),
 
+        // PP816: the same join one seam over. The root's pair now hands the decoder an XAudio2Sink
+        // instead of the playback's ring, and the assertion that a STREAMINFO reaches the sink it
+        // was given is driven through the decoder's own header callback - so it declines on a build
+        // with no libopus for exactly the reason the row above does.
+        new(@"tests\ChiakiNg.Tests\XAudio2SinkTests.cs", OpusDecoderGuard),
+
         // PP802: PP785's takion wrappers, which are the SIXTH oracle and the case PP704 named as
         // the one its sweep cannot see. KnownGuards is derived from this list, so a guard with a
         // name nothing here has heard of is invisible by construction - the check stayed green and

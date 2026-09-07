@@ -50,6 +50,12 @@ public sealed class XAudio2Render : IDisposable
     /// <summary>The format this render asked the engine for.</summary>
     public MicrophoneAnnouncement Format => format;
 
+    /// <summary>
+    /// The sentinel <see cref="LastError"/> carries where the library itself would not load, which
+    /// is not an HRESULT and is not zero.
+    /// </summary>
+    public const int LibraryMissing = -1;
+
     /// <summary>The last HRESULT a failed step returned, for a caller reading why.</summary>
     public int LastError { get; private set; }
 
@@ -87,7 +93,12 @@ public sealed class XAudio2Render : IDisposable
             return RenderResult.Running;
 
         if (!XAudio2.IsAvailable())
+        {
+            // Distinguishable from a mastering voice that refused, because both answered NoDevice
+            // and a live run could not tell which had happened.
+            LastError = LibraryMissing;
             return RenderResult.NoDevice;
+        }
 
         LastError = XAudio2.XAudio2Create(out engine, 0, XAudio2.Processor1);
         if (LastError != 0 || engine == IntPtr.Zero)

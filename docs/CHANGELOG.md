@@ -731,7 +731,7 @@
 - ✅ **PP804** **senkusha's ack expectation is set around the send where the C sets it inside one, so a fast ack meets the wrong number** — The state, the send and the wait now run under one lock, so the number is written BY the send and an ack arriving mid-send blocks instead of meeting a number nobody awaits.
 - ✅ **PP807 (the mechanism, unwired)** **the port never sends the data ack the C sends after a drained message, so nothing tells the console it arrived** — The decision and the send landed unwired: joining them sent ~1170 unsigned packets and the console tore the session down, so PP811's signed path is the blocker.
 - ✅ **PP815** **the audio ring is written by the receive thread and drained by the pump with no lock, so its cursors and fill tear** — Write, Read and Reset run under one gate, so a drain cannot take a span the writer's eviction is moving; the assertion reads bytes, because no counter could see this.
-- ✅ **PP816 (the seam)** **the port hand-rolls a ring, a drain and a pump over WASAPI, and two attempts to make that path lossless both failed** — An engine and a source voice that takes PCM whole: eight buffers drain in eighty milliseconds with no pump, no poll and no room to ask about.
+- ✅ **PP816** **the port hand-rolls a ring, a drain and a pump over WASAPI, and two attempts to make that path lossless both failed** — A listener reports the click gone: 4846 decoded, 4846 submitted, every sample played or queued over sixty seconds against a console in a game.
 
 ## Block G — Test discipline
 
