@@ -32,6 +32,7 @@
 - 📋 **PP812** (deps: PP801 ✅) (requires: console) **the datagram capture taps the C's takion and the port opens its own, so a run without a relay records nothing** — The tap watches a socket no datagram reaches now; PP785 keeps the C's answers as a recording, and this flag is how one is made. → §PP812
 - 🛠 **PP813** (deps: —) **the port's senkusha gets the bang then loses every pong, so the RTT test answers Unknown and the link is unmeasured** — Ten pings leave the socket and ToAv stays 0; the 48 ignored protobufs are ExpectPong having no arm, as the C also does, so only the wire is left to read. → §PP813
 - 🛠 **PP814** (deps: —) **nothing reports whether audio dropped, so a crackling stream and a clean one read identically** — Three mechanisms measured dead and the pair was inverted - a healthy run read took 0 and dropped 853 for 853 clean writes - so the fault is outside this path. → §PP814
+- 📋 **PP816** (deps: —) **the port hand-rolls a ring, a drain and a pump over WASAPI, and two attempts to make that path lossless both failed** — XAudio2 queues PCM buffers itself, so the room arithmetic cannot be got wrong; the ring and drain are the Qt client's SDL shape, which Windows-only does not need. → §PP816
 
 ## Block G — Test discipline
 
@@ -135,9 +136,10 @@
 - **No cross-platform UI toolkit as a hedge** Avalonia or MAUI would keep the port
   portable and give back none of the Win32, DXGI and WebView2 access the screens depend
   on, which is the whole reason WPF was chosen.
-- **No redesign while porting** A screen that changes shape in the same commit that
-  changes framework cannot be judged against the one it replaced, so behaviour is
-  reproduced and improvements are filed apart.
+- **No redesign while porting** Written against improving a subsystem WHILE translating
+  it, which is how a port stops matching the client it is checked against. It does not
+  refuse deleting a hand-rolled subsystem for one Windows already ships - that is the
+  foundation beside this. Rewriting as you translate is still refused.
 - **No line ships without an assertion that fails without it** A test written after the
   fact asserts what the code does instead of what it should do, so it lands in the same
   commit as the line it holds or the line is not shipped.
@@ -156,3 +158,8 @@
   remote play latency, and writing one would ignore the GPU already doing it for free.
   The reachable goal is a port that is 100% Windows and builds in Visual Studio, not one
   that is 100% managed - and this is where the difference is.
+- **No hand-rolled subsystem where Windows already ships one** The project's foundation,
+  stated 2026-09-07: simplify to what the platform already does rather than reinvent it.
+  AudioRing, AudioPlayback and the render pump named it - the Qt client's SDL shape,
+  kept for platforms this port refuses to build, and PP810 measured two fixes for them
+  both failing.

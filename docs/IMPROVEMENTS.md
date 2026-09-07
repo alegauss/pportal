@@ -401,6 +401,30 @@ the device format, or it is not a discontinuity at all - a listener reported the
 interval constant across runs carrying different audio, which no content-dependent
 artifact explains.
 
+### §PP816 The queue the platform already has
+
+WASAPI hands out a buffer and asks the caller how much of it to fill, so a client has to
+carry the arithmetic: how much room, how much of a unit fits, what happens to the rest.
+AudioRing, AudioPlayback and WasapiRender.Pump are that arithmetic, and PP810 is one
+line of it going wrong. XAudio2's SubmitSourceBuffer takes a whole buffer and plays
+queued buffers back to back; there is no room to ask about, so there is no tail to lose.
+
+THE SHAPE IS INHERITED AND NO LONGER OWED. AudioRing is streamsession.cpp's ring and the
+drain is its policy, both written for a client that ran on Linux and macOS through SDL.
+This port is Windows-only by non-goal, so the hedge is being maintained for platforms it
+refuses to build.
+
+THIS IS A REDESIGN AND THE NON-GOAL SAYS NOT TO. "No redesign while porting" is binding
+and this is squarely inside it. It is being taken deliberately, on the owner's decision
+after PP810 measured both of its own fixes making the loss worse rather than smaller:
+2374 and 2410 ring evictions against one. The argument is that repairing the hand-rolled
+pump costs more than deleting it.
+
+IN STAGES, BECAUSE ONE COMMIT CANNOT HOLD IT. First a seam that plays PCM through
+XAudio2 at all; then the composition root moved onto it; then the ring, the drain and
+the pump retired, which is when PP810 is superseded rather than fixed. Each stage leaves
+a tree that streams.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry

@@ -86,6 +86,13 @@ improvements = "docs/IMPROVEMENTS.md"
 deferred = "docs/DEFERRED.md"
 decisions = "docs/DECISIONS.md"
 
+# The standing argument behind the backlog, declared 2026-09-07 when the owner stated the
+# project's foundations: delegate to what Windows already ships, take the vendor's
+# optimisations where they measure, and keep reproducing behaviour rather than structure.
+# Those are not task-shaped and had nowhere to live - a non-goal states a rule and not the
+# reasoning that produced it, and IMPROVEMENTS.md is per-task and is deleted on a ship.
+strategy = "docs/STRATEGY.md"
+
 [limits]
 # characters
 symptom = 120
