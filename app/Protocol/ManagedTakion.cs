@@ -353,9 +353,18 @@ public sealed class ManagedTakion : ITakionLoopHost, IDataAckSink, IDisposable
     /// and act on the first copy, so a retransmission is handled twice by arms that ignore the
     /// second - and that looks exactly like a run that worked.
     ///
-    /// A PLAIN SEND, LIKE THE CONGESTION PACKET. The C's own send would MAC this where a local
-    /// cipher exists and this takion has none wired, so what leaves here is unsigned - the same
-    /// state <see cref="SendCongestion"/> is in, for the same reason and not a new one.
+    /// AND IT LEAVES UNSIGNED, WHICH IS WHY NOTHING MAY WIRE IT YET. This was written as the same
+    /// plain send <see cref="SendCongestion"/> is, on the argument that a takion with no local
+    /// cipher signs nothing anyway. That argument is false for this packet: chiaki_takion_send MACs
+    /// under gkcrypt_local before send_raw, and a data message only flows once the bang has produced
+    /// a cipher - so the console verifies these. Joined to the stream path on 2026-09-07 it sent
+    /// about 1170 unsigned control packets and the console tore the session down: 0 frames decoded
+    /// and 0 audio units against 984 and 1863 on the same build with the join removed.
+    ///
+    /// PP811 is the line that fixes it, because the fix is the ported send path rather than a MAC
+    /// added here: <see cref="TakionSendPath"/> IS chiaki_takion_send, holding one lock across the
+    /// signature and the write, and nothing sends through it. <see cref="ManagedStreamPhase"/>
+    /// carries the measurement at the join it does not make.
     /// </summary>
     /// <param name="seqNum">The cumulative number, which is the last one the queue released.</param>
     public ChiakiError SendDataAck(uint seqNum)

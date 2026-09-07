@@ -237,15 +237,28 @@ public sealed class ManagedStreamPhase : IDisposable
             InstallArm = crypt => host.InstallAvArm(crypt),
         };
 
-        // PP807: and the acks, which is the third thing the arrivals take off the takion. Without it
-        // a run reads every data message the console sends and tells it nothing arrived - the C's
-        // flush answers each drained message and this port answered none.
+        // PP807: AND THE ACKS ARE NOT JOINED HERE, WHICH IS A MEASUREMENT AND NOT AN OMISSION.
+        // ManagedTakion.AckData is the third thing the arrivals would take off the takion, and
+        // wiring it killed the session outright: three live runs on 2026-09-07, two with the join
+        // and one without, against a console in an active game.
+        //
+        //   with it     1171 and 1265 arrival(s), 0 decoded, 0 audio frame(s), RemoteDisconnected
+        //   without it  14158 arrival(s), 984 decoded, 1863 audio unit(s), no disconnect
+        //
+        // The ack leaves unsigned. chiaki_takion_send MACs every packet it sends under
+        // gkcrypt_local before handing it to send_raw, so about 1170 unsigned control packets
+        // reached a console that verifies them, and it dropped the session rather than the packets.
+        // A takion with no local cipher is not the state a data message flows in.
+        //
+        // So the join waits on PP811, which is the line for the ported send path having no caller -
+        // TakionSendPath is chiaki_takion_send and the four sends here stamp and send inline. This
+        // is the one send that cannot be inline, because it is the one the console answers with a
+        // teardown. Restoring the line below without a MAC reproduces the numbers above.
         arrivals = new StreamArrivals(
             host, messages, keying, new ManagedStreamData(events))
         {
             TagLocal = takion.TagLocal,
             Ledger = takion.Ledger,
-            Acks = takion,
         };
 
         // And the replay, which is the same handler over the message the bang state buffered.
