@@ -105,6 +105,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP797** **the console's audio reaches a receiver whose output goes nowhere, and nothing drains the ring into a speaker** — The ring is drained by a pump of its own and not by the render client's: one asks how far behind the sink is and the other asks how much room the engine has left.
 - ✅ **PP798** **one access unit per session is refused by the decoder and the log says which error, never which frame** — The reading is taken on the port's side of the seam and the vendored decoder is not patched, so the two cases are separated without a local change to lib.
 - ✅ **PP800** **SeamReach counts an implementation that no path in app ever constructs, so a sink only tests build reads as reached** — A seam is reached when app's own code constructs an implementation, not when one exists: a class only the test project builds satisfies the type graph and nothing else.
+- ✅ **PP801** **two of the three paths that open a session install no phase, so the captures and the front door stop where the port runs** — The host's selftest is the one session path exempt from installing a phase, and it is named rather than silent: it opens sessions to assert refusals, not to stream.
 
 ## Block G — Test discipline
 

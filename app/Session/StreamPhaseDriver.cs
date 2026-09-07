@@ -103,6 +103,46 @@ public static class StreamPhaseDriver
     /// </summary>
     public const string ThePortsHandover = "new StreamHandover(";
 
+    /// <summary>
+    /// PP801: the session paths that open one and do not mean to stream, named so the rest is closed.
+    ///
+    /// The host's selftest builds sessions to assert what a REFUSAL looks like - a bad address, an
+    /// empty one, a create that must fail - and a phase on those would be a stream nobody asked for
+    /// on a run that has no console. Every other path that opens a session since PP783 has to
+    /// install one, because the C no longer runs the stream and a session with no phase quits.
+    ///
+    /// A LIST OF ONE, and it is the reason for having a list at all: <see cref="PathsThatMustDrive"/>
+    /// is otherwise a name check, and a name check goes quietly empty when a file is renamed.
+    /// </summary>
+    public static IReadOnlyList<string> SessionPathsThatDoNotStream { get; } = ["SelfTest.cs"];
+
+    /// <summary>
+    /// PP801: the files that open a session, must install a phase, and do not.
+    ///
+    /// PP783 flipped the run and wired one path. The other two - the captures and the front door -
+    /// reached a callback that was not there and quit with UNINITIALIZED, each losing something
+    /// different and none of them saying so. This is the question asked of all of them at once.
+    /// </summary>
+    public static IReadOnlyList<string> PathsThatMustDrive(IEnumerable<(string Name, string Text)> files)
+    {
+        ArgumentNullException.ThrowIfNull(files);
+
+        IReadOnlyList<(string Name, string Text)> all = [.. files];
+        var driving = new HashSet<string>(DrivingSessionPathsIn(all), StringComparer.OrdinalIgnoreCase);
+
+        return
+        [
+            .. all
+                .Where(one => !driving.Contains(one.Name))
+                .Where(one => !SessionPathsThatDoNotStream.Contains(
+                    Path.GetFileName(one.Name), StringComparer.OrdinalIgnoreCase))
+                .Where(one => DeadAssertions.CodeOnly(one.Text)
+                    .Contains(BuildsASession, StringComparison.Ordinal))
+                .Select(one => one.Name)
+                .Order(StringComparer.Ordinal),
+        ];
+    }
+
     /// <summary>Whether session.c still runs the stream itself.</summary>
     public static bool TheCRunsIt(string sessionSource)
     {

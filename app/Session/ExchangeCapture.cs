@@ -343,6 +343,15 @@ public static class ExchangeCapture
     }
 
     /// <summary>
+    /// PP801: video a capture has nowhere to put, taken rather than refused.
+    ///
+    /// TRUE and not false. The session's contract reads a false as "the frame was not pushed", and
+    /// the receiver then asks the console for a keyframe - so a capture with no decoder answering
+    /// false would ask for an IDR per frame and record a conversation it caused.
+    /// </summary>
+    private static bool NoVideo(ReadOnlySpan<byte> frame, int framesLost, bool recovered) => true;
+
+    /// <summary>
     /// The whole capture: find the console, wake it if it is asleep, run a session and write down
     /// what crossed.
     /// </summary>
@@ -516,18 +525,34 @@ public static class ExchangeCapture
 
         if (decoder is not null)
         {
-            if (!SessionDecoder.AttachTo(session.Handle, decoder.Handle))
-            {
-                Console.Error.WriteLine("[capture] the decoder would not attach to the session");
-                return CaptureOutcome.SessionRefused;
-            }
-
             Console.WriteLine(
                 $"[capture] decoding with "
                     + $"{(DecoderName.Length == 0 ? "software" : DecoderName)}, "
                     + $"format {decoder.PixelFormatName}"
                     + (decoder.CopiesEveryFrame ? " (copied per frame)" : " (no copy)"));
         }
+
+        // PP801: THE PHASE, because since PP783 the C does not run the stream and this path never
+        // installed one - so every capture reached the stream phase and quit with UNINITIALIZED.
+        //
+        // SessionDecoder.AttachTo is GONE from here for StreamRun's reason: it installs the sink on
+        // the SESSION, and what decodes through it is the C's run calling the C's callback. PP787
+        // opened the second door, and the phase feeds the same decoder from the managed receiver.
+        //
+        // THE VIDEO GOES WHERE THIS RUN HAS SOMEWHERE TO PUT IT. --measure-decoder has a decoder and
+        // the other two captures do not, so those hand the phase a sink that takes the frame and
+        // reports it taken - which is what they were doing before the flip, by not decoding at all.
+        //
+        // The address is the CONSOLE's and not the target: a relay forwards ctrl and the stream's
+        // 9296, and the phase's takion opens its own socket to the machine the console is on.
+        using var baseline = new SessionBaseline();
+        using var phase = new ManagedStreamPhase(
+            session,
+            IPAddress.Parse(address),
+            decoder is { } decoding ? decoding.Sample : NoVideo,
+            baseline);
+
+        phase.InstallOn();
 
         using var connected = new ManualResetEventSlim(false);
         using var quit = new ManualResetEventSlim(false);

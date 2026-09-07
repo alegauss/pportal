@@ -727,6 +727,7 @@
 - ✅ **PP797** **the console's audio reaches a receiver whose output goes nowhere, and nothing drains the ring into a speaker** — The root's audio arm is an opus decoder writing into the ring, and a drain above the renderer moves it out on the engine's cadence - filling to two buffers and clearing past three.
 - ✅ **PP798** **one access unit per session is refused by the decoder and the log says which error, never which frame** — A refused unit is recorded with its ordinal, its size and whether anything had decoded yet - which is the fact that tells a first unit before the codec's extradata from a corruption mid-session.
 - ✅ **PP800** **SeamReach counts an implementation that no path in app ever constructs, so a sink only tests build reads as reached** — A third axis asks whether an implementation is ever built, in both of C#'s spellings, and it found a ported send path with no caller on the commit that wrote the check.
+- ✅ **PP801** **two of the three paths that open a session install no phase, so the captures and the front door stop where the port runs** — The captures and the front door install a phase before the session starts, and a closed check names any path that opens one, means to stream and does not.
 
 ## Block G — Test discipline
 

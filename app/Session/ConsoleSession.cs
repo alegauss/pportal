@@ -1,4 +1,5 @@
-﻿using ChiakiNg.Native;
+﻿using System.Net;
+using ChiakiNg.Native;
 
 namespace ChiakiNg.Session;
 
@@ -136,6 +137,15 @@ public sealed class NativeConsoleSessionStarter : IConsoleSessionStarter
 
         ChiakiSession.LibInit();
 
+        // PP801: the phase's takion needs an ADDRESS, and a name is not one.
+        //
+        // Refused here rather than started and left to quit: since PP783 the C does not run the
+        // stream, so a session with no phase reaches it and ends with UNINITIALIZED after the whole
+        // ctrl handshake. A refusal at the door names the reason; the other way spends twenty
+        // seconds and reports "Ended". Every path this tree exercises passes a discovered address.
+        if (!IPAddress.TryParse(request.Host, out IPAddress? console))
+            return new(ChiakiError.InvalidData, null);
+
         ChiakiSession? session;
         ChiakiError created;
 
@@ -152,18 +162,35 @@ public sealed class NativeConsoleSessionStarter : IConsoleSessionStarter
         if (session is null)
             return new(created, null);
 
+        // PP801: AND THE FRONT DOOR INSTALLS ONE TOO, which it never did. PP783 flipped the run and
+        // wired the one path that shows a picture; this is the one a person clicks, and it reached
+        // the stream phase and quit.
+        //
+        // NO DECODER AND NO WINDOW, which is what this door has. The frame is taken and reported
+        // taken rather than refused: the receiver asks the console for a keyframe on a false, so a
+        // door with nowhere to put a picture would ask for an IDR sixty times a second.
+        //
+        // Held by the handle, because the phase must outlive this call exactly as the session does -
+        // a phase disposed on the way out cancels its own run.
+        var baseline = new SessionBaseline();
+        var phase = new ManagedStreamPhase(session, console, TakenAndDropped, baseline);
+
         // Armed BEFORE the start, for the capture's reason: a console that refuses immediately
         // answers on the session thread while this one is still returning.
         session.SetEventHandler(e => report(Translate(e)));
 
+        phase.InstallOn();
+
         ChiakiError started = session.Start();
         if (started != ChiakiError.Success)
         {
+            phase.Dispose();
+            baseline.Dispose();
             session.Dispose();
             return new(started, null);
         }
 
-        return new(ChiakiError.Success, new Handle(session));
+        return new(ChiakiError.Success, new Handle(session, phase, baseline));
     }
 
     /// <summary>
@@ -180,10 +207,26 @@ public sealed class NativeConsoleSessionStarter : IConsoleSessionStarter
     };
 
     /// <summary>
+    /// PP801: video this door has nowhere to put, taken rather than refused.
+    ///
+    /// TRUE and not false, which is the difference between dropping a frame and asking for another.
+    /// The session's contract says a false reports the frame corrupt so a new keyframe is fetched,
+    /// so a handler with no decoder that answered false would ask the console for an IDR per frame
+    /// for the whole session.
+    /// </summary>
+    private static bool TakenAndDropped(ReadOnlySpan<byte> frame, int framesLost, bool recovered)
+        => true;
+
+    /// <summary>
     /// The handle. Stops before it disposes, because a session thread still running when the
     /// object goes is the one shape of teardown that takes the process with it.
+    ///
+    /// PP801: it holds the PHASE as well, and the order is the session's stop first. Stopping pokes
+    /// the phase through the C's callback, so a phase disposed before the session would be cancelled
+    /// twice - and the session's own stop would then reach a handover that had gone.
     /// </summary>
-    private sealed class Handle(ChiakiSession session) : IHeldSession
+    private sealed class Handle(ChiakiSession session, ManagedStreamPhase phase, SessionBaseline baseline)
+        : IHeldSession
     {
         private ChiakiSession? held = session;
 
@@ -200,6 +243,9 @@ public sealed class NativeConsoleSessionStarter : IConsoleSessionStarter
             going.Stop();
             going.Join();
             going.Dispose();
+
+            phase.Dispose();
+            baseline.Dispose();
         }
     }
 }

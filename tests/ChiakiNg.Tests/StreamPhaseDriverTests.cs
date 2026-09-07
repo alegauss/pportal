@@ -154,6 +154,60 @@ public class StreamPhaseDriverTests(ITestOutputHelper output)
     }
 
     /// <summary>
+    /// PP801: EVERY PATH THAT OPENS A SESSION AND MEANS TO STREAM INSTALLS ONE.
+    ///
+    /// PP783 flipped the run and wired one of three. The captures kept writing their file and
+    /// stopped holding afterwards; --measure-decoder decoded frames the C no longer produces; the
+    /// front door reported Ended where it had reported Connected. Each loss is different and none
+    /// of them said so, which is why this asks all of them at once rather than naming the one.
+    /// </summary>
+    [Fact]
+    public void EverySessionPathThatMeansToStreamDrivesOne()
+    {
+        IReadOnlyList<(string Name, string Text)> files = StreamPhaseDriver.AppFiles();
+
+        if (files.Count == 0)
+            return;
+
+        IReadOnlyList<string> missing = StreamPhaseDriver.PathsThatMustDrive(files);
+
+        output.WriteLine(
+            $"{StreamPhaseDriver.DrivingSessionPathsIn(files).Count} driving, {missing.Count} not");
+
+        Assert.True(
+            missing.Count == 0,
+            "these open a session, are not named as paths that do not stream, and install no "
+                + $"phase - so each quits with UNINITIALIZED: {string.Join(", ", missing)}");
+
+        // PP271: a sweep that found no session paths at all would satisfy that.
+        Assert.NotEmpty(StreamPhaseDriver.DrivingSessionPathsIn(files));
+    }
+
+    /// <summary>
+    /// And the exemption is a list rather than a silence, so it can be argued with.
+    ///
+    /// The selftest opens sessions to assert what a refusal looks like, and a phase on those would
+    /// be a stream nobody asked for on a run with no console. A name that stopped being a file
+    /// would leave that reasoning attached to nothing, which is what this second half catches.
+    /// </summary>
+    [Fact]
+    public void EveryExemptedPathIsStillAFileThatOpensASession()
+    {
+        IReadOnlyList<(string Name, string Text)> files = StreamPhaseDriver.AppFiles();
+
+        if (files.Count == 0)
+            return;
+
+        Assert.All(
+            StreamPhaseDriver.SessionPathsThatDoNotStream,
+            leaf => Assert.Contains(
+                files,
+                one => Path.GetFileName(one.Name).Equals(leaf, StringComparison.OrdinalIgnoreCase)
+                    && DeadAssertions.CodeOnly(one.Text)
+                        .Contains(StreamPhaseDriver.BuildsASession, StringComparison.Ordinal)));
+    }
+
+    /// <summary>
     /// PP806: A SECOND SEAM'S INSTALL DOES NOT ANSWER THE STREAM'S QUESTION.
     ///
     /// PP792 gave senkusha a handover of its own, declaring an InstallOn with the same spelling. A
