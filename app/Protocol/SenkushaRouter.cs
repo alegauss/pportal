@@ -19,18 +19,42 @@ public enum SenkushaRoute
     ToDataAck,
 }
 
+/// <summary>
+/// PP813: why a control datagram that took the data route did nothing, which Ignored alone hides.
+///
+/// A live run had fifty of them and the census could not tell these three apart. They are not
+/// variants of one fault: the first is the reorder queue, the second is a data type senkusha has no
+/// arm for, and the third is a protobuf the arms saw and declined - a state or a type question.
+/// </summary>
+public enum SenkushaDataStop
+{
+    /// <summary>Not a data datagram, or one an arm acted on.</summary>
+    None,
+
+    /// <summary>The reorder queue released nothing: a duplicate, or outside its window.</summary>
+    NotPushed,
+
+    /// <summary>Released, and its data type byte is not PROTOBUF - which this walk stops at.</summary>
+    NotProtobuf,
+
+    /// <summary>A protobuf every arm declined, which is about the state or about its type.</summary>
+    NoArm,
+}
+
 /// <summary>What one datagram came to.</summary>
 /// <param name="Route">Which arm it reached.</param>
 /// <param name="Arrival">What that arm answered - the strongest answer where an ack released several.</param>
 /// <param name="BaseType">The low nibble the takion routes on, or -1 for an empty datagram.</param>
 /// <param name="Verdict">The control message's own verdict, or null where none was read.</param>
 /// <param name="Released">How many held sequence numbers an ack released, which is how many arm calls it made.</param>
+/// <param name="Stop">PP813: where the data route gave up, or None.</param>
 public readonly record struct SenkushaRouting(
     SenkushaRoute Route,
     SenkushaArrival Arrival,
     int BaseType,
     TakionMessageVerdict? Verdict,
-    int Released);
+    int Released,
+    SenkushaDataStop Stop = SenkushaDataStop.None);
 
 /// <summary>
 /// PP805, under PP784: the line between a datagram and one of senkusha's four arms.
@@ -63,6 +87,7 @@ public sealed class SenkushaRouter
     // PP813's tallies, indexed by the enum's own value so a member added later counts itself.
     private readonly int[] routeTally = new int[Enum.GetValues<SenkushaRoute>().Length];
     private readonly int[] arrivalTally = new int[Enum.GetValues<SenkushaArrival>().Length];
+    private readonly int[] stopTally = new int[Enum.GetValues<SenkushaDataStop>().Length];
     private readonly Dictionary<int, int> ignoredBaseTypes = [];
 
     /// <param name="arrivals">The four arms, which decide; nothing here decides for them.</param>
@@ -115,12 +140,22 @@ public sealed class SenkushaRouter
             .Where(one => one.count > 0)
             .Select(one => $"{one.Name} {one.count}");
 
+        // PP813: None is left out on purpose - it is every datagram that did not stop on the data
+        // route, so printing it would put the total in a column that is about failures.
+        IEnumerable<string> stops = stopTally
+            .Select((count, index) => (Stop: (SenkushaDataStop)index, count))
+            .Where(one => one.count > 0 && one.Stop != SenkushaDataStop.None)
+            .Select(one => $"{one.Stop} {one.count}");
+
         IEnumerable<string> bases = ignoredBaseTypes
             .OrderBy(one => one.Key)
             .Select(one => $"{one.Key}x{one.Value}");
 
+        string stopped = string.Join(", ", stops);
+
         return $"routes [{string.Join(", ", routes)}]"
             + $", arms [{string.Join(", ", answers)}]"
+            + (stopped.Length > 0 ? $", data stopped at [{stopped}]" : string.Empty)
             + (ignoredBaseTypes.Count > 0 ? $", unarmed base types [{string.Join(", ", bases)}]" : string.Empty);
     }
 
@@ -216,7 +251,11 @@ public sealed class SenkushaRouter
             datagram, message.PayloadOffset, message.PayloadSize, message.Header.ChunkFlags);
 
         if (push.Verdict != TakionDataPushVerdict.Pushed)
-            return new SenkushaRouting(SenkushaRoute.ToData, SenkushaArrival.Ignored, baseType, message.Verdict, 0);
+        {
+            return new SenkushaRouting(
+                SenkushaRoute.ToData, SenkushaArrival.Ignored, baseType, message.Verdict, 0,
+                SenkushaDataStop.NotPushed);
+        }
 
         byte[] payload = push.Entry.Payload;
 
@@ -227,12 +266,16 @@ public sealed class SenkushaRouter
         if (payload.Length < TakionDataDrain.HeaderSize
             || payload[TakionDataDrain.DataTypeOffset] != (byte)TakionDataType.Protobuf)
         {
-            return new SenkushaRouting(SenkushaRoute.ToData, SenkushaArrival.Ignored, baseType, message.Verdict, 0);
+            return new SenkushaRouting(
+                SenkushaRoute.ToData, SenkushaArrival.Ignored, baseType, message.Verdict, 0,
+                SenkushaDataStop.NotProtobuf);
         }
 
         SenkushaArrival arrival = arrivals.Protobuf(payload.AsSpan(TakionDataDrain.HeaderSize));
 
-        return new SenkushaRouting(SenkushaRoute.ToData, arrival, baseType, message.Verdict, 0);
+        return new SenkushaRouting(
+            SenkushaRoute.ToData, arrival, baseType, message.Verdict, 0,
+            arrival == SenkushaArrival.Ignored ? SenkushaDataStop.NoArm : SenkushaDataStop.None);
     }
 
     private SenkushaRouting Ack(ReadOnlySpan<byte> datagram, in TakionMessageReading message, int baseType)
@@ -264,6 +307,7 @@ public sealed class SenkushaRouter
         // Handled changes its answer. An empty datagram's base type is -1 and is not an index.
         routeTally[(int)routing.Route]++;
         arrivalTally[(int)routing.Arrival]++;
+        stopTally[(int)routing.Stop]++;
 
         if (routing.Route == SenkushaRoute.Ignored)
         {

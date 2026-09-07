@@ -204,6 +204,47 @@ public class SenkushaRouterTests(ITestOutputHelper output)
     }
 
     /// <summary>
+    /// PP813: THE DATA ROUTE STOPS FOR THREE REASONS AND Ignored NAMES NONE OF THEM.
+    ///
+    /// A live run had fifty control datagrams take the data route and do nothing, which the census
+    /// reported as ToData 50 with Ignored 50 - one column for three unrelated faults. The reorder
+    /// queue releasing nothing, a data type this walk has no arm for, and a protobuf every arm
+    /// declined are different bugs with different fixes, and the fifty are the standing lead.
+    ///
+    /// Two are driven here. NotPushed needs a queue that refuses, which this fixture cannot stage
+    /// without reaching past the router - so the enum carries it and the two that a datagram can
+    /// express are asserted.
+    /// </summary>
+    [Fact]
+    public void TheDataRouteSaysWhereItGaveUp()
+    {
+        (SenkushaRouter router, SenkushaArrivals arrivals, ManagedTakion _) = Router();
+
+        // A data type senkusha has no arm for at all: the walk stops before any protobuf is read.
+        SenkushaRouting notProtobuf = router.Datagram(ProtobufDatagram(ProtocolAck(), dataType: 9));
+
+        // And a protobuf the arms decline, because the state is not one that wants this message.
+        arrivals.BeginState(SenkushaState.ExpectPong);
+        SenkushaRouting noArm = router.Datagram(ProtobufDatagram(ProtocolAck()));
+
+        string census = router.Census();
+
+        output.WriteLine($"{notProtobuf}\n{noArm}\n{census}");
+
+        Assert.Equal(SenkushaDataStop.NotProtobuf, notProtobuf.Stop);
+        Assert.Equal(SenkushaDataStop.NoArm, noArm.Stop);
+
+        // Both are Ignored, which is exactly why the stop column had to exist.
+        Assert.Equal(SenkushaArrival.Ignored, notProtobuf.Arrival);
+        Assert.Equal(SenkushaArrival.Ignored, noArm.Arrival);
+
+        Assert.Contains("data stopped at [NotProtobuf 1, NoArm 1]", census, StringComparison.Ordinal);
+
+        // None is every datagram that did not stop, so it must not appear in a failure column.
+        Assert.DoesNotContain("None", census, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// ONE ARM CALL PER RELEASED NUMBER, and never one for the cumulative one.
     ///
     /// The C's ack handler asks the send buffer what a cumulative number cleared and raises an event
