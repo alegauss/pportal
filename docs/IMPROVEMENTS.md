@@ -350,6 +350,34 @@ dispatch records what the port received, which is the port checking itself; the 
 records what crossed the wire, which is evidence either implementation can be judged
 against. The second is what an oracle wants, and the first is cheaper.
 
+### §PP813 The bang that never arrives
+
+A live session measured through the port for the first time and the phase failed: state
+Unknown, rung BangAwaited, 54 arrivals with 4 handled, and the session carrying mtu
+1454/1454 and rtt 1000us - session.c's fallback, logged as Senkusha failed, but we still
+try to connect with fallback values.
+
+THE WIRE IS UP, which rules out PP773's shape. Fifty-four arrivals reached the object
+and four were read, so the takion connected and messages are arriving. This is not the
+silence where nothing turned an event into a signal.
+
+AND PP777'S MECHANISM CANNOT REACH IT. That was a zeroed rpcrypt hiding the BIG's launch
+spec, so the console acked and never banged. Senkusha's big is SenkushaMessages.Big(), a
+plain protobuf carrying no launch spec and nothing hidden, so the resemblance is the
+word bang and not a cause.
+
+TWO THINGS TO READ, neither read yet. PP730's RequiredFields gate answers Ignored ahead
+of every arm, so a bang missing a field nanopb calls required is dropped without a log.
+And the summary says state Unknown while the rung says BangAwaited - a disagreement
+about where the walk is.
+
+The cost is measured, not inferred: the C had 7.030ms on that link and the port spends
+1000us, a sevenfold error in the timing budget, and a listener reported crackling and
+stalling audio.
+
+NOT CLAIMED: the inbound MTU. The C's 576 came from a run whose every inbound probe
+timed out, so that is its floor rather than the link's number.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry
