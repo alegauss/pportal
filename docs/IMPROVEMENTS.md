@@ -334,6 +334,30 @@ none of them asked for, which is the seam PP741 measured the cost of.
 THE ORACLE QUESTION RIDES ON THIS. PP785 keeps the C's answers as a recording precisely
 because the C stops producing them, and --capture-datagrams is how a recording is made.
 
+### §PP804 The window a per-call lock leaves
+
+senkusha_send_data_wait_for_ack sets the state, sends, and waits - and the C holds
+state_mutex across all three, because chiaki_cond_timedwait_pred requires the mutex it
+waits on to be held. So the sequence number is written into
+senkusha->data_ack_seq_num_expected BY the send, under the lock, and an ack arriving on
+the takion's thread blocks until the wait begins. There is no window at all.
+
+PP791's host cannot do that. SenkushaArrivals takes its own lock per call - a design
+PP773 arrived at for good reasons - and that means the send happens with no lock held.
+So the expectation is set BEFORE the send, from ManagedTakion.SeqNumLocal, and corrected
+afterwards where something else took a number in between. That narrows the window to the
+gap between the prediction and the send, and it does not close it.
+
+WHAT THE FAILURE LOOKS LIKE is not a crash. The data-ack arm compares, finds a number it
+is not waiting for, and returns Ignored - so the wait runs its whole five seconds and
+the echo command reports UNKNOWN. A round-trip test that never started, blamed on a
+console that answered.
+
+TWO SHAPES ARE AVAILABLE AND NEITHER IS OBVIOUS. The arrivals could expose a
+send-under-the-lock, which hands them a takion; or the takion could take a sequence
+number without sending, which splits a send in two. Both are wider than a defect fix,
+which is why this is a line and not an edit.</section_body>
+
 ## Block G — Test discipline
 
 ### §PP796 A warning the failure below it contradicts

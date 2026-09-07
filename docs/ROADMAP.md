@@ -29,6 +29,7 @@
 - 📋 **PP798** (deps: —) **one access unit per session is refused by the decoder and the log says which error, never which frame** — A benign first unit before the codec has its header and a real corruption print the same line, so neither can be told from the other. → §PP798
 - 📋 **PP800** (deps: —) **SeamReach counts an implementation that no path in app ever constructs, so a sink only tests build reads as reached** — PP767 answered this for the driver check by requiring a path that opens a session, and the same weakness is still in the census that judges all seven seams. → §PP800
 - 📋 **PP801** (deps: —) **two of the three paths that open a session install no phase, so the captures and the front door stop where the port runs** — PP783 flipped the run and only StreamRun installs one, so the other two reach a callback that is not there and quit with UNINITIALIZED. → §PP801
+- 💭 **PP804** (deps: —) **senkusha's ack expectation is set around the send where the C sets it inside one, so a fast ack meets the wrong number** — The C holds state_mutex across the send AND the wait; the arrivals lock per call, so the window is narrowed by predicting the sequence number and not closed. → §PP804
 
 ## Block G — Test discipline
 
