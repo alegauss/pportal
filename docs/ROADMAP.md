@@ -29,12 +29,14 @@
 - 📋 **PP800** (deps: —) **SeamReach counts an implementation that no path in app ever constructs, so a sink only tests build reads as reached** — PP767 answered this for the driver check by requiring a path that opens a session, and the same weakness is still in the census that judges all seven seams. → §PP800
 - 📋 **PP801** (deps: —) **two of the three paths that open a session install no phase, so the captures and the front door stop where the port runs** — PP783 flipped the run and only StreamRun installs one, so the other two reach a callback that is not there and quit with UNINITIALIZED. → §PP801
 - 💭 **PP804** (deps: —) **senkusha's ack expectation is set around the send where the C sets it inside one, so a fast ack meets the wrong number** — The C holds state_mutex across the send AND the wait; the arrivals lock per call, so the window is narrowed by predicting the sequence number and not closed. → §PP804
+- 📋 **PP805** (deps: PP791 ✅, PP792 ✅) **senkusha's four arrival arms are called by tests alone, so a run driving a real takion ends every wait in a timeout** — PP773 is the same join one module over: a takion that connected and is not dispatching answers nothing, and reads like a console that never replied. → §PP805
 
 ## Block G — Test discipline
 
 - 📋 **PP796** (deps: —) **a stale suite binary is a warning and the floor then fails naming ffmpeg, so it reads as a shrunken suite** — The two are printed by the same run and the second explains the first wrongly; a reader who acts on the message checks a build option instead of rebuilding. → §PP796
 - 💭 **PP802** (deps: —) **PP785's sixty takion guards are named by no census row, and the closed-list check cannot see a guard it never heard of** — The floor the gate prints understates a bare build by sixty, and the sixth oracle is the case PP704 named as the one its sweep is blind to. → §PP802
 - 💭 **PP803** (deps: —) **the two arranged flips are checked by reading text, and nothing ever builds the shape either one leaves** — One trial of takion's bare shape found a link failure every text check called ready, and the other flip had the same one. → §PP803
+- 💭 **PP806** (deps: —) **the stream driver reads any .InstallOn( in a path file, so a second seam's install answers the stream's question** — PP792 put a second handover in the tree with the same method name; the check tells a declaration from a call and not one seam from another. → §PP806
 
 ## Block H — Performance and telemetry
 

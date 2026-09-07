@@ -335,6 +335,29 @@ send-under-the-lock, which hands them a takion; or the takion could take a seque
 number without sending, which splits a send in two. Both are wider than a defect fix,
 which is why this is a line and not an edit.</section_body>
 
+### §PP805 The arrivals nothing feeds
+
+PP791 wrote senkusha's arrivals - four arms over a state and two flags - and PP792 gave
+the session somewhere to hand the run. What neither wrote is the line between a datagram
+and an arm. ManagedTakion takes a dispatch delegate and every senkusha caller in the
+tree passes none, so the four arms are reached by tests and by nothing else.
+
+PP773 IS THE SAME HOLE ONE MODULE OVER, and it cost a console trial to find there. The
+stream connection had a host, its handlers ported and three layers of dispatch modelled,
+and a live PS5 answered every message while the run timed out at every wait. What was
+recorded then is that a takion which connected and is not reading answers nothing.
+
+AND THE FOUR ARMS ARE NOT ONE DISPATCH. The stream's arrivals take a whole datagram and
+route it; senkusha's take a takion EVENT, a data ack by sequence number, a protobuf body
+and an AV packet - four entry points with different arguments, because the C's callback
+switches on the event type before it looks at anything else. So the router's shape is
+decided by that switch rather than chosen.
+
+WHAT MAKES IT INVISIBLE is what PP764 named: a delegate nobody passes is not a member a
+census counts. SeamReach counts interfaces no class implements and the run-host census
+counts members with no counterpart, and an optional argument left at its default is
+neither.
+
 ## Block G — Test discipline
 
 ### §PP796 A warning the failure below it contradicts
@@ -404,6 +427,30 @@ WHERE IT GOES IS THE QUESTION. compile.cmd builds one shape and the gate is alre
 slowest thing in a commit, so this is plausibly a flag rather than a step - something a
 person runs before touching either flip's arrangement, and the flip's own task then runs
 as its first move.</section_body>
+
+### §PP806 The install the driver check cannot name
+
+PP764 asks two files one question: has session.c stopped calling the C's run, and does
+anything in app install a callback in its place. The second half is answered by looking
+for ".InstallOn(" in a file that opens a session, with the declaring file excluded by
+name - which was exact while StreamHandover was the only class in the tree declaring
+that method.
+
+PP792 ENDED THAT, and nothing has gone wrong yet. SenkushaHandover declares an InstallOn
+of its own and no path file calls it, so today's answer is unchanged. The moment a root
+installs a senkusha phase from StreamRun.cs, the stream's question is satisfied by an
+install with nothing to do with the stream - and what that hides is the state PP762
+shipped: the C hands the phase over, a root exists, and no session installs it.
+
+NOT A DEFECT TODAY, WHICH IS WHY THIS IS AN IDEA. Filing it as a fix would spend a
+commit on a check that currently answers correctly. What it needs is the re-entry
+condition stated: the first path file that installs anything other than a stream
+handover is when this becomes real.
+
+THE FIX IS PROBABLY THE RECEIVER, not a longer exclusion list. The check already reasons
+about receivers - the dot is what tells a call from a declaration - so requiring the
+receiver's own type is a small step from where it is, and the alternative is a list of
+file names that a rename empties in silence.
 
 ## Block H — Performance and telemetry
 
