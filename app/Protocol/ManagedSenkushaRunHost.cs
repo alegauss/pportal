@@ -481,31 +481,29 @@ public sealed class ManagedSenkushaRunHost : ISenkushaRunHost
     /// </summary>
     private ChiakiError SendWaitingForAck(in SenkushaSend message)
     {
-        BeginState(SenkushaState.ExpectDataAck);
+        // PP804: THE STATE, THE SEND AND THE WAIT UNDER ONE LOCK, which is what the C holds
+        // state_mutex across. This used to predict the sequence number from SeqNumLocal before the
+        // send and correct it afterwards, and an ack landing in that gap was compared against a
+        // number nobody was waiting for - dropped, and the wait then ran its whole five seconds.
+        //
+        // The message is copied out of the `in` parameter because a lambda cannot capture one.
+        SenkushaSend sending = message;
 
-        // BEFORE the send, and the C gets this for free: it holds the state mutex across the whole
-        // helper, so an ack arriving mid-send blocks until the wait begins. Here the arrivals take
-        // their own lock per call, so setting the expectation afterwards leaves a window in which
-        // the console's ack is compared against the LAST message's number and dropped.
-        arrivals.DataAckSeqNumExpected = takion.SeqNumLocal;
+        SenkushaAckedSend outcome = arrivals.SendAndWait(
+            SenkushaState.ExpectDataAck, () => Send(sending), ExpectTimeoutMs);
 
-        if (Send(message) is not { } seqNum)
+        if (!outcome.Sent)
             return ChiakiError.Network;
 
-        // And corrected where something else took a number in between, which is a window this
-        // narrows rather than closes - the alternative is a lock the takion would have to share.
-        if (seqNum != arrivals.DataAckSeqNumExpected)
-            arrivals.DataAckSeqNumExpected = seqNum;
-
-        (SenkushaWaitState flags, bool timedOut) = arrivals.Wait(ExpectTimeoutMs);
-
-        if (flags.Finished)
+        if (outcome.Flags.Finished)
             return ChiakiError.Success;
 
-        if (flags.ShouldStop)
+        if (outcome.Flags.ShouldStop)
             return ChiakiError.Canceled;
 
-        return timedOut ? ChiakiError.Timeout : ChiakiError.Unknown;
+        // PP380: a wait that did not finish answers TIMEOUT or CANCELED or UNKNOWN, and never the
+        // success the wait itself left behind.
+        return outcome.TimedOut ? ChiakiError.Timeout : ChiakiError.Unknown;
     }
 
     /// <summary>chiaki_random_32, which every ping's tag is one of.</summary>

@@ -106,6 +106,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP798** **one access unit per session is refused by the decoder and the log says which error, never which frame** — The reading is taken on the port's side of the seam and the vendored decoder is not patched, so the two cases are separated without a local change to lib.
 - ✅ **PP800** **SeamReach counts an implementation that no path in app ever constructs, so a sink only tests build reads as reached** — A seam is reached when app's own code constructs an implementation, not when one exists: a class only the test project builds satisfies the type graph and nothing else.
 - ✅ **PP801** **two of the three paths that open a session install no phase, so the captures and the front door stop where the port runs** — The host's selftest is the one session path exempt from installing a phase, and it is named rather than silent: it opens sessions to assert refusals, not to stream.
+- ✅ **PP804** **senkusha's ack expectation is set around the send where the C sets it inside one, so a fast ack meets the wrong number** — Of the two shapes PP804 weighed, the arrivals own the send-under-the-lock - but take a callback, not a takion, so they still know nothing about the transport.
 
 ## Block G — Test discipline
 

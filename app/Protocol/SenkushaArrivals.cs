@@ -39,6 +39,13 @@ public enum SenkushaArrival
     Refused,
 }
 
+/// <summary>PP804: what one send-and-wait came to, told apart from a wait that had nothing to do.</summary>
+/// <param name="Sent">Whether the message left at all; false is the send's own failure.</param>
+/// <param name="Flags">The flags as they read when the wait returned.</param>
+/// <param name="TimedOut">Whether it returned by timeout, which a failed send never does.</param>
+public readonly record struct SenkushaAckedSend(
+    bool Sent, SenkushaWaitState Flags, bool TimedOut);
+
 /// <summary>
 /// PP791, under PP784: senkusha's state and flags, and the callback that writes them.
 ///
@@ -152,6 +159,55 @@ public sealed class SenkushaArrivals
             }
 
             return (flags, !SenkushaStates.WaitEnds(flags));
+        }
+    }
+
+    /// <summary>
+    /// PP804: set the state, send, record the number the send took, and wait - under ONE lock.
+    ///
+    /// senkusha_send_data_wait_for_ack does exactly this and the C gets the ordering for free:
+    /// chiaki_cond_timedwait_pred requires the mutex it waits on to be held, so state_mutex is held
+    /// across all three and the sequence number is written into data_ack_seq_num_expected BY the
+    /// send. An ack arriving on the takion's thread blocks until the wait begins. There is no
+    /// window at all.
+    ///
+    /// PP791's host could not do that, because this object locks per call: the expectation was set
+    /// BEFORE the send from a PREDICTED sequence number and corrected afterwards, which narrows the
+    /// window and does not close it. An ack landing in the gap is compared against a number nobody
+    /// is waiting for, returns Ignored, and the wait then runs its whole five seconds - a
+    /// round-trip test that never started, blamed on a console that answered.
+    ///
+    /// THE SEND RUNS UNDER THE LOCK, which is the whole point and is what the C does. The arm that
+    /// would answer it is <see cref="DataAck"/>, and it takes this same lock - so an ack that
+    /// arrives mid-send waits for <see cref="Wait"/> to release it and is then compared against the
+    /// number it is actually about. Monitor is reentrant and Monitor.Wait releases the whole
+    /// recursion, so the members called from inside here behave as they do anywhere else.
+    /// </summary>
+    /// <param name="state">The state to enter, which is the wait's own.</param>
+    /// <param name="send">
+    /// The send, answering the sequence number it took, or null where the message did not leave.
+    /// Called with the lock held, so it must not block on anything that needs an arrival.
+    /// </param>
+    /// <param name="timeoutMs">How long the wait is given.</param>
+    public SenkushaAckedSend SendAndWait(SenkushaState state, Func<uint?> send, int timeoutMs)
+    {
+        ArgumentNullException.ThrowIfNull(send);
+
+        lock (gate)
+        {
+            current = state;
+            flags = SenkushaStates.Entering(flags);
+
+            if (send() is not { } seqNum)
+                return new SenkushaAckedSend(false, flags, false);
+
+            // AFTER the send and under the same lock, which is where the C writes it. Nothing can
+            // have answered yet: the arm that would is holding for this.
+            DataAckSeqNumExpected = seqNum;
+
+            (SenkushaWaitState waited, bool timedOut) = Wait(timeoutMs);
+
+            return new SenkushaAckedSend(true, waited, timedOut);
         }
     }
 

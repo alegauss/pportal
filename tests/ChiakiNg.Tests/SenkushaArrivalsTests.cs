@@ -44,6 +44,91 @@ public class SenkushaArrivalsTests(ITestOutputHelper output)
             new Tkproto.TakionProtocolRequestAckPayload { TakionProtocolVersion = 7 },
     }.ToByteArray();
 
+    /// <summary>
+    /// PP804: AN ACK THAT ARRIVES DURING THE SEND IS NOT LOST.
+    ///
+    /// senkusha_send_data_wait_for_ack holds state_mutex across the state, the send and the wait,
+    /// so the sequence number is written by the send and an ack on the takion's thread blocks until
+    /// the wait begins. This object locks per call, so PP791's host predicted the number before the
+    /// send and corrected it after - and an ack landing in that gap was compared against a number
+    /// nobody was waiting for.
+    ///
+    /// The ack thread here BLOCKS on the same lock the send is holding, which is the whole
+    /// mechanism: it cannot be compared against anything until the wait has released it.
+    /// </summary>
+    [Fact]
+    public void AnAckThatArrivesDuringTheSendIsNotLost()
+    {
+        var arrivals = new SenkushaArrivals();
+        Thread? acking = null;
+
+        SenkushaAckedSend outcome = arrivals.SendAndWait(
+            SenkushaState.ExpectDataAck,
+            () =>
+            {
+                // Started INSIDE the send, so it is asking while the lock is held.
+                acking = new Thread(() => arrivals.DataAck(4242)) { IsBackground = true };
+                acking.Start();
+
+                // Long enough for that thread to reach the lock and block on it.
+                Thread.Sleep(50);
+
+                return 4242u;
+            },
+            timeoutMs: 5000);
+
+        acking?.Join(TimeSpan.FromSeconds(2));
+
+        output.WriteLine($"{outcome}");
+
+        Assert.True(outcome.Sent);
+        Assert.True(outcome.Flags.Finished, "the ack arrived during the send and was dropped");
+        Assert.False(outcome.TimedOut);
+    }
+
+    /// <summary>
+    /// AND THE OLD SHAPE LOSES IT, which is the window this replaced.
+    ///
+    /// Written out by hand rather than described: set the expectation from a PREDICTION, let the
+    /// ack arrive while the send is in flight, correct the number afterwards, then wait. The arm
+    /// compares against the prediction, answers Ignored, and the wait runs out - so the echo
+    /// command reports a console that answered as one that did not.
+    /// </summary>
+    [Fact]
+    public void SettingTheExpectationAroundTheSendLosesIt()
+    {
+        var arrivals = new SenkushaArrivals();
+
+        arrivals.BeginState(SenkushaState.ExpectDataAck);
+
+        // The prediction, which something else took a number in between of.
+        arrivals.DataAckSeqNumExpected = 4241;
+
+        // The ack for the message that actually left, arriving before the correction.
+        Assert.Equal(SenkushaArrival.Ignored, arrivals.DataAck(4242));
+
+        arrivals.DataAckSeqNumExpected = 4242;
+
+        (SenkushaWaitState flags, bool timedOut) = arrivals.Wait(60);
+
+        Assert.False(flags.Finished);
+        Assert.True(timedOut);
+    }
+
+    /// <summary>A send that did not leave is not a wait, and says so rather than timing out.</summary>
+    [Fact]
+    public void ASendThatNeverLeftIsNotWaitedOn()
+    {
+        var arrivals = new SenkushaArrivals();
+
+        SenkushaAckedSend outcome = arrivals.SendAndWait(
+            SenkushaState.ExpectDataAck, () => null, timeoutMs: 5000);
+
+        Assert.False(outcome.Sent);
+        Assert.False(outcome.TimedOut);
+        Assert.False(outcome.Flags.Finished);
+    }
+
     private static byte[] ClientMtu(uint id) => new Tkproto.TakionMessage
     {
         Type = Tkproto.TakionMessage.Types.PayloadType.Senkusha,
