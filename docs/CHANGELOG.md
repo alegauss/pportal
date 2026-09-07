@@ -725,6 +725,7 @@
 - ✅ **PP805** **senkusha's four arrival arms are called by tests alone, so a run driving a real takion ends every wait in a timeout** — A datagram now walks to the arm the C's callback would reach, an ack calls the arm once per released number, and the wiring ties the knot a run over a real takion needs.
 - ✅ **PP809 (the phase, installed and checked)** **no path installs a senkusha phase, so every session still measures the link with the C's run** — StreamRun builds a ManagedSenkushaPhase before the session starts, so the port measures and the C is the arm behind it; a driver check names which state this tree is in.
 - ✅ **PP797** **the console's audio reaches a receiver whose output goes nowhere, and nothing drains the ring into a speaker** — The root's audio arm is an opus decoder writing into the ring, and a drain above the renderer moves it out on the engine's cadence - filling to two buffers and clearing past three.
+- ✅ **PP798** **one access unit per session is refused by the decoder and the log says which error, never which frame** — A refused unit is recorded with its ordinal, its size and whether anything had decoded yet - which is the fact that tells a first unit before the codec's extradata from a corruption mid-session.
 
 ## Block G — Test discipline
 

@@ -255,6 +255,19 @@ public static class StreamRun
         Console.WriteLine(
             $"[stream] pad sink: armed {phase.Pad.Active}, {pad.Pushed} state(s) pushed");
 
+        // PP798: which units the decoder refused, which its own log line does not say.
+        //
+        // ffmpegdecoder.c prints the ERROR and nothing that identifies the unit, so a benign first
+        // one arriving before the codec has its extradata and a corruption halfway through a
+        // session are the same sentence. AfterAnyDecode is what separates them, and it is only
+        // knowable at the moment the unit was offered.
+        if (decoder.Refused > 0)
+        {
+            Console.WriteLine(
+                $"[decoder] {decoder.Refused} of {decoder.Pushed} unit(s) refused: "
+                    + string.Join("; ", decoder.Refusals));
+        }
+
         // PP809: what the port measured, which is the one reading that says whether this session's
         // launch spec carried senkusha's numbers or PP28's fallback. The arrival counts are beside
         // it for PP773's reason: a run that reached no arm and one whose arms refused everything

@@ -187,11 +187,69 @@ public sealed class SessionDecoder : IDisposable
         if (handle == IntPtr.Zero || frame.IsEmpty)
             return false;
 
+        // PP798: read BEFORE the push, because a push that succeeds moves it. Whether anything had
+        // decoded yet is the one fact that tells the two refusals apart, and it is only true of the
+        // moment the unit was offered.
+        int unit = Pushed++;
+        bool decodedAnything = FramesDecoded > 0;
+
+        bool took;
+
         unsafe
         {
             fixed (byte* bytes = frame)
-                return DecoderVideoSample(handle, (IntPtr)bytes, frame.Length, framesLost, frameRecovered);
+                took = DecoderVideoSample(handle, (IntPtr)bytes, frame.Length, framesLost, frameRecovered);
         }
+
+        if (!took)
+            Refuse(new DecoderRefusal(unit, frame.Length, framesLost, frameRecovered, decodedAnything));
+
+        return took;
+    }
+
+    /// <summary>
+    /// PP798: one unit the decoder would not take, said in enough detail to be attributable.
+    /// </summary>
+    /// <param name="Unit">Which access unit this door had offered, counting from zero.</param>
+    /// <param name="Bytes">Its size, which the C has and its log line does not print.</param>
+    /// <param name="FramesLost">How many the receiver could not rebuild before it.</param>
+    /// <param name="Recovered">Whether FEC had put this one back together.</param>
+    /// <param name="AfterAnyDecode">
+    /// Whether the decoder had produced a frame before this. THE fact that separates the two
+    /// readings: a first unit arriving before the codec has its extradata is benign and has this
+    /// false, and a corrupted unit halfway through a session has it true. ffmpegdecoder.c's line
+    /// says which ERROR and never which of those two cases it is about.
+    /// </param>
+    public readonly record struct DecoderRefusal(
+        int Unit, int Bytes, int FramesLost, bool Recovered, bool AfterAnyDecode);
+
+    /// <summary>How many units this door has offered the decoder.</summary>
+    public int Pushed { get; private set; }
+
+    /// <summary>And how many it would not take, which the C logs one line about and does not count.</summary>
+    public int Refused { get; private set; }
+
+    /// <summary>
+    /// The first few refusals, in the order they happened.
+    ///
+    /// BOUNDED, because a session that starts refusing everything would otherwise allocate one of
+    /// these per frame at sixty a second - and the reading this exists for is about a refusal that
+    /// happens ONCE. <see cref="Refused"/> keeps counting past the bound, so a run that filled the
+    /// list still says how bad it got.
+    /// </summary>
+    public IReadOnlyList<DecoderRefusal> Refusals => refusals;
+
+    /// <summary>How many refusals are kept, past which only the count moves.</summary>
+    public const int RefusalsKept = 8;
+
+    private readonly List<DecoderRefusal> refusals = [];
+
+    private void Refuse(in DecoderRefusal refusal)
+    {
+        Refused++;
+
+        if (refusals.Count < RefusalsKept)
+            refusals.Add(refusal);
     }
 
     /// <summary>One decoded frame's planes, borrowed until the next pull.</summary>

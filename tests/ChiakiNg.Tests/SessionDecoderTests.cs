@@ -150,6 +150,77 @@ public class SessionDecoderTests(ITestOutputHelper output)
         Assert.False(SessionDecoder.AttachTo(IntPtr.Zero, decoder.Handle));
     }
 
+    /// <summary>
+    /// PP798: A REFUSED UNIT IS NAMED, which is what ffmpegdecoder.c's log line will not do.
+    ///
+    /// Two baseline runs each printed "Failed to push frame: Invalid data found when processing
+    /// input" once and then decoded a thousand frames. The line says which ERROR and nothing that
+    /// identifies the unit, so the likely reading - a first unit arriving before the codec has its
+    /// extradata - stays a guess, and a corruption halfway through a session prints the same thing.
+    ///
+    /// AfterAnyDecode is the fact that separates them, and it is only true of the moment the unit
+    /// was offered: a push that succeeds moves the decoder's own counter, so reading it afterwards
+    /// would answer about the wrong instant.
+    /// </summary>
+    [Fact]
+    public void ARefusedUnitSaysWhichOneAndWhetherAnythingHadDecodedYet()
+    {
+        using var decoder = new SessionDecoder(IntPtr.Zero, codec: 0, maxFps: 60, string.Empty);
+
+        Assert.Equal(0, decoder.Pushed);
+        Assert.Equal(0, decoder.Refused);
+        Assert.Empty(decoder.Refusals);
+
+        // Not an access unit by any reading, which is the refusal this is about - and the decoder
+        // has produced nothing, so it is the benign-looking case.
+        bool took = decoder.Sample(new byte[] { 0, 1, 2, 3 }, framesLost: 0, frameRecovered: false);
+
+        Assert.False(took, "the decoder took four bytes of nothing, so this test proves nothing");
+        Assert.Equal(1, decoder.Pushed);
+        Assert.Equal(1, decoder.Refused);
+
+        SessionDecoder.DecoderRefusal refusal = Assert.Single(decoder.Refusals);
+
+        output.WriteLine($"{refusal}");
+
+        Assert.Equal(0, refusal.Unit);
+        Assert.Equal(4, refusal.Bytes);
+        Assert.False(refusal.AfterAnyDecode, "nothing had decoded, so this is the first-unit case");
+    }
+
+    /// <summary>
+    /// The list is bounded and the count is not, which is what makes this safe on a bad session.
+    ///
+    /// A session that starts refusing everything offers sixty units a second, and a reading kept
+    /// per refusal would allocate for the whole of it. What this exists to attribute happens once.
+    /// </summary>
+    [Fact]
+    public void TheKeptRefusalsAreBoundedAndTheCountIsNot()
+    {
+        using var decoder = new SessionDecoder(IntPtr.Zero, codec: 0, maxFps: 60, string.Empty);
+
+        for (var i = 0; i < SessionDecoder.RefusalsKept + 5; i++)
+            decoder.Sample(new byte[] { 0, 1, 2, 3 }, framesLost: 0, frameRecovered: false);
+
+        Assert.Equal(SessionDecoder.RefusalsKept + 5, decoder.Refused);
+        Assert.Equal(SessionDecoder.RefusalsKept, decoder.Refusals.Count);
+
+        // And the ones kept are the FIRST, which is where the answer is.
+        Assert.Equal(0, decoder.Refusals[0].Unit);
+        Assert.Equal(SessionDecoder.RefusalsKept - 1, decoder.Refusals[^1].Unit);
+    }
+
+    /// <summary>An empty frame is refused before the seam and counts as neither.</summary>
+    [Fact]
+    public void AnEmptyUnitIsNotOfferedAtAll()
+    {
+        using var decoder = new SessionDecoder(IntPtr.Zero, codec: 0, maxFps: 60, string.Empty);
+
+        Assert.False(decoder.Sample([], framesLost: 0, frameRecovered: false));
+        Assert.Equal(0, decoder.Pushed);
+        Assert.Equal(0, decoder.Refused);
+    }
+
     /// <summary>And a null name is refused rather than read as software.</summary>
     [Fact]
     public void ANullNameIsRefused()

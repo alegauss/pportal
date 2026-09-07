@@ -214,29 +214,6 @@ port does not own calling code it does - a boundary needing explaining at every 
 reading. Five lines carry the port, and the file stops calling takion when the last
 lands.
 
-### §PP798 The refusal that will not say which frame
-
-Two baseline runs on the C path, one software and one d3d11va, each printed "Failed to
-push frame: Invalid data found when processing input" exactly once and then decoded a
-thousand frames. The line comes from ffmpegdecoder.c, where avcodec_send_packet answered
-something that is not EAGAIN and the decoder gives up on that unit.
-
-WHAT IT DOES NOT SAY IS WHICH ONE. Not the frame index, not its size, not whether the
-codec context had been given its header yet - so the most likely reading, that this is
-the first unit arriving before the extradata a decoder needs, is a guess and stays one.
-A corrupted unit halfway through a session prints exactly the same sentence.
-
-WHICH MATTERS MORE NOW THAN IT DID. PP783 will compare a managed run against a baseline
-of 1020 decoded and 972 shown, and a run that printed this line twice instead of once
-would be reporting something the numbers do not carry. A per-session refusal that is
-understood is a footnote; one that is not is a difference nobody can attribute.
-
-THE READING IS CHEAP AND THE FILING IS NOT THE FIX. The frame index and the size are on
-the packet the C already holds, and the decoder knows whether it has been configured -
-three values in a log line that costs nothing on a path taken once. Whether the answer
-then deserves a repair is a second question, and this one refuses to pretend it is
-already answered.
-
 ### §PP800 The seam a test double reaches
 
 PP741 counts an interface in app implemented only by test doubles, and
