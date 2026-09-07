@@ -822,6 +822,7 @@
 - ✅ **PP739** **the ratchet's absent id is a constant any other file can spell, and a comment is what guards it** — AnAbsentId asks the suites what they spell and returns one they do not, so no literal in any file can turn the ratchet's absent-id question red again.
 - ✅ **PP743** **eleven fixture ids sit 158 ids ahead of the ledger, so the tasks that reach them are born counted as covered** — The eleven moved above the floor two comments already stated, and FixturesBelowTheFloor holds them there, so no task arrives with its coverage debt already paid.
 - ✅ **PP806** **the stream driver reads any .InstallOn( in a path file, so a second seam's install answers the stream's question** — A session path that composes its own must now name the stream's seam as well as call the install, so a senkusha phase installed beside it answers nothing.
+- ✅ **PP796** **a stale suite binary is a warning and the floor then fails naming ffmpeg, so it reads as a shrunken suite** — A binary ninja says is out of date ends the run, so no count is read off the previous build; and where a suite did shrink, the stale case is ruled out before the build option is named.
 
 ## Block H — Performance and telemetry
 

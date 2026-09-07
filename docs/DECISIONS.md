@@ -116,6 +116,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP739** **the ratchet's absent id is a constant any other file can spell, and a comment is what guards it** — A test needing a made-up id derives one from what the suites spell; a literal is what made the asking file the answer, five times, and a comment only reached readers of its own file.
 - ✅ **PP743** **eleven fixture ids sit 158 ids ahead of the ledger, so the tasks that reach them are born counted as covered** — A fixture id lives above 9000, and an id is a task only where a governed file carries it as a LINE: reading prose would have let filing this task excuse the very fixture it was about.
 - ✅ **PP806** **the stream driver reads any .InstallOn( in a path file, so a second seam's install answers the stream's question** — The evidence a path drives the stream is the type it constructs, because a receiver at a call site is a variable and its type is spelled only where it is built.
+- ✅ **PP796** **a stale suite binary is a warning and the floor then fails naming ffmpeg, so it reads as a shrunken suite** — A gate reports nothing it read off a stale binary: the freshness check refuses rather than warning, because every number below it is about a tree nobody is looking at.
 
 ## Block H — Performance and telemetry
 

@@ -168,4 +168,89 @@ public class CSuiteFloorTests(ITestOutputHelper output)
         string leaf = Path.GetFileName(CSuiteFloor.FloorRelativePath);
         Assert.Contains(leaf, File.ReadAllText(path), StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// PP796: A STALE BINARY ENDS THE RUN, because everything below it is read off that binary.
+    ///
+    /// It was a warning, and the floor comparison then failed with a message about ffmpeg - so one
+    /// run said two contradictory things and the second explained the first wrongly. Five
+    /// misdiagnoses in one session and a conclusion that the gate is flaky; it was not.
+    /// </summary>
+    [Fact]
+    public void AStaleSuiteBinaryStopsTheRunRatherThanWarning()
+    {
+        if (CSuiteFloor.LocateGate() is not { } path)
+            return;
+
+        Assert.True(
+            CSuiteFloor.TheStaleBinaryEndsTheRun(File.ReadAllText(path)),
+            "the gate still carries on past a binary ninja says is out of date, so the case count "
+                + "below it is about the previous build");
+    }
+
+    /// <summary>And a warning that only says so is exactly what this refuses.</summary>
+    [Fact]
+    public void AWarningWithNoExitIsNotAnEnding()
+    {
+        const string Warning = """
+            	if [[ "$freshness" != *"no work to do"* ]]; then
+            		echo "[test] WARNING: $UNIT is out of date - ninja has work to do for it." >&2
+            	fi
+            	exit 1
+            """;
+
+        // The exit is there, outside the branch - which is the shape a looser check would pass.
+        Assert.False(CSuiteFloor.TheStaleBinaryEndsTheRun(Warning));
+
+        const string Ending = """
+            	if [[ "$freshness" != *"no work to do"* ]]; then
+            		echo "[test] $UNIT is out of date - ninja has work to do for it." >&2
+            		exit 1
+            	fi
+            """;
+
+        Assert.True(CSuiteFloor.TheStaleBinaryEndsTheRun(Ending));
+    }
+
+    /// <summary>
+    /// PP796: and the shrunken-suite message rules the stale case out BEFORE it names ffmpeg.
+    ///
+    /// Order and not presence. The build option is right about the case it was written for -
+    /// CHIAKI_ENABLE_FFMPEG_DECODER going OFF drops seven - and a reader acts on the first thing
+    /// said, which used to send them to a build option while the answer was compile.cmd.
+    /// </summary>
+    [Fact]
+    public void TheShrunkenSuiteNamesTheStaleCaseBeforeTheBuildOption()
+    {
+        if (CSuiteFloor.LocateGate() is not { } path)
+            return;
+
+        Assert.True(
+            CSuiteFloor.TheShrunkenSuiteRulesOutTheStaleCaseFirst(File.ReadAllText(path)),
+            "the gate names ffmpeg before it says whether the binary was fresh, so the commonest "
+                + "cause is the one it does not mention");
+    }
+
+    /// <summary>And the other order is what it refuses, told both ways.</summary>
+    [Fact]
+    public void TheBuildOptionComingFirstIsRefused()
+    {
+        const string Wrong = """
+            		echo "[test] A suite got smaller. Check whether ffmpeg was found: " >&2
+            		echo "[test] The binary is up to date, so this is not the previous build's count." >&2
+            """;
+
+        Assert.False(CSuiteFloor.TheShrunkenSuiteRulesOutTheStaleCaseFirst(Wrong));
+
+        const string Right = """
+            		echo "[test] The binary is up to date, so this is not the previous build's count." >&2
+            		echo "[test] A suite got smaller. Check whether ffmpeg was found: " >&2
+            """;
+
+        Assert.True(CSuiteFloor.TheShrunkenSuiteRulesOutTheStaleCaseFirst(Right));
+
+        // And a gate that says neither answers false rather than throwing.
+        Assert.False(CSuiteFloor.TheShrunkenSuiteRulesOutTheStaleCaseFirst(""));
+        Assert.False(CSuiteFloor.TheStaleBinaryEndsTheRun(""));
+    }
 }

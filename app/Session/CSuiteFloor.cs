@@ -186,6 +186,79 @@ public static partial class CSuiteFloor
         return CatCaptureRegex().Matches(WithoutComments(gateScript)).Count;
     }
 
+    /// <summary>The line the gate prints when ninja says the suite binary has work waiting.</summary>
+    public const string TheStaleBinaryLine = "ninja has work to do for it.";
+
+    /// <summary>And the line that rules that case out before the build option is named.</summary>
+    public const string TheStaleCaseRuledOut = "The binary is up to date";
+
+    /// <summary>The build option's own sentence, which used to be the only thing said.</summary>
+    public const string TheBuildOptionLine = "A suite got smaller";
+
+    /// <summary>
+    /// PP796: whether a stale binary ENDS the run rather than warning and carrying on.
+    ///
+    /// It was a warning, and the run then read a case count out of the previous build and failed
+    /// the floor comparison with a message about ffmpeg - two halves of one run contradicting each
+    /// other, with the second explaining the first wrongly. Everything after that point is read off
+    /// the binary, so there is nothing below worth printing.
+    ///
+    /// The exit is looked for INSIDE the branch, because a script that exits somewhere else
+    /// entirely would satisfy a check for the two words in the same file.
+    /// </summary>
+    public static bool TheStaleBinaryEndsTheRun(string gateScript)
+    {
+        ArgumentNullException.ThrowIfNull(gateScript);
+
+        var inBranch = false;
+
+        foreach (string line in WithoutComments(gateScript).Split('\n'))
+        {
+            if (!inBranch)
+            {
+                inBranch = line.Contains(TheStaleBinaryLine, StringComparison.Ordinal);
+                continue;
+            }
+
+            string trimmed = line.Trim();
+
+            // The branch closing first is the warning this replaces: an exit somewhere below is
+            // about some other condition, and reading it as this one is how a looser check passes.
+            if (trimmed == "fi")
+                return false;
+
+            if (trimmed.StartsWith("exit ", StringComparison.Ordinal)
+                && !trimmed.StartsWith("exit 0", StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// PP796: whether the shrunken-suite message rules the stale case out before naming ffmpeg.
+    ///
+    /// ORDER AND NOT PRESENCE, which is the whole finding: both sentences were reachable before,
+    /// and the one a reader acted on was the one that came first. The build option is right about
+    /// the case it was written for and wrong about the common one.
+    /// </summary>
+    public static bool TheShrunkenSuiteRulesOutTheStaleCaseFirst(string gateScript)
+    {
+        ArgumentNullException.ThrowIfNull(gateScript);
+
+        string code = WithoutComments(gateScript);
+
+        int option = code.IndexOf(TheBuildOptionLine, StringComparison.Ordinal);
+        if (option < 0)
+            return false;
+
+        int ruled = code.IndexOf(TheStaleCaseRuledOut, StringComparison.Ordinal);
+
+        return ruled >= 0 && ruled < option;
+    }
+
     // Shell comments, so a comment naming a flag does not count as passing it. PP400's rule, and
     // this file's own prose is why it matters - the block above the change discusses
     // --output-on-failure at length.

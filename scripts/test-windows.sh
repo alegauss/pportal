@@ -62,7 +62,19 @@ fi
 # built from has moved - the same question, and one whose answer acting on it changes. Not a
 # list of exceptions, which is PP279's finding: a hand-kept list guards what somebody thought
 # of, and this file would have been added to it only after being noticed.
+#
+# PP796: AND IT REFUSES RATHER THAN WARNING, which is the severity PP56's own argument asks
+# for. A warning let the run carry on and print a case count out of the previous build, and
+# the floor comparison below then failed with a message about ffmpeg - so the two halves of
+# one run contradicted each other, and the second explained the first wrongly. In one session
+# that produced five misdiagnoses and a conclusion that the gate is flaky. It was not: the
+# binary was from a different tree each time.
+#
+# THE COUNT IS WHY, not tidiness. Everything after this point is read off a binary, and a
+# binary ninja says is out of date answers about code nobody is looking at - so there is
+# nothing below worth printing.
 NINJA="${NINJA:-/mingw64/bin/ninja}"
+freshness_known=0
 if [[ ! -x "$NINJA" ]]; then
 	echo "[test] note: no ninja at $NINJA, so the binary's freshness was not checked" >&2
 else
@@ -70,9 +82,11 @@ else
 	# leave the pipeline non-zero on the very case that matched.
 	freshness=$("$NINJA" -C "$BUILD_DIR" -n chiaki-unit 2>/dev/null)
 	if [[ "$freshness" != *"no work to do"* ]]; then
-		echo "[test] WARNING: $UNIT is out of date - ninja has work to do for it." >&2
-		echo "[test]          Run compile.cmd - this result is about the previous build." >&2
+		echo "[test] $UNIT is out of date - ninja has work to do for it." >&2
+		echo "[test] Run compile.cmd. Nothing below this would be about the tree you are in." >&2
+		exit 1
 	fi
+	freshness_known=1
 fi
 
 if [[ "${1:-}" == "--list" ]]; then
@@ -134,8 +148,20 @@ if [[ $# -eq 0 ]]; then
 		exit 0
 	fi
 
+	# PP796: THE STALE CASE IS RULED OUT FIRST, and then the build option is named.
+	#
+	# The ffmpeg sentence is right about the case it was written for and wrong about the far
+	# more common one, and it used to be the only thing said - so a reader went looking at a
+	# build option while the answer was compile.cmd. It comes second now, behind a line saying
+	# which of the two has already been eliminated. Where ninja could not be asked at all,
+	# nothing has been eliminated and that is what is said instead.
 	if (( cases < floor )); then
 		echo "[test] the C suite ran $cases cases and the floor is $floor." >&2
+		if (( freshness_known )); then
+			echo "[test] The binary is up to date, so this is not the previous build's count." >&2
+		else
+			echo "[test] Freshness was NOT checked here - rebuild before reading anything below." >&2
+		fi
 		echo "[test] A suite got smaller. Check whether ffmpeg was found: " >&2
 		echo "[test] CHIAKI_ENABLE_FFMPEG_DECODER is AUTO, and OFF drops seven cases." >&2
 		exit 1
