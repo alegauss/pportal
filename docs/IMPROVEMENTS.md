@@ -214,30 +214,6 @@ port does not own calling code it does - a boundary needing explaining at every 
 reading. Five lines carry the port, and the file stops calling takion when the last
 lands.
 
-### §PP785 Recording the transport's second opinion
-
-PP780's measurement found the shim holding eighteen of the twenty-four symbols takion's
-deletion leaves undefined - twice what lib's four files hold between them. Those
-wrappers are not consumers in the ordinary sense: they exist so a managed reorder queue,
-send buffer, MAC gate and AV parser can be held against the C being replaced. Deleting
-takion.c deletes the second opinion along with the thing it is an opinion about.
-
-PP33 MET THIS AND ANSWERED IT TWICE OVER. DeletedLibraryOracles asks the BUILD rather
-than the source whether an oracle is present, because the wrappers sit inside an ifdef
-and a text reader cannot see a preprocessor - 128 assertions went red at once on a build
-where every guard reported the oracle present and every call threw. JsonOracleRecorder
-walks the cases through the real library and writes down every answer, refusing on a
-build without one rather than recording a file of nulls.
-
-SO THE SHAPE IS SETTLED AND ONLY THE CASES ARE NEW. A define beside
-CHIAKI_SHIM_HAVE_FRAMEPATH, a has-takion export the host can ask, guards on the
-comparisons, and a recording of what the C answers for a queue's pushes and pulls, a
-send buffer's acks, the MAC gate over captured heads, and both AV parsers.
-
-WHAT DECLINES WHEN THE ORACLE GOES IS THE SECOND OPINION, NOT THE CHECK. The managed
-side is asserted on its own either way, which is the sentence PP33's guards already
-carry and the reason they are not a way of not looking.
-
 ### §PP786 The suite's own three, and the floor under them
 
 PP780's link named eight consumers and three are the C suite's: test/takion.c,

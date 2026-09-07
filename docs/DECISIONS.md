@@ -97,6 +97,7 @@ are read from the spike's committed file rather than typed.
 - 🗑 **PP295** **streamconnection.c is 1540 lines and calls the video receiver, so every deletion below waits on it** — Every deletion below this one is unblocked: takion's end state waited on streamconnection.c calling it, and nothing in the build does now (superseded by PP763).
 - ✅ **PP763** **the frame path's deletion shipped and left no way to stream, so the four files and the C's run are back** — The frame path stays in the build until something installs a managed run on a live session, because a deletion that leaves a client unable to stream is not one.
 - ✅ **PP783** **session.c runs the stream itself and nothing in app installs the port's phase, so PP295's four files cannot leave** — Stopping session.c asking is one edit and not four: set_controller_state's lock belongs to a struct no init ran, so the run and the init cannot leave on different days.
+- ✅ **PP785** **the shim's eighteen takion symbols are the oracle, so the deletion takes away what proves the port right** — Before a differential's oracle is deleted, what it answered is recorded and committed, so the comparison runs on every build instead of declining with the library.
 
 ## Block G — Test discipline
 

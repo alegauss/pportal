@@ -116,6 +116,11 @@ export const HOST_FLAGS: readonly HostFlag[] = [
     "summary": "write down what json-c answers, so PP33 can delete it and keep the comparison"
   },
   {
+    "name": "--record-takion-oracle",
+    "argument": "[path]",
+    "summary": "write down what takion's wrappers answer, so PP27 can delete them and keep the comparison"
+  },
+  {
     "name": "--replay-datagrams",
     "argument": "<path>",
     "summary": "replay a datagram capture through the managed receive path"

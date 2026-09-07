@@ -82,6 +82,7 @@ public static partial class HostCommandLine
         new("--capture-seconds", "[n]", "with any run that takes a length: how long, which sets the hold too"),
         new("--via", "[address|relay]", "with --capture-datagrams: go through an address, or 'relay' to run one here and keep whole datagrams"),
         new("--record-json-oracle", "[path]", "write down what json-c answers, so PP33 can delete it and keep the comparison"),
+        new("--record-takion-oracle", "[path]", "write down what takion's wrappers answer, so PP27 can delete them and keep the comparison"),
         new("--replay-datagrams", "<path>", "replay a datagram capture through the managed receive path"),
         new("--timed", "", "with --replay-datagrams: time the MAC gate against the C over the capture"),
         new("--map-controller", "", "open the mapping screen against a real pad"),

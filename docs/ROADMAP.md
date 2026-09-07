@@ -21,10 +21,9 @@
 
 ## Block F — Managed core
 
-- ⏳ **PP27** (deps: PP672 ✅, PP673 ✅, PP674 ✅, PP675 ✅, PP676 ✅, PP677 ✅, PP678 ✅, PP679 ✅, PP680 ✅, PP702 ✅, PP783 ✅, PP784, PP785 ⏳, PP786) (requires: console) **takion.c is 2007 lines of C over raw sockets and timers, and the whole stream rides on it** — Ten tasks wrote it; four more take the C out. → §PP27
+- ⏳ **PP27** (deps: PP672 ✅, PP673 ✅, PP674 ✅, PP675 ✅, PP676 ✅, PP677 ✅, PP678 ✅, PP679 ✅, PP680 ✅, PP702 ✅, PP783 ✅, PP784, PP785 ✅, PP786) (requires: console) **takion.c is 2007 lines of C over raw sockets and timers, and the whole stream rides on it** — Ten tasks wrote it; four more take the C out. → §PP27
 - 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — chiaki_fec_decode has three callers - frameprocessor.c, the C suite and this port's shim - and gf-complete has a fourth site none of them reach: chiaki_lib_init. → §PP30
 - 📋 **PP784** (deps: PP788 ✅, PP789 ✅, PP790 ✅, PP791 ⏳, PP792) **senkusha runs before the stream phase and calls four of takion's exports, so the transport cannot leave with it** — Porting is the call; five lines carry it, and the file stops calling takion when the last lands. → §PP784
-- ⏳ **PP785** (deps: PP780 ✅) **the shim's eighteen takion symbols are the oracle, so the deletion takes away what proves the port right** — The recording of what the C answers is owed, so the comparison outlives the library rather than declining with it. → §PP785
 - 📋 **PP786** (deps: PP780 ✅) **three of the C suite's files exercise takion directly and the case floor counts them, so the deletion drops it silently** — PP696 put the suite's four behind a define for the frame path and takion's three have none, so the floor of 149 falls with no line saying it should. → §PP786
 - ⏳ **PP791** (deps: PP790 ✅) **nothing implements senkusha's run host or turns its arrivals into the flags its waits end on** — The host is owed: senkusha's six senders have no managed builders, and ManagedTakion exposes no raw send for the pings. → §PP791
 - 📋 **PP792** (deps: PP791 ⏳) (requires: console) **session.c runs senkusha itself and there is no callback to hand it to, so a managed run is unreachable** — PP753 built this seam for the stream phase and senkusha needs its own; PP28's placement already says what each outcome decides. → §PP792
@@ -115,14 +114,6 @@
   and ManagedTakion exposes no raw send for the pings. Checked as PP745's was:
   SeamReach's row for ISenkushaRunHost leaves, which needs a class in app rather than a
   double in the test project.
-
-## Done when — PP785
-
-- **The C's answers are recorded, so the comparison outlives the library** PP33's shape:
-  a recorder walks the cases through the real wrappers and writes
-  tests/oracles/takion.json, refusing on a build with no oracle rather than recording
-  nulls - a queue's pushes and pulls, a send buffer's acks, the MAC gate over captured
-  heads, and both AV parsers.
 
 ## Non-goals
 

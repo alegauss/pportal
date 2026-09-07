@@ -1001,6 +1001,43 @@ public partial class App : Application
             }
         }
 
+        // PP785: and takion's, so PP27's deletion can take three files without taking the second
+        // opinion on the four modules that replaced them.
+        //
+        // Needs a build that still HAS the wrappers, which today is every build - the define is
+        // unconditional in shim/CMakeLists.txt until the deletion makes it follow an option.
+        if (HostCommandLine.Has(e.Args, "--record-takion-oracle"))
+        {
+            ReopenStdOut();
+
+            string destination = HostCommandLine.ValueAfter(e.Args, "--record-takion-oracle") is
+                { } named && !named.StartsWith("--", StringComparison.Ordinal)
+                    ? named
+                    : TakionOracleRecorder.Destination();
+
+            switch (TakionOracleRecorder.Write(destination))
+            {
+                case TakionOracleRecorder.Outcome.Recorded:
+                    Console.WriteLine($"[oracle] takion recorded to {destination}");
+                    Environment.Exit(0);
+                    break;
+
+                case TakionOracleRecorder.Outcome.NoOracle:
+                    Console.Error.WriteLine(
+                        "[oracle] this build has no takion wrappers, so there is nothing to ask. "
+                            + "Build a shim with CHIAKI_SHIM_HAVE_TAKION and run this again.");
+                    Environment.Exit(2);
+                    break;
+
+                default:
+                    Console.Error.WriteLine(
+                        "[oracle] the wrappers answered nothing for the cases, which is a broken "
+                            + "oracle rather than a recording. Nothing written.");
+                    Environment.Exit(1);
+                    break;
+            }
+        }
+
         // PP305: the debt PP38 counts, in the form it can be paid in. PP311: with an id after it,
         // where that id is named instead - which is how a payment is audited. PP329: and a FLAG
         // after it is not an id, so `--ratchet --selftest` still runs the selftest.
