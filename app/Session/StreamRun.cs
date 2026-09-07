@@ -173,6 +173,21 @@ public static class StreamRun
 
         phase.InstallOn();
 
+        // PP809: AND THE PORT MEASURES THE LINK, which is the step before the one above.
+        //
+        // PP792 gave session.c a callback for senkusha and PP805 wired a takion's arrivals to the
+        // arms; nothing installed one, so this path measured with the C and streamed with the port.
+        // Installed on the same session and before the same Start, because the C reaches this phase
+        // EARLIER - a few lines after ctrl reports a session id.
+        //
+        // THE C'S RUN IS STILL BEHIND IT, deliberately, which is where this differs from the stream
+        // flip. session.c takes the other arm when nothing is installed, so a machine running any
+        // other path measures exactly as it did - and PP784 is the line that removes it, after a
+        // live link has said the two agree.
+        using var senkusha = new ManagedSenkushaPhase(session, IPAddress.Parse(found.Address));
+
+        senkusha.InstallOn();
+
         // PP76: armed before the start, so no frame is decoded while the reader is still asleep.
         decoder.SignalWhenReady();
 
@@ -239,6 +254,17 @@ public static class StreamRun
         // two are the same number and only one of them is a defect.
         Console.WriteLine(
             $"[stream] pad sink: armed {phase.Pad.Active}, {pad.Pushed} state(s) pushed");
+
+        // PP809: what the port measured, which is the one reading that says whether this session's
+        // launch spec carried senkusha's numbers or PP28's fallback. The arrival counts are beside
+        // it for PP773's reason: a run that reached no arm and one whose arms refused everything
+        // both end in timeouts, and only the second is about the handlers.
+        senkusha.Join(TimeSpan.FromSeconds(2));
+
+        Console.WriteLine(
+            $"[senkusha] {(senkusha.Outcome is { } ran ? $"{ran.Error}, rung {ran.Reading?.Rung.ToString() ?? "none"}" : "never ran")}"
+                + $", {senkusha.Router?.Seen ?? 0} arrival(s), {senkusha.Router?.Handled ?? 0} handled"
+                + $", session carries {Measured(session)}");
 
         // PP76: every decoded frame is now in exactly one column, which is what makes the last
         // number the decoder's rather than this loop's. FrameLedger holds the arithmetic and the
@@ -370,6 +396,19 @@ public static class StreamRun
             surface?.Dispose();
         }
     }
+
+    /// <summary>
+    /// PP809: the three numbers the session is carrying, read off the C rather than off the run.
+    ///
+    /// Which is the point of reading them here at all: the run reports what it MEASURED and the
+    /// session holds what it will SPEND, and PP28's fallback is the case where those differ. A
+    /// senkusha that failed leaves 1454/1454/1000 here and a rung short of the end there, and the
+    /// two lines together are what say which happened.
+    /// </summary>
+    private static string Measured(Native.ChiakiSession session)
+        => SessionBigMaterial.TransportOf(session) is { } transport
+            ? $"mtu {transport.MtuIn}/{transport.MtuOut}, rtt {transport.RoundTripMicroseconds}us"
+            : "nothing - the session has no transport numbers";
 
     /// <summary>
     /// PP699: one row per session, in the ledger both builds append to.

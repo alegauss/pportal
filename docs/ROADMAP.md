@@ -23,7 +23,7 @@
 
 - ⏳ **PP27** (deps: PP672 ✅, PP673 ✅, PP674 ✅, PP675 ✅, PP676 ✅, PP677 ✅, PP678 ✅, PP679 ✅, PP680 ✅, PP702 ✅, PP783 ✅, PP784, PP785 ✅, PP786 ✅) (requires: console) **takion.c is 2007 lines of C over raw sockets and timers, and the whole stream rides on it** — Ten tasks wrote it; four more take the C out. → §PP27
 - 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — chiaki_fec_decode has three callers - frameprocessor.c, the C suite and this port's shim - and gf-complete has a fourth site none of them reach: chiaki_lib_init. → §PP30
-- 📋 **PP784** (deps: PP788 ✅, PP789 ✅, PP790 ✅, PP791 ✅, PP792 ✅, PP805 ✅) (requires: console) **senkusha runs before the stream phase and calls four of takion's exports, so the transport cannot leave with it** — Porting is the call; six lines carry it, and the file stops calling takion when the last lands. → §PP784
+- 📋 **PP784** (deps: PP788 ✅, PP789 ✅, PP790 ✅, PP791 ✅, PP792 ✅, PP805 ✅, PP809 ⏳) (requires: console) **senkusha runs before the stream phase and calls four of takion's exports, so the transport cannot leave with it** — Porting was the call; its lines shipped and takion loses its last caller when this does. → §PP784
 - 📋 **PP797** (deps: —) **the console's audio reaches a receiver whose output goes nowhere, and nothing drains the ring into a speaker** — Every piece is written and two joins are missing: the root hands the arms a no-op sink, and the ring the opus decoder fills has no reader. → §PP797
 - 📋 **PP798** (deps: —) **one access unit per session is refused by the decoder and the log says which error, never which frame** — A benign first unit before the codec has its header and a real corruption print the same line, so neither can be told from the other. → §PP798
 - 📋 **PP800** (deps: —) **SeamReach counts an implementation that no path in app ever constructs, so a sink only tests build reads as reached** — PP767 answered this for the driver check by requiring a path that opens a session, and the same weakness is still in the census that judges all seven seams. → §PP800
@@ -31,6 +31,7 @@
 - 💭 **PP804** (deps: —) **senkusha's ack expectation is set around the send where the C sets it inside one, so a fast ack meets the wrong number** — The C holds state_mutex across the send AND the wait; the arrivals lock per call, so the window is narrowed by predicting the sequence number and not closed. → §PP804
 - 📋 **PP807** (deps: —) **the port never sends the data ack the C sends after a drained message, so nothing tells the console it arrived** — WriteAck has no caller outside the tests, and PP805 found it while wiring the arm that reads the console's acks - the same message going the other way. → §PP807
 - 📋 **PP808** (deps: —) **nothing raises a takion disconnect, so a wait on a transport that died runs its whole timeout** — Senkusha's disconnect arm is reached by tests alone after PP805, and the stream's connect wait has the same silence PP366 named in the C. → §PP808
+- ⏳ **PP809** (deps: PP792 ✅, PP805 ✅) (requires: console) **no path installs a senkusha phase, so every session still measures the link with the C's run** — no live link has measured through it: PS5-385 answers discovery in standby and will not wake to ready, so nothing compares its numbers with a console's. → §PP809
 
 ## Block G — Test discipline
 
@@ -108,6 +109,14 @@
   chiaki_render_tearing_probe does. Integration means the video plane's own swapchain
   carries it and presents at sync interval zero, which is the half that waits on there
   being a video plane at all.
+
+## Done when — PP809
+
+- **A live session measures through the port and the numbers are read back**
+  --show-stream against PS5-385 prints a [senkusha] line: the rung the run reached, how
+  many arrivals an arm acted on, and what the session then carries. A rung short of
+  MtuOutMeasured, or 1454/1454/1000, is PP28's fallback and says the port measured
+  nothing. The console has to reach ready first, which it does not today.
 
 ## Non-goals
 

@@ -32,6 +32,21 @@ public sealed class SessionRelay : IDisposable
     /// <summary>STREAM_CONNECTION_PORT, where takion's datagrams go.</summary>
     public const int StreamPort = 9296;
 
+    /// <summary>
+    /// PP809: SENKUSHA_PORT, which is the stream's plus one and not the stream's.
+    ///
+    /// Here beside its two neighbours rather than beside the phase that dials it, for the reason
+    /// PP771 paid to learn on the other seam: a managed run aimed at 9295 got three unanswered INIT
+    /// attempts and a connect that looked like a handshake this port had got wrong. A console
+    /// answers nothing at all on the wrong number, so the three live in one place and a caller takes
+    /// one rather than spelling it.
+    ///
+    /// The relay does NOT forward this one. It exists to record the stream's datagrams, and
+    /// senkusha's exchange has the message tap - so a senkusha run through a relay would be a
+    /// third socket for a channel already recorded another way.
+    /// </summary>
+    public const int SenkushaPort = 9297;
+
     private readonly IPEndPoint consoleControl;
     private readonly IPEndPoint consoleStream;
     private readonly Action<byte[], bool>? onDatagram;
