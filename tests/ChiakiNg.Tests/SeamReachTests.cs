@@ -191,7 +191,9 @@ public class SeamReachTests(ITestOutputHelper output)
         output.WriteLine($"{code.Length} character(s) of app source, comments and literals stripped");
 
         // A type this assembly certainly builds, found through the same reader the census uses.
-        Assert.True(SeamReach.IsConstructed(code, nameof(AudioRing)));
+        // PP820: was AudioRing, which the XAudio2 move deleted - so the canary has to be something
+        // the tree still constructs, and the sink that replaced it is constructed by the one root.
+        Assert.True(SeamReach.IsConstructed(code, nameof(XAudio2Sink)));
     }
 
     /// <summary>

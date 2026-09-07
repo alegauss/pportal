@@ -732,6 +732,8 @@
 - ✅ **PP807 (the mechanism, unwired)** **the port never sends the data ack the C sends after a drained message, so nothing tells the console it arrived** — The decision and the send landed unwired: joining them sent ~1170 unsigned packets and the console tore the session down, so PP811's signed path is the blocker.
 - ✅ **PP815** **the audio ring is written by the receive thread and drained by the pump with no lock, so its cursors and fill tear** — Write, Read and Reset run under one gate, so a drain cannot take a span the writer's eviction is moving; the assertion reads bytes, because no counter could see this.
 - ✅ **PP816** **the port hand-rolls a ring, a drain and a pump over WASAPI, and two attempts to make that path lossless both failed** — A listener reports the click gone: 4846 decoded, 4846 submitted, every sample played or queued over sixty seconds against a console in a game.
+- 🗑 **PP810** **the render pump plays as much of a unit as the engine had room for and drops the rest of it** — superseded by PP816: Both of its own fixes were measured moving the loss to the ring rather than ending it, and the pump they repaired is gone: the sound goes through an engine taking buffers whole.
+- ✅ **PP820** **the ring, the drain and the pump are built and never started, so the code the click came from is still in the tree** — AudioRing, AudioRingSink, AudioPlayback and WasapiRender are gone with their tests, and a live run still plays every frame it decodes - 3330 of them, none lost.
 
 ## Block G — Test discipline
 

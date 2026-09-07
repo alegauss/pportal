@@ -53,6 +53,28 @@ answer.
 
 ## Block C — Video and input path
 
+### §PP821 The frame that leaves the GPU to arrive where it started
+
+chiaki_shim.c downloads a hardware frame to system memory as NV12 and the presenter
+uploads it back into an ID3D11Texture2D. The branch that decides is one test,
+if(self->held->hw_frames_ctx), so every hardware decoder takes it - and the file says
+why: it was written for AV_PIX_FMT_VULKAN, which a D3D11 presenter cannot share a
+texture with.
+
+That reasoning held while vulkan was the path. It does not hold for d3d11va, whose frame
+is already an ID3D11Texture2D on a D3D11 device, and PP9's design says what should
+happen to it: pl_d3d11_wrap takes such a texture directly. So the port pulls a frame off
+the GPU and pushes it back to arrive at what it already had.
+
+WHAT IT COSTS IS MEASURED, and only one half of it. spike/decode-path timed
+av_hwframe_transfer_data alone at 2253.1 microseconds a frame for d3d11va - 13.5 percent
+of a 60fps interval, and more than that decoder's whole decode. The upload back is not
+in that number.
+
+WHAT THIS IS NOT is a decoder change. The choice stays where PP77 put it and vulkan
+keeps the download it needs. What changes is that the branch asks the frame's format
+rather than whether it is hardware at all.
+
 ## Block D — Screens
 
 ## Block E — Windows-only build
@@ -306,30 +328,6 @@ numbers it hands back are what the launch spec spends: a measurement the suite a
 with and a console does not is the shape that ships green and streams nothing. So the
 C's run stays the other arm until a live session says otherwise.
 
-### §PP810 The tail the render pump throws away
-
-WasapiRender.Pump takes a unit off its queue, works out how many frames the engine has
-room for, and copies that many. A unit longer than the room is played as far as it fits
-and the remainder is never seen again - the dequeue already happened, and nothing puts
-what is left back.
-
-IT WAS UNREACHABLE AND PP797 MADE IT REACHABLE. The engine buffers a hundred
-milliseconds and a decoded audio frame is ten, so before there was a drain above it the
-room was always larger than the unit. The drain fills the sink to two buffers and keeps
-it there, which is what a latency policy is for - and the engine's padding is highest
-exactly when that policy is working.
-
-WHAT IT SOUNDS LIKE IS THE PROBLEM. A truncated unit is not a dropout: it is a few
-milliseconds missing from the middle of a stream that carries on, which is a click. The
-counters say nothing - FramesWritten counts what reached the engine and is exactly right
-about it, and the ring reports no overflow because the ring is not where the loss is.
-
-BOTH SHAPES WERE MEASURED on 2026-09-07 and both moved the loss rather than ending it:
-2374 ring evictions for asking the room first, 2410 for putting the tail back, against
-ONE while truncating - that build kept the ring empty by discarding audio below it.
-PP797's drain target is in scope: a full engine offers 240 frames against a 480-frame
-unit.
-
 ### §PP811 The send path nothing sends through
 
 PP675 ported chiaki_takion_send as TakionSendPath.Send: take the cipher's lock, stamp
@@ -456,21 +454,21 @@ MF_SA_D3D11_AWARE once the transform itself is made rather than its activate. It
 what leaving would remove, 87.6 MB across three FFmpeg binaries, and named what Media
 Foundation has no concept of: cuda and vulkan.
 
-Its own README states the gap in one line - no decode was timed here. The comparison is
-an enumeration and two attribute reads on one side and spike/decode-path's FFmpeg
-numbers on the other, so the two halves have never met.
+Its own README states the gap in one line - no decode was timed here.
 
-What has changed since is the weight of the two missing paths. decode-path measured cuda
-as the worst of the three once frames are paced at the rate a console sends them, and
-vulkan's only advantage is the copy the Qt client's snapshot path skips for Vulkan
-frames alone - which a D3D11 renderer does not pay either, and PP9 already put the
-renderer on D3D11. So the two paths Media Foundation cannot offer are the two with the
-least left to lose.
+WHAT THE MEASUREMENT HAS TO BE TAKEN ON, or it answers about a configuration nobody
+would ship. The decoder is given an IMFDXGIDeviceManager holding the presenter's own
+D3D11 device, so its output is an ID3D11Texture2D the renderer takes rather than a frame
+that travels - which is PP821's cost, and why the two are read together. And
+MF_LOW_LATENCY is set, which turns off the reordering a stream carrying no B-frames does
+not need.
 
-Two things this produces rather than argues. A Media Foundation decode timed against
-decode-path's own frames under the same pacing, so the numbers are comparable rather
-than merely both present. And an answer about HEVCVideoExtension, which is a Store
-extension a user can uninstall where FFmpeg's HEVC decoder is not.
+The two paths Media Foundation cannot offer are the two with least left to lose.
+decode-path measured cuda worst of the three once frames are paced at the rate a console
+sends them, and vulkan's advantage is a copy this port does not skip anyway.
+
+An answer is still owed about HEVCVideoExtension, which is a Store extension a user can
+uninstall where FFmpeg's HEVC decoder is not.
 
 ## Block G — Test discipline
 
@@ -533,6 +531,29 @@ both. Re-base PP46 on this application alone - cold start and installer size as 
 with a ceiling, needing no Qt at all. Or retire both, and let the browser this port does
 not bundle be a fact rather than a measurement. What a number is for is the author's
 call.
+
+### §PP822 The instrument PP53's criterion describes
+
+PP53 asks whether a frame arrives unpaced against a fixed refresh, and its own criterion
+refuses the easy answer: a frame-time trace on a varying panel, not a flag DXGI
+accepted. PP163 is this tree's record of what an API's return value is worth as a
+prediction about a pixel.
+
+IDXGISwapChain::GetFrameStatistics is the instrument that criterion describes. It
+reports PresentCount, PresentRefreshCount, SyncRefreshCount and SyncQPCTime - the
+composition's own view of when a present actually reached a vblank, on the same clock
+QueryPerformanceCounter reads. That is a measurement of what happened rather than of
+what was asked for, which is the distinction PP53 is built on.
+
+WHY THIS IS AN IDEA AND NOT A TASK. Nothing in the port presents through a swapchain of
+its own yet. PP49 and PP53 both name that as their blocker in the same words - the video
+plane owning its own swapchain - and frame statistics come off a swapchain. So this
+waits on what they wait on, and is written down now so the instrument is not invented a
+third time when the plane exists.
+
+It also needs no variable-refresh display, which PP53 does. On a fixed panel it still
+says whether a present met its vblank or missed one, which is the half of PP53's
+question that hardware is not gating.
 
 ## Block I — NVIDIA path
 

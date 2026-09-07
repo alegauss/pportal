@@ -122,20 +122,12 @@ public sealed class ManagedStreamPhase : IDisposable
     public ManagedControllerStateSink Pad { get; } = new();
 
     /// <summary>
-    /// PP797: the speakers and the ring between them, which the run fills once it has a header.
+    /// PP816: where the sound goes - the engine, and nothing before it.
     ///
-    /// Built in the constructor and OPENED in the run, which is the same split the pad has: a
-    /// caller needs somewhere to read counts from before the console has answered, and opening a
-    /// device is what should wait for a session that actually arrived.
-    /// </summary>
-    public AudioPlayback Audio { get; } = new();
-
-    /// <summary>
-    /// PP816: where the sound actually goes now, which is the engine and nothing before it.
-    ///
-    /// <see cref="Audio"/> is still built because the counters and its tests still read it, and it
-    /// is no longer STARTED - the run does not drain a ring into a pump any more. The third stage
-    /// of PP816 is what removes it; leaving it here is what keeps this stage's tree streaming.
+    /// PP797's AudioPlayback and the ring behind it stood here and PP820 removed them. Built in the
+    /// constructor and OPENED in the run, which is the same split the pad has and the same rule
+    /// PP754 gives: a caller needs somewhere to read counts from before the console has answered,
+    /// and opening a device is what should wait for a session that actually arrived.
     /// </summary>
     public XAudio2Sink Sound { get; } = new();
 
@@ -297,25 +289,11 @@ public sealed class ManagedStreamPhase : IDisposable
     /// the second one's far side is a pad's motors; a decoder there would send a rumble envelope to
     /// the endpoint the game's audio is on.
     /// </summary>
-    /// <param name="audio">The ring and the speakers behind it, which the decoder writes into.</param>
-    /// <param name="speaker">The decoder, which the caller owns and must dispose.</param>
-    public static ManagedAudioReceiverPair AudioPair(AudioPlayback audio, out ManagedOpusDecoder speaker)
-    {
-        ArgumentNullException.ThrowIfNull(audio);
-
-        return AudioPair(audio.Sink, out speaker);
-    }
-
-    /// <summary>
-    /// PP816: the same pair over the engine, which is one object where the other is three.
-    ///
-    /// The two overloads differ only in what the decoder writes into, which is the whole of what
-    /// this line changes: <see cref="AudioRingSink"/> puts the frame in a ring for a thread to
-    /// drain, and <see cref="XAudio2Sink"/> hands it to the engine. Written as an overload rather
-    /// than a replacement so the ring's own tests keep the root they were written against until the
-    /// third stage retires it.
-    /// </summary>
-    /// <param name="sound">Where a decoded frame goes.</param>
+    /// <param name="sound">
+    /// Where a decoded frame goes. PP820: the seam rather than a playback, because the ring this
+    /// used to reach through is gone - <see cref="XAudio2Sink"/> hands the frame to the engine and
+    /// there is nothing in between to name.
+    /// </param>
     /// <param name="speaker">The decoder, which the caller owns and must dispose.</param>
     public static ManagedAudioReceiverPair AudioPair(IPcmSink sound, out ManagedOpusDecoder speaker)
     {
@@ -464,14 +442,9 @@ public sealed class ManagedStreamPhase : IDisposable
             }
         }
 
-        // PP797: the sound path comes down with the run. The drain thread first, because the
-        // decoder is what writes into the ring it is reading - the other order leaves a pass
-        // looking at a ring whose writer has gone.
-        //
-        // PP816: and the same order for the engine, for the same reason turned around - the decoder
-        // is what submits, so it goes down before the voice it submits into. A voice destroyed under
-        // a live decoder would be handed a buffer it no longer owns.
-        Audio.Dispose();
+        // PP816: the sound path comes down with the run, decoder first. It is what submits, so it
+        // goes down before the voice it submits into - a voice destroyed under a live decoder would
+        // be handed a buffer it no longer owns. PP797's order was the same argument about a ring.
         speaker?.Dispose();
         Sound.Dispose();
 

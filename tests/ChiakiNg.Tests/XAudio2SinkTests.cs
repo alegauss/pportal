@@ -9,6 +9,12 @@ namespace ChiakiNg.Tests;
 /// <summary>
 /// PP816's second stage: the decoder writes into the engine, and nothing sits between them.
 ///
+/// AND PP797'S CLAIM, which moved here rather than lapsing. That line's symptom was that the
+/// console's audio reached a receiver whose output went nowhere, and its assertions were
+/// AudioPlaybackTests - deleted by PP820 with the ring they were about. What PP797 established is
+/// that the root's arm reaches something that PLAYS, and that is what the tests below hold: the
+/// same join, one seam over. Named here because the join is the claim and not the ring.
+///
 /// AudioRingSink is the seam this replaces - the decoder puts a frame in AudioRing, AudioPlayback's
 /// thread drains the ring into WasapiRender, and that pump asks the engine how much room it has and
 /// clamps the frame to fit. Three objects, two threads and the arithmetic PP810 is one wrong line

@@ -138,16 +138,13 @@ public static class OracleGuardCensus
         // by the sweep above rather than remembered, which is what PP704 built it for.
         new(@"tests\ChiakiNg.Tests\CleanedMicrophoneTests.cs", OpusGuard),
 
-        // PP797: the sound path's own join, which asks the decoder's guard for one half of one
+        // PP816: the sound path's own join, which asks the decoder's guard for one half of one
         // test. Counted rather than named as a guard test, because what declines is an assertion
-        // about the JOIN - that the root's arm writes into the playback's ring - and a build with
-        // no libopus loses it. It is not a differential; the kind is about what stops running.
-        new(@"tests\ChiakiNg.Tests\AudioPlaybackTests.cs", OpusDecoderGuard),
-
-        // PP816: the same join one seam over. The root's pair now hands the decoder an XAudio2Sink
-        // instead of the playback's ring, and the assertion that a STREAMINFO reaches the sink it
-        // was given is driven through the decoder's own header callback - so it declines on a build
-        // with no libopus for exactly the reason the row above does.
+        // about the JOIN - that the root's pair hands a STREAMINFO to the sink it was given - and a
+        // build with no libopus loses it. It is not a differential; the kind is about what stops
+        // running.
+        //
+        // PP797's AudioPlaybackTests carried this row before PP820 deleted the ring it joined.
         new(@"tests\ChiakiNg.Tests\XAudio2SinkTests.cs", OpusDecoderGuard),
 
         // PP802: PP785's takion wrappers, which are the SIXTH oracle and the case PP704 named as

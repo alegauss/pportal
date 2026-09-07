@@ -15,68 +15,6 @@ public interface IPcmSink
 }
 
 /// <summary>
-/// PP751: decoded PCM into the ring a renderer reads, so this seam ships with something behind it.
-///
-/// PP741 measured what happens otherwise - PP740 closed one seam and opened another in the same
-/// commit, and the census called it success. The ring is sized from the header the way
-/// <see cref="AudioRing.CapacityFor"/> says, because frame size is what a STREAMINFO decides and a
-/// ring built before one would be built for a guess.
-///
-/// WHAT IT IS NOT is a device. Handing the ring to WASAPI is the render path's work; what this
-/// settles is that the decoder's output has an owner rather than a shape.
-/// </summary>
-public sealed class AudioRingSink : IPcmSink
-{
-    private AudioRing? ring;
-
-    /// <summary>The ring, once a header has said how big it should be.</summary>
-    public AudioRing? Ring => ring;
-
-    /// <summary>What the stream announced, or null before it did.</summary>
-    public (byte Channels, uint Rate)? Announced { get; private set; }
-
-    /// <summary>How many frames the ring took, which is every one it was offered.</summary>
-    public int Written { get; private set; }
-
-    /// <summary>
-    /// PP814: and how many of those had to evict older audio to fit - the overflow a listener hears.
-    ///
-    /// A SUBSET OF <see cref="Written"/> AND NOT ITS COMPLEMENT, because the ring does not refuse a
-    /// frame: <see cref="AudioRing.Write"/> makes room and answers whether it had to. The pair used
-    /// to be counted the other way round, on the reading that a true meant the write had succeeded,
-    /// and it means the opposite - so a healthy run reported taking nothing and dropping everything.
-    /// </summary>
-    public int Overflowed { get; private set; }
-
-    /// <inheritdoc/>
-    public void Settings(byte channels, uint rate)
-    {
-        Announced = (channels, rate);
-
-        // A frame's worth of interleaved shorts, eight deep - the ring's own rule.
-        ring = new AudioRing(AudioRing.CapacityFor((int)rate / 100 * channels * sizeof(short)));
-    }
-
-    /// <inheritdoc/>
-    public void Pcm(ReadOnlySpan<short> pcm, int samplesPerChannel)
-    {
-        if (ring is null || pcm.IsEmpty)
-            return;
-
-        Span<byte> bytes = stackalloc byte[pcm.Length * sizeof(short)];
-        MemoryMarshal.AsBytes(pcm).CopyTo(bytes);
-
-        // PP814: the ring answers "did this evict anything", not "did this succeed" - it never
-        // refuses a frame, it makes room. So the eviction is the exceptional case and the write is
-        // not, which is the opposite of how this read the answer.
-        if (ring.Write(bytes))
-            Overflowed++;
-
-        Written++;
-    }
-}
-
-/// <summary>
 /// PP751: opusdecoder.c, managed - the last thing between a received audio frame and sound.
 ///
 /// PP740 ported the jitter buffer and its frames went to <see cref="IAudioFrameSink"/>, which

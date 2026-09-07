@@ -13,6 +13,8 @@
 
 ## Block C — Video and input path
 
+- 📋 **PP821** (deps: PP700 ✅) **the shim downloads every hardware frame to system memory and uploads it back, including d3d11va's own texture** — The download was written for vulkan images a D3D11 presenter cannot take, and its branch is on hw_frames_ctx alone, so a d3d11va texture makes the trip too. → §PP821
+
 ## Block D — Screens
 
 ## Block E — Windows-only build
@@ -29,7 +31,6 @@
 - ⏳ **PP807** (deps: PP811) **the port never sends the data ack the C sends after a drained message, so nothing tells the console it arrived** — No path may send it until it is signed: PP811 is the send that MACs, and both routers wait on that rather than on the queue-gated decision this left ready. → §PP807
 - 📋 **PP808** (deps: —) **nothing raises a takion disconnect, so a wait on a transport that died runs its whole timeout** — Senkusha's disconnect arm is reached by tests alone after PP805, and the stream's connect wait has the same silence PP366 named in the C. → §PP808
 - ⏳ **PP809** (deps: PP792 ✅, PP805 ✅, PP813) (requires: console) **no path installs a senkusha phase, so every session still measures the link with the C's run** — A live run measured through it and the phase stalled at the bang, so the numbers read back are the C's fallback; PP813 carries the census. → §PP809
-- 📋 **PP810** (deps: PP797 ✅) **the render pump plays as much of a unit as the engine had room for and drops the rest of it** — The dequeue is unconditional and the copy is clamped, so a full engine costs whatever did not fit; PP797 made it reachable by keeping the sink deliberately full. → §PP810
 - 📋 **PP811** (deps: PP800 ✅) **the ported send path has no caller, so a live takion stamps its MAC and sends with no lock across the two** — PP675 wrote the order the C holds one mutex over, and ManagedTakion's four sends do it inline instead; PP800's census is what found the seam had only a test on it. → §PP811
 - 📋 **PP812** (deps: PP801 ✅) (requires: console) **the datagram capture taps the C's takion and the port opens its own, so a run without a relay records nothing** — The tap watches a socket no datagram reaches now; PP785 keeps the C's answers as a recording, and this flag is how one is made. → §PP812
 - 🛠 **PP813** (deps: —) **the port's senkusha gets the bang then loses every pong, so the RTT test answers Unknown and the link is unmeasured** — Ten pings leave the socket and ToAv stays 0; the 48 ignored protobufs are ExpectPong having no arm, as the C also does, so only the wire is left to read. → §PP813
@@ -43,6 +44,7 @@
 
 - ⏳ **PP46** (deps: PP42 ✅, PP63) **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — A Chromium leaving the build should be visible in cold start and in megabytes, and stating it without measuring is how a port collects folklore. → §PP46
 - 💭 **PP303** (deps: PP46 ⏳) **PP46's before costs two multi-gigabyte installs for a number about an application this port is not a version of** — PP277 settled that this is a new application and not upstream's next, so a delta against a Qt build compares two products. → §PP303
+- 💭 **PP822** (deps: PP53 ⏳) **nothing reads DXGI's frame statistics, so present timing is what the client believes rather than what the panel did** — PP53's criterion asks for a frame-time trace, not a flag DXGI accepted; GetFrameStatistics is the instrument, and waits on the video plane owning a swapchain. → §PP822
 
 ## Block I — NVIDIA path
 
