@@ -20,10 +20,20 @@
   // it names needs no .gitignore change.
   "cmake.buildDirectory": "${workspaceFolder}/build-ide",
 
-  // And these two answer the prompt rather than the damage. The pin carries the MSYS2 gcc
-  // version because the kit's own name does, so a toolchain update makes it stale - and a
-  // stale pin brings the question back, which is visible, rather than choosing quietly.
+  // configureOnOpen is what silences the prompt: with nothing to configure at open time the
+  // extension stops needing an answer. Verified on 2026-09-07 - VS Code opened, the kit
+  // question did not appear, and build/CMakeCache.txt still read
+  // CMAKE_C_COMPILER:FILEPATH=C:/msys64/mingw64/bin/cc.exe, cmake's own detection rather than
+  // an imposed -D.
   "cmake.configureOnOpen": false,
+
+  // defaultKit is the weaker half and did NOT take: it applies only where no kit is selected,
+  // and this workspace already had a clang one in the extension's own state, which wins. So
+  // the Output still shows VC/Tools/Llvm/bin/clang.exe -v being probed. Harmless while the
+  // two settings above hold - it can configure nothing on open and nothing into build/ - and
+  // left here for a fresh clone, which has no stored kit for it to lose to. To make the IDE
+  // agree, run `CMake: Select a Kit` once and choose the mingw64 entry. The pin carries the
+  // MSYS2 gcc version because the kit's name does, so a toolchain update makes it stale.
   "cmake.defaultKit": "GCC 16.2.0 x86_64-w64-mingw32 (mingw64)",
 
   "window.title": "PPortal ${separator} ${dirty}${activeEditorShort} ${separator} ${appName}",
