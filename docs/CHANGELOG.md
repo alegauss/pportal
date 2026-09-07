@@ -722,6 +722,7 @@
 - ✅ **PP785** **the shim's eighteen takion symbols are the oracle, so the deletion takes away what proves the port right** — tests/oracles/takion.json holds what the C answered for the queue scripts, the send buffer, the MAC gate and both AV parsers, and the managed four are compared against it on every build.
 - ✅ **PP786** **three of the C suite's files exercise takion directly and the case floor counts them, so the deletion drops it silently** — CHIAKI_UNIT_HAVE_TAKION guards the three suites, each switch answers for its own files, and the allocator wrap follows allocbudget.c - the link failure both flips had.
 - ✅ **PP792** **session.c runs senkusha itself and there is no callback to hand it to, so a managed run is unreachable** — session.c asks for an installed run before starting its own, and the three measurements cross with the outcome that decides whether they are used; the C's run stays as the other arm.
+- ✅ **PP805** **senkusha's four arrival arms are called by tests alone, so a run driving a real takion ends every wait in a timeout** — A datagram now walks to the arm the C's callback would reach, an ack calls the arm once per released number, and the wiring ties the knot a run over a real takion needs.
 
 ## Block G — Test discipline
 

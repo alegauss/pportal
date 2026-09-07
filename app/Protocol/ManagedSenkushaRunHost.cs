@@ -517,8 +517,15 @@ public sealed class ManagedSenkushaRunHost : ISenkushaRunHost
         return BinaryPrimitives.ReadUInt32LittleEndian(four);
     }
 
-    /// <summary>chiaki_time_now_monotonic_us, which a round trip is the difference of two of.</summary>
-    private static ulong MonotonicMicroseconds()
+    /// <summary>
+    /// chiaki_time_now_monotonic_us, which a round trip is the difference of two of.
+    ///
+    /// PP805: public, because the router that feeds this host's arrivals reads the same clock and
+    /// the two readings are subtracted from one another - a pong's arrival is taken there and the
+    /// send that preceded it here. Two clocks would make a round trip the difference of two
+    /// different origins, which is a number rather than a measurement.
+    /// </summary>
+    public static ulong MonotonicMicroseconds()
         => (ulong)(System.Diagnostics.Stopwatch.GetTimestamp()
             / (System.Diagnostics.Stopwatch.Frequency / 1_000_000.0));
 }

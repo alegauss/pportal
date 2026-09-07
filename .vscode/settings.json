@@ -5,7 +5,7 @@
   // different, older engine and reports this project's config as unknown keys.
   "roadkeep.command": "python .roadkeep/scripts/roadkeep.py",
 
-  "window.title": "🎮 PPortal ${separator} ${dirty}${activeEditorShort} ${separator} ${appName}",
+  "window.title": "PPortal ${separator} ${dirty}${activeEditorShort} ${separator} ${appName}",
 
   // Status bar in PlayStation blue so this worktree is easy to spot
   "workbench.colorCustomizations": {

@@ -335,29 +335,6 @@ send-under-the-lock, which hands them a takion; or the takion could take a seque
 number without sending, which splits a send in two. Both are wider than a defect fix,
 which is why this is a line and not an edit.</section_body>
 
-### §PP805 The arrivals nothing feeds
-
-PP791 wrote senkusha's arrivals - four arms over a state and two flags - and PP792 gave
-the session somewhere to hand the run. What neither wrote is the line between a datagram
-and an arm. ManagedTakion takes a dispatch delegate and every senkusha caller in the
-tree passes none, so the four arms are reached by tests and by nothing else.
-
-PP773 IS THE SAME HOLE ONE MODULE OVER, and it cost a console trial to find there. The
-stream connection had a host, its handlers ported and three layers of dispatch modelled,
-and a live PS5 answered every message while the run timed out at every wait. What was
-recorded then is that a takion which connected and is not reading answers nothing.
-
-AND THE FOUR ARMS ARE NOT ONE DISPATCH. The stream's arrivals take a whole datagram and
-route it; senkusha's take a takion EVENT, a data ack by sequence number, a protobuf body
-and an AV packet - four entry points with different arguments, because the C's callback
-switches on the event type before it looks at anything else. So the router's shape is
-decided by that switch rather than chosen.
-
-WHAT MAKES IT INVISIBLE is what PP764 named: a delegate nobody passes is not a member a
-census counts. SeamReach counts interfaces no class implements and the run-host census
-counts members with no counterpart, and an optional argument left at its default is
-neither.
-
 ## Block G — Test discipline
 
 ### §PP796 A warning the failure below it contradicts
