@@ -60,6 +60,11 @@ public sealed class SenkushaRouter
     private readonly ManagedTakion takion;
     private readonly Func<ulong> clock;
 
+    // PP813's tallies, indexed by the enum's own value so a member added later counts itself.
+    private readonly int[] routeTally = new int[Enum.GetValues<SenkushaRoute>().Length];
+    private readonly int[] arrivalTally = new int[Enum.GetValues<SenkushaArrival>().Length];
+    private readonly Dictionary<int, int> ignoredBaseTypes = [];
+
     /// <param name="arrivals">The four arms, which decide; nothing here decides for them.</param>
     /// <param name="takion">The transport, for its tag, its ledger and the buffer an ack releases.</param>
     /// <param name="clock">chiaki_time_now_monotonic_us, taken so a round trip can be made to repeat.</param>
@@ -84,6 +89,40 @@ public sealed class SenkushaRouter
 
     /// <summary>What the last one came to, or null before any arrived.</summary>
     public SenkushaRouting? Last { get; private set; }
+
+    /// <summary>
+    /// PP813: the two counters broken out, because together they could not locate a lost pong.
+    ///
+    /// A live run lost all ten and answered Unknown. <see cref="Handled"/> already proved none was
+    /// REFUSED - it counts every arrival that is not Ignored, and it stood at four, which the four
+    /// control messages account for on their own. What it cannot say is which of the remaining
+    /// three happened: the AV arm was reached and the header refused, the datagram carried a base
+    /// type this walk has no arm for, or no pong came back at all.
+    ///
+    /// The route tally separates the first two and the base types name the second outright. A live
+    /// run is the only place the answer exists, so the reading has to survive to the summary line.
+    /// </summary>
+    /// <returns>The non-zero counts only, so a quiet run's line stays short.</returns>
+    public string Census()
+    {
+        IEnumerable<string> routes = routeTally
+            .Select((count, index) => (Name: ((SenkushaRoute)index).ToString(), count))
+            .Where(one => one.count > 0)
+            .Select(one => $"{one.Name} {one.count}");
+
+        IEnumerable<string> answers = arrivalTally
+            .Select((count, index) => (Name: ((SenkushaArrival)index).ToString(), count))
+            .Where(one => one.count > 0)
+            .Select(one => $"{one.Name} {one.count}");
+
+        IEnumerable<string> bases = ignoredBaseTypes
+            .OrderBy(one => one.Key)
+            .Select(one => $"{one.Key}x{one.Value}");
+
+        return $"routes [{string.Join(", ", routes)}]"
+            + $", arms [{string.Join(", ", answers)}]"
+            + (ignoredBaseTypes.Count > 0 ? $", unarmed base types [{string.Join(", ", bases)}]" : string.Empty);
+    }
 
     /// <summary>
     /// One datagram, walked to the arm the C's callback would have reached.
@@ -220,6 +259,17 @@ public sealed class SenkushaRouter
     {
         if (routing.Arrival != SenkushaArrival.Ignored)
             Handled++;
+
+        // PP813: beside the two counters and not instead of them, so nothing reading Seen or
+        // Handled changes its answer. An empty datagram's base type is -1 and is not an index.
+        routeTally[(int)routing.Route]++;
+        arrivalTally[(int)routing.Arrival]++;
+
+        if (routing.Route == SenkushaRoute.Ignored)
+        {
+            ignoredBaseTypes[routing.BaseType] =
+                ignoredBaseTypes.GetValueOrDefault(routing.BaseType) + 1;
+        }
 
         Last = routing;
 

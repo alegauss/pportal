@@ -279,6 +279,13 @@ public static class StreamRun
                 + $", {senkusha.Router?.Seen ?? 0} arrival(s), {senkusha.Router?.Handled ?? 0} handled"
                 + $", session carries {Measured(session)}");
 
+        // PP813: and where the ones that did nothing went, which the two counts above cannot say.
+        // A run that answered Unknown with every pong lost reads identically here to one whose
+        // pongs were refused by the arm - Handled counts a refusal - so the tally is what tells a
+        // header this walk rejected from a base type it has no arm for from a pong that never came.
+        if (senkusha.Router is { } router)
+            Console.WriteLine($"[senkusha] {router.Census()}");
+
         // PP76: every decoded frame is now in exactly one column, which is what makes the last
         // number the decoder's rather than this loop's. FrameLedger holds the arithmetic and the
         // three ways it was got wrong; a residue here is printed rather than left for a reader to

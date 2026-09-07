@@ -352,29 +352,30 @@ against. The second is what an oracle wants, and the first is cheaper.
 
 ### §PP813 The pongs that never come back
 
-RUNG BangAwaited NAMES THE LAST RUNG COMPLETED, not the one that failed, and only
-RunRttTest's exit produces it with Unknown. So the bang arrived. The Unknown is written
-at answered.Count < 1 in RunRttTest: a single lost pong is a continue, so that branch
-means all ten were lost.
+THE INSTRUMENT ANSWERED ON THE FIRST LIVE RUN: routes [ToData 50, ToDataAck 4], arms
+[Ignored 50, ProtocolAcked 1, Banged 1, DataAcked 2]. ToAv is ZERO and no unarmed base
+type is listed, so all 54 datagrams senkusha saw were control. Not one video or audio
+datagram reached its takion.
 
-AND THEY WERE NOT REFUSED. SenkushaRouter.Record counts Handled for every arrival that
-is not Ignored, so a Refused pong increments it. Handled was 4 - protocol ack, bang,
-echo-on ack, echo-off ack - so nothing reached the pong arm and failed one of its five
-checks. The arm is not the suspect; the delivery is.
+THAT EXONERATES EVERYTHING DOWNSTREAM. The arm cannot refuse a packet it never gets, and
+APongReachesTheAvArmAndCarriesTheArrivalTime already shows a ping this port formatted
+comes back through the parse as Ponged. The ping's six constants and header fields match
+senkusha.c, and AvPacketV7.Parse derives DataSize from the buffer length as the C does.
 
-RULED OUT BY READING: the ping itself (PingCount 10, PingBufferBytes 0x224,
-TagOffsetPastHeader 4, PingUnitsInFrameTotal 0x800, PingCodec 0xff, ExpectPongTimeoutMs
-1000 all match senkusha.c, as do the header fields), the AV route (SenkushaRouter.Av
-does call arrivals.Av), and an empty payload slice (AvPacketV7.Parse derives DataSize as
-buffer.Length - at, exactly as the C derives it).
+THE ECHO COMMAND IS FAITHFUL TOO, which was the next suspect and is not one.
+SenkushaPayload.Command.ECHO_COMMAND is zero, and a writer that omitted zero-valued
+fields would have sent a payload with no command for the console to ignore while still
+acking the datagram. ProtobufWriter.Varint writes the tag and the value unconditionally,
+which is what nanopb does for a required field.
 
-WHAT IS LEFT is why an AV datagram is Ignored. Parse can refuse only on buffer.Length <
-headerSize; the router ignores a base type that is neither video nor audio; and a pong
-that never arrived is invisible either way.
+AND DataAcked 2 PROVES LESS THAN IT LOOKS. That is the takion acknowledging a datagram,
+not the console acting on the protobuf inside it.
 
-THE INSTRUMENT IS MISSING. The senkusha line prints Seen and Handled and no more, where
-the stream's prints its last reading. A tally by arrival, and the last routing's base
-type, is what the next live run needs.
+WHAT IS LEFT IS THE TRANSPORT. Something delivers 54 control datagrams to senkusha's
+takion and no AV one, and senkusha's takion is on 9297 rather than the stream's 9296.
+
+Unexplained and worth its own look: 50 data protobufs arrived and no arm wanted any of
+them, where the C's run shows no data traffic across its ping test at all.
 
 ## Block G — Test discipline
 

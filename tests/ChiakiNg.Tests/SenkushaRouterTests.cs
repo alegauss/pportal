@@ -130,6 +130,80 @@ public class SenkushaRouterTests(ITestOutputHelper output)
     }
 
     /// <summary>
+    /// PP813: HANDLED COUNTS A REFUSAL, and the whole live diagnosis rests on that.
+    ///
+    /// A live run answered Unknown with all ten pongs lost, and this is what let the cause be
+    /// narrowed without a second run: Handled stood at four, the four control messages account for
+    /// four on their own, and a pong REFUSED by the arm would have made it five. So nothing reached
+    /// the arm - the delivery is the suspect and the five checks in it are not.
+    ///
+    /// The assertion is here rather than in the prose because the reasoning is only sound while
+    /// Record keeps counting a refusal. Narrowing Handled to the arrivals that actually acted would
+    /// be better behaviour and would silently invalidate the argument in PP813's own section.
+    /// </summary>
+    [Fact]
+    public void HandledCountsARefusalWhichIsWhatMakesItLocateALostPong()
+    {
+        (SenkushaRouter router, SenkushaArrivals arrivals, ManagedTakion _) = Router();
+
+        var pong = new byte[SenkushaMeasurements.PingBufferBytes];
+
+        Assert.True(ManagedSenkushaRunHost.WritePing(pong, testIndex: 0, pingIndex: 3, tag: 0xC0FFEE, out _));
+
+        arrivals.BeginState(SenkushaState.ExpectPong);
+        arrivals.PingTestIndex = 0;
+        arrivals.PingIndex = 3;
+
+        // Everything matches except the tag, which is the arm's last check.
+        arrivals.PingTag = 0xBADBAD;
+
+        SenkushaRouting routing = router.Datagram(pong);
+
+        output.WriteLine($"{routing}, handled {router.Handled}");
+
+        Assert.Equal(SenkushaRoute.ToAv, routing.Route);
+        Assert.Equal(SenkushaArrival.Refused, routing.Arrival);
+
+        // The load-bearing one: a refusal is counted, so Handled staying low means the arm was
+        // never reached.
+        Assert.Equal(1, router.Handled);
+    }
+
+    /// <summary>
+    /// PP813: AND THE CENSUS TELLS THE THREE APART, which Seen and Handled together cannot.
+    ///
+    /// A lost pong is one of three things: the arm refused the header, the datagram carried a base
+    /// type this walk has no arm for, or nothing came back. The first two are one count each and
+    /// neither was printed, so the live run could not say which - and a live run is the only place
+    /// the answer exists.
+    /// </summary>
+    [Fact]
+    public void TheCensusSeparatesARefusedHeaderFromAnUnarmedBaseType()
+    {
+        (SenkushaRouter router, SenkushaArrivals arrivals, ManagedTakion _) = Router();
+
+        var pong = new byte[SenkushaMeasurements.PingBufferBytes];
+        Assert.True(ManagedSenkushaRunHost.WritePing(pong, testIndex: 0, pingIndex: 0, tag: 1, out _));
+
+        arrivals.BeginState(SenkushaState.ExpectPong);
+        arrivals.PingTag = 2;
+
+        router.Datagram(pong);
+
+        // Base type 1: not control, not video, not audio - so this walk has no arm for it at all.
+        router.Datagram([1, 0, 0, 0]);
+
+        string census = router.Census();
+
+        output.WriteLine(census);
+
+        Assert.Contains("ToAv 1", census, StringComparison.Ordinal);
+        Assert.Contains("Refused 1", census, StringComparison.Ordinal);
+        Assert.Contains("Ignored 1", census, StringComparison.Ordinal);
+        Assert.Contains("unarmed base types [1x1]", census, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// ONE ARM CALL PER RELEASED NUMBER, and never one for the cumulative one.
     ///
     /// The C's ack handler asks the send buffer what a cumulative number cleared and raises an event
