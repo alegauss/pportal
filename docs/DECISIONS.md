@@ -98,6 +98,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP763** **the frame path's deletion shipped and left no way to stream, so the four files and the C's run are back** — The frame path stays in the build until something installs a managed run on a live session, because a deletion that leaves a client unable to stream is not one.
 - ✅ **PP783** **session.c runs the stream itself and nothing in app installs the port's phase, so PP295's four files cannot leave** — Stopping session.c asking is one edit and not four: set_controller_state's lock belongs to a struct no init ran, so the run and the init cannot leave on different days.
 - ✅ **PP785** **the shim's eighteen takion symbols are the oracle, so the deletion takes away what proves the port right** — Before a differential's oracle is deleted, what it answered is recorded and committed, so the comparison runs on every build instead of declining with the library.
+- ✅ **PP786** **three of the C suite's files exercise takion directly and the case floor counts them, so the deletion drops it silently** — A flip is prepared by BUILDING the shape it leaves, not by reading it: the bare trial found a link option tied to a file that two readings had not connected to it.
 
 ## Block G — Test discipline
 

@@ -214,30 +214,6 @@ port does not own calling code it does - a boundary needing explaining at every 
 reading. Five lines carry the port, and the file stops calling takion when the last
 lands.
 
-### §PP786 The suite's own three, and the floor under them
-
-PP780's link named eight consumers and three are the C suite's: test/takion.c,
-test/reorderqueue.c and test/allocbudget.c exercise the modules directly. They leave
-with the files they test, which is right - a suite testing code that is gone is a suite
-about nothing - and their departure is not free.
-
-test.cmd prints "C suite: 149 munit cases (floor 149)" and refuses a run that falls
-under it. That floor is what PP56's stale-green cost: a suite that quietly stopped
-running cases reads exactly like one that passes. So a deletion taking cases with it has
-to LOWER the floor in the same commit, deliberately and by the number the removal
-accounts for - which is the same rule the assertion ratchet follows on the managed side,
-and for the same reason.
-
-PP696 ALREADY DID THIS SHAPE ONCE. It put the suite's four frame-path files behind
-CHIAKI_UNIT_HAVE_FRAMEPATH, so the cases are compiled or not by the same option that
-decides whether the C is there at all - and SuiteEntryPoint holds the switch against the
-list, because a file behind a guard and a file the build forgot look identical from
-outside.
-
-WHAT IS OWED HERE IS THAT GUARD FOR TAKION'S THREE, and the floor arithmetic beside it:
-how many cases each of the three carries, so the new floor is derived from the removal
-rather than read off a failing run.
-
 ### §PP791 The host, and the wire from an arrival to a flag
 
 PP790's run takes a host interface, and an interface only test doubles implement is a

@@ -59,14 +59,61 @@ public static partial class CSuiteFloor
     public const int FramePathCases = 72;
 
     /// <summary>
+    /// PP786: and the cases takion's three C test files take when PP27's end state removes them.
+    ///
+    /// Nine, MEASURED the same way and from a run of this tree: /takion runs four, /reorder_queue
+    /// two and /alloc_budget three, and none of the three is parameterised - which is why counting
+    /// entries happens to give the right answer here and gave 9 for a suite that runs 72 there.
+    /// </summary>
+    public const int TakionCases = 9;
+
+    /// <summary>
+    /// The three that BOTH removals claim, so adding the two numbers would over-count by them.
+    ///
+    /// allocbudget.c is in the frame path's four and in takion's three: it links frameprocessor.c
+    /// and videoreceiver.c, and it calls chiaki_takion_v9_av_packet_parse and
+    /// takion_handle_packet_av. Whichever deletion lands first takes its three cases, and the second
+    /// one takes none of them - so the two flips together cost 78 and not 81, and a floor lowered by
+    /// 81 would sit three below what the suite actually runs. A floor that is too low is the one
+    /// failure this whole file exists to prevent.
+    /// </summary>
+    public const int SharedWithTheFramePathCases = 3;
+
+    /// <summary>
     /// The smallest plausible count on the side of the flip a suite list is on.
     ///
     /// The bound has to move with the suite: 100 is generous against 149 and impossible against the
     /// 77 that remain, so leaving it fixed would turn the deletion red in the one commit that is not
     /// allowed to touch a test. Subtracted rather than typed again, so the two stay one decision.
     /// </summary>
-    public static int MinimumFor(ConsumerShape suite)
-        => suite == ConsumerShape.Silent ? PlausibleMinimum - FramePathCases : PlausibleMinimum;
+    public static int MinimumFor(ConsumerShape suite) => MinimumFor(suite, ConsumerShape.Asking);
+
+    /// <summary>
+    /// PP786: the same bound with both flips accounted for, and the overlap subtracted once.
+    ///
+    /// Silent on both sides leaves 71 cases, so a bound of 100 - 72 - 9 would be 19 and a bound that
+    /// forgot the overlap would be 16. Neither is wrong today and one of them becomes wrong the day
+    /// a suite legitimately shrinks to just above it, which is the only day this number is read.
+    /// </summary>
+    public static int MinimumFor(ConsumerShape framePath, ConsumerShape takion)
+    {
+        int bound = PlausibleMinimum;
+
+        if (framePath == ConsumerShape.Silent)
+            bound -= FramePathCases;
+
+        if (takion == ConsumerShape.Silent)
+        {
+            bound -= TakionCases;
+
+            // The shared three were already taken by the line above, where the frame path has gone
+            // too. Subtracting them twice is how a floor ends up below the suite it guards.
+            if (framePath == ConsumerShape.Silent)
+                bound += SharedWithTheFramePathCases;
+        }
+
+        return bound;
+    }
 
     /// <summary>The floor file, or null outside a checkout.</summary>
     public static string? LocateFloor() => SanitizerSource.LocateRelative(FloorRelativePath);

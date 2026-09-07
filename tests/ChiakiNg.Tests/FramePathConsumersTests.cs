@@ -299,7 +299,10 @@ public class FramePathConsumersTests(ITestOutputHelper output)
     [Fact]
     public void TheShapeReaderTellsThemApartForTheSuitesList()
     {
-        const string Stays = "main.c\n\thttp.c\n\ttakion.c\n\tseqnum.c";
+        // PP786: rpcrypt.c and not takion.c. The survivor list is what says the file was read at
+        // all, so a name on it has to survive every flip - and takion.c is the subject of the other
+        // one, which would make this reader report an unreadable file on the day PP27 lands.
+        const string Stays = "main.c\n\thttp.c\n\trpcrypt.c\n\tseqnum.c";
 
         string asking = $"set(CHIAKI_UNIT_SOURCES\n\t{Stays}\n\tfec.c\n\tframeprocessor.c"
             + "\n\tallocbudget.c\n\tvideoreceiver.c)";

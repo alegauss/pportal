@@ -435,12 +435,17 @@ public static class FramePathConsumers
     ///
     /// Not the four files' own symbols, obviously, and not something incidental either: these are
     /// exports and files whose removal would be a different task with its own line.
+    ///
+    /// PP786: takion.c stood here and does not. It survives THIS flip and it is the subject of the
+    /// other one - PP27's end state deletes the module it tests - so the day that lands, a file
+    /// named as proof the list was read at all would be gone and this reader would report an
+    /// unreadable file. A survivor has to survive every flip, not the one it was written beside.
     /// </summary>
     public static IReadOnlyList<string> SurvivesTheFlip(ConsumerKind kind) => kind switch
     {
         ConsumerKind.Session => ["chiaki_session_start", "chiaki_session_stop", "chiaki_session_join"],
         ConsumerKind.Shim => ["chiaki_shim_has_framepath"],
-        ConsumerKind.Suite => ["main.c", "http.c", "takion.c"],
+        ConsumerKind.Suite => ["main.c", "http.c", "rpcrypt.c"],
         _ => throw new ArgumentOutOfRangeException(nameof(kind)),
     };
 

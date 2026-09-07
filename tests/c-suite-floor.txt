@@ -30,4 +30,20 @@
 # 149 the same day: PP76's readable half added the two over chiaki_session_baseline_decoder_drops
 # - that the decoder's own loss is the difference between the record's two counters, and that
 # the difference never wraps when the receiver ends a session ahead of the presenter.
+#
+# Still 149 on 2026-09-06, and PP786 is why the number below did not move. Two deletions are
+# arranged for and neither has landed, so what is recorded here is the arithmetic each one owes:
+#
+#   PP696 takes the frame path's four test files and 72 cases with them - 64 of those are
+#         /fec/fec parameterised over the recorded frame buffers.
+#   PP27  takes takion's three and 9 cases: /takion runs 4, /reorder_queue 2, /alloc_budget 3.
+#
+#   allocbudget.c is in BOTH lists. It links frameprocessor.c and videoreceiver.c and it calls
+#   chiaki_takion_v9_av_packet_parse and takion_handle_packet_av, so it leaves on whichever
+#   deletion lands first and the second one takes none of its three. Together they cost 78 and
+#   NOT 81, and a floor lowered by 81 would sit three below what the suite still runs - which is
+#   the one failure this file exists to prevent, arriving through the arithmetic rather than
+#   through a build.
+#
+#   So: 149 today, 77 after PP696 alone, 140 after PP27 alone, 71 after both.
 149

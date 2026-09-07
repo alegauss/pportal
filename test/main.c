@@ -5,11 +5,9 @@
 
 extern MunitTest tests_seq_num[];
 extern MunitTest tests_key_state[];
-extern MunitTest tests_reorder_queue[];
 extern MunitTest tests_http[];
 extern MunitTest tests_rpcrypt[];
 extern MunitTest tests_gkcrypt[];
-extern MunitTest tests_takion[];
 extern MunitTest tests_regist[];
 extern MunitTest tests_bitstream[];
 extern MunitTest tests_session_baseline[];
@@ -30,8 +28,26 @@ extern MunitTest tests_decoderchoice[];
 #if CHIAKI_UNIT_HAVE_FRAMEPATH
 extern MunitTest tests_fec[];
 extern MunitTest tests_frame_processor[];
-extern MunitTest tests_alloc_budget[];
 extern MunitTest tests_video_receiver[];
+/* PP786: allocbudget.c is claimed by BOTH flips, so it is compiled only while both are on.
+ *
+ * It links frameprocessor.c and videoreceiver.c, which PP696 removes, AND it calls
+ * chiaki_takion_v9_av_packet_parse and takion_handle_packet_av, which PP27's end state removes -
+ * PP780's link named it under both. So the file leaves on whichever deletion lands first, and a
+ * guard naming only one of them would leave an extern with no definition on the other day. */
+#if CHIAKI_UNIT_HAVE_TAKION
+extern MunitTest tests_alloc_budget[];
+#endif
+#endif
+/* PP786: takion's own two suites, behind the option that builds their files.
+ *
+ * PP760 did this for the frame path's four and takion's three had none, so PP27's deletion would
+ * have taken nine munit cases out of the run and the floor would have fallen with nothing saying it
+ * should. takion.c and reorderqueue.c exercise the modules directly - PP780's link names seven
+ * symbols in one and six in the other - so they go with the C they test. */
+#if CHIAKI_UNIT_HAVE_TAKION
+extern MunitTest tests_reorder_queue[];
+extern MunitTest tests_takion[];
 #endif
 #if CHIAKI_LIB_ENABLE_FFMPEG_DECODER
 extern MunitTest tests_ffmpegdecoder[];
@@ -52,6 +68,7 @@ static MunitSuite suites[] = {
 		1,
 		MUNIT_SUITE_OPTION_NONE
 	},
+#if CHIAKI_UNIT_HAVE_TAKION
 	{
 		"/reorder_queue",
 		tests_reorder_queue,
@@ -59,6 +76,7 @@ static MunitSuite suites[] = {
 		1,
 		MUNIT_SUITE_OPTION_NONE
 	},
+#endif
 	{
 		"/http",
 		tests_http,
@@ -80,6 +98,7 @@ static MunitSuite suites[] = {
 		1,
 		MUNIT_SUITE_OPTION_NONE
 	},
+#if CHIAKI_UNIT_HAVE_TAKION
 	{
 		"/takion",
 		tests_takion,
@@ -87,6 +106,7 @@ static MunitSuite suites[] = {
 		1,
 		MUNIT_SUITE_OPTION_NONE
 	},
+#endif
 #if CHIAKI_UNIT_HAVE_FRAMEPATH
 	{
 		"/fec",
@@ -125,6 +145,7 @@ static MunitSuite suites[] = {
 		1,
 		MUNIT_SUITE_OPTION_NONE
 	},
+#if CHIAKI_UNIT_HAVE_TAKION
 	{
 		"/alloc_budget",
 		tests_alloc_budget,
@@ -132,6 +153,7 @@ static MunitSuite suites[] = {
 		1,
 		MUNIT_SUITE_OPTION_NONE
 	},
+#endif
 	{
 		"/video_receiver",
 		tests_video_receiver,
