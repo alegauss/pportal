@@ -32,7 +32,7 @@
 - 📋 **PP812** (deps: PP801 ✅) (requires: console) **the datagram capture taps the C's takion and the port opens its own, so a run without a relay records nothing** — The tap watches a socket no datagram reaches now; PP785 keeps the C's answers as a recording, and this flag is how one is made. → §PP812
 - 🛠 **PP813** (deps: —) **the port's senkusha gets the bang then loses every pong, so the RTT test answers Unknown and the link is unmeasured** — Ten pings leave the socket and ToAv stays 0; the 48 ignored protobufs are ExpectPong having no arm, as the C also does, so only the wire is left to read. → §PP813
 - 🛠 **PP814** (deps: —) **nothing reports whether audio dropped, so a crackling stream and a clean one read identically** — Three mechanisms measured dead and the pair was inverted - a healthy run read took 0 and dropped 853 for 853 clean writes - so the fault is outside this path. → §PP814
-- 📋 **PP816** (deps: —) **the port hand-rolls a ring, a drain and a pump over WASAPI, and two attempts to make that path lossless both failed** — XAudio2 queues PCM buffers itself, so the room arithmetic cannot be got wrong; the ring and drain are the Qt client's SDL shape, which Windows-only does not need. → §PP816
+- ⏳ **PP816** (deps: —) **the port hand-rolls a ring, a drain and a pump over WASAPI, and two attempts to make that path lossless both failed** — the composition root still builds WasapiRender, so no live run reaches this yet and the ring, the drain and the pump are all still in the path. → §PP816
 
 ## Block G — Test discipline
 
@@ -127,6 +127,14 @@
   the stream still decodes video and audio rather than reaching RemoteDisconnected
   inside thirty seconds. The three runs of 2026-09-07 are the before - two with the join
   at 0 decoded, one without at 984.
+
+## Done when — PP816
+
+- **A live run plays its sound through XAudio2 and not the pump** ManagedStreamPhase
+  builds XAudio2Render instead of AudioPlayback, and a run against a console in a game
+  plays with the ring, the drain and the pump gone from the path. The reading is a
+  person listening: the counters could not tell the truncating build from a clean one,
+  which PP810 and PP815 both learned the hard way.
 
 ## Non-goals
 
