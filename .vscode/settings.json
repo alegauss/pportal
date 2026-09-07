@@ -5,6 +5,27 @@
   // different, older engine and reports this project's config as unknown keys.
   "roadkeep.command": "python .roadkeep/scripts/roadkeep.py",
 
+  // CMake Tools must not configure the directory compile.cmd owns.
+  //
+  // With no kit pinned, opening this folder asks which one to use - and whatever answers,
+  // including the auto-scan, configures into build/ and rewrites CMakeCache.txt with
+  // -DCMAKE_C_COMPILER:STRING=<that kit's clang>. cmake then reconfigures with a compiler
+  // that cannot build this tree and fails with `No CMAKE_RC_COMPILER could be found`; the
+  // cache stays poisoned, so the next compile.cmd fails identically. What it wrote most
+  // recently was VC/Tools/Llvm/bin/clang.exe - the x86 kit, so the wrong architecture as
+  // well as the wrong compiler.
+  //
+  // buildDirectory is the setting that actually closes it: pointed elsewhere, no kit and no
+  // configure-on-open can reach build/ at all. /build-* is already ignored, so the directory
+  // it names needs no .gitignore change.
+  "cmake.buildDirectory": "${workspaceFolder}/build-ide",
+
+  // And these two answer the prompt rather than the damage. The pin carries the MSYS2 gcc
+  // version because the kit's own name does, so a toolchain update makes it stale - and a
+  // stale pin brings the question back, which is visible, rather than choosing quietly.
+  "cmake.configureOnOpen": false,
+  "cmake.defaultKit": "GCC 16.2.0 x86_64-w64-mingw32 (mingw64)",
+
   "window.title": "PPortal ${separator} ${dirty}${activeEditorShort} ${separator} ${appName}",
 
   // Status bar in PlayStation blue so this worktree is easy to spot
