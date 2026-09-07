@@ -29,6 +29,8 @@
 - 📋 **PP800** (deps: —) **SeamReach counts an implementation that no path in app ever constructs, so a sink only tests build reads as reached** — PP767 answered this for the driver check by requiring a path that opens a session, and the same weakness is still in the census that judges all seven seams. → §PP800
 - 📋 **PP801** (deps: —) **two of the three paths that open a session install no phase, so the captures and the front door stop where the port runs** — PP783 flipped the run and only StreamRun installs one, so the other two reach a callback that is not there and quit with UNINITIALIZED. → §PP801
 - 💭 **PP804** (deps: —) **senkusha's ack expectation is set around the send where the C sets it inside one, so a fast ack meets the wrong number** — The C holds state_mutex across the send AND the wait; the arrivals lock per call, so the window is narrowed by predicting the sequence number and not closed. → §PP804
+- 📋 **PP807** (deps: —) **the port never sends the data ack the C sends after a drained message, so nothing tells the console it arrived** — WriteAck has no caller outside the tests, and PP805 found it while wiring the arm that reads the console's acks - the same message going the other way. → §PP807
+- 📋 **PP808** (deps: —) **nothing raises a takion disconnect, so a wait on a transport that died runs its whole timeout** — Senkusha's disconnect arm is reached by tests alone after PP805, and the stream's connect wait has the same silence PP366 named in the C. → §PP808
 
 ## Block G — Test discipline
 
