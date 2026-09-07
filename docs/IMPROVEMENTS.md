@@ -350,33 +350,32 @@ dispatch records what the port received, which is the port checking itself; the 
 records what crossed the wire, which is evidence either implementation can be judged
 against. The second is what an oracle wants, and the first is cheaper.
 
-### §PP813 The bang that never arrives
+### §PP813 The pongs that never come back
 
-A live session measured through the port for the first time and the phase failed: state
-Unknown, rung BangAwaited, 54 arrivals with 4 handled, and the session carrying mtu
-1454/1454 and rtt 1000us - session.c's fallback, logged as Senkusha failed, but we still
-try to connect with fallback values.
+THE FIRST FILING OF THIS LINE READ THE RUNG BACKWARDS, and the correction is the
+finding. Unknown, rung BangAwaited names the last rung COMPLETED, not the one that
+failed, and only one exit in ManagedSenkushaRun produces that pair: RunRttTest's. So the
+bang arrived and the arms that read it work.
 
-THE WIRE IS UP, which rules out PP773's shape. Fifty-four arrivals reached the object
-and four were read, so the takion connected and messages are arriving. This is not the
-silence where nothing turned an event into a signal.
+WHERE THE UNKNOWN IS WRITTEN is RunRttTest, at answered.Count < 1. A single lost pong is
+a continue and not a failure, so that branch means ALL TEN were lost. Nothing else in
+the method answers Unknown except a WritePing that would not fit, which would have
+failed on the first iteration.
 
-AND PP777'S MECHANISM CANNOT REACH IT. That was a zeroed rpcrypt hiding the BIG's launch
-spec, so the console acked and never banged. Senkusha's big is SenkushaMessages.Big(), a
-plain protobuf carrying no launch spec and nothing hidden, so the resemblance is the
-word bang and not a cause.
+THE FOUR HANDLED FIT EXACTLY: protocol ack, bang, echo-on ack, echo-off ack. The last
+one matters - it succeeded, so the run was not cut short and echo was still being turned
+off after ten unanswered pings.
 
-TWO THINGS TO READ, neither read yet. PP730's RequiredFields gate answers Ignored ahead
-of every arm, so a bang missing a field nanopb calls required is dropped without a log.
-And the summary says state Unknown while the rung says BangAwaited - a disagreement
-about where the walk is.
+RULED OUT: PP773's silence (54 arrivals reached the object), PP777's hidden launch spec
+(senkusha's big carries none), and the bang arm (it read one).
 
-The cost is measured, not inferred: the C had 7.030ms on that link and the port spends
-1000us, a sevenfold error in the timing budget, and a listener reported crackling and
-stalling audio.
+WHAT TO READ NEXT is the pong arm in SenkushaArrivals.Av, which refuses on is_video, on
+frameIndex against PingTestIndex, on unitIndex against PingIndex, on length, and then on
+the tag - five ways to refuse and the log distinguishes none of them. The summary
+reports Seen and Handled only, so telling Refused from Ignored needs a counter that does
+not exist yet.
 
-NOT CLAIMED: the inbound MTU. The C's 576 came from a run whose every inbound probe
-timed out, so that is its floor rather than the link's number.
+The console does echo: the C got ten pongs on that link, 1.1 to 38.9ms.
 
 ## Block G — Test discipline
 

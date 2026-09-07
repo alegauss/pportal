@@ -30,7 +30,7 @@
 - 📋 **PP810** (deps: PP797 ✅) **the render pump plays as much of a unit as the engine had room for and drops the rest of it** — The dequeue is unconditional and the copy is clamped, so a full engine costs whatever did not fit; PP797 made it reachable by keeping the sink deliberately full. → §PP810
 - 📋 **PP811** (deps: PP800 ✅) **the ported send path has no caller, so a live takion stamps its MAC and sends with no lock across the two** — PP675 wrote the order the C holds one mutex over, and ManagedTakion's four sends do it inline instead; PP800's census is what found the seam had only a test on it. → §PP811
 - 📋 **PP812** (deps: PP801 ✅) (requires: console) **the datagram capture taps the C's takion and the port opens its own, so a run without a relay records nothing** — The tap watches a socket no datagram reaches now; PP785 keeps the C's answers as a recording, and this flag is how one is made. → §PP812
-- 📋 **PP813** (deps: —) **the port's senkusha stalls awaiting the bang on a live link, so every session streams on fallback mtu and rtt** — The C measured 7.030ms and MTU 1453 on that link minutes earlier; the phase saw 54 arrivals and handled 4, so the wire is up and an arm is silent. → §PP813
+- 🛠 **PP813** (deps: —) **the port's senkusha gets the bang then loses every pong, so the RTT test answers Unknown and the link is unmeasured** — Rung BangAwaited is the rung COMPLETED, so the bang arrived; RunRttTest answered Unknown because answered.Count was 0 - all ten pongs lost or refused. → §PP813
 
 ## Block G — Test discipline
 
