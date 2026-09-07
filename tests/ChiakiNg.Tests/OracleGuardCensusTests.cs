@@ -55,6 +55,42 @@ public class OracleGuardCensusTests(ITestOutputHelper output)
         Assert.True(would > 0, "no file guards on an oracle any more, so this census is about nothing");
     }
 
+    /// <summary>
+    /// PP802: THE SIXTH ORACLE IS ONE THE SWEEP HAS HEARD OF, which is the whole of this task.
+    ///
+    /// KnownGuards is derived from the row list, so a guard nothing names is invisible by
+    /// construction - the sweep looks for what it already knows. PP704 said so in words two commits
+    /// before PP785 arrived, and sixty calls across eighteen files then went uncounted while the
+    /// closed-list check stayed green and the floor it printed was short by most of them.
+    ///
+    /// THREE NAMES FOR ONE LIBRARY, because its callers ask three ways: the wrapping header, the
+    /// oracle's own availability and the bare shape. The sweep matches what is WRITTEN at the call,
+    /// so folding them into one would leave two thirds of the callers invisible again.
+    /// </summary>
+    [Fact]
+    public void TheTakionWrappersAreAGuardTheCensusKnows()
+    {
+        Assert.Contains(OracleGuardCensus.TakionGuard, OracleGuardCensus.KnownGuards);
+        Assert.Contains(OracleGuardCensus.TakionOracleGuard, OracleGuardCensus.KnownGuards);
+        Assert.Contains(OracleGuardCensus.TakionBareGuard, OracleGuardCensus.KnownGuards);
+
+        int rows = OracleGuardCensus.Files
+            .Count(one => one.Guard.StartsWith("ShimTakionShape.", StringComparison.Ordinal));
+
+        int guarded = OracleGuardCensus.Counted()
+            .Where(one => one.File.Guard.StartsWith("ShimTakionShape.", StringComparison.Ordinal))
+            .Where(one => one.File.Kind == GuardKind.Comparison)
+            .Sum(one => one.Guards);
+
+        output.WriteLine($"{rows} takion row(s), {guarded} guarded comparison(s) behind them");
+
+        // The floor moved because of these, which is what the line was filed about.
+        Assert.True(rows > 0);
+        Assert.True(
+            guarded > 0,
+            "the takion rows count no declining comparison, so the floor did not move for them");
+    }
+
     /// <summary>What the census counts in files that are not part of the xUnit project.</summary>
     private static int OutsideTheTestProject()
         => OracleGuardCensus.Counted()

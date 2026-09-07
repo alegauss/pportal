@@ -144,9 +144,42 @@ public static class OracleGuardCensus
         // no libopus loses it. It is not a differential; the kind is about what stops running.
         new(@"tests\ChiakiNg.Tests\AudioPlaybackTests.cs", OpusDecoderGuard),
 
+        // PP802: PP785's takion wrappers, which are the SIXTH oracle and the case PP704 named as
+        // the one its sweep cannot see. KnownGuards is derived from this list, so a guard with a
+        // name nothing here has heard of is invisible by construction - the check stayed green and
+        // the floor it printed was short by most of sixty calls across eighteen files.
+        //
+        // The differentials, which are what the floor is about: each asks whether takion's wrappers
+        // are in this build before comparing the port against them.
+        new(@"tests\ChiakiNg.Tests\AvPacketV7Tests.cs", TakionGuard),
+        new(@"tests\ChiakiNg.Tests\AvPacketParseTests.cs", TakionGuard),
+        new(@"tests\ChiakiNg.Tests\AvHeaderBoundTests.cs", TakionGuard),
+        new(@"tests\ChiakiNg.Tests\SendBufferTests.cs", TakionGuard),
+        new(@"tests\ChiakiNg.Tests\SendBufferDifferentialTests.cs", TakionGuard),
+        new(@"tests\ChiakiNg.Tests\TakionSendBufferTests.cs", TakionGuard),
+        new(@"tests\ChiakiNg.Tests\ReorderQueueOracleTests.cs", TakionGuard),
+        new(@"tests\ChiakiNg.Tests\WideReorderQueueOracleTests.cs", TakionGuard),
+        new(@"tests\ChiakiNg.Tests\PacketMacDifferentialTests.cs", TakionGuard),
+        new(@"tests\ChiakiNg.Tests\CongestionTests.cs", TakionGuard),
+        new(@"tests\ChiakiNg.Tests\ManagedCongestionControlTests.cs", TakionGuard),
+        new(@"tests\ChiakiNg.Tests\NativeTakionLoopbackTests.cs", TakionGuard),
+        new(@"tests\ChiakiNg.Tests\VideoStreamTests.cs", TakionGuard),
+        new(@"tests\ChiakiNg.Tests\TakionClientDatagramsTests.cs", TakionGuard),
+
+        // PP802: and the recording, which is the same oracle asked a different way. PP785 keeps the
+        // C's answers because the C is leaving, so the one test that RE-DERIVES them declines
+        // without the wrappers and the recorder that produces them reads the same answer.
+        new(@"tests\ChiakiNg.Tests\RecordedTakionOracleTests.cs", TakionOracleGuard),
+        new(@"app\Protocol\TakionOracleRecorder.cs", TakionOracleGuard, GuardKind.Reads),
+
+        // And the seam's takion allowance, which follows the shape exactly as its json one does.
+        new(@"app\Session\NativeSeam.cs", TakionBareGuard, GuardKind.Reads),
+
         // And the files that test the GUARDS rather than what the guards protect. Named so the
         // sweep is closed, and NOT counted: a guard test declining on a build without the oracle is
         // the check doing its job, not an assertion somebody lost.
+        new(@"tests\ChiakiNg.Tests\TakionOracleShapeTests.cs", TakionGuard, GuardKind.GuardsOwnTest),
+        new(@"tests\ChiakiNg.Tests\TakionOracleShapeTests.cs", TakionBareGuard, GuardKind.GuardsOwnTest),
         new(@"tests\ChiakiNg.Tests\ShimHolepunchShapeTests.cs", HolepunchGuard, GuardKind.GuardsOwnTest),
         new(@"tests\ChiakiNg.Tests\ShimHolepunchShapeTests.cs", SelfTestGuard, GuardKind.GuardsOwnTest),
         new(@"tests\ChiakiNg.Tests\ShimFramePathShapeTests.cs", FramePathGuard, GuardKind.GuardsOwnTest),
@@ -180,6 +213,28 @@ public static class OracleGuardCensus
     /// encoder's spelling - which is how four declining comparisons would go uncounted.
     /// </summary>
     public const string OpusDecoderGuard = "ManagedOpusDecoder.IsAvailable";
+
+    /// <summary>
+    /// PP802: PP785's takion wrappers, which are a sixth oracle and the one PP704 could not see.
+    ///
+    /// PP704 stated the limit of its own closed list in words: a sixth oracle arriving with a name
+    /// nothing here has heard of is invisible to the sweep, exactly as the fourth and fifth were.
+    /// PP785 arrived two commits later, and sixty calls across eighteen files went uncounted while
+    /// the check stayed green - which is the shape rather than the surprise.
+    /// </summary>
+    public const string TakionGuard = "ShimTakionShape.WrappingHeader";
+
+    /// <summary>
+    /// The same oracle asked as a recording rather than as a shape.
+    ///
+    /// Spelled apart for OpusDecoderGuard's reason: the sweep matches what is WRITTEN at the call,
+    /// and a file asking whether the ORACLE is available is invisible to a census that only knows
+    /// the header's spelling.
+    /// </summary>
+    public const string TakionOracleGuard = "ShimTakionShape.OracleIsAvailable";
+
+    /// <summary>And the bare shape, which is what an allowance derived from the flip asks.</summary>
+    public const string TakionBareGuard = "ShimTakionShape.BareHeader";
 
     /// <summary>The json oracle, qualified so its own definition is not read as a caller.</summary>
     public const string JsonGuard = "DeletedLibraryOracles.JsonOracleIsAvailable";

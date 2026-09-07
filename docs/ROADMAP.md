@@ -34,7 +34,6 @@
 
 ## Block G — Test discipline
 
-- 💭 **PP802** (deps: —) **PP785's sixty takion guards are named by no census row, and the closed-list check cannot see a guard it never heard of** — The floor the gate prints understates a bare build by sixty, and the sixth oracle is the case PP704 named as the one its sweep is blind to. → §PP802
 - 💭 **PP803** (deps: —) **the two arranged flips are checked by reading text, and nothing ever builds the shape either one leaves** — One trial of takion's bare shape found a link failure every text check called ready, and the other flip had the same one. → §PP803
 
 ## Block H — Performance and telemetry
