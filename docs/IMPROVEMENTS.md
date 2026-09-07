@@ -236,7 +236,7 @@ console that answered.
 TWO SHAPES ARE AVAILABLE AND NEITHER IS OBVIOUS. The arrivals could expose a
 send-under-the-lock, which hands them a takion; or the takion could take a sequence
 number without sending, which splits a send in two. Both are wider than a defect fix,
-which is why this is a line and not an edit.</section_body>
+which is why this is a line and not an edit.
 
 ### §PP807 The ack this port only ever receives
 
