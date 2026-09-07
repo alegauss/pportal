@@ -352,30 +352,28 @@ against. The second is what an oracle wants, and the first is cheaper.
 
 ### §PP813 The pongs that never come back
 
-THE INSTRUMENT ANSWERED ON THE FIRST LIVE RUN: routes [ToData 50, ToDataAck 4], arms
-[Ignored 50, ProtocolAcked 1, Banged 1, DataAcked 2]. ToAv is ZERO and no unarmed base
-type is listed, so all 54 datagrams senkusha saw were control. Not one video or audio
-datagram reached its takion.
+THE LIVE CENSUS: routes [ToData 50, ToDataAck 4], arms [Ignored 50, ProtocolAcked 1,
+Banged 1, DataAcked 2]. ToAv is ZERO with no unarmed base type, so all 54 datagrams
+senkusha saw were control and not one AV packet reached its takion. Rung BangAwaited is
+the rung COMPLETED, so the bang arrived; the Unknown comes from answered.Count < 1 in
+RunRttTest, where a single lost pong is only a continue.
 
-THAT EXONERATES EVERYTHING DOWNSTREAM. The arm cannot refuse a packet it never gets, and
-APongReachesTheAvArmAndCarriesTheArrivalTime already shows a ping this port formatted
-comes back through the parse as Ponged. The ping's six constants and header fields match
-senkusha.c, and AvPacketV7.Parse derives DataSize from the buffer length as the C does.
+SIX THINGS READ AND ALL FAITHFUL. The ping's constants and header fields match
+senkusha.c; AvPacketV7.Parse derives DataSize from the buffer length as the C does;
+SendRaw is one socket write with nothing added; the echo protobuf's shape matches, and
+ProtobufWriter writes a zero-valued field rather than omitting it, so
+command=ECHO_COMMAND(0) is on the wire; its data type is 8, which is what
+senkusha_send_data_wait_for_ack passes; and ManagedTakion.Dispatch hands the dispatch
+EVERY datagram, the AV arm being an extra branch and not a diversion. So no port-side
+filter is hiding the pongs.
 
-THE ECHO COMMAND IS FAITHFUL TOO, which was the next suspect and is not one.
-SenkushaPayload.Command.ECHO_COMMAND is zero, and a writer that omitted zero-valued
-fields would have sent a payload with no command for the console to ignore while still
-acking the datagram. ProtobufWriter.Varint writes the tag and the value unconditionally,
-which is what nanopb does for a required field.
+DataAcked 2 PROVES LESS THAN IT LOOKS: the takion acknowledged a datagram, which says
+nothing about the console acting on the protobuf in it.
 
-AND DataAcked 2 PROVES LESS THAN IT LOOKS. That is the takion acknowledging a datagram,
-not the console acting on the protobuf inside it.
-
-WHAT IS LEFT IS THE TRANSPORT. Something delivers 54 control datagrams to senkusha's
-takion and no AV one, and senkusha's takion is on 9297 rather than the stream's 9296.
-
-Unexplained and worth its own look: 50 data protobufs arrived and no arm wanted any of
-them, where the C's run shows no data traffic across its ping test at all.
+THE LEAD IS THE FIFTY. Fifty data protobufs arrived and no arm wanted one, where the C's
+run shows no data traffic at all across its ping test. Nothing prints what they are -
+the router knows each message's type and the census does not carry it. Name them before
+suspecting the console.
 
 ## Block G — Test discipline
 
