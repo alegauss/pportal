@@ -376,6 +376,31 @@ WHAT IS LEFT IS NOT IN THIS TREE. Everything here sees only what reaches the soc
 the question is whether the console echoes. That is a capture on senkusha's own port -
 pktmon is present and wants elevation.
 
+### §PP814 The audio nobody counts
+
+A listener on a live run reported the console's background music recognisable and
+crackling. That pair is the finding: correct content with discontinuity rules OUT
+corrupted or misrouted bytes, which would not be recognisable at all, and points at gaps
+- a ring running dry or a sink discarded.
+
+THE COUNTERS ALREADY EXIST AND NOTHING PRINTS THEM. AudioPlayback.Cleared counts every
+sink thrown away for being more than three buffers behind, and each one of those is a
+discarded stretch of sound and so an audible click. Drained counts what reached the
+renderer. AudioRing carries Fill, Capacity and a flag for an overflow reported since it
+last ran dry. StreamRun's stream line prints decoded, shown, lost, superseded, dropped
+and the decoder's share - six numbers for video and none for sound.
+
+THIS IS PP783'S OWN SHAPE. A run that reached the idle loop and one that streamed both
+reported zero frames, and the readings that told them apart had to be added before
+anything could be diagnosed. Sound is at that stage now.
+
+AND IT DECIDES AN ATTRIBUTION RATHER THAN JUST REPORTING. The crackling is probably
+PP813's consequence: senkusha fails, the session carries rtt 1000us on a link the C
+measured at 7.030ms, and a jitter buffer sized for a sevenfold faster link underruns
+periodically. Probably is the operative word - Cleared rising across a run is what would
+separate that from an independent fault in the audio path, and without it the
+attribution stays inference.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry
