@@ -31,6 +31,7 @@
 - 📋 **PP807** (deps: —) **the port never sends the data ack the C sends after a drained message, so nothing tells the console it arrived** — WriteAck has no caller outside the tests, and PP805 found it while wiring the arm that reads the console's acks - the same message going the other way. → §PP807
 - 📋 **PP808** (deps: —) **nothing raises a takion disconnect, so a wait on a transport that died runs its whole timeout** — Senkusha's disconnect arm is reached by tests alone after PP805, and the stream's connect wait has the same silence PP366 named in the C. → §PP808
 - ⏳ **PP809** (deps: PP792 ✅, PP805 ✅) (requires: console) **no path installs a senkusha phase, so every session still measures the link with the C's run** — no live link has measured through it: PS5-385 answers discovery in standby and will not wake to ready, so nothing compares its numbers with a console's. → §PP809
+- 📋 **PP810** (deps: PP797 ✅) **the render pump plays as much of a unit as the engine had room for and drops the rest of it** — The dequeue is unconditional and the copy is clamped, so a full engine costs whatever did not fit; PP797 made it reachable by keeping the sink deliberately full. → §PP810
 
 ## Block G — Test discipline
 

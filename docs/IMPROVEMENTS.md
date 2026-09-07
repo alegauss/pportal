@@ -377,6 +377,29 @@ numbers it hands back are what the launch spec spends: a measurement the suite a
 with and a console does not is the shape that ships green and streams nothing. So the
 C's run stays the other arm until a live session says otherwise.
 
+### §PP810 The tail the render pump throws away
+
+WasapiRender.Pump takes a unit off its queue, works out how many frames the engine has
+room for, and copies that many. A unit longer than the room is played as far as it fits
+and the remainder is never seen again - the dequeue already happened, and nothing puts
+what is left back.
+
+IT WAS UNREACHABLE AND PP797 MADE IT REACHABLE. The engine buffers a hundred
+milliseconds and a decoded audio frame is ten, so before there was a drain above it the
+room was always larger than the unit. The drain fills the sink to two buffers and keeps
+it there, which is what a latency policy is for - and the engine's padding is highest
+exactly when that policy is working.
+
+WHAT IT SOUNDS LIKE IS THE PROBLEM. A truncated unit is not a dropout: it is a few
+milliseconds missing from the middle of a stream that carries on, which is a click. The
+counters say nothing - FramesWritten counts what reached the engine and is exactly right
+about it, and the ring reports no overflow because the ring is not where the loss is.
+
+TWO SHAPES OF FIX AND THEY ARE NOT EQUAL. Putting the tail back at the head of the queue
+keeps the audio and adds a partial-unit state; asking the room BEFORE dequeuing and
+leaving the unit alone keeps the queue simple and costs a pass. The second is what the
+capture direction does, which is the argument for it.
+
 ## Block G — Test discipline
 
 ### §PP802 The sixth oracle the census cannot see
