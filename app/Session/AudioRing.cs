@@ -23,12 +23,28 @@ namespace ChiakiNg.Session;
 /// both rings are their own frame size times eight, the output drain fills the sink to times two,
 /// and a sink holding more than times three is cleared outright. They are named below so the port
 /// cannot pick different ones by accident.
+///
+/// PP815: AND THE QMutex IS BACK, because the port grew the second thread the Qt client had.
+/// Removing it was right when this shipped - the ring had one caller and no thread of its own. PP797
+/// joined the decoder to it, so <see cref="Write"/> now runs on the takion receive thread while
+/// <see cref="Read(int)"/> and <see cref="Fill"/> run on the drain thread, which is exactly the pair
+/// the QMutex was there for.
+///
+/// WHAT WENT WRONG WITHOUT IT WAS CONTENT AND NOT COUNTING, which is why every audio counter read
+/// healthy while a listener heard a click every one to two seconds. <see cref="Fill"/> moves by a
+/// read-modify-write on both sides and the overflow branch below advances readPos - the READER's
+/// cursor - before copying, so a drain could take a span the writer was in the middle of. Nothing is
+/// dropped and nothing overflows; the bytes are counted written and counted drained, and only what
+/// they hold is wrong. PP716 is the precedent for keeping a lock the C does without.
 /// </summary>
 public sealed class AudioRing
 {
+    private readonly object gate = new();
     private readonly byte[] buffer;
     private int readPos;
     private int writePos;
+    private int fill;
+    private bool overflowReported;
 
     public AudioRing(int capacity)
     {
@@ -50,15 +66,28 @@ public sealed class AudioRing
 
     public int Capacity => buffer.Length;
 
-    /// <summary>How many bytes are waiting.</summary>
-    public int Fill { get; private set; }
+    /// <summary>
+    /// How many bytes are waiting.
+    /// </summary>
+    /// <remarks>
+    /// PP815: read under the gate, because the drain tests this and then acts on it. An unguarded
+    /// read is a torn int in principle and a stale one in practice, and the drain's loop condition
+    /// is the one place a stale answer turns into a read past what is really there.
+    /// </remarks>
+    public int Fill
+    {
+        get { lock (gate) return fill; }
+    }
 
     /// <summary>
     /// Whether an overflow has been reported since the ring last ran dry. The Qt client logs on
     /// the first drop and then stays quiet until the ring empties, so a sink that is permanently
     /// slow produces one line rather than one per frame.
     /// </summary>
-    public bool OverflowReported { get; private set; }
+    public bool OverflowReported
+    {
+        get { lock (gate) return overflowReported; }
+    }
 
     /// <summary>
     /// Writes a frame, dropping the oldest bytes if it does not fit.
@@ -73,33 +102,38 @@ public sealed class AudioRing
         if (Capacity == 0 || data.Length == 0)
             return false;
 
-        bool dropped = false;
-
-        if (data.Length >= Capacity)
+        // PP815: the eviction below moves readPos and the copy below that writes into the ring, so
+        // the whole of it has to be one transaction against a drain reading from the same cursor.
+        lock (gate)
         {
-            data = data[^Capacity..];
-            readPos = 0;
-            writePos = 0;
-            Fill = 0;
-            dropped = true;
-        }
-        else if (data.Length > Capacity - Fill)
-        {
-            int toDrop = data.Length - (Capacity - Fill);
-            readPos = (readPos + toDrop) % Capacity;
-            Fill -= toDrop;
-            dropped = true;
-            OverflowReported = true;
-        }
+            bool dropped = false;
 
-        int firstCopy = Math.Min(data.Length, Capacity - writePos);
-        data[..firstCopy].CopyTo(buffer.AsSpan(writePos));
-        if (data.Length > firstCopy)
-            data[firstCopy..].CopyTo(buffer.AsSpan(0));
+            if (data.Length >= Capacity)
+            {
+                data = data[^Capacity..];
+                readPos = 0;
+                writePos = 0;
+                fill = 0;
+                dropped = true;
+            }
+            else if (data.Length > Capacity - fill)
+            {
+                int toDrop = data.Length - (Capacity - fill);
+                readPos = (readPos + toDrop) % Capacity;
+                fill -= toDrop;
+                dropped = true;
+                overflowReported = true;
+            }
 
-        writePos = (writePos + data.Length) % Capacity;
-        Fill += data.Length;
-        return dropped;
+            int firstCopy = Math.Min(data.Length, Capacity - writePos);
+            data[..firstCopy].CopyTo(buffer.AsSpan(writePos));
+            if (data.Length > firstCopy)
+                data[firstCopy..].CopyTo(buffer.AsSpan(0));
+
+            writePos = (writePos + data.Length) % Capacity;
+            fill += data.Length;
+            return dropped;
+        }
     }
 
     /// <summary>
@@ -119,29 +153,38 @@ public sealed class AudioRing
     /// </summary>
     public byte[] Read(int maxBytes)
     {
-        if (Fill == 0)
+        // PP815: the copy out is inside the gate, not just the cursor arithmetic. Taking the span
+        // outside it is the tear - a writer evicting moves readPos and then overwrites the bytes
+        // this is in the middle of copying, and the chunk comes back holding two frames.
+        lock (gate)
         {
-            // Running dry re-arms the log, so the next slow patch is reported again.
-            OverflowReported = false;
-            return [];
+            if (fill == 0)
+            {
+                // Running dry re-arms the log, so the next slow patch is reported again.
+                overflowReported = false;
+                return [];
+            }
+
+            int chunk = Math.Min(fill, Math.Min(Math.Max(maxBytes, 0), Capacity - readPos));
+            if (chunk <= 0)
+                return [];
+
+            byte[] outBuf = buffer.AsSpan(readPos, chunk).ToArray();
+            readPos = (readPos + chunk) % Capacity;
+            fill -= chunk;
+            return outBuf;
         }
-
-        int chunk = Math.Min(Fill, Math.Min(Math.Max(maxBytes, 0), Capacity - readPos));
-        if (chunk <= 0)
-            return [];
-
-        byte[] outBuf = buffer.AsSpan(readPos, chunk).ToArray();
-        readPos = (readPos + chunk) % Capacity;
-        Fill -= chunk;
-        return outBuf;
     }
 
     /// <summary>What the Qt client does when the sink is more than three buffers behind.</summary>
     public void Reset()
     {
-        readPos = 0;
-        writePos = 0;
-        Fill = 0;
-        OverflowReported = false;
+        lock (gate)
+        {
+            readPos = 0;
+            writePos = 0;
+            fill = 0;
+            overflowReported = false;
+        }
     }
 }

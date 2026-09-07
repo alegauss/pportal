@@ -730,6 +730,7 @@
 - ✅ **PP801** **two of the three paths that open a session install no phase, so the captures and the front door stop where the port runs** — The captures and the front door install a phase before the session starts, and a closed check names any path that opens one, means to stream and does not.
 - ✅ **PP804** **senkusha's ack expectation is set around the send where the C sets it inside one, so a fast ack meets the wrong number** — The state, the send and the wait now run under one lock, so the number is written BY the send and an ack arriving mid-send blocks instead of meeting a number nobody awaits.
 - ✅ **PP807 (the mechanism, unwired)** **the port never sends the data ack the C sends after a drained message, so nothing tells the console it arrived** — The decision and the send landed unwired: joining them sent ~1170 unsigned packets and the console tore the session down, so PP811's signed path is the blocker.
+- ✅ **PP815** **the audio ring is written by the receive thread and drained by the pump with no lock, so its cursors and fill tear** — Write, Read and Reset run under one gate, so a drain cannot take a span the writer's eviction is moving; the assertion reads bytes, because no counter could see this.
 
 ## Block G — Test discipline
 
