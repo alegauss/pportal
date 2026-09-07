@@ -102,6 +102,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP791** **nothing implements senkusha's run host or turns its arrivals into the flags its waits end on** — A run's host interface is filled in the same block that writes the run, because a seam only doubles implement is a sequence nothing performs.
 - ✅ **PP792** **session.c runs senkusha itself and there is no callback to hand it to, so a managed run is unreachable** — Not installing a senkusha phase is a supported state: the C's run is the other arm until a live link says the managed one measures the same thing.
 - ✅ **PP805** **senkusha's four arrival arms are called by tests alone, so a run driving a real takion ends every wait in a timeout** — senkusha's ack arm is fed what the send buffer released and never the cumulative number the ack carries, which is right only while nothing else is in flight.
+- ✅ **PP797** **the console's audio reaches a receiver whose output goes nowhere, and nothing drains the ring into a speaker** — The ring is drained by a pump of its own and not by the render client's: one asks how far behind the sink is and the other asks how much room the engine has left.
 
 ## Block G — Test discipline
 

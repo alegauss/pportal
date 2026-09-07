@@ -95,6 +95,44 @@ public sealed class WasapiRender : IDisposable
         }
     }
 
+    /// <summary>
+    /// PP797: how many BYTES are waiting, which is what a drain target is measured in.
+    ///
+    /// <see cref="Queued"/> counts units and the Qt client's own drain compares the sink's byte
+    /// count against <see cref="AudioRing.DrainTargetFor"/> - so a caller reading the unit count
+    /// would be comparing a number of frames against a number of bytes and stopping at whichever
+    /// happened to be smaller.
+    /// </summary>
+    public int QueuedBytes
+    {
+        get
+        {
+            lock (gate)
+            {
+                var total = 0;
+
+                foreach (byte[] unit in pending)
+                    total += unit.Length;
+
+                return total;
+            }
+        }
+    }
+
+    /// <summary>
+    /// PP797: throw away what has not been played, which is the drain's third branch.
+    ///
+    /// streamsession.cpp clears the sink outright when it holds more than
+    /// <see cref="AudioRing.ClearThresholdFor"/> - a sink that far behind is playing audio the
+    /// picture has left, and draining it slowly would keep the lag rather than spend it. The ring's
+    /// own policy is the same one: what a listener has not heard yet is what gets dropped.
+    /// </summary>
+    public void Clear()
+    {
+        lock (gate)
+            pending.Clear();
+    }
+
     /// <summary>How long the pump has been running.</summary>
     public TimeSpan RunningFor
         => pump is null ? TimeSpan.Zero : System.Diagnostics.Stopwatch.GetElapsedTime(Volatile.Read(ref startedAt));

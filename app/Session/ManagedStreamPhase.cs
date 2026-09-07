@@ -33,6 +33,7 @@ public sealed class ManagedStreamPhase : IDisposable
     private readonly ChiakiSession session;
 
     private Thread? thread;
+    private ManagedOpusDecoder? speaker;
 
     /// <summary>
     /// PP771: THE PORT IS THIS OBJECT'S AND NOT THE CALLER'S, which is what an address takes.
@@ -121,6 +122,18 @@ public sealed class ManagedStreamPhase : IDisposable
     public ManagedControllerStateSink Pad { get; } = new();
 
     /// <summary>
+    /// PP797: the speakers and the ring between them, which the run fills once it has a header.
+    ///
+    /// Built in the constructor and OPENED in the run, which is the same split the pad has: a
+    /// caller needs somewhere to read counts from before the console has answered, and opening a
+    /// device is what should wait for a session that actually arrived.
+    /// </summary>
+    public AudioPlayback Audio { get; } = new();
+
+    /// <summary>What decoded the sound, or null where no run built one.</summary>
+    public ManagedOpusDecoder? Speaker => speaker;
+
+    /// <summary>
     /// Install this as the session's stream phase and start waiting for it.
     ///
     /// Before <see cref="ChiakiSession.Start"/>, and the runner's thread goes up first: the C
@@ -185,6 +198,20 @@ public sealed class ManagedStreamPhase : IDisposable
         var sender = new ManagedFeedbackSender(new TakionFeedbackSink(takion));
         Pad.Arm(sender);
 
+        // PP797: AND THE SOUND HAS SOMEWHERE TO GO, which is the first of the two joins that were
+        // missing. Both arms took a NoFrames whose methods are empty, so audioreceiver.c's port ran
+        // its jitter buffer and handed every frame to nothing - a sentence in a lambda rather than a
+        // fact anything reported.
+        //
+        // THE AUDIO ARM ONLY. Haptics is the same receiver used twice and its far side is a pad's
+        // motors rather than a speaker, so giving it a decoder would send a console's rumble
+        // envelope to the endpoint the game's audio is on.
+        //
+        // OPENED HERE AND NOT IN THE CONSTRUCTOR, which is PP754's rule: a start that never comes
+        // should open no device, and this runs only once the session has handed the phase over.
+        ManagedAudioReceiverPair sound = AudioPair(Audio, out speaker);
+        Audio.Start();
+
         var host = new ManagedStreamRunHost(
             takion,
             peer,
@@ -195,7 +222,7 @@ public sealed class ManagedStreamPhase : IDisposable
             new BaselineStages(baseline),
             () => Big(session),
             () => new ManagedVideoReceiver(video, outbound),
-            () => new ManagedAudioReceiverPair(new NoFrames(), new NoFrames()),
+            () => sound,
             () => new ManagedAudioReceiverPair(new NoFrames(), new NoFrames()));
 
         // PP773: AND THE KEYING, which this root passed null for in the commit that wired the
@@ -222,6 +249,29 @@ public sealed class ManagedStreamPhase : IDisposable
         Arrivals = arrivals;
 
         return host;
+    }
+
+    /// <summary>
+    /// PP797: the sound arm, built where a machine with no console can ask for one.
+    ///
+    /// Public and static for <see cref="Big"/>'s reason and PP767's: <see cref="Build"/> runs only
+    /// once a session hands over, so a join made inside it is unreachable through the object - and
+    /// this is exactly the join whose absence let a stream decode a picture and drop every audio
+    /// frame it produced.
+    ///
+    /// THE HAPTICS ARM STAYS A NO-OP, which is not an omission. audioreceiver.c is used twice and
+    /// the second one's far side is a pad's motors; a decoder there would send a rumble envelope to
+    /// the endpoint the game's audio is on.
+    /// </summary>
+    /// <param name="audio">The ring and the speakers behind it, which the decoder writes into.</param>
+    /// <param name="speaker">The decoder, which the caller owns and must dispose.</param>
+    public static ManagedAudioReceiverPair AudioPair(AudioPlayback audio, out ManagedOpusDecoder speaker)
+    {
+        ArgumentNullException.ThrowIfNull(audio);
+
+        speaker = new ManagedOpusDecoder(audio.Sink);
+
+        return new ManagedAudioReceiverPair(speaker, new NoFrames());
     }
 
     /// <summary>
@@ -361,6 +411,12 @@ public sealed class ManagedStreamPhase : IDisposable
                 return;
             }
         }
+
+        // PP797: the sound path comes down with the run. The drain thread first, because the
+        // decoder is what writes into the ring it is reading - the other order leaves a pass
+        // looking at a ring whose writer has gone.
+        Audio.Dispose();
+        speaker?.Dispose();
 
         handover.Dispose();
         GC.SuppressFinalize(this);

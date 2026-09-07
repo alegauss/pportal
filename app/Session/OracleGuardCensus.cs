@@ -138,6 +138,12 @@ public static class OracleGuardCensus
         // by the sweep above rather than remembered, which is what PP704 built it for.
         new(@"tests\ChiakiNg.Tests\CleanedMicrophoneTests.cs", OpusGuard),
 
+        // PP797: the sound path's own join, which asks the decoder's guard for one half of one
+        // test. Counted rather than named as a guard test, because what declines is an assertion
+        // about the JOIN - that the root's arm writes into the playback's ring - and a build with
+        // no libopus loses it. It is not a differential; the kind is about what stops running.
+        new(@"tests\ChiakiNg.Tests\AudioPlaybackTests.cs", OpusDecoderGuard),
+
         // And the files that test the GUARDS rather than what the guards protect. Named so the
         // sweep is closed, and NOT counted: a guard test declining on a build without the oracle is
         // the check doing its job, not an assertion somebody lost.

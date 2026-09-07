@@ -214,32 +214,6 @@ port does not own calling code it does - a boundary needing explaining at every 
 reading. Five lines carry the port, and the file stops calling takion when the last
 lands.
 
-### §PP797 A sound path with both ends built
-
-audioreceiver.c is ported twice over - PP740's ManagedAudioReceiverPair is the
-eight-slot jitter buffer, once for audio and once for haptics - and PP751's
-ManagedOpusDecoder decodes what comes out of it. AudioRingSink puts the samples in
-PP32's ring, and WasapiRender plays bytes through IAudioRenderClient. Four objects, and
-the sound stops twice on the way between them.
-
-THE FIRST IS IN THE COMPOSITION ROOT. ManagedStreamPhase hands both audio arms a
-NoFrames whose two methods are empty, and says so in a comment: the picture has a
-decoder to reach and the sound has none yet. So a decoded audio frame is produced and
-dropped, which is a sentence in a lambda rather than a fact anything reports.
-
-THE SECOND IS THE RING'S FAR SIDE. AudioRingSink fills it and nothing reads it.
-WasapiRender takes bytes through Write and needs a pump - a thread on the render
-client's own cadence, which is what PollInterval is for and what the capture direction
-has.
-
-AND THE C PATH HAS NO SOUND EITHER, so this is not a regression the flip introduces.
-Nothing in app installs a ChiakiAudioSink, so the baseline runs that counted 1020 frames
-counted no audio: there was nothing to count. A port that flipped the stream and lost
-the sound would be losing what it never had.
-
-WHETHER IT SOUNDS RIGHT IS NOT COUNTABLE. A total says a decoder ran; a periodic click
-or an eighth of a second of lag appears in no number here.
-
 ### §PP798 The refusal that will not say which frame
 
 Two baseline runs on the C path, one software and one d3d11va, each printed "Failed to
