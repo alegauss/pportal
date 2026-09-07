@@ -223,4 +223,51 @@ public class AudioPlaybackTests(ITestOutputHelper output)
             Assert.Equal(0, speaker.Refused);
         }
     }
+
+    /// <summary>
+    /// PP814: A CLEAN WRITE IS NOT AN OVERFLOW, which is what these two counted backwards.
+    ///
+    /// AudioRing.Write answers whether it had to EVICT older audio to fit, not whether the write
+    /// succeeded - it never refuses a frame. Reading a true as success scored every overflow as an
+    /// accepted frame and every clean write as a loss, so the first live reading of a healthy
+    /// stream said `took 0 and dropped 853` and meant the exact opposite.
+    ///
+    /// The inversion was invisible while nothing read the pair. It became wrong the moment PP814
+    /// printed it, and this is what stops it inverting again.
+    /// </summary>
+    [Fact]
+    public void ACleanWriteCountsAsTakenAndNotAsOverflow()
+    {
+        var sink = new AudioRingSink();
+
+        // A ring big enough that a single frame fits with room to spare.
+        ((IPcmSink)sink).Settings(channels: 2, rate: 48000);
+
+        Assert.NotNull(sink.Ring);
+
+        var frame = new short[480 * 2];
+
+        ((IPcmSink)sink).Pcm(frame, 480);
+
+        output.WriteLine($"{sink.Written} taken, {sink.Overflowed} evicted");
+
+        // Taken, and nothing evicted: the ring was empty and the frame fits.
+        Assert.Equal(1, sink.Written);
+        Assert.Equal(0, sink.Overflowed);
+
+        // Now fill it past capacity, which is where an eviction is the honest answer.
+        var overflowed = 0;
+        for (var at = 0; at < 64 && overflowed == 0; at++)
+        {
+            ((IPcmSink)sink).Pcm(frame, 480);
+            overflowed = sink.Overflowed;
+        }
+
+        output.WriteLine($"{sink.Written} taken, {sink.Overflowed} evicted after filling");
+
+        Assert.True(overflowed > 0, "the ring never reported evicting anything, so the pair is untested");
+
+        // And every frame offered was still taken - Overflowed is a subset and not a complement.
+        Assert.True(sink.Written > sink.Overflowed);
+    }
 }

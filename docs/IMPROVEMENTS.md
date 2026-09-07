@@ -378,27 +378,27 @@ pktmon is present and wants elevation.
 
 ### §PP814 The audio nobody counts
 
-MEASURED, THEN MEASURED AGAIN: 0 cleared and at most 1 silent break across three live
-runs, against a listener counting about five clicks in each. The announced format is
-2ch/16bit/48000/480, printed now rather than assumed - reading 376320 frames as 7.8
-seconds had taken a guess at the rate that no line carried.
+THREE MECHANISMS PROPOSED AND ALL THREE MEASURED DEAD. The ring dumped for getting
+ahead: Cleared is 0. The ring running dry: 1 to 2 silent breaks against about five
+clicks heard. Opus concealing a lost frame: Concealed is 0. Every counter on the
+decode-to-render path reads healthy while a listener hears a click every one to two
+seconds.
 
-SO BOTH RING MECHANISMS ARE DEAD. It is not the ring dumped for getting three buffers
-ahead (Cleared is zero, and one unit was still queued at exit, so the drain keeps up)
-and it is not the ring running dry (one break, not five). The render's view is healthy
-while the sound is not.
+AND ONE OF THOSE READINGS WAS A LIE UNTIL IT WAS FIXED. AudioRingSink counted Written on
+a true from AudioRing.Write, and that answers whether it had to EVICT older audio, not
+whether the write succeeded - the ring never refuses a frame. So the pair was inverted:
+the first live print of a healthy stream read took 0 and dropped 853, and meant 853
+clean writes and no overflow at all. Nothing had read the pair before this line printed
+it, which is why an inversion sat there unnoticed. Written now counts every frame taken
+and Overflowed the subset that evicted, with a test that fills a ring past capacity so
+it cannot invert again.
 
-WHAT THAT LEAVES IS UPSTREAM OF THE RENDER. Opus CONCEALS a frame it was handed nothing
-for - it emits plausible audio rather than a gap - so a stream losing audio packets
-keeps the ring fed, keeps the engine busy, and still sounds wrong. Concealed, Refused,
-Decoded, BeforeAnyHeader and the ring's Written and Dropped are all printed now, and the
-same runs reported 12 and 38 video units lost by the network.
-
-AND THE INSTRUMENTS ARE SHOWN WORKING, which is why this line is not just a print. A
-staged empty frame scores one concealment and one decode; a staged gap scores one break,
-a longer silence after it scores no second, and audio played again then stopped scores
-the second. Two hypotheses were already spent reading counters that were each truthful
-about the wrong half of the path.
+SO THE CRACKLING IS NOT IN THIS PATH. Decode, ring and render are each instrumented now
+and each reports nothing wrong. That relocates the question rather than answering it:
+either upstream of the decoder, where the receiver's jitter buffer is, or downstream in
+the device format, or it is not a discontinuity at all - a listener reported the
+interval constant across runs carrying different audio, which no content-dependent
+artifact explains.
 
 ## Block G — Test discipline
 

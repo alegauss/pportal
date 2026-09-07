@@ -309,7 +309,8 @@ public static class StreamRun
             Console.WriteLine(
                 $"[audio] decoder: {speaker.Decoded} decoded, {speaker.Concealed} concealed"
                     + $", {speaker.Refused} refused, {speaker.BeforeAnyHeader} before any header"
-                    + $", ring took {phase.Audio.Sink.Written} and dropped {phase.Audio.Sink.Dropped}");
+                    + $", ring took {phase.Audio.Sink.Written}"
+                    + $" of which {phase.Audio.Sink.Overflowed} evicted older audio");
         }
 
         // PP813: and where the ones that did nothing went, which the two counts above cannot say.

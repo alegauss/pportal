@@ -35,11 +35,18 @@ public sealed class AudioRingSink : IPcmSink
     /// <summary>What the stream announced, or null before it did.</summary>
     public (byte Channels, uint Rate)? Announced { get; private set; }
 
-    /// <summary>How many frames the ring took.</summary>
+    /// <summary>How many frames the ring took, which is every one it was offered.</summary>
     public int Written { get; private set; }
 
-    /// <summary>And how many the ring had no room for, which is the overflow a listener hears.</summary>
-    public int Dropped { get; private set; }
+    /// <summary>
+    /// PP814: and how many of those had to evict older audio to fit - the overflow a listener hears.
+    ///
+    /// A SUBSET OF <see cref="Written"/> AND NOT ITS COMPLEMENT, because the ring does not refuse a
+    /// frame: <see cref="AudioRing.Write"/> makes room and answers whether it had to. The pair used
+    /// to be counted the other way round, on the reading that a true meant the write had succeeded,
+    /// and it means the opposite - so a healthy run reported taking nothing and dropping everything.
+    /// </summary>
+    public int Overflowed { get; private set; }
 
     /// <inheritdoc/>
     public void Settings(byte channels, uint rate)
@@ -53,16 +60,19 @@ public sealed class AudioRingSink : IPcmSink
     /// <inheritdoc/>
     public void Pcm(ReadOnlySpan<short> pcm, int samplesPerChannel)
     {
-        if (ring is null)
+        if (ring is null || pcm.IsEmpty)
             return;
 
         Span<byte> bytes = stackalloc byte[pcm.Length * sizeof(short)];
         MemoryMarshal.AsBytes(pcm).CopyTo(bytes);
 
+        // PP814: the ring answers "did this evict anything", not "did this succeed" - it never
+        // refuses a frame, it makes room. So the eviction is the exceptional case and the write is
+        // not, which is the opposite of how this read the answer.
         if (ring.Write(bytes))
-            Written++;
-        else
-            Dropped++;
+            Overflowed++;
+
+        Written++;
     }
 }
 
