@@ -57,15 +57,13 @@ public static class SeamReach
     /// PP790 PUT A ROW BACK ON IT, which is the sweep doing its job on the commit that made the
     /// gap rather than three commits later. A run that takes a host interface has a shape until
     /// something implements it, and PP773 is what leaving that unsaid costs.
+    ///
+    /// PP791 TOOK IT OFF AGAIN. <see cref="ChiakiNg.Protocol.ManagedSenkushaRunHost"/> implements
+    /// ISenkushaRunHost against the port's own takion, so the row lasted the two commits between the
+    /// run and the thing that performs it - which is what a row on this list is for, and shorter
+    /// than the three blocks PP741 measured.
     /// </summary>
-    public static IReadOnlyList<UnreachedSeam> Expected { get; } =
-    [
-        new(
-            "ISenkushaRunHost",
-            "PP790's run takes it and PP791 writes what fills it. A run whose host only doubles "
-                + "implement is a sequence nothing performs - PP669's rule, and the state PP745 "
-                + "took the stream connection's own host out of."),
-    ];
+    public static IReadOnlyList<UnreachedSeam> Expected { get; } = [];
 
     /// <summary>Every public interface the assembly declares.</summary>
     public static IReadOnlyList<string> DeclaredIn(Assembly app)

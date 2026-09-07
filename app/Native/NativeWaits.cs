@@ -174,6 +174,15 @@ public static class NativeWaits
             StreamConnectionSwitch.TimeoutMilliseconds,
             "PP724 found it in the unported group with a counterpart already written: "
             + nameof(StreamConnectionSwitch) + " names it and reads its own define"),
+        new("EXPECT_TIMEOUT_MS", Senkusha, WaitKind.MirrorsAMacro, "5000",
+            Protocol.SenkushaTimeouts.ExpectMs,
+            "PP791: the second macro of this name, and the run that waits it four times over"),
+        new("CONNECT_TIMEOUT_MS", Senkusha, WaitKind.MirrorsAMacro, "30000",
+            Protocol.SenkushaTimeouts.ConnectMs,
+            "the longest wait in the tree, and the one a console that never answers spends"),
+        new("EXPECT_PONG_TIMEOUT_MS", Senkusha, WaitKind.MirrorsAMacro, "1000",
+            Protocol.SenkushaTimeouts.ExpectPongMs,
+            "one ping's own wait, which the round-trip test takes ten of"),
     ];
 
     /// <summary>
@@ -221,11 +230,9 @@ public static class NativeWaits
         new("REGIST_SEARCH_TIMEOUT_MS", Regist, WaitKind.NoCounterpartYet, "3000", null, "as above"),
         new("REGIST_REPONSE_TIMEOUT_MS", Regist, WaitKind.NoCounterpartYet, "3000",
             null, "spelled REPONSE in the core, and reproduced rather than corrected"),
-        new("EXPECT_TIMEOUT_MS", Senkusha, WaitKind.NoCounterpartYet, "5000",
-            null, "senkusha.c is unported; the name collides with streamconnection.c's"),
-        new("CONNECT_TIMEOUT_MS", Senkusha, WaitKind.NoCounterpartYet, "30000",
-            null, "the longest wait in the tree"),
-        new("EXPECT_PONG_TIMEOUT_MS", Senkusha, WaitKind.NoCounterpartYet, "1000", null, "as above"),
+        // PP791: senkusha's three left this group with the host that waits them. They sat here
+        // saying "senkusha.c is unported" while PP784's decomposition ported it line by line, and
+        // the sentence went false the moment something waited one.
         new("SESSION_EXPECT_CTRL_START_MS", SessionSource, WaitKind.NoCounterpartYet, "10000",
             null, "the ctrl-start wait, and NOT what SessionRegistFork.RegistWaitMs follows"),
         new("CTRL_EXPECT_TIMEOUT", Ctrl, WaitKind.NoCounterpartYet, "5000",
@@ -321,13 +328,31 @@ public static class NativeWaits
     /// this catches is the SENTENCE: a row cannot say a file is unported while a mirrored row names
     /// that same file.
     /// </summary>
-    public static IReadOnlyList<NativeWait> Unclaimed { get; } =
-    [
-        .. Unported.Where(
-            one => one.Note.Contains(UnportedClaim, StringComparison.OrdinalIgnoreCase)
-                && Mirrored.Any(
-                    other => string.Equals(other.SourceRelativePath, one.SourceRelativePath, StringComparison.Ordinal))),
-    ];
+    public static IReadOnlyList<NativeWait> Unclaimed { get; } = UnclaimedAmong(Unported, Mirrored);
+
+    /// <summary>
+    /// PP791: the same question over any two groups, so the check keeps a control of its own.
+    ///
+    /// The phrase left the tree with senkusha's three rows - PP784 ported the file and PP791's host
+    /// waits its macros, so nothing in the unported group calls a file unported any more. A control
+    /// that asserted some real row still carries the phrase would then be a check going red because
+    /// the tree got cleaner, which is the opposite of what it is for.
+    /// </summary>
+    public static IReadOnlyList<NativeWait> UnclaimedAmong(
+        IReadOnlyList<NativeWait> unported, IReadOnlyList<NativeWait> mirrored)
+    {
+        ArgumentNullException.ThrowIfNull(unported);
+        ArgumentNullException.ThrowIfNull(mirrored);
+
+        return
+        [
+            .. unported.Where(
+                one => one.Note.Contains(UnportedClaim, StringComparison.OrdinalIgnoreCase)
+                    && mirrored.Any(
+                        other => string.Equals(
+                            other.SourceRelativePath, one.SourceRelativePath, StringComparison.Ordinal))),
+        ];
+    }
 
     /// <summary>One source, or null outside a checkout.</summary>
     public static string? Locate(string relativePath) => SanitizerSource.LocateRelative(relativePath);

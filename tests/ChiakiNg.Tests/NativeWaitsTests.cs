@@ -167,14 +167,17 @@ public class NativeWaitsTests(ITestOutputHelper output)
     ///
     /// PP724: twenty-three and nine. SESSION_EXPECT_TIMEOUT_MS was in the unported group with a
     /// counterpart already written - the move nobody made, which is what this task was about.
+    ///
+    /// PP791: twenty-six and six. Senkusha's three moved together, in the commit that wrote the host
+    /// that waits them - which is the move PP724 built this split to notice going unmade.
     /// </summary>
     [Fact]
-    public void TheGroupsAreTwentyThreeThreeOneAndNine()
+    public void TheGroupsAreTwentySixThreeOneAndSix()
     {
-        Assert.Equal(23, NativeWaits.Mirrored.Count);
+        Assert.Equal(26, NativeWaits.Mirrored.Count);
         Assert.Equal(3, NativeWaits.Literals.Count);
         Assert.Single(NativeWaits.Departures);
-        Assert.Equal(9, NativeWaits.Unported.Count);
+        Assert.Equal(6, NativeWaits.Unported.Count);
 
         // Macros are the two groups that name one; the literals and the departure name none.
         Assert.Equal(
@@ -268,10 +271,22 @@ public class NativeWaitsTests(ITestOutputHelper output)
             "these rows call a file unported that a mirrored row follows a macro out of: "
                 + string.Join(", ", NativeWaits.Unclaimed.Select(w => $"{w.Name}: {w.Note}")));
 
-        // And the check can still fire: the phrase it looks for is one the rows really use.
-        Assert.Contains(
-            NativeWaits.Unported,
-            w => w.Note.Contains(NativeWaits.UnportedClaim, StringComparison.OrdinalIgnoreCase));
+        // PP791: AND THE CHECK CAN STILL FIRE, asked of a pair this test makes rather than of the
+        // tree. The phrase left the rows with senkusha's three - PP784 ported the file and PP791's
+        // host waits its macros - so a control demanding some real row still say "is unported" would
+        // go red because the port got further, which is the one direction this must not fail in.
+        NativeWait claiming = NativeWaits.Unported[0] with
+        {
+            SourceRelativePath = NativeWaits.Mirrored[0].SourceRelativePath,
+            Note = $"this file {NativeWaits.UnportedClaim}",
+        };
+
+        Assert.Single(NativeWaits.UnclaimedAmong([claiming], NativeWaits.Mirrored));
+
+        // And a row saying it about a file no mirrored row names is not the failure.
+        Assert.Empty(
+            NativeWaits.UnclaimedAmong(
+                [claiming with { SourceRelativePath = @"lib\src\nothing-here.c" }], NativeWaits.Mirrored));
     }
 
     /// <summary>

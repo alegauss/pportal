@@ -341,6 +341,35 @@ public sealed class ManagedTakion : ITakionLoopHost, IDisposable
         return sent;
     }
 
+    /// <summary>How many raw datagrams this takion has put on its socket.</summary>
+    public int RawSent { get; private set; }
+
+    /// <summary>
+    /// PP791: chiaki_takion_send_raw - the bytes, and nothing added to them.
+    ///
+    /// SENKUSHA'S TWO MEASUREMENTS ARE THE ONLY CALLERS. A ping and an MTU probe are v7 AV packets
+    /// the caller has already formatted, and what is being measured is the SIZE that reaches the
+    /// console - so a send that wrapped them in a data header would measure a link nobody has, and
+    /// one that MAC'd them would need a cipher senkusha's takion is built without.
+    ///
+    /// No sequence number, no send buffer and no key position, which is what "raw" means in the C
+    /// too: <c>chiaki_takion_send_raw</c> is one write to the socket. Nothing here is held for
+    /// resend, because the retry is the search's own loop.
+    /// </summary>
+    public ChiakiError SendRaw(ReadOnlySpan<byte> datagram)
+    {
+        ObjectDisposedException.ThrowIf(Stage == TakionStage.Closed, this);
+
+        if (wire is null)
+            return ChiakiError.Uninitialized;
+
+        ChiakiError sent = wire.Send(datagram);
+        if (sent == ChiakiError.Success)
+            RawSent++;
+
+        return sent;
+    }
+
     /// <summary>
     /// PP748: chiaki_takion_send_message_data, over the socket the handshake used.
     ///

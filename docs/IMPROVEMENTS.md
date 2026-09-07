@@ -214,29 +214,6 @@ port does not own calling code it does - a boundary needing explaining at every 
 reading. Five lines carry the port, and the file stops calling takion when the last
 lands.
 
-### §PP791 The host, and the wire from an arrival to a flag
-
-PP790's run takes a host interface, and an interface only test doubles implement is a
-mapping rather than a call - PP669's rule, and PP741 counts what happens when a tree
-forgets it. This is the implementation: a host that delegates to the port's own takion,
-and the callback that turns what arrives into the flags a wait ends on.
-
-BOTH HALVES, BECAUSE PP773 IS WHAT ONE HALF COSTS. The stream connection had a host,
-every handler's decisions ported, and three layers of dispatch modelled - and no wire
-between them. A live PS5 answered every message and the run timed out at every wait,
-because the arrivals reached the dispatch and the dispatch told nobody. Senkusha's
-callback has the same three arms - data, data ack and AV - and the ack arm is its own:
-senkusha waits on ACKS in a way the stream connection never does.
-
-AND ITS TAKION IS NOT THE STREAM'S. protocol_version is 7 rather than 9, enable_crypt is
-FALSE, and the port is 9297. So the AV packets it sends are v7 - which is why PP679 had
-to give the v7 header formatter an owner before PP702's census could say anything about
-it - and nothing it sends is encrypted, which removes the whole key-position ledger from
-this path.
-
-WHAT ENDS THIS LINE is a host nothing in the test project implements, which is the
-question PP741's sweep asks of the assembly rather than of a list.
-
 ### §PP792 The seam senkusha does not have
 
 PP753 gave the stream phase a handover: session.c calls a function pointer, the far side
