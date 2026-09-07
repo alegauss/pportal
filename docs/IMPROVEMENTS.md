@@ -378,28 +378,27 @@ pktmon is present and wants elevation.
 
 ### §PP814 The audio nobody counts
 
-A listener on a live run reported the console's background music recognisable and
-crackling. That pair is the finding: correct content with discontinuity rules OUT
-corrupted or misrouted bytes, which would not be recognisable at all, and points at gaps
-- a ring running dry or a sink discarded.
+MEASURED, THEN MEASURED AGAIN: 0 cleared and at most 1 silent break across three live
+runs, against a listener counting about five clicks in each. The announced format is
+2ch/16bit/48000/480, printed now rather than assumed - reading 376320 frames as 7.8
+seconds had taken a guess at the rate that no line carried.
 
-THE COUNTERS ALREADY EXIST AND NOTHING PRINTS THEM. AudioPlayback.Cleared counts every
-sink thrown away for being more than three buffers behind, and each one of those is a
-discarded stretch of sound and so an audible click. Drained counts what reached the
-renderer. AudioRing carries Fill, Capacity and a flag for an overflow reported since it
-last ran dry. StreamRun's stream line prints decoded, shown, lost, superseded, dropped
-and the decoder's share - six numbers for video and none for sound.
+SO BOTH RING MECHANISMS ARE DEAD. It is not the ring dumped for getting three buffers
+ahead (Cleared is zero, and one unit was still queued at exit, so the drain keeps up)
+and it is not the ring running dry (one break, not five). The render's view is healthy
+while the sound is not.
 
-THIS IS PP783'S OWN SHAPE. A run that reached the idle loop and one that streamed both
-reported zero frames, and the readings that told them apart had to be added before
-anything could be diagnosed. Sound is at that stage now.
+WHAT THAT LEAVES IS UPSTREAM OF THE RENDER. Opus CONCEALS a frame it was handed nothing
+for - it emits plausible audio rather than a gap - so a stream losing audio packets
+keeps the ring fed, keeps the engine busy, and still sounds wrong. Concealed, Refused,
+Decoded, BeforeAnyHeader and the ring's Written and Dropped are all printed now, and the
+same runs reported 12 and 38 video units lost by the network.
 
-AND IT DECIDES AN ATTRIBUTION RATHER THAN JUST REPORTING. The crackling is probably
-PP813's consequence: senkusha fails, the session carries rtt 1000us on a link the C
-measured at 7.030ms, and a jitter buffer sized for a sevenfold faster link underruns
-periodically. Probably is the operative word - Cleared rising across a run is what would
-separate that from an independent fault in the audio path, and without it the
-attribution stays inference.
+AND THE INSTRUMENTS ARE SHOWN WORKING, which is why this line is not just a print. A
+staged empty frame scores one concealment and one decode; a staged gap scores one break,
+a longer silence after it scores no second, and audio played again then stopped scores
+the second. Two hypotheses were already spent reading counters that were each truthful
+about the wrong half of the path.
 
 ## Block G — Test discipline
 

@@ -31,7 +31,7 @@
 - 📋 **PP811** (deps: PP800 ✅) **the ported send path has no caller, so a live takion stamps its MAC and sends with no lock across the two** — PP675 wrote the order the C holds one mutex over, and ManagedTakion's four sends do it inline instead; PP800's census is what found the seam had only a test on it. → §PP811
 - 📋 **PP812** (deps: PP801 ✅) (requires: console) **the datagram capture taps the C's takion and the port opens its own, so a run without a relay records nothing** — The tap watches a socket no datagram reaches now; PP785 keeps the C's answers as a recording, and this flag is how one is made. → §PP812
 - 🛠 **PP813** (deps: —) **the port's senkusha gets the bang then loses every pong, so the RTT test answers Unknown and the link is unmeasured** — Ten pings leave the socket and ToAv stays 0; the 48 ignored protobufs are ExpectPong having no arm, as the C also does, so only the wire is left to read. → §PP813
-- 📋 **PP814** (deps: —) **nothing reports whether audio dropped, so a crackling stream and a clean one read identically** — AudioPlayback.Cleared already counts each sink thrown away and AudioRing holds its fill and overflow; the stream line prints six video numbers and no audio one. → §PP814
+- 🛠 **PP814** (deps: —) **nothing reports whether audio dropped, so a crackling stream and a clean one read identically** — Three runs read 0 cleared and at most 1 break against about five clicks heard, so the fault is upstream of the render; Concealed is printed now and shown detecting one. → §PP814
 
 ## Block G — Test discipline
 

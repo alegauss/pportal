@@ -62,7 +62,14 @@ public sealed class WasapiRender : IDisposable
     private int bufferFrames;
     private long startedAt;
     private long framesWritten;
+    private long silentFrames;
+    private long silentEpisodes;
     private bool disposed;
+
+    // PP814: pump-thread only, so no interlock. `played` latches once real audio has gone in and
+    // `silentRun` collapses a run of silent passes into the one break a listener hears.
+    private bool played;
+    private bool silentRun;
 
     /// <param name="format">
     /// What to hand the engine, which defaults to the format the console announces.
@@ -84,6 +91,26 @@ public sealed class WasapiRender : IDisposable
 
     /// <summary>How many frames have reached the engine, silence included.</summary>
     public long FramesWritten => Interlocked.Read(ref framesWritten);
+
+    /// <summary>
+    /// PP814: and how many of those were silence, because the queue had nothing to play.
+    ///
+    /// A subset of <see cref="FramesWritten"/> and not a second total. Each run of these is a gap
+    /// in the sound where the ring ran dry, which is one of the two ways a periodic click is made -
+    /// the other being <see cref="Session.AudioPlayback.Cleared"/>, where the ring got too far
+    /// ahead and was dumped instead. They call for opposite fixes, so the numbers are kept apart.
+    /// </summary>
+    public long SilentFrames => Interlocked.Read(ref silentFrames);
+
+    /// <summary>
+    /// PP814: how many times the sound BROKE, which is the number a listener counts.
+    ///
+    /// <see cref="SilentFrames"/> cannot answer it: that total includes every frame written between
+    /// the device opening and the first unit arriving, and it does not say whether what followed was
+    /// one long gap or twenty short ones. A run of consecutive silent passes is one break here, and
+    /// silence before any audio has played is none - there was nothing to interrupt.
+    /// </summary>
+    public long SilentEpisodes => Interlocked.Read(ref silentEpisodes);
 
     /// <summary>How many units are waiting to be played.</summary>
     public int Queued
@@ -322,6 +349,30 @@ public sealed class WasapiRender : IDisposable
                 return;
 
             Interlocked.Add(ref framesWritten, frames);
+
+            // PP814: and the silent share, counted apart. FramesWritten already includes these, so
+            // the total alone cannot tell a stream that played from one that filled the engine with
+            // nothing - which is the difference between a ring running dry and a ring being cleared,
+            // two opposite faults a listener hears as the same periodic click.
+            if (unit is null)
+            {
+                Interlocked.Add(ref silentFrames, frames);
+
+                // AND THE EPISODES, which is what a listener actually counts. The frame total mixes
+                // the silence written from the moment the device opened until the first unit arrived
+                // with every gap since, so it cannot say how many times the sound broke. A run of
+                // consecutive silent passes is ONE break, and only after real audio has played -
+                // before that there is nothing to interrupt.
+                if (played && !silentRun)
+                    Interlocked.Increment(ref silentEpisodes);
+
+                silentRun = true;
+            }
+            else
+            {
+                played = true;
+                silentRun = false;
+            }
 
             if (unit is null)
                 stopping.Token.WaitHandle.WaitOne(PollInterval);

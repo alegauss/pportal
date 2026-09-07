@@ -76,6 +76,92 @@ public class WasapiRenderTests(ITestOutputHelper output)
     }
 
     /// <summary>
+    /// PP814: AN IDLE ENGINE IS ALL SILENCE, and the total alone cannot say so.
+    ///
+    /// FramesWritten counts silence in, so a render nobody queued anything to and one playing a
+    /// tone both report a rising number. A listener hearing a click every one to two seconds needs
+    /// the two told apart: silence written is the ring having run dry, and AudioPlayback.Cleared is
+    /// the opposite fault - the ring so far ahead it was dumped. Same symptom, opposite fixes.
+    ///
+    /// Nothing is queued here, so every frame the engine took must be a silent one. That is the
+    /// strongest form available without a console: the subset equals the total.
+    /// </summary>
+    [Fact]
+    public void SilenceIsCountedApartFromTheTotal()
+    {
+        using var render = new WasapiRender();
+
+        if (render.Start() is RenderResult.NoDevice)
+            return;
+
+        Assert.True(
+            SpinWait.SpinUntil(() => render.FramesWritten > 0, TimeSpan.FromSeconds(3)),
+            "the engine took nothing at all");
+
+        long written = render.FramesWritten;
+        long silent = render.SilentFrames;
+
+        output.WriteLine($"{written} frame(s) written, {silent} silent");
+
+        // A subset and never a second total.
+        Assert.InRange(silent, 1, written);
+
+        // And with nothing queued it is the WHOLE of it, which is what makes this an assertion
+        // about the counter rather than about the device's cadence.
+        Assert.Equal(written, silent);
+
+        // AND NO BREAK, which is the distinction the episode counter exists for: nothing has played,
+        // so there is nothing this silence interrupted. A counter that scored these as breaks would
+        // report a device nobody sent audio to as the worst-sounding run in the ledger.
+        Assert.Equal(0, render.SilentEpisodes);
+    }
+
+    /// <summary>
+    /// PP814: A LONG GAP IS ONE BREAK AND TWO GAPS ARE TWO, which is the whole of the counter.
+    ///
+    /// A listener counts how many times the sound broke, and the frame total cannot answer that: one
+    /// gap of a second and thirty of a frame each are the same number of silent frames and nothing
+    /// like the same complaint. So the counter collapses a run of silent passes into one, and this
+    /// is what shows it doing both halves rather than being asserted to.
+    ///
+    /// WITHOUT THIS THE INSTRUMENT IS A HOPE. A live run reported 1 break against about five clicks
+    /// heard, and that reading is only usable as evidence if a staged gap is known to score one.
+    /// </summary>
+    [Fact]
+    public void SilentEpisodesCollapseARunAndSeparateTwoGaps()
+    {
+        using var render = new WasapiRender();
+
+        if (render.Start() is RenderResult.NoDevice)
+            return;
+
+        // Enough of a tone to keep the engine fed while it is queued, so `played` latches.
+        for (var at = 0; at < 8; at++)
+            render.Write(Unit(at * Announced.FrameSize, amplitude: 0.35));
+
+        Assert.True(
+            SpinWait.SpinUntil(() => render.SilentEpisodes >= 1, TimeSpan.FromSeconds(5)),
+            "the queue drained and no break was scored");
+
+        // The run continues silent, and a break already scored must not be scored again.
+        long afterFirst = render.SilentEpisodes;
+        Thread.Sleep(250);
+
+        output.WriteLine($"{afterFirst} then {render.SilentEpisodes} after a longer silence");
+        Assert.Equal(afterFirst, render.SilentEpisodes);
+
+        // A second gap, on the far side of real audio, is a second break.
+        for (var at = 0; at < 8; at++)
+            render.Write(Unit(at * Announced.FrameSize, amplitude: 0.35));
+
+        Assert.True(
+            SpinWait.SpinUntil(() => render.SilentEpisodes > afterFirst, TimeSpan.FromSeconds(5)),
+            "audio played again and the gap after it scored nothing");
+
+        output.WriteLine($"{render.SilentEpisodes} break(s) over two staged gaps");
+    }
+
+    /// <summary>
     /// WHAT IS PLAYED IS HEARD, through PP698's loopback on the same endpoint.
     ///
     /// The assertion PP708 owes, and it costs nothing extra to make: this port can already listen to

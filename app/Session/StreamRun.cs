@@ -279,6 +279,39 @@ public static class StreamRun
                 + $", {senkusha.Router?.Seen ?? 0} arrival(s), {senkusha.Router?.Handled ?? 0} handled"
                 + $", session carries {Measured(session)}");
 
+        // PP814: the sound, which this line reported in no number at all while carrying six for
+        // video. A listener on 2026-09-07 heard the console's music correctly and clicking every one
+        // to two seconds, and correct-content-with-gaps is a discontinuity rather than corruption.
+        //
+        // BOTH DIRECTIONS, because they are opposite faults a listener cannot tell apart. `cleared`
+        // is the ring getting more than three buffers ahead and being dumped; `silent` is the engine
+        // filled with nothing because the ring ran dry. A periodic click is made either way, and
+        // which number moves decides which fix.
+        // AND THE ANNOUNCED FORMAT, without which the frame counts are uninterpretable: seconds are
+        // frames over the rate, and the rate is whatever STREAMINFO said rather than a constant this
+        // side picks. Reading 376320 frames as 7.8s took a guess at 48000 that nothing here printed.
+        Console.WriteLine(
+            $"[audio] {phase.Audio.Drained} unit(s) drained, {phase.Audio.Cleared} cleared"
+                + $", {phase.Audio.Render.FramesWritten} frame(s) written of which"
+                + $" {phase.Audio.Render.SilentFrames} silent"
+                + $" in {phase.Audio.Render.SilentEpisodes} break(s)"
+                + $", {phase.Audio.Render.Queued} still queued"
+                + $", announced {phase.Speaker?.Announced.ToString() ?? "nothing"}");
+
+        // AND THE DECODER'S OWN VIEW, which is where a lost packet shows and the render's cannot.
+        //
+        // Opus CONCEALS a frame it was handed nothing for - it emits plausible audio rather than a
+        // gap - so a stream losing packets keeps the ring full, keeps the engine fed, and still
+        // sounds wrong. Two readings of this run reported 0 cleared and 1 break against a listener
+        // hearing five clicks, which is that shape exactly: the fault never reaches the render.
+        if (phase.Speaker is { } speaker)
+        {
+            Console.WriteLine(
+                $"[audio] decoder: {speaker.Decoded} decoded, {speaker.Concealed} concealed"
+                    + $", {speaker.Refused} refused, {speaker.BeforeAnyHeader} before any header"
+                    + $", ring took {phase.Audio.Sink.Written} and dropped {phase.Audio.Sink.Dropped}");
+        }
+
         // PP813: and where the ones that did nothing went, which the two counts above cannot say.
         // A run that answered Unknown with every pong lost reads identically here to one whose
         // pongs were refused by the arm - Handled counts a refusal - so the tally is what tells a

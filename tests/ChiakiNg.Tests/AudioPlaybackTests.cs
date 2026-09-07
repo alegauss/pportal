@@ -175,4 +175,52 @@ public class AudioPlaybackTests(ITestOutputHelper output)
             Assert.True(render.QueuedBytes > 0);
         }
     }
+
+    /// <summary>
+    /// PP814: A CONCEALED FRAME IS COUNTED, and it is the one number the render cannot show.
+    ///
+    /// Opus fills in a frame it was handed nothing for rather than leaving a gap, so a stream losing
+    /// audio packets keeps the ring fed and the engine busy and still sounds wrong. Three live
+    /// readings reported 0 cleared and at most 1 silent break against a listener hearing about five
+    /// clicks a run - the render's view is healthy while the fault is upstream of it.
+    ///
+    /// SO THE COUNTER HAS TO BE SHOWN DETECTING ONE. An instrument nobody has watched find the thing
+    /// it claims to find is a hope, and two hypotheses were already spent reading counters that were
+    /// each telling the truth about the wrong half of the path.
+    /// </summary>
+    [Fact]
+    public void AConcealedFrameIsCountedApartFromADecodedOne()
+    {
+        using var render = new WasapiRender();
+        using var playback = new AudioPlayback(render);
+
+        ManagedAudioReceiverPair _ = ManagedStreamPhase.AudioPair(playback, out ManagedOpusDecoder speaker);
+
+        using (speaker)
+        {
+            if (!ManagedOpusDecoder.IsAvailable())
+            {
+                output.WriteLine("libopus is not behind the shim on this build, so this is skipped");
+                return;
+            }
+
+            var sink = (IAudioFrameSink)speaker;
+
+            sink.Header(new ManagedAudioHeader(Channels: 2, Bits: 16, Rate: 48000, FrameSize: 480, Unknown: 0));
+
+            Assert.Equal(0, speaker.Concealed);
+
+            // Nothing to decode, which is what a lost packet leaves the decoder holding.
+            sink.Frame([]);
+
+            output.WriteLine(
+                $"{speaker.Decoded} decoded, {speaker.Concealed} concealed, {speaker.Refused} refused");
+
+            // Counted as concealment AND as a decode, because Opus produced audio for it - which is
+            // exactly why the ring never starves and the render reports nothing wrong.
+            Assert.Equal(1, speaker.Concealed);
+            Assert.Equal(1, speaker.Decoded);
+            Assert.Equal(0, speaker.Refused);
+        }
+    }
 }
