@@ -407,6 +407,27 @@ read - PP56's own argument for why the freshness check exists at all. Where it d
 report a shrunken suite, the ffmpeg sentence should come second and say the stale case
 was already ruled out.
 
+### §PP802 The sixth oracle the census cannot see
+
+PP665 counted the assertions that decline when an oracle is absent, PP683 widened it
+past the test project, and PP704 closed the list: a file calling a guard the census
+knows and naming no row fails by name. PP704 also stated that check's limit in its own
+words - a SIXTH oracle arriving with a name nothing here has heard of is invisible to
+it, exactly as the fourth and fifth were.
+
+PP785 IS THAT SIXTH, and it arrived two commits later. Sixty calls to ShimTakionShape
+across eighteen files ask whether takion's wrappers are here before a differential runs,
+and OracleGuardCensus.Files names none of them. KnownGuards is derived from Files, so
+the sweep looks for guards it already knows and is silent about this one by
+construction: the check is green and the floor it prints is short by most of sixty.
+
+THE WORK IS THE CLASSIFICATION, NOT THE COUNTING. PP704's three kinds already say which
+is which. Most of those calls guard a comparison and cost the floor; some are a test OF
+the guard, which declines on a build without the oracle because that is one of the two
+cases it exists for; two are Reads - the recorder will not re-derive a recording from
+wrappers that have gone, and NativeSeam's allowance follows the same
+answer.</section_body> </invoke>
+
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed
