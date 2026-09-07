@@ -352,30 +352,29 @@ against. The second is what an oracle wants, and the first is cheaper.
 
 ### §PP813 The pongs that never come back
 
-THE FIRST FILING OF THIS LINE READ THE RUNG BACKWARDS, and the correction is the
-finding. Unknown, rung BangAwaited names the last rung COMPLETED, not the one that
-failed, and only one exit in ManagedSenkushaRun produces that pair: RunRttTest's. So the
-bang arrived and the arms that read it work.
+RUNG BangAwaited NAMES THE LAST RUNG COMPLETED, not the one that failed, and only
+RunRttTest's exit produces it with Unknown. So the bang arrived. The Unknown is written
+at answered.Count < 1 in RunRttTest: a single lost pong is a continue, so that branch
+means all ten were lost.
 
-WHERE THE UNKNOWN IS WRITTEN is RunRttTest, at answered.Count < 1. A single lost pong is
-a continue and not a failure, so that branch means ALL TEN were lost. Nothing else in
-the method answers Unknown except a WritePing that would not fit, which would have
-failed on the first iteration.
+AND THEY WERE NOT REFUSED. SenkushaRouter.Record counts Handled for every arrival that
+is not Ignored, so a Refused pong increments it. Handled was 4 - protocol ack, bang,
+echo-on ack, echo-off ack - so nothing reached the pong arm and failed one of its five
+checks. The arm is not the suspect; the delivery is.
 
-THE FOUR HANDLED FIT EXACTLY: protocol ack, bang, echo-on ack, echo-off ack. The last
-one matters - it succeeded, so the run was not cut short and echo was still being turned
-off after ten unanswered pings.
+RULED OUT BY READING: the ping itself (PingCount 10, PingBufferBytes 0x224,
+TagOffsetPastHeader 4, PingUnitsInFrameTotal 0x800, PingCodec 0xff, ExpectPongTimeoutMs
+1000 all match senkusha.c, as do the header fields), the AV route (SenkushaRouter.Av
+does call arrivals.Av), and an empty payload slice (AvPacketV7.Parse derives DataSize as
+buffer.Length - at, exactly as the C derives it).
 
-RULED OUT: PP773's silence (54 arrivals reached the object), PP777's hidden launch spec
-(senkusha's big carries none), and the bang arm (it read one).
+WHAT IS LEFT is why an AV datagram is Ignored. Parse can refuse only on buffer.Length <
+headerSize; the router ignores a base type that is neither video nor audio; and a pong
+that never arrived is invisible either way.
 
-WHAT TO READ NEXT is the pong arm in SenkushaArrivals.Av, which refuses on is_video, on
-frameIndex against PingTestIndex, on unitIndex against PingIndex, on length, and then on
-the tag - five ways to refuse and the log distinguishes none of them. The summary
-reports Seen and Handled only, so telling Refused from Ignored needs a counter that does
-not exist yet.
-
-The console does echo: the C got ten pongs on that link, 1.1 to 38.9ms.
+THE INSTRUMENT IS MISSING. The senkusha line prints Seen and Handled and no more, where
+the stream's prints its last reading. A tally by arrival, and the last routing's base
+type, is what the next live run needs.
 
 ## Block G — Test discipline
 
