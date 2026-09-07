@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Text.RegularExpressions;
 
 namespace ChiakiNg.Session;
 
@@ -205,4 +206,144 @@ public static class SeamReach
     /// seam that went back to being a shape, and nothing would report that but this.
     /// </summary>
     public static IReadOnlyList<UnreachedSeam> ExpectedStandIns { get; } = [];
+
+    /// <summary>The directory whose code decides whether an implementation is ever built.</summary>
+    public const string AppRelativeDirectory = "app";
+
+    /// <summary>
+    /// PP800: the seams whose every implementation is a type nothing in app ever constructs.
+    ///
+    /// <see cref="UnreachedIn"/> asks whether a class exists and <see cref="FilledOnlyByStandInsIn"/>
+    /// asks whether it does anything. Neither asks whether it is ever BUILT, and PP799 is what that
+    /// cost: PP747 wrote the event router, this census called the seam reached, and nothing in app
+    /// had ever constructed one - so a streaming session counted its CONNECTED event Unheard, eight
+    /// tasks later, on a tree where every check was green.
+    ///
+    /// PP767 MET THIS ONE LEVEL UP AND ANSWERED IT THE SAME WAY. Its first driver check asked
+    /// whether any file installs a run, and PP762 satisfied it from inside the class that would do
+    /// the driving, which nothing constructed. The repair was a narrower question, and this is that
+    /// question for the seven seams: not "is there an implementation" but "is one made".
+    ///
+    /// A CONSTRUCTION SITE IS A `new` IN APP'S OWN CODE, read as code and never as text - PP735's
+    /// trap, and this file is full of type names in prose. Two spellings count, because C# has two:
+    /// the explicit <c>new Foo(</c> and the target-typed <c>Foo bar = new(</c> that names the type
+    /// on the left. A census that knew only the first would report half this tree's fields as
+    /// unbuilt.
+    /// </summary>
+    public static IReadOnlyList<string> UnconstructedIn(Assembly app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+
+        if (AppCode() is not { Length: > 0 } code)
+            return [];
+
+        Type[] classes = [.. app.GetTypes().Where(one => one.IsClass && !one.IsAbstract)];
+
+        return
+        [
+            .. app.GetTypes()
+                .Where(one => one.IsInterface && one.IsPublic)
+                .Where(one =>
+                {
+                    Type[] filling = [.. classes.Where(other => one.IsAssignableFrom(other))];
+
+                    return filling.Length > 0
+                        && !Array.Exists(filling, other => IsConstructed(code, other.Name));
+                })
+                .Select(one => one.Name)
+                .Order(StringComparer.Ordinal),
+        ];
+    }
+
+    /// <summary>
+    /// Whether app's own code builds one of these, in either of C#'s two spellings.
+    /// </summary>
+    /// <param name="code">app's source with comments and string contents removed.</param>
+    /// <param name="name">The type's own name, without its namespace.</param>
+    public static bool IsConstructed(string code, string name)
+    {
+        ArgumentNullException.ThrowIfNull(code);
+        ArgumentException.ThrowIfNullOrEmpty(name);
+
+        // The generic arity marker, which reflection spells and source does not.
+        string bare = name.Split('`')[0];
+
+        if (code.Contains($"new {bare}(", StringComparison.Ordinal))
+            return true;
+
+        // Target-typed, where the type is named on the LEFT: `private readonly Foo bar = new();`
+        // and `public Foo Bar { get; } = new();`. Bounded to one line, so a declaration and an
+        // unrelated construction further down cannot be read as one site - and the accessor list
+        // is stepped over as a unit, because the semicolon inside `{ get; }` is not the statement's.
+        return Regex.IsMatch(
+            code,
+            $@"\b{Regex.Escape(bare)}\b[^;{{\r\n]*(?:\{{[^}}\r\n]*\}})?[^;\r\n]*=\s*new\s*\(",
+            RegexOptions.None,
+            TimeSpan.FromSeconds(5));
+    }
+
+    /// <summary>
+    /// app's own source, comments and string contents removed, or empty outside a checkout.
+    ///
+    /// The obj and bin trees are skipped for the reason every sweep here skips them: a generated
+    /// copy of this assembly's source would answer about a build rather than about the tree.
+    /// </summary>
+    public static string AppCode()
+    {
+        if (SanitizerSource.LocateDirectory(AppRelativeDirectory) is not { } root)
+            return string.Empty;
+
+        var built = new System.Text.StringBuilder();
+
+        foreach (string path in Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories))
+        {
+            if (path.Contains(@"\obj\", StringComparison.Ordinal)
+                || path.Contains(@"\bin\", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            built.Append(DeadAssertions.CodeOnly(File.ReadAllText(path))).Append('\n');
+        }
+
+        return built.ToString();
+    }
+
+    /// <summary>
+    /// The seams whose implementations exist and are never built, and what each one is.
+    ///
+    /// THREE, AND THE THIRD IS WHY THIS AXIS EXISTS. The first two are harnesses and say so; the
+    /// last is a ported module with no caller, found by this sweep on the commit that wrote it.
+    /// PP799 was the same shape found eight tasks late, on a tree where every other check was
+    /// green - which is what a row here is worth.
+    ///
+    /// A ROW IS NOT A PERMISSION. <see cref="Expected"/>'s rows say what a seam is waiting for and
+    /// so do these: two are waiting for nothing and one is waiting for PP811.
+    /// </summary>
+    public static IReadOnlyList<UnreachedSeam> ExpectedUnconstructed { get; } =
+    [
+        // The replay harness. ExchangeReplay drives a recorded conversation against a participant
+        // and the three participants are the port's side of it - a corpus replay is a test by
+        // construction, so the test project building them is where they belong.
+        new(
+            "IExchangeParticipant",
+            "the exchange replay is a test harness: its participants answer a recording, and app "
+                + "has no path that replays one"),
+
+        // PP632 took holepunch off every path the host runs, so the live steps have no caller here
+        // by design rather than by omission - PP481's tests are what reach them, and those need a
+        // punched hole to a real machine as well.
+        new(
+            "IHolepunchPunchSteps",
+            "PP632 left holepunch with no caller in app, and PP481's live tests are what build the "
+                + "steps - which need a console as well"),
+
+        // And the finding. TakionSendPath is PP675's port of chiaki_takion_send and nothing sends
+        // through it; ManagedTakion's four sends stamp and send inline, so the lock the C holds
+        // across both is not held. PP811 is the reading that says whether that is reachable.
+        new(
+            "ITakionWire",
+            "PP811: TakionSendPath has no caller, so the only implementation in app is the "
+                + "recording one and a live takion sends round the ported path"),
+    ];
 }

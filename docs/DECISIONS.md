@@ -104,6 +104,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP805** **senkusha's four arrival arms are called by tests alone, so a run driving a real takion ends every wait in a timeout** — senkusha's ack arm is fed what the send buffer released and never the cumulative number the ack carries, which is right only while nothing else is in flight.
 - ✅ **PP797** **the console's audio reaches a receiver whose output goes nowhere, and nothing drains the ring into a speaker** — The ring is drained by a pump of its own and not by the render client's: one asks how far behind the sink is and the other asks how much room the engine has left.
 - ✅ **PP798** **one access unit per session is refused by the decoder and the log says which error, never which frame** — The reading is taken on the port's side of the seam and the vendored decoder is not patched, so the two cases are separated without a local change to lib.
+- ✅ **PP800** **SeamReach counts an implementation that no path in app ever constructs, so a sink only tests build reads as reached** — A seam is reached when app's own code constructs an implementation, not when one exists: a class only the test project builds satisfies the type graph and nothing else.
 
 ## Block G — Test discipline
 

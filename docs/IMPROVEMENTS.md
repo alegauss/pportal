@@ -214,30 +214,6 @@ port does not own calling code it does - a boundary needing explaining at every 
 reading. Five lines carry the port, and the file stops calling takion when the last
 lands.
 
-### §PP800 The seam a test double reaches
-
-PP741 counts an interface in app implemented only by test doubles, and
-SessionEventRouterTests asserts its row has left the unreached list. That row went green
-when PP747 wrote the router - and PP799 then found that nothing in app had ever
-CONSTRUCTED one. The events the router exists to route were still being counted Unheard
-eight tasks later, on a tree where every census, every drift check and every gate was
-green.
-
-PP767 HAS ALREADY MET THIS EXACT WEAKNESS one level up. Its first driver check asked
-whether any file in app installs a run, and PP762 answered it from inside the class that
-would do the driving, which nothing constructed. The repair was to ask a narrower
-question: not an install anywhere, but an install on a path that BUILDS A SESSION.
-SeamReach still asks the wide version - is there an implementation in this assembly -
-and a class only a test project builds satisfies it.
-
-WHAT A CONSTRUCTION SITE IS, is the question to answer before writing the check.
-StreamPhaseDriver recognises one by the call that opens a session, which works because
-sessions have one door. Seams have no such door, so the honest reading is probably a
-`new` of the implementing type in a non-test file, read as code rather than text -
-PP793's rule, and the trap PP735 named: a symbol in quotes is a model and not a caller.
-
-An assertion inverts here: the census gains a row it currently reports as covered.
-
 ### §PP801 The two session paths the flip left behind
 
 PP767 established that the question is not whether app installs a phase but which paths
@@ -376,6 +352,29 @@ TWO SHAPES OF FIX AND THEY ARE NOT EQUAL. Putting the tail back at the head of t
 keeps the audio and adds a partial-unit state; asking the room BEFORE dequeuing and
 leaving the unit alone keeps the queue simple and costs a pass. The second is what the
 capture direction does, which is the argument for it.
+
+### §PP811 The send path nothing sends through
+
+PP675 ported chiaki_takion_send as TakionSendPath.Send: take the cipher's lock, stamp
+the MAC, send, release - with the send INSIDE the lock, and its own prose says why. Two
+threads that stamp under a lock and then race to the socket put their datagrams on the
+wire in an order neither key position matches, and a stream cipher fed positions out of
+order produces noise rather than an error.
+
+NOTHING IN APP CALLS IT. ManagedTakion has four sends and each writes the key position,
+stamps the GMAC and calls the wire directly. The only implementation of ITakionWire in
+app is the recording one, which is a test double - which is how PP800's census found
+this, and is the second time a ported module turned out to have no caller.
+
+WHETHER IT IS REACHABLE IS NOT ANSWERED HERE. Three threads send on a live session - the
+run, the feedback sender and whatever acks - so two sends can overlap; what is not
+established is whether the positions they take can interleave in a way the console
+rejects, or whether the ledger's own commit already orders them.
+
+SO THE FIRST WORK IS READING, not a lock. If the ledger orders it, this is a module to
+retire rather than a defect to fix, and PP800's row says so instead of implying a
+repair. If it does not, the symptom is a stream that decodes noise for a moment under
+load, which is the hardest kind of report to attribute afterwards.
 
 ## Block G — Test discipline
 

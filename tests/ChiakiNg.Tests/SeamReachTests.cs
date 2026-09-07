@@ -132,6 +132,69 @@ public class SeamReachTests(ITestOutputHelper output)
         => Assert.All(SeamReach.Expected, row => Assert.False(string.IsNullOrWhiteSpace(row.Why)));
 
     /// <summary>
+    /// PP800: AND THE THIRD AXIS - a seam whose implementation nothing ever BUILDS.
+    ///
+    /// PP799 is what the first two axes missed. The event router existed, did real work, and no
+    /// file in app constructed one - so this census called the seam reached while a live session
+    /// counted its CONNECTED event Unheard. PP767 met the same weakness one level up and answered
+    /// it by narrowing the question, and this is that narrowing for the seven seams.
+    /// </summary>
+    [Fact]
+    public void TheUnconstructedSeamsAreTheseAndNoOthers()
+    {
+        string[] found = [.. SeamReach.UnconstructedIn(App)];
+        string[] declared =
+            [.. SeamReach.ExpectedUnconstructed.Select(one => one.Interface).Order(StringComparer.Ordinal)];
+
+        output.WriteLine($"{found.Length} seam(s) implemented and never constructed");
+        output.WriteLine(string.Join("\n", found));
+
+        Assert.Equal(declared, found);
+    }
+
+    /// <summary>
+    /// The reader knows both of C#'s spellings, which is what keeps it from reporting half the tree.
+    ///
+    /// A census that knew only <c>new Foo(</c> would call every target-typed field unbuilt, and this
+    /// tree is written with them - so the false positives would be the answer rather than the
+    /// exception. Both are asserted, and so is the case that must NOT match: a name in a line that
+    /// constructs something else.
+    /// </summary>
+    [Fact]
+    public void BothWaysOfBuildingOneAreRead()
+    {
+        Assert.True(SeamReach.IsConstructed("var one = new Router(peer);", "Router"));
+        Assert.True(SeamReach.IsConstructed("private readonly Router one = new();", "Router"));
+        Assert.True(SeamReach.IsConstructed("public Router One { get; } = new();", "Router"));
+
+        // A list OF them is not one of them.
+        Assert.False(SeamReach.IsConstructed("List<Router> many = new List<Router>();", "Router"));
+
+        // And a mention with no construction anywhere on the line.
+        Assert.False(SeamReach.IsConstructed("void Take(Router one) => Use(one);", "Router"));
+    }
+
+    /// <summary>
+    /// A CENSUS THAT READ NOTHING WOULD AGREE WITH AN EMPTY LIST, which is PP271's trap.
+    ///
+    /// The sweep answers empty outside a checkout by design, and an empty expected list would then
+    /// match it forever. So the corpus itself is asserted: app's code is there and it is code.
+    /// </summary>
+    [Fact]
+    public void TheSweepActuallyReadsSomething()
+    {
+        string code = SeamReach.AppCode();
+
+        if (code.Length == 0)
+            return;
+
+        output.WriteLine($"{code.Length} character(s) of app source, comments and literals stripped");
+
+        // A type this assembly certainly builds, found through the same reader the census uses.
+        Assert.True(SeamReach.IsConstructed(code, nameof(AudioRing)));
+    }
+
+    /// <summary>
     /// And no row names an interface the assembly has stopped declaring.
     ///
     /// A renamed or deleted interface would otherwise leave a row that reads as a known gap and
