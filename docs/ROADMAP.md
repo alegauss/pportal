@@ -34,8 +34,6 @@
 
 ## Block G — Test discipline
 
-- 💭 **PP803** (deps: —) **the two arranged flips are checked by reading text, and nothing ever builds the shape either one leaves** — One trial of takion's bare shape found a link failure every text check called ready, and the other flip had the same one. → §PP803
-
 ## Block H — Performance and telemetry
 
 - ⏳ **PP46** (deps: PP42 ✅, PP63) **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — A Chromium leaving the build should be visible in cold start and in megabytes, and stating it without measuring is how a port collects folklore. → §PP46

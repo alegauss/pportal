@@ -73,8 +73,13 @@ public static class DriftCorpus
         // PP595 added .mcp.json, and it arrived by the guard below rather than by being remembered:
         // RoadkeepSurfaces named it as a constant and UndeclaredRootFiles reported it before the
         // commit, which is the eighth name getting here the way ChiakiNg.slnx got here for PP436.
-        ".gitignore", ".mcp.json", "ChiakiNg.slnx", "CMakeLists.txt", "compile.cmd", "package.cmd",
-        "roadkeep.toml", "vcpkg.json",
+        //
+        // PP803 added flip.cmd, and it arrived the same way: FlipTrial names it as a constant, so
+        // the guard below reported it before the commit rather than the list falling behind. It is
+        // a launcher and not a gate - it builds the shape an arranged deletion leaves, in a build
+        // directory of its own, for somebody about to touch one of the two arrangements.
+        ".gitignore", ".mcp.json", "ChiakiNg.slnx", "CMakeLists.txt", "compile.cmd", "flip.cmd",
+        "package.cmd", "roadkeep.toml", "vcpkg.json",
     ];
 
     /// <summary>

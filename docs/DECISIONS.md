@@ -122,6 +122,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP806** **the stream driver reads any .InstallOn( in a path file, so a second seam's install answers the stream's question** — The evidence a path drives the stream is the type it constructs, because a receiver at a call site is a variable and its type is spelled only where it is built.
 - ✅ **PP796** **a stale suite binary is a warning and the floor then fails naming ffmpeg, so it reads as a shrunken suite** — A gate reports nothing it read off a stale binary: the freshness check refuses rather than warning, because every number below it is about a tree nobody is looking at.
 - ✅ **PP802** **PP785's sixty takion guards are named by no census row, and the closed-list check cannot see a guard it never heard of** — An oracle asked three ways needs three guard names, because the sweep matches what is written at the call and not what the call means.
+- ✅ **PP803** **the two arranged flips are checked by reading text, and nothing ever builds the shape either one leaves** — A flip trial builds the suite's shape and not the library's: chiaki-unit is the target the link failure was in, and the library's after-shape wants edits that belong to the flip's own commit.
 
 ## Block H — Performance and telemetry
 

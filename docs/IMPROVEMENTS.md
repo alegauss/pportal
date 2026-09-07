@@ -376,29 +376,6 @@ against. The second is what an oracle wants, and the first is cheaper.
 
 ## Block G — Test discipline
 
-### §PP803 Building the shape, not reading it
-
-Two deletions are arranged for and neither has landed: PP696 takes the frame path's four
-C files, PP27's end state takes takion's three. Both are prepared the same way - a
-define beside the source list, guards in main.c, readers in app that assert the two
-agree - and every one of those checks reads TEXT.
-
-PP786 BUILT THE BARE SHAPE INSTEAD, once, and the build failed. -Wl,--wrap=malloc turns
-every allocation in every linked object into a reference to __wrap_malloc, and the only
-definition of that symbol is in allocbudget.c - the one file BOTH flips remove. The link
-error named allocation sites in libchiaki, munit and jerasure. Every text check was
-green while it was true, and PP760's own trial had edited text and never rebuilt the C,
-which is exactly where this could hide.
-
-WHAT IS OWED IS A RUN, not another reader. A configure and build of each flip's
-after-shape, done deliberately and thrown away - the same thing PP786 did by hand with a
-backup file and three edits. Cheap: the trial took under a minute of build time.
-
-WHERE IT GOES IS THE QUESTION. compile.cmd builds one shape and the gate is already the
-slowest thing in a commit, so this is plausibly a flag rather than a step - something a
-person runs before touching either flip's arrangement, and the flip's own task then runs
-as its first move.</section_body>
-
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed

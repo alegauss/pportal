@@ -828,6 +828,7 @@
 - ✅ **PP806** **the stream driver reads any .InstallOn( in a path file, so a second seam's install answers the stream's question** — A session path that composes its own must now name the stream's seam as well as call the install, so a senkusha phase installed beside it answers nothing.
 - ✅ **PP796** **a stale suite binary is a warning and the floor then fails naming ffmpeg, so it reads as a shrunken suite** — A binary ninja says is out of date ends the run, so no count is read off the previous build; and where a suite did shrink, the stale case is ruled out before the build option is named.
 - ✅ **PP802** **PP785's sixty takion guards are named by no census row, and the closed-list check cannot see a guard it never heard of** — The takion wrappers are three declared guards with nineteen rows, so the sweep can see them at all: the floor the gate prints goes from 35 declined assertions to 88.
+- ✅ **PP803** **the two arranged flips are checked by reading text, and nothing ever builds the shape either one leaves** — flip.cmd builds chiaki-unit as either arranged deletion leaves it, in a build directory of its own - and both shapes link, which PP786's repair had only ever been read about.
 
 ## Block H — Performance and telemetry
 
