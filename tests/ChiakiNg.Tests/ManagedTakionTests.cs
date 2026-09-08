@@ -609,6 +609,120 @@ public class ManagedTakionTests(ITestOutputHelper output) : IDisposable
     }
 
     /// <summary>
+    /// PP823: THE SEND POSITION IS A COUNTER OF WHAT THIS CLIENT SENT, not what arrived.
+    ///
+    /// takion.c keeps two: key_pos_local, advanced by each packet this side sends, and key_state,
+    /// which reconstructs 64 bits from the 32 an ARRIVING datagram carries. The port had only the
+    /// second and all four position-taking sends asked it what wire value zero meant - so the
+    /// answer moved with received traffic and counted nothing that left.
+    ///
+    /// Asserted through the wire, because the position is a field in the packet: three sends and
+    /// the numbers they carry, against the four sizings the C passes at those sites.
+    /// </summary>
+    [Fact]
+    public void TheSendPositionCountsWhatWasSentAndNotWhatArrived()
+    {
+        using ManagedTakion takion = Connected(0x0000_e823, 0x0000_8230, 0x6a);
+
+        // No cipher, so every position is zero and the ledger does not move - the C's own answer
+        // ahead of the bang, and the reason this half was invisible for so long.
+        Assert.Equal(ChiakiError.Success, takion.SendDataAck(1));
+        Assert.Equal(0u, takion.KeyPosLocal);
+        Assert.Equal(0u, PositionOf(NextFromTheSocket()));
+
+        takion.LocalCrypt = ManagedGkCrypt.Derive(
+            2,
+            [.. Enumerable.Repeat((byte)0x2b, GkDerivation.HandshakeKeySize)],
+            [.. Enumerable.Repeat((byte)0x7c, GkDerivation.EcdhSecretSize)]);
+
+        // WholePacket for the ack: twelve bytes, and the C's sizing adds the remainder rather than
+        // rounding up - 12 + (12 % 16) is 24, where rounding up would give 16.
+        Assert.Equal(ChiakiError.Success, takion.SendDataAck(2));
+        Assert.Equal(0u, PositionOf(NextFromTheSocket()));
+
+        ulong afterAck = TakionKeyPosition.Sized((ulong)TakionDataDatagrams.AckSize);
+        Assert.Equal(afterAck, takion.KeyPosLocal);
+
+        // FixedConstant for congestion: fifteen bytes, so 15 + 15 = 30.
+        Assert.Equal(ChiakiError.Success, takion.SendCongestion(received: 1, lost: 0));
+        Assert.Equal(afterAck, PositionOf(NextFromTheSocket()));
+
+        ulong afterCongestion = afterAck + TakionKeyPosition.Sized(TakionCongestion.PacketSize);
+        Assert.Equal(afterCongestion, takion.KeyPosLocal);
+
+        // PayloadOnly for a data message: the PAYLOAD's four bytes and not the packet's thirty,
+        // which is the sizing that looks like a bug in the C and is the protocol.
+        Assert.Equal(
+            TakionSendStage.SentAndHeld, takion.SendData(channel: 0, payload: [1, 2, 3, 4]).Stage);
+
+        Assert.Equal(afterCongestion, PositionOf(NextFromTheSocket()));
+        Assert.Equal(afterCongestion + TakionKeyPosition.Sized(4), takion.KeyPosLocal);
+
+        output.WriteLine($"key_pos_local ended at {takion.KeyPosLocal}");
+    }
+
+    /// <summary>
+    /// AND ARRIVING TRAFFIC DOES NOT MOVE IT, which is the defect stated as a difference.
+    ///
+    /// The receive ledger is dragged forward by every datagram the AV arm reads. Before this, a
+    /// send asked THAT one what wire value zero meant - so a stream's twenty thousand video packets
+    /// decided where the next control message claimed to be.
+    ///
+    /// THE SECOND SEND IS WHAT SEPARATES THE TWO ANSWERS, and a test without it proves nothing: on
+    /// a fresh takion both counters read zero, and the old reading returned zero for the first send
+    /// as well. So one send advances the send counter first, then an arrival moves the OTHER one,
+    /// and the position the next packet carries has to be the first counter's - where the reading
+    /// this replaces would have gone back to zero.
+    /// </summary>
+    [Fact]
+    public void ReceivedTrafficMovesTheReceiveLedgerAndNotTheSendCounter()
+    {
+        using ManagedTakion takion = Connected(0x0000_e824, 0x0000_8231, 0x6b);
+
+        takion.LocalCrypt = ManagedGkCrypt.Derive(
+            2,
+            [.. Enumerable.Repeat((byte)0x2b, GkDerivation.HandshakeKeySize)],
+            [.. Enumerable.Repeat((byte)0x7c, GkDerivation.EcdhSecretSize)]);
+
+        // One send, so the send counter is somewhere other than where it started.
+        Assert.Equal(ChiakiError.Success, takion.SendDataAck(3));
+        NextFromTheSocket();
+
+        ulong sent = takion.KeyPosLocal;
+        Assert.NotEqual(0ul, sent);
+
+        // Now an arrival, committed exactly as the receive path commits one.
+        ulong arrived = takion.Ledger.RequestPos(0x0001_0000, commit: true);
+
+        output.WriteLine($"receive ledger at {arrived}, send counter at {takion.KeyPosLocal}");
+
+        Assert.True(arrived >= 0x0001_0000ul, $"the receive ledger did not advance, it is at {arrived}");
+
+        // Untouched by it, which is the whole finding.
+        Assert.Equal(sent, takion.KeyPosLocal);
+
+        // And the next packet carries the send counter. The reading this replaces asked the receive
+        // ledger what wire value zero meant and would have put ZERO here, having already sent one.
+        Assert.Equal(ChiakiError.Success, takion.SendDataAck(4));
+        Assert.Equal((uint)sent, PositionOf(NextFromTheSocket()));
+    }
+
+    /// <summary>The key position a datagram carries, by its own type's layout.</summary>
+    private static uint PositionOf(byte[] datagram)
+    {
+        int baseType = datagram[0] & TakionDispatch.BaseTypeMask;
+
+        if (TakionPacketMac.LayoutFor(baseType) is not { } layout)
+        {
+            Assert.Fail($"no key position layout for base type {baseType}");
+            return 0;
+        }
+
+        return System.Buffers.Binary.BinaryPrimitives.ReadUInt32BigEndian(
+            datagram.AsSpan(layout.KeyPosOffset, TakionPacketMac.KeyPosSize));
+    }
+
+    /// <summary>
     /// A raw send is still raw, which is the one of the five that must NOT be routed.
     ///
     /// chiaki_takion_send_raw is one write to the socket, and senkusha's two measurements are its

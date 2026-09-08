@@ -185,8 +185,65 @@ public sealed class ManagedTakion : ITakionLoopHost, IDataAckSink, IDisposable
     /// </summary>
     public uint TagLocal { get; }
 
-    /// <summary>The key-position ledger, which PP677 put in managed code.</summary>
+    /// <summary>
+    /// The key-position ledger, which PP677 put in managed code - and it is the RECEIVE side.
+    /// </summary>
+    /// <remarks>
+    /// PP823: named here because the distinction was worth four sends. This is
+    /// takion-&gt;key_state, whose job is to turn the 32 bits an ARRIVING datagram carries back into
+    /// the 64-bit position it was encrypted at. What this client SENDS at is
+    /// <see cref="KeyPosLocal"/>, a different field with a different job.
+    /// </remarks>
     public ManagedKeyState Ledger { get; } = new();
+
+    /// <summary>
+    /// PP823: takion-&gt;key_pos_local - where the NEXT packet this client sends begins.
+    ///
+    /// A COUNTER AND NOT A RECONSTRUCTION. It starts at zero and only ever moves forward, by each
+    /// packet's own size as <see cref="TakionKeyPosition"/> rounds it. Nothing a console sends
+    /// touches it, which is the whole difference from <see cref="Ledger"/>: that one is dragged
+    /// along by arrivals, and asking it where to send from returned wherever the last video packet
+    /// happened to leave it.
+    ///
+    /// WHY IT WAS INVISIBLE UNTIL PP811. The position rides in the packet and the console reads it
+    /// out, so a wrong one was a field that did not match a stream nothing was decrypting yet. PP811
+    /// made the MAC be computed AT it, and a tag taken at a position the console did not advance is
+    /// one it cannot verify - which turns a quiet divergence into a rejected packet.
+    /// </summary>
+    public ulong KeyPosLocal { get; private set; }
+
+    /// <summary>
+    /// chiaki_takion_crypt_advance_key_pos: where this packet starts, and the ledger moved past it.
+    /// </summary>
+    /// <param name="dataSize">
+    /// The size THIS call site passes, which is four different things across the four sites -
+    /// <see cref="TakionKeyPosition.CallSites"/> is where that is recorded. Nothing reconciles them
+    /// because nothing may: each site's number is the one the console expects from it.
+    /// </param>
+    /// <remarks>
+    /// Under the cipher lock, as the C's is: it takes gkcrypt_local_mutex itself, and the feedback
+    /// path calls it while ALREADY holding that mutex - which works only because the C asks for a
+    /// recursive one. A plain lock() is reentrant for its own thread, so the same call is safe here.
+    ///
+    /// WITH NO CIPHER THE ANSWER IS ZERO AND THE LEDGER DOES NOT MOVE. Every packet before the bang
+    /// claims position zero, which is the C's own behaviour and not a gap: the field is only
+    /// meaningful once there is a stream to be a position in.
+    /// </remarks>
+    private KeyPositionGrant AdvanceKeyPos(ulong dataSize)
+    {
+        lock (cipherLock)
+        {
+            KeyPositionGrant grant =
+                TakionKeyPosition.Advance(KeyPosLocal, dataSize, cipherPresent: LocalCrypt is not null);
+
+            // Only on success, and Next is the current value where there was no cipher - so this
+            // assignment is right on both of the two paths that are not the overflow.
+            if (grant.Error == ChiakiError.Success)
+                KeyPosLocal = grant.Next;
+
+            return grant;
+        }
+    }
 
     /// <summary>seq_num_local, which the C seeds from the local tag rather than from zero.</summary>
     public uint SeqNumLocal { get; private set; }
@@ -351,7 +408,17 @@ public sealed class ManagedTakion : ITakionLoopHost, IDataAckSink, IDisposable
         TakionFeedbackSends.WriteFeedbackHead(packet, type, seqNum);
         payload.CopyTo(packet.AsSpan(head));
 
-        ulong keyPos = Ledger.RequestPos(0, commit: true);
+        // PP823: PayloadPlusBlock - the payload plus one cipher block, which is takion.c's own
+        // `payload_size + CHIAKI_GKCRYPT_BLOCK_SIZE`. The block is the gap between where the GMAC is
+        // taken and where the payload is encrypted, so a ledger advanced by the payload alone would
+        // hand the next packet a position sixteen bytes inside this one's key stream.
+        KeyPositionGrant grant =
+            AdvanceKeyPos((ulong)TakionFeedbackSends.LedgerAdvanceFor(payload.Length));
+
+        if (grant.Error != ChiakiError.Success)
+            return grant.Error;
+
+        ulong keyPos = grant.KeyPosition;
 
         // PP811: through the ported sequence rather than inline. This wrote the encrypt, the
         // position and the tag itself and did them in the right order, and still differed from the
@@ -400,8 +467,15 @@ public sealed class ManagedTakion : ITakionLoopHost, IDataAckSink, IDisposable
         if (wire is null)
             return ChiakiError.Uninitialized;
 
-        // The C advances by the packet's own size, before anything is formatted.
-        ulong keyPos = Ledger.RequestPos(0, commit: true);
+        // The C advances by the packet's own size, before anything is formatted. PP823:
+        // FixedConstant - this packet is always the same length, so the size is the constant rather
+        // than a measurement of the span below.
+        KeyPositionGrant grant = AdvanceKeyPos(TakionCongestion.PacketSize);
+
+        if (grant.Error != ChiakiError.Success)
+            return grant.Error;
+
+        ulong keyPos = grant.KeyPosition;
 
         Span<byte> datagram = stackalloc byte[TakionCongestion.PacketSize];
         TakionCongestion.Write(datagram, received, lost, keyPos);
@@ -447,10 +521,19 @@ public sealed class ManagedTakion : ITakionLoopHost, IDataAckSink, IDisposable
             return ChiakiError.Uninitialized;
 
         // The C sizes this one by sizeof(buf) - the whole packet, and the only call site
-        // TakionKeyPosition records that way. What it advances is key_pos_local, which is not the
-        // ledger this class holds, so this takes the position its other four sends take rather than
-        // introducing a second answer for one of the five.
-        ulong keyPos = Ledger.RequestPos(0, commit: true);
+        // TakionKeyPosition records that way.
+        //
+        // PP823: AND IT IS key_pos_local NOW, which is what this comment used to say it was not.
+        // The old note chose the receive ledger for all four sends over "introducing a second
+        // answer for one of the five" - consistency over correctness, defensible while the position
+        // was only a field. PP811 made the MAC be taken at it, and the second answer was the right
+        // one all along: the C has two counters here and the port had the wrong one.
+        KeyPositionGrant grant = AdvanceKeyPos((ulong)TakionDataDatagrams.AckSize);
+
+        if (grant.Error != ChiakiError.Success)
+            return grant.Error;
+
+        ulong keyPos = grant.KeyPosition;
 
         Span<byte> datagram = stackalloc byte[TakionDataDatagrams.AckSize];
 
@@ -545,8 +628,22 @@ public sealed class ManagedTakion : ITakionLoopHost, IDataAckSink, IDisposable
                 TakionSendStage.KeyPositionRefused, ChiakiError.Uninitialized, false, false, 0, false);
         }
 
-        // The ledger's position for this packet, which a refusal spends nothing of.
-        ulong keyPos = Ledger.RequestPos(0, commit: true);
+        // The ledger's position for this packet, which a refusal spends nothing of. PP823:
+        // PayloadOnly, and it is the one sizing that looks like a mistake and is not - the C passes
+        // buf_size while putting DataSendPacketOverhead more bytes on the wire, so the ledger
+        // advances by less than the packet occupies. Reproduced, because the console runs the same
+        // arithmetic and an improvement here is a stream that decrypts to noise.
+        KeyPositionGrant grant = AdvanceKeyPos((ulong)payload.Length);
+
+        if (grant.Error != ChiakiError.Success)
+        {
+            // The stage the C's own early return leaves: nothing spent, because the position is the
+            // first thing it asks for and the sequence number is taken after the packet exists.
+            return new TakionSendOutcome(
+                TakionSendStage.KeyPositionRefused, grant.Error, false, false, 0, false);
+        }
+
+        ulong keyPos = grant.KeyPosition;
 
         var datagram = new byte[TakionDataDatagrams.DataSize(payload.Length)];
         uint seqNum = SeqNumLocal++;

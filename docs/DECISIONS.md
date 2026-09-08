@@ -108,6 +108,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP801** **two of the three paths that open a session install no phase, so the captures and the front door stop where the port runs** — The host's selftest is the one session path exempt from installing a phase, and it is named rather than silent: it opens sessions to assert refusals, not to stream.
 - ✅ **PP804** **senkusha's ack expectation is set around the send where the C sets it inside one, so a fast ack meets the wrong number** — Of the two shapes PP804 weighed, the arrivals own the send-under-the-lock - but take a callback, not a takion, so they still know nothing about the transport.
 - ✅ **PP808** **nothing raises a takion disconnect, so a wait on a transport that died runs its whole timeout** — A takion's disconnect says the transport is over and never why: every exit of the receive thread raises it, as the C raises it at `beach`, and a takion raises exactly one.
+- ✅ **PP823** **every send takes its key position from the receive ledger, so the MAC is stamped where the console never advanced** — The send position is key_pos_local and the receive one is the key state; the two never answer for each other.
 
 ## Block G — Test discipline
 

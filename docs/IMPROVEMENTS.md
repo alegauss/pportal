@@ -401,32 +401,6 @@ sends them, and vulkan's advantage is a copy this port does not skip anyway.
 An answer is still owed about HEVCVideoExtension, which is a Store extension a user can
 uninstall where FFmpeg's HEVC decoder is not.
 
-### §PP823 The send ledger the port does not have
-
-The C has TWO key-position counters and this port has one. `takion->key_pos_local` is
-the SEND side: `chiaki_takion_crypt_advance_key_pos` hands out where a packet starts and
-moves the counter on by the packet's size, rounded the C's own way. `takion->key_state`
-is the RECEIVE side - `chiaki_key_state_request_pos` reconstructs a 64-bit position from
-the 32 bits a received datagram carries. Different fields, different jobs.
-
-ManagedTakion has only the second. All five of its sends call `Ledger.RequestPos(0,
-commit: true)` on a ManagedKeyState, asking the RECEIVE reconstruction what the wire
-value zero means. The AV arm shares that ledger, so every arriving packet advances it -
-and a send then gets the nearest candidate to wherever the last arrival left it, not a
-count of what this client sent.
-
-PP495 PORTED THE MISSING HALF AND NOTHING CALLS IT. `TakionKeyPosition.Advance` is
-`chiaki_takion_crypt_advance_key_pos`, remainder arithmetic and all, and its `CallSites`
-map already records that the six C call sites pass FOUR different sizes. That is the
-third caller-less ported module found in this seam, after PP799's and PP811's.
-
-IT WAS DELIBERATE AND IT IS NOW LOAD-BEARING. SendDataAck's own comment chose
-consistency across the five sends over a second answer for one. That was defensible
-while the position was a field; PP811 made it what the MAC is computed at, so a wrong
-position is a tag the console cannot verify.
-
-WHAT IS NOT ESTABLISHED is what a console does with it, which needs a live run.
-
 ### §PP824 The stream's half of the ack
 
 PP807 shipped one of the two routers. `StreamArrivals` has held the seam since that line

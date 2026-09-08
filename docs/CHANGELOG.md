@@ -736,6 +736,7 @@
 - ✅ **PP820** **the ring, the drain and the pump are built and never started, so the code the click came from is still in the tree** — AudioRing, AudioRingSink, AudioPlayback and WasapiRender are gone with their tests, and a live run still plays every frame it decodes - 3330 of them, none lost.
 - ✅ **PP808** **nothing raises a takion disconnect, so a wait on a transport that died runs its whole timeout** — ManagedTakion raises it at the C's own `beach` - every exit the receive thread has, and the close - once per takion, and both composition roots hand it to the arrivals that were waiting.
 - ✅ **PP811** **the ported send path has no caller, so a live takion stamps its MAC and sends with no lock across the two** — ManagedTakion's four sends go through the ported paths now, so a live takion signs under gkcrypt_local (design superseded: the C unlocks between the MAC and send_raw, so the send is outside).
+- ✅ **PP823** **every send takes its key position from the receive ledger, so the MAC is stamped where the console never advanced** — ManagedTakion keeps key_pos_local now, advanced at each of the four sizings the C passes, so a send's position counts what left rather than what arrived.
 
 ## Block G — Test discipline
 
