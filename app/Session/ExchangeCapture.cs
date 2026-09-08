@@ -795,8 +795,12 @@ public static class ExchangeCapture
     ///
     /// Stopwatch and not DateTime: the capture's own rule is that only differences are used, and a
     /// wall clock can step backwards mid-session.
+    ///
+    /// PP813: public, because <see cref="StreamRun"/> now records through a relay too and the two
+    /// captures have to share a timebase - a second clock here would make the port's recording and
+    /// the C's incomparable in exactly the column PP27's comparison reads.
     /// </summary>
-    private static long Monotonic()
+    public static long Monotonic()
         => System.Diagnostics.Stopwatch.GetTimestamp() * 1_000_000L
             / System.Diagnostics.Stopwatch.Frequency;
 }

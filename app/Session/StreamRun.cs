@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Windows;
 using System.Windows.Controls;
 using ChiakiNg.Native;
@@ -58,7 +58,9 @@ public static class StreamRun
     /// A bound exists so a run can be STARTED and READ by something that is not a person - which is
     /// what a check needs and what a person watching does not.
     /// </param>
-    public static int Run(string? nickname, string decoderName, TimeSpan? hold = null)
+    public static int Run(
+        string? nickname, string decoderName, TimeSpan? hold = null,
+        string? via = null, string? capturePath = null)
     {
         ArgumentNullException.ThrowIfNull(decoderName);
 
@@ -80,7 +82,7 @@ public static class StreamRun
         {
             var worker = new Thread(() =>
             {
-                result = Pump(nickname, decoderName, model, window, stopping.Token);
+                result = Pump(nickname, decoderName, model, window, stopping.Token, via, capturePath);
 
                 // Closed from here rather than left open on a failure: a run with a bound is one
                 // nobody is watching, and a window that outlived its session would hold it forever.
@@ -113,7 +115,8 @@ public static class StreamRun
     /// </remarks>
     private static int Pump(
         string? nickname, string decoderName,
-        StreamOverlayViewModel model, Window window, CancellationToken stopping)
+        StreamOverlayViewModel model, Window window, CancellationToken stopping,
+        string? via = null, string? capturePath = null)
     {
         ChiakiSession.LibInit();
 
@@ -127,7 +130,44 @@ public static class StreamRun
             return 1;
         }
 
-        using var connect = new ChiakiConnectInfo { Host = found.Address, Ps5 = found.Ps5 };
+        // PP813: THROUGH A RELAY, AND ONLY THIS PATH INSTALLS THE PORT'S SENKUSHA. The capture flags
+        // run the C's senkusha, so every recording this tree had was of the half that works. §PP813
+        // ends asking for a capture on senkusha's own port and calls it a pktmon job wanting
+        // elevation; PP829 made the relay carry that port, and this is what points a PORT run at it.
+        bool relaying = ExchangeCapture.AsksForRelay(via);
+
+        using TakionCaptureWriter? datagrams = relaying && capturePath is not null
+            ? new TakionCaptureWriter(
+                capturePath,
+                ExchangeCapture.Monotonic,
+                new TakionTimingCapture(
+                    SampleWindow.Default, TakionTimingCapture.WholeDatagramBytes),
+                installTap: false)
+            : null;
+
+        using SessionRelay? relay = relaying
+            ? new SessionRelay(
+                System.Net.IPAddress.Parse(found.Address),
+
+                // Arrivals only, as the capture's own relay path takes them: recording the sends as
+                // well would produce a file a replay reads as twice the traffic.
+                (bytes, fromConsole) =>
+                {
+                    if (fromConsole)
+                        datagrams?.Capture.Offer(bytes, ExchangeCapture.Monotonic(), bytes.Length);
+                })
+            : null;
+
+        relay?.Start();
+
+        using var legs = new SessionRelay.RelayLegReport(relay);
+
+        string target = relaying ? SessionRelay.Via : found.Address;
+
+        if (relaying)
+            Console.WriteLine($"[stream] going through {target}; the console is at {found.Address}");
+
+        using var connect = new ChiakiConnectInfo { Host = target, Ps5 = found.Ps5 };
         connect.SetRegistKey(found.RegistKey);
         connect.SetMorning(found.Morning);
         connect.SetVideoPreset(ChiakiVideoResolution.P720, ChiakiVideoFps.Fps60);
@@ -167,9 +207,15 @@ public static class StreamRun
         // takes decoder.Sample and feeds the same decoder from the managed receiver. Two doors into
         // one decoder with only one of them driven is the two-facts-in-two-files shape PP764 exists
         // about, so the undriven one does not stay.
+        // PP813: THE TARGET AND NOT THE CONSOLE, which is the line that made a relayed run record
+        // nothing of the port. Both phases open their OWN takion, so pointing the C session at a
+        // relay left them dialling the console directly - `relay carried 0 on the stream leg and 0
+        // on senkusha's` while the stream ran perfectly and the wire went unwatched. The old note
+        // here said the relay forwards ctrl and 9296 only; PP829 gave it senkusha's port too, so
+        // the reason it named is gone and the phases can follow the session.
         using var baseline = new SessionBaseline();
         using var phase = new ManagedStreamPhase(
-            session, IPAddress.Parse(found.Address), decoder.Sample, baseline);
+            session, IPAddress.Parse(target), decoder.Sample, baseline);
 
         phase.InstallOn();
 
@@ -184,7 +230,7 @@ public static class StreamRun
         // flip. session.c takes the other arm when nothing is installed, so a machine running any
         // other path measures exactly as it did - and PP784 is the line that removes it, after a
         // live link has said the two agree.
-        using var senkusha = new ManagedSenkushaPhase(session, IPAddress.Parse(found.Address));
+        using var senkusha = new ManagedSenkushaPhase(session, IPAddress.Parse(target));
 
         senkusha.InstallOn();
 

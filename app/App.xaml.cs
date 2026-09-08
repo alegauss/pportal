@@ -1118,7 +1118,13 @@ public partial class App : Application
         // PP514: the same session, recording the other thing. One tap installs at a time, so this
         // is a second flag over one run rather than a second run - and it is what fills the file
         // PP27's timing half measures against.
-        if (HostCommandLine.Has(e.Args, "--capture-datagrams"))
+        //
+        // PP813: UNLESS --show-stream ASKED FOR IT, which is a run of the PORT's phases rather than
+        // the C's. This block is declared first, so the pair silently ran the C's senkusha and wrote
+        // a recording of the half that already works - the thing §PP813 needed a recording of is
+        // reachable only through the run below.
+        if (HostCommandLine.Has(e.Args, "--capture-datagrams")
+            && !HostCommandLine.Has(e.Args, "--show-stream"))
         {
             ReopenStdOut();
 
@@ -1180,8 +1186,16 @@ public partial class App : Application
             // something reading the numbers afterwards cannot do.
             TimeSpan? hold = HostCommandLine.Has(e.Args, "--capture-seconds") ? sample.Hold : null;
 
+            // PP813: --via and --capture-datagrams here too. The capture flags run the C's senkusha
+            // and this one runs the PORT's, so a recording of the half that fails was reachable by
+            // no flag at all - which is why §PP813 read the wire as a pktmon job.
             Environment.Exit(
-                StreamRun.Run(HostCommandLine.ValueAfter(e.Args, "--console"), decoder, hold));
+                StreamRun.Run(
+                    HostCommandLine.ValueAfter(e.Args, "--console"),
+                    decoder,
+                    hold,
+                    HostCommandLine.ValueAfter(e.Args, "--via"),
+                    HostCommandLine.ValueAfter(e.Args, "--capture-datagrams")));
         }
 
         // PP516: and the other half of that, which needs no console - a capture on disk read back
