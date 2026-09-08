@@ -260,29 +260,6 @@ port does not own calling code it does - a boundary needing explaining at every 
 reading. Five lines carry the port, and the file stops calling takion when the last
 lands.
 
-### §PP807 The ack this port only ever receives
-
-takion_handle_packet_message_data_ordered ends with one line: where the drain said so,
-the takion sends a data ack carrying the sequence number it just delivered. This port
-has the writer for that message - PP672's TakionDataDatagrams.WriteAck, byte for byte -
-and no caller. Every ack in the tree goes the other way: PP494 reads one the console
-sent, and PP805 hands what it released to senkusha's arm.
-
-SO THE CONSOLE IS TOLD NOTHING, and what that costs depends on the console's own retry
-policy rather than on anything here. That is the first thing to establish: whether a
-live exchange shows the same protobuf arriving more than once, which the message tap
-already records, or whether the console sends each once and moves on.
-
-WHY IT HAS NOT SHOWN UP is worth stating, because it bears on how urgent this is. The
-stream's own run and senkusha's both WAIT for what they asked for and act on the first
-copy that arrives, so a retransmitted message is handled twice by arms that ignore the
-second - which looks exactly like a run that worked.
-
-THE DRAIN DECIDES, NOT THE HANDLER. The C's flag comes out of the queue's own drain, so
-a port that acked every data message would ack ones the queue held back. Whoever writes
-this takes that from TakionDataDrain rather than from the arrival, which is the
-difference between reproducing the C and doing something that looks like it.
-
 ### §PP809 The senkusha phase nobody builds
 
 PP792 gave session.c a callback to hand senkusha to and PP805 wired a takion's arrivals

@@ -1,4 +1,6 @@
 using System.Net;
+using System.Net.Sockets;
+using ChiakiNg.Native;
 using ChiakiNg.Protocol;
 using Google.Protobuf;
 using Xunit;
@@ -364,5 +366,164 @@ public class SenkushaRouterTests(ITestOutputHelper output)
         Assert.True(
             host.Arrivals.Flags.Failed, "the takion the wiring built tells no arrivals it died");
         Assert.False(host.Arrivals.Flags.Finished);
+    }
+
+    /// <summary>
+    /// A takion connected to this test's own socket, so its data queue and its wire are real.
+    /// </summary>
+    /// <remarks>
+    /// PP807's criterion is about the QUEUE, and an unconnected takion has none - so the ack tests
+    /// below cannot use <see cref="Router"/>. The responder answers on its own thread because the
+    /// connect blocks through the handshake on this one.
+    /// </remarks>
+    private static (SenkushaRouter Router, ManagedTakion Takion, UdpClient Peer) Connected(uint tagRemote)
+    {
+        var peer = new UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
+        var responder = new TakionHandshakeResponder(tagRemote, [.. Enumerable.Repeat((byte)0x5c, 32)]);
+
+        var answering = new Thread(() =>
+        {
+            var from = new IPEndPoint(IPAddress.Loopback, 0);
+
+            while (responder.State != TakionResponderState.Done)
+            {
+                byte[] datagram = peer.Receive(ref from);
+
+                if (responder.Answer(datagram) is { } answer)
+                    peer.Send(answer, answer.Length, from);
+            }
+        })
+        {
+            IsBackground = true,
+            Name = "senkusha peer",
+        };
+
+        answering.Start();
+
+        var takion = new ManagedTakion(TagLocal);
+
+        Assert.Equal(
+            ChiakiError.Success,
+            takion.Connect((IPEndPoint)peer.Client.LocalEndPoint!, expectTimeoutMs: 2000).Error);
+
+        answering.Join(TimeSpan.FromSeconds(5));
+        peer.Client.ReceiveTimeout = 2000;
+
+        return (new SenkushaRouter(new SenkushaArrivals(), takion), takion, peer);
+    }
+
+    /// <summary>One control datagram carrying a protobuf, at a chosen sequence number.</summary>
+    private static byte[] ProtobufDatagramAt(uint seqNum, byte[] body, byte dataType = 0)
+    {
+        var datagram = new byte[TakionDataDatagrams.DataSize(body.Length)];
+
+        TakionDataDatagrams.WriteData(
+            datagram, TagLocal, keyPos: 0, chunkFlags: 0, seqNum: seqNum, channel: 1, body);
+
+        datagram[datagram.Length - body.Length - 1] = dataType;
+
+        return datagram;
+    }
+
+    /// <summary>
+    /// PP807: SENKUSHA'S ROUTER ACKNOWLEDGES WHAT ITS OWN QUEUE RELEASES, over a real socket.
+    ///
+    /// The mechanism landed with no caller and this is the caller. takion.c acks from
+    /// takion_flush_data_queue, ABOVE the senkusha callback, so this is senkusha's behaviour without
+    /// senkusha.c mentioning it - which is exactly why nothing here had been written.
+    ///
+    /// The queue is seeded from the REMOTE tag, so the number that releases is the responder's.
+    /// </summary>
+    [Fact]
+    public void ADeliveredProtobufIsAcknowledgedOnTheWire()
+    {
+        const uint TagRemote = 0x71DC_1006;
+
+        (SenkushaRouter router, ManagedTakion takion, UdpClient peer) = Connected(TagRemote);
+
+        using (takion)
+        using (peer)
+        {
+            router.Arrivals.BeginState(SenkushaState.ExpectProtocolAck);
+
+            SenkushaRouting routing = router.Datagram(ProtobufDatagramAt(TagRemote, ProtocolAck()));
+
+            output.WriteLine($"{routing}, {takion.DataAckSent} ack(s)");
+
+            Assert.Equal(SenkushaArrival.ProtocolAcked, routing.Arrival);
+            Assert.Equal(1, takion.DataAckSent);
+
+            // And it is an ack this port's own reader accepts, off the socket rather than off a
+            // buffer - which is the join PP675's writer never had on this side.
+            var from = new IPEndPoint(IPAddress.Loopback, 0);
+            byte[] onTheWire = peer.Receive(ref from);
+
+            using var keyState = new KeyState();
+            TakionMessageReading read = TakionMessageIntake.Read(onTheWire, TagRemote, keyState);
+
+            Assert.Equal(TakionMessageVerdict.DataAck, read.Verdict);
+        }
+    }
+
+    /// <summary>
+    /// AND A TYPE SENKUSHA HAS NO ARM FOR IS ACKNOWLEDGED TOO, which is the easy half to get wrong.
+    ///
+    /// The C's flag is set on the PULL and its send sits below the whole loop, so the ack does not
+    /// depend on what the callback made of the message. A router that returned early on the type
+    /// check would ack only what it understood - a rule the C does not have, and one an ordered
+    /// link carrying only protobufs would never show.
+    /// </summary>
+    [Fact]
+    public void AMessageWithNoArmIsAcknowledgedAsWell()
+    {
+        const uint TagRemote = 0x71DC_2007;
+
+        (SenkushaRouter router, ManagedTakion takion, UdpClient peer) = Connected(TagRemote);
+
+        using (takion)
+        using (peer)
+        {
+            router.Arrivals.BeginState(SenkushaState.ExpectProtocolAck);
+
+            SenkushaRouting routing = router.Datagram(
+                ProtobufDatagramAt(TagRemote, ProtocolAck(), (byte)TakionDataType.Rumble));
+
+            output.WriteLine($"{routing}, {takion.DataAckSent} ack(s)");
+
+            Assert.Equal(SenkushaDataStop.NotProtobuf, routing.Stop);
+            Assert.Equal(SenkushaArrival.Ignored, routing.Arrival);
+            Assert.Equal(1, takion.DataAckSent);
+        }
+    }
+
+    /// <summary>
+    /// AND A MESSAGE ARRIVING INTO A GAP IS ACKNOWLEDGED BY NOTHING, which is the queue deciding.
+    ///
+    /// One ahead of what the queue is waiting for is held back, so no pull succeeds and the C sends
+    /// no ack. The filler then releases both and ONE ack goes out carrying the LAST number - which
+    /// is the rule a router that acked each arrival would have broken while looking identical on an
+    /// ordered link.
+    /// </summary>
+    [Fact]
+    public void AMessageIntoAGapIsNotAcknowledgedUntilTheGapFills()
+    {
+        const uint TagRemote = 0x71DC_3008;
+
+        (SenkushaRouter router, ManagedTakion takion, UdpClient peer) = Connected(TagRemote);
+
+        using (takion)
+        using (peer)
+        {
+            router.Arrivals.BeginState(SenkushaState.ExpectProtocolAck);
+
+            router.Datagram(ProtobufDatagramAt(TagRemote + 1, ProtocolAck()));
+            Assert.Equal(0, takion.DataAckSent);
+
+            router.Datagram(ProtobufDatagramAt(TagRemote, ProtocolAck()));
+
+            output.WriteLine($"{takion.DataAckSent} ack(s) after the gap filled");
+
+            Assert.Equal(1, takion.DataAckSent);
+        }
     }
 }

@@ -263,19 +263,37 @@ public sealed class SenkushaRouter
         // senkusha_takion_data returns on the first line for any other type - it has no rumble, no
         // pad info and no trigger effects - so a router that accepted the known set would hand the
         // protobuf arm bytes that are not one.
+        SenkushaRouting routing;
+
         if (payload.Length < TakionDataDrain.HeaderSize
             || payload[TakionDataDrain.DataTypeOffset] != (byte)TakionDataType.Protobuf)
         {
-            return new SenkushaRouting(
+            routing = new SenkushaRouting(
                 SenkushaRoute.ToData, SenkushaArrival.Ignored, baseType, message.Verdict, 0,
                 SenkushaDataStop.NotProtobuf);
         }
+        else
+        {
+            SenkushaArrival arrival = arrivals.Protobuf(payload.AsSpan(TakionDataDrain.HeaderSize));
 
-        SenkushaArrival arrival = arrivals.Protobuf(payload.AsSpan(TakionDataDrain.HeaderSize));
+            routing = new SenkushaRouting(
+                SenkushaRoute.ToData, arrival, baseType, message.Verdict, 0,
+                arrival == SenkushaArrival.Ignored ? SenkushaDataStop.NoArm : SenkushaDataStop.None);
+        }
 
-        return new SenkushaRouting(
-            SenkushaRoute.ToData, arrival, baseType, message.Verdict, 0,
-            arrival == SenkushaArrival.Ignored ? SenkushaDataStop.NoArm : SenkushaDataStop.None);
+        // PP807: AND THE ACK, WHICH IS WHY THE ARM'S ANSWER IS HELD IN A LOCAL FIRST. Both branches
+        // above reach this, because the C's flag is set on the PULL and its send sits below the
+        // whole loop - so a message whose type senkusha has no arm for is acknowledged exactly like
+        // one it acted on. An early return on the first branch would have acked only what was
+        // understood, which is a rule the C does not have and a live link would rarely show.
+        //
+        // THE NUMBER IS THE ARRIVAL'S AND THE DECISION IS THE QUEUE'S. AckData pushes this sequence
+        // number into the takion's own data queue and acknowledges whatever that RELEASES, so a
+        // message arriving into a gap is answered by nothing - which is the half that makes this the
+        // C's behaviour rather than something shaped like it.
+        takion.AckData(push.Entry.SeqNum);
+
+        return routing;
     }
 
     private SenkushaRouting Ack(ReadOnlySpan<byte> datagram, in TakionMessageReading message, int baseType)
