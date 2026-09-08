@@ -411,6 +411,30 @@ the check as much as about the microphone.
 WHAT IT NEEDS FIRST is the send, then somewhere in the session owning a capture to call
 it.
 
+### §PP826 The readback PP818 argued instead of measuring
+
+PP818 timed the decode and the decode is not where the comparison is decided. Its own
+table says so: Media Foundation lands at ~750us against d3d11va's ~300us, so on decode
+alone it LOSES to the path it would replace. It wins on the total, and the total is a
+decode plus a readback - and the readback it is credited with is the word "none".
+
+THAT WORD IS AN ARGUMENT AND NOT A MEASUREMENT. It follows from the decoder being handed
+an IMFDXGIDeviceManager over the presenter's own D3D11 device, so a decoded frame is
+already an ID3D11Texture2D the renderer can sample: no copy to make, the same exemption
+vulkan gets in spike/decode-path and for the same reason. The reasoning is sound and
+nothing has run it.
+
+WHAT WOULD SETTLE IT is the present path taking one of these textures. PP319 chose that
+path and spike/present-path exists; the missing join is a decoded MFT sample reaching it
+as a shader resource, timed on whatever the renderer must do to sample it. If that is
+zero, PP818's row stands. If it is a copy - a format the renderer cannot sample,
+resource flags forbidding sharing, a synchronisation the driver inserts - the row
+becomes ~750us plus that number, and Media Foundation may lose to the path it was
+compared against.
+
+WHAT IS AT STAKE IS 87.6 MB and four decoder choices, which is what PP650 priced. A
+number that could reverse that is worth having before the swap rather than after.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry

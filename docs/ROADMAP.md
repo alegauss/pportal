@@ -34,6 +34,7 @@
 - 🛠 **PP814** (deps: —) (requires: console) **nothing reports whether audio dropped, so a crackling stream and a clean one read identically** — Three mechanisms measured dead and the pair was inverted - a healthy run read took 0 and dropped 853 for 853 clean writes - so the fault is outside this path. → §PP814
 - 📋 **PP824** (deps: PP823 ✅) (requires: console) **the stream's arrivals never set the ack sink, so a live session answers no data message the console sends** — PP807 wired senkusha's half; this one tore a session down unsigned, and PP823 says the position it would sign at comes off the wrong ledger. → §PP824
 - 📋 **PP825** (deps: —) **the microphone's packet is built and no takion sends one, so PP676's mic layout has only tests as callers** — PP706 runs the capture to a packet and stops there; checking PP823's four sizings against the C's six found this site has no port-side send at all. → §PP825
+- 📋 **PP826** (deps: PP818 ✅) **PP818's whole margin is a readback it did not measure, because no renderer has taken one of its textures** — Media Foundation wins on totals only because its readback is written as none; that is reasoned from the D3D11 path and is the one leg of the comparison nothing timed. → §PP826
 
 ## Block G — Test discipline
 
