@@ -284,27 +284,29 @@ C's run stays the other arm until a live session says otherwise.
 
 ### §PP813 The pongs that never come back
 
-A LIVE RUN ON 2026-09-08 SETTLED THE HALF THIS SECTION SAID WAS OUTSIDE THE TREE. The
-C's own senkusha, against this console minutes apart, took all ten pongs at an average
-1.662ms and completed. So the console ECHOES, and no pktmon capture was needed to learn
-it: running the C's path against the same console IS the capture, and it costs one flag.
+THE WIRE HAS BEEN READ, and it says the console does not echo to the port at all. PP829
+taught the relay senkusha's port and this task pointed the PORT's phases at it, so a run
+of the failing half is recorded at last. Seven datagrams come back across a whole
+senkusha: the init ack, the protocol ack, the bang, three data acks and one of seventeen
+bytes. Not one of 548.
 
-THE PING IS NOT THE DIFFERENCE, and this is the ninth reading - the first with an oracle
-rather than an eye. The port's 548-byte ping is byte-identical to one built through the
-C's own formatter over the shim, tag and all. SetVersion, the BIG and both echo commands
-match a real PS5's recorded exchange field for field, data type 8 included.
+THE C GETS TEN THROUGH THE SAME RELAY, at an average 1.662ms. So this is not the port
+losing pongs, nor a socket that cannot receive them: they are never sent. Everything
+below the socket - the loop, the dispatch, the arm, the tag comparison - is exonerated
+by a recording rather than by reading.
 
-THE LOOP IS ALIVE THROUGHOUT, which the census proves rather than assumes. The four data
-acks it counts are the acks for the two echo commands, and those BRACKET the ten pings -
-so a socket that received them received nothing between them.
+AND THE BYTES ARE NOT THE REASON. The port's 548-byte ping is identical to one built
+through the C's own formatter over the shim, tag included. SetVersion, the BIG and both
+echo commands match a real PS5's recorded exchange field for field. The echo command is
+acknowledged - the census counts both acks - so the console received it and chose not to
+echo.
 
 THE FORTY-EIGHT WERE RETRANSMISSIONS, which this section called the C's own. PP807 gave
-senkusha's router its data acks and the census fell from ToData 50 to 2 and NoArm 48 to
-none: the console was repeating what nothing acknowledged.
+senkusha's router its data acks and the census fell from ToData 50 to 2, NoArm 48 to
+none.
 
-SO THE CONSOLE ECHOES, THE BYTES ARE THE C'S, AND NOTHING ARRIVES. What is left is a
-difference of socket or of session state that only the wire shows. pktmon wants
-elevation, and the port's own relay does not carry senkusha's handshake.
+WHAT IS LEFT is why one console treats two senkushas differently when their bytes agree.
+The datagrams explain nothing, so the difference is in what the SESSION carries.
 
 ### §PP814 The audio nobody counts
 
