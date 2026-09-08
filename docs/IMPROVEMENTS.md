@@ -354,29 +354,6 @@ the device format, or it is not a discontinuity at all - a listener reported the
 interval constant across runs carrying different audio, which no content-dependent
 artifact explains.
 
-### §PP817 The GHASH rests on a sentence about a different API
-
-PP298 is on record that the runtime will not lend this one, and its measurement is
-right: AesGcm.NonceByteSizes is 12 to 12 and TagByteSizes 12 to 16, while chiaki passes
-a sixteen-byte IV and keeps four bytes of tag. Both are legal GCM and neither is in that
-type's contract.
-
-What the sentence does not say is which one was asked. AesGcm is a wrapper whose
-contract is narrower than the algorithm, and the platform under it is CNG. gkcrypt.c
-reaches the same two departures through OpenSSL by asking for them:
-EVP_CTRL_GCM_SET_IVLEN with the block size, EVP_CTRL_GCM_GET_TAG with four.
-BCryptEncrypt takes a nonce as a buffer and a length, and BCRYPT_AUTH_TAG_LENGTH reports
-the range a provider supports rather than a constant a wrapper chose.
-
-So this is two readings and not an opinion: does CNG accept a sixteen-byte nonce for
-AES-GCM, and what tag lengths does it report. A refusal settles it and the GHASH stays,
-recorded rather than assumed - which is worth having, because the file rests today on a
-sentence about a different API. Acceptance means requesting the tag at a length CNG
-supports and truncating to four, which is what the C's own GET_TAG does.
-
-The oracle costs nothing: PP26 and PP298 already agree with the C on every vector, so a
-replacement is held to the same bytes or it is not one.
-
 ### §PP818 The half PP650 left open
 
 PP650 asked what Media Foundation offers and answered it: one D3D11-aware transform per

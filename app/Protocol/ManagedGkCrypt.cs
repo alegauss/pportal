@@ -1,4 +1,5 @@
 using System.Buffers;
+using ChiakiNg.Native;
 using ChiakiNg.Session;
 
 namespace ChiakiNg.Protocol;
@@ -153,6 +154,22 @@ public sealed class ManagedGkCrypt
     /// <param name="keyPos">The packet's position - NOT the one its payload was encrypted at.</param>
     /// <param name="packet">The whole datagram, with the MAC field zeroed.</param>
     /// <param name="into">Where the tag goes, which is <see cref="TakionFeedbackSends.GmacSize"/> bytes.</param>
+    /// <remarks>
+    /// PP817: THROUGH CNG, WITH THE HAND-WRITTEN GHASH BEHIND IT. PP298 read AesGcm's contract -
+    /// twelve-byte nonces only - and concluded the runtime would not lend this, which was true of
+    /// that type and not of the platform under it. CNG takes a nonce as a buffer and a length, and
+    /// on this tree's own vectors it agrees with <see cref="Ghash"/> byte for byte.
+    ///
+    /// It is also two orders of magnitude faster, measured over a thousand bytes and INCLUDING
+    /// opening a provider per call - so no caching was needed to justify the move. The GHASH is a
+    /// software GF(2^128) multiply, 128 iterations a block; CNG reaches the instructions the CPU
+    /// has for exactly this, which is why the gap is a ratio rather than a margin.
+    ///
+    /// THE FALLBACK IS NOT DEAD CODE AND IS NOT SILENT. A provider that will not do a block-sized
+    /// nonce answers null rather than throwing, and this port would rather be slow than broken -
+    /// <see cref="LastGmacUsedCng"/> is how a test says which one answered, so "it fell back" cannot
+    /// pass for "it worked".
+    /// </remarks>
     public void Gmac(ulong keyPos, ReadOnlySpan<byte> packet, Span<byte> into)
     {
         if (into.Length != TakionFeedbackSends.GmacSize)
@@ -161,9 +178,28 @@ public sealed class ManagedGkCrypt
                 $"a gmac is {TakionFeedbackSends.GmacSize} bytes", nameof(into));
         }
 
-        Ghash.Tag(GmacKeyFor(keyPos), GmacIvFor(keyPos), packet, TakionFeedbackSends.GmacSize)
-            .CopyTo(into);
+        byte[] key = GmacKeyFor(keyPos);
+        byte[] nonce = GmacIvFor(keyPos);
+
+        if (CngGcm.Tag(key, nonce, packet, TakionFeedbackSends.GmacSize) is { } platform)
+        {
+            LastGmacUsedCng = true;
+            platform.CopyTo(into);
+            return;
+        }
+
+        LastGmacUsedCng = false;
+        Ghash.Tag(key, nonce, packet, TakionFeedbackSends.GmacSize).CopyTo(into);
     }
+
+    /// <summary>
+    /// PP817: whether the last tag came from CNG or from the fallback. Diagnostic, not a setting.
+    /// </summary>
+    /// <remarks>
+    /// Static because the question is about the MACHINE and not about one crypt: either this
+    /// provider does block-sized nonces or it does not, and every instance gets the same answer.
+    /// </remarks>
+    public static bool LastGmacUsedCng { get; private set; }
 }
 
 /// <summary>
