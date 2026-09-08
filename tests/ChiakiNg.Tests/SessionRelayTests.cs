@@ -332,6 +332,48 @@ public class SessionRelayTests
         Assert.Equal([77], onSenkusha.Receive(ref back));
     }
 
+    /// <summary>
+    /// PP830: the count is PER LEG, because one total cannot say which one carried nothing.
+    ///
+    /// A relayed session that records only senkusha's traffic has two explanations - nobody dialled
+    /// the stream leg, or the console stopped answering it - and they need different work. The live
+    /// answer was `0 on the stream leg and 51 on senkusha's`, which is the first of the two.
+    /// </summary>
+    [Fact]
+    public void TheCountIsKeptPerLeg()
+    {
+        using var consoleStream = new UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
+        using var consoleSenkusha = new UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
+        consoleStream.Client.ReceiveTimeout = 5000;
+        consoleSenkusha.Client.ReceiveTimeout = 5000;
+
+        using var relay = new SessionRelay(
+            new IPEndPoint(IPAddress.Loopback, 1),
+            (IPEndPoint)consoleStream.Client.LocalEndPoint!,
+            null,
+            0,
+            0,
+            (IPEndPoint)consoleSenkusha.Client.LocalEndPoint!,
+            0);
+
+        relay.Start();
+
+        Assert.Equal((0, 0), relay.CarriedPerLeg);
+
+        using var client = new UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
+        client.Send([1], 1, new IPEndPoint(IPAddress.Loopback, relay.SenkushaPortInUse));
+
+        var from = new IPEndPoint(IPAddress.Any, 0);
+        Assert.Equal([1], consoleSenkusha.Receive(ref from));
+
+        Assert.True(
+            SpinWait.SpinUntil(() => relay.CarriedPerLeg.Senkusha == 1, TimeSpan.FromSeconds(5)),
+            $"senkusha's leg carried one and counted {relay.CarriedPerLeg.Senkusha}");
+
+        // And the stream leg carried nothing, which is the half the live run turned on.
+        Assert.Equal(0, relay.CarriedPerLeg.Stream);
+    }
+
     /// <summary>With no senkusha endpoint there is no leg, which is what this class did before.</summary>
     [Fact]
     public void WithoutASenkushaEndpointThereIsNoLeg()

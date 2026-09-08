@@ -34,7 +34,7 @@
 - 📋 **PP824** (deps: PP823 ✅) (requires: console) **the stream's arrivals never set the ack sink, so a live session answers no data message the console sends** — PP807 wired senkusha's half; this one tore a session down unsigned, and PP823 says the position it would sign at comes off the wrong ledger. → §PP824
 - ⏳ **PP825** (deps: —) **the microphone's packet is built and no takion sends one, so PP676's mic layout has only tests as callers** — Nothing in the session owns a capture and calls it, so the send has no caller either; a live run is what would show a console accepting one. → §PP825
 - 📋 **PP828** (deps: PP826 ✅) **the copy off the decode surface is known to exist and untimed, so the FFmpeg decision still has no total** — PP826 killed the no-readback claim and left the number it was standing in for; without it Media Foundation's column is a decode plus an unknown. → §PP828
-- 📋 **PP830** (deps: PP829 ✅) (requires: console) **the stream dies within 85ms through the relay, so a capture holds the handshake and none of the traffic** — PP829 got senkusha across and the stream is the next to fail; nothing reached it before, so this leg has not carried a real session in a long time. → §PP830
+- 🛠 **PP830** (deps: PP829 ✅) (requires: console) **the stream dies within 85ms through the relay, so a capture holds the handshake and none of the traffic** — PP829 got senkusha across and the stream is the next to fail; nothing reached it before, so this leg has not carried a real session in a long time. → §PP830
 
 ## Block G — Test discipline
 

@@ -152,6 +152,16 @@ public sealed class SessionRelay : IDisposable
     public int SenkushaPortInUse => senkusha?.NearPort ?? 0;
 
     /// <summary>
+    /// PP830: what each leg carried, which one total cannot say.
+    ///
+    /// A relayed session that records only senkusha's traffic has two explanations and the count
+    /// separates them: the stream leg carrying nothing means nobody dialled it - PP769 has the
+    /// stream phase ADOPT senkusha's socket rather than connect - while the stream leg carrying
+    /// sends and no answers means the console stopped talking. One number reads as either.
+    /// </summary>
+    public (int Stream, int Senkusha) CarriedPerLeg => (stream.Carried, senkusha?.Carried ?? 0);
+
+    /// <summary>
     /// The port the TCP half is on, likewise.
     ///
     /// Read back rather than remembered, so a caller that passed zero gets what the OS chose. A
@@ -227,6 +237,11 @@ public sealed class SessionRelay : IDisposable
 
         public int FarPort => ((IPEndPoint)far.Client.LocalEndPoint!).Port;
 
+        /// <summary>PP830: how many this leg carried, either direction.</summary>
+        public int Carried => Volatile.Read(ref carried);
+
+        private int carried;
+
         public void Start(CancellationToken token)
         {
             _ = Task.Run(() => Pump(near, toConsole: true, token), token);
@@ -279,6 +294,7 @@ public sealed class SessionRelay : IDisposable
             try
             {
                 socket.Send(datagram, datagram.Length, to);
+                Interlocked.Increment(ref carried);
                 forwarded();
             }
             catch (SocketException)
@@ -355,6 +371,26 @@ public sealed class SessionRelay : IDisposable
                 return;
 
             await to.WriteAsync(buffer.AsMemory(0, read), token).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// PP830: prints what each leg carried when the run ends, and nothing where there is no relay.
+    ///
+    /// A `using` in the capture rather than a line after the session, because the session can leave
+    /// by several paths and the count is most wanted on the ones that failed.
+    /// </summary>
+    public sealed class RelayLegReport(SessionRelay? relay) : IDisposable
+    {
+        public void Dispose()
+        {
+            if (relay is null)
+                return;
+
+            (int stream, int senkusha) = relay.CarriedPerLeg;
+
+            Console.WriteLine(
+                $"[capture] relay carried {stream} on the stream leg and {senkusha} on senkusha's");
         }
     }
 

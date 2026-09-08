@@ -499,6 +499,11 @@ public static class ExchangeCapture
         if (relaying)
             Console.WriteLine($"[capture] relaying to {address}; whole datagrams, not the tap's head");
 
+        // PP830: and what each leg carried, printed at the end of the run rather than counted by
+        // hand off a capture that keeps only one direction. A stream leg at zero says nobody dialled
+        // it; a stream leg with sends and no answers says the console stopped.
+        using var legs = new SessionRelay.RelayLegReport(relay);
+
         // PP614: where the session is POINTED, which is not always where the console is.
         //
         // The registration keys are the console's and have to be; the address does not. PP613's

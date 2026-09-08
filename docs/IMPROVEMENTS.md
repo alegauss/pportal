@@ -416,24 +416,27 @@ render from would measure the wrong thing.
 
 PP829 forwarded senkusha's port and the session now gets past its first handshake: the
 C's senkusha completes through the relay, takes its ten pongs and measures an outbound
-MTU of 1453. What follows is `[E] StreamConnection run failed`, twice on 2026-09-08.
+MTU of 1453. What follows is `[E] StreamConnection run failed`, three times on
+2026-09-08.
 
-WHAT THE CAPTURE HOLDS SAYS WHERE IT STOPS. Twenty-six datagrams over 85 milliseconds
-and then nothing, against 6329 over twenty seconds on the same console minutes earlier
-without the relay. By base type: 14 control, 11 audio, one video. So the stream STARTS -
-the console is sending - and the conversation dies almost immediately.
+READING THE CAPTURE CORRECTED THIS SECTION'S FIRST ANSWER. It counted 14 control, 11
+audio and one video and called that the stream starting. Every one of the 26 rows is
+SENKUSHA: the handshake, ten 548-byte pongs, both MTU probes and the data acks between
+them. The whole capture spans 85ms, which is one senkusha run.
 
-IT HAS PROBABLY BEEN BROKEN A LONG TIME. Nothing reached the stream through the relay
-while senkusha timed out on loopback, so PP617's live check is the last time this leg is
-known to have carried a session. The relay's own tests are loopback on both sides, which
-is the shape PP617 already recorded as the one that passes while a real console cannot
-answer.
+SO THE STREAM RECEIVED NOTHING AT ALL. The capture keeps only what came FROM the
+console, so what this says is that the console sent the stream nothing through the
+relay.
 
-WHAT IS NOT ESTABLISHED is which side gives up. The port's stream phase is what runs
-here - the C's senkusha hands over and PP783's phase takes the stream - so the
-candidates are the relay dropping datagrams under load, the phase refusing something the
-extra hop changed, or the console tearing down. The capture is 26 rows and reading them
-is the first work, because unlike PP813 this one HAS a recording.
+AND A PER-LEG COUNT SAYS WHERE TO LOOK: `relay carried 0 on the stream leg and 51 on
+senkusha's`. Nobody dialled 9296, which is PP769 - the stream phase ADOPTS session.c's
+data_sock rather than connecting, so it rides senkusha's leg. That leg learns its client
+from whoever last spoke on it, and senkusha closed its takion before the stream began.
+The phase then waits about twenty seconds and gives up without logging a word.
+
+THE PONGS ARE WORTH KEEPING SEPARATELY. Their bytes are in this capture, tag and unit
+index intact - the first recording this tree has of the console echoing, which PP813 had
+to infer from the C completing.
 
 ## Block G — Test discipline
 
