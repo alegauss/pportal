@@ -33,8 +33,8 @@
 - ⏳ **PP809** (deps: PP792 ✅, PP805 ✅, PP813) (requires: console) **no path installs a senkusha phase, so every session still measures the link with the C's run** — A live run measured through it and the phase stalled at the bang, so the numbers read back are the C's fallback; PP813 carries the census. → §PP809
 - 📋 **PP811** (deps: PP800 ✅) **the ported send path has no caller, so a live takion stamps its MAC and sends with no lock across the two** — PP675 wrote the order the C holds one mutex over, and ManagedTakion's four sends do it inline instead; PP800's census is what found the seam had only a test on it. → §PP811
 - 📋 **PP812** (deps: PP801 ✅) (requires: console) **the datagram capture taps the C's takion and the port opens its own, so a run without a relay records nothing** — The tap watches a socket no datagram reaches now; PP785 keeps the C's answers as a recording, and this flag is how one is made. → §PP812
-- 🛠 **PP813** (deps: —) **the port's senkusha gets the bang then loses every pong, so the RTT test answers Unknown and the link is unmeasured** — Ten pings leave the socket and ToAv stays 0; the 48 ignored protobufs are ExpectPong having no arm, as the C also does, so only the wire is left to read. → §PP813
-- 🛠 **PP814** (deps: —) **nothing reports whether audio dropped, so a crackling stream and a clean one read identically** — Three mechanisms measured dead and the pair was inverted - a healthy run read took 0 and dropped 853 for 853 clean writes - so the fault is outside this path. → §PP814
+- 🛠 **PP813** (deps: —) (requires: console) **the port's senkusha gets the bang then loses every pong, so the RTT test answers Unknown and the link is unmeasured** — Ten pings left the socket and ToAv stays 0; the 48 ignored protobufs are ExpectPong having no arm, as the C also does, so only the wire is left. → §PP813
+- 🛠 **PP814** (deps: —) (requires: console) **nothing reports whether audio dropped, so a crackling stream and a clean one read identically** — Three mechanisms measured dead and the pair was inverted - a healthy run read took 0 and dropped 853 for 853 clean writes - so the fault is outside this path. → §PP814
 - 📋 **PP817** (deps: PP298 ✅) **the GCM tag is a hand-written GHASH, and the only thing ever asked about it was AesGcm's contract** — PP298 measured the runtime's twelve-byte nonce and tag floors and stopped; CNG is where OpenSSL's own sixteen-byte IV and four-byte tag would be asked for, and nothing asked. → §PP817
 - 📋 **PP818** (deps: PP650 ✅) **no Media Foundation decode has ever been timed, so 87.6 MB of FFmpeg is weighed against a guess** — PP650 enumerated the transforms and priced the tree, and its own README says no decode was measured; cuda and vulkan are the two paths the port has least reason to keep. → §PP818
 
@@ -168,3 +168,8 @@
   AudioRing, AudioPlayback and the render pump named it - the Qt client's SDL shape,
   kept for platforms this port refuses to build, and PP810 measured two fixes for them
   both failing.
+- **No Direct3D 12 migration** libplacebo ships d3d11, opengl and vulkan and no D3D12
+  backend, so a move off 11 discards the renderer PP9 chose; Media Foundation is
+  D3D11-aware with no equivalent, which forecloses PP818. The wins credited to 12 are
+  DXGI's and reachable on 11; reopen only if frame statistics attribute latency to
+  submission.
