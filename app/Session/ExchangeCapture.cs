@@ -472,6 +472,16 @@ public static class ExchangeCapture
                 installTap: !relaying)
             : null;
 
+        // PP812: and the managed tap, which is what a non-relay capture now records. The C's tap is
+        // still installed above and still fires - for the ctrl channel, which is all that reaches a
+        // C takion since PP783 moved the session onto the port's. Both fill ONE capture on purpose:
+        // the two see disjoint traffic now, so a row's channel is decided by which arrived rather
+        // than by a flag, and a build where the flip is reverted records the same file as before.
+        using IDisposable? managed = kind == SessionCaptureKind.Datagrams && !relaying
+            ? ManagedDatagramTap.Install(
+                datagram => datagrams?.Capture.Offer(datagram, Monotonic(), datagram.Length))
+            : null;
+
         using SessionRelay? relay = relaying
             ? new SessionRelay(
                 IPAddress.Parse(address),

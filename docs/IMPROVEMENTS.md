@@ -282,28 +282,6 @@ numbers it hands back are what the launch spec spends: a measurement the suite a
 with and a console does not is the shape that ships green and streams nothing. So the
 C's run stays the other arm until a live session says otherwise.
 
-### §PP812 The tap on the socket that stopped being used
-
---capture-datagrams installs a ChiakiMessageTap, which is a C-side hook: takion.c emits
-and TakionDatagramTap takes. Since PP783 nothing arrives on a C takion during a
-streaming session, so the hook fires for the ctrl channel and for nothing else - the
-file is written, it is short, and nothing about it says the traffic went elsewhere.
-
-THE RELAY PATH STILL WORKS, which is why this is not simply broken. --via relay taps the
-WIRE rather than the takion, and PP615 already made it hand over whole datagrams; a run
-with a relay records what crossed regardless of which code read it. So the loss is
-exactly the non-relay flag, which is the one a person reaches for first.
-
-PP785 IS WHAT MAKES IT WORTH FIXING RATHER THAN DOCUMENTING. The takion oracle keeps the
-C's answers as a recording precisely because the C is leaving the build, and
---capture-datagrams is how a recording is made - so the tool that produces the evidence
-for a deletion stops working before the deletion.
-
-TWO ANSWERS AND THEY DIFFER IN WHAT THEY PROVE. A managed tap on ManagedTakion's
-dispatch records what the port received, which is the port checking itself; the relay
-records what crossed the wire, which is evidence either implementation can be judged
-against. The second is what an oracle wants, and the first is cheaper.
-
 ### §PP813 The pongs that never come back
 
 A LIVE RUN ON 2026-09-08 SETTLED THE HALF THIS SECTION SAID WAS OUTSIDE THE TREE. The

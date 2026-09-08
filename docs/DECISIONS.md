@@ -113,6 +113,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP818** **no Media Foundation decode has ever been timed, so 87.6 MB of FFmpeg is weighed against a guess** — Media Foundation is viable for H.264 on the decode numbers; what still blocks the swap is HEVC's Store extension, not speed.
 - ✅ **PP827** **the port sends the BIG whole where the C splits it against the MTU, so a long launch spec leaves as one datagram** — Only the BIG fragments, and the cut is read at BIG time so it is senkusha's measurement rather than the fallback.
 - ✅ **PP826** **PP818's whole margin is a readback it did not measure, because no renderer has taken one of its textures** — Media Foundation's output needs a GPU-side copy before a renderer reads it; how much that costs is still unmeasured.
+- ✅ **PP812** **the datagram capture taps the C's takion and the port opens its own, so a run without a relay records nothing** — A non-relay datagram capture is the port's own dispatch; the C's tap stays installed and now sees only the ctrl channel.
 
 ## Block G — Test discipline
 

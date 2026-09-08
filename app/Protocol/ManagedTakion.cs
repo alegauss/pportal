@@ -1021,6 +1021,14 @@ public sealed class ManagedTakion : ITakionLoopHost, IDataAckSink, IDisposable
     void ITakionLoopHost.Dispatch(Span<byte> datagram)
     {
         Dispatched++;
+
+        // PP812: the tap, FIRST and behind an active check - which is takion.c's own placement.
+        // The C emits above its MAC gate because the arrivals worth measuring include the ones a
+        // gate would reject, and this is the same position: every datagram the loop took, before
+        // the intake reads a header and before the AV branch below.
+        if (ManagedDatagramTap.Active)
+            ManagedDatagramTap.Offer(datagram);
+
         dispatch?.Invoke(datagram);
 
         // PP703: and the AV branch, which is what an arm is FOR. The dispatch above stays: it is
