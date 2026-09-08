@@ -377,6 +377,22 @@ public sealed class ManagedTakion : ITakionLoopHost, IDataAckSink, IDisposable
             }
             : null;
 
+    /// <summary>
+    /// The same cipher as <see cref="TakionFeedbackSends"/> takes it, which asks for the position.
+    ///
+    /// PP825: the shape differs from <see cref="Gmac"/> because the seam differs. That one is
+    /// chiaki_takion_send's, where the position is fixed before the MAC function is reached; this
+    /// one is the feedback and microphone sequence's, which tags at a position it was handed - so
+    /// the argument is the difference, and one closure cannot serve both.
+    /// </summary>
+    private static Func<ulong, ReadOnlyMemory<byte>, byte[]> CipherGmac(ManagedGkCrypt crypt)
+        => (at, whole) =>
+        {
+            var mac = new byte[TakionFeedbackSends.GmacSize];
+            crypt.Gmac(at, whole.Span, mac);
+            return mac;
+        };
+
     /// <summary>How many feedback packets this takion has put on its socket.</summary>
     public int FeedbackSent { get; private set; }
 
@@ -430,17 +446,73 @@ public sealed class ManagedTakion : ITakionLoopHost, IDataAckSink, IDisposable
             TakionFeedbackSends.Feedback,
             keyPos,
             crypt.Encrypt,
-            (at, whole) =>
-            {
-                var mac = new byte[TakionFeedbackSends.GmacSize];
-                crypt.Gmac(at, whole.Span, mac);
-                return mac;
-            },
+            CipherGmac(crypt),
             wire,
             cipherLock);
 
         if (sent == ChiakiError.Success)
             FeedbackSent++;
+
+        return sent;
+    }
+
+    /// <summary>How many microphone packets this takion has put on its socket.</summary>
+    public int MicrophoneSent { get; private set; }
+
+    /// <summary>
+    /// PP825: chiaki_takion_send_mic_packet - the sixth call site, and the one with no port caller.
+    ///
+    /// EVERY PIECE OF THIS EXISTED AND NOTHING JOINED THEM, which is the shape this seam keeps
+    /// producing. PP652 opens the capture, PP694 encodes, PP706 runs all four stages to a formatted
+    /// packet, PP676 ported this exact sequence and PP823 ported the ledger advance it needs - and
+    /// no takion had a microphone send at all, so a port that could capture, clean, encode and
+    /// format could not transmit. PP823 found it by counting the C's six ledger call sites against
+    /// this class's four.
+    ///
+    /// THE WHOLE PACKET COMES IN, HEAD AND ALL, which is the C's shape and not a convenience. The
+    /// head is <see cref="MicPacketHead"/>'s and belongs to the audio sender, which writes three
+    /// fields in NATIVE order where every field of the feedback head is big-endian - so a send that
+    /// built the head here would have to know a rule that lives one module away.
+    ///
+    /// IT IS THE FEEDBACK SEQUENCE WITH A DIFFERENT LAYOUT. Advance by the payload plus a block,
+    /// encrypt at the position plus a block, write the position, tag the whole packet, send - all
+    /// under gkcrypt_local, which is the wider critical section PP811 established is real. The only
+    /// difference is where the position and the tag go: fourteen and ten, against four and eight.
+    /// </summary>
+    /// <param name="packet">Head and payload, mutated in place: encrypted, stamped and sent.</param>
+    /// <param name="ps5">Whether the head is twenty bytes rather than nineteen.</param>
+    public ChiakiError SendMicrophone(Span<byte> packet, bool ps5)
+    {
+        ObjectDisposedException.ThrowIf(Stage == TakionStage.Closed, this);
+
+        if (wire is null || LocalCrypt is not { } crypt)
+            return ChiakiError.Uninitialized;
+
+        TakionCryptLayout layout = TakionFeedbackSends.MicrophoneFor(ps5);
+
+        if (packet.Length < layout.HeadSize)
+            return ChiakiError.BufTooSmall;
+
+        // The C's own arithmetic: buf_size minus nineteen, minus one more on a PS5. A payload of
+        // nothing is a real packet and not an error - the head alone is a valid mic frame.
+        int payloadSize = packet.Length - layout.HeadSize;
+
+        KeyPositionGrant grant = AdvanceKeyPos((ulong)TakionFeedbackSends.LedgerAdvanceFor(payloadSize));
+
+        if (grant.Error != ChiakiError.Success)
+            return grant.Error;
+
+        ChiakiError sent = TakionFeedbackSends.Send(
+            packet,
+            layout,
+            grant.KeyPosition,
+            crypt.Encrypt,
+            CipherGmac(crypt),
+            wire,
+            cipherLock);
+
+        if (sent == ChiakiError.Success)
+            MicrophoneSent++;
 
         return sent;
     }

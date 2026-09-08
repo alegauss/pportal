@@ -723,6 +723,117 @@ public class ManagedTakionTests(ITestOutputHelper output) : IDisposable
     }
 
     /// <summary>
+    /// PP825: THE MICROPHONE PACKET REACHES A SOCKET, which nothing in the port could do before.
+    ///
+    /// The sixth of the C's ledger call sites and the one with no caller: every stage existed -
+    /// capture, clean, encode, head - and no takion had a send, so a port that could format a mic
+    /// packet could not transmit one.
+    ///
+    /// ASSERTED AT ITS OWN OFFSETS, which are not the feedback packet's. The position goes at
+    /// fourteen and the tag at ten, against four and eight - and the head is nineteen bytes or
+    /// twenty, which moves where the payload starts and therefore what gets encrypted. Both
+    /// generations are run for that reason.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AMicrophonePacketIsStampedAtItsOwnOffsetsAndSent(bool ps5)
+    {
+        using ManagedTakion takion = Connected(ps5 ? 0x0000_e826u : 0x0000_e825u, 0x0000_8250, 0x6c);
+
+        takion.LocalCrypt = ManagedGkCrypt.Derive(
+            2,
+            [.. Enumerable.Repeat((byte)0x2b, GkDerivation.HandshakeKeySize)],
+            [.. Enumerable.Repeat((byte)0x7c, GkDerivation.EcdhSecretSize)]);
+
+        TakionCryptLayout layout = TakionFeedbackSends.MicrophoneFor(ps5);
+        int head = MicPacketHead.SizeFor(ps5);
+
+        Assert.Equal(head, layout.HeadSize);
+
+        byte[] packet = new byte[head + 8];
+
+        MicPacketHead.Write(
+            packet, packetType: 2, packetIndex: 7, frameIndex: 9, unitsNumber: 3, codec: 5, ps5);
+
+        byte[] payload = [1, 2, 3, 4, 5, 6, 7, 8];
+        payload.CopyTo(packet.AsSpan(head));
+
+        Assert.Equal(ChiakiError.Success, takion.SendMicrophone(packet, ps5));
+        Assert.Equal(1, takion.MicrophoneSent);
+
+        byte[] onTheWire = NextFromTheSocket();
+
+        Assert.Equal(packet.Length, onTheWire.Length);
+
+        // The tag at ten, and the position at fourteen - both zero until the send wrote them.
+        Assert.NotEqual(
+            new byte[TakionFeedbackSends.GmacSize],
+            onTheWire.AsSpan(layout.MacOffset, TakionFeedbackSends.GmacSize).ToArray());
+
+        // PP823's counter, not the receive ledger: the first send starts at zero and the ledger is
+        // advanced by the PAYLOAD plus a block, which is this packet's eight plus sixteen.
+        Assert.Equal(
+            0u,
+            System.Buffers.Binary.BinaryPrimitives.ReadUInt32BigEndian(
+                onTheWire.AsSpan(layout.KeyPosOffset, 4)));
+
+        Assert.Equal(
+            TakionKeyPosition.Sized((ulong)TakionFeedbackSends.LedgerAdvanceFor(payload.Length)),
+            takion.KeyPosLocal);
+
+        // The payload was encrypted in place, and the HEAD was not - the encrypt starts at the
+        // head size, which is the one byte that differs between the two generations.
+        Assert.NotEqual(payload, onTheWire.AsSpan(head).ToArray());
+        Assert.Equal(2, onTheWire[0]);
+
+        output.WriteLine($"ps5 {ps5}, head {head}: {Convert.ToHexString(onTheWire)}");
+    }
+
+    /// <summary>
+    /// With no cipher it is a refusal, which is the C finding nothing behind gkcrypt_local.
+    ///
+    /// Unlike the four sends chiaki_takion_send covers, this one cannot go out plain: the sequence
+    /// encrypts the payload before it signs, so there is nothing sensible to do without a key.
+    /// </summary>
+    [Fact]
+    public void AMicrophonePacketWithNoCipherIsRefused()
+    {
+        using ManagedTakion takion = Connected(0x0000_e827, 0x0000_8251, 0x6d);
+
+        Assert.Null(takion.LocalCrypt);
+
+        Assert.Equal(
+            ChiakiError.Uninitialized,
+            takion.SendMicrophone(new byte[MicPacketHead.Size + 4], ps5: false));
+
+        Assert.Equal(0, takion.MicrophoneSent);
+    }
+
+    /// <summary>And a packet shorter than its own head is refused rather than slicing past it.</summary>
+    [Fact]
+    public void AMicrophonePacketShorterThanItsHeadIsRefused()
+    {
+        using ManagedTakion takion = Connected(0x0000_e828, 0x0000_8252, 0x6e);
+
+        takion.LocalCrypt = ManagedGkCrypt.Derive(
+            2,
+            [.. Enumerable.Repeat((byte)0x2b, GkDerivation.HandshakeKeySize)],
+            [.. Enumerable.Repeat((byte)0x7c, GkDerivation.EcdhSecretSize)]);
+
+        Assert.Equal(
+            ChiakiError.BufTooSmall,
+            takion.SendMicrophone(new byte[MicPacketHead.Size - 1], ps5: false));
+
+        // And the PS5 head is one longer, so a PS4-sized packet is short for it.
+        Assert.Equal(
+            ChiakiError.BufTooSmall,
+            takion.SendMicrophone(new byte[MicPacketHead.Size], ps5: true));
+
+        Assert.Equal(0, takion.MicrophoneSent);
+    }
+
+    /// <summary>
     /// A raw send is still raw, which is the one of the five that must NOT be routed.
     ///
     /// chiaki_takion_send_raw is one write to the socket, and senkusha's two measurements are its

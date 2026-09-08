@@ -33,7 +33,7 @@
 - 🛠 **PP813** (deps: —) (requires: console) **the port's senkusha gets the bang then loses every pong, so the RTT test answers Unknown and the link is unmeasured** — Ten pings left the socket and ToAv stays 0; the 48 ignored protobufs are ExpectPong having no arm, as the C also does, so only the wire is left. → §PP813
 - 🛠 **PP814** (deps: —) (requires: console) **nothing reports whether audio dropped, so a crackling stream and a clean one read identically** — Three mechanisms measured dead and the pair was inverted - a healthy run read took 0 and dropped 853 for 853 clean writes - so the fault is outside this path. → §PP814
 - 📋 **PP824** (deps: PP823 ✅) (requires: console) **the stream's arrivals never set the ack sink, so a live session answers no data message the console sends** — PP807 wired senkusha's half; this one tore a session down unsigned, and PP823 says the position it would sign at comes off the wrong ledger. → §PP824
-- 📋 **PP825** (deps: —) **the microphone's packet is built and no takion sends one, so PP676's mic layout has only tests as callers** — PP706 runs the capture to a packet and stops there; checking PP823's four sizings against the C's six found this site has no port-side send at all. → §PP825
+- ⏳ **PP825** (deps: —) **the microphone's packet is built and no takion sends one, so PP676's mic layout has only tests as callers** — Nothing in the session owns a capture and calls it, so the send has no caller either; a live run is what would show a console accepting one. → §PP825
 - 📋 **PP826** (deps: PP818 ✅) **PP818's whole margin is a readback it did not measure, because no renderer has taken one of its textures** — Media Foundation wins on totals only because its readback is written as none; that is reasoned from the D3D11 path and is the one leg of the comparison nothing timed. → §PP826
 
 ## Block G — Test discipline
@@ -117,6 +117,14 @@
   many arrivals an arm acted on, and what the session then carries. A rung short of
   MtuOutMeasured, or 1454/1454/1000, is PP28's fallback and says the port measured
   nothing. The console has to reach ready first, which it does not today.
+
+## Done when — PP825
+
+- **A session that owns a capture sends microphone packets through the takion** The send
+  exists and nothing calls it. PP706's four stages produce a formatted packet and the
+  composition root that would hand one to SendMicrophone does not exist, so
+  MicrophoneSent is zero on every live run. Checked by a session raising that counter,
+  and by a console that does not drop the stream over it.
 
 ## Non-goals
 
