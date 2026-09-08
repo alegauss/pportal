@@ -34,6 +34,7 @@
 - 🛠 **PP814** (deps: —) (requires: console) **nothing reports whether audio dropped, so a crackling stream and a clean one read identically** — Three mechanisms measured dead and the pair was inverted - a healthy run read took 0 and dropped 853 for 853 clean writes - so the fault is outside this path. → §PP814
 - 📋 **PP824** (deps: PP823 ✅) (requires: console) **the stream's arrivals never set the ack sink, so a live session answers no data message the console sends** — PP807 wired senkusha's half; this one tore a session down unsigned, and PP823 says the position it would sign at comes off the wrong ledger. → §PP824
 - ⏳ **PP825** (deps: —) **the microphone's packet is built and no takion sends one, so PP676's mic layout has only tests as callers** — Nothing in the session owns a capture and calls it, so the send has no caller either; a live run is what would show a console accepting one. → §PP825
+- 📋 **PP828** (deps: PP826 ✅) **the copy off the decode surface is known to exist and untimed, so the FFmpeg decision still has no total** — PP826 killed the no-readback claim and left the number it was standing in for; without it Media Foundation's column is a decode plus an unknown. → §PP828
 
 ## Block G — Test discipline
 
