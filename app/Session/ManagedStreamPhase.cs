@@ -262,8 +262,14 @@ public sealed class ManagedStreamPhase : IDisposable
         // PP811 SIGNED IT, AND THE JOIN IS STILL NOT MADE HERE. ManagedTakion.SendDataAck goes
         // through TakionSendPath now, so the ack leaves MAC'd under gkcrypt_local the way the C's
         // does - which removes the reason the numbers above have, and does not by itself say the
-        // join is safe. Nothing has measured a SIGNED ack against a console. PP807 is that
-        // measurement and it needs one, so the line stays out until a run says otherwise.
+        // join is safe. Nothing has measured a SIGNED ack against a console.
+        //
+        // PP824 IS THAT LINE AND IT WAITS ON PP823 FIRST. The MAC is computed AT the key position,
+        // and PP823 is the finding that this port takes that position off the RECEIVE ledger rather
+        // than the send counter the C keeps - so a signed ack would carry a tag the console cannot
+        // verify, which is grounds to reject where an unsigned one was only a field to ignore.
+        // PP807 shipped senkusha's half, whose takion has no cipher and whose acks the C leaves
+        // plain too; this one is the half that needed a console and still does.
         arrivals = new StreamArrivals(
             host, messages, keying, new ManagedStreamData(events))
         {

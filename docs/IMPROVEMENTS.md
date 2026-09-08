@@ -427,6 +427,36 @@ position is a tag the console cannot verify.
 
 WHAT IS NOT ESTABLISHED is what a console does with it, which needs a live run.
 
+### §PP824 The stream's half of the ack
+
+PP807 shipped one of the two routers. `StreamArrivals` has held the seam since that line
+was filed - an `IDataAckSink? Acks` set after construction, called below the routing
+exactly where `takion_flush_data_queue` sends - and `ManagedStreamPhase` is the
+composition root that does not set it. One line, deliberately absent.
+
+WHAT IT COST WHEN IT WAS PRESENT is measured, which is why it came out. Three live runs
+on 2026-09-07 against a console in an active game:
+
+    with the join     1171 and 1265 arrivals, 0 decoded, 0 audio, RemoteDisconnected
+    without it        14158 arrivals, 984 decoded, 1863 audio, no disconnect
+
+About 1170 unsigned control packets reached a console that verifies them, and it dropped
+the session rather than the packets.
+
+PP811 REMOVED THAT REASON AND DID NOT PROVE THE JOIN SAFE. The ack now goes through
+`TakionSendPath`, so it is MAC'd under gkcrypt_local wherever a cipher exists - the C's
+own behaviour. Nothing has measured a SIGNED ack against a console, and the numbers
+above say nothing about one.
+
+AND PP823 IS WHY THIS WAITS ON MORE THAN A RUN. The MAC is computed AT the key position,
+and the port takes that position from the receive-side ledger rather than from the send
+counter the C keeps. A signed ack at a position the console did not advance is a tag it
+cannot verify - arguably worse than an unsigned one, because the console now has grounds
+to reject rather than a field to ignore. So the order is PP823 first, then this, then a
+run.
+
+THE RE-ENTRY TRIGGER is PP823 landing plus one live session in rest mode.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry
