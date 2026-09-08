@@ -169,6 +169,12 @@ public static class OracleGuardCensus
         new(@"tests\ChiakiNg.Tests\VideoStreamTests.cs", TakionGuard),
         new(@"tests\ChiakiNg.Tests\TakionClientDatagramsTests.cs", TakionGuard),
 
+        // PP813: the ping senkusha sends, built twice - once by this port's writer and once through
+        // the C's own formatter - because a live console echoes the C's and not this port's, and
+        // eight readings of the format had already said they agree. They do, byte for byte, which
+        // is what makes the difference somewhere the bytes cannot show.
+        new(@"tests\ChiakiNg.Tests\SenkushaPingBytesTests.cs", TakionGuard),
+
         // PP802: and the recording, which is the same oracle asked a different way. PP785 keeps the
         // C's answers because the C is leaving, so the one test that RE-DERIVES them declines
         // without the wrappers and the recorder that produces them reads the same answer.

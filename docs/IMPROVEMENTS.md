@@ -306,29 +306,27 @@ against. The second is what an oracle wants, and the first is cheaper.
 
 ### §PP813 The pongs that never come back
 
-THE LIVE CENSUS, twice identical: routes [ToData 50, ToDataAck 4], arms [Ignored 50,
-ProtocolAcked 1, Banged 1, DataAcked 2], data stopped at [NoArm 48]. It accounts exactly
-- two of the fifty were the protocol ack and the bang.
+A LIVE RUN ON 2026-09-08 SETTLED THE HALF THIS SECTION SAID WAS OUTSIDE THE TREE. The
+C's own senkusha, against this console minutes apart, took all ten pongs at an average
+1.662ms and completed. So the console ECHOES, and no pktmon capture was needed to learn
+it: running the C's path against the same console IS the capture, and it costs one flag.
 
-THE FORTY-EIGHT ARE NOT THE FAULT, and this section called them the lead. NoArm means
-the state had no protobuf arm, and across the ping test the state is ExpectPong, whose
-switch falls to Ignored. senkusha.c does the same and logs nothing, so the C's run had
-them too.
+THE PING IS NOT THE DIFFERENCE, and this is the ninth reading - the first with an oracle
+rather than an eye. The port's 548-byte ping is byte-identical to one built through the
+C's own formatter over the shim, tag and all. SetVersion, the BIG and both echo commands
+match a real PS5's recorded exchange field for field, data type 8 included.
 
-SO ToAv 0 IS THE WHOLE STORY. Ten pings left the socket - RunRttTest only reaches
-answered.Count < 1 once all ten SendRaw calls returned Success - and nothing came back.
+THE LOOP IS ALIVE THROUGHOUT, which the census proves rather than assumes. The four data
+acks it counts are the acks for the two echo commands, and those BRACKET the ten pings -
+so a socket that received them received nothing between them.
 
-EIGHT READINGS, ALL FAITHFUL. The ping's constants and header; a raw socket write; the
-send on channel one under the C's own data types; an echo protobuf whose zero-valued
-command field the writer does not omit; Dispatch handing the dispatch EVERY datagram,
-the AV arm being a branch and not a diversion; the parse deriving DataSize from the
-buffer length. And both buffering answers: the receive loop dispatches unconditionally
-and never calls Postpone, so nothing is held back; and DatagramCapacity is 1500, clear
-of a 548-byte pong.
+THE FORTY-EIGHT WERE RETRANSMISSIONS, which this section called the C's own. PP807 gave
+senkusha's router its data acks and the census fell from ToData 50 to 2 and NoArm 48 to
+none: the console was repeating what nothing acknowledged.
 
-WHAT IS LEFT IS NOT IN THIS TREE. Everything here sees only what reaches the socket, and
-the question is whether the console echoes. That is a capture on senkusha's own port -
-pktmon is present and wants elevation.
+SO THE CONSOLE ECHOES, THE BYTES ARE THE C'S, AND NOTHING ARRIVES. What is left is a
+difference of socket or of session state that only the wire shows. pktmon wants
+elevation, and the port's own relay does not carry senkusha's handshake.
 
 ### §PP814 The audio nobody counts
 
