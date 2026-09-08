@@ -111,6 +111,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP823** **every send takes its key position from the receive ledger, so the MAC is stamped where the console never advanced** — The send position is key_pos_local and the receive one is the key state; the two never answer for each other.
 - ✅ **PP817** **the GCM tag is a hand-written GHASH, and the only thing ever asked about it was AesGcm's contract** — The GMAC is CNG's, with Ghash kept as its oracle and as the fallback a narrower provider would take.
 - ✅ **PP818** **no Media Foundation decode has ever been timed, so 87.6 MB of FFmpeg is weighed against a guess** — Media Foundation is viable for H.264 on the decode numbers; what still blocks the swap is HEVC's Store extension, not speed.
+- ✅ **PP827** **the port sends the BIG whole where the C splits it against the MTU, so a long launch spec leaves as one datagram** — Only the BIG fragments, and the cut is read at BIG time so it is senkusha's measurement rather than the fallback.
 
 ## Block G — Test discipline
 

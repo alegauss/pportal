@@ -24,6 +24,21 @@ public interface IStreamMessageSink
     /// Send one message. Returns whether it went, which is what the IDR request's caller reads.
     /// </summary>
     bool Send(in StreamMessage message);
+
+    /// <summary>
+    /// PP827: send the BIG, which is the ONE message streamconnection.c fragments.
+    /// </summary>
+    /// <remarks>
+    /// A METHOD OF ITS OWN BECAUSE THE C HAS A FUNCTION OF ITS OWN. Every other message goes
+    /// through stream_connection_send_data in a single call whatever its length;
+    /// stream_connection_send_big loops against the MTU and uses a second takion export for every
+    /// fragment after the first. A sink that fragmented everything would be doing something the C
+    /// does not, and one that fragmented nothing is what PP827 measured going wrong at 576.
+    ///
+    /// A sink with no transport under it answers this exactly as it answers <see cref="Send"/>:
+    /// fragmentation is a property of the wire, and a recorder has none.
+    /// </remarks>
+    bool SendBig(in StreamMessage message);
 }
 
 /// <summary>

@@ -229,7 +229,17 @@ public sealed class ManagedStreamPhase : IDisposable
             events,
             messages,
             new BaselineStages(baseline),
-            () => Big(session),
+            // PP827: the BIG is the one message the C fragments, and the cut is decided HERE
+            // because this is the moment senkusha's measurement is legible. The sink is built
+            // before the link is measured, so a cut fixed at construction would be the fallback on
+            // every session; read at BIG time it is what the console and this client agreed on.
+            () =>
+            {
+                if (SessionBigMaterial.TransportOf(session) is { } measured)
+                    messages.Mtu = TakionMessageSink.UsableMtu(measured.MtuIn, measured.MtuOut);
+
+                return Big(session);
+            },
             () => new ManagedVideoReceiver(video, outbound),
             () => sound,
             () => new ManagedAudioReceiverPair(new NoFrames(), new NoFrames()));

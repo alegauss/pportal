@@ -1,3 +1,4 @@
+using ChiakiNg.Native;
 using ChiakiNg.Protocol;
 using ChiakiNg.Session;
 using Xunit;
@@ -95,5 +96,84 @@ public class BigFragmentReachTests(ITestOutputHelper output)
         Assert.Single(BigFragments.Plan(body.Length, usable));
 
         Assert.InRange(headroom, 0, 64);
+    }
+
+    /// <summary>
+    /// PP827: AND THE SINK NOW CUTS IT, which is the half the measurement above asked for.
+    ///
+    /// Over a real socket, because the claim is about datagrams: at the narrowest MTU the BIG leaves
+    /// as three, none of them larger than the MTU, and exactly the last carries the end-of-message
+    /// flag. Before this the sink called SendData once and one oversized datagram went out.
+    /// </summary>
+    [Fact]
+    public void TheSinkSendsTheBigAsTheFragmentsThePlanNames()
+    {
+        const uint TagRemote = 0x71DC_4009;
+
+        var peer = new System.Net.Sockets.UdpClient(
+            new System.Net.IPEndPoint(System.Net.IPAddress.Loopback, 0));
+
+        using (peer)
+        {
+            var responder = new TakionHandshakeResponder(TagRemote, [.. Enumerable.Repeat((byte)0x71, 32)]);
+
+            var answering = new Thread(() =>
+            {
+                var from = new System.Net.IPEndPoint(System.Net.IPAddress.Loopback, 0);
+
+                while (responder.State != TakionResponderState.Done)
+                {
+                    byte[] datagram = peer.Receive(ref from);
+
+                    if (responder.Answer(datagram) is { } answer)
+                        peer.Send(answer, answer.Length, from);
+                }
+            })
+            {
+                IsBackground = true,
+                Name = "big peer",
+            };
+
+            answering.Start();
+
+            using var takion = new ManagedTakion(0x0000_8270);
+
+            Assert.Equal(
+                ChiakiError.Success,
+                takion.Connect(
+                    (System.Net.IPEndPoint)peer.Client.LocalEndPoint!, expectTimeoutMs: 2000).Error);
+
+            answering.Join(TimeSpan.FromSeconds(5));
+            peer.Client.ReceiveTimeout = 2000;
+
+            int usable = BigFragments.NarrowestMeasuredMtu - BigFragments.NetworkOverhead;
+            byte[] body = Big(BigFragments.NarrowestMeasuredMtu);
+
+            var sink = new TakionMessageSink(takion) { Mtu = usable };
+
+            Assert.True(
+                sink.SendBig(new StreamMessage(StreamMessages.OrdinaryData, PayloadType: 0, body)));
+
+            IReadOnlyList<BigFragment> plan = BigFragments.Plan(body.Length, usable);
+            Assert.Equal(plan.Count, sink.Sent);
+
+            // The first is a data message and the rest are continuations, which is the C's two
+            // exports and the reason ManagedTakion needed a second send at all.
+            Assert.Equal(1, takion.DataSent);
+            Assert.Equal(plan.Count - 1, takion.ContinuationSent);
+
+            var from = new System.Net.IPEndPoint(System.Net.IPAddress.Loopback, 0);
+
+            for (var i = 0; i < plan.Count; i++)
+            {
+                byte[] onTheWire = peer.Receive(ref from);
+
+                output.WriteLine($"fragment {i}: {onTheWire.Length} bytes against a {usable} MTU");
+
+                Assert.True(
+                    onTheWire.Length <= usable,
+                    $"fragment {i} is {onTheWire.Length} bytes, which is over the {usable} MTU");
+            }
+        }
     }
 }

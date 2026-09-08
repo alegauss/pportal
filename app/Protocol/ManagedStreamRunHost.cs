@@ -396,9 +396,15 @@ public sealed class ManagedStreamRunHost : IStreamRunHost
     }
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// PP827: through the sink's OWN BIG send, which is the one message the C fragments. This
+    /// called the ordinary Send, so a BIG longer than the MTU left as a single oversized datagram -
+    /// invisible at the fallback MTU, where the C's loop also runs once, and wrong on any link
+    /// senkusha measured narrower.
+    /// </remarks>
     public bool SendBig()
     {
-        messages.Send(big());
+        messages.SendBig(big());
         return true;
     }
 

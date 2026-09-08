@@ -26,6 +26,10 @@ public class ManagedStreamRunHostTests(ITestOutputHelper output)
             Messages.Add(message);
             return true;
         }
+
+        // PP827: a recorder has no wire and so no MTU to cut against - the BIG arrives here whole,
+        // which is what every assertion in this file was written against.
+        public bool SendBig(in StreamMessage message) => Send(message);
     }
 
     private sealed class Stages : IStageSink

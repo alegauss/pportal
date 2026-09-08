@@ -746,6 +746,71 @@ public sealed class ManagedTakion : ITakionLoopHost, IDataAckSink, IDisposable
             : new TakionSendOutcome(TakionSendStage.SentButNotHeld, ChiakiError.Success, true, true, seqNum, false);
     }
 
+    /// <summary>How many continuation messages this takion has put on its socket.</summary>
+    public int ContinuationSent { get; private set; }
+
+    /// <summary>
+    /// PP827: chiaki_takion_send_message_data_cont - every fragment of a BIG after the first.
+    ///
+    /// THE SEVENTH CALL SITE AND THE LAST WITH NO PORT SEND. PP823 counted the C's six ledger call
+    /// sites against this class's four; PP825 took the microphone and set this one aside because
+    /// whether the port ever reaches a message long enough to need it was a separate question.
+    /// PP827 answered it: at senkusha's narrowest MTU the BIG needs three messages.
+    ///
+    /// IT IS <see cref="SendData"/> WITH ONE BYTE LESS OF HEADER. The continuation writes no data
+    /// type at offset eight and starts its payload at eight rather than nine, so its packet is one
+    /// byte shorter for the same payload - and both still pass only the PAYLOAD length to the
+    /// ledger, which is why <see cref="TakionKeyPosition"/> records two overheads and not one.
+    /// Everything else is identical: the position first, the sequence number after the packet
+    /// exists, the push last with its failure ignored.
+    /// </summary>
+    /// <param name="channel">Which channel the payload belongs to.</param>
+    /// <param name="payload">This fragment's bytes.</param>
+    /// <param name="chunkFlags">The C's type_b - 1 on the fragment that ends the message.</param>
+    public TakionSendOutcome SendDataContinuation(
+        ushort channel, ReadOnlySpan<byte> payload, byte chunkFlags = TakionDataPush.ExpectedTypeB)
+    {
+        ObjectDisposedException.ThrowIf(Stage == TakionStage.Closed, this);
+
+        if (wire is null || sendBuffer is null)
+        {
+            return new TakionSendOutcome(
+                TakionSendStage.KeyPositionRefused, ChiakiError.Uninitialized, false, false, 0, false);
+        }
+
+        KeyPositionGrant grant = AdvanceKeyPos((ulong)payload.Length);
+
+        if (grant.Error != ChiakiError.Success)
+        {
+            return new TakionSendOutcome(
+                TakionSendStage.KeyPositionRefused, grant.Error, false, false, 0, false);
+        }
+
+        ulong keyPos = grant.KeyPosition;
+
+        var datagram = new byte[TakionDataDatagrams.ContinuationSize(payload.Length)];
+        uint seqNum = SeqNumLocal++;
+
+        TakionDataDatagrams.WriteContinuation(
+            datagram, Handshake.TagRemote, (uint)keyPos, chunkFlags, seqNum, channel, payload);
+
+        ChiakiError sent = TakionSendPath.Send(datagram, Gmac(keyPos), wire, cipherLock);
+
+        if (sent != ChiakiError.Success)
+        {
+            return new TakionSendOutcome(
+                TakionSendStage.SendFailed, sent, true, true, seqNum, false);
+        }
+
+        ContinuationSent++;
+
+        ChiakiError held = sendBuffer.Push(seqNum, datagram.Length);
+
+        return held == ChiakiError.Success
+            ? new TakionSendOutcome(TakionSendStage.SentAndHeld, ChiakiError.Success, true, true, seqNum, false)
+            : new TakionSendOutcome(TakionSendStage.SentButNotHeld, ChiakiError.Success, true, true, seqNum, false);
+    }
+
     /// <summary>
     /// takion_handshake, over a socket this takion opens and owns.
     /// </summary>

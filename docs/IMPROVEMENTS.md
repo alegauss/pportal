@@ -435,32 +435,6 @@ compared against.
 WHAT IS AT STAKE IS 87.6 MB and four decoder choices, which is what PP650 priced. A
 number that could reverse that is worth having before the swap rather than after.
 
-### §PP827 The BIG the port never splits
-
-PP825 set the continuation aside as a separate question and this is it, answered far
-enough to file. `stream_connection_send_big` is a LOOP: while the MTU cannot hold what
-is left, it sends a fragment and goes round, using `chiaki_takion_send_message_data` for
-the first and `chiaki_takion_send_message_data_cont` for every one after it, then a
-trailing pair carrying the end-of-message flag. `BigFragments` already models that
-condition and PP376 already fixed a boundary case in it.
-
-THE PORT DOES NONE OF IT. `ManagedStreamRunHost.SendBig` calls `messages.Send(big())`,
-and `TakionMessageSink.Send` hands the whole body to `ManagedTakion.SendData` in one
-call - no MTU read, no loop, no end-of-message flag.
-`TakionDataDatagrams.WriteContinuation` has the bytes, byte-checked against the C by
-PP615, and no caller anywhere in app.
-
-WHAT IS NOT ESTABLISHED is whether this port's BIG ever exceeds the MTU. PP726 formats
-the launch spec and PP727 hides it; how long the result is depends on the video profiles
-the session carries, and nobody has measured one. Under the MTU the C's loop runs zero
-times and the port's single send is the same datagram - which is why a stream has worked
-at all.
-
-SO THE FIRST WORK IS A LENGTH, not a loop. Measure an encoded BIG against the transport
-MTU the session records. If it fits with room, this is a line to retire rather than a
-defect; if it does not, the console is being handed an oversized datagram and the fix is
-the loop the C has.
-
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry

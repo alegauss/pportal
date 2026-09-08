@@ -25,6 +25,10 @@ public class AvArmInstallTests(ITestOutputHelper output)
     private sealed class Sent : IStreamMessageSink
     {
         public bool Send(in StreamMessage message) => true;
+
+        // PP827: a recorder has no wire and so no MTU to cut against - the BIG arrives here whole,
+        // which is what every assertion in this file was written against.
+        public bool SendBig(in StreamMessage message) => Send(message);
     }
 
     private sealed class Quiet : IFeedbackSink

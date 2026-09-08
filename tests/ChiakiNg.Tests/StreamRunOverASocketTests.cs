@@ -53,6 +53,10 @@ public class StreamRunOverASocketTests(ITestOutputHelper output) : IDisposable
             return true;
         }
 
+        // PP827: a recorder has no wire and so no MTU to cut against - the BIG arrives here whole,
+        // which is what every assertion in this file was written against.
+        public bool SendBig(in StreamMessage message) => Send(message);
+
         public ushort[] Snapshot()
         {
             lock (PayloadTypes)

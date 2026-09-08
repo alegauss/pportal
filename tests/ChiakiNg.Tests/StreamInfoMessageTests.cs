@@ -379,6 +379,10 @@ public class StreamInfoMessageTests(ITestOutputHelper output)
             Sent.Add(message);
             return true;
         }
+
+        // PP827: a recorder has no wire and so no MTU to cut against - the BIG arrives here whole,
+        // which is what every assertion in this file was written against.
+        public bool SendBig(in StreamMessage message) => Send(message);
     }
 
     /// <summary>The two constants are the C's defines, not numbers typed here.</summary>
