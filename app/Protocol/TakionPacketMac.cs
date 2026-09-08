@@ -116,9 +116,11 @@ public static class TakionPacketMac
     /// <param name="wantMacBefore">Whether the caller passed mac_old_out.</param>
     /// <param name="wantMacAfter">
     /// Whether the caller passed mac_out. PP675: this used to be unconditional, and the C's
-    /// parameter is optional exactly as mac_old_out is - chiaki_takion_send passes NULL for it. The
-    /// four bytes were being copied out on every send for a caller that never read them, which the
-    /// send path's zero-allocation budget is what noticed.
+    /// parameter is optional exactly as mac_old_out is. PP811: it also said chiaki_takion_send
+    /// passes NULL for it, and that is wrong - it passes a stack buffer nothing afterwards reads.
+    /// The behaviour the flag exists for is unchanged, because four bytes of C stack is what an
+    /// array per send would be paying for, and the send path's zero-allocation budget is what
+    /// noticed the copy.
     /// </param>
     public static MacResult Apply(
         Span<byte> packet, Func<ReadOnlyMemory<byte>, byte[]>? gmac,

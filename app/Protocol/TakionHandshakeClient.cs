@@ -256,7 +256,7 @@ public sealed class TakionHandshakeClient
 /// longer than the buffer it was asked into - which is what makes the C's fixed-size receives refuse
 /// a long ack on Windows rather than truncate it.
 /// </summary>
-public sealed class TakionUdpWire : ITakionHandshakeWire, IDisposable
+public sealed class TakionUdpWire : ITakionHandshakeWire, ITakionWire, IDisposable
 {
     private readonly Socket socket;
 

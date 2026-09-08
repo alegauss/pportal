@@ -467,4 +467,167 @@ public class ManagedTakionTests(ITestOutputHelper output) : IDisposable
 
         Assert.Throws<InvalidOperationException>(() => takion.RunLoop());
     }
+
+    /// <summary>A connected takion whose peer is this test's socket, drained of the handshake.</summary>
+    private ManagedTakion Connected(uint tagRemote, uint tagLocal, byte fill)
+    {
+        var responder = new TakionHandshakeResponder(tagRemote, [.. Enumerable.Repeat(fill, 32)]);
+        Thread answering = AnswerHandshake(responder);
+
+        var takion = new ManagedTakion(tagLocal);
+        Assert.Equal(ChiakiError.Success, takion.Connect(PeerEndPoint, expectTimeoutMs: 2000).Error);
+        answering.Join(TimeSpan.FromSeconds(5));
+
+        peer.Client.ReceiveTimeout = 2000;
+        return takion;
+    }
+
+    /// <summary>The next datagram this takion put on the socket.</summary>
+    private byte[] NextFromTheSocket()
+    {
+        var from = new IPEndPoint(IPAddress.Loopback, 0);
+        return peer.Receive(ref from);
+    }
+
+    /// <summary>The MAC field of a datagram, found by its own type's layout rather than by a number.</summary>
+    private static byte[] MacOf(byte[] datagram)
+    {
+        int baseType = datagram[0] & TakionDispatch.BaseTypeMask;
+
+        if (TakionPacketMac.LayoutFor(baseType) is not { } layout)
+        {
+            Assert.Fail($"no MAC layout for base type {baseType}");
+            return [];
+        }
+
+        return datagram.AsSpan(layout.MacOffset, TakionPacketMac.GmacSize).ToArray();
+    }
+
+    /// <summary>
+    /// PP811: THE THREE SENDS THAT ARE chiaki_takion_send LEAVE SIGNED, once a cipher exists.
+    ///
+    /// This is the whole task in one assertion. TakionSendPath is PP675's port of that function and
+    /// nothing called it: each of these wrote its key position, sent, and stamped nothing - so a
+    /// live takion put unsigned control packets on the wire and the console verifies them. PP807
+    /// measured what that costs: about 1170 of them and the session torn down.
+    ///
+    /// ASKED OF THE SOCKET AND NOT OF THE PATH, because the path already had tests and was still
+    /// unreached. What is read here is the datagram that crossed a UDP stack.
+    /// </summary>
+    [Theory]
+    [InlineData("ack")]
+    [InlineData("congestion")]
+    [InlineData("data")]
+    public void TheSendsThatMacInTheCLeaveWithAMac(string which)
+    {
+        using ManagedTakion takion = Connected(0x0000_e811, 0x0000_8110, 0x66);
+
+        takion.LocalCrypt = ManagedGkCrypt.Derive(
+            2,
+            [.. Enumerable.Repeat((byte)0x2b, GkDerivation.HandshakeKeySize)],
+            [.. Enumerable.Repeat((byte)0x7c, GkDerivation.EcdhSecretSize)]);
+
+        switch (which)
+        {
+            case "ack":
+                Assert.Equal(ChiakiError.Success, takion.SendDataAck(99));
+                break;
+            case "congestion":
+                Assert.Equal(ChiakiError.Success, takion.SendCongestion(received: 12, lost: 3));
+                break;
+            default:
+                Assert.Equal(
+                    TakionSendStage.SentAndHeld,
+                    takion.SendData(channel: 0, payload: [1, 2, 3, 4]).Stage);
+                break;
+        }
+
+        byte[] onTheWire = NextFromTheSocket();
+        byte[] mac = MacOf(onTheWire);
+
+        output.WriteLine($"{which}: {Convert.ToHexString(onTheWire)}");
+
+        Assert.NotEqual(new byte[TakionPacketMac.GmacSize], mac);
+    }
+
+    /// <summary>
+    /// AND WITH NO CIPHER THE SAME SENDS STILL GO, with four zeroes where the tag will be.
+    ///
+    /// The C tests gkcrypt_local inside chiaki_takion_packet_mac and blanks the field either way,
+    /// returning Success - so a send before the bang is a real state and not an error. A port that
+    /// refused here would break every send the handshake makes.
+    /// </summary>
+    [Fact]
+    public void WithNoCipherTheSameSendsLeaveUnsignedRatherThanBeingRefused()
+    {
+        using ManagedTakion takion = Connected(0x0000_e812, 0x0000_8111, 0x67);
+
+        Assert.Null(takion.LocalCrypt);
+        Assert.Equal(ChiakiError.Success, takion.SendDataAck(7));
+
+        Assert.Equal(new byte[TakionPacketMac.GmacSize], MacOf(NextFromTheSocket()));
+    }
+
+    /// <summary>
+    /// PP811: AND THE FEEDBACK SEND TAKES THE SAME LOCK, which is what makes it exclude the others.
+    ///
+    /// It stamps its own tag and always did - the sequence was ported and correct. What it did not
+    /// do was hold gkcrypt_local while doing it, so a feedback packet's ledger advance could
+    /// interleave with a data message's stamp and desynchronise the stream cipher, which produces
+    /// noise on the console rather than an error here. One lock object is what fixes that, and the
+    /// observable half is that the packet is signed by the ported sequence at all.
+    /// </summary>
+    [Fact]
+    public void TheFeedbackSendGoesThroughThePortedSequence()
+    {
+        using ManagedTakion takion = Connected(0x0000_e813, 0x0000_8112, 0x68);
+
+        takion.LocalCrypt = ManagedGkCrypt.Derive(
+            2,
+            [.. Enumerable.Repeat((byte)0x2b, GkDerivation.HandshakeKeySize)],
+            [.. Enumerable.Repeat((byte)0x7c, GkDerivation.EcdhSecretSize)]);
+
+        Assert.Equal(
+            ChiakiError.Success,
+            takion.SendFeedback(TakionFeedbackSends.FeedbackStateType, seqNum: 5, payload: [9, 9, 9, 9]));
+
+        Assert.Equal(1, takion.FeedbackSent);
+
+        byte[] onTheWire = NextFromTheSocket();
+
+        // Its own layout, which is not the one MacOf knows: a feedback packet is not a type either
+        // of the C's offset switches answers for.
+        Assert.NotEqual(
+            new byte[TakionFeedbackSends.GmacSize],
+            onTheWire.AsSpan(
+                TakionFeedbackSends.Feedback.MacOffset, TakionFeedbackSends.GmacSize).ToArray());
+
+        // And the payload was encrypted in place rather than sent as it was handed in.
+        Assert.NotEqual(
+            new byte[] { 9, 9, 9, 9 },
+            onTheWire.AsSpan(TakionFeedbackSends.Feedback.HeadSize).ToArray());
+    }
+
+    /// <summary>
+    /// A raw send is still raw, which is the one of the five that must NOT be routed.
+    ///
+    /// chiaki_takion_send_raw is one write to the socket, and senkusha's two measurements are its
+    /// callers: what they measure is the SIZE that reaches the console, so a send that stamped them
+    /// would measure a link nobody has - and senkusha's takion has no cipher to stamp with anyway.
+    /// </summary>
+    [Fact]
+    public void ARawSendIsStillUnstamped()
+    {
+        using ManagedTakion takion = Connected(0x0000_e814, 0x0000_8113, 0x69);
+
+        takion.LocalCrypt = ManagedGkCrypt.Derive(
+            2,
+            [.. Enumerable.Repeat((byte)0x2b, GkDerivation.HandshakeKeySize)],
+            [.. Enumerable.Repeat((byte)0x7c, GkDerivation.EcdhSecretSize)]);
+
+        byte[] probe = [TakionMessageHeader.ControlPacketType, .. Enumerable.Repeat((byte)0xAB, 23)];
+
+        Assert.Equal(ChiakiError.Success, takion.SendRaw(probe));
+        Assert.Equal(probe, NextFromTheSocket());
+    }
 }

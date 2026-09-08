@@ -6,16 +6,20 @@ using Xunit.Abstractions;
 namespace ChiakiNg.Tests;
 
 /// <summary>
-/// PP675: chiaki_takion_send - the MAC and the socket, both under one lock.
+/// PP675, PP811: chiaki_takion_send - the MAC under one lock, and the socket outside it.
 ///
-/// The C holds gkcrypt_local_mutex across the stamp AND the send. Two threads that stamped under a
-/// lock and then raced to the socket would put their datagrams on the wire in an order neither key
-/// position matches, and a console reads that position out of the packet - so a stream cipher fed
-/// positions out of order produces noise rather than an error, which is the failure nothing reports.
+/// THE ASSERTION BELOW IS INVERTED FROM THE ONE PP675 WROTE, and the inversion is the finding.
+/// PP675 argued the C must hold gkcrypt_local_mutex across the stamp AND the send: two threads that
+/// stamped under a lock and then raced to the socket would put their datagrams on the wire in an
+/// order neither key position matches, and a stream cipher fed positions out of order produces
+/// noise rather than an error. The argument is reasonable and takion.c does not make it -
+/// chiaki_takion_send unlocks between chiaki_takion_packet_mac and chiaki_takion_send_raw, three
+/// lines apart. The mutex guards the CIPHER, which is the only shared thing the MAC touches.
 ///
-/// SO THE ORDERING IS WHAT THESE HOLD, and it is only observable to something watching both ends.
-/// RecordingTakionWire runs a hook at the moment of the send, so a test can ask whether the lock was
-/// still held when the datagram left.
+/// SO THE ORDERING IS STILL WHAT THESE HOLD, only the other way round, and it is still observable
+/// to nothing but something watching both ends. RecordingTakionWire runs a hook at the moment of
+/// the send, so a test can ask whether the lock was held when the datagram left - and the answer
+/// this asserts is no.
 /// </summary>
 public class TakionSendPathTests(ITestOutputHelper output)
 {
@@ -55,14 +59,15 @@ public class TakionSendPathTests(ITestOutputHelper output)
     }
 
     /// <summary>
-    /// THE SEND IS INSIDE THE LOCK, asked of the lock itself at the moment of the send.
+    /// PP811: THE SEND IS OUTSIDE THE LOCK, asked of the lock itself at the moment of the send.
     ///
-    /// A second thread tries to take the same lock while the wire's hook is running. It must not
-    /// get it - which is exactly the claim "the send is inside" makes, and one a test that only
-    /// checked the stamp could not make at all.
+    /// A second thread tries to take the same lock while the wire's hook is running, and it MUST
+    /// get it. That is the C's shape: the cipher is released before send_raw, so a second sender
+    /// can be stamping while the first is still in the socket call. Asserting the opposite is what
+    /// this test did until the C was read, and nothing else in the tree disagreed with it.
     /// </summary>
     [Fact]
-    public void TheWireIsCalledWithTheLockStillHeld()
+    public void TheWireIsCalledWithTheLockAlreadyReleased()
     {
         var cipherLock = new object();
         var wire = new RecordingTakionWire();
@@ -72,7 +77,7 @@ public class TakionSendPathTests(ITestOutputHelper output)
         {
             var other = new Thread(() =>
             {
-                if (Monitor.TryEnter(cipherLock, TimeSpan.FromMilliseconds(200)))
+                if (Monitor.TryEnter(cipherLock, TimeSpan.FromSeconds(2)))
                 {
                     takenByAnother = true;
                     Monitor.Exit(cipherLock);
@@ -86,7 +91,46 @@ public class TakionSendPathTests(ITestOutputHelper output)
         TakionSendPath.Send(Datagram(), null, wire, cipherLock);
 
         Assert.Single(wire.Sent);
-        Assert.False(takenByAnother, "another thread took the cipher lock while a datagram was being sent");
+        Assert.True(takenByAnother, "the cipher lock was still held while the datagram was being sent");
+    }
+
+    /// <summary>
+    /// PP811: AND THE STAMP ITSELF IS UNDER IT, which is the half the lock is actually for.
+    ///
+    /// Without this the test above would pass a path that took no lock at all - and a path that
+    /// took none would be wrong in the way the C's recursive mutex exists to prevent, rather than
+    /// right in the way the C is. Asked of the gmac function, which only runs inside.
+    /// </summary>
+    [Fact]
+    public void TheGmacRunsWithTheLockHeld()
+    {
+        var cipherLock = new object();
+        var wire = new RecordingTakionWire();
+        bool takenDuringTheStamp = false;
+
+        TakionSendPath.Send(
+            Datagram(),
+            _ =>
+            {
+                var other = new Thread(() =>
+                {
+                    if (Monitor.TryEnter(cipherLock, TimeSpan.FromMilliseconds(200)))
+                    {
+                        takenDuringTheStamp = true;
+                        Monitor.Exit(cipherLock);
+                    }
+                });
+
+                other.Start();
+                other.Join(TimeSpan.FromSeconds(5));
+
+                return [0xDE, 0xAD, 0xBE, 0xEF];
+            },
+            wire,
+            cipherLock);
+
+        Assert.Single(wire.Sent);
+        Assert.False(takenDuringTheStamp, "another thread took the cipher lock while the MAC was being stamped");
     }
 
     /// <summary>
@@ -228,6 +272,66 @@ public class TakionSendPathTests(ITestOutputHelper output)
 
         Assert.Equal(TakionMessageVerdict.DataAck, read.Verdict);
         Assert.Equal(TakionDataDatagrams.AckBodySize, read.PayloadSize);
+    }
+
+    /// <summary>
+    /// PP811: THE LOCK'S EXTENT, READ OUT OF takion.c RATHER THAN ARGUED FOR.
+    ///
+    /// This is the assertion the file was missing for five blocks. PP675 reasoned its way to a
+    /// wider critical section than the C has and wrote the reasoning into the prose, where nothing
+    /// could contradict it - the module had no caller, so no behaviour disagreed either. Three
+    /// positions in one body answer it instead: the lock, the unlock, and the raw send.
+    /// </summary>
+    [Fact]
+    public void TheCipherIsReleasedBeforeTheRawSendInTheC()
+    {
+        if (TakionSendPathSource.Locate() is not { } path)
+            return;
+
+        string? body = TakionSendPathSource.SendBody(File.ReadAllText(path));
+        Assert.NotNull(body);
+
+        Assert.True(
+            TakionSendPathSource.TheCipherIsReleasedBeforeTheRawSend(body),
+            "chiaki_takion_send no longer unlocks gkcrypt_local before send_raw");
+
+        Assert.True(
+            TakionSendPathSource.TheMacIsTakenUnderTheCipher(body),
+            "chiaki_takion_send no longer takes the MAC while gkcrypt_local is held");
+    }
+
+    /// <summary>
+    /// AND THE FEEDBACK PATH STILL DOES HOLD IT ACROSS ITS SEND, which is the contrast.
+    ///
+    /// The two together are the finding: one send releases the cipher before the socket and one
+    /// does not, in the same file. A port that read either rule for both would be wrong about one
+    /// of them - and reading the feedback one for both is exactly the mistake PP675 made.
+    /// </summary>
+    [Fact]
+    public void TheFeedbackPathKeepsTheWiderSection()
+    {
+        if (TakionSendPathSource.Locate() is not { } path)
+            return;
+
+        Assert.True(
+            TakionSendPathSource.TheFeedbackPathStillHoldsItAcrossTheSend(File.ReadAllText(path)),
+            "takion_send_feedback_packet no longer holds gkcrypt_local across send_raw");
+    }
+
+    /// <summary>
+    /// A body that never locked would pass the release check, so the two are asked of one text.
+    ///
+    /// TheCipherIsReleasedBeforeTheRawSend is an ORDER over three positions, and an order over
+    /// positions that do not exist is vacuously false rather than true - which is worth holding,
+    /// because the failure it would otherwise hide is the C dropping the lock entirely.
+    /// </summary>
+    [Fact]
+    public void ABodyWithNoLockSatisfiesNeitherCheck()
+    {
+        const string unlocked = "{ chiaki_takion_packet_mac(a, b, c, d, e, f); chiaki_takion_send_raw(a, b, c); }";
+
+        Assert.False(TakionSendPathSource.TheCipherIsReleasedBeforeTheRawSend(unlocked));
+        Assert.False(TakionSendPathSource.TheMacIsTakenUnderTheCipher(unlocked));
     }
 }
 

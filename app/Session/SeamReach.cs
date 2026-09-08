@@ -312,13 +312,15 @@ public static class SeamReach
     /// <summary>
     /// The seams whose implementations exist and are never built, and what each one is.
     ///
-    /// THREE, AND THE THIRD IS WHY THIS AXIS EXISTS. The first two are harnesses and say so; the
-    /// last is a ported module with no caller, found by this sweep on the commit that wrote it.
-    /// PP799 was the same shape found eight tasks late, on a tree where every other check was
-    /// green - which is what a row here is worth.
+    /// TWO, AND BOTH ARE HARNESSES AND SAY SO. There were three: the third was ITakionWire, a
+    /// ported module with no caller found by this sweep on the commit that wrote it, and PP811
+    /// spent it - TakionUdpWire implements it now and ManagedTakion's four sends go through the
+    /// ported path, so the row would be a lie rather than a note. PP799 was the same shape found
+    /// eight tasks late, on a tree where every other check was green - which is what a row here is
+    /// worth, and what taking one away has to be as deliberate as adding it.
     ///
     /// A ROW IS NOT A PERMISSION. <see cref="Expected"/>'s rows say what a seam is waiting for and
-    /// so do these: two are waiting for nothing and one is waiting for PP811.
+    /// so do these: both of these are waiting for nothing.
     /// </summary>
     public static IReadOnlyList<UnreachedSeam> ExpectedUnconstructed { get; } =
     [
@@ -337,13 +339,5 @@ public static class SeamReach
             "IHolepunchPunchSteps",
             "PP632 left holepunch with no caller in app, and PP481's live tests are what build the "
                 + "steps - which need a console as well"),
-
-        // And the finding. TakionSendPath is PP675's port of chiaki_takion_send and nothing sends
-        // through it; ManagedTakion's four sends stamp and send inline, so the lock the C holds
-        // across both is not held. PP811 is the reading that says whether that is reachable.
-        new(
-            "ITakionWire",
-            "PP811: TakionSendPath has no caller, so the only implementation in app is the "
-                + "recording one and a live takion sends round the ported path"),
     ];
 }

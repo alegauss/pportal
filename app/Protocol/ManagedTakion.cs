@@ -98,6 +98,14 @@ public sealed class ManagedTakion : ITakionLoopHost, IDataAckSink, IDisposable
     // the handler runs outside the lock, so nothing it calls can deadlock against this.
     private readonly object disconnectGate = new();
 
+    // PP811: gkcrypt_local_mutex, which is the lock chiaki_takion_send takes and the one the
+    // feedback and microphone sends hold across a wider section. ONE object for both, because that
+    // is what makes them exclude each other - two locks would have let a feedback packet's advance
+    // interleave with a data message's stamp, which is the desynchronised cipher nothing reports.
+    // A plain lock() is reentrant for its own thread, which is what chiaki_mutex_init(&..., true)
+    // asks for.
+    private readonly object cipherLock = new();
+
     // PP795: not readonly any more. The arm's far end needs the keys a bang produces, so it is
     // installed after the fact - the same lateness the C's own chiaki_takion_set_crypt has.
     private ManagedAvArm? avArm;
@@ -290,6 +298,28 @@ public sealed class ManagedTakion : ITakionLoopHost, IDataAckSink, IDisposable
     /// </summary>
     public ManagedGkCrypt? LocalCrypt { get; set; }
 
+    /// <summary>
+    /// PP811: the cipher as <see cref="TakionSendPath"/> takes it, or null where there is none.
+    ///
+    /// NULL IS NOT AN ERROR HERE and that is the whole reason this returns one. The C passes
+    /// takion->gkcrypt_local straight into chiaki_takion_packet_mac, which tests it and blanks the
+    /// MAC field either way - so a send before the bang has produced a cipher goes out with four
+    /// zeroes where its tag will later be, and returns Success. A port that refused instead would
+    /// break the handshake's own sends.
+    ///
+    /// The position is CAPTURED, because the C's gmac takes it as an argument and the seam's does
+    /// not: <see cref="TakionPacketMac.Apply"/> hands its function the blanked packet alone.
+    /// </summary>
+    private Func<ReadOnlyMemory<byte>, byte[]>? Gmac(ulong keyPos)
+        => LocalCrypt is { } crypt
+            ? blanked =>
+            {
+                var mac = new byte[TakionPacketMac.GmacSize];
+                crypt.Gmac(keyPos, blanked.Span, mac);
+                return mac;
+            }
+            : null;
+
     /// <summary>How many feedback packets this takion has put on its socket.</summary>
     public int FeedbackSent { get; private set; }
 
@@ -323,19 +353,25 @@ public sealed class ManagedTakion : ITakionLoopHost, IDataAckSink, IDisposable
 
         ulong keyPos = Ledger.RequestPos(0, commit: true);
 
-        // A block past the position, which is the gap the ledger advanced for.
-        crypt.Encrypt(keyPos + (ulong)TakionFeedbackSends.BlockSize, packet.AsSpan(head));
-
-        BinaryPrimitives.WriteUInt32BigEndian(
-            packet.AsSpan(TakionFeedbackSends.Feedback.KeyPosOffset), (uint)keyPos);
-
-        // At the position itself, over the whole packet with the MAC field still zero.
-        crypt.Gmac(
-            keyPos,
+        // PP811: through the ported sequence rather than inline. This wrote the encrypt, the
+        // position and the tag itself and did them in the right order, and still differed from the
+        // C in the one way an order cannot show: none of it was under gkcrypt_local. The C holds
+        // that mutex from before the advance to `beach`, past send_raw, which is a WIDER section
+        // than chiaki_takion_send's - and TakionFeedbackSends is the module that has it.
+        ChiakiError sent = TakionFeedbackSends.Send(
             packet,
-            packet.AsSpan(TakionFeedbackSends.Feedback.MacOffset, TakionFeedbackSends.GmacSize));
+            TakionFeedbackSends.Feedback,
+            keyPos,
+            crypt.Encrypt,
+            (at, whole) =>
+            {
+                var mac = new byte[TakionFeedbackSends.GmacSize];
+                crypt.Gmac(at, whole.Span, mac);
+                return mac;
+            },
+            wire,
+            cipherLock);
 
-        ChiakiError sent = wire.Send(packet);
         if (sent == ChiakiError.Success)
             FeedbackSent++;
 
@@ -348,8 +384,14 @@ public sealed class ManagedTakion : ITakionLoopHost, IDataAckSink, IDisposable
     /// A RAW SEND AND NOT A DATA MESSAGE. The congestion packet carries its own type byte and its
     /// own key position and goes out whole; it is not wrapped in the message header
     /// <see cref="SendData"/> writes, which is why it does not take a channel and is not held for
-    /// resend. The C's own send would MAC it where a local cipher exists, and this takion has none
-    /// wired yet, so what leaves here is plain.
+    /// resend.
+    ///
+    /// PP811: IT IS SIGNED NOW, and the congestion packet is the one that shows why the blanking
+    /// matters. Its own key position is inside what the MAC covers, so
+    /// <see cref="TakionPacketMac"/> zeroes the field, takes the tag and puts the position back -
+    /// the same treatment a control packet gets, and one of only two types the C does it for.
+    /// Before a bang there is still no cipher and what leaves is still plain, which is
+    /// <see cref="Gmac"/> returning null rather than a state this refuses.
     /// </summary>
     public ChiakiError SendCongestion(ushort received, ushort lost)
     {
@@ -364,7 +406,7 @@ public sealed class ManagedTakion : ITakionLoopHost, IDataAckSink, IDisposable
         Span<byte> datagram = stackalloc byte[TakionCongestion.PacketSize];
         TakionCongestion.Write(datagram, received, lost, keyPos);
 
-        ChiakiError sent = wire.Send(datagram);
+        ChiakiError sent = TakionSendPath.Send(datagram, Gmac(keyPos), wire, cipherLock);
         if (sent == ChiakiError.Success)
             CongestionSent++;
 
@@ -383,18 +425,18 @@ public sealed class ManagedTakion : ITakionLoopHost, IDataAckSink, IDisposable
     /// and act on the first copy, so a retransmission is handled twice by arms that ignore the
     /// second - and that looks exactly like a run that worked.
     ///
-    /// AND IT LEAVES UNSIGNED, WHICH IS WHY NOTHING MAY WIRE IT YET. This was written as the same
-    /// plain send <see cref="SendCongestion"/> is, on the argument that a takion with no local
+    /// IT USED TO LEAVE UNSIGNED, and that is why the join above it waited. This was written as the
+    /// same plain send <see cref="SendCongestion"/> was, on the argument that a takion with no local
     /// cipher signs nothing anyway. That argument is false for this packet: chiaki_takion_send MACs
     /// under gkcrypt_local before send_raw, and a data message only flows once the bang has produced
     /// a cipher - so the console verifies these. Joined to the stream path on 2026-09-07 it sent
     /// about 1170 unsigned control packets and the console tore the session down: 0 frames decoded
     /// and 0 audio units against 984 and 1863 on the same build with the join removed.
     ///
-    /// PP811 is the line that fixes it, because the fix is the ported send path rather than a MAC
-    /// added here: <see cref="TakionSendPath"/> IS chiaki_takion_send, holding one lock across the
-    /// signature and the write, and nothing sends through it. <see cref="ManagedStreamPhase"/>
-    /// carries the measurement at the join it does not make.
+    /// PP811 IS THE FIX AND IT IS A CALL, not a MAC added here. <see cref="TakionSendPath"/> IS
+    /// chiaki_takion_send and had no caller; this is one of the three it now has. PP807 is what
+    /// spends it - <see cref="ManagedStreamPhase"/> still does not join the arrivals, because the
+    /// numbers above were measured against an unsigned ack and say nothing about a signed one.
     /// </summary>
     /// <param name="seqNum">The cumulative number, which is the last one the queue released.</param>
     public ChiakiError SendDataAck(uint seqNum)
@@ -418,7 +460,7 @@ public sealed class ManagedTakion : ITakionLoopHost, IDataAckSink, IDisposable
         TakionDataDatagrams.WriteAck(
             datagram, Handshake.TagRemote, (uint)keyPos, seqNum, TakionHandshake.ARwnd);
 
-        ChiakiError sent = wire.Send(datagram);
+        ChiakiError sent = TakionSendPath.Send(datagram, Gmac(keyPos), wire, cipherLock);
         if (sent == ChiakiError.Success)
             DataAckSent++;
 
@@ -512,11 +554,16 @@ public sealed class ManagedTakion : ITakionLoopHost, IDataAckSink, IDisposable
         TakionDataDatagrams.WriteData(
             datagram, Handshake.TagRemote, (uint)keyPos, chunkFlags, seqNum, channel, payload);
 
-        ChiakiError sent = wire.Send(datagram);
+        ChiakiError sent = TakionSendPath.Send(datagram, Gmac(keyPos), wire, cipherLock);
         if (sent != ChiakiError.Success)
         {
+            // PP811: the send path's OWN error and not a hardcoded Network any more. That constant
+            // was right while the only way to fail here was the socket; the path can now refuse a
+            // packet before the socket sees it, and the C returns whatever chiaki_takion_send
+            // returned rather than naming the failure itself. TakionDataSend keeps the constant
+            // because its send is a bool and has no error to carry.
             return new TakionSendOutcome(
-                TakionSendStage.SendFailed, ChiakiError.Network, true, true, seqNum, false);
+                TakionSendStage.SendFailed, sent, true, true, seqNum, false);
         }
 
         DataSent++;

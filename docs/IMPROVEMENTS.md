@@ -305,29 +305,6 @@ numbers it hands back are what the launch spec spends: a measurement the suite a
 with and a console does not is the shape that ships green and streams nothing. So the
 C's run stays the other arm until a live session says otherwise.
 
-### §PP811 The send path nothing sends through
-
-PP675 ported chiaki_takion_send as TakionSendPath.Send: take the cipher's lock, stamp
-the MAC, send, release - with the send INSIDE the lock, and its own prose says why. Two
-threads that stamp under a lock and then race to the socket put their datagrams on the
-wire in an order neither key position matches, and a stream cipher fed positions out of
-order produces noise rather than an error.
-
-NOTHING IN APP CALLS IT. ManagedTakion has four sends and each writes the key position,
-stamps the GMAC and calls the wire directly. The only implementation of ITakionWire in
-app is the recording one, which is a test double - which is how PP800's census found
-this, and is the second time a ported module turned out to have no caller.
-
-WHETHER IT IS REACHABLE IS NOT ANSWERED HERE. Three threads send on a live session - the
-run, the feedback sender and whatever acks - so two sends can overlap; what is not
-established is whether the positions they take can interleave in a way the console
-rejects, or whether the ledger's own commit already orders them.
-
-SO THE FIRST WORK IS READING, not a lock. If the ledger orders it, this is a module to
-retire rather than a defect to fix, and PP800's row says so instead of implying a
-repair. If it does not, the symptom is a stream that decodes noise for a moment under
-load, which is the hardest kind of report to attribute afterwards.
-
 ### §PP812 The tap on the socket that stopped being used
 
 --capture-datagrams installs a ChiakiMessageTap, which is a C-side hook: takion.c emits

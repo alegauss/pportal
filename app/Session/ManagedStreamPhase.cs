@@ -259,10 +259,11 @@ public sealed class ManagedStreamPhase : IDisposable
         // reached a console that verifies them, and it dropped the session rather than the packets.
         // A takion with no local cipher is not the state a data message flows in.
         //
-        // So the join waits on PP811, which is the line for the ported send path having no caller -
-        // TakionSendPath is chiaki_takion_send and the four sends here stamp and send inline. This
-        // is the one send that cannot be inline, because it is the one the console answers with a
-        // teardown. Restoring the line below without a MAC reproduces the numbers above.
+        // PP811 SIGNED IT, AND THE JOIN IS STILL NOT MADE HERE. ManagedTakion.SendDataAck goes
+        // through TakionSendPath now, so the ack leaves MAC'd under gkcrypt_local the way the C's
+        // does - which removes the reason the numbers above have, and does not by itself say the
+        // join is safe. Nothing has measured a SIGNED ack against a console. PP807 is that
+        // measurement and it needs one, so the line stays out until a run says otherwise.
         arrivals = new StreamArrivals(
             host, messages, keying, new ManagedStreamData(events))
         {
