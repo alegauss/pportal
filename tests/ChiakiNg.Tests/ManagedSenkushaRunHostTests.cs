@@ -1,5 +1,6 @@
 ﻿using System.Buffers.Binary;
 using System.Net;
+using System.Net.Sockets;
 using ChiakiNg.Native;
 using ChiakiNg.Protocol;
 using ChiakiNg.Session;
@@ -55,7 +56,7 @@ public class ManagedSenkushaRunHostTests
     {
         SenkushaSend message = SenkushaMessages.SetVersion();
 
-        Assert.Equal(SenkushaMessages.OrdinaryData, message.DataType);
+        Assert.Equal(SenkushaMessages.OrdinaryChannel, message.Channel);
         Assert.Equal(SenkushaMessage.TakionProtocolRequest, message.PayloadType);
 
         // Field 31, wire type 2, two bytes long: field 1 as a varint of nine.
@@ -78,7 +79,7 @@ public class ManagedSenkushaRunHostTests
     {
         SenkushaSend message = SenkushaMessages.Big();
 
-        Assert.Equal(SenkushaMessages.OrdinaryData, message.DataType);
+        Assert.Equal(SenkushaMessages.OrdinaryChannel, message.Channel);
         Assert.Equal(SenkushaMessage.Big, message.PayloadType);
 
         Tkproto.TakionMessage parsed = Tkproto.TakionMessage.Parser.ParseFrom(message.Body);
@@ -117,14 +118,14 @@ public class ManagedSenkushaRunHostTests
     }
 
     /// <summary>
-    /// PP791: the four SENKUSHA-typed commands, each under the data type an ack rides on.
+    /// PP791: the four SENKUSHA-typed commands, each on the channel an ack rides on.
     ///
-    /// Eight and not one. What tells senkusha's protobufs apart on channel one is that byte, and
-    /// PP419 found the recording emitting it where the payload type belonged - so both are carried
-    /// and both are asserted.
+    /// Eight and not one. What tells senkusha's protobufs apart is the channel, and PP419 found the
+    /// recording emitting it where the payload type belonged - so both are carried and both are
+    /// asserted. PP813: and it is the CHANNEL, which is the argument after the chunk flags.
     /// </summary>
     [Fact]
-    public void TheFourCommandsGoUnderTheAckedDataType()
+    public void TheFourCommandsGoOnTheAckedChannel()
     {
         SenkushaSend echo = SenkushaMessages.EchoCommandMessage(true);
         SenkushaSend mtu = SenkushaMessages.MtuCommandMessage(3, 1454);
@@ -132,7 +133,7 @@ public class ManagedSenkushaRunHostTests
 
         foreach (SenkushaSend one in new[] { echo, mtu, client })
         {
-            Assert.Equal(SenkushaMessages.CommandData, one.DataType);
+            Assert.Equal(SenkushaMessages.CommandChannel, one.Channel);
             Assert.Equal(SenkushaMessage.Senkusha, one.PayloadType);
         }
 
@@ -285,6 +286,96 @@ public class ManagedSenkushaRunHostTests
 
         // Nothing was sent, because nothing past the connect was reached.
         Assert.Empty(host.Sent);
+    }
+
+    /// <summary>
+    /// PP813: the echo command leaves on channel EIGHT, with chunk flags of one.
+    ///
+    /// This is the assertion the whole of PP813 was missing, and it is a socket's rather than a
+    /// builder's on purpose: <see cref="SenkushaMessages"/> carried the right number all along and
+    /// the host spent it in the wrong argument. <c>chiaki_takion_send_message_data</c> takes the
+    /// chunk flags BEFORE the channel and senkusha's chokepoint passes <c>(1, data_type)</c>, so a
+    /// port reading that pair the other way round sends every command on channel one with flags of
+    /// eight - which no builder test can see, because the builder is right in both worlds.
+    ///
+    /// AND THE CONSOLE ANSWERED IT, which is what made the fault so quiet. Takion acks by sequence
+    /// number and reads no channel, so the echo command was acknowledged and then ignored; ten pings
+    /// and two MTU searches timed out against a PS5 that had replied to everything it was sent.
+    ///
+    /// Read off the wire because that is the only place the two numbers are distinguishable. The
+    /// run leaves at the first wait - nothing here answers an ack - having already put the one
+    /// datagram this needs on the socket.
+    /// </summary>
+    [Fact]
+    public void AnEchoCommandLeavesOnTheCommandChannelWithOrdinaryChunkFlags()
+    {
+        using var peer = new UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
+        var peerEnd = (IPEndPoint)peer.Client.LocalEndPoint!;
+
+        var responder = new TakionHandshakeResponder(0x1234_5678, [.. Enumerable.Repeat((byte)0x5a, 32)]);
+
+        var answering = new Thread(() =>
+        {
+            var from = new IPEndPoint(IPAddress.Loopback, 0);
+
+            while (responder.State != TakionResponderState.Done)
+            {
+                byte[] datagram = peer.Receive(ref from);
+
+                if (responder.Answer(datagram) is { } answer)
+                    peer.Send(answer, answer.Length, from);
+            }
+        })
+        {
+            IsBackground = true,
+            Name = "senkusha peer",
+        };
+
+        answering.Start();
+
+        using var takion = new ManagedTakion(0x0000_4823);
+        Assert.Equal(ChiakiError.Success, takion.Connect(peerEnd, expectTimeoutMs: 2000).Error);
+        answering.Join(TimeSpan.FromSeconds(5));
+
+        var host = new ManagedSenkushaRunHost(takion, peerEnd, new SenkushaArrivals())
+        {
+            ExpectTimeoutMs = 50,
+        };
+
+        Assert.NotEqual(ChiakiError.Success, host.RunRttTest(out _));
+
+        peer.Client.ReceiveTimeout = 2000;
+        var sender = new IPEndPoint(IPAddress.Loopback, 0);
+        byte[]? sent = null;
+
+        for (int attempt = 0; attempt < 4 && sent is null; attempt++)
+        {
+            byte[] datagram = peer.Receive(ref sender);
+
+            if (datagram.Length > TakionDataDatagrams.BodyOffset
+                && datagram[TakionMessageHeader.OffsetInDatagram + TakionMessageHeader.ChunkTypeOffset]
+                    == TakionMessageIntake.DataChunkType)
+            {
+                sent = datagram;
+            }
+        }
+
+        Assert.NotNull(sent);
+
+        Assert.Equal(
+            SenkushaMessages.ChunkFlags,
+            sent[TakionMessageHeader.OffsetInDatagram + TakionMessageHeader.ChunkFlagsOffset]);
+
+        Assert.Equal(
+            SenkushaMessages.CommandChannel,
+            BinaryPrimitives.ReadUInt16BigEndian(
+                sent.AsSpan(TakionDataDatagrams.BodyOffset + TakionDataPush.ChannelOffset, sizeof(ushort))));
+
+        // And the two numbers are read off the message they belong to rather than off whatever the
+        // socket happened to hold: the payload is the echo command, byte for byte.
+        Assert.Equal(
+            SenkushaMessages.EchoCommandMessage(true).Body,
+            sent[(TakionDataDatagrams.BodyOffset + TakionDataPush.DataHeaderSize)..]);
     }
 
     /// <summary>Whether one byte sequence occurs inside another.</summary>

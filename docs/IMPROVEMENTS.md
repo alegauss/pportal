@@ -282,32 +282,6 @@ numbers it hands back are what the launch spec spends: a measurement the suite a
 with and a console does not is the shape that ships green and streams nothing. So the
 C's run stays the other arm until a live session says otherwise.
 
-### §PP813 The pongs that never come back
-
-THE WIRE HAS BEEN READ, and it says the console does not echo to the port at all. PP829
-taught the relay senkusha's port and this task pointed the PORT's phases at it, so a run
-of the failing half is recorded at last. Seven datagrams come back across a whole
-senkusha: the init ack, the protocol ack, the bang, three data acks and one of seventeen
-bytes. Not one of 548.
-
-THE C GETS TEN THROUGH THE SAME RELAY, at an average 1.662ms. So this is not the port
-losing pongs, nor a socket that cannot receive them: they are never sent. Everything
-below the socket - the loop, the dispatch, the arm, the tag comparison - is exonerated
-by a recording rather than by reading.
-
-AND THE BYTES ARE NOT THE REASON. The port's 548-byte ping is identical to one built
-through the C's own formatter over the shim, tag included. SetVersion, the BIG and both
-echo commands match a real PS5's recorded exchange field for field. The echo command is
-acknowledged - the census counts both acks - so the console received it and chose not to
-echo.
-
-THE FORTY-EIGHT WERE RETRANSMISSIONS, which this section called the C's own. PP807 gave
-senkusha's router its data acks and the census fell from ToData 50 to 2, NoArm 48 to
-none.
-
-WHAT IS LEFT is why one console treats two senkushas differently when their bytes agree.
-The datagrams explain nothing, so the difference is in what the SESSION carries.
-
 ### §PP814 The audio nobody counts
 
 THREE MECHANISMS PROPOSED AND ALL THREE MEASURED DEAD. The ring dumped for getting

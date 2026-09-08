@@ -1,16 +1,26 @@
 ﻿namespace ChiakiNg.Protocol;
 
 /// <summary>One thing senkusha puts on the wire, as its own chokepoint takes it.</summary>
-/// <param name="DataType">
-/// takion's data type, which is the C's <c>data_type</c> and this port's chunk flags.
+/// <param name="Channel">
+/// The takion CHANNEL, which senkusha.c calls <c>data_type</c> and passes as the channel.
 ///
-/// One or eight, and which is not decoration: the version and big messages go as 1, the echo and
-/// MTU commands as 8. PP419 found the recording's own column had been emitting this instead of the
+/// One or eight, and which is not decoration: the version and big messages go on 1, the echo and
+/// MTU commands on 8. PP419 found the recording's own column had been emitting this instead of the
 /// payload type, so the pair is carried together rather than collapsed.
+///
+/// PP813: A CHANNEL AND NOT THE CHUNK FLAGS, which is the whole of why senkusha never measured.
+/// <c>chiaki_takion_send_message_data(takion, chunk_flags, channel, ...)</c> takes the flags FIRST,
+/// and senkusha's chokepoint calls it as <c>(&amp;senkusha->takion, 1, data_type, ...)</c> - so the
+/// literal one is the flags and the varying 1-or-8 is the channel. This port had them the other way
+/// round, and the console answered exactly as a console would: it acked the datagram, because takion
+/// acks by sequence number whatever the channel, and never echoed, because nothing was listening on
+/// the channel an echo command was owed. Every message senkusha sends on channel 1 was unaffected -
+/// the version request and the BIG both carry a one either way - which is why the bang arrived and
+/// only the measurements failed.
 /// </param>
 /// <param name="PayloadType">TakionMessage.type, which is what the console dispatches on.</param>
 /// <param name="Body">The encoded protobuf.</param>
-public readonly record struct SenkushaSend(byte DataType, SenkushaMessage PayloadType, byte[] Body);
+public readonly record struct SenkushaSend(ushort Channel, SenkushaMessage PayloadType, byte[] Body);
 
 /// <summary>
 /// PP791, under PP784: the six protobufs senkusha.c sends, which had no managed bytes at all.
@@ -98,11 +108,20 @@ public static class SenkushaMessages
     /// <summary>SenkushaPayload.Command.CLIENT_MTU_COMMAND, which is four and not two.</summary>
     public const int ClientMtuCommand = 4;
 
-    /// <summary>The data type the version and big messages go under.</summary>
-    public const byte OrdinaryData = 1;
+    /// <summary>The channel the version and big messages go out on.</summary>
+    public const ushort OrdinaryChannel = 1;
 
-    /// <summary>And the one the echo and MTU commands go under, which is what an ack is waited on.</summary>
-    public const byte CommandData = 8;
+    /// <summary>And the one the echo and MTU commands go out on, which is what an ack is waited on.</summary>
+    public const ushort CommandChannel = 8;
+
+    /// <summary>
+    /// The chunk flags every senkusha send carries, which is one and never varies.
+    ///
+    /// PP813: the literal the C's chokepoint passes in the argument BEFORE the channel. It is also
+    /// what <see cref="TakionDataPush.ExpectedTypeB"/> says a reader warns about anything else for,
+    /// so the two agree by construction rather than by coincidence.
+    /// </summary>
+    public const byte ChunkFlags = TakionDataPush.ExpectedTypeB;
 
     /// <summary>The takion version this side asks for, which is nine even on senkusha's own seven.</summary>
     public const uint SupportedVersion = 9;
@@ -118,7 +137,7 @@ public static class SenkushaMessages
     /// </summary>
     public static SenkushaSend SetVersion()
         => new(
-            OrdinaryData,
+            OrdinaryChannel,
             ProtocolRequestType,
             ProtobufWriter.Concat(
                 ProtobufWriter.Varint(TypeField, (ulong)ProtocolRequestType),
@@ -134,7 +153,7 @@ public static class SenkushaMessages
     /// </summary>
     public static SenkushaSend Big()
         => new(
-            OrdinaryData,
+            OrdinaryChannel,
             BigType,
             ProtobufWriter.Concat(
                 ProtobufWriter.Varint(TypeField, (ulong)BigType),
@@ -148,7 +167,7 @@ public static class SenkushaMessages
     /// <summary>senkusha_send_disconnect, from the label that tells the console.</summary>
     public static SenkushaSend Disconnect()
         => new(
-            OrdinaryData,
+            OrdinaryChannel,
             DisconnectType,
             ProtobufWriter.Concat(
                 ProtobufWriter.Varint(TypeField, (ulong)DisconnectType),
@@ -160,12 +179,12 @@ public static class SenkushaMessages
     /// <summary>
     /// senkusha_send_echo_command, which the round-trip test brackets its ten pings with.
     ///
-    /// Sent under the data type an ack is waited on, because the C waits for one either side of the
+    /// Sent on the channel an ack is waited on, because the C waits for one either side of the
     /// test - and a run that sent the pings before the console started echoing measures nothing.
     /// </summary>
     public static SenkushaSend EchoCommandMessage(bool enable)
         => new(
-            CommandData,
+            CommandChannel,
             SenkushaType,
             ProtobufWriter.Concat(
                 ProtobufWriter.Varint(TypeField, (ulong)SenkushaType),
@@ -183,7 +202,7 @@ public static class SenkushaMessages
     /// <param name="num">How many the console should send, which the C always sets to one.</param>
     public static SenkushaSend MtuCommandMessage(uint id, uint mtuReq, uint num = 1)
         => new(
-            CommandData,
+            CommandChannel,
             SenkushaType,
             ProtobufWriter.Concat(
                 ProtobufWriter.Varint(TypeField, (ulong)SenkushaType),
@@ -206,7 +225,7 @@ public static class SenkushaMessages
     /// </summary>
     public static SenkushaSend ClientMtuCommandMessage(uint id, uint mtuReq, bool state, uint mtuDown)
         => new(
-            CommandData,
+            CommandChannel,
             SenkushaType,
             ProtobufWriter.Concat(
                 ProtobufWriter.Varint(TypeField, (ulong)SenkushaType),

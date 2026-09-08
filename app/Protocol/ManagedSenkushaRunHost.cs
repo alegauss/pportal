@@ -455,19 +455,25 @@ public sealed class ManagedSenkushaRunHost : ISenkushaRunHost
 
     /// <summary>
     /// senkusha_send_data: the chokepoint every protobuf goes through, and the trace's only writer.
+    ///
+    /// PP813: THE CHANNEL VARIES AND THE CHUNK FLAGS DO NOT, which is the reverse of what this line
+    /// said for six tasks. <c>chiaki_takion_send_message_data</c> takes the flags before the channel
+    /// and senkusha's chokepoint passes <c>(1, data_type)</c>, so the eight that tells an echo
+    /// command from a BIG is the CHANNEL. Sending it as the flags put every command on channel one,
+    /// where the console acked it - takion acks by sequence number and reads no further - and then
+    /// echoed nothing, because the channel that owed an echo carried none. Ten pings and two MTU
+    /// searches timed out against a console that had answered every message it was actually sent.
     /// </summary>
     /// <returns>The sequence number the send took, or null where it did not leave.</returns>
     private uint? Send(in SenkushaSend message)
     {
         sent.Add(message);
 
-        TakionSendOutcome outcome = takion.SendData(DataChannel, message.Body, message.DataType);
+        TakionSendOutcome outcome =
+            takion.SendData(message.Channel, message.Body, SenkushaMessages.ChunkFlags);
 
         return outcome.Error == ChiakiError.Success ? outcome.SeqNum : null;
     }
-
-    /// <summary>The channel senkusha's protobufs go out on, which is one for every one of them.</summary>
-    public const ushort DataChannel = 1;
 
     /// <summary>
     /// senkusha_send_data_wait_for_ack: send, then wait for the ack of THAT message.
