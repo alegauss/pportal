@@ -412,6 +412,34 @@ sample, so its format and flags are the present path's choice: PP319 picked that
 and spike/present-path is where a real one exists. A copy into a texture nobody would
 render from would measure the wrong thing.
 
+### §PP829 The relay that stopped carrying senkusha
+
+PP812's rationale rested on this and it is false. It said the relay path STILL WORKS,
+which was why a tap that recorded nothing was an inconvenience rather than a tool with
+no working mode: `--via relay` taps the WIRE, so a run through it records what crossed
+regardless of which code read it.
+
+MEASURED TWICE ON 2026-09-08, both exit 1:
+
+    [capture] relaying to 192.168.1.224; whole datagrams, not the tap's head
+    [capture] going through 127.0.0.1; the console is at 192.168.1.224
+    [E] Senkusha connect timeout
+    [E] Senkusha Takion connect failed
+    [capture] no datagram was tapped - the session never reached the stream.
+
+So the FIRST takion a session opens cannot complete its handshake through the relay, and
+everything after it is fallback. PP812 fixed the non-relay flag, which is now the only
+mode that records - the reverse of what its design assumed.
+
+WHAT IS NOT ESTABLISHED is which half is at fault. PP617 gave the relay two sockets, one
+facing each side, and a real console answered - so it worked when it was written, and
+senkusha's takion is not obviously different from the stream's. Candidates: the relay
+forwards for ONE flow and senkusha's is a second, or its far side is fixed at the port
+the stream uses.
+
+WHY IT MATTERS BEYOND THE TOOL: the wire is the only witness PP813 has left, and the
+relay is this tree's only way to see it without an elevated pktmon.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry
