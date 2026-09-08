@@ -431,6 +431,33 @@ run.
 
 THE RE-ENTRY TRIGGER is PP823 landing plus one live session in rest mode.
 
+### §PP825 The microphone packet nothing puts on a wire
+
+PP823 found this by counting rather than by reading. `TakionKeyPosition.CallSites`
+records SIX sites in the C that ask the ledger for a position, and ManagedTakion has
+FOUR sends that take one. The two missing are `chiaki_takion_send_message_data_cont` and
+`chiaki_takion_send_mic_packet`.
+
+THE MICROPHONE IS THE REAL ONE. Every piece exists: PP652 opens the capture, PP694
+encodes, PP706 runs all four stages to a formatted packet, PP676 ported the send
+sequence itself, and `TakionFeedbackSends.MicrophoneFor` gives it the layout - nineteen
+bytes of head, twenty on a PS5. Nothing calls that overload outside the test project,
+and ManagedTakion has no mic send at all. So a port that can capture, clean, encode and
+format cannot transmit.
+
+THE CONTINUATION IS NOT CLAIMED HERE. `TakionDataDatagrams.WriteContinuation` has the
+bytes, and whether the port reaches a message long enough to need one is a separate
+question - `BigFragments` splits the BIG above this layer.
+
+THE SHAPE IS THE ONE THIS SEAM KEEPS PRODUCING. PP748 was a data message with no join,
+PP811 a send path with no caller, PP823 a ledger with no caller - each ported correctly,
+tested, and reached by nothing. `SeamReach` catches the interface version of this, and a
+static class with no implementations to count is invisible to it: worth knowing about
+the check as much as about the microphone.
+
+WHAT IT NEEDS FIRST is the send, then somewhere in the session owning a capture to call
+it.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry

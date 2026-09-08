@@ -35,6 +35,7 @@
 - 📋 **PP817** (deps: PP298 ✅) **the GCM tag is a hand-written GHASH, and the only thing ever asked about it was AesGcm's contract** — PP298 measured the runtime's twelve-byte nonce and tag floors and stopped; CNG is where OpenSSL's own sixteen-byte IV and four-byte tag would be asked for, and nothing asked. → §PP817
 - 📋 **PP818** (deps: PP650 ✅) **no Media Foundation decode has ever been timed, so 87.6 MB of FFmpeg is weighed against a guess** — PP650 enumerated the transforms and priced the tree, and its own README says no decode was measured; cuda and vulkan are the two paths the port has least reason to keep. → §PP818
 - 📋 **PP824** (deps: PP823 ✅) (requires: console) **the stream's arrivals never set the ack sink, so a live session answers no data message the console sends** — PP807 wired senkusha's half; this one tore a session down unsigned, and PP823 says the position it would sign at comes off the wrong ledger. → §PP824
+- 📋 **PP825** (deps: —) **the microphone's packet is built and no takion sends one, so PP676's mic layout has only tests as callers** — PP706 runs the capture to a packet and stops there; checking PP823's four sizings against the C's six found this site has no port-side send at all. → §PP825
 
 ## Block G — Test discipline
 
