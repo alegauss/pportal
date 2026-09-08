@@ -743,6 +743,7 @@
 - ✅ **PP827** **the port sends the BIG whole where the C splits it against the MTU, so a long launch spec leaves as one datagram** — The sink cuts the BIG against senkusha's own MTU and sends the fragments through both takion exports, the last one carrying the end-of-message flag.
 - ✅ **PP826** **PP818's whole margin is a readback it did not measure, because no renderer has taken one of its textures** — The decoded surface is D3D11_BIND_DECODER with no shader-resource bind, so a renderer cannot sample it and PP818's readback of none is wrong.
 - ✅ **PP812** **the datagram capture taps the C's takion and the port opens its own, so a run without a relay records nothing** — The managed dispatch fills the capture now, so a run without a relay records the port's whole stream where it recorded nothing.
+- ✅ **PP829** **the relay never carries senkusha's handshake, so a capture through it dies before the session reaches the stream** — Senkusha's port is forwarded now, so a session through the relay completes its first handshake and measures the link instead of timing out on loopback.
 
 ## Block G — Test discipline
 

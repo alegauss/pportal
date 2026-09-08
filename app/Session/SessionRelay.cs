@@ -41,36 +41,23 @@ public sealed class SessionRelay : IDisposable
     /// answers nothing at all on the wrong number, so the three live in one place and a caller takes
     /// one rather than spelling it.
     ///
-    /// The relay does NOT forward this one. It exists to record the stream's datagrams, and
-    /// senkusha's exchange has the message tap - so a senkusha run through a relay would be a
-    /// third socket for a channel already recorded another way.
+    /// PP829: AND THE RELAY DOES FORWARD IT NOW, which is the reverse of what this said. The old
+    /// note argued a senkusha leg would be a third socket for a channel the message tap already
+    /// recorded - true when it was written, and false twice over since. PP812 established that the
+    /// C's tap sees nothing the port receives, and a session pointed at a relay that does not listen
+    /// on 9297 does not merely go unrecorded: senkusha dials loopback, nothing answers, and the
+    /// takion connect TIMES OUT. Every run through the relay died there before reaching the stream,
+    /// so the mode PP812's design called the working one recorded nothing at all.
     /// </summary>
     public const int SenkushaPort = 9297;
 
     private readonly IPEndPoint consoleControl;
-    private readonly IPEndPoint consoleStream;
     private readonly Action<byte[], bool>? onDatagram;
     private readonly TcpListener control;
-    private readonly UdpClient stream;
-
-    /// <summary>
-    /// PP617: the socket that faces the console, which is not the one that faces the C.
-    ///
-    /// The first version forwarded both directions on <see cref="stream"/> alone, and every test
-    /// passed because both ends of a test are on loopback. A real run does not work that way: that
-    /// socket is BOUND to 127.0.0.1, so a datagram it sends to a console on the LAN carries a
-    /// loopback source address and the answer has nowhere to go. The session reached ctrl, takion
-    /// sent its INIT three times, and no ack ever came back.
-    ///
-    /// So there are two, one per side, and the pairing is the relay: what arrives on the loopback
-    /// socket goes out of this one, and what arrives here goes back to the client that spoke. The
-    /// TCP half never had the problem because ConnectAsync makes its own socket with a route the OS
-    /// chooses.
-    /// </summary>
-    private readonly UdpClient upstream;
+    private readonly UdpLeg stream;
+    private readonly UdpLeg? senkusha;
 
     private readonly CancellationTokenSource stopping = new();
-    private IPEndPoint? client;
     private bool disposed;
 
     /// <summary>
@@ -84,7 +71,12 @@ public sealed class SessionRelay : IDisposable
             new IPEndPoint(console, StreamPort),
             onDatagram,
             ControlPort,
-            StreamPort)
+            StreamPort,
+
+            // PP829: and senkusha's, which a real session dials FIRST. Without it the relay is a
+            // forwarder for the second half of a conversation that never starts.
+            new IPEndPoint(console, SenkushaPort),
+            SenkushaPort)
     {
     }
 
@@ -96,27 +88,41 @@ public sealed class SessionRelay : IDisposable
     /// </param>
     /// <param name="controlPort">The TCP port to listen on; 9295 for a real session.</param>
     /// <param name="streamPort">The UDP port to listen on; 9296 for a real session.</param>
+    /// <param name="consoleSenkusha">
+    /// PP829: the console's senkusha endpoint, or null for a relay with no senkusha leg.
+    ///
+    /// Optional because a test that only exercises the stream leg should not have to bind a third
+    /// socket to say so - and because null is what this class did before, so the absence is a
+    /// state rather than a gap.
+    /// </param>
+    /// <param name="senkushaPort">The UDP port to listen on for it; 9297 for a real session.</param>
     public SessionRelay(
         IPEndPoint consoleControl,
         IPEndPoint consoleStream,
         Action<byte[], bool>? onDatagram,
         int controlPort,
-        int streamPort)
+        int streamPort,
+        IPEndPoint? consoleSenkusha = null,
+        int senkushaPort = 0)
     {
         ArgumentNullException.ThrowIfNull(consoleControl);
         ArgumentNullException.ThrowIfNull(consoleStream);
 
         this.consoleControl = consoleControl;
-        this.consoleStream = consoleStream;
         this.onDatagram = onDatagram;
 
         control = new TcpListener(IPAddress.Loopback, controlPort);
-        stream = new UdpClient(new IPEndPoint(IPAddress.Loopback, streamPort));
 
-        // Any address, so the OS picks the route to the console and the source it puts on the
-        // datagram is one the console can answer.
-        upstream = new UdpClient(new IPEndPoint(IPAddress.Any, 0));
+        stream = new UdpLeg(streamPort, consoleStream, Offered, Forwarded);
+
+        senkusha = consoleSenkusha is null
+            ? null
+            : new UdpLeg(senkushaPort, consoleSenkusha, Offered, Forwarded);
     }
+
+    private void Offered(byte[] datagram, bool fromConsole) => onDatagram?.Invoke(datagram, fromConsole);
+
+    private void Forwarded() => Interlocked.Increment(ref forwarded);
 
     /// <summary>Where the session should be pointed, which is what `--via` takes.</summary>
     public static string Via => IPAddress.Loopback.ToString();
@@ -140,7 +146,10 @@ public sealed class SessionRelay : IDisposable
     private int forwarded;
 
     /// <summary>The port the UDP half is on, which a test needs when it did not choose one.</summary>
-    public int StreamPortInUse => ((IPEndPoint)stream.Client.LocalEndPoint!).Port;
+    public int StreamPortInUse => stream.NearPort;
+
+    /// <summary>PP829: and senkusha's, or zero where this relay has no senkusha leg.</summary>
+    public int SenkushaPortInUse => senkusha?.NearPort ?? 0;
 
     /// <summary>
     /// The port the TCP half is on, likewise.
@@ -158,95 +167,135 @@ public sealed class SessionRelay : IDisposable
     /// arrive - and a test standing in for one has to send here rather than to the loopback port,
     /// which is the difference the first version could not tell.
     /// </summary>
-    public int UpstreamPortInUse => ((IPEndPoint)upstream.Client.LocalEndPoint!).Port;
+    public int UpstreamPortInUse => stream.FarPort;
 
-    /// <summary>Starts both halves. Returns as soon as they are listening.</summary>
+    /// <summary>Starts every half. Returns as soon as they are listening.</summary>
     public void Start()
     {
         control.Start();
 
         _ = Task.Run(() => ForwardControl(stopping.Token));
-        _ = Task.Run(() => ForwardStream(stopping.Token));
-        _ = Task.Run(() => ForwardDownstream(stopping.Token));
+
+        stream.Start(stopping.Token);
+        senkusha?.Start(stopping.Token);
     }
 
     /// <summary>
-    /// PP617: what the C sent, out to the console - and where the client's endpoint is learnt.
+    /// PP829: one UDP port forwarded both ways, which the relay now needs TWO of.
     ///
-    /// One loop per socket, not one loop deciding a direction. PP613 did the latter and it passed
-    /// every test because both ends of a test are on loopback; the sending socket is bound there,
-    /// so a real console got datagrams it could not answer.
+    /// Extracted rather than copied. The stream leg and senkusha's differ only in a port and an
+    /// endpoint, and the two things this class gets right are exactly the two a second copy would
+    /// get wrong: the pair of sockets PP617 had to split, and the per-leg <see cref="client"/> that
+    /// says where an answer goes. One `client` shared between two legs would send senkusha's pongs
+    /// to whoever last spoke on the stream port.
     /// </summary>
-    private void ForwardStream(CancellationToken token)
+    private sealed class UdpLeg : IDisposable
     {
-        while (!token.IsCancellationRequested)
-        {
-            var from = new IPEndPoint(IPAddress.Any, 0);
-            byte[] datagram;
+        private readonly UdpClient near;
 
+        /// <summary>
+        /// PP617: the socket that faces the console, which is not the one that faces the C.
+        ///
+        /// The first version forwarded both directions on the near socket alone, and every test
+        /// passed because both ends of a test are on loopback. A real run does not work that way:
+        /// that socket is BOUND to 127.0.0.1, so a datagram it sends to a console on the LAN
+        /// carries a loopback source address and the answer has nowhere to go.
+        ///
+        /// Any address, so the OS picks the route and the source it puts on the datagram is one the
+        /// console can answer.
+        /// </summary>
+        private readonly UdpClient far;
+
+        private readonly IPEndPoint console;
+        private readonly Action<byte[], bool> offered;
+        private readonly Action forwarded;
+
+        /// <summary>Where this leg's client spoke from, which is where its answers go back to.</summary>
+        private IPEndPoint? client;
+
+        public UdpLeg(int port, IPEndPoint console, Action<byte[], bool> offered, Action forwarded)
+        {
+            this.console = console;
+            this.offered = offered;
+            this.forwarded = forwarded;
+
+            near = new UdpClient(new IPEndPoint(IPAddress.Loopback, port));
+            far = new UdpClient(new IPEndPoint(IPAddress.Any, 0));
+        }
+
+        public int NearPort => ((IPEndPoint)near.Client.LocalEndPoint!).Port;
+
+        public int FarPort => ((IPEndPoint)far.Client.LocalEndPoint!).Port;
+
+        public void Start(CancellationToken token)
+        {
+            _ = Task.Run(() => Pump(near, toConsole: true, token), token);
+            _ = Task.Run(() => Pump(far, toConsole: false, token), token);
+        }
+
+        /// <summary>
+        /// One socket's loop. One per socket, not one loop deciding a direction - PP613 did the
+        /// latter and it passed every test because both ends of a test are on loopback.
+        /// </summary>
+        private void Pump(UdpClient from, bool toConsole, CancellationToken token)
+        {
+            while (!token.IsCancellationRequested)
+            {
+                var sender = new IPEndPoint(IPAddress.Any, 0);
+                byte[] datagram;
+
+                try
+                {
+                    datagram = from.Receive(ref sender);
+                }
+                catch (SocketException)
+                {
+                    continue;
+                }
+                catch (ObjectDisposedException)
+                {
+                    return;
+                }
+
+                if (toConsole)
+                {
+                    client = sender;
+                    offered(datagram, false);
+                    Carry(far, datagram, console);
+                }
+                else
+                {
+                    offered(datagram, true);
+
+                    if (client is { } to)
+                        Carry(near, datagram, to);
+                }
+            }
+        }
+
+        /// <summary>One datagram out of one socket, counted only where it left.</summary>
+        private void Carry(UdpClient socket, byte[] datagram, IPEndPoint to)
+        {
             try
             {
-                datagram = stream.Receive(ref from);
+                socket.Send(datagram, datagram.Length, to);
+                forwarded();
             }
             catch (SocketException)
             {
-                continue;
+                // One datagram, and the stream is lossy by nature. Counting a send that failed
+                // would be the wrong number, so the increment is inside the try rather than after.
             }
             catch (ObjectDisposedException)
             {
-                return;
+                // Stopping.
             }
-
-            client = from;
-            onDatagram?.Invoke(datagram, false);
-            Carry(upstream, datagram, consoleStream);
         }
-    }
 
-    /// <summary>What the console sent, back to whoever spoke first.</summary>
-    private void ForwardDownstream(CancellationToken token)
-    {
-        while (!token.IsCancellationRequested)
+        public void Dispose()
         {
-            var from = new IPEndPoint(IPAddress.Any, 0);
-            byte[] datagram;
-
-            try
-            {
-                datagram = upstream.Receive(ref from);
-            }
-            catch (SocketException)
-            {
-                continue;
-            }
-            catch (ObjectDisposedException)
-            {
-                return;
-            }
-
-            onDatagram?.Invoke(datagram, true);
-
-            if (client is { } to)
-                Carry(stream, datagram, to);
-        }
-    }
-
-    /// <summary>One datagram out of one socket, counted only where it left.</summary>
-    private void Carry(UdpClient socket, byte[] datagram, IPEndPoint to)
-    {
-        try
-        {
-            socket.Send(datagram, datagram.Length, to);
-            Interlocked.Increment(ref forwarded);
-        }
-        catch (SocketException)
-        {
-            // One datagram, and the stream is lossy by nature. Counting a send that failed would be
-            // the wrong number, so the increment is inside the try rather than after it.
-        }
-        catch (ObjectDisposedException)
-        {
-            // Stopping.
+            near.Dispose();
+            far.Dispose();
         }
     }
 
@@ -320,7 +369,7 @@ public sealed class SessionRelay : IDisposable
         stopping.Cancel();
         control.Stop();
         stream.Dispose();
-        upstream.Dispose();
+        senkusha?.Dispose();
         stopping.Dispose();
     }
 }

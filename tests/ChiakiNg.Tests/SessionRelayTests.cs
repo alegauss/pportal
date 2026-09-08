@@ -239,4 +239,130 @@ public class SessionRelayTests
         Assert.Throws<ArgumentNullException>(
             () => new SessionRelay(null!, new IPEndPoint(IPAddress.Loopback, 1), null, 1, 2));
     }
+
+    /// <summary>
+    /// PP829: SENKUSHA'S LEG CARRIES BOTH WAYS, which is the whole of what a session needs first.
+    ///
+    /// The relay listened on 9295 and 9296 and not on 9297, so a session pointed at it dialled
+    /// loopback for senkusha and nothing answered - the takion connect timed out and every run
+    /// through the relay died before the stream. This is that port, forwarded.
+    /// </summary>
+    [Fact]
+    public void TheSenkushaLegCarriesBothDirections()
+    {
+        using var consoleSenkusha = new UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
+        consoleSenkusha.Client.ReceiveTimeout = 5000;
+
+        using var relay = new SessionRelay(
+            new IPEndPoint(IPAddress.Loopback, 1),
+            new IPEndPoint(IPAddress.Loopback, 2),
+            null,
+            0,
+            0,
+            (IPEndPoint)consoleSenkusha.Client.LocalEndPoint!,
+            0);
+
+        relay.Start();
+
+        Assert.NotEqual(0, relay.SenkushaPortInUse);
+
+        using var client = new UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
+        client.Client.ReceiveTimeout = 5000;
+
+        byte[] up = [.. Enumerable.Range(0, 548).Select(i => (byte)(i & 0xff))];
+        client.Send(up, up.Length, new IPEndPoint(IPAddress.Loopback, relay.SenkushaPortInUse));
+
+        var from = new IPEndPoint(IPAddress.Any, 0);
+        Assert.Equal(up, consoleSenkusha.Receive(ref from));
+
+        // And back, to where the console's answers actually land: the port the relay reached it
+        // from, which is not the loopback one the client speaks to.
+        byte[] down = [1, 2, 3, 4, 5];
+        consoleSenkusha.Send(down, down.Length, new IPEndPoint(IPAddress.Loopback, from.Port));
+
+        var back = new IPEndPoint(IPAddress.Any, 0);
+        Assert.Equal(down, client.Receive(ref back));
+    }
+
+    /// <summary>
+    /// AND THE TWO LEGS DO NOT SHARE A CLIENT, which is what a second copy would have got wrong.
+    ///
+    /// Each leg learns where its own client spoke from, so an answer goes back to the socket that
+    /// asked. One endpoint shared between them would send senkusha's pongs to whoever last spoke on
+    /// the stream port - and on a real session those are two different sockets.
+    /// </summary>
+    [Fact]
+    public void EachLegAnswersItsOwnClient()
+    {
+        using var consoleStream = new UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
+        using var consoleSenkusha = new UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
+        consoleStream.Client.ReceiveTimeout = 5000;
+        consoleSenkusha.Client.ReceiveTimeout = 5000;
+
+        using var relay = new SessionRelay(
+            new IPEndPoint(IPAddress.Loopback, 1),
+            (IPEndPoint)consoleStream.Client.LocalEndPoint!,
+            null,
+            0,
+            0,
+            (IPEndPoint)consoleSenkusha.Client.LocalEndPoint!,
+            0);
+
+        relay.Start();
+
+        using var onStream = new UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
+        using var onSenkusha = new UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
+        onStream.Client.ReceiveTimeout = 5000;
+        onSenkusha.Client.ReceiveTimeout = 5000;
+
+        // Both clients speak, so both legs have learnt an endpoint - and they are different ones.
+        onStream.Send([9], 1, new IPEndPoint(IPAddress.Loopback, relay.StreamPortInUse));
+        onSenkusha.Send([8], 1, new IPEndPoint(IPAddress.Loopback, relay.SenkushaPortInUse));
+
+        var fromStream = new IPEndPoint(IPAddress.Any, 0);
+        var fromSenkusha = new IPEndPoint(IPAddress.Any, 0);
+
+        Assert.Equal([9], consoleStream.Receive(ref fromStream));
+        Assert.Equal([8], consoleSenkusha.Receive(ref fromSenkusha));
+
+        // Now each console answers, and each answer must reach the client that asked THAT leg.
+        consoleSenkusha.Send([77], 1, new IPEndPoint(IPAddress.Loopback, fromSenkusha.Port));
+
+        var back = new IPEndPoint(IPAddress.Any, 0);
+        Assert.Equal([77], onSenkusha.Receive(ref back));
+    }
+
+    /// <summary>With no senkusha endpoint there is no leg, which is what this class did before.</summary>
+    [Fact]
+    public void WithoutASenkushaEndpointThereIsNoLeg()
+    {
+        using var relay = new SessionRelay(
+            new IPEndPoint(IPAddress.Loopback, 1),
+            new IPEndPoint(IPAddress.Loopback, 2),
+            null,
+            0,
+            0);
+
+        relay.Start();
+
+        Assert.Equal(0, relay.SenkushaPortInUse);
+    }
+
+    /// <summary>
+    /// PP829: and a relay built for a console listens on all three of the ports a session dials.
+    ///
+    /// The three are constants here and the session takes them from the same place, so what this
+    /// holds is that the relay opened one per port rather than that the numbers are what they are.
+    /// </summary>
+    [Fact]
+    public void ARealRelayListensOnEveryPortASessionDials()
+    {
+        using var relay = new SessionRelay(IPAddress.Loopback);
+
+        relay.Start();
+
+        Assert.Equal(SessionRelay.ControlPort, relay.ControlPortInUse);
+        Assert.Equal(SessionRelay.StreamPort, relay.StreamPortInUse);
+        Assert.Equal(SessionRelay.SenkushaPort, relay.SenkushaPortInUse);
+    }
 }
