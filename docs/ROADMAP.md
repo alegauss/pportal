@@ -35,6 +35,7 @@
 - 🛠 **PP814** (deps: —) (requires: console) **nothing reports whether audio dropped, so a crackling stream and a clean one read identically** — Three mechanisms measured dead and the pair was inverted - a healthy run read took 0 and dropped 853 for 853 clean writes - so the fault is outside this path. → §PP814
 - 📋 **PP817** (deps: PP298 ✅) **the GCM tag is a hand-written GHASH, and the only thing ever asked about it was AesGcm's contract** — PP298 measured the runtime's twelve-byte nonce and tag floors and stopped; CNG is where OpenSSL's own sixteen-byte IV and four-byte tag would be asked for, and nothing asked. → §PP817
 - 📋 **PP818** (deps: PP650 ✅) **no Media Foundation decode has ever been timed, so 87.6 MB of FFmpeg is weighed against a guess** — PP650 enumerated the transforms and priced the tree, and its own README says no decode was measured; cuda and vulkan are the two paths the port has least reason to keep. → §PP818
+- 📋 **PP823** (deps: —) **every send takes its key position from the receive ledger, so the MAC is stamped where the console never advanced** — PP495 ported key_pos_local with its four sizings and nothing calls it; PP811 made the position load-bearing by MACing at it, and five sends share one wrong answer. → §PP823
 
 ## Block G — Test discipline
 
