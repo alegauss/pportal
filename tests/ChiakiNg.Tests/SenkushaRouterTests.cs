@@ -338,4 +338,31 @@ public class SenkushaRouterTests(ITestOutputHelper output)
         Assert.Equal(SenkushaArrival.ProtocolAcked, router.Last?.Arrival);
         Assert.True(host.Arrivals.Flags.Finished, "the takion the wiring built reaches no arrivals");
     }
+
+    /// <summary>
+    /// PP808: AND THE EVENT THE KNOT DID NOT CARRY, which is the one arrival that is not a datagram.
+    ///
+    /// The test above puts a datagram where the receive loop puts one. This puts the takion's own
+    /// death where takion_thread_func's `beach` puts it and asks the same object whether it heard.
+    /// PP805 wired every datagram to an arm, and the arm that takes false was reached by tests and
+    /// by nothing else - so a takion dying during the connect was noticed five seconds later, when
+    /// the wait ran out.
+    /// </summary>
+    [Fact]
+    public void ATakionFromTheWiringRaisesItsDisconnectIntoTheArrivals()
+    {
+        (ManagedSenkushaRunHost host, SenkushaRouter _) = SenkushaRunWiring.Over(
+            TagLocal, new IPEndPoint(IPAddress.Loopback, 9297));
+
+        host.Arrivals.BeginState(SenkushaState.TakionConnect);
+
+        // Never connected, so the close is the only `beach` this takion has - which is the C's
+        // failed handshake, the path that raises DISCONNECT having never raised CONNECTED.
+        host.Takion.Dispose();
+
+        Assert.True(host.Takion.RaisedDisconnected);
+        Assert.True(
+            host.Arrivals.Flags.Failed, "the takion the wiring built tells no arrivals it died");
+        Assert.False(host.Arrivals.Flags.Finished);
+    }
 }

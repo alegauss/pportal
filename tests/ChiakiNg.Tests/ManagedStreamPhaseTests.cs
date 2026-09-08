@@ -147,6 +147,26 @@ public class ManagedStreamPhaseTests(ITestOutputHelper output)
     }
 
     /// <summary>
+    /// PP808: the root joins the takion's disconnect to the arrivals, which is a call and not a type.
+    ///
+    /// Read out of the source for the reason the check above is: <c>Build</c> is private and takes a
+    /// session, so the join is only reachable from a start that wants a console. What was missing is
+    /// a CALL, and PP764's lesson is that a census counting types cannot see one.
+    ///
+    /// Anchored at the start of a line, so the prose either side of the assignment - which discusses
+    /// it at length - cannot be what satisfies this.
+    /// </summary>
+    [Fact]
+    public void TheRootJoinsTheTakionsDisconnectToTheArrivals()
+    {
+        string text = File.ReadAllText(
+            SanitizerSource.LocateRelative(@"app\Session\ManagedStreamPhase.cs")
+            ?? throw new InvalidOperationException("the phase is not in this checkout."));
+
+        Assert.Matches(@"(?m)^\s*takion\.Disconnected\s*=\s*\(\)\s*=>\s*arrivals", text);
+    }
+
+    /// <summary>
     /// PP771: THE PHASE AIMS AT THE STREAM PORT, which the caller no longer gets to choose.
     ///
     /// The first version took an endpoint and the first caller passed 9295 - the ctrl and discovery

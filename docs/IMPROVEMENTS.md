@@ -283,29 +283,6 @@ a port that acked every data message would ack ones the queue held back. Whoever
 this takes that from TakionDataDrain rather than from the arrival, which is the
 difference between reproducing the C and doing something that looks like it.
 
-### §PP808 The disconnect nothing raises
-
-The C's takion raises two events at its own lifecycle: CONNECTED when the handshake
-answers, and DISCONNECT when the transport gives up. Senkusha's callback reads both in
-one arm and writes state_finished from the first and state_failed from the second, so a
-takion that dies during a wait ends it immediately.
-
-THIS PORT RAISES ONE OF THE TWO. ManagedSenkushaRunHost raises the connect the moment
-its blocking handshake answers, which is where it belongs. Nothing raises the other:
-PP805 wired every datagram to an arm and a disconnect is not a datagram, so the arm that
-takes false is reached by tests and by nothing else.
-
-WHAT IT COSTS IS A TIMEOUT AND NOT A HANG, which is why this is a line rather than a
-defect report. Every senkusha wait is bounded, so a dead takion is noticed when the wait
-runs out - five seconds for the connect, and the run then leaves by the label that
-closes without telling the console. The C leaves by the same label sooner.
-
-WHERE THE SIGNAL WOULD COME FROM is the open question and is the reason to read before
-writing. The C's takion decides it has disconnected inside its own thread; this port's
-receive loop answers a TakionLoopOutcome to whoever ran it, and that outcome is where a
-disconnect already is - so this may be a join rather than a new signal, which is the
-same shape PP805 turned out to be.
-
 ### §PP809 The senkusha phase nobody builds
 
 PP792 gave session.c a callback to hand senkusha to and PP805 wired a takion's arrivals

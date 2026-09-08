@@ -353,6 +353,17 @@ public static class SenkushaRunWiring
 
         router = new SenkushaRouter(arrivals, takion, clock);
 
+        // PP808: AND THE DISCONNECT, which is the one arrival that is not a datagram. PP805 wired
+        // every datagram to an arm and this arm took false from nobody, so a takion that died during
+        // the connect was noticed when the wait ran out five seconds later. The C's callback hears
+        // both answers on one function; here the datagrams come through the closure above and the
+        // event through this line, and they end at the same object.
+        //
+        // Written here rather than in the host's ConnectTakion because the C sets its cb on the
+        // connect INFO, before anything is connected - so a transport that dies during the handshake
+        // reaches a listener that is already installed.
+        takion.Disconnected = () => arrivals.Event(connected: false);
+
         return (new ManagedSenkushaRunHost(takion, peer, arrivals, tags, clock), router);
     }
 }

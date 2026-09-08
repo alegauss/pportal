@@ -93,6 +93,11 @@ public sealed class ManagedTakion : ITakionLoopHost, IDataAckSink, IDisposable
     private Thread? receiver;
     private volatile bool receiving;
 
+    // PP808: the disconnect goes out once, and two threads can reach the raise - the receiver
+    // ending on its own, and whoever is disposing. A plain object because the guard is a flag and
+    // the handler runs outside the lock, so nothing it calls can deadlock against this.
+    private readonly object disconnectGate = new();
+
     // PP795: not readonly any more. The arm's far end needs the keys a bang produces, so it is
     // installed after the fact - the same lateness the C's own chiaki_takion_set_crypt has.
     private ManagedAvArm? avArm;
@@ -189,6 +194,31 @@ public sealed class ManagedTakion : ITakionLoopHost, IDataAckSink, IDisposable
 
     /// <summary>Whether the connected event was raised, which the C raises before the loop.</summary>
     public bool RaisedConnected { get; private set; }
+
+    /// <summary>
+    /// PP808: CHIAKI_TAKION_EVENT_TYPE_DISCONNECT, whose listener is set the way the C sets its cb.
+    ///
+    /// THE C RAISES IT AT `beach`, WHICH IS NOT "THE RECEIVE FAILED". Every exit takion_thread_func
+    /// has passes that label - a handshake that never answered, a queue that would not initialise,
+    /// and the loop leaving on a receive error - so the event says the transport is over and not
+    /// why. A port that raised it from the failure branch alone would stay silent on the two paths
+    /// the C is loudest about.
+    ///
+    /// Installed rather than passed to the constructor for the reason the two composition roots
+    /// have: the object this reaches is built AFTER the takion, because the takion's dispatch is
+    /// what it reads. Set it before <see cref="StartReceiving"/> - a handler installed after the
+    /// thread is running may miss the exit it was installed for.
+    /// </summary>
+    public Action? Disconnected { get; set; }
+
+    /// <summary>
+    /// Whether it has gone out, which is once per takion however many exits raced for it.
+    ///
+    /// The C's thread runs once and reaches `beach` once. Here the receiver's own exit and
+    /// <see cref="Dispose"/> both raise it, and on an ordinary close both happen - so the count is
+    /// what this holds, not the fact.
+    /// </summary>
+    public bool RaisedDisconnected { get; private set; }
 
     /// <summary>The remote cipher's presence, which the loop reads to decide when to re-check.</summary>
     public bool CryptAvailable { get; set; }
@@ -601,23 +631,34 @@ public sealed class ManagedTakion : ITakionLoopHost, IDataAckSink, IDisposable
 
         receiver = new Thread(() =>
         {
-            while (receiving)
+            // PP808: `beach`, and the try is what makes it one label rather than three. The thread
+            // has three exits - the disposed socket, the failed receive, and the flag going false -
+            // and the C raises its DISCONNECT past all of them. A raise written at the failure
+            // branch would be silent on the two exits a shutdown actually takes.
+            try
             {
-                TakionLoopOutcome slice;
-
-                try
+                while (receiving)
                 {
-                    slice = TakionReceiveLoop.Run(this, enableCrypt, ReceiveSlice);
-                }
-                catch (ObjectDisposedException)
-                {
-                    // The socket went out from under a blocked receive, which IS the stop: the C's
-                    // pipe wakes its select and this is the same event one runtime over.
-                    return;
-                }
+                    TakionLoopOutcome slice;
 
-                if (slice.ExitedOnFailure)
-                    return;
+                    try
+                    {
+                        slice = TakionReceiveLoop.Run(this, enableCrypt, ReceiveSlice);
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        // The socket went out from under a blocked receive, which IS the stop: the
+                        // C's pipe wakes its select and this is the same event one runtime over.
+                        return;
+                    }
+
+                    if (slice.ExitedOnFailure)
+                        return;
+                }
+            }
+            finally
+            {
+                RaiseDisconnected();
             }
         })
         {
@@ -626,6 +667,29 @@ public sealed class ManagedTakion : ITakionLoopHost, IDataAckSink, IDisposable
         };
 
         receiver.Start();
+    }
+
+    /// <summary>
+    /// PP808: the event, at most once, whoever gets here first.
+    ///
+    /// The handler runs OUTSIDE the lock. What it reaches is an arrivals object that takes a lock of
+    /// its own and pulses a wait, and holding this one across that would order two locks from the
+    /// receive thread that nothing else orders the same way.
+    /// </summary>
+    private void RaiseDisconnected()
+    {
+        Action? handler;
+
+        lock (disconnectGate)
+        {
+            if (RaisedDisconnected)
+                return;
+
+            RaisedDisconnected = true;
+            handler = Disconnected;
+        }
+
+        handler?.Invoke();
     }
 
     /// <summary>How many iterations one slice runs, which bounds a shutdown and nothing else.</summary>
@@ -761,6 +825,13 @@ public sealed class ManagedTakion : ITakionLoopHost, IDataAckSink, IDisposable
         }
 
         teardown.Add(TakionTeardownStep.Disconnected);
+
+        // PP808: and the event, which this step had been recording the position of without anything
+        // being raised there. Here rather than after the join below because that is the C's order -
+        // the socket closes AFTER the listener has been told - and a takion that never ran a
+        // receive thread reaches `beach` through this line alone, which is the handshake that
+        // failed. A no-op where the receiver already raised it on its way out.
+        RaiseDisconnected();
 
         if (OwnsSocket && wire is not null)
         {

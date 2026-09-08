@@ -270,6 +270,17 @@ public sealed class ManagedStreamPhase : IDisposable
             Ledger = takion.Ledger,
         };
 
+        // PP808: AND THE DISCONNECT, the other half of the knot above. The dispatch closure carries
+        // datagrams and an event is not one, so the takion going away told nobody and the connect
+        // wait ran its whole timeout - PP366's silence, reachable here for the first time. The
+        // handler is deliberately the same shape as the closure: it reads the local this line's
+        // predecessor assigned.
+        //
+        // AFTER THE FIRST STATE IT IS DROPPED, and that is the C and not a gap here.
+        // StreamDispatch.Route ignores a disconnect outside TAKION_CONNECT, which is the finding
+        // PP365 and PP366 recorded rather than a rule this port gets to tighten.
+        takion.Disconnected = () => arrivals?.Disconnected();
+
         // And the replay, which is the same handler over the message the bang state buffered.
         host.ReplayHandler = arrivals.Replay;
         Arrivals = arrivals;

@@ -277,11 +277,18 @@ public class ManagedTakionTests(ITestOutputHelper output) : IDisposable
     ///
     /// The C's `goto beach` skips all three finis, which is why the postpone release and the socket
     /// close sit at the label every exit passes through.
+    ///
+    /// PP808: and so does the DISCONNECT, which is why the event is asserted on the path that never
+    /// raised a CONNECTED. A takion that failed its handshake ran no receive thread at all, so the
+    /// close is the only `beach` it has.
     /// </summary>
     [Fact]
     public void AFailedHandshakeStillClosesTheSocketAndNothingElse()
     {
         var takion = new ManagedTakion(0x0000_3333);
+
+        var raised = 0;
+        takion.Disconnected = () => raised++;
 
         // Nothing is answering, so the handshake exhausts its attempts.
         TakionHandshakeOutcome outcome = takion.Connect(PeerEndPoint, expectTimeoutMs: 20);
@@ -289,10 +296,87 @@ public class ManagedTakionTests(ITestOutputHelper output) : IDisposable
         Assert.NotEqual(ChiakiError.Success, outcome.Error);
         Assert.Equal(TakionStage.Connecting, takion.Stage);
         Assert.False(takion.RaisedConnected);
+        Assert.False(takion.RaisedDisconnected);
 
         takion.Dispose();
 
         Assert.Equal([TakionTeardownStep.Disconnected, TakionTeardownStep.Socket], takion.Teardown);
+
+        // The step recorded the position and raised nothing until PP808 put the event at it.
+        Assert.True(takion.RaisedDisconnected);
+        Assert.Equal(1, raised);
+    }
+
+    /// <summary>
+    /// PP808: THE RECEIVE THREAD ENDING IS THE DISCONNECT, and nothing has to close the takion.
+    ///
+    /// The defect this holds is a wait on a transport that died running its whole timeout. The C
+    /// raises DISCONNECT at `beach` and every exit takion_thread_func has passes that label, so the
+    /// assertion is deliberately on a thread that stopped while the takion is still OPEN - the case
+    /// an event written into the close alone would never reach.
+    /// </summary>
+    [Fact]
+    public void AReceiveThreadThatEndsRaisesTheDisconnectWithoutAClose()
+    {
+        var responder = new TakionHandshakeResponder(0x0000_dddd, [.. Enumerable.Repeat((byte)0x66, 32)]);
+        Thread answering = AnswerHandshake(responder);
+
+        using var takion = new ManagedTakion(0x0000_7777);
+
+        Assert.Equal(ChiakiError.Success, takion.Connect(PeerEndPoint, expectTimeoutMs: 2000).Error);
+        answering.Join(TimeSpan.FromSeconds(5));
+
+        var raised = 0;
+        takion.Disconnected = () => Interlocked.Increment(ref raised);
+
+        // A millisecond a receive, so one slice is over in about the time a test can wait for it.
+        // The default is a second, and a slice is sixty-four of them.
+        takion.NextTimeoutMs = 1;
+        takion.StartReceiving(enableCrypt: false);
+
+        Assert.True(takion.ReceiveThreadAlive);
+        Assert.Equal(0, Volatile.Read(ref raised));
+
+        takion.StopReceiving();
+
+        Assert.True(
+            SpinWait.SpinUntil(() => !takion.ReceiveThreadAlive, TimeSpan.FromSeconds(10)),
+            "the receive thread did not stop at its slice boundary");
+
+        // Still open, which is the whole point: Stage is Connected and nothing was disposed.
+        Assert.Equal(TakionStage.Connected, takion.Stage);
+        Assert.True(takion.RaisedDisconnected);
+        Assert.Equal(1, Volatile.Read(ref raised));
+    }
+
+    /// <summary>
+    /// PP808: and it goes out ONCE, though both of the port's `beach`es reach it on an ordinary close.
+    ///
+    /// The C's thread runs once and passes that label once. Here the close stops the receiver AND
+    /// walks the teardown, so the thread's own exit and <c>Dispose</c> both raise - and a listener
+    /// told twice would answer a second event with a wait the first one already ended.
+    /// </summary>
+    [Fact]
+    public void TheDisconnectGoesOutOnceThoughBothExitsReachIt()
+    {
+        var responder = new TakionHandshakeResponder(0x0000_eeee, [.. Enumerable.Repeat((byte)0x77, 32)]);
+        Thread answering = AnswerHandshake(responder);
+
+        var takion = new ManagedTakion(0x0000_8888);
+
+        Assert.Equal(ChiakiError.Success, takion.Connect(PeerEndPoint, expectTimeoutMs: 2000).Error);
+        answering.Join(TimeSpan.FromSeconds(5));
+
+        var raised = 0;
+        takion.Disconnected = () => Interlocked.Increment(ref raised);
+
+        takion.NextTimeoutMs = 1;
+        takion.StartReceiving(enableCrypt: false);
+
+        takion.Dispose();
+
+        Assert.Equal(1, Volatile.Read(ref raised));
+        Assert.Contains(TakionTeardownStep.Disconnected, takion.Teardown);
     }
 
     /// <summary>

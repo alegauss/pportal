@@ -734,6 +734,7 @@
 - ✅ **PP816** **the port hand-rolls a ring, a drain and a pump over WASAPI, and two attempts to make that path lossless both failed** — A listener reports the click gone: 4846 decoded, 4846 submitted, every sample played or queued over sixty seconds against a console in a game.
 - 🗑 **PP810** **the render pump plays as much of a unit as the engine had room for and drops the rest of it** — superseded by PP816: Both of its own fixes were measured moving the loss to the ring rather than ending it, and the pump they repaired is gone: the sound goes through an engine taking buffers whole.
 - ✅ **PP820** **the ring, the drain and the pump are built and never started, so the code the click came from is still in the tree** — AudioRing, AudioRingSink, AudioPlayback and WasapiRender are gone with their tests, and a live run still plays every frame it decodes - 3330 of them, none lost.
+- ✅ **PP808** **nothing raises a takion disconnect, so a wait on a transport that died runs its whole timeout** — ManagedTakion raises it at the C's own `beach` - every exit the receive thread has, and the close - once per takion, and both composition roots hand it to the arrivals that were waiting.
 
 ## Block G — Test discipline
 
