@@ -4,12 +4,22 @@ using System.Security.Cryptography;
 namespace ChiakiNg.Protocol;
 
 /// <summary>
-/// PP298: GHASH and the GCM tag, because the runtime will not lend this one.
+/// PP298: GHASH and the GCM tag. PP817: as the ORACLE, and as a fallback nothing here expects.
 ///
 /// Every other primitive chiaki needs came off System.Security.Cryptography. The GMAC did not:
 /// AesGcm's NonceByteSizes is 12 to 12 and its TagByteSizes 12 to 16, measured, and chiaki passes a
 /// 16-byte IV and keeps four bytes of tag. Both are in the GCM specification and neither is in the
-/// type's contract, so the authentication tag is built here out of AES-ECB, which is available.
+/// type's contract, so the authentication tag was built here out of AES-ECB, which is available.
+///
+/// PP817 ASKED THE PLATFORM RATHER THAN THE WRAPPER, AND THE PLATFORM SAYS YES. That measurement
+/// was about AesGcm's contract and was read as though it were about the algorithm - CNG takes a
+/// nonce as a buffer and a length, accepts the block-sized one, and agrees with every tag below.
+/// So <see cref="ChiakiNg.Native.CngGcm"/> is what the live GMAC goes through now.
+///
+/// WHICH MAKES THIS MORE USEFUL AND NOT LESS. An independent second implementation is what says
+/// CNG was asked correctly, and it is held to chiaki's own bytes - so the two disagreeing is a
+/// finding rather than a mystery. It is also the fallback where a narrower provider refuses, which
+/// is why this stays compiled into the application rather than moving to the test project.
 ///
 /// The field is GF(2^128) with the bits the other way round
 /// ---------------------------------------------------------
