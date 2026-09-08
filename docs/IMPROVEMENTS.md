@@ -414,6 +414,54 @@ THE PONGS ARE WORTH KEEPING SEPARATELY. Their bytes are in this capture, tag and
 index intact - the first recording this tree has of the console echoing, which PP813 had
 to infer from the C completing.
 
+### §PP831 The same inversion, twice
+
+THIS EXACT MISTAKE HAS NOW BEEN MADE TWICE. PP778 found every stream message going out
+with the data type in the chunk flags and the channel left at zero, and fixed it. PP813
+found senkusha doing the same thing, six tasks later, shipped green the whole time.
+Nothing connects the two, and nothing would catch a third.
+
+WHAT THE BUILDERS CANNOT SEE is the shape of it. SenkushaMessages and StreamMessages
+both carry the right number - one for a version request, eight for an echo command - and
+both are asserted against the C field for field. The number is correct either way; only
+the ARGUMENT it is spent in differs, decided one layer down.
+
+THE C IS THE ORACLE AND IT IS ALREADY READ. MessageTapSource holds senkusha_send_data's
+call text verbatim - chunk_flags first, the varying value second. So the C's argument
+order is pinned here; what is missing is the join from that order to what the managed
+caller does with it.
+
+THE CONSOLE IS NOT A CHECK. Takion acks a data message by sequence number and reads no
+channel, so a command on the wrong one is acknowledged and then ignored. Both faults
+presented as silence: the port asked, the console agreed, nothing happened. A live run
+found each, at the cost of a whole task.
+
+WHAT WOULD SETTLE IT is a check over every managed call into a takion send, naming the C
+call site it ports and comparing the two mappings position by position.
+
+### §PP832 The keyframe nobody counts
+
+A USER REPORTED ARTEFACTS AT THE BOTTOM OF THE SCREEN and this tree could not answer the
+first question about them. Corruption that persists across frames means a reference
+frame was lost and never replaced; the remedy is an IDR request, and whether one went
+out is the difference between a decoder fault and a request the port never made.
+
+THE REPORT ALREADY CARRIES ITS NEIGHBOURS. A stream run prints what was decoded, what
+was shown, what the network lost, what the drain superseded and what the decoder is
+answerable for - five numbers, all about frames arriving. Nothing counts what the
+session ASKED FOR. So an investigation reaches for the one figure that is missing and
+falls back on reading the picture, which is what a report exists to avoid.
+
+CORRUPTION IS THE CASE THE COUNTS ALREADY DISAGREE ABOUT. The run that prompted this
+showed 4539 decoded against 4314 shown with 126 lost, which is a healthy stream by every
+line printed and a damaged one on the screen. A count of requests sent would have said
+in one number whether the port noticed.
+
+THE SEND MAY NOT EXIST YET, which is the half to read before filing a fix. Whether the
+port ever emits a corrupt-frame report or an IDR request is a separate question from
+whether the report counts one, and the answer decides whether this line is a counter or
+a send. Reading it is the work; the counter is what the reading is for.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry

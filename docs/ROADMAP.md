@@ -34,6 +34,8 @@
 - ⏳ **PP825** (deps: —) **the microphone's packet is built and no takion sends one, so PP676's mic layout has only tests as callers** — Nothing in the session owns a capture and calls it, so the send has no caller either; a live run is what would show a console accepting one. → §PP825
 - 📋 **PP828** (deps: PP826 ✅) **the copy off the decode surface is known to exist and untimed, so the FFmpeg decision still has no total** — PP826 killed the no-readback claim and left the number it was standing in for; without it Media Foundation's column is a decode plus an unknown. → §PP828
 - 🛠 **PP830** (deps: PP829 ✅) (requires: console) **the stream dies within 85ms through the relay, so a capture holds the handshake and none of the traffic** — PP829 got senkusha across and the stream is the next to fail; nothing reached it before, so this leg has not carried a real session in a long time. → §PP830
+- 📋 **PP831** (deps: —) **no check joins a managed send's arguments to the C call it ports, so an inverted pair passes every builder test** — PP813 spent senkusha's channel as the chunk flags for six tasks and every test agreed: a builder carrying the right number is right either way. → §PP831
+- 📋 **PP832** (deps: —) **the stream report never says how many IDR requests went out, so a corrupted picture cannot be read back** — A user reported artefacts at the bottom of the screen and the number that would say whether the port asked for a keyframe is in no line of the run. → §PP832
 
 ## Block G — Test discipline
 
