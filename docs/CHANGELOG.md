@@ -738,6 +738,7 @@
 - ✅ **PP811** **the ported send path has no caller, so a live takion stamps its MAC and sends with no lock across the two** — ManagedTakion's four sends go through the ported paths now, so a live takion signs under gkcrypt_local (design superseded: the C unlocks between the MAC and send_raw, so the send is outside).
 - ✅ **PP823** **every send takes its key position from the receive ledger, so the MAC is stamped where the console never advanced** — ManagedTakion keeps key_pos_local now, advanced at each of the four sizings the C passes, so a send's position counts what left rather than what arrived.
 - ✅ **PP817** **the GCM tag is a hand-written GHASH, and the only thing ever asked about it was AesGcm's contract** — CNG takes the block-sized nonce AesGcm refuses and reports 12-to-16-byte tags, so the crypt's GMAC is the platform's now and the hand-written GHASH is its oracle.
+- ✅ **PP818** **no Media Foundation decode has ever been timed, so 87.6 MB of FFmpeg is weighed against a guess** — Paced, Media Foundation decodes a frame in about 750us and pays no readback, which is second of four and beats both paths it would replace.
 
 ## Block G — Test discipline
 

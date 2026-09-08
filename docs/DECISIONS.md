@@ -110,6 +110,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP808** **nothing raises a takion disconnect, so a wait on a transport that died runs its whole timeout** — A takion's disconnect says the transport is over and never why: every exit of the receive thread raises it, as the C raises it at `beach`, and a takion raises exactly one.
 - ✅ **PP823** **every send takes its key position from the receive ledger, so the MAC is stamped where the console never advanced** — The send position is key_pos_local and the receive one is the key state; the two never answer for each other.
 - ✅ **PP817** **the GCM tag is a hand-written GHASH, and the only thing ever asked about it was AesGcm's contract** — The GMAC is CNG's, with Ghash kept as its oracle and as the fallback a narrower provider would take.
+- ✅ **PP818** **no Media Foundation decode has ever been timed, so 87.6 MB of FFmpeg is weighed against a guess** — Media Foundation is viable for H.264 on the decode numbers; what still blocks the swap is HEVC's Store extension, not speed.
 
 ## Block G — Test discipline
 

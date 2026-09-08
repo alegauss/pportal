@@ -127,4 +127,16 @@
 # enumeration does not mean the CPU decodes it. A test over that would assert that a constant
 # contains the digits it contains, which is the shape PP611's exemption already refused.
 # exempt PP650 - an evaluation: one D3D11-aware decoder per codec, against 87.6 MB of FFmpeg.
+#
+# PP818 is the fifth, and it is PP650's own second half: the decode that spike's README said had
+# not been timed. It lives in the same project, is still not in the solution, and still needs an
+# NVIDIA card and a generated stream that is gitignored - so a test over it would assert that this
+# machine measures what it measured, on code the port does not ship, from an input CI does not have.
+#
+# The part that is not a number is worth naming for the same reason PP650's was. Fed as fast as it
+# will take it, Media Foundation's decoder is bimodal exactly as PP65 found d3d11va to be - 180us
+# median against a 14 500us p99 - which is PP65's "an artifact of this harness, not the driver"
+# arriving through a different API on the same silicon. That is a finding and it still has no
+# assertable form: reproducing it needs the harness, the card and the stall.
+# exempt PP818 - an evaluation: ~750us paced per frame and no readback, against decode-path's four.
 0

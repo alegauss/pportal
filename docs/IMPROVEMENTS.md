@@ -354,30 +354,6 @@ the device format, or it is not a discontinuity at all - a listener reported the
 interval constant across runs carrying different audio, which no content-dependent
 artifact explains.
 
-### §PP818 The half PP650 left open
-
-PP650 asked what Media Foundation offers and answered it: one D3D11-aware transform per
-codec, the Microsoft H264 Video Decoder MFT and HEVCVideoExtension, both reporting
-MF_SA_D3D11_AWARE once the transform itself is made rather than its activate. It priced
-what leaving would remove, 87.6 MB across three FFmpeg binaries, and named what Media
-Foundation has no concept of: cuda and vulkan.
-
-Its own README states the gap in one line - no decode was timed here.
-
-WHAT THE MEASUREMENT HAS TO BE TAKEN ON, or it answers about a configuration nobody
-would ship. The decoder is given an IMFDXGIDeviceManager holding the presenter's own
-D3D11 device, so its output is an ID3D11Texture2D the renderer takes rather than a frame
-that travels - which is PP821's cost, and why the two are read together. And
-MF_LOW_LATENCY is set, which turns off the reordering a stream carrying no B-frames does
-not need.
-
-The two paths Media Foundation cannot offer are the two with least left to lose.
-decode-path measured cuda worst of the three once frames are paced at the rate a console
-sends them, and vulkan's advantage is a copy this port does not skip anyway.
-
-An answer is still owed about HEVCVideoExtension, which is a Store extension a user can
-uninstall where FFmpeg's HEVC decoder is not.
-
 ### §PP824 The stream's half of the ack
 
 PP807 shipped one of the two routers. `StreamArrivals` has held the seam since that line
