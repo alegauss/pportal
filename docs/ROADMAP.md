@@ -35,7 +35,7 @@
 - 📋 **PP824** (deps: PP823 ✅) (requires: console) **the stream's arrivals never set the ack sink, so a live session answers no data message the console sends** — PP807 wired senkusha's half; this one tore a session down unsigned, and PP823 says the position it would sign at comes off the wrong ledger. → §PP824
 - ⏳ **PP825** (deps: —) **the microphone's packet is built and no takion sends one, so PP676's mic layout has only tests as callers** — Nothing in the session owns a capture and calls it, so the send has no caller either; a live run is what would show a console accepting one. → §PP825
 - 📋 **PP826** (deps: PP818 ✅) **PP818's whole margin is a readback it did not measure, because no renderer has taken one of its textures** — Media Foundation wins on totals only because its readback is written as none; that is reasoned from the D3D11 path and is the one leg of the comparison nothing timed. → §PP826
-- 📋 **PP827** (deps: —) **the port sends the BIG whole where the C splits it against the MTU, so a long launch spec leaves as one datagram** — stream_connection_send_big loops on the MTU and calls the continuation send for every fragment after the first; TakionMessageSink hands the whole body to SendData. → §PP827
+- ⏳ **PP827** (deps: —) **the port sends the BIG whole where the C splits it against the MTU, so a long launch spec leaves as one datagram** — The loop is unwritten: nothing calls BigFragments.Plan and no takion has a continuation send, so a narrow link still gets one oversized datagram. → §PP827
 
 ## Block G — Test discipline
 
@@ -126,6 +126,14 @@
   composition root that would hand one to SendMicrophone does not exist, so
   MicrophoneSent is zero on every live run. Checked by a session raising that counter,
   and by a console that does not drop the stream over it.
+
+## Done when — PP827
+
+- **The BIG goes out as the fragments BigFragments plans for the session's MTU** The
+  plan is ported and PP376 fixed its boundary case; nothing calls it. Needs a
+  continuation send on ManagedTakion and the MTU carried to whatever sends the BIG.
+  Checked by a BIG at the narrowest MTU leaving as three datagrams, the last carrying
+  the end-of-message flag and none exceeding the MTU.
 
 ## Non-goals
 

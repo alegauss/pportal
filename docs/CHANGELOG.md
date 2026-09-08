@@ -740,6 +740,7 @@
 - ✅ **PP817** **the GCM tag is a hand-written GHASH, and the only thing ever asked about it was AesGcm's contract** — CNG takes the block-sized nonce AesGcm refuses and reports 12-to-16-byte tags, so the crypt's GMAC is the platform's now and the hand-written GHASH is its oracle.
 - ✅ **PP818** **no Media Foundation decode has ever been timed, so 87.6 MB of FFmpeg is weighed against a guess** — Paced, Media Foundation decodes a frame in about 750us and pays no readback, which is second of four and beats both paths it would replace.
 - ✅ **PP825 (the send)** **the microphone's packet is built and no takion sends one, so PP676's mic layout has only tests as callers** — ManagedTakion.SendMicrophone puts a formatted mic packet on the socket, stamped at fourteen and ten under the cipher's lock, for both head sizes.
+- ✅ **PP827 (the length)** **the port sends the BIG whole where the C splits it against the MTU, so a long launch spec leaves as one datagram** — At senkusha's narrowest MTU the BIG needs three messages where this port sends one, and at the fallback it clears by seven bytes.
 
 ## Block G — Test discipline
 
