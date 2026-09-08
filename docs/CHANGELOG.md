@@ -741,6 +741,7 @@
 - ✅ **PP818** **no Media Foundation decode has ever been timed, so 87.6 MB of FFmpeg is weighed against a guess** — Paced, Media Foundation decodes a frame in about 750us and pays no readback, which is second of four and beats both paths it would replace.
 - ✅ **PP825 (the send)** **the microphone's packet is built and no takion sends one, so PP676's mic layout has only tests as callers** — ManagedTakion.SendMicrophone puts a formatted mic packet on the socket, stamped at fourteen and ten under the cipher's lock, for both head sizes.
 - ✅ **PP827** **the port sends the BIG whole where the C splits it against the MTU, so a long launch spec leaves as one datagram** — The sink cuts the BIG against senkusha's own MTU and sends the fragments through both takion exports, the last one carrying the end-of-message flag.
+- ✅ **PP826** **PP818's whole margin is a readback it did not measure, because no renderer has taken one of its textures** — The decoded surface is D3D11_BIND_DECODER with no shader-resource bind, so a renderer cannot sample it and PP818's readback of none is wrong.
 
 ## Block G — Test discipline
 

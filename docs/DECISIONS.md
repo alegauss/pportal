@@ -112,6 +112,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP817** **the GCM tag is a hand-written GHASH, and the only thing ever asked about it was AesGcm's contract** — The GMAC is CNG's, with Ghash kept as its oracle and as the fallback a narrower provider would take.
 - ✅ **PP818** **no Media Foundation decode has ever been timed, so 87.6 MB of FFmpeg is weighed against a guess** — Media Foundation is viable for H.264 on the decode numbers; what still blocks the swap is HEVC's Store extension, not speed.
 - ✅ **PP827** **the port sends the BIG whole where the C splits it against the MTU, so a long launch spec leaves as one datagram** — Only the BIG fragments, and the cut is read at BIG time so it is senkusha's measurement rather than the fallback.
+- ✅ **PP826** **PP818's whole margin is a readback it did not measure, because no renderer has taken one of its textures** — Media Foundation's output needs a GPU-side copy before a renderer reads it; how much that costs is still unmeasured.
 
 ## Block G — Test discipline
 

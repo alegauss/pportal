@@ -132,11 +132,43 @@ internal static class Program
                 $"per frame : mean {measured.MeanMicroseconds:F1} us, p50 {measured.P50Microseconds:F1} us, "
                     + $"p99 {measured.P99Microseconds:F1} us"));
 
+            // PP826: the readback PP818 wrote as "none", read off the texture rather than argued.
+            if (DecodeTiming.Surface is { } surface)
+            {
+                bool sampleable = (surface.BindFlags & Mf.BindShaderResource) != 0;
+
+                Console.WriteLine(
+                    $"surface   : {surface.Width}x{surface.Height} format {surface.Format}, "
+                        + $"bind 0x{surface.BindFlags:x}, array {surface.ArraySize}");
+
+                Console.WriteLine(
+                    $"sampleable: {(sampleable ? "YES - a renderer reads it where it lies" : "NO - a renderer must copy first")}");
+            }
+            else
+            {
+                Console.WriteLine("surface   : the sample carried no DXGI buffer, so nothing to describe");
+            }
+
             File.WriteAllText(
                 output,
                 JsonSerializer.Serialize(
-                    new { spike = "decoder-choice", task = "PP818", os = Environment.OSVersion.VersionString, reading = measured },
-                    new JsonSerializerOptions { WriteIndented = false }));
+                    new
+                    {
+                        spike = "decoder-choice",
+                        task = "PP818",
+                        os = Environment.OSVersion.VersionString,
+                        reading = measured,
+
+                        // PP826: the surface rides in the committed result, because "no readback"
+                        // was PP818's claim and the bind flags are what settle it.
+                        surface = DecodeTiming.Surface,
+                        sampleable = DecodeTiming.Surface is { } read
+                            && (read.BindFlags & Mf.BindShaderResource) != 0,
+                    },
+
+                    // IncludeFields, because the texture description is an interop struct of public
+                    // FIELDS - and without this it serialises as {} rather than as the answer.
+                    new JsonSerializerOptions { WriteIndented = false, IncludeFields = true }));
 
             Console.WriteLine();
             Console.WriteLine($"written to {output}");

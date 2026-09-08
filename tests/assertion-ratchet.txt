@@ -139,4 +139,15 @@
 # arriving through a different API on the same silicon. That is a finding and it still has no
 # assertable form: reproducing it needs the harness, the card and the stall.
 # exempt PP818 - an evaluation: ~750us paced per frame and no readback, against decode-path's four.
+#
+# PP826 is the sixth and it is PP818's own correction, in the same spike and for the same reasons:
+# not in the solution, needs the card and the gitignored stream, and its deliverable is a reading
+# of a texture this machine's driver allocated. A test could only re-perform it.
+#
+# Its finding is worth naming here because it OVERTURNS the line above rather than extending it.
+# PP818's readback column said none, argued from the decoder holding a D3D11 device; the decoded
+# surface is D3D11_BIND_DECODER with no BIND_SHADER_RESOURCE, so a renderer cannot sample it and
+# there is a copy after all. The exemption above stays as written - it is what that task shipped -
+# and this line is where the correction is recorded.
+# exempt PP826 - a reading: the decode surface is bind 0x200, so the "no readback" claim is dead.
 0

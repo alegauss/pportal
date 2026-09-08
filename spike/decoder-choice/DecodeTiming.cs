@@ -48,6 +48,14 @@ internal static class DecodeTiming
     /// <summary>MFT_OUTPUT_STREAM_PROVIDES_SAMPLES.</summary>
     private const int ProvidesSamples = 0x00000100;
 
+    /// <summary>
+    /// PP826: the first decoded frame's texture, or null where the sample carried none.
+    ///
+    /// Read once per run and kept here rather than returned through the timing, because it is a
+    /// property of the decoder's pool and not of any one frame.
+    /// </summary>
+    public static Mf.Texture2DDescription? Surface { get; private set; }
+
     private const int DriverTypeHardware = 1;
     private const int CreateDeviceVideoSupport = 0x00000800;
     private const int CreateDeviceBgraSupport = 0x00000020;
@@ -372,6 +380,68 @@ internal static class DecodeTiming
         return [.. costs];
     }
 
+    /// <summary>
+    /// PP826: what a decoded frame's texture actually IS, which decides whether a renderer copies.
+    ///
+    /// PP818 credited Media Foundation with no readback and that word was an argument: a decoder
+    /// handed a D3D11 device hands back an ID3D11Texture2D, so a D3D11 renderer samples it and pays
+    /// nothing. Whether it CAN sample it is a property of the texture the driver allocated, and this
+    /// is where that is read rather than reasoned - the bind flags say it outright.
+    ///
+    /// D3D11_BIND_DECODER alone means a DXVA surface a shader cannot read, and then the renderer
+    /// must copy into a texture it can - which is the readback PP818 wrote as none. Both flags means
+    /// the decoder's own output is sampleable and the argument holds.
+    /// </summary>
+    /// <returns>The description, or null where the sample carried no DXGI buffer at all.</returns>
+    private static Mf.Texture2DDescription? DescribeOutput(IntPtr sample)
+    {
+        if (sample == IntPtr.Zero)
+            return null;
+
+        object boxed = Marshal.GetObjectForIUnknown(sample);
+
+        try
+        {
+            if (boxed is not Mf.IMFSample built
+                || built.GetBufferByIndex(0, out Mf.IMFMediaBuffer buffer) != 0)
+            {
+                return null;
+            }
+
+            try
+            {
+                if (buffer is not Mf.IMFDXGIBuffer dxgi)
+                    return null;
+
+                Guid iid = Mf.IidTexture2D;
+
+                if (dxgi.GetResource(ref iid, out IntPtr resource) != 0 || resource == IntPtr.Zero)
+                    return null;
+
+                try
+                {
+                    var texture = (Mf.ID3D11Texture2D)Marshal.GetObjectForIUnknown(resource);
+                    texture.GetDesc(out Mf.Texture2DDescription description);
+                    Marshal.ReleaseComObject(texture);
+
+                    return description;
+                }
+                finally
+                {
+                    Marshal.Release(resource);
+                }
+            }
+            finally
+            {
+                Marshal.ReleaseComObject(buffer);
+            }
+        }
+        finally
+        {
+            Marshal.ReleaseComObject(boxed);
+        }
+    }
+
     /// <summary>One ProcessOutput. True where a frame came out.</summary>
     private static bool Drain(Mf.IMFTransform decoder, Mf.OutputStreamInfo info, bool decoderAllocates)
     {
@@ -405,6 +475,12 @@ internal static class DecodeTiming
 
             if (got != 0)
                 return false;
+
+            // PP826: the FIRST frame's texture is described, once, outside the clock. Every frame
+            // after it comes out of the same decoder pool, so asking again would measure nothing
+            // new and would put COM calls inside a loop that is timing a decode.
+            if (Surface is null && buffers.Sample != IntPtr.Zero)
+                Surface = DescribeOutput(buffers.Sample);
 
             // The frame itself is released and nothing is done with it. What is being timed is the
             // DECODE, which is spike/decode-path's own separation: a readback inside this loop

@@ -98,24 +98,35 @@ on the same `stream.h264` and paced the same way, so the row drops straight into
 
 | paced total per frame | decode | readback | total |
 |---|---|---|---|
-| **Media Foundation** | **~750 µs** | **none** | **~750 µs** |
+| **Media Foundation** | **~750 µs** | **a GPU-side copy, not yet timed — see PP826** | **≥ ~750 µs** |
 | vulkan | ~400 µs | none | ~400 µs |
 | d3d11va | ~300 µs | 2 253 µs | ~2 550 µs |
 | cuda | ~2 100 µs | 793 µs | ~2 900 µs |
 
-Four paced runs of 570 counted frames: means 630, 652, 659 and 746 µs, p50s 638–771, p99s
-1 363–1 607. Quoted as a range for the reason [spike/decode-path](../decode-path/README.md) gives —
-a single paced run is not worth quoting.
+Seven paced runs of 570 counted frames: means 630 to 863 µs, p50s 638–864, p99s 1 345–1 780.
+Quoted as a range for the reason [spike/decode-path](../decode-path/README.md) gives — a single
+paced run is not worth quoting.
 
-**Media Foundation pays no readback, and that is the whole of the comparison.** The decoder is given
-an `IMFDXGIDeviceManager` over the presenter's own D3D11 device, so a decoded frame is already an
-`ID3D11Texture2D` the renderer takes. The 2 253 µs `d3d11va` pays is the Qt client copying every
-hardware frame back through system memory, and a D3D11 texture handed to a D3D11 renderer has no
-such copy to make — the same exemption vulkan gets there, for the same reason.
+The decode is slower than `d3d11va`'s through FFmpeg — ~750 against ~300 µs, which is the honest
+cost — and the question is whether the copy it avoids is worth that. It does avoid `d3d11va`'s
+2 253 µs, which is the Qt client pulling every hardware frame back through **system memory**.
 
-So **it lands second of four, within a factor of two of the best path, and beats both of the two it
-would replace.** The decode is slower than `d3d11va`'s through FFmpeg — ~750 against ~300 µs, which
-is the honest cost — and that difference is a fifth of the copy it does not pay.
+> **PP826 corrected this section's readback column, and the correction matters.** It first read
+> **none**, argued from the decoder being handed an `IMFDXGIDeviceManager`: a decoded frame is an
+> `ID3D11Texture2D`, so a D3D11 renderer samples it where it lies. The texture says otherwise.
+
+**The decoded surface is `D3D11_BIND_DECODER` and nothing else** — bind flags `0x200`, with no
+`D3D11_BIND_SHADER_RESOURCE`. It is a DXVA decode surface in an array of 8, NV12, 1920x**1088**:
+
+```
+surface   : 1920x1088 format 103, bind 0x200, array 8
+sampleable: NO - a renderer must copy first
+```
+
+So **a renderer cannot sample the decoder's output**, and there is a copy after all. It is a
+GPU→GPU `CopySubresourceRegion` rather than `d3d11va`'s GPU→system readback, so it should be far
+cheaper than 2 253 µs — but "far cheaper" is the same kind of argument this correction just
+overturned, and it is not timed here. PP826 carries what is left of it.
 
 ### And the unpaced stall is not FFmpeg's
 
@@ -138,9 +149,11 @@ above is paced.
 - **HEVC's decoder is a Store extension.** `HEVCVideoExtension` is installed here and is not on
   every Windows machine. A port depending on it would depend on something a user can uninstall,
   which FFmpeg's own HEVC decoder does not.
-- **The readback column is argued, not measured.** "None" is what a D3D11 texture handed to a D3D11
-  renderer costs, and this spike times the decode alone — it does not build a renderer to prove the
-  texture arrives without a copy. PP319's present path is where that would be measured.
+- **The copy is known to exist and is not timed.** PP826 read the bind flags and found the surface
+  unsampleable, so the argument that there is no copy is dead. What replaces it is a number nobody
+  has: a `CopySubresourceRegion` into a shader-readable NV12 texture, timed on the GPU rather than
+  the CPU clock, which needs a D3D11 query and a renderer to copy into. PP319's present path is
+  where that belongs.
 - **One machine.** Windows 11 26200, one discrete NVIDIA card. An Intel or AMD machine would show
   the vendor MFT this one does not have, and the H.264 row could read differently there.
 
@@ -151,6 +164,14 @@ above is paced.
 [`release-mf-decode-4060-unpaced.json`](release-mf-decode-4060-unpaced.json) the stall beside it.
 `result.json`, `timing.json` and the build output are gitignored: a committed result is one taken
 deliberately, not whatever the last invocation left behind.
+
+## One thing this spike got wrong a fourth time
+
+PP818's readback column said **none**, and it was reasoning rather than a reading — the fourth time
+in this file that a plausible answer arrived without an error to mark it. PP650 had two; PP818 added
+the ComImport one below; and this is the one that would have decided the FFmpeg question wrongly,
+because "no readback" was the whole of Media Foundation's margin. The fix was four lines: ask the
+decoded sample for its texture and print `BindFlags`.
 
 ## One thing this spike got wrong a third time
 

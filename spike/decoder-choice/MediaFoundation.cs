@@ -356,6 +356,68 @@ internal static class Mf
         [PreserveSig] int AddBuffer(IMFMediaBuffer buffer);
     }
 
+    /// <summary>D3D11_BIND_SHADER_RESOURCE - what a renderer needs to sample a texture.</summary>
+    public const int BindShaderResource = 0x8;
+
+    /// <summary>D3D11_BIND_DECODER - what a DXVA surface carries.</summary>
+    public const int BindDecoder = 0x200;
+
+    /// <summary>D3D11_TEXTURE2D_DESC, which is where PP826's question is answered.</summary>
+    [StructLayout(LayoutKind.Sequential)]
+    public struct Texture2DDescription
+    {
+        public uint Width;
+        public uint Height;
+        public uint MipLevels;
+        public uint ArraySize;
+        public int Format;
+        public uint SampleCount;
+        public uint SampleQuality;
+        public int Usage;
+        public int BindFlags;
+        public int CpuAccessFlags;
+        public int MiscFlags;
+    }
+
+    /// <summary>
+    /// IMFDXGIBuffer, which is how a decoded sample's buffer yields the texture underneath it.
+    /// </summary>
+    [ComImport]
+    [Guid("e7174cfa-1c9e-48b1-8866-626226bfc258")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public interface IMFDXGIBuffer
+    {
+        [PreserveSig] int GetResource(ref Guid riid, out IntPtr resource);
+        [PreserveSig] int GetSubresourceIndex(out uint index);
+    }
+
+    /// <summary>
+    /// ID3D11Texture2D, flat to GetDesc - which is four inherited slots plus three plus one.
+    /// </summary>
+    /// <remarks>
+    /// ID3D11DeviceChild contributes GetDevice and the three private-data methods; ID3D11Resource
+    /// adds GetType, SetEvictionPriority and GetEvictionPriority; GetDesc is the ninth thing in the
+    /// vtable after IUnknown. It returns void rather than an HRESULT, which is a D3D convention and
+    /// not an oversight here.
+    /// </remarks>
+    [ComImport]
+    [Guid("6f15aaf2-d208-4e89-9ab4-489535d34f9c")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public interface ID3D11Texture2D
+    {
+        [PreserveSig] void GetDevice(out IntPtr device);
+        [PreserveSig] int GetPrivateData(ref Guid guid, ref uint size, IntPtr data);
+        [PreserveSig] int SetPrivateData(ref Guid guid, uint size, IntPtr data);
+        [PreserveSig] int SetPrivateDataInterface(ref Guid guid, IntPtr data);
+        [PreserveSig] void GetType(out int dimension);
+        [PreserveSig] void SetEvictionPriority(uint priority);
+        [PreserveSig] uint GetEvictionPriority();
+        [PreserveSig] void GetDesc(out Texture2DDescription description);
+    }
+
+    /// <summary>IID_ID3D11Texture2D, for the buffer's GetResource.</summary>
+    public static readonly Guid IidTexture2D = new("6f15aaf2-d208-4e89-9ab4-489535d34f9c");
+
     [ComImport]
     [Guid("eb533d5d-2db6-40f8-97a9-494692014f07")]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
