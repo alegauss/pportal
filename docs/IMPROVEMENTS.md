@@ -412,6 +412,29 @@ per row, whole datagrams, its own path and its own flag - leaving the corpus exa
 it is. What it must not do is add a column to the capture format, which is what every
 reader of that file already agrees about.
 
+### §PP835 The picture that waits for a controller
+
+A USER REPORTED IT AND TWO RUNS ON 2026-09-08 HOLD IT. Start with the pad plugged in and
+the run is ordinary: SDL opens it before any frame arrives, 298 states reach the console
+and 950 frames decode. Connect one after the stream has begun and the same build prints
+its pad line AFTER decoding started, pushes 43 states, and the session ends with
+`StreamConnection run failed` at 741 arrivals against 8211.
+
+THE FREEZE IS THE ORDER OF TWO CALLS. StreamRun opens the pad and only then enters the
+draw loop, and PadFeed.Start is allowed ten seconds for the SDL thread plus five to open
+a controller. Nothing is presented across that window. The receiver is on its own thread
+and keeps decoding, so the log fills with the codec's buffer full and frames dropped to
+make room - a picture that has stopped while the stream has not.
+
+THE DEATH IS NOT EXPLAINED BY THAT, and saying so is why this is filed now. A pad there
+from the start pushes six times the states and nothing dies, so the sends are not it
+alone. What is unknown is whether the console gives up on a client that stopped
+presenting, or whether the arriving pad's first state is malformed.
+
+WHAT WOULD ANSWER IT is a run opening the pad off the drawing thread. If the picture
+keeps going and the session dies anyway, the pad's sends are the subject; if both
+recover, the order was all of it.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry
