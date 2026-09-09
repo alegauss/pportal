@@ -160,30 +160,6 @@ flag, its count loop is guarded by the return above it, peek writes both out-poi
 where pull guards its own, and takion still passes NULL and still drops on a bad MAC.
 Repair any upstream and the port's copy becomes the divergence, on the next run.
 
-### §PP848 Prose that credits a reverted commit
-
-92 mentions across 51 files in app/ and tests/ name PP696, two of them PP843's own
-account of the reversal. That commit took the frame path's four files out of the build,
-put the shim's fourteen behind an #ifdef and replaced session.c's run with a callback;
-PP763 reverted all three, because it shipped a client that could not stream.
-
-EACH HALF WAS RE-ESTABLISHED BY A DIFFERENT COMMIT. PP27 took the files out again and
-added the option; PP783 and PP784 made session.c's two phases callbacks. So a sentence
-reading "PP696 took the four files out" is true as history and false as explanation, and
-explanation is what a reader wants from it: the state it describes holds, for reasons
-that are three other tasks.
-
-PP843 IS ONE FILE OF THE 51, corrected by hand. It was worth its own line because that
-summary is where somebody looks up whether the flip has happened, and the wrong answer
-sent a session after an option that did not exist. Fifty more hand edits is not
-obviously the right shape.
-
-WHAT THIS ASKS, AND THE CENSUS AN ANSWER NEEDS. The ledger carries an `undone_by` field
-per entry, and `delivered F` reports PP696's as null - so the reversal is recorded
-nowhere a check can read. Registering it would let one reader ask, of any id a docstring
-credits, whether the ledger calls it undone. Whether that is the fix, or whether the
-attributions should stop naming commits, has not been read.
-
 ## Block G — Test discipline
 
 ### §PP849 A census that states its own counts in prose

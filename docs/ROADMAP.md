@@ -23,8 +23,6 @@
 
 ## Block F — Managed core
 
-- 📋 **PP848** (deps: PP843 ✅, PP763 ✅) **51 files credit PP696 and PP763 reverted it whole, so no check can tell a live attribution from a dead one** — PP843 corrected one by hand; the ledger marks nothing undone, so the 92 mentions cannot be sorted into what PP27, PP783 and PP784 restored and what is gone. → §PP848
-
 ## Block G — Test discipline
 
 - 📋 **PP849** (deps: PP691 ✅, PP844 ✅) **the prose census states its four per-verdict counts in a docstring, and the method deriving them has no caller** — PP844 added a row and hand-corrected two of them; Count(ProseReading) answers all four and nothing calls it, so the census breaks the rule it enforces. → §PP849
