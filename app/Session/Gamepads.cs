@@ -155,6 +155,33 @@ public static class Gamepads
     }
 
     /// <summary>
+    /// PP838: whether this event is a controller ARRIVING, which is not a button.
+    ///
+    /// Asked here rather than by exposing the type numbers, because the numbers are SDL's and the
+    /// question is the caller's - and the two device events are the only ones anything outside this
+    /// file has ever needed to tell apart from input.
+    ///
+    /// <c>Which</c> is a DEVICE INDEX on this one, which is what <see cref="OpenController"/>
+    /// takes. On the removal below it is an instance id instead, which is why that one is answered
+    /// by asking the handle rather than by comparing numbers.
+    /// </summary>
+    public static bool IsControllerArrival(SdlEvent ev) => ev.Type == EventType.ControllerDeviceAdded;
+
+    /// <summary>Whether it is a controller LEAVING.</summary>
+    public static bool IsControllerDeparture(SdlEvent ev)
+        => ev.Type == EventType.ControllerDeviceRemoved;
+
+    /// <summary>
+    /// Whether an opened handle still has a device behind it.
+    ///
+    /// SDL_CONTROLLERDEVICEREMOVED carries the instance id of whatever left, and a port holding one
+    /// handle has no instance id to compare it against without two more calls. Asking the handle is
+    /// the same answer in one call, and it stays right when the removal is of some other pad.
+    /// </summary>
+    public static bool ControllerIsAttached(IntPtr controller)
+        => controller != IntPtr.Zero && SdlControllerGetAttached(controller);
+
+    /// <summary>
     /// PP221: where an axis is NOW, with nothing having to move first.
     ///
     /// The question no event can answer. SDL raises an axis event when the value CHANGES, so a
@@ -429,6 +456,11 @@ public static class Gamepads
     [DllImport(ChiakiNative.Sdl, EntryPoint = "SDL_GameControllerClose",
         CallingConvention = CallingConvention.Cdecl)]
     private static extern void SdlControllerClose(IntPtr controller);
+
+    [DllImport(ChiakiNative.Sdl, EntryPoint = "SDL_GameControllerGetAttached",
+        CallingConvention = CallingConvention.Cdecl)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    private static extern bool SdlControllerGetAttached(IntPtr controller);
 
     [DllImport(ChiakiNative.Sdl, EntryPoint = "SDL_GameControllerGetAxis",
         CallingConvention = CallingConvention.Cdecl)]

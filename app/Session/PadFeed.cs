@@ -50,6 +50,7 @@ public sealed class PadFeed : IDisposable
     private SdlThread? sdl;
     private IntPtr controller;
     private long pushed;
+    private long adopted;
 
     /// <param name="sink">Where the state goes. Not owned, and outlives this.</param>
     public PadFeed(IControllerStateSink sink)
@@ -61,8 +62,26 @@ public sealed class PadFeed : IDisposable
     /// <summary>How many states have been pushed. Zero after a session is a pad that never reached it.</summary>
     public long Pushed => Interlocked.Read(ref pushed);
 
-    /// <summary>The name of the pad that was opened, or null where none was.</summary>
+    /// <summary>The name of the pad that is open now, or null where none is.</summary>
     public string? PadName { get; private set; }
+
+    /// <summary>
+    /// PP838: whether a pad is feeding RIGHT NOW, which <see cref="Start"/>'s answer cannot say.
+    ///
+    /// Start reports what was there when it ran, and a run that reported no pad can now have one -
+    /// which is the whole change. A caller printing Start's answer at the end of a session would
+    /// say "no pad" about a session somebody played.
+    /// </summary>
+    public bool HasPad => controller != IntPtr.Zero;
+
+    /// <summary>
+    /// How many pads were adopted after the start, which is the number this line is about.
+    ///
+    /// Separate from <see cref="Pushed"/> because they answer different questions: zero pushed with
+    /// one adopted is a pad connected and not touched, and zero of both is a pad that never
+    /// arrived. Before this those two were the same reading.
+    /// </summary>
+    public long Adopted => Interlocked.Read(ref adopted);
 
     /// <summary>
     /// Opens SDL and the first game controller on it, and reports whether a pad is now feeding.
@@ -113,6 +132,27 @@ public sealed class PadFeed : IDisposable
     /// </summary>
     private void Offer(SdlEvent ev)
     {
+        // PP838: A DEVICE ARRIVING IS NOT A BUTTON, and this used to fall through to a translation
+        // that has no arm for it. Start enumerated once, so a pad plugged in after the picture
+        // appeared was never opened - the run reported `armed True, 0 state(s) pushed`, which reads
+        // as a pad nobody touched and was a pad that was never there.
+        //
+        // ON THIS THREAD BECAUSE IT IS ALREADY THIS THREAD. SdlThread's own note is that SDL's
+        // Windows joystick backend hears about arrival on whichever thread called SDL_Init, and
+        // this callback runs between two of that thread's polls - which is exactly where Start's
+        // own open is posted to. So the arm costs no thread and no polling.
+        if (Gamepads.IsControllerArrival(ev))
+        {
+            Adopt(ev.Which);
+            return;
+        }
+
+        if (Gamepads.IsControllerDeparture(ev))
+        {
+            Release();
+            return;
+        }
+
         lock (gate)
         {
             if (!translation.Offer(ev))
@@ -123,6 +163,46 @@ public sealed class PadFeed : IDisposable
         }
 
         Interlocked.Increment(ref pushed);
+    }
+
+    /// <summary>
+    /// One arriving controller, taken if none is held.
+    ///
+    /// ONE PAD STAYS ONE PAD. PP701 chose the first controller deliberately and this does not
+    /// reopen that: what changes is WHEN the first one is chosen. A second arriving while one is
+    /// held is ignored, which is the same answer <see cref="Start"/>'s own break gives.
+    /// </summary>
+    /// <param name="index">The device index the arrival carries, which is what an open takes.</param>
+    private void Adopt(int index)
+    {
+        if (controller != IntPtr.Zero)
+            return;
+
+        IntPtr opened = Gamepads.OpenController(index);
+        if (opened == IntPtr.Zero)
+            return;
+
+        controller = opened;
+        PadName = Gamepads.Pads().FirstOrDefault(one => one.Index == index).Name;
+        Interlocked.Increment(ref adopted);
+    }
+
+    /// <summary>
+    /// A departure, which releases the handle only when it is OURS that went.
+    ///
+    /// The event carries the instance id of whatever left and this holds a handle, so the handle is
+    /// asked instead: a second pad being unplugged must not close the one somebody is playing on.
+    /// Released rather than left, because a handle to a device that is gone keeps
+    /// <see cref="Adopt"/> from taking the pad that replaces it.
+    /// </summary>
+    private void Release()
+    {
+        if (controller == IntPtr.Zero || Gamepads.ControllerIsAttached(controller))
+            return;
+
+        Gamepads.CloseController(controller);
+        controller = IntPtr.Zero;
+        PadName = null;
     }
 
     public void Dispose()

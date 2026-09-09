@@ -424,8 +424,13 @@ public static class StreamRun
         // PP783: whether the pad's sink found a sender, which the state count alone cannot say. A
         // run nobody touched pushes zero states, and so does a run whose sink was never armed - the
         // two are the same number and only one of them is a defect.
+        // PP838: and what the pad ended up being, which the start-time line above cannot say. A run
+        // that began with no pad can end with one now, so `adopted` separates a controller plugged
+        // in mid-session and untouched from one that never arrived - which used to be the same
+        // reading of zero.
         Console.WriteLine(
-            $"[stream] pad sink: armed {phase.Pad.Active}, {pad.Pushed} state(s) pushed");
+            $"[stream] pad sink: armed {phase.Pad.Active}, {pad.Pushed} state(s) pushed, "
+                + $"holding {pad.PadName ?? "nothing"}, {pad.Adopted} adopted after the start");
 
         // PP798: which units the decoder refused, which its own log line does not say.
         //
