@@ -30,10 +30,17 @@ namespace ChiakiNg.Protocol;
 public sealed class TakionMessageSink(ManagedTakion takion) : IStreamMessageSink
 {
     /// <summary>
-    /// The chunk flags every one of the stream connection's sends carries, which is one.
+    /// The chunk flags the stream connection's ORDINARY sends carry, which is one.
     ///
-    /// Not a parameter, because the C has no call that passes anything else: the literal 1 is
-    /// written into stream_connection_send_data and into both of the BIG's two senders.
+    /// PP831: this used to say the C has no call passing anything else, and names both of the
+    /// BIG's senders as passing 1. That is false and was false when PP827 added the fragment loop:
+    /// the C's non-final fragments pass ZERO - <c>(&amp;takion, 0, 1, buf + buf_pos, ...)</c> - and
+    /// only the last passes 1. <see cref="SendBig"/> has always got that right; the sentence here
+    /// did not, which is the same kind of claim about a C argument that PP778 and PP813 both cost
+    /// a live run to correct.
+    ///
+    /// So it is a constant for <see cref="Send"/> alone, where stream_connection_send_data's own
+    /// literal 1 is the whole of the C's behaviour.
     /// </summary>
     public const byte StreamChunkFlags = TakionDataPush.ExpectedTypeB;
 

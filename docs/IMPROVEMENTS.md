@@ -239,31 +239,6 @@ flag, its count loop is guarded by the return above it, peek writes both out-poi
 where pull guards its own, and takion still passes NULL and still drops on a bad MAC.
 Repair any upstream and the port's copy becomes the divergence, on the next run.
 
-### §PP831 The same inversion, twice
-
-THIS EXACT MISTAKE HAS NOW BEEN MADE TWICE. PP778 found every stream message going out
-with the data type in the chunk flags and the channel left at zero, and fixed it. PP813
-found senkusha doing the same thing, six tasks later, shipped green the whole time.
-Nothing connects the two, and nothing would catch a third.
-
-WHAT THE BUILDERS CANNOT SEE is the shape of it. SenkushaMessages and StreamMessages
-both carry the right number - one for a version request, eight for an echo command - and
-both are asserted against the C field for field. The number is correct either way; only
-the ARGUMENT it is spent in differs, decided one layer down.
-
-THE C IS THE ORACLE AND IT IS ALREADY READ. MessageTapSource holds senkusha_send_data's
-call text verbatim - chunk_flags first, the varying value second. So the C's argument
-order is pinned here; what is missing is the join from that order to what the managed
-caller does with it.
-
-THE CONSOLE IS NOT A CHECK. Takion acks a data message by sequence number and reads no
-channel, so a command on the wrong one is acknowledged and then ignored. Both faults
-presented as silence: the port asked, the console agreed, nothing happened. A live run
-found each, at the cost of a whole task.
-
-WHAT WOULD SETTLE IT is a check over every managed call into a takion send, naming the C
-call site it ports and comparing the two mappings position by position.
-
 ### §PP832 The keyframe nobody counts
 
 A USER REPORTED ARTEFACTS AT THE BOTTOM OF THE SCREEN and this tree could not answer the
