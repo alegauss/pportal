@@ -441,7 +441,12 @@ public class AvPacketV7Tests(ITestOutputHelper output)
         Assert.Equal(0, ours.Value.DataSize);
         Assert.Equal(exact.Length, ours.Value.DataOffset);
 
-        Assert.Equal(ours, NativeAvPacketV7.Parse(exact, out _));
+        // PP27: the C's half, where there is a C. This one call site had no guard while the rest of
+        // the file did, so the deletion turned it into a loader failure rather than a decline - the
+        // shape PP662 measured and PP670 converted six files for, arriving through the one line
+        // nobody had counted. The bound itself is asserted above on every build.
+        if (ShimTakionShape.WrappingHeader() is not null)
+            Assert.Equal(ours, NativeAvPacketV7.Parse(exact, out _));
 
         // v9 asks for one more byte than its header, so the same datagram is too small there.
         using var keyState = new KeyState();

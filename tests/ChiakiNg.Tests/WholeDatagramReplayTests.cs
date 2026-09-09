@@ -96,24 +96,36 @@ public class WholeDatagramReplayTests
     /// refuses - so a wall-clock comparison would time two I/O paths and call the difference the
     /// port's.
     ///
-    /// What is asserted is the join: the criterion in the roadmap carries the reason, so a reader
-    /// meets it where they decide what finishing means rather than three files away.
+    /// What is asserted is the join: the criterion carries the reason, so a reader meets it where
+    /// they decide what finishing means rather than three files away.
+    ///
+    /// PP27: THE CRITERION IS IN THE LEDGER NOW, and the join moved with it. roadkeep takes a
+    /// criteria list out of the roadmap on the ship, so reading the roadmap for PP635's sentence
+    /// would be asking the one file the answer is guaranteed not to be in. The reason did not stop
+    /// mattering - a reader asking why the loop has no ratio is exactly the reader who finds PP27 in
+    /// the changelog - so the same sentence is read there.
     /// </summary>
     [Fact]
     public void TheCriterionSaysWhyTheLoopHasNoRatio()
     {
-        if (ChiakiNg.Session.SanitizerSource.LocateRelative(@"docs\ROADMAP.md") is not { } path)
+        // Collapsed, because roadkeep reflows prose to a width - so a sentence is there and a line
+        // break sits inside it. A check that read the file as written would be asserting about the
+        // wrapping.
+        string Collapsed(string relative)
+            => ChiakiNg.Session.SanitizerSource.LocateRelative(relative) is { } path
+                ? System.Text.RegularExpressions.Regex.Replace(File.ReadAllText(path), @"\s+", " ")
+                : string.Empty;
+
+        string governed = Collapsed(@"docs\ROADMAP.md") + " " + Collapsed(@"docs\CHANGELOG.md");
+        if (governed.Trim().Length == 0)
             return;
 
-        // Collapsed, because roadkeep reflows a criterion's reason to the prose width - so the
-        // sentence is there and a line break sits inside it. A check that read the file as written
-        // would be asserting about the wrapping.
-        string roadmap = System.Text.RegularExpressions.Regex.Replace(
-            File.ReadAllText(path), @"\s+", " ");
-
-        Assert.Contains("PP635", roadmap, StringComparison.Ordinal);
+        // PP635's own ledger entry, which is where the reason went and is worded as that line worded
+        // it - the criterion said "the gate is comparable and the loop is not", the entry says it
+        // with a comma. The sentence is the claim; the conjunction is not.
+        Assert.Contains("PP635", governed, StringComparison.Ordinal);
         Assert.Contains(
-            "the gate is comparable and the loop is not", roadmap, StringComparison.Ordinal);
+            "the gate is comparable, the loop is not", governed, StringComparison.Ordinal);
 
         // And the headroom the answer rests on holds in the reading itself.
         Assert.True(WholeDatagramReplay.GateShareOfGap < WholeDatagramReplay.WorkShareOfGapCeiling);

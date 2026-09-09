@@ -56,25 +56,20 @@ public static partial class DeletionEndState
             // unbuilt source the way gui/ did, so the deletion this rule was about is finished
             // even though a file with that name is still in the checkout.
 
-            // PP638: six files in lib/ call takion, and streamconnection.c was PP295's subject.
+            // PP27 STOOD HERE AND HAS SHIPPED, and the table is empty for the first time.
             //
-            // PP295 HAS SHIPPED, so the entry is empty rather than gone: PP27 is still an end-state
-            // line and still constrains deps, and what its end state waits on now is its own three
-            // criteria above it. An entry naming a shipped id would be the understatement PP690's
-            // rule catches - a planner reading work that is already done.
-            ["PP27"] = [],
-
-            // PP690 found this reading ["PP28"], on the grounds that session.c drives the stream
-            // connection and session.c is PP28's subject. PP28 shipped, and what it shipped was
-            // three modelled joins - none of which stops session.c asking. So the entry became
-            // none: what the end state waited on was an edit no open line owned.
+            // PP638 put it here for six files in lib/ that call takion, and the entry was emptied
+            // when PP295 shipped - the line stayed because it was still open and still constrained
+            // deps. Now it is not: twelve files left lib in one commit, the criteria went to the
+            // ledger with the line, and a line that is no longer open has no end state to constrain.
+            // The same exit PP33's and PP295's took.
             //
-            // PP696 was that line, and it landed: one commit editing lib/ and the build and no test
-            // file, the way PP630 to PP632 did it for the holepunch seam. Then PP295 shipped, and
-            // its entry left this table with it - a line that is no longer open has no end state to
-            // constrain, and the driver reads the criteria list that went to the ledger with it.
-            //
-            // ONE REMAINS, and a third arriving is what the rule is for.
+            // NONE REMAINS, and that is a state this rule has never been in. It is left as a rule
+            // rather than deleted for the reason PP803's trial is: what it holds is that an
+            // end-state criterion and the deps around it agree, and the next deletion arranged in
+            // this tree needs a row here rather than the rule rebuilt. The readers below are
+            // exercised on synthetic text, so an empty table costs no coverage - only the live
+            // subject, which is what shipping is.
         };
 
     /// <summary>The lines the rule is about.</summary>

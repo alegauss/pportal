@@ -157,11 +157,17 @@ public static class DatagramReplayReport
             .Append(replay.AllocatedBytes == 0 ? " - the budget holds\n" : " - THE BUDGET IS BROKEN\n");
 
         // PP517: and the second claim - the gate's model against the C, over these heads.
-        int disagreed = MacDisagreements(datagrams);
-        text.Append("[replay] MAC gate: ")
-            .Append(disagreed == 0
-                ? "the model and the C agree on every head\n"
-                : $"{disagreed.ToString(invariant)} HEAD(S) DISAGREE WITH THE C\n");
+        // PP27: or the absence of one, said in as many words rather than reported as agreement.
+        int? disagreed = MacDisagreements(datagrams);
+        string verdict;
+        if (disagreed is not { } apart)
+            verdict = "no C in this build, so these heads were compared against nothing\n";
+        else if (apart == 0)
+            verdict = "the model and the C agree on every head\n";
+        else
+            verdict = $"{apart.ToString(invariant)} HEAD(S) DISAGREE WITH THE C\n";
+
+        text.Append("[replay] MAC gate: ").Append(verdict);
 
         // PP519: and the third - the console's own key positions through the C's expansion.
         KeyPositionShape shape = KeyPositions(datagrams);
@@ -456,10 +462,19 @@ public static class DatagramReplayReport
     /// behind - because a pair can agree on a return value and differ on which four bytes it zeroed.
     ///
     /// Each side gets its own copy of the head, since both mutate what they are given.
+    ///
+    /// PP27: NULL WHERE THE C IS NOT IN THIS BUILD, which is a third answer and not a zero. Zero is
+    /// the claim that four thousand heads were compared and agreed; a build whose shim wraps no
+    /// takion compared none, and returning the same number for both is the shape PP630 is about.
+    /// What is lost with the C here is the CORPUS comparison specifically - PP785's recording holds
+    /// the gate's answers for its own cases, not for a console's captured heads.
     /// </summary>
-    public static int MacDisagreements(IReadOnlyList<CapturedDatagram> datagrams)
+    public static int? MacDisagreements(IReadOnlyList<CapturedDatagram> datagrams)
     {
         ArgumentNullException.ThrowIfNull(datagrams);
+
+        if (Protocol.ShimTakionShape.WrappingHeader() is null)
+            return null;
 
         var disagreed = 0;
 

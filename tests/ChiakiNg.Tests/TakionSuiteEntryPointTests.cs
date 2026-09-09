@@ -259,20 +259,25 @@ public class TakionSuiteEntryPointTests(ITestOutputHelper output)
         int union = CSuiteFloor.FramePathCases + CSuiteFloor.TakionCases
             - CSuiteFloor.SharedWithTheFramePathCases;
 
+        // PP27: THE RECORDED FLOOR IS THE AFTER-BOTH NUMBER NOW, so the ladder collapses to its last
+        // rung. This subtracted from the floor to model each shape the tree could still be put in,
+        // and both flips landed in one commit - so the tree is in exactly one of the four, and
+        // pretending otherwise would compare 71 minus 78 against a bound and call it a finding.
+        //
+        // What the arithmetic above still holds is the part that was never about today's tree: the
+        // overlap is subtracted once, whichever shape is asked about.
         output.WriteLine(
-            $"floor {floor}; after the frame path {floor - CSuiteFloor.FramePathCases}, "
-            + $"after takion {floor - CSuiteFloor.TakionCases}, after both {floor - union}");
+            $"floor {floor}; the two flips cost {union} together, "
+            + $"and the bound for the shape the tree is in is "
+            + $"{CSuiteFloor.MinimumFor(ConsumerShape.Silent, ConsumerShape.Silent)}");
 
-        // Every shape the tree can be in, and the bound is under the suite in all four.
-        Assert.True(floor > CSuiteFloor.MinimumFor(ConsumerShape.Asking, ConsumerShape.Asking));
         Assert.True(
-            floor - CSuiteFloor.FramePathCases
-                > CSuiteFloor.MinimumFor(ConsumerShape.Silent, ConsumerShape.Asking));
-        Assert.True(
-            floor - CSuiteFloor.TakionCases
-                > CSuiteFloor.MinimumFor(ConsumerShape.Asking, ConsumerShape.Silent));
-        Assert.True(
-            floor - union > CSuiteFloor.MinimumFor(ConsumerShape.Silent, ConsumerShape.Silent),
-            "the bound is not below what the suite still runs once both deletions have landed");
+            floor > CSuiteFloor.MinimumFor(ConsumerShape.Silent, ConsumerShape.Silent),
+            "the bound is not below what the suite still runs now that both deletions have landed");
+
+        // And the recorded number is the one the flips actually cost, which is the join the file's
+        // own prose made in advance: PP786 wrote "71 after both" from reading the suites, and this
+        // is that prediction held against the number the suite reports.
+        Assert.Equal(CSuiteFloor.BeforeTheFlips - union, floor);
     }
 }

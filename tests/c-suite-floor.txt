@@ -46,4 +46,19 @@
 #   through a build.
 #
 #   So: 149 today, 77 after PP696 alone, 140 after PP27 alone, 71 after both.
-149
+#
+# 71 on 2026-09-09, and BOTH LANDED IN ONE COMMIT - which is the branch of that arithmetic nobody
+# expected to take. PP27's flip could not leave the frame path behind: videoreceiver.c is the only
+# caller of stream_connection_send_corrupt_frame and its idr_request twin, so the linker made the
+# two deletions one. Twelve library files and six test files went together.
+#
+# THE PREDICTION HELD EXACTLY, and that is worth recording rather than assuming it always will.
+# PP786 wrote "71 after both" from reading the suites, and the suite ran 71 - so the allocbudget
+# subtlety it was written for, the three cases counted once rather than twice, was right.
+#
+# What is gone is 78 cases of oracle, and the loss is not what it looks like. 64 of them are
+# /fec/fec over the recorded frame buffers, and those buffers did not go anywhere: FecCodecTests
+# runs the same corpus through the managed decoder on every build, and PP842 recorded what the C
+# answered for them before it left. What a C case bought that a managed one does not is a second
+# implementation - and that is the trade PP27 was filed to make, priced here rather than implied.
+71

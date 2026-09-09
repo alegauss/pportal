@@ -3030,8 +3030,19 @@ public static class SelfTest
             {
                 IReadOnlyDictionary<string, byte[]> av =
                     CryptoVectors.InFunction(takionFile, "test_av_packet_parse");
-                using var keys = new KeyState();
-                AvPacket? parsed = Takion.ParseV9(keys, av["packet"], out ChiakiError avErr);
+
+                // PP27: the PORT'S parse, and it was the C's wrapper until takion.c left the build.
+                //
+                // PP671's move one module over, and for its reason rather than out of necessity. The
+                // vector is the C suite's own recorded packet and is read out of test\takion.c as
+                // TEXT, so it survives the file leaving the suite's source list - what went is the
+                // shim export that used to answer about it. Guarding this instead would have made
+                // the strongest single check the selftest has decline on every build anybody runs.
+                //
+                // The C's answer for these bytes is not lost either: PP785 recorded it, and
+                // RecordedTakionOracleTests holds AvPacketParse against the recording on every build.
+                var keys = new ManagedKeyState();
+                AvPacket? parsed = AvPacketParse.Parse(false, keys, av["packet"], out ChiakiError avErr);
 
                 Check("a recorded video packet's header parses",
                     parsed is not null && avErr == ChiakiError.Success, avErr.ToString());

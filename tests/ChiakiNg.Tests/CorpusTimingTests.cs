@@ -53,7 +53,16 @@ public class CorpusTimingTests(ITestOutputHelper output)
         double c = MeanOf(report, "c");
 
         Assert.True(managed > 0, "no managed mean in the report, so nothing was timed");
-        Assert.True(c > 0, "no C mean in the report, so only one side ran");
+
+        // PP27: the C's mean is there while the C is, and this test's own claim never needed it.
+        // What is asserted below is the SHARE of an arrival gap the managed gate consumes - PP610
+        // settled that a ratio against the C is the number that does not travel between machines,
+        // and the headroom is the one that does. So the deletion costs this test its second series
+        // and none of its conclusion; PP633's reading holds the C's figure where it is still wanted.
+        if (ShimTakionShape.WrappingHeader() is not null)
+            Assert.True(c > 0, "no C mean in the report, so only one side ran");
+        else
+            Assert.Equal(0, c);
 
         double share = managed / DatagramCorpus.MeanGapMicros;
         output.WriteLine(

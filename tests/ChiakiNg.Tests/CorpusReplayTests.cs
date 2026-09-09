@@ -28,6 +28,12 @@ public class CorpusReplayTests(ITestOutputHelper output)
     ///
     /// PP531 timed the two against each other; this is whether they still answer the same. Every
     /// head, not a sample - a disagreement on one datagram in four thousand is a disagreement.
+    ///
+    /// PP27: AND IT DECLINES NOW, because takion.c left the build and this is the one MAC comparison
+    /// the recording cannot stand in for. PP785 kept the gate's answers for the cases in
+    /// TakionOracleCases, which RecordedTakionOracleTests holds the port to on every build; what it
+    /// never held is four thousand heads a console actually sent. So this is a real cost of the
+    /// deletion rather than a guard added for tidiness, and OracleGuardCensus counts it.
     /// </summary>
     [Fact]
     public void TheMacGateAgreesWithTheCOnEveryHead()
@@ -35,7 +41,10 @@ public class CorpusReplayTests(ITestOutputHelper output)
         if (Corpus() is not { } datagrams)
             return;
 
-        int apart = DatagramReplayReport.MacDisagreements(datagrams);
+        if (ShimTakionShape.WrappingHeader() is null)
+            return;
+
+        int apart = DatagramReplayReport.MacDisagreements(datagrams)!.Value;
 
         Assert.True(
             apart == 0,
@@ -107,7 +116,15 @@ public class CorpusReplayTests(ITestOutputHelper output)
         output.WriteLine(report);
 
         Assert.Contains("allocated 0 byte(s)", report, StringComparison.Ordinal);
-        Assert.Contains("the model and the C agree on every head", report, StringComparison.Ordinal);
+
+        // PP27: the gate's line, whichever one this build owes. The budget above is the claim this
+        // test is named for and it holds either way - the replay is the port's own path and never
+        // was the C's.
+        Assert.Contains(
+            ShimTakionShape.WrappingHeader() is null
+                ? "no C in this build, so these heads were compared against nothing"
+                : "the model and the C agree on every head",
+            report, StringComparison.Ordinal);
     }
 
     /// <summary>

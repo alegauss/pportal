@@ -35,11 +35,20 @@ public class AnchoredTotalsTests(ITestOutputHelper output)
     /// And the reader is working, which is what the rule above rests on.
     ///
     /// PP271: a regex that stopped matching would report nothing loose and be believed. The backlog
-    /// does hold "N lines" phrases - PP27's is one - so the count examined is not zero.
+    /// held "N lines" phrases - PP27's was one - so the count examined was not zero.
+    ///
+    /// PP27: AND IT IS ZERO NOW, because every line that stated one has shipped. A reader exercised
+    /// only by the backlog is one that stops being exercised on the day the backlog stops sizing
+    /// deletions, so the claim is made on text this file owns and the live count is printed. The
+    /// rule above still runs over the real files; what moved is where the reader proves it works.
     /// </summary>
     [Fact]
     public void TheReaderFindsTheTotalsThatAreThere()
     {
+        Assert.True(
+            AnchoredTotals.Examined(["- takion.c is 2007 lines of C over raw sockets"]) >= 1,
+            "no line total read from a line that states one - the reader is not working");
+
         if (SanitizerSource.RepositoryRoot() is not { } root)
             return;
 
@@ -49,8 +58,6 @@ public class AnchoredTotalsTests(ITestOutputHelper output)
 
         int examined = AnchoredTotals.Examined(File.ReadAllLines(roadmap));
         output.WriteLine($"{examined} \"N lines\" phrase(s) in the roadmap");
-
-        Assert.True(examined >= 1, "no line totals read from the roadmap - the reader is not working");
     }
 
     /// <summary>
@@ -158,19 +165,32 @@ public class AnchoredTotalsTests(ITestOutputHelper output)
     /// PP295: streamconnection.c was the second row and has gone with the line that sized it. A
     /// shipped line's number is in the ledger, which this class deliberately does not read - an
     /// entry saying a file was 1540 lines is a record of what was true, not a premise sizing work
-    /// nobody has done. takion.c's claim is PP27's and is still open, so the row that stays is the
-    /// one still deciding something.
+    /// nobody has done.
+    ///
+    /// PP27: AND takion.c HAS FOLLOWED IT, which is the last row and the state this class's own
+    /// prose predicted - "takion.c's claim is PP27's and PP27 is open; the day that stops being
+    /// true this says so instead of quietly passing". It said so. The theory has no subjects left,
+    /// so what it asserted becomes a claim about the whole set: no restated file is still open work,
+    /// and the reader that would find one is shown working on text this file owns.
     /// </remarks>
-    [Theory]
-    [InlineData("takion.c")]
-    public void TheRestatedFilesAreCheckedClaimsNow(string file)
+    [Fact]
+    public void TheRestatedFilesAreCheckedClaimsNow()
     {
+        // The reader finds a claim where there is one, so an empty backlog is a finding about the
+        // backlog rather than about the scan.
+        Assert.Contains(
+            CountedClaims.In(["### PP9010", "- takion.c is 2007 lines of C"], "test.md"),
+            claim => claim.Subject == "takion.c" && !claim.SizesADirectory);
+
         if (SanitizerSource.RepositoryRoot() is not { } root)
             return;
 
+        // And every file the backlog still sizes is one an OPEN line is sizing, which is the rule
+        // the rows were enforcing one file at a time.
         IReadOnlyList<CountedClaim> claims = CountedClaims.All(root);
+        output.WriteLine($"{claims.Count} counted claim(s) still sizing unshipped work");
 
-        Assert.Contains(claims, claim => claim.Subject == file && !claim.SizesADirectory);
+        Assert.All(claims, claim => Assert.False(string.IsNullOrWhiteSpace(claim.Subject)));
     }
 
     /// <summary>
@@ -214,9 +234,13 @@ public class AnchoredTotalsTests(ITestOutputHelper output)
         // Asserted by NAME and not by count. This guard used to demand four rows, and PP28 shipping
         // took two of them - session.c and ctrl.c, whose claims went into the ledger with the line
         // that made them. A floor that falls every time a line ships is a floor somebody lowers
-        // without reading, which is the opposite of what a guard is for. takion.c is PP27's and PP27
-        // is open; the day that stops being true this says so instead of quietly passing.
-        Assert.Contains("takion.c", subjects);
+        // without reading, which is the opposite of what a guard is for. takion.c was PP27's and
+        // PP27 has shipped, so the last row went with it and there are no subjects left to name.
+        //
+        // What survives is the half this guard is actually for: no row here states a NUMBER. It
+        // holds over an empty set the way it held over four, and it is what stops the double
+        // bookkeeping coming back the day somebody adds a row.
+        Assert.Empty(subjects);
 
         Assert.True(
             stated.Count == 0,

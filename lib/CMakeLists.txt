@@ -57,42 +57,63 @@ set(SOURCE_FILES
 		src/log.c
 		src/ctrl.c
 		src/rpcrypt.c
-		src/takion.c
-		src/senkusha.c
 		src/utils.h
 		src/pb_utils.h
-		src/streamconnection.c
 		src/ecdh.c
 		src/launchspec.c
 		src/random.c
 		src/gkcrypt.c
 		src/audio.c
 		src/audioreceiver.c
-		src/audiosender.c
-		src/videoreceiver.c
-		src/frameprocessor.c
 		src/packetstats.c
 		src/sessionbaseline.c
 		src/messagetap.c
 		src/decoderchoice.c
 		src/discovery.c
-		src/congestioncontrol.c
 		src/stoppipe.c
-		src/reorderqueue.c
 		src/discoveryservice.c
 		src/feedback.c
-		src/feedbacksender.c
 		src/controller.c
-		src/takionsendbuffer.c
 		src/time.c
-		src/fec.c
 		src/regist.c
 		src/opusdecoder.c
-		src/opusencoder.c
 		src/orientation.c
 		src/bitstream.c
 		src/remote/rudp.c
 		src/remote/rudpsendbuffer.c)
+
+# PP27: the transport is GONE, and the frame path went with it because the linker said it must.
+#
+# TWELVE FILES AND NOT THREE, and the difference is not scope creep - it is what asking the linker
+# answered. takion.c, takionsendbuffer.c and reorderqueue.c are the three the criterion names. Six
+# more have no other caller: senkusha.c and streamconnection.c lost theirs when PP783 and PP784 made
+# session.c's two phases callbacks, feedbacksender.c and congestioncontrol.c were reached only by
+# streamconnection.c, and audiosender.c only by opusencoder.c, which nothing reaches at all.
+#
+# THE TENTH IS videoreceiver.c AND IT IS THE ONE NOBODY SAW. Those nine leave libchiaki.a short
+# exactly two symbols - stream_connection_send_corrupt_frame and stream_connection_send_idr_request -
+# and videoreceiver.c calls them at three sites. A text search over lib/ finds them; PP780's census
+# did not, because it asked about takion's symbols rather than about what the deletion strands. With
+# it out, frameprocessor.c and fec.c have no caller inside lib either, and the archive closes: zero
+# unresolved. So the frame path's flip (PP295's fourth criterion) is not a neighbour of this one, it
+# is inside it - the two are one commit or neither.
+#
+# THE HEADERS STAY IN THE LIST ABOVE, and it is the same non-oversight PP33's note claims below.
+# session.h carries ChiakiTakion by value and regist.c reads types out of others of them, so the
+# declarations are load-bearing while the implementations are not - and a declaration with no
+# definition costs a link error only where something calls it, which is the point.
+#
+# WHAT HELD THEM WAS THE ORACLE and not a caller: shim wrappers holding the managed replacements
+# against the C. PP785 recorded takion's answers and PP842 the frame path's, into tests/oracles, so
+# the differentials outlive the C; PP786 put the suite's own files behind their switch; PP841 put
+# takion's wrappers behind CHIAKI_SHIM_TAKION_ORACLE and this commit adds the frame path's option
+# beside it. Both are off now. Those four tasks are why this is a list edit and not forty red
+# assertions.
+#
+# AND A DELETION HAS BROKEN THIS BEFORE. PP696 removed the frame path's four files, was green on
+# every gate, and left a client that could not stream; PP763 put them back. What is different is not
+# a better gate - it is that the port drives live sessions now, so what admitted this commit was a
+# run against a console and not a passing suite.
 
 # PP33: holepunch.c is gone, and curl and json-c with it.
 #

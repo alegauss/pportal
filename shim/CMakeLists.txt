@@ -23,11 +23,22 @@ target_link_libraries(chiaki-shim chiaki-lib)
 
 # PP670: the frame path's fourteen wrappers - fec, frame processor, video receiver - are the third
 # oracle, and this is PP623's first step for it: the define exists and chiaki_shim_has_framepath
-# reports it, so every differential that calls the fourteen can ask before it runs. UNCONDITIONAL
-# today, because the four files are still in the build. The flip (PP295's fourth criterion) turns
-# this into an if() on its option and wraps the fourteen in the define, in the header and the body,
-# and edits no test file - which is what the two-shape readers were converted for.
-target_compile_definitions(chiaki-shim PUBLIC CHIAKI_SHIM_HAVE_FRAMEPATH)
+# reports it, so every differential that calls the fourteen can ask before it runs. The body and the
+# header were guarded then; what was missing was the switch, and this line was unconditional.
+#
+# PP27: THE SWITCH EXISTS NOW AND IS OFF, and this is the flip PP670's note described - it just did
+# not arrive on its own. videoreceiver.c is the only caller of two symbols takion's deletion strands,
+# so the frame path had to leave in the same commit; the option is here rather than in PP295's own
+# because that is where the linker put it.
+#
+# WHAT MADE IT AFFORDABLE was PP842, immediately before: tests/oracles/framepath.json holds what
+# jerasure, the frame processor and the video receiver answered, so six comparisons keep running on
+# every build. Turning this off before that recording existed would have spent three modules' second
+# opinion and reported it as green.
+option(CHIAKI_SHIM_FRAMEPATH_ORACLE "Wrap the frame path's three so their differentials can run" OFF)
+if(CHIAKI_SHIM_FRAMEPATH_ORACLE)
+	target_compile_definitions(chiaki-shim PUBLIC CHIAKI_SHIM_HAVE_FRAMEPATH)
+endif()
 
 # PP785: takion's oracles are the fourth, and the largest. PP780 asked the linker what PP27's end
 # state - takion.c, takionsendbuffer.c and reorderqueue.c leaving the build - costs, and found this
@@ -45,15 +56,17 @@ target_compile_definitions(chiaki-shim PUBLIC CHIAKI_SHIM_HAVE_FRAMEPATH)
 # declarations still compile and only the link fails - which is why the guard sits around the
 # bodies and the header is untouched.
 #
-# ON BY DEFAULT, because this is the step before the flip and not the flip. PP27's fourth criterion
-# turns it off and removes the nine files from lib/CMakeLists.txt in one commit; what this line
-# buys is that the switch now exists and works, which is provable by configuring with it off.
+# OFF NOW, because PP27's fourth criterion landed in the commit that flipped it: twelve files left
+# lib/CMakeLists.txt beside this line. On means the wrappers compile and the link then wants files
+# the library no longer has, so this is not a preference a build can hold either way any more - it
+# is a switch with one working position until somebody puts the C back, which is what PP763 had to
+# do for the frame path once.
 #
 # THE EXPORTS GO RATHER THAN STUBBING, which is PP696's choice: chiaki_shim_has_takion is exported
 # either way and answers for the DLL, so a caller who forgot to ask gets a missing symbol instead
 # of a plausible error code. Every differential already asks it and compares against
 # tests/oracles/takion.json when the answer is no, so no test file changes here either.
-option(CHIAKI_SHIM_TAKION_ORACLE "Wrap takion's three so their differentials can run" ON)
+option(CHIAKI_SHIM_TAKION_ORACLE "Wrap takion's three so their differentials can run" OFF)
 if(CHIAKI_SHIM_TAKION_ORACLE)
 	target_compile_definitions(chiaki-shim PUBLIC CHIAKI_SHIM_HAVE_TAKION)
 endif()

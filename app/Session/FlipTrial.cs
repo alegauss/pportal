@@ -46,20 +46,41 @@ public static class FlipTrial
     public const string CacheVariable = "CHIAKI_TRIAL_FLIP";
 
     /// <summary>
-    /// The two, and what each removes from chiaki-unit's own sources.
+    /// PP27: NONE, because both landed in one commit and a trial of a shape the tree is in measures
+    /// nothing.
     ///
-    /// allocbudget.c is in BOTH, which is the case that found the defect: it is claimed by either
-    /// flip and leaves on whichever lands first, so a trial of one that kept it would build a shape
-    /// no landing produces.
+    /// takion and framepath were the two. They were never independent - videoreceiver.c is the only
+    /// caller of two symbols takion's deletion strands - so the linker made them one commit, and the
+    /// day they landed is the day this list emptied. The apparatus stays: <c>flip.cmd</c>, the script
+    /// and the reader below are what PP786's failure bought, and a third arranged deletion needs a
+    /// row here and an arm in the build file rather than a rebuilt instrument.
+    ///
+    /// EMPTY IS NOT NOTHING TO CHECK. The build file refuses every flip name now, and the pair have
+    /// to agree about that the way they agreed about the file sets - a row here with no arm, or an
+    /// arm with no row, is what the join is for in either direction.
     /// </summary>
-    public static IReadOnlyList<ArrangedFlip> Flips { get; } =
-    [
-        new("takion", ["takion.c", "reorderqueue.c", "allocbudget.c"], "CHIAKI_UNIT_HAVE_TAKION"),
-        new(
-            "framepath",
-            ["fec.c", "frameprocessor.c", "videoreceiver.c", "allocbudget.c"],
-            "CHIAKI_UNIT_HAVE_FRAMEPATH"),
-    ];
+    public static IReadOnlyList<ArrangedFlip> Flips { get; } = [];
+
+    /// <summary>
+    /// The switches main.c reads, which OUTLIVE the flips that were arranged around them.
+    ///
+    /// PP786 wrote them and PP803's rule about them is the one that does not expire: each follows the
+    /// source list rather than being written flat, so the file leaving is the whole edit. They answer
+    /// zero on this tree and the files they gate are gone, and both of those are still statements the
+    /// build file has to keep making - a switch hard-coded to 0 would compile the same today and be
+    /// a lie the moment anything came back.
+    /// </summary>
+    public static IReadOnlyList<string> Switches { get; } =
+        ["CHIAKI_UNIT_HAVE_TAKION", "CHIAKI_UNIT_HAVE_FRAMEPATH"];
+
+    /// <summary>
+    /// The suite files both landed flips took, which the list must no longer hold.
+    ///
+    /// allocbudget.c is the one PP786's failure was about: claimed by both, gone with whichever
+    /// landed first, and the only definition of __wrap_malloc. The --wrap block follows it out.
+    /// </summary>
+    public static IReadOnlyList<string> Departed { get; } =
+        ["takion.c", "reorderqueue.c", "fec.c", "frameprocessor.c", "videoreceiver.c", "allocbudget.c"];
 
     /// <summary>The suite's build file, or null outside a checkout.</summary>
     public static string? LocateSuite() => SanitizerSource.LocateRelative(SuiteRelativePath);

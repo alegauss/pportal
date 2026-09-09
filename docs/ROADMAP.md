@@ -23,8 +23,7 @@
 
 ## Block F — Managed core
 
-- 🛠 **PP27** (deps: PP672 ✅, PP673 ✅, PP674 ✅, PP675 ✅, PP676 ✅, PP677 ✅, PP678 ✅, PP679 ✅, PP680 ✅, PP702 ✅, PP783 ✅, PP784 ✅, PP785 ✅, PP786 ✅, PP842 ✅) (requires: console) **takion.c is 2007 lines of C over raw sockets and timers, and the whole stream rides on it** — Ten tasks wrote it; four take the C out. → §PP27
-- 📋 **PP30** (deps: PP23 ✅, PP27 🛠) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — chiaki_fec_decode has three callers - frameprocessor.c, the C suite and this port's shim - and gf-complete has a fourth site none of them reach: chiaki_lib_init. → §PP30
+- 📋 **PP30** (deps: PP23 ✅, PP27 ✅) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — chiaki_fec_decode has three callers - frameprocessor.c, the C suite and this port's shim - and gf-complete has a fourth site none of them reach: chiaki_lib_init. → §PP30
 - 📋 **PP843** (deps: PP697 ✅, PP763 ✅) **ShimFramePathShape says the flip has happened and the option is off, and PP763 put the four files back** — PP697 turned the class's tense when PP696 landed; PP763 reverted the flip and left the prose, so the file tells a reader the opposite of the tree. → §PP843
 
 ## Block G — Test discipline
@@ -41,26 +40,6 @@
 - ⏳ **PP53** (deps: PP11 ✅, PP41 ✅) (requires: variable-refresh-display) **frames arrive with network jitter and are presented against a fixed refresh, so each waits for a vblank it missed** — the reading itself: a display that varies its refresh, and a trace saying the frame arrived unpaced. → §PP53
 
 ## Block J — Public documentation
-
-## Done when — PP27
-
-- **A shim entry point exposes takion's receive loop** The half PP531 could not reach.
-  The MAC gate is timed because the shim reaches it; the loop around it is bound to
-  sockets and threads a capture has neither of, so no oracle runs until an entry point
-  exists.
-- **The managed transport is timed against the C over captured traffic** PP635: the gate
-  is comparable and the loop is not - takion's handlers are file-local, so the only C
-  loop that runs is bound to a socket. PP610 timed the gate at 0.165us against 0.101us;
-  PP633 replayed the loop over whole datagrams for the half a ratio cannot give.
-- **The transport meets PP44's allocation budget** Thousands of small packets a second,
-  each an allocation if written carelessly. Span, ArrayPool and SocketAsyncEventArgs are
-  the answer, chosen deliberately - PP44 set the budget before this line writes what has
-  to meet it.
-- **takion.c, takionsendbuffer.c and reorderqueue.c leave the build** An end state, not
-  a progress bar: porting into app removes no C, and this cannot land until the three
-  criteria above it have. PP763 adds the other half - the frame path's deletion was
-  green and left the client unable to stream, so a departure waits on something driving
-  a live session, not on a passing gate.
 
 ## Done when — PP46
 

@@ -91,11 +91,16 @@ public class CountedClaimTests(ITestOutputHelper output)
         // A regex that stopped matching would pass the loop below over nothing, which is this
         // file's own subject wearing the other hat.
         //
-        // FOUR, AND IT WAS FIVE. PP295's line stated streamconnection.c's length and shipped, so the
-        // claim went to the ledger - where a number records what was true rather than sizing work
-        // nobody has done. The bound falls only with a shipped line taking a claim with it; it must
-        // never fall because a regex stopped matching, which is what it is here to catch.
-        Assert.True(claims.Length >= 4, $"only {claims.Length} counted claims found - the scan is not working");
+        // PP27: AND THE BACKLOG HOLDS NONE NOW, so the bound cannot be a number the live files must
+        // meet. It was five, then four when PP295 shipped, and PP27 took the last four with it -
+        // every counted claim this port ever wrote sized a deletion, and all of those have landed.
+        //
+        // A bound that falls with each ship is one somebody lowers without reading, and the day it
+        // reaches zero it stops distinguishing "nothing to size" from "the regex broke". So the
+        // non-vacuity moves where it can always be asked: the scan is shown working on text this
+        // file owns, and the live count is printed rather than bounded.
+        Assert.NotEmpty(CountedClaims.In(
+            ["### PP9008", "- takion.c is 2007 lines of C over raw sockets"], "test.md"));
 
         IReadOnlyList<string> wrong = Stale(root, claims);
         output.WriteLine($"{claims.Length} counted claim(s) in the backlog, {wrong.Count} that no longer hold");
@@ -258,10 +263,17 @@ public class CountedClaimTests(ITestOutputHelper output)
         string? root = SanitizerSource.RepositoryRoot();
         Assert.NotNull(root);
 
-        // The sweep must be finding claims at all, or this passes for PP271's reason.
-        Assert.True(
-            CountedClaims.All(root).Count(c => c.Column >= 0) >= 4,
-            "the scan is not working, so this guard is vacuous");
+        // The sweep must be able to find a claim at all, or this passes for PP271's reason.
+        //
+        // PP27: asked of a fixture rather than of the backlog, which holds none now - every counted
+        // claim this port wrote sized a deletion and all of them have landed. The column is what
+        // this guard reads, so the fixture has to produce one.
+        Assert.All(
+            CountedClaims.In(["### PP9009", "- ctrl.c is 1713 lines of control channel"], "test.md"),
+            claim => Assert.True(claim.Column >= 0));
+
+        Assert.NotEmpty(
+            CountedClaims.In(["### PP9009", "- ctrl.c is 1713 lines of control channel"], "test.md"));
 
         IReadOnlyList<CountedClaim> quoted = CountedClaims.QuotedClaims(root);
 

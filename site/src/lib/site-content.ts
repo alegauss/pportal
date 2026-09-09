@@ -194,7 +194,7 @@ export const why = {
   eyebrow: "Why it was rebuilt",
   heading: "A remote play client that is a Windows program",
   intro: [
-    "The stream is the hard part and it was already solved by the Chiaki and chiaki-ng projects. What was left was everything around it: a window that follows the OS theme, a decode path chosen on the machine's own answer, and an installer that does not carry a second browser. PPortal is that half, rewritten on ",
+    "The stream is the hard part and the Chiaki and chiaki-ng projects are what worked it out. PPortal is a port of that work rather than a shell around it: the transport, the reordering, the error correction and the frame path are its own code, each one held against the C it replaces. Everything else is new — a window that follows the OS theme, a decode path chosen on the machine's own answer, and an installer that does not carry a second browser — and all of it runs on ",
     { b: dotnet() },
     ".",
   ] as Rich,

@@ -80,6 +80,18 @@ public static partial class CSuiteFloor
     public const int SharedWithTheFramePathCases = 3;
 
     /// <summary>
+    /// PP27: what the suite ran before either flip landed, so the recorded floor can be checked
+    /// against the arithmetic rather than only against itself.
+    ///
+    /// PP786 predicted "71 after both" from reading the suites and could not test it - neither flip
+    /// had landed and the tree had never been in that shape. Both landed in one commit, the suite
+    /// reported 71, and the prediction is worth keeping as a JOIN rather than as a note: this number
+    /// minus the two flips' union is what the floor file has to say, and a floor edited by hand to
+    /// silence a shrinking suite would no longer satisfy it.
+    /// </summary>
+    public const int BeforeTheFlips = 149;
+
+    /// <summary>
     /// The smallest plausible count on the side of the flip a suite list is on.
     ///
     /// The bound has to move with the suite: 100 is generous against 149 and impossible against the

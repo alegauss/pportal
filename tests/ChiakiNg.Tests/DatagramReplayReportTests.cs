@@ -151,25 +151,39 @@ public class DatagramReplayReportTests
     ///
     /// Both halves of the sentence, because a line that could only say "agree" would say it about a
     /// capture nothing was compared over.
+    ///
+    /// PP27: AND A THIRD HALF, which is the one the deletion added. takion.c left the build, so the
+    /// report has to distinguish "compared and agreed" from "there was nothing to compare against" -
+    /// and printing the first for the second is precisely the failure the paragraph above names.
+    /// This asserts whichever sentence this build owes and never the other.
     /// </summary>
     [Fact]
     public void TheReportSaysWhetherTheGateAgreed()
     {
         IReadOnlyList<CapturedDatagram> capture = Capture();
+        bool hasTheC = ShimTakionShape.WrappingHeader() is not null;
 
-        Assert.Equal(0, DatagramReplayReport.MacDisagreements(capture));
+        Assert.Equal(hasTheC ? 0 : null, DatagramReplayReport.MacDisagreements(capture));
 
         string report = DatagramReplayReport.Render(
             capture, TakionCaptureReplay.Run(capture, new CountingReplaySink()));
 
-        Assert.Contains("the model and the C agree on every head", report, StringComparison.Ordinal);
+        string owed = hasTheC
+            ? "the model and the C agree on every head"
+            : "no C in this build, so these heads were compared against nothing";
+        string other = hasTheC
+            ? "no C in this build, so these heads were compared against nothing"
+            : "the model and the C agree on every head";
+
+        Assert.Contains(owed, report, StringComparison.Ordinal);
+        Assert.DoesNotContain(other, report, StringComparison.Ordinal);
 
         // A head the model and the C cannot both accept is one they still answer the same way, so
         // the disagreement count is about behaviour rather than about acceptance.
         IReadOnlyList<CapturedDatagram> odd =
             [.. capture, Datagram(baseType: 6, at: 60_000, length: 40)];
 
-        Assert.Equal(0, DatagramReplayReport.MacDisagreements(odd));
+        Assert.Equal(hasTheC ? 0 : null, DatagramReplayReport.MacDisagreements(odd));
     }
 
     /// <summary>

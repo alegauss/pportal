@@ -210,9 +210,51 @@ public static partial class SuiteEntryPoint
         IReadOnlyList<string> listedFiles = FramePathConsumers.SuiteFilesIn(cmake);
         bool listed = files.All(one => listedFiles.Contains(one, StringComparer.Ordinal));
 
+        // PP27: A DERIVED SWITCH IS ASKED A DIFFERENT QUESTION, and this reader was wrong the moment
+        // the else branch became the live one. DefinedAs finds the first `GUARD=` in the text, which
+        // is the `if` arm - so it answered "1" for a build cmake defines as 0, and the only reason
+        // that never showed is that the files were listed every day until this one.
+        //
+        // Where the definition is derived, its VALUE is cmake's to decide and there is nothing here
+        // to agree or disagree with. What is worth holding is that it is derived from one of the
+        // files this switch is about: a condition naming a file that never leaves is a switch that
+        // can never turn off, which is the same silent failure one step back.
+        if (DerivedFrom(cmake, guard) is { } condition)
+            return files.Contains(condition, StringComparer.Ordinal);
+
         string? defined = DefinedAs(cmake, guard);
 
         return listed ? defined == "1" : defined is null or "0";
+    }
+
+    /// <summary>
+    /// PP27: the source file a derived switch follows, or null where it is written flat.
+    ///
+    /// The shape PP803 required and nothing read back: <c>if("x.c" IN_LIST CHIAKI_UNIT_SOURCES)</c>
+    /// above a <c>GUARD=1</c>, with a <c>GUARD=0</c> under its else. Read by walking back from the
+    /// <c>=1</c> to the nearest IN_LIST condition, which is the arm that owns it.
+    /// </summary>
+    public static string? DerivedFrom(string cmake, string guard)
+    {
+        ArgumentNullException.ThrowIfNull(cmake);
+        ArgumentNullException.ThrowIfNull(guard);
+
+        int on = cmake.IndexOf(guard + "=1", StringComparison.Ordinal);
+        int off = cmake.IndexOf(guard + "=0", StringComparison.Ordinal);
+        if (on < 0 || off < 0)
+            return null;
+
+        int condition = cmake.LastIndexOf("IN_LIST", on, StringComparison.Ordinal);
+        if (condition < 0)
+            return null;
+
+        int opens = cmake.LastIndexOf('"', condition);
+        if (opens < 0)
+            return null;
+
+        int quoted = cmake.LastIndexOf('"', opens - 1);
+
+        return quoted < 0 ? null : cmake[(quoted + 1)..opens];
     }
 
     /// <summary>The condition the allocator's link options have to sit inside.</summary>

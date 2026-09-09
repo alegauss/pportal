@@ -68,8 +68,16 @@ public class CriterionBlockersTests(ITestOutputHelper output)
         //
         // PP295 stood here as the open half of that pair and has now shipped whole, so it belongs on
         // the other side of it - which is the assertion doing its job rather than losing one.
+        //
+        // PP27: AND SO HAS PP27, for the second time in this pair's short life. It was the partial
+        // half after PP295 took that place, and its own whole ship moved it across - which is the
+        // shape of every line eventually and the reason the row is named rather than counted. PP53
+        // is the partial half now: PP93, PP46, PP47 and PP49 are the others, and any of them would
+        // do, so what makes this one the row is that it is the newest and therefore the least likely
+        // to be settled before somebody reads this again.
         Assert.Contains("PP295", shipped);
-        Assert.DoesNotContain("PP27", shipped);
+        Assert.Contains("PP27", shipped);
+        Assert.DoesNotContain("PP53", shipped);
     }
 
     /// <summary>The two ledger shapes, told apart on their own text rather than on the real file.</summary>

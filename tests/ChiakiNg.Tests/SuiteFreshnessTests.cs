@@ -76,9 +76,13 @@ public class SuiteFreshnessTests(ITestOutputHelper output)
         if (Read(SuiteFreshness.BuildGraphRelativePath) is not { } graph)
             return;
 
+        // PP27: session.c, and it was takion.c until that file left the build. The control has to be
+        // a file lib actually compiles, and picking one that a prepared deletion was aiming at made
+        // this red on the day the deletion landed - a failure about the fixture wearing the reader's
+        // name. session.c is claimed by no arranged flip and is where the port's own phases hang.
         Assert.True(
-            SuiteFreshness.IsInTheBuildGraph(graph, @"lib\src\takion.c"),
-            "takion.c is not in the build graph, so the reader is not reading it");
+            SuiteFreshness.IsInTheBuildGraph(graph, @"lib\src\session.c"),
+            "session.c is not in the build graph, so the reader is not reading it");
 
         Assert.True(SuiteFreshness.IsInTheBuildGraph(graph, @"test\main.c"));
     }

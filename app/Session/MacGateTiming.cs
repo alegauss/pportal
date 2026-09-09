@@ -72,11 +72,23 @@ public static class MacGateTiming
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(batches);
         ArgumentOutOfRangeException.ThrowIfNegative(warmup);
 
+        // PP27: the C's series is timed only where there is a C. Its wrappers left the build with
+        // takion.c, and a run without them times the managed gate and the copy - which is still the
+        // two numbers the headroom claim rests on, because that claim is a SHARE of the arrival gap
+        // and not a ratio against the C.
+        //
+        // An empty summary rather than a skipped field: Summarise over no samples answers zero
+        // batches, which is what Describe reads to say the series was not run. Timing zero passes
+        // and reporting 0.000 us would read as a C that is infinitely fast.
+        MacGateCost native = ShimTakionShape.WrappingHeader() is null
+            ? Summarise("c", [])
+            : Time("c", datagrams, batches, warmup, NativeGate);
+
         return new MacGateComparison(
             datagrams.Count,
             Time("copy", datagrams, batches, warmup, CopyOnly),
             Time("managed", datagrams, batches, warmup, ManagedGate),
-            Time("c", datagrams, batches, warmup, NativeGate));
+            native);
     }
 
     /// <summary>The copy alone, which is the floor under both of the others.</summary>
@@ -159,9 +171,17 @@ public static class MacGateTiming
     public static string Describe(MacGateComparison comparison)
     {
         var c = CultureInfo.InvariantCulture;
+
+        // PP27: the C's line, or the reason there is not one. Printing its zeroed summary would put
+        // "c min 0.000 mean 0.000" under the managed one, which reads as a measurement.
+        string native = comparison.Native.Batches == 0
+            ? "[replay]   c        not in this build - takion.c left under PP27, and PP610's reading\n"
+                + "[replay]            of it is what the recorded comparison stands on\n"
+            : Line(comparison.Native);
+
         return $"[replay] MAC gate timing over {comparison.Datagrams.ToString(c)} head(s), "
             + $"{comparison.Managed.Batches.ToString(c)} pass(es) each, us per head:\n"
-            + Line(comparison.Managed) + Line(comparison.Native) + Line(comparison.Copy)
+            + Line(comparison.Managed) + native + Line(comparison.Copy)
             + "[replay]   the copy is in both of the two above it and in neither's difference\n";
 
         static string Line(MacGateCost cost)

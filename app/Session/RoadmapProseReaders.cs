@@ -149,16 +149,24 @@ public static class RoadmapProseReaders
             "PP781: the claim PP562 refuted, kept to five words so the line can be rewritten any way that stops making it - and a line that makes it again is what this is for."),
 
         // ---- Held: the words ARE the claim, kept short so the sentence can move. ---------------
+        //
         new(
             "end state",
             @"app\Session\DeletionEndState.cs",
             ProseReading.Held,
             "PP666's own repair: two words instead of the sentence that failed, which is the shape this census is arguing for."),
-        new(
-            "progress bar",
-            @"app\Session\DeletionEndState.cs",
-            ProseReading.Held,
-            "The other half of the same pair, and what a deletion criterion is refusing to be."),
+
+        // PP27: "progress bar" STOOD BESIDE IT AND HAS GONE, and it is the census being accurate
+        // rather than a judgement lost. The pair were PP666's repair, and each matched the governed
+        // files in one place: the fourth criterion of whichever deletion line was open. PP27 was the
+        // last of the three and its criteria went to the ledger with it.
+        //
+        // The two did not go together, which is the thing to notice. "end state" still occurs - the
+        // ledger says it about PP295, PP636, PP639 and PP690 - so its row stays and the census is
+        // still judging something. "progress bar" was only ever in the criterion itself, so its row
+        // is now a judgement about nothing, which is what this file's other rule refuses. The reader
+        // in DeletionEndState.cs is untouched and still holds both words for the next deletion line;
+        // the day one is filed, the census reports it unjudged and the row comes back.
         new(
             "100% Windows",
             @"app\Session\ManagedBoundaryRule.cs",
@@ -171,11 +179,16 @@ public static class RoadmapProseReaders
             "And the promise it refuses, which is also the first of five spellings the same file will not let the port make."),
 
         // ---- Address: how roadkeep itself names the thing. -------------------------------------
-        new(
-            "takion.c, takionsendbuffer.c and reorderqueue.c leave the build",
-            @"app\Session\TransportOrder.cs",
-            ProseReading.Address,
-            "A criterion's lead, which is the argument criterion-amend takes; changing it is a rename and a check that noticed is right to."),
+        //
+        // PP27: the fourth criterion's lead stood here and has gone, with "progress bar" above and
+        // for the same reason. It was an Address - the argument criterion-amend takes - so it was
+        // exactly as long as the criterion, and a criterion belongs to an open line. A ship consumes
+        // a checked criterion outright: the lead is not copied into the ledger entry, so unlike
+        // "end state" there is no second occurrence to keep the row alive.
+        //
+        // TransportOrder.EndStateCriterion is still the constant and its tests still read it, which
+        // is the part worth stating: the literal is fine, the census row was about it matching a
+        // governed file and it no longer does.
         new(
             "No managed video decoder",
             @"app\Session\ManagedBoundaryRule.cs",
@@ -238,11 +251,11 @@ public static class RoadmapProseReaders
             @"app\Session\CriterionBlockers.cs",
             ProseReading.FailsOpen,
             "The same list's second spelling, which is what says the list is a guess at English rather than a rule."),
-        new(
-            "cannot land until",
-            @"app\Session\CriterionBlockers.cs",
-            ProseReading.FailsOpen,
-            "And its longest, added because a criterion actually used it."),
+        // PP27: "cannot land until" stood here, and its own reason is why it left. It was added
+        // "because a criterion actually used it" - PP27's fourth, the one saying the deletion waits
+        // on the three above it - and that criterion went to the ledger with the ship. The other
+        // spellings in CriterionBlockers.cs still occur, so the reader keeps its list and only this
+        // row, which was judged about one sentence, has nothing left to judge.
         new(
             "does not edit lib/",
             @"app\Session\LibRepairCensus.cs",

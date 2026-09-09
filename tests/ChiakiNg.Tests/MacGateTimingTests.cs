@@ -49,7 +49,19 @@ public class MacGateTimingTests
         MacGateComparison comparison = MacGateTiming.Measure(capture, batches: 4, warmup: 1);
 
         Assert.Equal(capture.Count, comparison.Datagrams);
-        foreach (MacGateCost cost in new[] { comparison.Managed, comparison.Native, comparison.Copy })
+
+        // PP27: the C's series is timed only where there is a C, so which of the three are expected
+        // to carry samples follows the build. Its name and its shape are asserted either way below -
+        // an empty series is still a series, and reporting zero batches is how Describe knows to say
+        // the C was not run rather than printing 0.000 us under the managed line.
+        bool timedTheC = ShimTakionShape.WrappingHeader() is not null;
+        MacGateCost[] measured = timedTheC
+            ? [comparison.Managed, comparison.Native, comparison.Copy]
+            : [comparison.Managed, comparison.Copy];
+
+        Assert.Equal(timedTheC ? 4 : 0, comparison.Native.Batches);
+
+        foreach (MacGateCost cost in measured)
         {
             Assert.Equal(4, cost.Batches);
             Assert.True(cost.MinUs >= 0, $"{cost.Name} min was negative");
@@ -71,6 +83,11 @@ public class MacGateTimingTests
     /// that had already been through the gate twenty times. It would still report agreement, on
     /// input neither side had seen. Asserted by asking PP517's question on both sides of a timed
     /// run.
+    ///
+    /// PP27: THE BYTES ARE STILL CHECKED WITHOUT THE C, and only the agreement half declines. The
+    /// managed gate mutates its head too, so a harness that let it touch the capture would be the
+    /// same defect with one fewer suspect - which is why the comparison of the bytes runs on every
+    /// build and PP517's question is asked where it can be.
     /// </summary>
     [Fact]
     public void TimingDoesNotConsumeTheCaptureItTimes()
@@ -78,14 +95,19 @@ public class MacGateTimingTests
         IReadOnlyList<CapturedDatagram> capture = Capture();
         byte[][] before = [.. capture.Select(d => d.Head.ToArray())];
 
-        Assert.Equal(0, DatagramReplayReport.MacDisagreements(capture));
+        // Null where this build has no C to disagree with, and zero where it has one. Held as the
+        // SAME answer on both sides of the run rather than as a literal, so neither reading is a
+        // no-op: with the C it is PP517's question asked twice, and without it the bytes below are
+        // what the test is about anyway.
+        int? apartBefore = DatagramReplayReport.MacDisagreements(capture);
+        Assert.True(apartBefore is null or 0, $"{apartBefore} head(s) disagreed before any timing");
 
         MacGateTiming.Measure(capture, batches: 3, warmup: 1);
 
         for (int i = 0; i < capture.Count; i++)
             Assert.Equal(before[i], capture[i].Head.ToArray());
 
-        Assert.Equal(0, DatagramReplayReport.MacDisagreements(capture));
+        Assert.Equal(apartBefore, DatagramReplayReport.MacDisagreements(capture));
     }
 
     /// <summary>The percentiles are nearest-rank over the samples, and an empty run is not a crash.</summary>

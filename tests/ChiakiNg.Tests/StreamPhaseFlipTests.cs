@@ -127,11 +127,13 @@ public class StreamPhaseFlipTests(ITestOutputHelper output)
     /// set up. So a flip that moved two of the five calls would leave one read that is not merely
     /// dead but wrong - and the census names the halfway state Partial for exactly this reason.
     ///
-    /// THE FILES HAVE NOT LEFT, and that is the difference from PP696. The consumer stops; the
-    /// deletion is PP295's and waits on this.
+    /// THE FILES HAVE LEFT NOW TOO, and PP27 is what took them. This assertion held the other half
+    /// for a block - the consumer stopped and the deletion waited - and the wait ended when the
+    /// linker showed the two deletions were one: videoreceiver.c is the only caller of two symbols
+    /// takion's removal strands, so the frame path could not stay behind.
     /// </summary>
     [Fact]
-    public void SessionCHasStoppedAskingAndTheFilesAreStillBuilt()
+    public void SessionCHasStoppedAskingAndTheFilesHaveLeft()
     {
         if (FramePathConsumers.Locate(FramePathConsumers.SessionRelativePath) is not { } path)
             return;
@@ -146,9 +148,10 @@ public class StreamPhaseFlipTests(ITestOutputHelper output)
         if (FramePathConsumers.Locate(@"lib\CMakeLists.txt") is not { } cmake)
             return;
 
-        // PP295 is the deletion and it waits on this, so the four are still in lib's list.
+        // And the list agrees, which is the half that turned over. Silent here means lib's own build
+        // file names none of them - the deletion PP295's criterion described, landed under PP27.
         Assert.Equal(
-            ConsumerShape.Asking,
+            ConsumerShape.Silent,
             StreamConnectionConsumers.ShapeOfTheList(File.ReadAllText(cmake)));
     }
 

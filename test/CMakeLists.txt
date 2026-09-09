@@ -10,24 +10,32 @@ target_include_directories(munit PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/munit")
 set_property(TARGET munit PROPERTY C_STANDARD 11)
 set_property(TARGET munit PROPERTY C_STANDARD_REQUIRED ON)
 
+# PP27: six files are gone, with the C they were about.
+#
+# takion.c and reorderqueue.c exercise modules that left lib/CMakeLists.txt in this commit - PP780's
+# link named seven symbols in one and six in the other - and fec.c, frameprocessor.c and
+# videoreceiver.c the three the frame path took with them. A suite keeping any of them would be munit
+# cases compiled against nothing.
+#
+# allocbudget.c is the file claimed by BOTH prepared flips and leaves on whichever lands first, which
+# is this one because they landed together. PP44's budget over the transport is not lost with it:
+# ManagedTakionTests times the warm loop's allocations as a difference between two runs of equal
+# length, which is the port's own instrument and the one the criterion is about.
+#
+# The two derived switches below now answer 0, and the --wrap block goes with allocbudget.c exactly
+# as PP803 arranged.
 set(CHIAKI_UNIT_SOURCES
 				main.c
 				http.c
 				rpcrypt.c
 				gkcrypt.c
-				takion.c
 				seqnum.c
 				keystate.c
-				reorderqueue.c
-				fec.c
 				test_log.c
 				test_log.h
 				bitstream.c
 				regist.c
 				sessionbaseline.c
-				frameprocessor.c
-				allocbudget.c
-				videoreceiver.c
 				decoderchoice.c)
 
 if(CHIAKI_ENABLE_FFMPEG_DECODER)
@@ -52,17 +60,21 @@ endif()
 # ALLOCBUDGET GOES ON EITHER, which is the case that found this: it is claimed by both flips and
 # leaves on whichever lands first. The --wrap block below is already derived from the list, so
 # taking the file out is the whole edit and the link options go with it.
+#
+# PP27: BOTH FLIPS LANDED, so the variable is spent and refuses rather than pretending.
+#
+# REMOVE_ITEM on a file that is not in the list is a silent no-op, so either value would still
+# configure, still print its message and change nothing - a trial reporting the after-shape of a tree
+# that is already in it, which is the exact failure PP803 built this to catch. Refusing names the
+# reason at the one moment somebody would be misled. It is kept rather than deleted because a third
+# deletion will want the same instrument, and what it needs then is this shape and a new value.
 set(CHIAKI_TRIAL_FLIP "" CACHE STRING
-		"Build chiaki-unit as one arranged flip would leave it: takion, framepath, or empty")
+		"Build chiaki-unit as an arranged flip would leave it - no flip is arranged, so: empty")
 
-if(CHIAKI_TRIAL_FLIP STREQUAL "takion")
-	list(REMOVE_ITEM CHIAKI_UNIT_SOURCES takion.c reorderqueue.c allocbudget.c)
-	message(STATUS "trial flip: takion - the suite as PP27's end state leaves it")
-elseif(CHIAKI_TRIAL_FLIP STREQUAL "framepath")
-	list(REMOVE_ITEM CHIAKI_UNIT_SOURCES fec.c frameprocessor.c videoreceiver.c allocbudget.c)
-	message(STATUS "trial flip: framepath - the suite as PP696 leaves it")
-elseif(NOT CHIAKI_TRIAL_FLIP STREQUAL "")
-	message(FATAL_ERROR "CHIAKI_TRIAL_FLIP is takion, framepath or empty - not '${CHIAKI_TRIAL_FLIP}'")
+if(NOT CHIAKI_TRIAL_FLIP STREQUAL "")
+	message(FATAL_ERROR
+			"CHIAKI_TRIAL_FLIP has no values left: takion and framepath both landed under PP27, and "
+			"this tree IS their after-shape")
 endif()
 
 add_executable(chiaki-unit ${CHIAKI_UNIT_SOURCES})

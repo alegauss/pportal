@@ -169,6 +169,23 @@ public static class OracleGuardCensus
         new(@"tests\ChiakiNg.Tests\VideoStreamTests.cs", TakionGuard),
         new(@"tests\ChiakiNg.Tests\TakionClientDatagramsTests.cs", TakionGuard),
 
+        // PP27: the three the flip itself added, and they are a cost the census had not seen because
+        // nothing had ever asked whether takion was there before touching a CAPTURE.
+        //
+        // PP785's recording holds the gate's answers for TakionOracleCases and cannot stand in for
+        // these: what declines is the comparison over four thousand heads a console actually sent,
+        // and over the same heads timed. The report and the timing are the host's own, which is
+        // PP683's shape - a guarded comparison outside the test project counts like any other.
+        new(@"app\Session\DatagramReplayReport.cs", TakionGuard, GuardKind.Reads),
+        new(@"app\Session\MacGateTiming.cs", TakionGuard, GuardKind.Reads),
+        new(@"tests\ChiakiNg.Tests\CorpusReplayTests.cs", TakionGuard),
+        new(@"tests\ChiakiNg.Tests\DatagramReplayReportTests.cs", TakionGuard),
+        new(@"tests\ChiakiNg.Tests\CorpusTimingTests.cs", TakionGuard),
+
+        // MacGateTimingTests reads the shape to decide which of the three series carries samples,
+        // and asserts on all of them either way - so nothing here declines and the row is a Reads.
+        new(@"tests\ChiakiNg.Tests\MacGateTimingTests.cs", TakionGuard, GuardKind.Reads),
+
         // PP813: the ping senkusha sends, built twice - once by this port's writer and once through
         // the C's own formatter - because a live console echoes the C's and not this port's, and
         // eight readings of the format had already said they agree. They do, byte for byte, which

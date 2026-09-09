@@ -134,33 +134,6 @@ because every part of it was green.
 
 ## Block F — Managed core
 
-### §PP27 The transport, and the only place GC is a real question
-
-takion.c is 2007 lines plus takionsendbuffer.c at 277 and reorderqueue.c at 200: the
-sequencing, the retransmission, the send window and the reordering a video stream over
-UDP needs.
-
-This is the one task in the block where the runtime is a genuine risk rather than a
-prejudice: a pause at the wrong moment is a dropped frame, and the traffic is thousands
-of small packets a second. THE MAC GATE IS ANSWERED - PP610 measured 0.18us managed
-against 0.08us for the C, inside a 1159us mean gap.
-
-THE DELETION IS SIZED AND IT IS NOT NINE FILES. Nine leave libchiaki.a short exactly two
-symbols, stream_connection_send_corrupt_frame and its idr_request twin, and
-videoreceiver.c calls them at three sites the earlier census missed. Drop it and the
-archive closes at zero; drop fec.c and frameprocessor.c with it and it still closes. The
-set is twelve, and the tenth is PP295's criterion's own file: the two flips are one
-commit or neither.
-
-WHAT HOLDS THEM IS THE ORACLE, not a caller. PP785 recorded takion's answers, PP786
-guarded the C suite's three files, PP841 put the wrappers behind their option. The frame
-path is as ready in header and body and has no recording at all: turning it off spends a
-second opinion nothing kept.
-
-AND A DELETION HAS BROKEN THIS BEFORE. PP696 removed the frame path's four files, was
-green, and left a client that could not stream; PP763 put them back. What is different
-now is that the port drives live sessions.
-
 ### §PP30 Reed-Solomon, by hand
 
 third-party/jerasure and third-party/gf-complete implement erasure coding over GF(2^8),

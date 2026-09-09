@@ -98,8 +98,31 @@ public class TransportOrderTests
         // a criterion that stopped saying so made the release unjustified. Now the order has run,
         // and PP690's rule applies from the other side: a criterion naming a shipped id tells a
         // planner work is left where none is. Both readings are held, on the side that is true.
-        bool shipped = TransportOrder.LocateLedger() is { } ledger
-            && File.ReadAllText(ledger).Contains("**PP295**", StringComparison.Ordinal);
+        // PP27: AND NOW PP27 HAS SHIPPED TOO, which ends the question rather than turning it again.
+        // A criterion list belongs to an open line; roadkeep moves it to the ledger on the ship, so
+        // there is no fourth criterion in the roadmap to read and nothing here to be true or false
+        // about. What replaces it is the pair of readings below, on text this test owns - and the
+        // ledger entry, because "the premise is gone" and "the line was deleted" must not look alike.
+        string? ledgerText = TransportOrder.LocateLedger() is { } path
+            ? File.ReadAllText(path)
+            : null;
+
+        if (ledgerText?.Contains("**PP27**", StringComparison.Ordinal) == true)
+        {
+            Assert.Null(TransportOrder.LineFor(roadmap, "PP27"));
+
+            // The reader still tells the two shapes apart, asked about text rather than the tree.
+            Assert.True(TransportOrder.TheEndStateIsStillAnEndState(
+                $"## Done when — PP27\n\n- **{TransportOrder.EndStateCriterion}** An end state, not "
+                    + "a progress bar.\n"));
+
+            Assert.False(TransportOrder.TheEndStateIsStillAnEndState(
+                $"## Done when — PP27\n\n- **{TransportOrder.EndStateCriterion}** Two steps.\n"));
+
+            return;
+        }
+
+        bool shipped = ledgerText?.Contains("**PP295**", StringComparison.Ordinal) == true;
 
         if (!shipped)
         {

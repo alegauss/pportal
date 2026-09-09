@@ -64,10 +64,17 @@ public static class StreamConnectionConsumers
     /// What lib's list still holds once the four have gone, so silence can be told from a file
     /// nobody read.
     ///
-    /// takion.c and session.c: the first is what streamconnection.c sat beside and the second is the
-    /// caller PP638 found. Neither leaves with this deletion, and a list naming neither is not lib's.
+    /// session.c and ctrl.c: the first is the caller PP638 found, the second is the other half of the
+    /// C the port still drives. Neither leaves with this deletion, and a list naming neither is not
+    /// lib's.
+    ///
+    /// PP27: takion.c stood here and was the wrong choice, for a reason worth keeping. It was picked
+    /// as "what streamconnection.c sat beside" - a neighbour, not a survivor - and the two are only
+    /// the same thing until one of them leaves. PP27 took takion.c out and this reader then said
+    /// lib's own list was not lib's list, which is a check failing about its own fixture. A file
+    /// chosen for a deletion to aim at is the one thing a control must never be.
     /// </summary>
-    public static IReadOnlyList<string> SurvivesTheFlip { get; } = ["src/takion.c", "src/session.c"];
+    public static IReadOnlyList<string> SurvivesTheFlip { get; } = ["src/session.c", "src/ctrl.c"];
 
     /// <summary>Whether the text really is lib's list, by what survives the flip in it.</summary>
     public static bool TheListWasActuallyRead(string cmake)

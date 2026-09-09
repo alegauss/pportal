@@ -50,10 +50,11 @@ public class DeletionEndStateTests
     [Fact]
     public void AnOrdinaryDependencyIsNotABreach()
     {
-        // PP295 HAS SHIPPED, and its entry emptied PP27's: the six files that call takion no longer
-        // include streamconnection.c, so what PP27's end state waits on is no open line at all.
-        // That is the shape every entry here works towards, and PP33 reached it a different way.
-        Assert.Empty(DeletionEndState.WaitsOn["PP27"]);
+        // PP27 HAS SHIPPED TOO, and the table is empty for the first time. Every line that entered it
+        // has left the same way - the end state reached, the criteria in the ledger - which is the
+        // shape every entry works towards rather than a gap.
+        Assert.Empty(DeletionEndState.WaitsOn);
+        Assert.False(DeletionEndState.WaitsOn.ContainsKey("PP27"));
         Assert.False(DeletionEndState.WaitsOn.ContainsKey("PP33"));
         Assert.False(DeletionEndState.WaitsOn.ContainsKey("PP295"));
 
@@ -97,6 +98,12 @@ public class DeletionEndStateTests
     /// PP33: THREE UNTIL ITS DELETION LANDED. Its end state waited on the shim rather than on a
     /// line, and the shim's two oracles have gone with curl, json-c and the option - so the line is
     /// in the ledger and a rule still counting it would be asserting about shipped work.
+    ///
+    /// PP27: AND NOW NONE, which is a state this rule has never been in. All three deletions have
+    /// landed, so the loop below runs over nothing - and the claim it would make is made on text
+    /// this test owns instead, by <see cref="AMissingCriterionIsReported"/> and the pair here. A
+    /// reader exercised only while a subject exists is one that stops meaning anything on the day
+    /// the backlog reaches the state it was aiming at.
     /// </summary>
     [Fact]
     public void EachCarriesAnEndStateCriterion()
@@ -104,11 +111,7 @@ public class DeletionEndStateTests
         if (Roadmap() is not { } roadmap)
             return;
 
-        // PP295 SHIPPED AND LEFT THIS TABLE, which is the third line to do so and the second whose
-        // deletion actually landed. One remains, and a rule counting a shipped line would be
-        // asserting about work in the ledger.
-        Assert.Single(DeletionEndState.Lines);
-        Assert.DoesNotContain("PP33", DeletionEndState.Lines);
+        Assert.Empty(DeletionEndState.Lines);
 
         foreach (string id in DeletionEndState.Lines)
         {
@@ -116,6 +119,19 @@ public class DeletionEndStateTests
                 DeletionEndState.CarriesAnEndState(roadmap, id),
                 $"{id} has no criterion saying its deletion is an end state");
         }
+
+        // PP271: the loop is empty, so the reader is shown working on a list this test writes - both
+        // answers, because a reader stuck on either would satisfy one of them.
+        string stub = "PP" + 9007.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+        Assert.True(DeletionEndState.CarriesAnEndState(
+            $"## Done when — {stub}\n\n- **they leave** An end state, not a progress bar.\n", stub));
+
+        Assert.False(DeletionEndState.CarriesAnEndState(
+            $"## Done when — {stub}\n\n- **they leave** Two steps, measured apart.\n", stub));
+
+        // And the roadmap really was read, so an empty table is not standing in for an empty file.
+        Assert.Contains("Done when", roadmap, StringComparison.Ordinal);
     }
 
     /// <summary>
