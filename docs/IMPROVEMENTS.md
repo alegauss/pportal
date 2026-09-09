@@ -238,6 +238,32 @@ and makes the next row's arithmetic a gate. Only the second gives Count a caller
 Either is minutes. What neither is: the numbers as they stand, true today and false for
 the length of one commit.
 
+### §PP850 The argument list as a third spelling
+
+PP386 found 47 drift predicates pinning a bare call to its exact spelling, semicolon
+included, and four of them broke in one block. Its fix routed the 27 occurrence
+predicates through CCall, which compacts whitespace and forgives the terminator - so
+`free(notif)` and `free(notif);` became one question.
+
+THE ARGUMENT LIST IS THE SPELLING IT DID NOT REACH. CCall.Happens matches the call text
+whole, argument list and closing paren included, so a check written for a two-argument
+call is a check about that arity. Nothing here can ask "is this callee called with this
+first argument" without naming everything after it.
+
+TWO WENT RED IN PP845, both about something else. StreamPhaseFlipTests asked for the
+literal `new PadFeed(phase.Pad)` and is about which SINK the pad pushes at;
+ManagedControllerStateSinkTests called Single on the constructor's parameters and is
+about which SEAM it takes. The console's touchpad broke both, and neither failure named
+the thing its check exists for - the sentence PP844's two controls earned, one shape
+over.
+
+The fixes were one line each, by hand, as PP386's four were before it built the reader.
+Two tests written under PP845 join the population, which is the honest half of filing
+this: both are call-shaped literals and one names an argument list on purpose.
+
+What a reader needs is a predicate over a callee and a PREFIX of its arguments. Whether
+that belongs in CCall, which reads C, is the question this does not answer.
+
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed

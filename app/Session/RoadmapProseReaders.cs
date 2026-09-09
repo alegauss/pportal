@@ -59,8 +59,8 @@ public readonly record struct ProseReader(string Text, string Where, ProseReadin
 /// THE ANSWER IS FOUR, not two. Four checks demand a spelling of prose that is free to improve, and
 /// they are not the two PP666 hit: those were repaired in the commit that found them.
 /// <see cref="ProseReading.Fragile"/> names them and the rest of the taxonomy says why the other
-/// twenty-nine are not the same thing - six address, four hold words on purpose, nine fail open,
-/// and ten are coincidences of two files using the same English.
+/// thirty are not the same thing - six address, four hold words on purpose, nine fail open, and
+/// eleven are coincidences of two files using the same English.
 ///
 /// WHAT THIS IS NOT is a rule forbidding the four. A deletion line's subject has to be recognised
 /// somehow, and "read the meaning" is not an option a string comparison has. The census is what
@@ -348,6 +348,18 @@ public static class RoadmapProseReaders
             @"app\Session\ControlFiles.cs",
             ProseReading.Incidental,
             "Message text in the reader PP844 added, matching the sentence that shipped it."),
+
+        // PP850: PP527's direction a third time, and the subject makes it worth reading twice. This
+        // constant is a matcher keyed on a call's spelling, §PP850 is the section about checks keyed
+        // on a call's spelling, and it quotes the call to say so. The document copied the program.
+        //
+        // Not Fragile: PadOpeningSource matches this against StreamRun.cs, which is source and not a
+        // governed document, so rewording the backlog cannot reach it.
+        new(
+            "new PadFeed(",
+            @"app\Session\PadOpeningSource.cs",
+            ProseReading.Incidental,
+            "A call matched against StreamRun.cs, quoted by the section filed about that shape."),
     ];
 
     /// <summary>How many rows carry one verdict.</summary>
