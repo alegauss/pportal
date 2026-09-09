@@ -261,4 +261,51 @@ public class StreamPhaseDriverTests(ITestOutputHelper output)
 
         Assert.Empty(StreamPhaseDriver.DrivingSessionPathsIn([built]));
     }
+
+    /// <summary>
+    /// PP830: a phase pointed somewhere the session is not, which is what killed a relayed stream.
+    ///
+    /// The session's connect info goes to a relay and the phase's takion opens its OWN socket, so a
+    /// phase handed the console's address dials past the forwarder. Ctrl and senkusha reach the
+    /// console from the relay and the stream from this machine, which is a peer changing half way
+    /// through a session - and 85ms later it is `[E] StreamConnection run failed`. ExchangeCapture
+    /// carried a comment arguing the console's address was RIGHT for exactly that reason.
+    ///
+    /// COMPARED AS IDENTIFIERS. Neither address exists before a console answers, so what a gate can
+    /// read is the name: whatever a path assigns to Host is what its phases have to be handed. That
+    /// is the whole mistake - <c>Host = target</c> beside <c>IPAddress.Parse(address)</c> - and no
+    /// check that counts calls or types can see it, because both spellings are present either way.
+    /// </summary>
+    [Fact]
+    public void APhasePointedAwayFromTheSessionIsNamed()
+    {
+        const string Astray =
+            "var info = new ChiakiConnectInfo { Host = target }; "
+                + "var s = ChiakiSession.TryCreate(info, log, out _); "
+                + "var p = new ManagedStreamPhase(s, IPAddress.Parse(address), v, b);";
+
+        IReadOnlyList<(string Name, string Session, string Phase)> astray =
+            StreamPhaseDriver.PhasesPointedElsewhere([(@"app\Session\ExchangeCapture.cs", Astray)]);
+
+        (string name, string session, string phase) = Assert.Single(astray);
+        Assert.EndsWith("ExchangeCapture.cs", name, StringComparison.Ordinal);
+        Assert.Equal("target", session);
+        Assert.Equal("address", phase);
+
+        // The same path pointed at what it pointed the session at, which is silent.
+        Assert.Empty(
+            StreamPhaseDriver.PhasesPointedElsewhere(
+                [(@"app\Session\ExchangeCapture.cs", Astray.Replace("Parse(address)", "Parse(target)"))]));
+
+        // AND THE TREE ITSELF, which is what the fix is for. Both roots point their phases at the
+        // target they pointed the session at; a checkout is needed to ask, so an empty read is a
+        // machine without one rather than a pass.
+        IReadOnlyList<(string Name, string Text)> app = StreamPhaseDriver.AppFiles();
+
+        if (app.Count == 0)
+            return;
+
+        Assert.NotEmpty(StreamPhaseDriver.DrivingSessionPathsIn(app));
+        Assert.Empty(StreamPhaseDriver.PhasesPointedElsewhere(app));
+    }
 }

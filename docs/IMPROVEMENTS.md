@@ -342,32 +342,6 @@ sample, so its format and flags are the present path's choice: PP319 picked that
 and spike/present-path is where a real one exists. A copy into a texture nobody would
 render from would measure the wrong thing.
 
-### §PP830 The stream the relay carries for 85 milliseconds
-
-PP829 forwarded senkusha's port and the session now gets past its first handshake: the
-C's senkusha completes through the relay, takes its ten pongs and measures an outbound
-MTU of 1453. What follows is `[E] StreamConnection run failed`, three times on
-2026-09-08.
-
-READING THE CAPTURE CORRECTED THIS SECTION'S FIRST ANSWER. It counted 14 control, 11
-audio and one video and called that the stream starting. Every one of the 26 rows is
-SENKUSHA: the handshake, ten 548-byte pongs, both MTU probes and the data acks between
-them. The whole capture spans 85ms, which is one senkusha run.
-
-SO THE STREAM RECEIVED NOTHING AT ALL. The capture keeps only what came FROM the
-console, so what this says is that the console sent the stream nothing through the
-relay.
-
-AND A PER-LEG COUNT SAYS WHERE TO LOOK: `relay carried 0 on the stream leg and 51 on
-senkusha's`. Nobody dialled 9296, which is PP769 - the stream phase ADOPTS session.c's
-data_sock rather than connecting, so it rides senkusha's leg. That leg learns its client
-from whoever last spoke on it, and senkusha closed its takion before the stream began.
-The phase then waits about twenty seconds and gives up without logging a word.
-
-THE PONGS ARE WORTH KEEPING SEPARATELY. Their bytes are in this capture, tag and unit
-index intact - the first recording this tree has of the console echoing, which PP813 had
-to infer from the C completing.
-
 ### §PP831 The same inversion, twice
 
 THIS EXACT MISTAKE HAS NOW BEEN MADE TWICE. PP778 found every stream message going out

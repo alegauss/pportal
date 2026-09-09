@@ -242,6 +242,104 @@ public static class StreamPhaseDriver
         };
     }
 
+    /// <summary>How a session path says where it is pointing the session.</summary>
+    public const string TheSessionsTarget = "Host = ";
+
+    /// <summary>And how a phase is told, which is the argument that has to agree.</summary>
+    public const string APhasesTarget = "IPAddress.Parse(";
+
+    /// <summary>The two phases a session path composes, both taking an address of their own.</summary>
+    public static IReadOnlyList<string> ThePhases { get; } =
+        ["new ManagedStreamPhase(", "new ManagedSenkushaPhase("];
+
+    /// <summary>
+    /// PP830: the session paths that point a phase somewhere other than the session.
+    ///
+    /// A PHASE OPENS ITS OWN SOCKET, and that is the reason this can go wrong rather than the reason
+    /// it cannot. The session's connect info is pointed at a relay and the phase's takion is not, so
+    /// ctrl and senkusha reach the console through the forwarder while the stream dials the console
+    /// directly - which the console appears to refuse, and which a recording of the relay cannot see
+    /// at all. ExchangeCapture carried a comment arguing the opposite for two tasks.
+    ///
+    /// READ AS TWO IDENTIFIERS AND NOT AS ADDRESSES. Neither value exists until a console answers,
+    /// so what a gate can compare is the NAME each is spelled with: whatever a path assigns to Host
+    /// is what it must hand its phases. That is exactly the mistake - <c>Host = target</c> beside
+    /// <c>IPAddress.Parse(address)</c> - and it is invisible to every check that counts calls.
+    ///
+    /// A path with no Host and a path with no phase are both silent here. This asks one question of
+    /// the paths that do both, which <see cref="DrivingSessionPathsIn"/> already names.
+    /// </summary>
+    /// <returns>Each disagreeing file, with the two identifiers, ordered by name.</returns>
+    public static IReadOnlyList<(string Name, string Session, string Phase)> PhasesPointedElsewhere(
+        IEnumerable<(string Name, string Text)> files)
+    {
+        ArgumentNullException.ThrowIfNull(files);
+
+        IReadOnlyList<(string Name, string Text)> all = [.. files];
+        var driving = new HashSet<string>(DrivingSessionPathsIn(all), StringComparer.OrdinalIgnoreCase);
+
+        var found = new List<(string, string, string)>();
+
+        foreach ((string name, string text) in all.Where(one => driving.Contains(one.Name)))
+        {
+            string code = DeadAssertions.CodeOnly(text);
+
+            if (Identifier(code, TheSessionsTarget) is not { } pointed)
+                continue;
+
+            foreach (string phase in ThePhases)
+            {
+                if (Arguments(code, phase) is not { } arguments)
+                    continue;
+
+                if (Identifier(arguments, APhasesTarget) is not { } aimed)
+                    continue;
+
+                if (!string.Equals(aimed, pointed, StringComparison.Ordinal))
+                    found.Add((name, pointed, aimed));
+            }
+        }
+
+        return [.. found.OrderBy(one => one.Item1, StringComparer.Ordinal)];
+    }
+
+    /// <summary>The identifier a marker is followed by, or null where the marker is not there.</summary>
+    private static string? Identifier(string code, string marker)
+    {
+        int at = code.IndexOf(marker, StringComparison.Ordinal);
+        if (at < 0)
+            return null;
+
+        at += marker.Length;
+
+        int end = at;
+        while (end < code.Length && (char.IsLetterOrDigit(code[end]) || code[end] == '_'))
+            end++;
+
+        return end > at ? code[at..end] : null;
+    }
+
+    /// <summary>One construction's argument list, parens balanced, or null where it is not there.</summary>
+    private static string? Arguments(string code, string construction)
+    {
+        int at = code.IndexOf(construction, StringComparison.Ordinal);
+        if (at < 0)
+            return null;
+
+        int open = at + construction.Length;
+        var depth = 1;
+
+        for (int scan = open; scan < code.Length; scan++)
+        {
+            if (code[scan] == '(')
+                depth++;
+            else if (code[scan] == ')' && --depth == 0)
+                return code[open..scan];
+        }
+
+        return null;
+    }
+
     /// <summary>session.c, or null outside a checkout.</summary>
     public static string? LocateSession() => SanitizerSource.LocateRelative(SessionRelativePath);
 

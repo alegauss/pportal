@@ -558,12 +558,23 @@ public static class ExchangeCapture
         // the other two captures do not, so those hand the phase a sink that takes the frame and
         // reports it taken - which is what they were doing before the flip, by not decoding at all.
         //
-        // The address is the CONSOLE's and not the target: a relay forwards ctrl and the stream's
-        // 9296, and the phase's takion opens its own socket to the machine the console is on.
+        // PP830: THE TARGET AND NOT THE CONSOLE, which is the line the relay's per-leg count found.
+        //
+        // The note here used to say the console's address was right because the phase's takion opens
+        // its OWN socket. It opens one, and that is exactly why the address matters: a socket opened
+        // to the console goes straight to it, and `relay carried 0 on the stream leg` is what a
+        // recording of the stream then holds. StreamRun took the same correction and a run through
+        // the relay went from dying at 85ms to carrying 7548 datagrams over twenty-five seconds.
+        //
+        // AND THE CONSOLE APPEARS TO REQUIRE IT. Ctrl and senkusha reach the console from the relay's
+        // far socket, so a stream arriving from this machine's own address is a different peer half
+        // way through a session - which is the shape of `[E] StreamConnection run failed` 85ms in.
+        //
+        // Nothing changes for an ordinary capture: with no --via, the target IS the console.
         using var baseline = new SessionBaseline();
         using var phase = new ManagedStreamPhase(
             session,
-            IPAddress.Parse(address),
+            IPAddress.Parse(target),
             decoder is { } decoding ? decoding.Sample : NoVideo,
             baseline);
 
