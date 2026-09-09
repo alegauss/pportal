@@ -1038,6 +1038,51 @@ public partial class App : Application
             }
         }
 
+        // PP842: and the frame path's, which PP670 prepared the shape for and left unrecorded.
+        //
+        // The same need one module along, and PP27 is what made it urgent rather than tidy: its
+        // deletion leaves two symbols undefined that only videoreceiver.c calls, so takion cannot
+        // leave while the video receiver stays - and the video receiver cannot leave while its
+        // oracle is the only thing holding the managed one to the C.
+        if (HostCommandLine.Has(e.Args, "--record-framepath-oracle"))
+        {
+            ReopenStdOut();
+
+            string destination = HostCommandLine.ValueAfter(e.Args, "--record-framepath-oracle") is
+                { } named && !named.StartsWith("--", StringComparison.Ordinal)
+                    ? named
+                    : FramePathOracleRecorder.Destination();
+
+            switch (FramePathOracleRecorder.Write(destination))
+            {
+                case FramePathOracleRecorder.Outcome.Recorded:
+                    Console.WriteLine($"[oracle] the frame path recorded to {destination}");
+                    Environment.Exit(0);
+                    break;
+
+                case FramePathOracleRecorder.Outcome.NoOracle:
+                    Console.Error.WriteLine(
+                        "[oracle] this build has no frame-path wrappers, so there is nothing to "
+                            + "ask. Build a shim with CHIAKI_SHIM_HAVE_FRAMEPATH and run this again.");
+                    Environment.Exit(2);
+                    break;
+
+                case FramePathOracleRecorder.Outcome.NoCases:
+                    Console.Error.WriteLine(
+                        "[oracle] test/fec_test_cases.inl was not found, so the decode has nothing "
+                            + "to answer about. Run this from a checkout.");
+                    Environment.Exit(2);
+                    break;
+
+                default:
+                    Console.Error.WriteLine(
+                        "[oracle] the wrappers answered nothing for the cases, which is a broken "
+                            + "oracle rather than a recording. Nothing written.");
+                    Environment.Exit(1);
+                    break;
+            }
+        }
+
         // PP305: the debt PP38 counts, in the form it can be paid in. PP311: with an id after it,
         // where that id is named instead - which is how a payment is audited. PP329: and a FLAG
         // after it is not an id, so `--ratchet --selftest` still runs the selftest.

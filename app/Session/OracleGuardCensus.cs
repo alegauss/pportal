@@ -184,6 +184,17 @@ public static class OracleGuardCensus
         // And the seam's takion allowance, which follows the shape exactly as its json one does.
         new(@"app\Session\NativeSeam.cs", TakionBareGuard, GuardKind.Reads),
 
+        // PP842: the frame path's recording, which is PP802's pair one oracle over. PP670 prepared
+        // the shape and recorded nothing, so the five differentials above were ready to go quiet in
+        // the commit that takes fec.c, frameprocessor.c and videoreceiver.c out - and PP27 is what
+        // makes that commit the transport's rather than the frame path's own.
+        //
+        // ONE ROW AND NOT SIX, because the recorded comparisons carry no guard at all: they read the
+        // JSON and run the managed side, which reaches no DLL. What declines is the one test that
+        // RE-DERIVES the recording, and the recorder it asks reads the same answer.
+        new(@"tests\ChiakiNg.Tests\RecordedFramePathOracleTests.cs", FramePathOracleGuard),
+        new(@"app\Protocol\FramePathOracleRecorder.cs", FramePathOracleGuard, GuardKind.Reads),
+
         // And the files that test the GUARDS rather than what the guards protect. Named so the
         // sweep is closed, and NOT counted: a guard test declining on a build without the oracle is
         // the check doing its job, not an assertion somebody lost.
@@ -268,6 +279,15 @@ public static class OracleGuardCensus
     /// guarding the holepunch seam through the same method name is not counted twice.
     /// </summary>
     public const string FramePathGuard = "ShimFramePathShape.WrappingHeader";
+
+    /// <summary>
+    /// PP842: the same oracle asked as a recording, spelled apart for TakionOracleGuard's reason.
+    ///
+    /// The sweep matches what is WRITTEN at the call, so a file asking whether the ORACLE is
+    /// available is invisible to a census that only knows the header's spelling - which is how
+    /// PP785's sixty calls went uncounted until PP802 named them.
+    /// </summary>
+    public const string FramePathOracleGuard = "ShimFramePathShape.OracleIsAvailable";
 
     /// <summary>A file, or null outside a checkout.</summary>
     public static string? Locate(string relative) => SanitizerSource.LocateRelative(relative);

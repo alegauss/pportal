@@ -136,6 +136,11 @@ export const HOST_FLAGS: readonly HostFlag[] = [
     "summary": "write down what takion's wrappers answer, so PP27 can delete them and keep the comparison"
   },
   {
+    "name": "--record-framepath-oracle",
+    "argument": "[path]",
+    "summary": "the same for fec, the frame processor and the video receiver, which PP27's deletion also reaches"
+  },
+  {
     "name": "--replay-datagrams",
     "argument": "<path>",
     "summary": "replay a datagram capture through the managed receive path"

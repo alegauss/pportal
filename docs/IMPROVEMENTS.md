@@ -214,30 +214,6 @@ flag, its count loop is guarded by the return above it, peek writes both out-poi
 where pull guards its own, and takion still passes NULL and still drops on a bad MAC.
 Repair any upstream and the port's copy becomes the divergence, on the next run.
 
-### §PP842 The frame path's answers, recorded before they go
-
-PP27's flip cannot land without this one, and the linker is what settled it. Nine files
-out of lib leave libchiaki.a short exactly two symbols -
-stream_connection_send_corrupt_frame and stream_connection_send_idr_request - and the
-caller is videoreceiver.c, at three sites. Drop videoreceiver.c and the archive closes:
-zero unresolved, and nothing inside lib calls it either.
-
-SO THE TENTH FILE IS THE FRAME PATH'S, and its oracle is what stops it leaving. The five
-video-receiver wrappers sit in one guarded region with the frame processor's, so the
-region cannot go off for one and stay on for the other - and fec.c and frameprocessor.c
-have no caller inside lib once videoreceiver.c goes, which makes twelve the honest set.
-
-WHAT IS MISSING IS THE RECORDING AND NOT THE SHAPE. PP670 did the shape: the define
-exists, chiaki_shim_has_framepath answers for the DLL, both regions are guarded in the
-header and the body, and NativeSeam derives the allowance. What PP785 did for takion has
-no counterpart - tests/oracles holds json-c.json and takion.json and nothing for the
-frame path - so turning the oracle off spends the FEC decode's second opinion, the frame
-processor's and the video receiver's, with nothing kept.
-
-The precedent is exact and so is the instrument: --record-json-oracle took json-c's
-answers out of the library while it was still here. This is the same flag for the frame
-path, before the flip and not after it.
-
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry

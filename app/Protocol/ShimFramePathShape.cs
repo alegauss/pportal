@@ -69,6 +69,19 @@ public static class ShimFramePathShape
         }
     }
 
+    /// <summary>
+    /// PP842: whether the recorder may re-derive from the C, which is the same question asked for a
+    /// different purpose.
+    ///
+    /// Spelled apart from <see cref="WrappingHeader"/> deliberately, and it is not a synonym: that
+    /// one answers null outside a checkout because a differential reading source files has nothing
+    /// to compare against there, and this one is about the DLL alone. PP785's
+    /// <see cref="ShimTakionShape.OracleIsAvailable"/> is the same distinction one oracle over, and
+    /// OracleGuardCensus counts the two names separately for the reason it counts every guard as it
+    /// is written: a file asking this is invisible to a sweep that only knows the header's spelling.
+    /// </summary>
+    public static bool OracleIsAvailable() => OfTheBuild() == ShimShape.Wrapping;
+
     [System.Runtime.InteropServices.DllImport(
         Native.ChiakiNative.Library, EntryPoint = "chiaki_shim_has_framepath",
         CallingConvention = System.Runtime.InteropServices.CallingConvention.Cdecl)]
