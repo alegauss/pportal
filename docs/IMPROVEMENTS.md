@@ -142,23 +142,24 @@ UDP needs.
 
 This is the one task in the block where the runtime is a genuine risk rather than a
 prejudice. A pause at the wrong moment is a dropped frame, and the traffic is thousands
-of small packets a second, each an allocation if written carelessly. .NET has the answer
-- Span, ArrayPool, SocketAsyncEventArgs - chosen deliberately.
+of small packets a second. THE MAC GATE IS ANSWERED - PP610 measured 0.18us managed
+against 0.08us for the C, inside a 1159us mean gap.
 
-THE MAC GATE IS ANSWERED. PP610 took PP531's measurement over 4025 heads a PS5 sent:
-0.18us managed against 0.08us for the C, inside a 1159us mean gap. Under a fiftieth of a
-percent, and the ratio is what a second machine keeps.
+THE DELETION IS SIZED, and the linker sized it rather than a reading. Nothing outside
+these files reaches any of them: senkusha.c and streamconnection.c have no caller at all
+since PP783 and PP784, feedbacksender.c and congestioncontrol.c are reached only by
+streamconnection.c, and audiosender.c only by opusencoder.c, which nothing reaches. The
+set closes at nine files. A text search disagrees and is wrong - it counts three in
+audioreceiver.c that the linker says are not there.
 
-THE LOOP AROUND IT IS REACHABLE NOW, which this used to say it was not. Every receive
-handler is file-local and removing a `static` is the patch a non-goal refuses, so PP601
-named the door: chiaki_takion_connect takes the caller's socket. PP602 found the far end
-must answer rather than replay, the tag being drawn fresh inside connect; PP606 built
-that peer and PP607 runs a real takion against it, to the connected event.
+WHAT STILL HOLDS THEM IS THE ORACLE: eleven takion wrappers in the shim and seven of
+reorderqueue's. PP785 recorded what they answer so the differentials outlive them, and
+PP786 guarded the C suite's three - the shape PP663 and PP670 used for holepunch and the
+frame path.
 
-WHAT IS LEFT IS WHAT TO FEED IT. PP510 keeps eighteen bytes a datagram on purpose -
-enough for the dispatch and the MAC layout, and no frame of anybody's screen. Timing the
-whole loop wants payloads, so it wants a second decision about what to record rather
-than more code.
+AND A DELETION HAS BROKEN THIS BEFORE. PP696 removed the frame path's four files, was
+green, and left a client that could not stream; PP763 put them back. What is different
+now is that the port drives a live session.
 
 ### §PP30 Reed-Solomon, by hand
 
