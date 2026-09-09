@@ -124,6 +124,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP833** **the audio engine is fed one frame at a time as they decode, so a late frame empties the queue and the sound gaps** — The cushion is off by default because it costs one frame of latency each: ten removed the gaps and five removed none, so the number is a run's trade rather than a default.
 - ✅ **PP834** **the relay records only what the console sent, so no capture can answer what the port actually put on the wire** — The sends are a second artefact and never a column: a replay corpus holds arrivals alone because it stands in for a console, and every reader of that format agrees about it.
 - ✅ **PP839** **the capture pump outlives the takion, so a session ending with the microphone open throws and kills the process** — A send reached from a device pump treats a disposed peer as a refusal and never an exception: on that thread a throw is a process exit with no report.
+- ✅ **PP837** **no live run has opened the microphone, so nothing says a console accepts the packets the port now formats** — The mic send is the feedback sequence at fourteen and ten, and a console accepts it signed at key_pos_local exactly as it accepts the data ack at four and eight.
 
 ## Block G — Test discipline
 

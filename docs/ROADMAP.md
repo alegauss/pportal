@@ -27,7 +27,6 @@
 
 - ⏳ **PP27** (deps: PP672 ✅, PP673 ✅, PP674 ✅, PP675 ✅, PP676 ✅, PP677 ✅, PP678 ✅, PP679 ✅, PP680 ✅, PP702 ✅, PP783 ✅, PP784 ✅, PP785 ✅, PP786 ✅) (requires: console) **takion.c is 2007 lines of C over raw sockets and timers, and the whole stream rides on it** — Ten tasks wrote it; four more take the C out. → §PP27
 - 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — chiaki_fec_decode has three callers - frameprocessor.c, the C suite and this port's shim - and gf-complete has a fourth site none of them reach: chiaki_lib_init. → §PP30
-- 🛠 **PP837** (deps: PP825 ✅) (requires: console) **no live run has opened the microphone, so nothing says a console accepts the packets the port now formats** — PP825 shipped the path and left its criterion unmet; only a console can say a signed mic packet is accepted, as one did for PP824's ack. → §PP837
 
 ## Block G — Test discipline
 
