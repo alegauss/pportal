@@ -10,8 +10,11 @@
 ## Block B — Native interop
 
 - 🛠 **PP851** (deps: PP846 ✅) **a DualSense feels what a PS4 pad feels: the console's haptic stream is folded to rumble rather than played** — PP846 wired the fold, which is the client's answer only when haptics_output is off; the pad's own speakers take a resampled four-channel stream nothing here opens. → §PP851
+- 📋 **PP854** (deps: PP845 ✅) **the pad stops driving the console after the window loses focus, and every layer this port can see stays healthy** — Reproduced twice by clicking away and back; the pump delivered to the last instant, no departure was seen, the handle stayed open and the wire kept accepting. → §PP854
 
 ## Block C — Video and input path
+
+- 📋 **PP855** (deps: PP700 ✅) **the picture smears for the rest of a scene and nothing asks for a keyframe, because no loss the port counts occurred** — A live run showed vertical streaking over most of the frame while reporting 0 keyframes requested, 0 corrupt-frame reports and 0 FEC failures, 25 dropped. → §PP855
 
 ## Block D — Screens
 
@@ -22,6 +25,8 @@
 - 📋 **PP302** (deps: —) (requires: signing-certificate) **nothing signs the host or the installer, so SmartScreen warns on the first run of every release** — PP22 shipped the builds and the packages of its own sentence and not the signs, because that one starts with buying a certificate. → §PP302
 
 ## Block F — Managed core
+
+- 📋 **PP853** (deps: PP723 ✅, PP717 ✅) **no history packet reaches the wire in a live session, so a button press is the one input the console never hears** — 5608 state packets went out with the last a Success while HistoriesOffered stayed at zero across two minutes of play; sticks arrive and buttons do not. → §PP853
 
 ## Block G — Test discipline
 

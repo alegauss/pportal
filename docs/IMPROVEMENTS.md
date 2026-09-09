@@ -53,7 +53,57 @@ THE FIRST QUESTION IS SDL OR XAUDIO2. The client uses SDL audio; this port initi
 SDL for the game controller subsystem alone, and PP820's engine is its own. A non-goal
 forbids hand-rolling what Windows ships, which cuts against the smaller change.
 
+### §PP854 A pad that stops without anything failing
+
+Clicking into another window and back stops the pad driving the console. Reproduced
+twice in a row, once against a Windows notification and once against VS Code, and the
+session goes on streaming - the picture keeps arriving and the audio keeps playing.
+
+WHAT IT IS NOT, MEASURED RATHER THAN ARGUED. Instruments were added for the three
+obvious candidates and all three came back clean in the run that reproduced it: `last
+event 0,0s ago` says SDL's pump was still delivering at the instant the run ended; `0
+departure(s) seen, 0 released` says the device was never re-enumerated; `holds a handle:
+True` says nothing went stale. PadFeed pushed 14237 states and the sink was armed
+throughout.
+
+AND THE HINT IS SET. SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS is one of the four Gamepads
+writes before SDL_Init, which is the exact defence against this, and the selftest
+asserts it reads back.
+
+SO THE LAYER THAT BREAKS IS BELOW THE PAD AND ABOVE THE WIRE - the same region PP853 is
+about, and the two may be one thing. What separates them is that PP853's zero holds for
+the whole run while this starts at a moment a person can name.
+
+WHAT WOULD SETTLE IT is a count with a clock on it: state packets per second across the
+focus change. The wire's total says 5608 for two minutes and cannot say whether they
+stopped halfway.
+
 ## Block C — Video and input path
+
+### §PP855 A smear no counter admits to
+
+A two-minute session came back with the top of the picture correct and the lower two
+thirds in vertical streaks - the shape a P-frame chain takes once it references
+something that never arrived. It stayed that way rather than blinking, which is what
+recovery looks like when nothing asks for it.
+
+EVERY RECOVERY COUNTER READ ZERO. The same run reported `keyframes: 0 requested, 0
+refused, 0 corrupt-frame report(s), 0 FEC failure(s)`, and PP700's idrOnFecFailure is
+TRUE on this path precisely so a rebuild failure asks for an IDR immediately. No FEC
+failure was counted, so that door never opened.
+
+WHAT DID GET COUNTED is loss of a kind the port does not treat as corrupting: `1421
+decoded, 1402 shown, 6 lost by the network, 19 superseded by the pull's drain, 25
+dropped, 19 attributable to the decoder`. Nineteen frames the decoder itself dropped is
+the number worth reading twice - a dropped frame is a reference the next one wanted.
+
+SO THE QUESTION IS WHICH LOSSES SHOULD ASK. Upstream sends a corrupt-frame report and an
+IDR request from the video receiver, and this port drove neither in this run. Whether
+the receiver never decides to, or decides and the request reaches nothing, is the fork -
+and PP295's own dispatch names both calls as the two symbols the frame path stranded.
+
+A screenshot of the smear is what opened this; the counters make it a defect rather than
+a bad network.
 
 ## Block D — Screens
 
@@ -162,6 +212,31 @@ ReorderQueueSource holds five facts about the two and their caller: drop clears 
 flag, its count loop is guarded by the return above it, peek writes both out-pointers
 where pull guards its own, and takion still passes NULL and still drops on a bad MAC.
 Repair any upstream and the port's copy becomes the divergence, on the next run.
+
+### §PP853 The half of the pad the console never hears
+
+Chiaki's feedback path is two packet types and the port sends one of them. The STATE
+packet carries the sticks, the triggers and the orientation; the HISTORY packet carries
+button presses and releases, which is why PP717 wrote a recorder and PP723 composed it
+into a sender.
+
+MEASURED, ON A CONSOLE. A two-minute session against PS5-385 with a DualSense reported
+`feedback wire: 5608 sent, last Success, 0 history packet(s) offered`. The count of
+state packets rises the whole run and never errors; the history count never leaves zero,
+through gameplay with buttons being pressed.
+
+SO THE SYMPTOM IS NOT "THE PAD DOES NOT WORK". Sticks move a character and buttons do
+nothing, which is what a person reports as the controller half-working and what sent
+this session looking at SDL, at the pump and at the device handle - all of which are
+fine. PadFeed pushes 14237 states, the pump delivers to the last instant, and the wire
+accepts everything it is given.
+
+WHERE IT COULD BE. HistoriesOffered counts in TakionFeedbackSink.Put, so zero means no
+history packet was ever handed to it: either FeedbackHistoryRecorder.Record produces no
+events for a real button change, or the sender's flush never offers what it recorded.
+Both are readable without hardware, and the live number says which question to ask.
+
+The instrument that found it is in the run now, so a fix has a number to move.
 
 ## Block G — Test discipline
 
