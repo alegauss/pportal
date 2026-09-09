@@ -61,6 +61,11 @@ public static class FecConsumers
     ///
     /// The old claim is refused by name, the way PP573 refuses PP33's: a line that merely stopped
     /// mentioning callers would otherwise pass a check for the new phrasing being absent.
+    ///
+    /// PP30 HAS SHIPPED, so the roadmap carries no such line and the live subject is gone. The
+    /// reader stays and is asserted on text, which is the same exit DeletionCallerClaims took for
+    /// PP33's and PP295's rows: a shipped line's prose sits in the ledger, where nothing is
+    /// deciding what work costs any more.
     /// </summary>
     public static bool TheRoadmapLineAgreesOnTheCount(string roadmapLine)
     {
@@ -78,13 +83,19 @@ public static class FecConsumers
     /// <summary>The constant it carries beside the export, and the only other thing in it.</summary>
     public const string WordSizeMacro = "CHIAKI_FEC_WORDSIZE";
 
-    /// <summary>gf-complete's entry point, which is what PP30 actually deletes.</summary>
+    /// <summary>gf-complete's entry point, which is what PP30 actually deleted.</summary>
     public const string FieldInit = "galois_init_default_field";
 
-    /// <summary>The file its one call site is in.</summary>
+    /// <summary>
+    /// The file its one call site WAS in, kept as the name a sweep is checked against.
+    ///
+    /// PP30: there is no call site now. The constant stays because the assertion inverted rather
+    /// than leaving - what the sweep answers is that NOTHING calls the field init, and a sweep with
+    /// nothing to compare its answer to could be reading an empty tree and say the same.
+    /// </summary>
     public const string FieldInitRelativePath = @"lib\src\common.c";
 
-    /// <summary>And the function, which is not a FEC function at all.</summary>
+    /// <summary>And the function it was in, which is not a FEC function at all.</summary>
     public const string FieldInitFunction = "chiaki_lib_init";
 
     /// <summary>
@@ -102,6 +113,12 @@ public static class FecConsumers
     /// still by chiaki_lib_init, and PP30 still has that to delete. The row below for fec.c is a row
     /// about a file the tree keeps as source, which is what the includer sweep reads.
     ///
+    /// PP30: DELETED, AND THE WORD-SIZE ROW WENT WITH IT. common.c took one name from this header
+    /// and it was the field width; with the field managed there is nothing in that file to size, so
+    /// the include went in the same edit as the call. The three-way split is a two-way one now -
+    /// Decode and Neither - which is a fact about the surface rather than about the classifier, and
+    /// the classifier is still exercised in all three directions on text.
+    ///
     /// <c>audiosender.c</c> takes NEITHER, which makes its include dead. Recorded rather than
     /// removed: this port does not patch the vendored C, and a dead include is a fact about the
     /// deletion's surface either way.
@@ -112,7 +129,6 @@ public static class FecConsumers
         new(@"lib\src\frameprocessor.c", FecHeaderUse.Decode),
         new(@"shim\chiaki_shim.c", FecHeaderUse.Decode),
         new(@"test\fec.c", FecHeaderUse.Decode),
-        new(@"lib\src\common.c", FecHeaderUse.WordSize),
         new(@"lib\src\audiosender.c", FecHeaderUse.Neither),
     ];
 

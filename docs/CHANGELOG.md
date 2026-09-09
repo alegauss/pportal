@@ -764,6 +764,7 @@
 - ✅ **PP840** **opening the microphone makes Windows duck the stream's own audio, so the game the port is playing goes quiet** — The render session's opt-out is asked and reported; Windows 11 26200 accepts it and ducks anyway, so the run says which and the docs name the setting that works.
 - ✅ **PP841** **the shim's takion wrappers are not behind their define, so the flip that deletes the C cannot be one commit** — Five regions of the body carry them behind an option that is on by default: configured off the shim links, exports 25 fewer and still answers the guard.
 - ✅ **PP842** **the frame path's oracle has no recording, so the flip that must turn it off to delete takion spends it** — tests/oracles/framepath.json holds what jerasure, the frame processor and the video receiver answered, and six comparisons now run on every build instead of declining with the C.
+- ✅ **PP30** **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — gf-complete and jerasure are out of the build: sixteen vendored C files gone, the link line, the option, the find module, and the field init in chiaki_lib_init that outlived every FEC caller.
 
 ## Block G — Test discipline
 

@@ -50,7 +50,14 @@ public static class DeletionCallerClaims
         // the last C caller of the video receiver" - was short by the shim's five wrappers, which
         // is the third instance this rule was written from, and it is recorded in the paragraph
         // above rather than in a row about an open line.
-        new("PP30", "the FEC decode"),
+        // PP30 STOOD HERE AND HAS SHIPPED, and the table is empty: no open line in this tree has
+        // deleting C as its subject. Its claim - "chiaki_fec_decode has one caller left" - is the
+        // second of the three this rule was written from, and PP574 is what corrected it.
+        //
+        // The rule is kept rather than deleted, for the reason DeletionEndState's empty table is:
+        // what it holds is that a planner reading a deletion line is told the seam calls the thing,
+        // and the next deletion filed here needs a row rather than the rule rebuilt. The overload
+        // below is what keeps it demonstrable while no row exists.
     ];
 
     /// <summary>What the port's own seam is called where a line names it.</summary>
@@ -73,12 +80,25 @@ public static class DeletionCallerClaims
     /// answered by the id no longer being open, and this reports only what it can read.
     /// </summary>
     public static IReadOnlyList<string> NotNamingTheSeam(string roadmap)
+        => NotNamingTheSeam(roadmap, All);
+
+    /// <summary>
+    /// The same, against a table the caller supplies.
+    ///
+    /// PP30's ship emptied the last row, so the rule is correctly inert on this tree and cannot
+    /// demonstrate itself on any roadmap. A check that could only be exercised while a deletion was
+    /// open would go quiet exactly when the backlog got into the shape it is supposed to be in -
+    /// which is the argument for DeletionEndState's own overload, one rule over.
+    /// </summary>
+    public static IReadOnlyList<string> NotNamingTheSeam(
+        string roadmap, IReadOnlyList<DeletionLine> lines)
     {
         ArgumentNullException.ThrowIfNull(roadmap);
+        ArgumentNullException.ThrowIfNull(lines);
 
         return
         [
-            .. All.Where(one => LineFor(roadmap, one.Id) is { } line
+            .. lines.Where(one => LineFor(roadmap, one.Id) is { } line
                     && !line.Contains(Seam, StringComparison.OrdinalIgnoreCase))
                 .Select(one => $"{one.Id} ({one.Module})")
         ];

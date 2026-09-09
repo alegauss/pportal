@@ -205,7 +205,19 @@ else()
 endif()
 
 target_link_libraries(chiaki-lib Nanopb::nanopb)
-target_link_libraries(chiaki-lib Jerasure::Jerasure)
+
+# PP30: Jerasure::Jerasure was linked here and is gone, with gf-complete beneath it.
+#
+# This line outlived every caller. PP27 took fec.c and frameprocessor.c out of the sources above and
+# PP696 had already put the shim's two create_matrix wrappers behind an #ifdef - and the archive
+# still linked both vendored libraries, because common.c called galois_init_default_field in
+# chiaki_lib_init. That call is what this task deleted; the link had nothing left to satisfy.
+#
+# fec.h STAYS IN THE HEADER LIST ABOVE, and it is the same non-oversight takion.h's and
+# holepunch.h's notes claim: a header costs nothing to list and a declaration with no definition
+# costs a link error only where something calls it. Nothing in the sources above includes it now,
+# and PP692's includer sweep reads the tree rather than this list, so the four files that still name
+# the header are still classified.
 
 if(CHIAKI_ENABLE_FFMPEG_DECODER)
 	target_link_libraries(chiaki-lib FFMPEG::avcodec FFMPEG::avutil)

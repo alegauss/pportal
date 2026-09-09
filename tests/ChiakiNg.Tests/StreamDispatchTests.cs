@@ -129,8 +129,12 @@ public class StreamDispatchTests
     }
 
     /// <summary>
-    /// PP30's premise, named. One call keeps four things in the build, and they can only leave in
-    /// that order.
+    /// PP30's premise, named. One call kept four things in the build, and they could only leave in
+    /// that order - which is the order they did leave in: three under PP27, jerasure under PP30.
+    ///
+    /// The list is kept now that all four have gone, because what it records is the chain and the
+    /// chain is what made the order forced. A deletion whose premise is thrown away once it holds
+    /// leaves the next reader to re-derive it.
     /// </summary>
     [Fact]
     public void TheVideoRouteIsWhatPp30WaitsOn()

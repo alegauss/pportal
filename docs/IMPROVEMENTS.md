@@ -157,32 +157,6 @@ because every part of it was green.
 
 ## Block F — Managed core
 
-### §PP30 Reed-Solomon, by hand
-
-third-party/jerasure and third-party/gf-complete implement erasure coding over GF(2^8),
-and frameprocessor.c is what calls them: when packets of a video frame are missing, the
-FEC blocks are what reconstruct them instead of asking for a retransmission that would
-arrive too late to matter.
-
-The surface to port is the call sites rather than the vendored source, so that is what
-is declared here, where `remaining PP30` reads 13, across common.c, fec.c and
-frameprocessor.c.
-
-```roadkeep-remaining
-lib/src/**/*.c :: jerasure|galois_
-```
-
-There is no NuGet package that is a drop-in for this, so it is the one dependency in the
-block that has to be written rather than referenced. The arithmetic is well understood
-and the code is small; what it is not is forgiving - a table built wrong produces frames
-that decode into garbage only when packets are actually lost, which is to say only on a
-network nobody is testing on.
-
-Two mitigations, both cheap. The tables and the recovery have fixed inputs, so the
-oracle covers them completely offline. And keeping the C for this one piece is a
-legitimate outcome, because it is self-contained, has no OS surface, and is called with
-buffers rather than with state.
-
 ### §PP107 The two that were said to be uncalled
 
 chiaki_reorder_queue_drop and chiaki_reorder_queue_peek are both broken. PP562: the

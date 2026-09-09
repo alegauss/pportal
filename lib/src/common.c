@@ -1,12 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
 
 #include <chiaki/common.h>
-#include <chiaki/fec.h>
 #include <chiaki/random.h>
 
-#include <galois.h>
-
-#include <errno.h>
 #include <stdlib.h>
 #include <time.h>
 
@@ -73,9 +69,25 @@ CHIAKI_EXPORT ChiakiErrorCode chiaki_lib_init()
 	chiaki_random_bytes_crypt((uint8_t *)&seed, sizeof(seed));
 	srand(seed); // doesn't necessarily need to be secure for crypto
 
-	int galois_r = galois_init_default_field(CHIAKI_FEC_WORDSIZE);
-	if(galois_r != 0)
-		return galois_r == ENOMEM ? CHIAKI_ERR_MEMORY : CHIAKI_ERR_UNKNOWN;
+	// PP30: gf-complete's field was installed here, and this was the last thing holding it.
+	//
+	// galois_init_default_field(CHIAKI_FEC_WORDSIZE) built the GF(2^8) log tables jerasure's
+	// arithmetic reads, and it was the FOURTH call site - the one no census of the FEC module
+	// found, because it is not in the FEC module. PP692 is the reading that separated the two
+	// questions: chiaki_fec_decode's callers all left with the frame path, and gf-complete stayed
+	// linked anyway, by a function every session calls before it does anything.
+	//
+	// The tables are managed now. GaloisField builds the same two logs at type initialisation and
+	// FecMatrix the same Cauchy matrix, both held entry for entry against what the library said
+	// (PP286) before it went - so nothing has to be installed before a frame arrives, and there is
+	// no library-init step for the FEC path to have missed.
+	//
+	// The include of chiaki/fec.h went with it. This file took ONE name from that header -
+	// CHIAKI_FEC_WORDSIZE, to size the field - and never called the decode, which is why PP692's
+	// includer sweep classified it apart from the other five.
+	//
+	// WSAStartup below is now the whole of what this function does that a caller could not, and it
+	// is why the export stays rather than the shim's wrapper being deleted with the field.
 
 	{
 		WORD wsa_version = MAKEWORD(2, 2);

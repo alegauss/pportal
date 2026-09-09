@@ -130,6 +130,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP841** **the shim's takion wrappers are not behind their define, so the flip that deletes the C cannot be one commit** — The exports go rather than stubbing: a caller who forgot chiaki_shim_has_takion should meet a missing symbol, not a plausible error code it can act on.
 - ✅ **PP842** **the frame path's oracle has no recording, so the flip that must turn it off to delete takion spends it** — The sixty-four decoded frames are held as SHA-256 rather than hex: equality is what the comparison needs, and a megabyte of bytes would outweigh everything else in tests/oracles.
 - ✅ **PP27** **takion.c is 2007 lines of C over raw sockets and timers, and the whole stream rides on it** — The frame path leaves with takion rather than waiting for PP295: the linker made the two deletions one commit, so the choice was both or neither and never one at a time.
+- ✅ **PP30** **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — Deleting a vendored dependency means nothing compiles or links it; the submodule stays in the checkout, as holepunch.c and gui/ do.
 
 ## Block G — Test discipline
 

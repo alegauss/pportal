@@ -26,6 +26,13 @@ namespace ChiakiNg.Tests;
 /// consumer that is not in the module. Both criteria below therefore SWEEP rather than trust the
 /// list - a seventh includer or a second field-init caller fails here, and so does the day
 /// common.c stops being the one.
+///
+/// PP30: THAT DAY IS THIS ONE, AND THE ASSERTIONS INVERTED. The call site is gone, so the criterion
+/// that found one now holds that there are none; the include went with it, so the word-size bucket
+/// is empty and the split is two ways. Written as inversions rather than deleted, because what a
+/// deletion has to keep provable is that nothing came back - and both still sweep, so a file that
+/// starts calling the field init again fails here rather than linking a library the build no longer
+/// names.
 /// </summary>
 public class FecHeaderSurfaceTests(ITestOutputHelper output)
 {
@@ -114,48 +121,126 @@ public class FecHeaderSurfaceTests(ITestOutputHelper output)
     }
 
     /// <summary>
-    /// THE SECOND CRITERION: what keeps gf-complete linked, swept rather than counted.
+    /// THE SECOND CRITERION, INVERTED BY PP30: nothing in the tree calls the field init.
     ///
-    /// One call site in the whole tree, and it is not in fec.c. Both halves matter - the count
-    /// says nothing else pulls the library in, and the location says the module PP30 deletes is
-    /// not what is holding it.
+    /// It read "one call site, and it is not in fec.c" - both halves mattering, because the count
+    /// said nothing else pulled gf-complete in and the location said the module everybody would
+    /// look in was not what held it. The deletion is that call, so the criterion is now that the
+    /// sweep comes back empty.
+    ///
+    /// AN EMPTY SWEEP IS ALSO WHAT A BROKEN SWEEP RETURNS, which is the one hazard in inverting a
+    /// census. So the includer sweep is run beside it as a control: the same directories, the same
+    /// reader shape, and a non-empty answer. Without that this assertion would be green on a tree
+    /// with no files in it at all.
     /// </summary>
     [Fact]
-    public void TheFieldInitHasOneCallSiteAndItIsNotInTheFecModule()
+    public void TheFieldInitHasNoCallSiteLeft()
     {
-        IReadOnlyList<string> callers = FecConsumers.Sweep(FecConsumers.InitialisesTheField);
-        if (callers.Count == 0)
+        if (SanitizerSource.RepositoryRoot() is null)
             return;
 
-        output.WriteLine("field init callers: " + string.Join(", ", callers));
+        IReadOnlyList<string> reading = FecConsumers.Sweep(FecConsumers.IncludesTheHeader);
+        Assert.NotEmpty(reading);
 
-        string only = Assert.Single(callers);
-        Assert.Equal(FecConsumers.FieldInitRelativePath, only, StringComparer.OrdinalIgnoreCase);
+        IReadOnlyList<string> callers = FecConsumers.Sweep(FecConsumers.InitialisesTheField);
+        output.WriteLine("field init callers: " + (callers.Count == 0 ? "(none)" : string.Join(", ", callers)));
 
-        // Said the other way round, because the point is which module does NOT hold the library.
-        Assert.DoesNotContain(@"fec.c", only, StringComparison.OrdinalIgnoreCase);
+        Assert.True(
+            callers.Count == 0,
+            $"{FecConsumers.FieldInit} is called again, so gf-complete has a consumer the build does "
+                + $"not link: {string.Join(", ", callers)}");
     }
 
     /// <summary>
-    /// And the call is inside chiaki_lib_init, which is what makes it every session's.
+    /// And chiaki_lib_init is still there, no longer installing a field.
     ///
-    /// A gf-complete call somewhere in common.c would be a smaller fact. Being in library init
-    /// means the field is installed before a session does anything, so no deletion of the frame
-    /// path can reach it.
+    /// Both halves. The function survives PP30 - WSAStartup is what a managed caller cannot do for
+    /// itself, and every socket libchiaki opens depends on it - so a green here that came from the
+    /// function having been deleted would be answering a different question.
+    ///
+    /// The word size goes with the call, because sizing the field was the only thing common.c took
+    /// from fec.h and is why it included the header at all.
+    ///
+    /// READ OFF THE COMMENT-STRIPPED SOURCE, and the first version of this was not: the note PP30
+    /// left where the deleted call had been names the function it deleted, inside the very body this
+    /// reads, so the assertion found its own explanation and went red. That is the whole of what
+    /// <see cref="CCall.Code"/> is for - a mention is not a use, and a check that cannot tell them
+    /// apart turns every account of a deletion into evidence the deletion did not happen.
     /// </summary>
     [Fact]
-    public void TheCallIsInsideLibraryInit()
+    public void LibraryInitNoLongerInstallsTheField()
     {
         if (Read(FecConsumers.FieldInitRelativePath) is not { } source)
             return;
 
-        string? body = CFunction.Body(source, FecConsumers.FieldInitFunction);
+        string code = CCall.Code(source);
+        string? body = CFunction.Body(code, FecConsumers.FieldInitFunction);
 
         Assert.NotNull(body);
-        Assert.Contains(FecConsumers.FieldInit + "(", body, StringComparison.Ordinal);
+        Assert.Contains("WSAStartup(", body, StringComparison.Ordinal);
 
-        // And it is sized by the header's constant, which is why common.c includes fec.h at all.
-        Assert.Contains(FecConsumers.WordSizeMacro, body, StringComparison.Ordinal);
+        Assert.DoesNotContain(FecConsumers.FieldInit + "(", body, StringComparison.Ordinal);
+        Assert.DoesNotContain(FecConsumers.WordSizeMacro, code, StringComparison.Ordinal);
+        Assert.False(FecConsumers.IncludesTheHeader(source));
+    }
+
+    /// <summary>
+    /// PP30's END STATE: no target in the build graph names jerasure or gf-complete.
+    ///
+    /// The deliverable itself, and the one thing none of the readers above can see - they read C,
+    /// and what this task removed last was a link line. Three files carried it: the root's option
+    /// and probe, third-party's two static libraries, and lib's <c>target_link_libraries</c>. A
+    /// grep over all three is the whole assertion, and it is what would fail if a later merge
+    /// brought any of the four back.
+    ///
+    /// The submodules are deliberately not asserted absent: they stay in the checkout as unbuilt
+    /// vendored source, the way holepunch.c and gui/ did.
+    /// </summary>
+    [Fact]
+    public void NothingInTheBuildGraphNamesTheVendoredLibraries()
+    {
+        if (SanitizerSource.RepositoryRoot() is not { } root)
+            return;
+
+        string[] buildFiles =
+        [
+            "CMakeLists.txt",
+            Path.Combine("third-party", "CMakeLists.txt"),
+            Path.Combine("lib", "CMakeLists.txt"),
+            Path.Combine("test", "CMakeLists.txt"),
+        ];
+
+        var linked = new List<string>();
+
+        foreach (string relative in buildFiles)
+        {
+            string full = Path.Combine(root, relative);
+            if (!File.Exists(full))
+                continue;
+
+            foreach (string line in File.ReadAllLines(full))
+            {
+                // Comments are where this deletion is explained, so a note naming the library is
+                // not a build step - which is the same distinction UseIn draws for C.
+                string code = line.TrimStart();
+                if (code.StartsWith('#') || code.Length == 0)
+                    continue;
+
+                if (code.Contains("jerasure", StringComparison.OrdinalIgnoreCase)
+                    || code.Contains("gf_complete", StringComparison.OrdinalIgnoreCase)
+                    || code.Contains("gf-complete", StringComparison.OrdinalIgnoreCase))
+                {
+                    linked.Add($"{relative}: {code}");
+                }
+            }
+        }
+
+        Assert.True(
+            linked.Count == 0,
+            "the build graph names the libraries PP30 removed:\n  " + string.Join("\n  ", linked));
+
+        // And the find module they were the only consumer of is gone with them.
+        Assert.False(File.Exists(Path.Combine(root, "cmake", "FindJerasure.cmake")));
     }
 
     /// <summary>
@@ -175,21 +260,30 @@ public class FecHeaderSurfaceTests(ITestOutputHelper output)
     }
 
     /// <summary>
-    /// The three-way split is really three ways: each bucket has a member.
+    /// The split is two ways now, and PP30 is which way went.
     ///
-    /// PP271's rule. A classifier that answered Decode for everything would satisfy the placement
-    /// check on a list that was all Decode, and the whole finding is that one file is not.
+    /// PP271's rule was that each bucket has a member, because a classifier answering Decode for
+    /// everything would satisfy the placement check on a list that was all Decode. Two of the three
+    /// still have one, and the WordSize bucket is empty because its only member was common.c - the
+    /// file whose include this task deleted.
+    ///
+    /// Asserted as empty rather than dropped from the check: an includer arriving that takes the
+    /// word size alone would mean something is sizing a field again, which is the shape of the
+    /// consumer PP692 was written to find.
     /// </summary>
     [Fact]
-    public void EachOfTheThreeUsesHasAnIncluder()
+    public void TheDecodeAndNeitherBucketsHaveMembersAndWordSizeDoesNot()
     {
         Assert.Contains(FecConsumers.Includers, one => one.Uses == FecHeaderUse.Decode);
-
-        FecIncluder constant = Assert.Single(
-            FecConsumers.Includers, one => one.Uses == FecHeaderUse.WordSize);
-        Assert.Equal(FecConsumers.FieldInitRelativePath, constant.Path, StringComparer.OrdinalIgnoreCase);
-
         Assert.Contains(FecConsumers.Includers, one => one.Uses == FecHeaderUse.Neither);
+
+        Assert.DoesNotContain(FecConsumers.Includers, one => one.Uses == FecHeaderUse.WordSize);
+
+        // The classifier still answers all three, which is the coverage the empty bucket costs
+        // nothing of - the theory below reaches WordSize on text.
+        Assert.Equal(
+            FecHeaderUse.WordSize,
+            FecConsumers.UseIn($"int w = {FecConsumers.WordSizeMacro};"));
     }
 
     /// <summary>

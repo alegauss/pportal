@@ -33,8 +33,12 @@ public class DeletionCallerClaimsTests
     }
 
     /// <summary>
-    /// And the lines are actually being read. All three are open today; a check that found none
-    /// would pass the test above while saying nothing.
+    /// Every row is a line the roadmap actually carries, so the check above reads something.
+    ///
+    /// PP30: THE TABLE IS EMPTY AND THIS HOLDS OVER IT. All three rows have shipped, and the loop
+    /// over none of them is the correct answer to "is every row readable" rather than a hole - what
+    /// would be a hole is the check above passing because nothing is modelled, and the fixture
+    /// below is what closes that.
     /// </summary>
     [Fact]
     public void TheLinesAreThereToRead()
@@ -56,19 +60,33 @@ public class DeletionCallerClaimsTests
         // PP295 has shipped too, and the fixture moved again for the same reason: it demonstrates
         // the rule on a line that is still open, because a row about a shipped line is a row this
         // check no longer has.
-        const string roadmap = """
-            - 📋 **PP30** (deps: —) **something** — fec.c is its only caller. → §PP30
-            """;
+        //
+        // PP30: AND THERE IS NO OPEN LINE TO MOVE IT TO. The last row shipped with this commit, so
+        // the fixture carries its own TABLE as well as its own roadmap - the shape DeletionEndState
+        // arrived at for the same reason, one rule over. A rule that could only be demonstrated
+        // while a deletion was open would go quiet exactly when none is.
+        // The stand-in id is CONCATENATED and never spelled. An id written as a literal in a test
+        // file is an id "named in an assertion", which is a join other checks read - PP739 derived
+        // its own absent id after four commits had been made red by exactly this.
+        string standIn = "PP" + 9024.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
-        IReadOnlyList<string> silent = DeletionCallerClaims.NotNamingTheSeam(roadmap);
+        string roadmap = $"- 📋 **{standIn}** (deps: —) **something** — fec.c is its only caller.";
+
+        IReadOnlyList<DeletionLine> lines = [new(standIn, "the FEC decode")];
+
+        IReadOnlyList<string> silent = DeletionCallerClaims.NotNamingTheSeam(roadmap, lines);
 
         Assert.Single(silent);
-        Assert.Contains("PP30", silent[0], StringComparison.Ordinal);
+        Assert.Contains(standIn, silent[0], StringComparison.Ordinal);
         Assert.Contains("the FEC decode", silent[0], StringComparison.Ordinal);
 
         // And a line that DOES name the seam is not reported, which is what makes this a rule.
         Assert.Empty(DeletionCallerClaims.NotNamingTheSeam(
-            "- 📋 **PP30** (deps: —) **something** — and the shim is one of them. → §PP30"));
+            $"- 📋 **{standIn}** (deps: —) **something** — and the shim is one of them.", lines));
+
+        // The live table is empty, which is why the fixture supplies one. Asserted so that a row
+        // arriving without a demonstration is visible here rather than silently covered by this.
+        Assert.Empty(DeletionCallerClaims.All);
     }
 
     /// <summary>

@@ -51,7 +51,9 @@ option(CHIAKI_LIB_MBEDTLS_EXTERNAL_PROJECT "Fetch Mbed TLS instead of using syst
 option(CHIAKI_LIB_OPENSSL_EXTERNAL_PROJECT "Use OpenSSL as CMake external project" OFF)
 option(CHIAKI_GUI_ENABLE_SDL_GAMECONTROLLER "Use SDL Gamecontroller for Input" ON)
 option(CHIAKI_ENABLE_STEAM_SHORTCUT "Add ability to create Steam shortcut" ON)
-tri_option(CHIAKI_USE_SYSTEM_JERASURE "Use system-provided jerasure instead of submodule" AUTO)
+# PP30: CHIAKI_USE_SYSTEM_JERASURE stood here and is gone with the library it chose between.
+# An option that selects a source for a dependency nothing links is a question with no consequence,
+# and BuildOptionsAreRead would have gone on reporting it as read because the block below read it.
 tri_option(CHIAKI_USE_SYSTEM_NANOPB "Use system-provided nanopb instead of submodule" AUTO)
 option(CHIAKI_LIB_MINIUPNPC_EXTERNAL_PROJECT "Build miniupnpc from source via FetchContent" OFF)
 
@@ -70,15 +72,11 @@ include(CPack)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(CMAKE_CXX_STANDARD 11)
 
-if(CHIAKI_USE_SYSTEM_JERASURE)
-	if(CHIAKI_USE_SYSTEM_JERASURE STREQUAL AUTO)
-		find_package(Jerasure QUIET)
-		set(CHIAKI_USE_SYSTEM_JERASURE ${Jerasure_FOUND})
-	else()
-		find_package(Jerasure REQUIRED)
-		set(CHIAKI_USE_SYSTEM_JERASURE ON)
-	endif()
-endif()
+# PP30: the jerasure probe stood here, and cmake/FindJerasure.cmake with it.
+#
+# It was the only consumer of that find module, so the module went in the same commit - a find
+# module for a package nothing looks for is dead weight that still resolves, which is worse than
+# absent because a later reader takes it as evidence the dependency is wanted.
 
 # PP21: libplacebo is the PORT's, not the Qt client's, and it was found inside the client's branch.
 #

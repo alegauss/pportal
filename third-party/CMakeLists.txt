@@ -14,46 +14,23 @@ if(NOT CHIAKI_USE_SYSTEM_NANOPB)
 	add_library(Nanopb::nanopb ALIAS nanopb)
 endif()
 
-if(NOT CHIAKI_USE_SYSTEM_JERASURE)
-	##################
-	# gf-complete
-	##################
-
-	set(GF_COMPLETE_SOURCE
-			gf-complete/src/gf.c
-			gf-complete/src/gf_wgen.c
-			gf-complete/src/gf_w4.c
-			gf-complete/src/gf_w8.c
-			gf-complete/src/gf_w16.c
-			gf-complete/src/gf_w32.c
-			gf-complete/src/gf_w64.c
-			gf-complete/src/gf_w128.c
-			gf-complete/src/gf_rand.c
-			gf-complete/src/gf_general.c
-			gf-complete/src/gf_cpu.c)
-
-	# TODO: support NEON
-
-	add_library(gf_complete STATIC ${GF_COMPLETE_SOURCE})
-	target_include_directories(gf_complete PUBLIC gf-complete/include)
-
-	##################
-	# jerasure
-	##################
-
-	set(JERASURE_SOURCE
-			jerasure/src/galois.c
-			jerasure/src/jerasure.c
-			jerasure/src/reed_sol.c
-			jerasure/src/cauchy.c
-			jerasure/src/liberation.c)
-
-	add_library(jerasure STATIC ${JERASURE_SOURCE})
-	target_include_directories(jerasure PUBLIC jerasure/include)
-	target_link_libraries(jerasure gf_complete)
-
-	add_library(Jerasure::Jerasure ALIAS jerasure)
-endif()
+# PP30: gf-complete and jerasure are gone - sixteen vendored C files that built two static
+# libraries so that a lost video packet could be reconstructed.
+#
+# Eleven gf-complete sources built the Galois field arithmetic for five word sizes, of which this
+# tree used one: GF(2^8), the field CHIAKI_FEC_WORDSIZE names. Five jerasure sources sat on it, of
+# which the port reached two functions - cauchy_original_coding_matrix and jerasure_matrix_decode.
+#
+# The replacement is three managed classes and it was written before this line was touched, which
+# is PP623's order: GaloisField builds the two log tables (PP286), FecMatrix the Cauchy matrix
+# (PP286), FecCodec the encode and decode over them (PP287). Every one of the three was held
+# against this library's own answers while it was still here, and PP842 recorded them into
+# tests/oracles/framepath.json so the comparison outlives the C.
+#
+# THE SUBMODULES STAY IN THE CHECKOUT, unbuilt, which is the choice PP33 made for holepunch.c and
+# PP632 for gui/: what a deletion owes is that nothing compiles or links it, and a directory git
+# already has costs nothing to leave. .gitmodules still declares both, and ForeignBinaries does not
+# walk third-party/ for exactly this reason.
 
 # PP33: curl is gone. holepunch.c was the only thing in lib/ that called it, and building curl
 # from source was the slowest step this tree had.

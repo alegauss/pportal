@@ -24,7 +24,6 @@
 
 ## Block F — Managed core
 
-- 📋 **PP30** (deps: PP23 ✅, PP27 ✅) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — chiaki_fec_decode has three callers - frameprocessor.c, the C suite and this port's shim - and gf-complete has a fourth site none of them reach: chiaki_lib_init. → §PP30
 - 📋 **PP843** (deps: PP697 ✅, PP763 ✅) **ShimFramePathShape says the flip has happened and the option is off, and PP763 put the four files back** — PP697 turned the class's tense when PP696 landed; PP763 reverted the flip and left the prose, so the file tells a reader the opposite of the tree. → §PP843
 
 ## Block G — Test discipline

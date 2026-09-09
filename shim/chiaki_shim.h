@@ -543,14 +543,17 @@ CHIAKI_SHIM_API void chiaki_shim_tap_emit(
 /**
  * chiaki_lib_init, which nothing on the managed side had called.
  *
- * It is not a formality. It seeds rand, builds jerasure's Galois field - which the frame
- * processor needs before the first FEC block - and calls WSAStartup, without which every socket
- * libchiaki opens fails with WSANOTINITIALISED. The Qt client calls it in main(); a .NET host has
- * no main() the library knows about, so the first session-shaped call from managed code would
- * have failed on a Windows error nothing in this tree names.
+ * It is not a formality. It seeds rand and calls WSAStartup, without which every socket libchiaki
+ * opens fails with WSANOTINITIALISED. The Qt client calls it in main(); a .NET host has no main()
+ * the library knows about, so the first session-shaped call from managed code would have failed on
+ * a Windows error nothing in this tree names.
  *
- * Idempotent: WSAStartup is reference counted and the other two are writes, so calling it twice
- * is calling it once. Returns a ChiakiErrorCode; 0 is CHIAKI_ERR_SUCCESS.
+ * PP30: it built jerasure's Galois field too, and that was the last thing keeping gf-complete
+ * linked. The field is managed now (GaloisField, built at type initialisation), so there is no
+ * table for a caller to forget to install and this function is down to two side effects.
+ *
+ * Idempotent: WSAStartup is reference counted and the seed is a write, so calling it twice is
+ * calling it once. Returns a ChiakiErrorCode; 0 is CHIAKI_ERR_SUCCESS.
  */
 CHIAKI_SHIM_API int32_t chiaki_shim_lib_init(void);
 

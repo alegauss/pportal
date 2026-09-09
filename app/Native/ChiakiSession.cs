@@ -300,9 +300,13 @@ public sealed unsafe class ChiakiSession : IDisposable, Session.IControllerState
     private ChiakiSession(IntPtr handle) => _handle = handle;
 
     /// <summary>
-    /// chiaki_lib_init: seeds rand, builds jerasure's Galois field and calls WSAStartup. Nothing
-    /// managed had called it, and without it every socket libchiaki opens fails with
-    /// WSANOTINITIALISED. Idempotent, so callers need not coordinate.
+    /// chiaki_lib_init: seeds rand and calls WSAStartup. Nothing managed had called it, and without
+    /// it every socket libchiaki opens fails with WSANOTINITIALISED. Idempotent, so callers need not
+    /// coordinate.
+    ///
+    /// PP30: it built jerasure's Galois field as well, which is what kept gf-complete linked after
+    /// every FEC caller had gone. <see cref="Protocol.GaloisField"/> builds the same tables at type
+    /// initialisation, so WSAStartup is the whole of what this does that a caller could not.
     /// </summary>
     public static ChiakiError LibInit() => (ChiakiError)LibInitRaw();
 

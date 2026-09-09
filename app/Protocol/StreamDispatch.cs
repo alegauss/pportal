@@ -107,10 +107,15 @@ public enum AvDestination
 /// returns: the handler that set it has finished before the waiter can be scheduled. So one protobuf
 /// on the wire is three different messages depending on where the walk had got to.
 ///
-/// AND THE AV ROUTE IS TEN LINES, one of which is the whole of PP30's leverage. The packet is
+/// AND THE AV ROUTE IS TEN LINES, one of which was the whole of PP30's leverage. The packet is
 /// decrypted IN PLACE at key_pos PLUS ONE BLOCK - not at key_pos - and then routed by two flags.
-/// The single call to chiaki_video_receiver_av_packet is why videoreceiver.c stays, so
-/// frameprocessor.c stays, so fec.c stays, and jerasure with them.
+/// The single call to chiaki_video_receiver_av_packet was why videoreceiver.c stayed, so
+/// frameprocessor.c stayed, so fec.c stayed, and jerasure with them.
+///
+/// ALL FOUR HAVE NOW LEFT, in that order and by that leverage: PP27 took the first three out of
+/// lib/CMakeLists.txt once streamconnection.c stopped being built, and PP30 unlinked jerasure once
+/// nothing called it. The chain held exactly as written, which is why it is left as a record rather
+/// than deleted with the last of them.
 /// </summary>
 public static class StreamDispatch
 {
@@ -192,10 +197,11 @@ public static class StreamDispatch
     }
 
     /// <summary>
-    /// What the video route holds up, named so PP30's dependency is a fact rather than a memory.
+    /// What the video route held up, named so PP30's dependency is a fact rather than a memory.
     ///
-    /// One call keeps four things in the build. Listed in the order each depends on the last, which
-    /// is the order they can leave in and no other.
+    /// One call kept four things in the build. Listed in the order each depends on the last, which
+    /// is the order they could leave in and no other - and the order they did leave in: the first
+    /// three under PP27, jerasure under PP30.
     /// </summary>
     public static IReadOnlyList<string> KeptAliveByTheVideoRoute { get; } =
         ["videoreceiver.c", "frameprocessor.c", "fec.c", "jerasure"];

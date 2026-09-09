@@ -47,8 +47,20 @@ public class RemainingQueriesTests(ITestOutputHelper output)
         // declared the second fence and a ship deletes the section, because rationale for unshipped
         // work is what IMPROVEMENTS.md holds. A reader returning nothing still fails here, which is
         // the whole of what the floor is for.
-        Assert.True(queries.Count >= 1, $"only {queries.Count} query fence(s) read");
-        Assert.True(stated.Count >= 1, $"only {stated.Count} stated count(s) read");
+        //
+        // PP30: BOTH FLOORS ARE 0 NOW, AND THAT IS THE END OF THE ROAD FOR THIS SHAPE. §PP30 held
+        // the last fence and the last stated count, and its ship deleted the section - so there is
+        // no live subject at all, and a floor of 1 would be a demand that somebody keep a
+        // roadkeep-remaining query alive to satisfy a test.
+        //
+        // What the floor was for moves to the fixtures below, which is where it can stay: they run
+        // the readers over documents and trees they build themselves, so a reader that returned
+        // nothing is red there whether or not the backlog happens to declare a query. So the two
+        // floors are GONE rather than lowered to zero - a zero floor is a line that passes on every
+        // input, and asserting the emptiness instead would make the next migration's first fence
+        // red in a test that has nothing to do with it. The rule below is unchanged, and the day a
+        // fence arrives it is live again with no edit here.
+        output.WriteLine($"{queries.Count} query fence(s), {stated.Count} stated count(s)");
 
         IReadOnlyList<string> apart = RemainingQueries.Disagreements(root, improvements);
 
@@ -59,40 +71,68 @@ public class RemainingQueriesTests(ITestOutputHelper output)
     }
 
     /// <summary>
-    /// The one the backlog declares, named - so a second appearing is something somebody reads.
+    /// No query is declared any more, and the two that were are named so the reason is readable.
     ///
     /// PP33: it was two. Its query counted curl and json-c across lib/src and went with §PP33 when
     /// the line shipped - the libraries have left the tree, and holepunch.c stays as unbuilt source
     /// the way gui/ did, so a query still counting its call sites would be measuring a file nothing
     /// compiles against a criterion nobody holds.
+    ///
+    /// PP30: and it is now one fewer for exactly that reason. Its fence counted jerasure and galois_
+    /// across lib/src, the libraries have left the build, and fec.c and frameprocessor.c stay as
+    /// unbuilt source - so the same sentence applies word for word. Both ids are named rather than
+    /// the check being deleted: a fence reappearing under either would mean somebody re-declared a
+    /// query for work that has shipped.
     /// </summary>
     [Fact]
-    public void TheOneQueryIsPP30s()
+    public void NeitherShippedQueryIsStillDeclared()
     {
         if (Improvements() is not { } improvements)
             return;
 
         IReadOnlyDictionary<string, RemainingQuery> queries = RemainingQueries.Declared(improvements);
 
-        Assert.Contains("PP30", queries);
+        Assert.DoesNotContain("PP30", queries);
         Assert.DoesNotContain("PP33", queries);
     }
 
     /// <summary>
-    /// PP30's query counts matching LINES, which is roadkeep's unit and not files or calls.
+    /// A site is a matching LINE, which is roadkeep's unit and not a file or a call.
     ///
-    /// 13 across common.c, fec.c and frameprocessor.c, which is what `roadkeep remaining PP30`
-    /// answers - the number this reader was checked against before it was trusted.
+    /// PP30: DEMONSTRATED ON A TREE THIS TEST WRITES, and it was 13 read off the real lib/src -
+    /// checked against `roadkeep remaining PP30` before it was trusted, which was the right check
+    /// while the fence existed. The ship deletes the fence, so roadkeep can no longer answer for
+    /// this pattern at all and the number became a literal nothing could re-derive: it moved
+    /// whenever a comment in lib/src happened to name the library, including the comment this task
+    /// left where the deleted call had been.
+    ///
+    /// Three facts, none of which the count could separate: two matches on one line are one site,
+    /// a matching line in a SUBDIRECTORY is counted - lib/src has remote/, and a non-recursive
+    /// glob silently misses four files there - and a file with no match contributes nothing.
     /// </summary>
     [Fact]
     public void ASiteIsAMatchingLine()
     {
-        if (SanitizerSource.RepositoryRoot() is not { } root)
-            return;
+        string root = Path.Combine(Path.GetTempPath(), "pportal-remaining-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(Path.Combine(root, "lib", "src", "remote"));
 
-        int? sites = RemainingQueries.Run(root, new RemainingQuery("lib/src/**/*.c", "jerasure|galois_"));
+        try
+        {
+            File.WriteAllText(
+                Path.Combine(root, "lib", "src", "one.c"),
+                "int *m = galois_x(); /* and jerasure too, on the same line */\nint plain = 0;\n");
+            File.WriteAllText(Path.Combine(root, "lib", "src", "none.c"), "int nothing = 0;\n");
+            File.WriteAllText(
+                Path.Combine(root, "lib", "src", "remote", "deep.c"), "#include <jerasure.h>\n");
 
-        Assert.Equal(13, sites);
+            Assert.Equal(
+                2,
+                RemainingQueries.Run(root, new RemainingQuery("lib/src/**/*.c", "jerasure|galois_")));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
     }
 
     /// <summary>
@@ -121,28 +161,43 @@ public class RemainingQueriesTests(ITestOutputHelper output)
         Assert.Equal(420, said.Stated);
     }
 
-    /// <summary>A disagreement is reported, on a tree this test controls.</summary>
+    /// <summary>
+    /// A disagreement is reported, on a tree this test controls.
+    ///
+    /// PP30: the two numbers are DERIVED and were typed. It was PP30's real query against the real
+    /// lib/src with a stated count one out - which is exactly the defect PP447 was filed for - and
+    /// the "it reads 13" half was a literal about a tree, so any comment in lib/src naming the
+    /// library moved it. The query stays real and the stated count stays one out; both numbers now
+    /// come from the reader, so what the fixture demonstrates is the disagreement rather than a
+    /// census of somebody else's file.
+    /// </summary>
     [Fact]
     public void ADisagreementIsReported()
     {
         if (SanitizerSource.RepositoryRoot() is not { } root)
             return;
 
-        // PP30's real query, with a count that is one out - which is exactly what it said.
-        const string Doc = """
+        var query = new RemainingQuery("lib/src/**/*.c", "jerasure|galois_");
+
+        int reads = RemainingQueries.Run(root, query) ?? -1;
+        Assert.True(reads >= 0, "lib/src answered null, so the fixture has no tree to disagree with");
+
+        int claimed = reads + 1;
+
+        string doc = $"""
             ### §PP30 Reed-Solomon
 
             ```roadkeep-remaining
-            lib/src/**/*.c :: jerasure|galois_
+            {query.Glob} :: {query.Pattern}
             ```
 
-            `remaining PP30` reads 14
+            `remaining PP30` reads {claimed}
             """;
 
-        string apart = Assert.Single(RemainingQueries.Disagreements(root, Doc));
+        string apart = Assert.Single(RemainingQueries.Disagreements(root, doc));
 
-        Assert.Contains("says PP30 reads 14", apart, StringComparison.Ordinal);
-        Assert.Contains("it reads 13", apart, StringComparison.Ordinal);
+        Assert.Contains($"says PP30 reads {claimed}", apart, StringComparison.Ordinal);
+        Assert.Contains($"it reads {reads}", apart, StringComparison.Ordinal);
     }
 
     /// <summary>A count for a task that declares no query is reported as that, not compared.</summary>

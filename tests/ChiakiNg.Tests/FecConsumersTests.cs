@@ -49,6 +49,15 @@ public class FecConsumersTests
     /// <summary>
     /// PP30's line agrees with the list, and the old claim is refused by name - a line that merely
     /// stopped mentioning callers would otherwise pass.
+    ///
+    /// PP30 HAS SHIPPED AND THE LINE IS GONE, so the reader is exercised on text and the live
+    /// subject is absent. That is the same exit DeletionCallerClaims' rows took when PP33 and PP295
+    /// shipped: a shipped claim sits in the ledger, and the harm this check exists to catch -
+    /// understating a deletion's cost while somebody is deciding whether to do it - is not
+    /// available to a line nobody is deciding about.
+    ///
+    /// The absence is ASSERTED rather than tolerated. Read as "if the line is there, it must agree"
+    /// this would also be green on a roadmap where the line came back saying one caller.
     /// </summary>
     [Fact]
     public void ThePP30LineAgreesWithTheList()
@@ -56,16 +65,15 @@ public class FecConsumersTests
         Assert.False(FecConsumers.TheRoadmapLineAgreesOnTheCount(
             "chiaki_fec_decode has one caller left, frameprocessor.c"));
         Assert.False(FecConsumers.TheRoadmapLineAgreesOnTheCount("says nothing about callers"));
+        Assert.True(FecConsumers.TheRoadmapLineAgreesOnTheCount(
+            "chiaki_fec_decode has three callers - frameprocessor.c, the C suite and this port's shim"));
 
         if (SanitizerSource.LocateRelative(@"docs\ROADMAP.md") is not { } path)
             return;
 
-        string? line = File.ReadLines(path)
-            .FirstOrDefault(one => one.Contains("**PP30**", StringComparison.Ordinal));
-
-        Assert.NotNull(line);
-        Assert.True(
-            FecConsumers.TheRoadmapLineAgreesOnTheCount(line),
-            $"PP30's line does not name three callers: {line}");
+        Assert.DoesNotContain(
+            "**PP30**",
+            File.ReadAllText(path),
+            StringComparison.Ordinal);
     }
 }
