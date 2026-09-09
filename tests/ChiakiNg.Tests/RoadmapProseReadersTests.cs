@@ -120,6 +120,14 @@ public class RoadmapProseReadersTests(ITestOutputHelper output)
         Assert.Equal(
             ["no file calls it", "the FEC decode", "the video receiver", "three callers"],
             fragile);
+
+        // PP849: AND THE SUMMARY'S ONE REMAINING NUMBER IS THIS ONE. "THE ANSWER IS FOUR" is the
+        // census's headline and a decision rather than a tally - a fifth row is something somebody
+        // takes on - so it is held against the derivation instead of being proofread. The breakdown
+        // that used to sit beside it is gone from the prose: six, four, nine, eleven and thirty were
+        // bookkeeping, and two of them went wrong on each of the last two rows added.
+        Assert.Equal(4, RoadmapProseReaders.Count(ProseReading.Fragile));
+        Assert.Equal(fragile.Length, RoadmapProseReaders.Count(ProseReading.Fragile));
     }
 
     /// <summary>
@@ -127,6 +135,12 @@ public class RoadmapProseReadersTests(ITestOutputHelper output)
     ///
     /// Always passes and always prints, the same way the oracle census does: the point is the
     /// output, and a count nobody can see is the state PP691 was filed about.
+    ///
+    /// PP849: AND THIS IS WHERE ITS PREMISE WAS WRONG. That line said Count had no caller anywhere;
+    /// it has three, all here, and the two properties an answer would have added - the verdicts
+    /// summing to the whole, and none of the five being empty - were already asserted below. The
+    /// defect was never the derivation. It was the summary stating numbers BESIDE the derivation,
+    /// which a reader trusts precisely because they look like its output.
     /// </summary>
     [Fact]
     public void TheVerdictsAreCountedAndPrinted()

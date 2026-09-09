@@ -162,31 +162,6 @@ Repair any upstream and the port's copy becomes the divergence, on the next run.
 
 ## Block G — Test discipline
 
-### §PP849 A census that states its own counts in prose
-
-RoadmapProseReaders judges every string literal in app/ that also occurs in a governed
-file, and its own summary states the taxonomy as numbers: four fragile, six address,
-four held, nine failing open, ten incidental, and "the other twenty-nine" as their sum.
-
-Five of those six were correct until PP844 added a row, at which point two were wrong
-and the sum with them. Nothing noticed: CountedClaim reads the governed documents and
-this is a docstring, so the drift is invisible by construction - which is the rule this
-tree already writes down, that a source comment stays qualitative because no gate can
-check it.
-
-WHAT MAKES THIS MORE THAN THAT RULE BROKEN ONCE. Count(ProseReading) is a public method
-on the same class, it answers every one of the six, and it has no caller in app/ or
-tests/. The numbers are not merely unchecked - they are unchecked beside the thing that
-computes them, and the reason a reader trusts the summary is that it looks derived.
-
-Two shapes, and the choice is the point rather than the edit. Turn the sentence
-qualitative and delete the method: the rule applied honestly, losing a reader's sense of
-the proportions. Or assert the six from Count in the census's own test, which keeps them
-and makes the next row's arithmetic a gate. Only the second gives Count a caller.
-
-Either is minutes. What neither is: the numbers as they stand, true today and false for
-the length of one commit.
-
 ### §PP850 The argument list as a third spelling
 
 PP386 found 47 drift predicates pinning a bare call to its exact spelling, semicolon

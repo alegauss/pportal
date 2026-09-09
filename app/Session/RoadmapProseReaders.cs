@@ -58,9 +58,25 @@ public readonly record struct ProseReader(string Text, string Where, ProseReadin
 ///
 /// THE ANSWER IS FOUR, not two. Four checks demand a spelling of prose that is free to improve, and
 /// they are not the two PP666 hit: those were repaired in the commit that found them.
-/// <see cref="ProseReading.Fragile"/> names them and the rest of the taxonomy says why the other
-/// thirty are not the same thing - six address, four hold words on purpose, nine fail open, and
-/// eleven are coincidences of two files using the same English.
+/// <see cref="ProseReading.Fragile"/> names them, and the rest of the taxonomy says why the others
+/// are not the same thing: an address roadkeep itself uses, words held on purpose, a phrase list
+/// that fails open, and two files happening to use the same English.
+///
+/// PP849: FOUR IS THE ONLY NUMBER LEFT HERE, and it is checked. The breakdown used to be spelled
+/// out - six address, four held, nine failing open, eleven incidental, thirty in all - and every
+/// one of those is bookkeeping that moves when a row arrives. PP844 added one and two went wrong;
+/// PP850 added another and they went wrong again, both times corrected by proofreading in a commit
+/// about something else. CountedClaim reads the governed documents and cannot see a docstring, so
+/// nothing could have said so.
+///
+/// FOUR IS DIFFERENT BECAUSE IT IS A DECISION. The paragraph below says a fifth row is something
+/// somebody takes on, which makes it a claim worth holding rather than a tally - so it stays, and
+/// <see cref="Count"/> is what the census's own test now holds it against.
+///
+/// PP849's LINE SAID THAT METHOD HAD NO CALLER AND IT HAD THREE. They are in that same test, which
+/// already asserts the verdicts sum to the whole and that none of the five is empty - the two
+/// properties an answer to this would have added. What was missing was never the derivation; it was
+/// that the SUMMARY stated numbers beside it, and a reader trusts them because they look derived.
 ///
 /// WHAT THIS IS NOT is a rule forbidding the four. A deletion line's subject has to be recognised
 /// somehow, and "read the meaning" is not an option a string comparison has. The census is what

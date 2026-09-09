@@ -872,6 +872,7 @@
 - ✅ **PP803** **the two arranged flips are checked by reading text, and nothing ever builds the shape either one leaves** — flip.cmd builds chiaki-unit as either arranged deletion leaves it, in a build directory of its own - and both shapes link, which PP786's repair had only ever been read about.
 - ✅ **PP844** **a check's control names a file a prepared deletion aims at, so it goes red about its own fixture when that lands** — each control's file is declared with its polarity and held against what an arranged deletion claims and against the build graph, so one aimed at is answerable before the commit.
 - ✅ **PP847** **the function-body reader keeps comments, so a note inside a body is a use and a check finds its own explanation** — Body strips before it counts braces and RawBody is the named door; 160 call sites get the safe answer and the two that are about a comment ask for one.
+- ✅ **PP849** **the prose census states its four per-verdict counts in a docstring, and the method deriving them has no caller** — the breakdown is qualitative now and the one number left, the fragile four, is held against Count in the census's own test (design superseded: Count had three callers, all in that test).
 
 ## Block H — Performance and telemetry
 
