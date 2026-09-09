@@ -23,8 +23,9 @@
 
 ## Block F — Managed core
 
-- ⏳ **PP27** (deps: PP672 ✅, PP673 ✅, PP674 ✅, PP675 ✅, PP676 ✅, PP677 ✅, PP678 ✅, PP679 ✅, PP680 ✅, PP702 ✅, PP783 ✅, PP784 ✅, PP785 ✅, PP786 ✅) (requires: console) **takion.c is 2007 lines of C over raw sockets and timers, and the whole stream rides on it** — Ten tasks wrote it; four more take the C out. → §PP27
-- 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — chiaki_fec_decode has three callers - frameprocessor.c, the C suite and this port's shim - and gf-complete has a fourth site none of them reach: chiaki_lib_init. → §PP30
+- 🛠 **PP27** (deps: PP672 ✅, PP673 ✅, PP674 ✅, PP675 ✅, PP676 ✅, PP677 ✅, PP678 ✅, PP679 ✅, PP680 ✅, PP702 ✅, PP783 ✅, PP784 ✅, PP785 ✅, PP786 ✅, PP842) (requires: console) **takion.c is 2007 lines of C over raw sockets and timers, and the whole stream rides on it** — Ten tasks wrote it; four take the C out. → §PP27
+- 📋 **PP30** (deps: PP23 ✅, PP27 🛠) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — chiaki_fec_decode has three callers - frameprocessor.c, the C suite and this port's shim - and gf-complete has a fourth site none of them reach: chiaki_lib_init. → §PP30
+- 📋 **PP842** (deps: PP670 ✅, PP785 ✅, PP841 ✅) **the frame path's oracle has no recording, so the flip that must turn it off to delete takion spends it** — PP785 recorded takion's answers before its deletion; PP670 prepared the shape and recorded nothing, and videoreceiver.c is what holds streamconnection.c. → §PP842
 
 ## Block G — Test discipline
 

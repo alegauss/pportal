@@ -141,25 +141,25 @@ sequencing, the retransmission, the send window and the reordering a video strea
 UDP needs.
 
 This is the one task in the block where the runtime is a genuine risk rather than a
-prejudice. A pause at the wrong moment is a dropped frame, and the traffic is thousands
+prejudice: a pause at the wrong moment is a dropped frame, and the traffic is thousands
 of small packets a second. THE MAC GATE IS ANSWERED - PP610 measured 0.18us managed
 against 0.08us for the C, inside a 1159us mean gap.
 
-THE DELETION IS SIZED, and the linker sized it rather than a reading. Nothing outside
-these files reaches any of them: senkusha.c and streamconnection.c have no caller at all
-since PP783 and PP784, feedbacksender.c and congestioncontrol.c are reached only by
-streamconnection.c, and audiosender.c only by opusencoder.c, which nothing reaches. The
-set closes at nine files. A text search disagrees and is wrong - it counts three in
-audioreceiver.c that the linker says are not there.
+THE DELETION IS SIZED AND IT IS NOT NINE FILES. Nine leave libchiaki.a short exactly two
+symbols, stream_connection_send_corrupt_frame and its idr_request twin, and
+videoreceiver.c calls them at three sites the earlier census missed. Drop it and the
+archive closes at zero; drop fec.c and frameprocessor.c with it and it still closes. The
+set is twelve, and the tenth is PP295's criterion's own file: the two flips are one
+commit or neither.
 
-WHAT STILL HOLDS THEM IS THE ORACLE: eleven takion wrappers in the shim and seven of
-reorderqueue's. PP785 recorded what they answer so the differentials outlive them, and
-PP786 guarded the C suite's three - the shape PP663 and PP670 used for holepunch and the
-frame path.
+WHAT HOLDS THEM IS THE ORACLE, not a caller. PP785 recorded takion's answers, PP786
+guarded the C suite's three files, PP841 put the wrappers behind their option. The frame
+path is as ready in header and body and has no recording at all: turning it off spends a
+second opinion nothing kept.
 
 AND A DELETION HAS BROKEN THIS BEFORE. PP696 removed the frame path's four files, was
 green, and left a client that could not stream; PP763 put them back. What is different
-now is that the port drives a live session.
+now is that the port drives live sessions.
 
 ### §PP30 Reed-Solomon, by hand
 
@@ -213,6 +213,30 @@ ReorderQueueSource holds five facts about the two and their caller: drop clears 
 flag, its count loop is guarded by the return above it, peek writes both out-pointers
 where pull guards its own, and takion still passes NULL and still drops on a bad MAC.
 Repair any upstream and the port's copy becomes the divergence, on the next run.
+
+### §PP842 The frame path's answers, recorded before they go
+
+PP27's flip cannot land without this one, and the linker is what settled it. Nine files
+out of lib leave libchiaki.a short exactly two symbols -
+stream_connection_send_corrupt_frame and stream_connection_send_idr_request - and the
+caller is videoreceiver.c, at three sites. Drop videoreceiver.c and the archive closes:
+zero unresolved, and nothing inside lib calls it either.
+
+SO THE TENTH FILE IS THE FRAME PATH'S, and its oracle is what stops it leaving. The five
+video-receiver wrappers sit in one guarded region with the frame processor's, so the
+region cannot go off for one and stay on for the other - and fec.c and frameprocessor.c
+have no caller inside lib once videoreceiver.c goes, which makes twelve the honest set.
+
+WHAT IS MISSING IS THE RECORDING AND NOT THE SHAPE. PP670 did the shape: the define
+exists, chiaki_shim_has_framepath answers for the DLL, both regions are guarded in the
+header and the body, and NativeSeam derives the allowance. What PP785 did for takion has
+no counterpart - tests/oracles holds json-c.json and takion.json and nothing for the
+frame path - so turning the oracle off spends the FEC decode's second opinion, the frame
+processor's and the video receiver's, with nothing kept.
+
+The precedent is exact and so is the instrument: --record-json-oracle took json-c's
+answers out of the library while it was still here. This is the same flag for the frame
+path, before the flip and not after it.
 
 ## Block G — Test discipline
 
