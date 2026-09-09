@@ -300,4 +300,68 @@ public class CCallTests
         // And the boundary test still does its job on a name that really does end with it.
         Assert.False(CCall.Happens("#endif\n\tmy_xor_bytes(md, md + 0x10, 0x10);", "xor_bytes(md, md + 0x10, 0x10);"));
     }
+
+    /// <summary>
+    /// PP850: A CALL'S FIRST ARGUMENT, WITHOUT ITS ARITY.
+    ///
+    /// Happens matches the call whole, closing paren included, so every check about a call is a
+    /// check about how many arguments it takes. PP845 gave one constructor a second parameter and
+    /// two checks went red about something else entirely.
+    /// </summary>
+    [Fact]
+    public void ACalleeAndItsFirstArgumentAreOneQuestion()
+    {
+        const string One = "using var pad = new PadFeed(phase.Pad);";
+        const string Two = "using var pad = new PadFeed(phase.Pad, TouchpadExtents.For(found.Ps5));";
+
+        // The same question answers both, which is the whole of this reader.
+        foreach (string source in (string[])[One, Two])
+            Assert.True(CCall.CalledWith(source, "new PadFeed", "phase.Pad"));
+
+        // Where Happens cannot: it is a claim about the arity as much as about the argument.
+        Assert.True(CCall.Happens(One, "new PadFeed(phase.Pad)"));
+        Assert.False(CCall.Happens(Two, "new PadFeed(phase.Pad)"));
+    }
+
+    /// <summary>
+    /// AND THE ARGUMENT HAS TO END WHERE AN ARGUMENT ENDS, which the hand fix did not.
+    ///
+    /// Dropping the closing paren from a literal was the one-line repair in PP845 and it is a
+    /// substring test: `new PadFeed(phase.Pad` matches `phase.Padding` too. That is the silent half
+    /// - a check that passes about the wrong subject - and it is the reason this is a reader rather
+    /// than a shorter literal.
+    /// </summary>
+    [Fact]
+    public void APrefixOfAnArgumentIsNotTheArgument()
+    {
+        const string Other = "using var pad = new PadFeed(phase.Padding, extents);";
+
+        Assert.False(CCall.CalledWith(Other, "new PadFeed", "phase.Pad"));
+
+        // Which the substring the hand fix used does not refuse.
+        Assert.Contains("new PadFeed(phase.Pad", Other, StringComparison.Ordinal);
+
+        // The callee's own boundary still holds, as it does for Happens.
+        Assert.False(CCall.CalledWith("var x = new MyPadFeed(phase.Pad);", "new PadFeed", "phase.Pad"));
+
+        // Layout is not the answer: the call may be written across lines and spaced any way.
+        Assert.True(CCall.CalledWith(
+            "new PadFeed(\n\tphase.Pad,\n\textents);", "new PadFeed", "phase.Pad"));
+
+        // Two arguments name two arguments, and one of them alone is still a prefix.
+        Assert.True(CCall.CalledWith(Other, "new PadFeed", "phase.Padding, extents"));
+        Assert.True(CCall.CalledWith(Other, "new PadFeed", "phase.Padding"));
+    }
+
+    /// <summary>PP272: and it says no about nothing rather than throwing.</summary>
+    [Fact]
+    public void CalledWithSaysNoAboutNothing()
+    {
+        Assert.False(CCall.CalledWith("", "f", "a"));
+        Assert.False(CCall.CalledWith("f(a);", "f", "b"));
+
+        // An empty argument list is a real question - f() takes none - and is asked as one.
+        Assert.True(CCall.CalledWith("f();", "f", ""));
+        Assert.False(CCall.CalledWith("f(a);", "f", ""));
+    }
 }

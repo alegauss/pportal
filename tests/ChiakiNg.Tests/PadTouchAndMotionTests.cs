@@ -291,6 +291,10 @@ public class PadTouchAndMotionTests(ITestOutputHelper output)
     ///
     /// The one place a default would have been easiest and would have been wrong: PadFeed has no
     /// session, so a pad that is neither console's is what the Qt client's SDL path settles for.
+    ///
+    /// PP850: TWO QUESTIONS INSTEAD OF ONE LITERAL. This named the whole argument list on purpose,
+    /// which §PP850 called out as its own bad example - a third parameter would break a check about
+    /// the second. Asked as a prefix each time, the arity is nobody's business here.
     /// </summary>
     [Fact]
     public void TheRunTellsTheFeedWhichConsole()
@@ -300,6 +304,13 @@ public class PadTouchAndMotionTests(ITestOutputHelper output)
 
         string code = CCall.Code(File.ReadAllText(path));
 
-        Assert.Contains("new PadFeed(phase.Pad, TouchpadExtents.For(", code, StringComparison.Ordinal);
+        Assert.True(
+            CCall.CalledWith(code, "new PadFeed", "phase.Pad"),
+            "the pad is not constructed on the phase's sink");
+
+        // And the extents are the connected console's, which is the half PP93 is about.
+        Assert.True(
+            CCall.CalledWith(code, "TouchpadExtents.For", "found.Ps5"),
+            "the extents no longer come from the console the connect info was built for");
     }
 }

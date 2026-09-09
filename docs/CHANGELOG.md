@@ -873,6 +873,7 @@
 - ✅ **PP844** **a check's control names a file a prepared deletion aims at, so it goes red about its own fixture when that lands** — each control's file is declared with its polarity and held against what an arranged deletion claims and against the build graph, so one aimed at is answerable before the commit.
 - ✅ **PP847** **the function-body reader keeps comments, so a note inside a body is a use and a check finds its own explanation** — Body strips before it counts braces and RawBody is the named door; 160 call sites get the safe answer and the two that are about a comment ask for one.
 - ✅ **PP849** **the prose census states its four per-verdict counts in a docstring, and the method deriving them has no caller** — the breakdown is qualitative now and the one number left, the fragile four, is held against Count in the census's own test (design superseded: Count had three callers, all in that test).
+- ✅ **PP850** **a call-shaped check names the whole argument list, so an added argument breaks checks about something else** — CalledWith asks a callee and a prefix of its arguments, with the argument boundary the hand fixes lacked; four checks converted and the reader is not C-only.
 
 ## Block H — Performance and telemetry
 

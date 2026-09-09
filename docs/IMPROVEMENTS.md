@@ -162,33 +162,6 @@ Repair any upstream and the port's copy becomes the divergence, on the next run.
 
 ## Block G — Test discipline
 
-### §PP850 The argument list as a third spelling
-
-PP386 found 47 drift predicates pinning a bare call to its exact spelling, semicolon
-included, and four of them broke in one block. Its fix routed the 27 occurrence
-predicates through CCall, which compacts whitespace and forgives the terminator - so
-`free(notif)` and `free(notif);` became one question.
-
-THE ARGUMENT LIST IS THE SPELLING IT DID NOT REACH. CCall.Happens matches the call text
-whole, argument list and closing paren included, so a check written for a two-argument
-call is a check about that arity. Nothing here can ask "is this callee called with this
-first argument" without naming everything after it.
-
-TWO WENT RED IN PP845, both about something else. StreamPhaseFlipTests asked for the
-literal `new PadFeed(phase.Pad)` and is about which SINK the pad pushes at;
-ManagedControllerStateSinkTests called Single on the constructor's parameters and is
-about which SEAM it takes. Neither failure named the thing its check exists for.
-
-AND IT MADE A FILING WRONG, not just a check. PP849's line asserted a method had no
-caller; a grep for the callee and its parameter type found the declaration and missed
-three calls passing a variable.
-
-The fixes were one line each, as PP386's four were before it built the reader. Two tests
-written under PP845 join the population, which is the honest half of filing this.
-
-What a reader needs is a predicate over a callee and a PREFIX of its arguments. Whether
-that belongs in CCall, which reads C, is the question this does not answer.
-
 ### §PP852 A premise measured once and guarded by nothing
 
 CFunction.RawBody finds a definition by looking for the name, then the first

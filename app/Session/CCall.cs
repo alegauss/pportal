@@ -27,6 +27,17 @@ namespace ChiakiNg.Session;
 /// call - which they are. The closing parenthesis is what keeps <c>free(notif)</c> from matching
 /// <c>free(notif-&gt;json_buf)</c>, and an identifier-boundary test in front is what keeps it from
 /// matching <c>xfree(notif)</c>.
+///
+/// PP850: AND THE ARGUMENT LIST IS A THIRD SPELLING, which <see cref="CalledWith"/> answers. The
+/// closing parenthesis that keeps free(notif) from free(notif->json_buf) is the same parenthesis
+/// that makes every check about a call a check about its ARITY, and PP845 broke two of them by
+/// giving one constructor a second parameter.
+///
+/// SO THIS CLASS IS NAMED FOR C AND IS NOT ABOUT C, which §PP850 left as an open question and is
+/// answered here: comment syntax, call syntax and identifier boundaries are the same in both
+/// languages this tree holds, and the two checks converting to the new predicate read C#. The name
+/// stays because renaming it would touch every one of its callers for no behaviour - but a reader
+/// should not take "C" in it as a limit, and the <c>source</c> parameters say so now.
 /// </summary>
 public static class CCall
 {
@@ -225,6 +236,66 @@ public static class CCall
         string haystack = Compact(source);
 
         return from > haystack.Length ? -1 : haystack.IndexOf(needle, from, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// PP850: whether <paramref name="callee"/> is called with <paramref name="arguments"/> at the
+    /// START of its argument list, whatever follows them.
+    ///
+    /// THE THIRD SPELLING. PP386 found 47 predicates pinned to a call's exact text and routed the
+    /// occurrence ones through <see cref="Happens"/>, which forgives whitespace and the terminator.
+    /// It does not forgive the ARGUMENT LIST: Happens matches the call whole, closing paren
+    /// included, so a check written for a two-argument call is a check about that arity.
+    ///
+    /// WHAT THAT COSTS, TWICE MEASURED. PP845 gave PadFeed a second parameter and two checks went
+    /// red - one about which sink the pad pushes at, one about which seam it takes - and neither
+    /// failure named the thing its check exists for. Worse, PP849's own roadmap line asserted a
+    /// method had no caller because a grep for the callee and its parameter type found the
+    /// declaration and missed three calls passing a variable. A red gate is loud; a false filing
+    /// is not.
+    ///
+    /// THE BOUNDARY IS WHAT MAKES IT A PREFIX AND NOT A SUBSTRING. After the named arguments there
+    /// has to be a comma or the closing paren, so `phase.Pad` does not match `phase.Padding` - and
+    /// asking for one argument is the common case, because the first is usually the subject and
+    /// everything after it is the furniture that moves.
+    /// </summary>
+    /// <param name="source">The source, or any part of it.</param>
+    /// <param name="callee">The callee as written, WITHOUT its parenthesis - `new PadFeed`, `free`.</param>
+    /// <param name="arguments">
+    /// The leading argument or arguments, spelled as the call spells them. Compacted like the
+    /// source, so the layout a formatter chose does not decide the answer.
+    /// </param>
+    public static bool CalledWith(string source, string callee, string arguments)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentException.ThrowIfNullOrEmpty(callee);
+        ArgumentNullException.ThrowIfNull(arguments);
+
+        string prefix = Compact($"{callee}({arguments}");
+        if (prefix.Length == 0)
+            return false;
+
+        string haystack = Compact(source);
+
+        for (int at = haystack.IndexOf(prefix, StringComparison.Ordinal);
+             at >= 0;
+             at = haystack.IndexOf(prefix, at + 1, StringComparison.Ordinal))
+        {
+            if (!IsCallStart(haystack, at))
+                continue;
+
+            // The argument named has to END where an argument ends. Without this a check for one
+            // argument passes on a longer identifier that merely starts the same way, which is the
+            // silent half of the defect this reader removes.
+            int after = at + prefix.Length;
+            if (after >= haystack.Length)
+                continue;
+
+            if (haystack[after] is ',' or ')')
+                return true;
+        }
+
+        return false;
     }
 
     /// <summary>

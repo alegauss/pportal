@@ -66,8 +66,8 @@ public readonly record struct ProseReader(string Text, string Where, ProseReadin
 /// out - six address, four held, nine failing open, eleven incidental, thirty in all - and every
 /// one of those is bookkeeping that moves when a row arrives. PP844 added one and two went wrong;
 /// PP850 added another and they went wrong again, both times corrected by proofreading in a commit
-/// about something else. CountedClaim reads the governed documents and cannot see a docstring, so
-/// nothing could have said so.
+/// about something else. Then PP850's own ship took its row away again. CountedClaim reads the
+/// governed documents and cannot see a docstring, so nothing could have said so at any point.
 ///
 /// FOUR IS DIFFERENT BECAUSE IT IS A DECISION. The paragraph below says a fifth row is something
 /// somebody takes on, which makes it a claim worth holding rather than a tally - so it stays, and
@@ -365,17 +365,19 @@ public static class RoadmapProseReaders
             ProseReading.Incidental,
             "Message text in the reader PP844 added, matching the sentence that shipped it."),
 
-        // PP850: PP527's direction a third time, and the subject makes it worth reading twice. This
-        // constant is a matcher keyed on a call's spelling, §PP850 is the section about checks keyed
-        // on a call's spelling, and it quotes the call to say so. The document copied the program.
+        // PP850 STOOD HERE AND ITS SHIP TOOK THE MATCH AWAY, which is a third direction this census
+        // can move in and the first time one has been seen.
         //
-        // Not Fragile: PadOpeningSource matches this against StreamRun.cs, which is source and not a
-        // governed document, so rewording the backlog cannot reach it.
-        new(
-            "new PadFeed(",
-            @"app\Session\PadOpeningSource.cs",
-            ProseReading.Incidental,
-            "A call matched against StreamRun.cs, quoted by the section filed about that shape."),
+        // The row judged `new PadFeed(` - PadOpeningSource's matcher against StreamRun.cs - because
+        // §PP850 quoted that call while arguing about checks keyed on a call's spelling. The section
+        // was the only governed prose carrying the text, so shipping the line deleted the match and
+        // the row began judging a literal the sweep no longer finds. That is the ROT this file's
+        // other assertion is for, and it fired in the ship's own commit.
+        //
+        // The other two directions are already on record: a row arriving because a check reads a
+        // document, and one arriving because a document copied the program. This is a row LEAVING
+        // because the document that quoted the program is gone, and nothing is owed for it - the
+        // matcher is unchanged and was never fragile.
     ];
 
     /// <summary>How many rows carry one verdict.</summary>

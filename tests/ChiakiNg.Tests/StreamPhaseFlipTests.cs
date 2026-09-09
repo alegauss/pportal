@@ -166,8 +166,12 @@ public class StreamPhaseFlipTests(ITestOutputHelper output)
     /// PP845: THE SPELLING WAS THE CHECK AND IT SHOULD NOT HAVE BEEN. This asked for the exact text
     /// `new PadFeed(phase.Pad)`, so giving the feed a second argument - the console's touchpad -
     /// broke a check about which SINK the pad pushes at. That is PP844's finding one file over: a
-    /// check keyed on furniture rather than on its subject. What it asks now is that the first
-    /// argument is the phase's sink, whatever follows it.
+    /// check keyed on furniture rather than on its subject.
+    ///
+    /// PP850: AND IT ASKS THROUGH THE READER NOW. Dropping the closing paren from the literal was
+    /// the one-line fix and it is a substring test: `new PadFeed(phase.Pad` also matches
+    /// `phase.Padding`. CCall.CalledWith requires the named argument to END where an argument ends,
+    /// so what is asserted is the first argument and not a prefix of one.
     /// </summary>
     [Fact]
     public void ThePadPushesAtThePortsSinkAndNotAtTheCSession()
@@ -177,8 +181,11 @@ public class StreamPhaseFlipTests(ITestOutputHelper output)
 
         string code = DeadAssertions.CodeOnly(File.ReadAllText(path));
 
-        Assert.Contains("new PadFeed(phase.Pad", code, StringComparison.Ordinal);
-        Assert.DoesNotContain("new PadFeed(session", code, StringComparison.Ordinal);
+        Assert.True(
+            CCall.CalledWith(code, "new PadFeed", "phase.Pad"),
+            "the pad is not constructed on the phase's sink");
+
+        Assert.False(CCall.CalledWith(code, "new PadFeed", "session"));
     }
 
     /// <summary>

@@ -322,9 +322,15 @@ public class HapticsPlayerTests(ITestOutputHelper output)
         {
             string code = CCall.Code(File.ReadAllText(run));
 
-            Assert.Contains("phase.Haptics.Arm(pad", code, StringComparison.Ordinal);
-            Assert.Contains("phase.Haptics.Tick()", code, StringComparison.Ordinal);
-            Assert.Contains("phase.Haptics.Disarm()", code, StringComparison.Ordinal);
+            // PP850: the arm is asked as a callee and its FIRST argument, so the intensity
+            // argument beside it - and any third the setting screen adds - is nobody's business
+            // here. `phase.Haptics.Arm(pad` alone would also match a `padding` local.
+            Assert.True(
+                CCall.CalledWith(code, "phase.Haptics.Arm", "pad"),
+                "the run does not arm the player on the pad it opened");
+
+            Assert.True(CCall.Happens(code, "phase.Haptics.Tick()"));
+            Assert.True(CCall.Happens(code, "phase.Haptics.Disarm()"));
             Assert.Contains("HapticsPlayer.Interval", code, StringComparison.Ordinal);
         }
     }

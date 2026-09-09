@@ -25,7 +25,6 @@
 
 ## Block G — Test discipline
 
-- 📋 **PP850** (deps: PP386 ✅, PP845 ✅) **a call-shaped check names the whole argument list, so an added argument breaks checks about something else** — PP845 gave PadFeed a second parameter and two checks went red, about the sink and the seam; CCall fixed the terminator and the list is the third spelling. → §PP850
 - 📋 **PP852** (deps: PP847 ✅) **RawBody reads a block-commented function as a real one, and nothing checks that the C contains none** — PP847 measured zero by hand with a throwaway script and wrote it into a docstring; the two callers needing raw text would read a commented-out definition as real. → §PP852
 
 ## Block H — Performance and telemetry
