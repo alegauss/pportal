@@ -21,7 +21,7 @@ public static class ChiakiRender
     internal const string Library = "chiaki-render";
 
     /// <summary>Must equal CHIAKI_RENDER_ABI in shim/chiaki_render.h. Independent of the shim's.</summary>
-    public const uint ExpectedAbi = 8;
+    public const uint ExpectedAbi = 9;
 
     [DllImport(Library, EntryPoint = "chiaki_render_abi_version", CallingConvention = CallingConvention.Cdecl)]
     public static extern uint AbiVersion();
@@ -566,6 +566,22 @@ public sealed class RenderDevice : IDisposable
     [return: MarshalAs(UnmanagedType.I1)]
     private static extern bool DecodeCopyProbe(
         IntPtr d3d11, int width, int height, int copies, out double microseconds, out int stage);
+
+    /// <summary>
+    /// PP821: the ID3D11Device this renderer holds, for a DECODER to be put on.
+    ///
+    /// chiaki_ffmpeg_decoder_init takes an AVBufferRef hw_device_ctx and builds its own only where
+    /// none is handed in, so a d3d11va decoder told about this device produces textures the
+    /// presenter can wrap - instead of the download to system memory and the upload back.
+    ///
+    /// BORROWED, and the renderer owns it: a caller must not release it and must not outlive the
+    /// device. Zero where there is none.
+    /// </summary>
+    public IntPtr NativeDevice => NativeDevicePointer(Handle);
+
+    [DllImport(ChiakiRender.Library, EntryPoint = "chiaki_render_d3d11_native_device",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr NativeDevicePointer(IntPtr d3d11);
 
     [DllImport(ChiakiRender.Library, EntryPoint = "chiaki_render_tearing_probe",
         CallingConvention = CallingConvention.Cdecl)]

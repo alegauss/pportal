@@ -48,12 +48,21 @@ public sealed class SessionDecoder : IDisposable
     /// <param name="codec">The ChiakiCodec the session negotiated.</param>
     /// <param name="maxFps">The profile's frame rate, which sizes the codec's own buffering.</param>
     /// <param name="hardwareName">One of <see cref="HardwareNames"/>, or empty for software.</param>
-    public SessionDecoder(IntPtr log, int codec, int maxFps, string hardwareName)
+    /// <param name="d3d11Device">
+    /// PP821: the PRESENTER's ID3D11Device, or Zero to let FFmpeg make its own.
+    ///
+    /// Honoured only for d3d11va, and only where the device context builds. A decoder on the
+    /// renderer's device produces textures the presenter can take; one on FFmpeg's own produces
+    /// textures nothing can share, which is the download and the upload back PP821 is about.
+    /// <see cref="OnSharedDevice"/> is which of the two happened.
+    /// </param>
+    public SessionDecoder(IntPtr log, int codec, int maxFps, string hardwareName, IntPtr d3d11Device = default)
     {
         ArgumentNullException.ThrowIfNull(hardwareName);
 
         Requested = hardwareName;
-        handle = DecoderCreate(log, codec, maxFps, hardwareName.Length == 0 ? null : hardwareName, out int error);
+        handle = DecoderCreate(
+            log, codec, maxFps, hardwareName.Length == 0 ? null : hardwareName, d3d11Device, out int error);
 
         if (handle == IntPtr.Zero)
         {
@@ -62,6 +71,16 @@ public sealed class SessionDecoder : IDisposable
                     + $"{(ChiakiError)error}");
         }
     }
+
+    /// <summary>
+    /// PP821: whether this decoder is decoding on the device it was handed.
+    ///
+    /// False is the slower path and not a failure: FFmpeg made its own device, so a frame has to
+    /// come down to system memory and go back up. A run that asked for the share and reads false
+    /// here is a machine whose device context would not build, which is worth telling apart from
+    /// one that never asked.
+    /// </summary>
+    public bool OnSharedDevice => handle != IntPtr.Zero && DecoderOnSharedDevice(handle);
 
     /// <summary>The handle, for the session that borrows it.</summary>
     public IntPtr Handle
@@ -269,11 +288,28 @@ public sealed class SessionDecoder : IDisposable
     /// counting none of the rest - so these are frames nobody will ever see, which is exactly what
     /// frames_dropped means, and this is the only place the number exists.
     /// </param>
+    /// <param name="Texture">
+    /// PP821: the ID3D11Texture2D the decoder wrote, or Zero where the planes are the route.
+    ///
+    /// Non-zero only where the decoder is on the presenter's device and the frame is
+    /// AV_PIX_FMT_D3D11. Then the two planes above are empty and this is the frame: no download to
+    /// system memory, no upload back, and about 25 microseconds of GPU copy in place of 2253.
+    /// </param>
+    /// <param name="Slice">
+    /// Which surface of the decoder's array this frame is. A d3d11va decoder hands back one
+    /// texture of a pool of eight and says the index; presenting slice zero every time would show
+    /// whichever frame happened to be in the first slot.
+    /// </param>
     public readonly record struct DecodedFrame(
         int Width, int Height,
         IntPtr Luma, int LumaStride,
         IntPtr Chroma, int ChromaStride,
-        int Format, int FramesLost, int Superseded);
+        int Format, int FramesLost, int Superseded,
+        IntPtr Texture, int Slice)
+    {
+        /// <summary>PP821: whether this frame is a texture rather than a pair of planes.</summary>
+        public bool IsTexture => Texture != IntPtr.Zero;
+    }
 
     /// <summary>
     /// Take the next decoded frame, or false where there is none or it is not NV12.
@@ -293,14 +329,17 @@ public sealed class SessionDecoder : IDisposable
         if (handle == IntPtr.Zero)
             return false;
 
-        bool nv12 = DecoderPull(
+        bool taken = DecoderPull(
             handle, out int w, out int h,
             out IntPtr luma, out int lumaStride,
             out IntPtr chroma, out int chromaStride,
-            out int format, out int lost, out int superseded);
+            out int format, out int lost, out int superseded,
+            out IntPtr texture, out int slice);
 
-        frame = new DecodedFrame(w, h, luma, lumaStride, chroma, chromaStride, format, lost, superseded);
-        return nv12;
+        frame = new DecodedFrame(
+            w, h, luma, lumaStride, chroma, chromaStride, format, lost, superseded, texture, slice);
+
+        return taken;
     }
 
     public void Dispose()
@@ -331,12 +370,18 @@ public sealed class SessionDecoder : IDisposable
         out int w, out int h,
         out IntPtr luma, out int lumaStride,
         out IntPtr chroma, out int chromaStride,
-        out int format, out int lost, out int superseded);
+        out int format, out int lost, out int superseded,
+        out IntPtr texture, out int slice);
 
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_decoder_create",
         CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
     private static extern IntPtr DecoderCreate(
-        IntPtr log, int codec, int maxFps, string? hardwareName, out int error);
+        IntPtr log, int codec, int maxFps, string? hardwareName, IntPtr d3d11Device, out int error);
+
+    [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_decoder_on_shared_device",
+        CallingConvention = CallingConvention.Cdecl)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    private static extern bool DecoderOnSharedDevice(IntPtr decoder);
 
     [DllImport(ChiakiNative.Library, EntryPoint = "chiaki_shim_decoder_free",
         CallingConvention = CallingConvention.Cdecl)]

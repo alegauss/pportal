@@ -19,6 +19,15 @@
 
 #include <libavutil/frame.h>
 #include <libavutil/hwcontext.h>
+/* PP821: the d3d11va device context's own layout, which is how a caller's ID3D11Device is put into
+ * one. COBJMACROS first, for the same reason chiaki_render.c defines it: the C names for the COM
+ * methods - ID3D11Device_AddRef here - exist only with it, and the only call this file makes is
+ * that one, so it adds no link dependency.
+ *
+ * Windows-only by construction, which is a non-goal of this port rather than a guard: the header
+ * ships with every FFmpeg built for this target and there is no other target. */
+#define COBJMACROS
+#include <libavutil/hwcontext_d3d11va.h>
 #include <libavutil/pixdesc.h>
 
 #include <pb_decode.h>
@@ -491,6 +500,15 @@ typedef struct chiaki_shim_decoder_t
 	bool started;
 
 	/*
+	 * PP821: whether this decoder was told to decode on the PRESENTER's device.
+	 *
+	 * The whole of what removes the round trip depends on it - a texture on somebody else's device
+	 * is one the presenter cannot wrap - and "the device context would not build" is a slower path
+	 * rather than a failed session, so a run has to be able to say which it got.
+	 */
+	bool on_shared_device;
+
+	/*
 	 * PP700: ONE frame is held, and the next pull frees it.
 	 *
 	 * chiaki_ffmpeg_decoder_pull_frame hands over an AVFrame the caller owns. Handing its plane
@@ -636,16 +654,68 @@ CHIAKI_SHIM_API void *chiaki_shim_session_create(void *connect_info, void *log, 
  * libchiaki for software. The C refuses a name it has no device for, which is how a machine
  * without the driver says so rather than decoding silently on the CPU.
  */
+/*
+ * PP821: an AVBufferRef d3d11va device context wrapping a device somebody else made.
+ *
+ * THE VENDORED INIT ALREADY HAS THIS DOOR, which §PP821 said it did not: ffmpegdecoder.c takes an
+ * AVBufferRef and line 99 reads `if(!decoder->hw_device_ctx && av_hwdevice_ctx_create(...))` - it
+ * builds its own only when none was handed in. So no copy of that function and no patch to it;
+ * what was missing is the buffer.
+ *
+ * THE REFERENCE IS TAKEN AND THE CALLER STILL OWNS THE DEVICE. AddRef here and the context's own
+ * free releases it, which is the contract av_hwdevice_ctx_alloc documents for a device the caller
+ * supplies - without it the decoder holds a pointer whose owner may go away first.
+ *
+ * NULL on any refusal, which the caller reads as "decode where you would have anyway": a device
+ * context that could not be built is a slower path and not a failed session.
+ */
+static AVBufferRef *chiaki_shim_d3d11va_device_ctx(void *d3d11_device)
+{
+	AVBufferRef *ctx = NULL;
+	AVHWDeviceContext *device = NULL;
+	AVD3D11VADeviceContext *d3d11 = NULL;
+
+	if(!d3d11_device)
+		return NULL;
+
+	ctx = av_hwdevice_ctx_alloc(AV_HWDEVICE_TYPE_D3D11VA);
+	if(!ctx)
+		return NULL;
+
+	device = (AVHWDeviceContext *)ctx->data;
+	d3d11 = (AVD3D11VADeviceContext *)device->hwctx;
+
+	d3d11->device = (ID3D11Device *)d3d11_device;
+	ID3D11Device_AddRef(d3d11->device);
+
+	if(av_hwdevice_ctx_init(ctx) < 0)
+	{
+		av_buffer_unref(&ctx);
+		return NULL;
+	}
+
+	return ctx;
+}
+
 CHIAKI_SHIM_API void *chiaki_shim_decoder_create(
-		void *log, int32_t codec, int32_t max_fps, const char *hw_decoder_name, int32_t *error_out)
+		void *log, int32_t codec, int32_t max_fps, const char *hw_decoder_name,
+		void *d3d11_device, int32_t *error_out)
 {
 	chiaki_shim_log *log_self = (chiaki_shim_log *)log;
 	chiaki_shim_decoder *self = (chiaki_shim_decoder *)calloc(1, sizeof(chiaki_shim_decoder));
+	AVBufferRef *shared = NULL;
 
 	if(error_out)
 		*error_out = (int32_t)CHIAKI_ERR_MEMORY;
 	if(!self)
 		return NULL;
+
+	/* Only where the caller asked for d3d11va: a vulkan or cuda decoder handed a D3D11 device
+	 * context would be told about a device its own frames cannot live on. */
+	if(hw_decoder_name && strcmp(hw_decoder_name, "d3d11va") == 0)
+		shared = chiaki_shim_d3d11va_device_ctx(d3d11_device);
+
+	self->on_shared_device = shared != NULL;
 
 	ChiakiErrorCode err = chiaki_ffmpeg_decoder_init(
 			&self->decoder,
@@ -653,9 +723,13 @@ CHIAKI_SHIM_API void *chiaki_shim_decoder_create(
 			(ChiakiCodec)codec,
 			(unsigned int)(max_fps > 0 ? max_fps : 60),
 			(hw_decoder_name && hw_decoder_name[0]) ? hw_decoder_name : NULL,
-			NULL,
+			shared,
 			chiaki_shim_frame_available,
 			self);
+
+	/* The init took its own reference where it wanted one, so this one is spent either way. */
+	if(shared)
+		av_buffer_unref(&shared);
 
 	if(error_out)
 		*error_out = (int32_t)err;
@@ -668,6 +742,19 @@ CHIAKI_SHIM_API void *chiaki_shim_decoder_create(
 
 	self->started = true;
 	return self;
+}
+
+/*
+ * PP821: whether the decoder is on the device it was handed, which decides the frame's route.
+ *
+ * False is not a failure and is why this is asked rather than assumed: a machine whose device
+ * context would not build decodes on FFmpeg's own device and pays the round trip, which is what
+ * every run did before this line.
+ */
+CHIAKI_SHIM_API bool chiaki_shim_decoder_on_shared_device(void *decoder)
+{
+	chiaki_shim_decoder *self = (chiaki_shim_decoder *)decoder;
+	return self && self->on_shared_device;
 }
 
 CHIAKI_SHIM_API void chiaki_shim_decoder_free(void *decoder)
@@ -702,13 +789,20 @@ CHIAKI_SHIM_API bool chiaki_shim_decoder_pull(
 		int32_t *out_w, int32_t *out_h,
 		uint8_t **out_luma, int32_t *out_luma_stride,
 		uint8_t **out_chroma, int32_t *out_chroma_stride,
-		int32_t *out_format, int32_t *out_lost, int32_t *out_superseded)
+		int32_t *out_format, int32_t *out_lost, int32_t *out_superseded,
+		void **out_texture, int32_t *out_slice)
 {
 	chiaki_shim_decoder *self = (chiaki_shim_decoder *)decoder;
 	ChiakiFfmpegFrame pulled;
 	int32_t lost = 0;
 	AVFrame *shown;
 	int64_t consumed;
+
+	/* PP821: cleared first, so a caller reads "no texture this time" rather than the last one. */
+	if(out_texture)
+		*out_texture = NULL;
+	if(out_slice)
+		*out_slice = 0;
 
 	if(out_lost)
 		*out_lost = 0;
@@ -762,6 +856,32 @@ CHIAKI_SHIM_API bool chiaki_shim_decoder_pull(
 		*out_w = self->held->width;
 	if(out_h)
 		*out_h = self->held->height;
+
+	/*
+	 * PP821: A D3D11 FRAME ON OUR OWN DEVICE GOES OUT AS A TEXTURE, and takes no trip at all.
+	 *
+	 * The branch below used to be on hw_frames_ctx alone, so every hardware frame came down to
+	 * system memory - and the file's reason was AV_PIX_FMT_VULKAN, which a D3D11 presenter cannot
+	 * share an image with. That reason never applied to d3d11va, whose frame is already an
+	 * ID3D11Texture2D; what stopped it being handed over was the DEVICE, and
+	 * chiaki_shim_decoder_create now puts the decoder on the presenter's.
+	 *
+	 * data[0] is the texture and data[1] is the array index, which is how a d3d11va frame carries
+	 * one surface of a pool of eight. Both go out and the planes stay empty: a caller that reads
+	 * out_texture takes this route, and one that does not gets the download it always got.
+	 *
+	 * The frame is HELD until the next pull, which is the borrow this decoder already documents -
+	 * so the texture the caller copies from is alive for exactly as long as the planes were.
+	 */
+	if(self->on_shared_device && self->held->format == AV_PIX_FMT_D3D11 && out_texture)
+	{
+		*out_texture = self->held->data[0];
+
+		if(out_slice)
+			*out_slice = (int32_t)(intptr_t)self->held->data[1];
+
+		return true;
+	}
 
 	/*
 	 * A hardware frame comes DOWN first. Its format is the device's - AV_PIX_FMT_VULKAN on a

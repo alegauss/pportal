@@ -296,7 +296,29 @@ public static class StreamRun
             return 1;
         }
 
-        using var decoder = new SessionDecoder(log.Handle, codec: 0, maxFps: 60, decoderName);
+        // PP821: THE RENDERER FIRST, because the decoder is told which device to decode on.
+        //
+        // It used to be opened inside Draw, which runs after this. chiaki_ffmpeg_decoder_init takes
+        // an AVBufferRef hw_device_ctx and builds its own only where none is handed in, so a
+        // d3d11va decoder given THIS device produces textures the presenter can wrap - instead of
+        // the download to system memory and the upload back that every frame paid for.
+        //
+        // A machine with no D3D11 device still decodes: the pointer is Zero, FFmpeg makes its own,
+        // and the run says so rather than refusing.
+        using RenderDevice? renderer = ChiakiRender.CreateD3d11();
+
+        if (renderer is null)
+        {
+            Say(window, model, "No D3D11 device.");
+            return 1;
+        }
+
+        using var decoder = new SessionDecoder(
+            log.Handle, codec: 0, maxFps: 60, decoderName, renderer.NativeDevice);
+
+        Console.WriteLine(
+            $"[stream] decoder: {decoder.Requested.Length switch { 0 => "software", _ => decoder.Requested }}, "
+                + $"on the renderer's device {decoder.OnSharedDevice}");
 
         // PP783: THE PORT DRIVES THE STREAM, and this is the path that installs it.
         //
@@ -415,7 +437,7 @@ public static class StreamRun
         var started = DateTimeOffset.UtcNow;
         var clock = System.Diagnostics.Stopwatch.StartNew();
 
-        int drawn = Draw(decoder, model, window, quit, stopping);
+        int drawn = Draw(decoder, renderer, model, window, quit, stopping);
 
         clock.Stop();
         session.Stop();
@@ -600,17 +622,17 @@ public static class StreamRun
     /// negotiates that. One built from the connect info's request would be right until the first
     /// downgrade and silently wrong after it.
     /// </remarks>
+    /// <param name="device">
+    /// PP821: the renderer, opened by the CALLER now rather than here.
+    ///
+    /// It moved up one frame because the DECODER has to be told about its device, and the decoder
+    /// is built before this loop runs. Same thread either way - this is called straight from the
+    /// pump - so nothing about the immediate context's affinity changes.
+    /// </param>
     private static int Draw(
-        SessionDecoder decoder, StreamOverlayViewModel model, Window window,
+        SessionDecoder decoder, RenderDevice device, StreamOverlayViewModel model, Window window,
         ManualResetEventSlim quit, CancellationToken stopping)
     {
-        using RenderDevice? device = ChiakiRender.CreateD3d11();
-        if (device is null)
-        {
-            Say(window, model, "No D3D11 device.");
-            return 0;
-        }
-
         SharedSurface? surface = null;
         VideoPresenter? presenter = null;
         StreamPresentation? presentation = null;
@@ -679,9 +701,14 @@ public static class StreamRun
                 // compose a half-written one.
                 VideoPresenter drawing = presenter;
 
+                // PP821: the texture where the decoder handed one over, and the planes where it
+                // did not. Both end in the same render - what differs is whether the frame made a
+                // trip through system memory to get here, which on d3d11va was 2253us of it.
                 bool shown = presentation?.Present(
-                    () => drawing.Render(
-                        frame.Luma, frame.LumaStride, frame.Chroma, frame.ChromaStride, out _)) ?? false;
+                    () => frame.IsTexture
+                        ? drawing.RenderTexture(frame.Texture, frame.Slice, out _)
+                        : drawing.Render(
+                            frame.Luma, frame.LumaStride, frame.Chroma, frame.ChromaStride, out _)) ?? false;
 
                 // The client's two arms, one per frame: presented, or discarded. A frame that
                 // reached the presenter and did not reach the screen is the eviction PP76 reads.

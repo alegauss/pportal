@@ -171,7 +171,7 @@ export const frameTrip = {
     {
       stage: "decode",
       tag: "your GPU",
-      note: "H.264 or HEVC through d3d11va, Vulkan or CUDA, chosen from what the machine reports rather than from what the vendor is.",
+      note: "H.264 or HEVC through d3d11va, Vulkan or CUDA, chosen from what the machine reports rather than from what the vendor is. On d3d11va the decoder is put on the renderer's own device, so the frame is never copied out to system memory and back to be shown.",
     },
     {
       stage: "present",

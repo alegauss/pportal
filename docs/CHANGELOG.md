@@ -90,6 +90,7 @@
 - ✅ **PP700** **every piece of the video path exists and none is joined to a session, so a stream decodes and shows nothing** — A window shows a PS5's home screen: decoder on the session, a renderer held between frames, the shared surface WPF takes, and the D3DImage bound and empty since PP10.
 - ✅ **PP701** **the host shows a console's picture and sends it no input, so nothing can be played on it** — One SDL pad opened, translated from Controller::HandleButtonEvent and pushed on change; a real session sent 1210 states and a person played on it.
 - ✅ **PP836** **the ported fullscreen state machine has no consumer, so nothing in the app can go fullscreen** — F11 toggles as handleShortcut does and alt+enter as Windows does, driving PP11's state machine onto the run's window: the minimum pinned, and adjustable a second after.
+- ✅ **PP821** **the shim downloads every hardware frame to system memory and uploads it back, including d3d11va's own texture** — The decoder is put on the presenter's device and the frame goes over as a texture: 931 decoded, 911 shown, the round trip gone and the picture unchanged.
 
 ## Block D — Screens
 

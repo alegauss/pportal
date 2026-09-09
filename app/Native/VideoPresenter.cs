@@ -81,6 +81,34 @@ public sealed class VideoPresenter : IDisposable
         return ok;
     }
 
+    /// <summary>
+    /// PP821: render one frame that is already a texture on this presenter's device.
+    ///
+    /// WHAT IT REPLACES IS A ROUND TRIP. <see cref="Render"/> takes planes because the decoder's
+    /// frame used to live on FFmpeg's own device, where nothing here could reach it: every frame
+    /// came down to system memory - 2253 microseconds on d3d11va, 13.5 percent of a 60fps interval
+    /// - and went back up. A decoder created with the renderer's device produces textures this can
+    /// copy in place, about 25 microseconds by PP828's measurement.
+    ///
+    /// A COPY AND NOT A WRAP, which is PP826's finding: the decoded surface is D3D11_BIND_DECODER
+    /// with no shader binding, so nothing can sample it where it lies.
+    /// </summary>
+    /// <param name="texture">The ID3D11Texture2D the decoder wrote.</param>
+    /// <param name="slice">Which surface of its array this frame is.</param>
+    /// <param name="stage">Which step failed, where one did.</param>
+    public bool RenderTexture(IntPtr texture, int slice, out RenderStage stage)
+    {
+        if (handle == IntPtr.Zero)
+        {
+            stage = RenderStage.NoDevice;
+            return false;
+        }
+
+        bool ok = VideoFrameTexture(handle, texture, slice, out int raw);
+        stage = (RenderStage)raw;
+        return ok;
+    }
+
     public void Dispose()
     {
         if (handle == IntPtr.Zero)
@@ -108,5 +136,11 @@ public sealed class VideoPresenter : IDisposable
     [return: MarshalAs(UnmanagedType.I1)]
     private static extern bool VideoFrame(
         IntPtr video, IntPtr luma, int lumaStride, IntPtr chroma, int chromaStride, out int stage);
+
+    [DllImport(ChiakiRender.Library, EntryPoint = "chiaki_render_video_frame_texture",
+        CallingConvention = CallingConvention.Cdecl)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    private static extern bool VideoFrameTexture(
+        IntPtr video, IntPtr texture, int slice, out int stage);
 }
 

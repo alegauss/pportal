@@ -36,7 +36,8 @@ extern "C" {
 #endif
 
 /** Bumped whenever an exported signature here changes meaning. Independent of CHIAKI_SHIM_ABI. */
-#define CHIAKI_RENDER_ABI 8
+/* PP821: 9 - the native device accessor and the texture frame entry. */
+#define CHIAKI_RENDER_ABI 9
 
 CHIAKI_RENDER_API uint32_t chiaki_render_abi_version(void);
 
@@ -78,6 +79,19 @@ CHIAKI_RENDER_API bool chiaki_render_d3d11_limits(
 
 /** The API version libplacebo reports for the device, so a log line can name it. */
 CHIAKI_RENDER_API const char *chiaki_render_d3d11_description(void *d3d11);
+
+/**
+ * PP821: the ID3D11Device this renderer holds, as an opaque pointer.
+ *
+ * For the one caller that has to put a DECODER on the same device: ffmpegdecoder.c's init takes an
+ * AVBufferRef hw_device_ctx and builds its own only when none is handed in, so a d3d11va decoder
+ * told about this device produces textures the presenter can wrap - instead of the download to
+ * system memory and the upload back that PP821 is about.
+ *
+ * NULL where there is no device. The pointer is BORROWED and is valid for as long as the renderer
+ * is: whoever takes it must not release it, and must not outlive it.
+ */
+CHIAKI_RENDER_API void *chiaki_render_d3d11_native_device(void *d3d11);
 
 /**
  * PP131: the hop PP9 accepted a cost for, built.
@@ -588,6 +602,25 @@ CHIAKI_RENDER_API bool chiaki_render_video_frame(
 		const uint8_t *luma, int32_t luma_stride,
 		const uint8_t *chroma, int32_t chroma_stride,
 		int32_t *out_stage);
+
+/**
+ * PP821: the same frame arriving as the texture the decoder wrote, with no trip through RAM.
+ *
+ * The entry above exists because the decoder's frame used to live on FFmpeg's own device, where
+ * nothing here could reach it: it came down with av_hwframe_transfer_data - 2253us a frame on
+ * d3d11va - and went back up with UpdateSubresource. A decoder created with
+ * chiaki_render_d3d11_native_device decodes on THIS device, so the texture can be copied straight
+ * into the presenter's own.
+ *
+ * A COPY AND NOT A WRAP: PP826 read the bind flags and the decoded surface is D3D11_BIND_DECODER
+ * with no BIND_SHADER_RESOURCE, so a shader cannot sample it where it lies. PP828 priced the copy
+ * at about 25us against the 2253 it replaces.
+ *
+ * `slice` is the array index the frame carries - a d3d11va decoder hands back one texture of an
+ * array of eight - and copying zero every time would present whichever frame was in the first slot.
+ */
+CHIAKI_RENDER_API bool chiaki_render_video_frame_texture(
+		void *video, void *texture, int32_t slice, int32_t *out_stage);
 
 #ifdef __cplusplus
 }

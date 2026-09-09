@@ -8,6 +8,9 @@
 #define COBJMACROS
 #include <d3d11.h>
 #include <d3d9.h>
+/* PP821: ID3D10Multithread lives here, and a D3D11 device answers a QueryInterface for it. It is
+ * what a device shared with a hardware DECODER has to have on - see the note on the accessor. */
+#include <d3d10.h>
 #include <dxgi.h>
 
 #include "chiaki_render.h"
@@ -154,6 +157,57 @@ ID3D11Device *chiaki_render_d3d11_device(void *d3d11)
 	if(!self || !self->d3d11)
 		return NULL;
 	return self->d3d11->device;
+#else
+	(void)d3d11;
+	return NULL;
+#endif
+}
+
+/*
+ * PP821: the same pointer, exported, because a DECODER now needs to know where to decode.
+ *
+ * The note above says the accessor exists only for the C++ translation unit beside it, and that was
+ * the whole of its reason until this line. What changed is that the round trip PP821 removes is a
+ * frame crossing devices: ffmpegdecoder.c's init takes an AVBufferRef hw_device_ctx and only builds
+ * its own when none is handed in, so the shim can hand it THIS device and the decoder's textures
+ * land where the presenter can wrap them. That call is in the other library, so the pointer has to
+ * leave this one.
+ *
+ * VOID AND NOT ID3D11Device, so chiaki_render.h stays free of d3d11.h - the header is read by
+ * callers that have no COM at all, and the one place that needs the type casts it back.
+ */
+CHIAKI_RENDER_API void *chiaki_render_d3d11_native_device(void *d3d11)
+{
+#ifdef PL_HAVE_D3D11
+	ID3D11Device *device = chiaki_render_d3d11_device(d3d11);
+	ID3D10Multithread *guard = NULL;
+
+	if(!device)
+		return NULL;
+
+	/*
+	 * PP821: THE DEVICE IS MADE MULTITHREAD-PROTECTED HERE, and handing the pointer out is exactly
+	 * what makes that necessary.
+	 *
+	 * A D3D11 immediate context is not thread-safe. While this device was the presenter's alone,
+	 * one thread used it and nothing was needed; a decoder sharing it puts FFmpeg's decode thread
+	 * on the same context as the draw loop. The first live run of that hung the process with a
+	 * picture on screen - the copy and the render both worked, and the two threads deadlocked over
+	 * the context.
+	 *
+	 * SetMultithreadProtected is what FFmpeg's own hwcontext_d3d11va turns on for a device it
+	 * creates itself, and what it documents a caller-supplied device must have. So it is turned on
+	 * at the boundary rather than at creation: a run that never shares the device pays nothing,
+	 * and one that does cannot forget.
+	 */
+	if(SUCCEEDED(ID3D11Device_QueryInterface(
+			device, &IID_ID3D10Multithread, (void **)&guard)) && guard)
+	{
+		ID3D10Multithread_SetMultithreadProtected(guard, TRUE);
+		ID3D10Multithread_Release(guard);
+	}
+
+	return (void *)device;
 #else
 	(void)d3d11;
 	return NULL;
@@ -1213,42 +1267,19 @@ CHIAKI_RENDER_API uint64_t chiaki_render_video_frames(void *video)
 	return self ? self->frames : 0;
 }
 
-CHIAKI_RENDER_API bool chiaki_render_video_frame(
-		void *video,
-		const uint8_t *luma, int32_t luma_stride,
-		const uint8_t *chroma, int32_t chroma_stride,
-		int32_t *out_stage)
-{
 #ifdef PL_HAVE_D3D11
-	chiaki_render_video *self = (chiaki_render_video *)video;
+
+/*
+ * PP821: everything after the NV12 texture is filled, which both ways of filling it share.
+ *
+ * Extracted rather than duplicated when the texture path arrived: the two entries differ in ONE
+ * step - a repack and an UpdateSubresource against a CopySubresourceRegion - and the sixty lines
+ * of colour, crop and render below are the same picture either way. A second copy of them is a
+ * second place for the console's own encoding to be got wrong.
+ */
+static bool chiaki_render_video_present(chiaki_render_video *self, int32_t *out_stage)
+{
 	struct pl_frame image, target;
-	uint8_t *row;
-	int32_t y;
-
-	if(out_stage)
-		*out_stage = CHIAKI_RENDER_FRAME_NO_DEVICE;
-	if(!self || !luma || !chroma || luma_stride < self->w || chroma_stride < self->w)
-		return false;
-
-	/* Repacked to one pitch, because NV12's subresource is luma rows then chroma rows and an
-	 * AVFrame's two planes have strides of their own. */
-	row = self->scratch;
-	for(y = 0; y < self->h; y++)
-	{
-		memcpy(row, luma + (size_t)y * (size_t)luma_stride, (size_t)self->w);
-		row += self->w;
-	}
-	for(y = 0; y < self->h / 2; y++)
-	{
-		memcpy(row, chroma + (size_t)y * (size_t)chroma_stride, (size_t)self->w);
-		row += self->w;
-	}
-
-	if(out_stage)
-		*out_stage = CHIAKI_RENDER_FRAME_TEXTURE;
-	ID3D11DeviceContext_UpdateSubresource(
-			self->context, (ID3D11Resource *)self->nv12,
-			0, NULL, self->scratch, (UINT)self->w, 0);
 
 	memset(&image, 0, sizeof(image));
 	image.num_planes = 2;
@@ -1311,8 +1342,116 @@ CHIAKI_RENDER_API bool chiaki_render_video_frame(
 	if(out_stage)
 		*out_stage = CHIAKI_RENDER_FRAME_OK;
 	return true;
+}
+
+#endif
+
+CHIAKI_RENDER_API bool chiaki_render_video_frame(
+		void *video,
+		const uint8_t *luma, int32_t luma_stride,
+		const uint8_t *chroma, int32_t chroma_stride,
+		int32_t *out_stage)
+{
+#ifdef PL_HAVE_D3D11
+	chiaki_render_video *self = (chiaki_render_video *)video;
+	uint8_t *row;
+	int32_t y;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_FRAME_NO_DEVICE;
+	if(!self || !luma || !chroma || luma_stride < self->w || chroma_stride < self->w)
+		return false;
+
+	/* Repacked to one pitch, because NV12's subresource is luma rows then chroma rows and an
+	 * AVFrame's two planes have strides of their own. */
+	row = self->scratch;
+	for(y = 0; y < self->h; y++)
+	{
+		memcpy(row, luma + (size_t)y * (size_t)luma_stride, (size_t)self->w);
+		row += self->w;
+	}
+	for(y = 0; y < self->h / 2; y++)
+	{
+		memcpy(row, chroma + (size_t)y * (size_t)chroma_stride, (size_t)self->w);
+		row += self->w;
+	}
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_FRAME_TEXTURE;
+	ID3D11DeviceContext_UpdateSubresource(
+			self->context, (ID3D11Resource *)self->nv12,
+			0, NULL, self->scratch, (UINT)self->w, 0);
+
+	return chiaki_render_video_present(self, out_stage);
 #else
 	(void)video; (void)luma; (void)luma_stride; (void)chroma; (void)chroma_stride;
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_FRAME_NO_DEVICE;
+	return false;
+#endif
+}
+
+/*
+ * PP821: the same frame, arriving as a texture the decoder already wrote.
+ *
+ * WHAT THIS REPLACES IS A ROUND TRIP. The pull used to bring every hardware frame down to system
+ * memory with av_hwframe_transfer_data - 2253us a frame on d3d11va, 13.5 percent of a 60fps
+ * interval - and the entry above pushed it back up with UpdateSubresource. Both halves were paid
+ * for one reason: the decoder's texture lived on FFmpeg's own device and this one could not touch
+ * it. It lives here now, so the frame never leaves the GPU.
+ *
+ * A COPY AND NOT A WRAP, which PP826 settled and PP828 priced. The decoder's surface is
+ * D3D11_BIND_DECODER with no BIND_SHADER_RESOURCE - a DXVA surface a shader cannot read - so
+ * pl_d3d11_wrap would refuse it. CopySubresourceRegion into the texture this presenter already
+ * owns costs about 25 microseconds on this machine, against 2253 for the trip it removes.
+ *
+ * THE SLICE IS THE FRAME'S AND NOT ZERO. A d3d11va decoder hands back one texture of an array of
+ * eight and says which index in data[1]; copying slice zero every time would show whichever frame
+ * happened to be in the first slot.
+ */
+CHIAKI_RENDER_API bool chiaki_render_video_frame_texture(
+		void *video, void *texture, int32_t slice, int32_t *out_stage)
+{
+#ifdef PL_HAVE_D3D11
+	chiaki_render_video *self = (chiaki_render_video *)video;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_FRAME_NO_DEVICE;
+	if(!self || !texture || slice < 0)
+		return false;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_FRAME_TEXTURE;
+
+	/*
+	 * A BOX, AND NOT THE WHOLE SUBRESOURCE, because the two are not the same size. PP826 recorded
+	 * the decoder's surface as 1920x1088 - a decoder rounds to the codec's macroblocks - and this
+	 * presenter's texture is the PICTURE, 1920x1080. A NULL box asks for the source's extent and
+	 * D3D11 refuses a copy that would not fit, which is a black frame and no error anywhere.
+	 *
+	 * Luma coordinates for a planar format: D3D11 takes an NV12 box in luma pixels and brings the
+	 * matching chroma with it, which is why this is not two copies. Both bounds must be even, and
+	 * a picture's are - an odd one would have failed PP700's own size guard long before here.
+	 */
+	{
+		D3D11_BOX box;
+
+		box.left = 0;
+		box.top = 0;
+		box.front = 0;
+		box.right = (UINT)self->w;
+		box.bottom = (UINT)self->h;
+		box.back = 1;
+
+		ID3D11DeviceContext_CopySubresourceRegion(
+				self->context,
+				(ID3D11Resource *)self->nv12, 0, 0, 0, 0,
+				(ID3D11Resource *)texture, (UINT)slice, &box);
+	}
+
+	return chiaki_render_video_present(self, out_stage);
+#else
+	(void)video; (void)texture; (void)slice;
 	if(out_stage)
 		*out_stage = CHIAKI_RENDER_FRAME_NO_DEVICE;
 	return false;

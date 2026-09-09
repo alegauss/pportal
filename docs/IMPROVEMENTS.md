@@ -53,32 +53,6 @@ answer.
 
 ## Block C — Video and input path
 
-### §PP821 The frame that leaves the GPU to arrive where it started
-
-chiaki_shim.c downloads a hardware frame to system memory as NV12 and the presenter
-uploads it back into an ID3D11Texture2D. The branch that decides is one test,
-if(self->held->hw_frames_ctx), so every hardware decoder takes it - written for
-AV_PIX_FMT_VULKAN, which a D3D11 presenter cannot share a texture with.
-
-WHAT IT COSTS IS MEASURED, and only one half of it. spike/decode-path timed
-av_hwframe_transfer_data alone at 2253.1 microseconds a frame for d3d11va - 13.5 percent
-of a 60fps interval. The upload back is not in that number.
-
-THE BRANCH IS NOT THE FIX, which this section used to say it was. Asking the format
-instead leaves a d3d11va frame reaching the `shown->format != AV_PIX_FMT_NV12` refusal
-one line later, so the pull fails and nothing draws at all. The exit hands back plane
-POINTERS; a texture path is a second way out, not a narrower branch.
-
-AND THE TEXTURE IS ON THE WRONG DEVICE. chiaki_ffmpeg_decoder_init calls
-av_hwdevice_ctx_create itself, so the decoder's ID3D11Device is FFmpeg's and the
-presenter's is chiaki_render_d3d11_create's. pl_d3d11_wrap needs one device, and a
-cross-device copy needs D3D11_RESOURCE_MISC_SHARED on a pool FFmpeg creates internally.
-Both roads end in the vendored init a non-goal refuses to patch.
-
-SO THE QUESTION IS WHERE THE DEVICE COMES FROM. Handing one in means the shim opening
-the decoder itself, which spike/decode-path already mirrors - that is the decision, and
-it wants making before more code.
-
 ## Block D — Screens
 
 ## Block E — Windows-only build

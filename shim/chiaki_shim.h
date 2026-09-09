@@ -56,7 +56,8 @@ extern "C" {
  * the one with no symptom: a DLL left behind by an older build exports every name the new
  * assembly imports, and the arguments land in the wrong places quietly.
  */
-#define CHIAKI_SHIM_ABI 47
+/* PP821: 48 - chiaki_shim_decoder_create takes a device and _pull takes two more out params. */
+#define CHIAKI_SHIM_ABI 48
 
 CHIAKI_SHIM_API uint32_t chiaki_shim_abi_version(void);
 
@@ -665,8 +666,25 @@ CHIAKI_SHIM_API void chiaki_shim_session_free(void *session);
  * software. A name the machine has no device for is REFUSED rather than falling back, which is how
  * a missing driver says so instead of decoding on the CPU and looking slow.
  */
+/**
+ * PP821: `d3d11_device` is the PRESENTER's ID3D11Device, or NULL to let FFmpeg make its own.
+ *
+ * THE VENDORED INIT ALREADY TAKES ONE. chiaki_ffmpeg_decoder_init's sixth argument is an
+ * AVBufferRef hw_device_ctx and it builds its own only where none is handed in, so putting the
+ * decoder on the renderer's device needs no copy of that function and no patch to it - which is
+ * what §PP821 was wrong about. Read it with chiaki_render_d3d11_native_device.
+ *
+ * Honoured only for "d3d11va": a vulkan or cuda decoder handed a D3D11 device context would be
+ * told about a device its own frames cannot live on. Where the context will not build the decoder
+ * is created anyway, on FFmpeg's device, which is the slower path rather than a failure -
+ * chiaki_shim_decoder_on_shared_device is how a caller tells the two apart.
+ */
 CHIAKI_SHIM_API void *chiaki_shim_decoder_create(
-		void *log, int32_t codec, int32_t max_fps, const char *hw_decoder_name, int32_t *error_out);
+		void *log, int32_t codec, int32_t max_fps, const char *hw_decoder_name,
+		void *d3d11_device, int32_t *error_out);
+
+/** PP821: whether the decoder above is decoding on the device it was handed. */
+CHIAKI_SHIM_API bool chiaki_shim_decoder_on_shared_device(void *decoder);
 
 /** chiaki_ffmpeg_decoder_fini and the allocation with it. NULL is a no-op. */
 CHIAKI_SHIM_API void chiaki_shim_decoder_free(void *decoder);
@@ -786,13 +804,24 @@ CHIAKI_SHIM_API int32_t chiaki_shim_pixel_format_name(int32_t format, char *buf,
  * so - and counts none of the rest. They are decoded frames nobody will ever see, which is exactly
  * what the C means by frames_dropped, and this subtraction against the callback count is the only
  * place the number exists at all. Without it a caller can infer a total and cannot attribute it.
+ *
+ * PP821: `out_texture` and `out_slice` are the OTHER way out, and the one that costs nothing.
+ *
+ * Filled only where the decoder is on the caller's own device - chiaki_shim_decoder_create's
+ * `d3d11_device` - and the frame is AV_PIX_FMT_D3D11. Then the planes are left empty and the
+ * texture goes over instead: `out_texture` is the ID3D11Texture2D and `out_slice` the array index
+ * within it, which is how a d3d11va frame carries one surface of a pool of eight.
+ *
+ * Passing NULL for `out_texture` asks for the old route on purpose, and gets the download. Both
+ * are borrowed until the next pull, on the same rule as the planes.
  */
 CHIAKI_SHIM_API bool chiaki_shim_decoder_pull(
 		void *decoder,
 		int32_t *out_w, int32_t *out_h,
 		uint8_t **out_luma, int32_t *out_luma_stride,
 		uint8_t **out_chroma, int32_t *out_chroma_stride,
-		int32_t *out_format, int32_t *out_lost, int32_t *out_superseded);
+		int32_t *out_format, int32_t *out_lost, int32_t *out_superseded,
+		void **out_texture, int32_t *out_slice);
 
 /** chiaki_quit_reason_string, which is the sentence a disconnect screen shows. */
 CHIAKI_SHIM_API const char *chiaki_shim_quit_reason_string(int32_t reason);

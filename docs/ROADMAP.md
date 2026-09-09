@@ -13,8 +13,6 @@
 
 ## Block C — Video and input path
 
-- 📋 **PP821** (deps: PP700 ✅) **the shim downloads every hardware frame to system memory and uploads it back, including d3d11va's own texture** — The download was written for vulkan images a D3D11 presenter cannot take, and its branch is on hw_frames_ctx alone, so a d3d11va texture makes the trip too. → §PP821
-
 ## Block D — Screens
 
 ## Block E — Windows-only build
