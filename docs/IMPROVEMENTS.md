@@ -237,6 +237,32 @@ this: both are call-shaped literals and one names an argument list on purpose.
 What a reader needs is a predicate over a callee and a PREFIX of its arguments. Whether
 that belongs in CCall, which reads C, is the question this does not answer.
 
+### §PP852 A premise measured once and guarded by nothing
+
+CFunction.RawBody finds a definition by looking for the name, then the first
+parenthesis, then a brace. Inside a `/* */` comment those three sit exactly as they do
+in code, so a commented-out function is a definition to it - and what saves the `//`
+form is only that the next line's marker interrupts the gap between the parenthesis and
+the brace.
+
+PP847 ANSWERED THIS ONCE, WITH A SCRIPT IT THREW AWAY. Zero block-commented definitions
+across lib/src and shim; sixteen comments holding unbalanced braces, of which two sit
+inside a body and cancel. Both numbers went into a docstring, where CountedClaim cannot
+see them and this tree's own rule says a source comment stays qualitative because no
+gate can check one.
+
+THE PREMISE IS LOAD-BEARING AND THAT IS THE DIFFERENCE. RawBody has two callers, both
+asking about prose the C's author left behind - the commented-out wire field beside the
+tag, and the switch admitting its own shape is wrong. Neither would notice a
+block-commented function arriving in the file it reads; it would simply start answering
+about one.
+
+WHAT WOULD SETTLE IT is a sweep, and it is small: every `/* */` in the swept C, refused
+if it holds a parameter list followed by a brace. The same pass answers the brace
+question, an unbalanced one inside a body being the other half of what stripping made
+safe. Whether it belongs beside CFunction or in a census already walking this C is the
+open choice.
+
 ## Block H — Performance and telemetry
 
 ### §PP46 Two numbers that are easy and get assumed

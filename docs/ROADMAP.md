@@ -29,6 +29,7 @@
 
 - 📋 **PP849** (deps: PP691 ✅, PP844 ✅) **the prose census states its four per-verdict counts in a docstring, and the method deriving them has no caller** — PP844 added a row and hand-corrected two of them; Count(ProseReading) answers all four and nothing calls it, so the census breaks the rule it enforces. → §PP849
 - 📋 **PP850** (deps: PP386 ✅, PP845 ✅) **a call-shaped check names the whole argument list, so an added argument breaks checks about something else** — PP845 gave PadFeed a second parameter and two checks went red, about the sink and the seam; CCall fixed the terminator and the list is the third spelling. → §PP850
+- 📋 **PP852** (deps: PP847 ✅) **RawBody reads a block-commented function as a real one, and nothing checks that the C contains none** — PP847 measured zero by hand with a throwaway script and wrote it into a docstring; the two callers needing raw text would read a commented-out definition as real. → §PP852
 
 ## Block H — Performance and telemetry
 
