@@ -57,6 +57,7 @@
 - ✅ **PP585** **31 C timeout macros and 33 managed waits mirror each other by hand, and nothing says which are meant to agree** — The C names 32 timing macros, not 31: nineteen are followed by a managed constant, thirteen are unported, and four managed waits follow an inline number a same-file macro would mis-join.
 - 🗑 **PP819** **the pad path is SDL2 and nothing else in the port calls it, so one library ships for one job** — abandoned: the port supports every pad SDL's database maps and the PS4 and PS5 pads in particular, so dropping SDL means writing per-device support this port will not write.
 - ✅ **PP845** **PadTranslation writes buttons, triggers and sticks only, so a PS4 or PS5 pad's touchpad and sensors reach no console** — the three touchpad events reach PP129's tracker and sensor updates reach PP130's, scaled by the console's own pad, and the run reports which halves arrived.
+- ✅ **PP846** **the console's haptics reach no motor: HapticsRumble and DualSenseEffects are modelled and neither has a caller** — the fold reaches a motor at last: three strengths averaged every thirty milliseconds, routed by the pad's own vendor and product, and one zero to stop it.
 
 ## Block C — Video and input path
 

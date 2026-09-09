@@ -435,8 +435,31 @@ public static class StreamRun
                     ? $"[stream] pad: {pad.PadName}"
                     : "[stream] no pad - the picture will arrive and nothing will be sent back");
 
+            // PP846: AND THE HAPTICS GET THEIR TARGET, on the thread that found the pad. The player
+            // has been folding and queueing since the phase was built; this is the moment it has
+            // somewhere to send the result. Armed only where a pad was opened, because a target
+            // that answers false on every window is the same as no target and costs a post to the
+            // SDL thread to find out.
+            if (open)
+            {
+                phase.Haptics.Arm(pad, RumbleHapticsIntensity.Normal);
+                Console.WriteLine(
+                    $"[stream] haptics: armed on {pad.PadName}, "
+                        + $"{(pad.Identity.TakesEffectsReport ? "effects report" : "SDL rumble")}");
+            }
+
             return open;
         });
+
+        // PP846: the window that turns folded strengths into rumbles - three frames averaged every
+        // thirty milliseconds, which is the client's own cadence and not a buffer.
+        //
+        // A TIMER AND NOT THE DRAW LOOP, deliberately. Draw runs at the frame rate the console
+        // sends and this has to run whether or not a frame arrived: a stream that stalls with the
+        // motor running is exactly when the single stop matters, and a window driven by frames
+        // would stop firing at the same moment.
+        using var rumbles = new Timer(
+            _ => phase.Haptics.Tick(), null, HapticsPlayer.Interval, HapticsPlayer.Interval);
 
         var started = DateTimeOffset.UtcNow;
         var clock = System.Diagnostics.Stopwatch.StartNew();
@@ -518,6 +541,26 @@ public static class StreamRun
         Console.WriteLine(
             $"[stream] pad halves: {pad.Touched} touch event(s), {pad.Moved} sensor reading(s), "
                 + $"sensors on: {(pad.Sensors.Count == 0 ? "none" : string.Join("+", pad.Sensors.Select(SensorName)))}");
+
+        // PP846: and the other direction, which had no reading at all. Three numbers again, and the
+        // same rule: silence with nothing folded is a stream carrying no haptics, folded with
+        // nothing sent is a pad that never arrived or refused every window, and zero of all three
+        // is the state this task found - a console's rumble decoded into a sink whose methods were
+        // empty. The stop is counted with the rumbles, because a stop IS one.
+        //
+        // READ BEFORE THE DISARM AND NOT AFTER, which the first version of this got wrong: Disarm
+        // drops the target, so a line printed after it says "armed False" about every session
+        // including the ones that rumbled.
+        bool wasArmed = phase.Haptics.Active;
+
+        // And the motor is stopped, which is the one thing that outlives this process if it is
+        // skipped: SDL's rumble expires on its own after five seconds, and a DualSense told through
+        // the effects report has no duration at all.
+        phase.Haptics.Disarm();
+
+        Console.WriteLine(
+            $"[stream] haptics: armed {wasArmed}, {phase.Haptics.Folded} frame(s) folded, "
+                + $"{phase.Haptics.Silent} silent, {phase.Haptics.Sent} rumble(s) sent");
 
         // PP834: and what the wire log holds, where one was asked for. `sent` is the half no
         // capture in this tree ever had - the number that would have ended PP813 in a reading

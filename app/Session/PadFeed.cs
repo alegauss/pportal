@@ -40,7 +40,7 @@ public interface IControllerStateSink
 /// leave the console holding a stale one. The change is the moment there is something new to say -
 /// which is also controllermanager.cpp's rule, and the reason its handlers return a bool.
 /// </summary>
-public sealed class PadFeed : IDisposable
+public sealed class PadFeed : IDisposable, IRumbleTarget
 {
     private readonly PadTranslation translation = new();
     private readonly ChiakiControllerState state = new();
@@ -119,6 +119,72 @@ public sealed class PadFeed : IDisposable
     public IReadOnlyList<int> Sensors { get; private set; } = [];
 
     /// <summary>
+    /// PP846: the open pad's vendor, product and firmware, which decide how a rumble reaches it.
+    ///
+    /// Read at open time and kept, rather than asked per rumble: the answer cannot change while a
+    /// handle is held, and asking SDL on every window would be three calls thirty-three times a
+    /// second for a number that is constant.
+    /// </summary>
+    public PadIdentity Identity { get; private set; }
+
+    /// <summary>
+    /// PP846: one strength to both motors, by whichever route this pad takes.
+    ///
+    /// POSTED TO THE SDL THREAD, which is not a formality. Every controller call in this file runs
+    /// where SDL was started, and this one is called from the haptics window - a timer thread that
+    /// has never touched SDL. Gamepads' own note is that SDL's controller API is not documented as
+    /// thread-safe against its own pump.
+    ///
+    /// A DualSense gets the 47-byte report PP127 built, with the strength as the BYTE PP8 says it
+    /// is - a shift and not a scale, because the Qt client shifts and two clients disagreeing by
+    /// one on every haptic frame is a difference nobody can measure and everybody could argue
+    /// about. Everything else gets SDL's own rumble, which takes the 16-bit value whole.
+    /// </summary>
+    public bool Rumble(ushort strength)
+    {
+        if (sdl is not { Running: true } thread || controller == IntPtr.Zero)
+            return false;
+
+        var took = false;
+
+        bool ran = thread.Invoke(
+            () =>
+            {
+                if (controller == IntPtr.Zero)
+                    return;
+
+                if (Identity.TakesEffectsReport)
+                {
+                    byte amplitude = RumbleRouting.ToDualSenseAmplitude(strength);
+
+                    took = Gamepads.SendEffect(
+                        controller,
+                        DualSenseEffects.Rumble(
+                            amplitude, amplitude, Identity.Firmware, DualSenseRumbleIntensity));
+                }
+                else
+                {
+                    took = Gamepads.Rumble(controller, strength, strength);
+                }
+            },
+            TimeSpan.FromSeconds(1));
+
+        return ran && took;
+    }
+
+    /// <summary>
+    /// The intensity byte the effects report carries beside the rumble, which is not the user's
+    /// rumble-haptics setting and is not a volume.
+    ///
+    /// IT IS AN ATTENUATION AND ZERO IS THE STRONGEST, which is the way round a reader guesses
+    /// wrong. streamsession.cpp initialises ps5_rumble_intensity to 0x00 and maps the OFF case to
+    /// 0x0F - so a port reaching for "0 means none" would send the weakest rumble the pad has and
+    /// call it the default. This port has no screen for the setting yet and sends the client's own
+    /// default, named here rather than passed as a literal for exactly that reason.
+    /// </summary>
+    public const byte DualSenseRumbleIntensity = 0x00;
+
+    /// <summary>
     /// Opens SDL and the first game controller on it, and reports whether a pad is now feeding.
     ///
     /// FALSE IS NOT A FAILURE OF THE SESSION. A machine with no pad plugged in still streams, and
@@ -154,6 +220,9 @@ public sealed class PadFeed : IDisposable
                     // PP845: and its sensors, which produce no events until they are asked to.
                     // The Qt client does this at the same moment for the same reason.
                     Sensors = Gamepads.EnableMotionSensors(opened);
+
+                    // PP846: and which pad this is, which decides how a rumble gets back to it.
+                    Identity = Gamepads.IdentityOf(opened);
                     break;
                 }
             },
@@ -327,6 +396,11 @@ public sealed class PadFeed : IDisposable
         // be that finding one field along - PadFeed's own note calls that shape out.
         Sensors = Gamepads.EnableMotionSensors(opened);
 
+        // PP846: and its identity, for the same reason and the same hazard - a hotplugged DualSense
+        // whose identity was never read is a pad the rumble route sends SDL's own call to, which
+        // it answers by doing nothing.
+        Identity = Gamepads.IdentityOf(opened);
+
         Interlocked.Increment(ref adopted);
     }
 
@@ -347,6 +421,7 @@ public sealed class PadFeed : IDisposable
         controller = IntPtr.Zero;
         PadName = null;
         Sensors = [];
+        Identity = default;
 
         // PP845: and the touches are FORGOTTEN rather than lifted. TouchpadTracker.Forget exists
         // for this exact case and says why: the state it would be stopping touches in belongs to a

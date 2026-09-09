@@ -70,6 +70,38 @@ public readonly record struct SdlEvent(
 public readonly record struct SdlTouch(int Touchpad, int Finger, float X, float Y);
 
 /// <summary>
+/// PP846: the pad, as the numbers that decide how output reaches it.
+/// </summary>
+/// <param name="Vendor">SDL_GameControllerGetVendor. 0x054c is Sony.</param>
+/// <param name="Product">SDL_GameControllerGetProduct, which is what tells a DualSense apart.</param>
+/// <param name="Firmware">
+/// SDL_GameControllerGetFirmwareVersion, and it decides how the rumble bytes are written rather
+/// than being diagnostics: below 0x0224 the values are halved under one enable bit, and from that
+/// version they are sent whole under another. PP127's note says what picking one branch costs -
+/// half strength on half the pads in the world, or nothing at all on the other half.
+/// </param>
+public readonly record struct PadIdentity(ushort Vendor, ushort Product, ushort Firmware)
+{
+    /// <summary>Sony.</summary>
+    public const ushort SonyVendor = 0x054c;
+
+    /// <summary>A DualSense, which is the pad the effects report is for.</summary>
+    public const ushort DualSenseProduct = 0x0ce6;
+
+    /// <summary>And a DualSense Edge, which takes the same report.</summary>
+    public const ushort DualSenseEdgeProduct = 0x0df2;
+
+    /// <summary>
+    /// Whether this pad takes the effects report rather than SDL's own rumble.
+    ///
+    /// Two products and not a range: the Qt client keeps them in two sets, and the Edge is a
+    /// separate entry there because it is a separate device that happens to answer the same report.
+    /// </summary>
+    public bool TakesEffectsReport
+        => Vendor == SonyVendor && Product is DualSenseProduct or DualSenseEdgeProduct;
+}
+
+/// <summary>
 /// PP845: one sensor reading, with the members SDL_ControllerSensorEvent declares.
 /// </summary>
 /// <param name="Kind">One of <see cref="Gamepads.SensorKind"/>'s values.</param>
@@ -414,6 +446,49 @@ public static class Gamepads
     }
 
     /// <summary>
+    /// PP846: which pad this is, as the numbers that decide how a rumble reaches it.
+    ///
+    /// The Qt client keys on (vendor, product) and not on SDL_GameControllerGetType, which is worth
+    /// following rather than improving: the type enum tells a DualSense from an Xbox pad, and what
+    /// decides the ROUTE is whether this exact device takes the 47-byte effects report. A third-party
+    /// pad reporting itself as a PS5 controller would take the type's word for it and get a report
+    /// its firmware does not implement.
+    /// </summary>
+    public static PadIdentity IdentityOf(IntPtr controller)
+        => controller == IntPtr.Zero
+            ? default
+            : new PadIdentity(
+                SdlControllerGetVendor(controller),
+                SdlControllerGetProduct(controller),
+                SdlControllerGetFirmwareVersion(controller));
+
+    /// <summary>
+    /// One strength to both motors, for a pad that is not a DualSense.
+    ///
+    /// SDL's own rumble takes the 16-bit value whole and stops on its own after the duration - which
+    /// PP8 chose deliberately: a session that stopped re-sending has the pad fall silent rather than
+    /// keep buzzing. Called on the SDL thread, like every other controller call here.
+    /// </summary>
+    public static bool Rumble(IntPtr controller, ushort left, ushort right)
+        => controller != IntPtr.Zero
+            && SdlControllerRumble(controller, left, right, RumbleRouting.SdlRumbleDurationMs) == 0;
+
+    /// <summary>
+    /// One effects report to a DualSense, which is the other route.
+    ///
+    /// The report is built by <see cref="DualSenseEffects"/> field by field, and its length is what
+    /// SDL passes to the device - so a buffer of the wrong size is a report the pad ignores rather
+    /// than an error either side reports.
+    /// </summary>
+    public static bool SendEffect(IntPtr controller, byte[] report)
+    {
+        ArgumentNullException.ThrowIfNull(report);
+
+        return controller != IntPtr.Zero
+            && SdlControllerSendEffect(controller, report, report.Length) == 0;
+    }
+
+    /// <summary>
     /// Pushes an event onto SDL's own queue, which is how the pump is exercised on a machine with
     /// no controller plugged in. It is not a stub: the event goes through SDL and comes back out
     /// of SDL, so what it proves is the marshalling and the constants below, against the binary
@@ -622,6 +697,30 @@ public static class Gamepads
         CallingConvention = CallingConvention.Cdecl)]
     [return: MarshalAs(UnmanagedType.I1)]
     private static extern bool SdlControllerGetAttached(IntPtr controller);
+
+    // PP846: the OUTPUT calls, which this file had none of. Gamepads' own summary counted eighteen
+    // entry points and every one was an event, a joystick query or a controller query - two rumble
+    // hints were set before SDL_Init for a call nobody had written.
+    [DllImport(ChiakiNative.Sdl, EntryPoint = "SDL_GameControllerRumble",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern int SdlControllerRumble(
+        IntPtr controller, ushort lowFrequency, ushort highFrequency, uint durationMs);
+
+    [DllImport(ChiakiNative.Sdl, EntryPoint = "SDL_GameControllerSendEffect",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern int SdlControllerSendEffect(IntPtr controller, byte[] data, int size);
+
+    [DllImport(ChiakiNative.Sdl, EntryPoint = "SDL_GameControllerGetVendor",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern ushort SdlControllerGetVendor(IntPtr controller);
+
+    [DllImport(ChiakiNative.Sdl, EntryPoint = "SDL_GameControllerGetProduct",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern ushort SdlControllerGetProduct(IntPtr controller);
+
+    [DllImport(ChiakiNative.Sdl, EntryPoint = "SDL_GameControllerGetFirmwareVersion",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern ushort SdlControllerGetFirmwareVersion(IntPtr controller);
 
     // PP845: SDL_bool and SDL_SensorType, which are an int and an enum over int - so both cross as
     // int rather than through a marshalled bool, and only the return is told it is one byte.

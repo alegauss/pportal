@@ -9,8 +9,6 @@
 
 ## Block B — Native interop
 
-- 📋 **PP846** (deps: PP97 ✅, PP98 ✅, PP127 ✅, PP838 ✅) **the console's haptics reach no motor: HapticsRumble and DualSenseEffects are modelled and neither has a caller** — PP97 and PP98 built the fold and PP127 the 47-byte report; PadFeed only reads a pad, so nothing plays what the stream carries. → §PP846
-
 ## Block C — Video and input path
 
 ## Block D — Screens

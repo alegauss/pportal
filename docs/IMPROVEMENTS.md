@@ -27,30 +27,6 @@ Whatever the right pair is, the dpad path and the mouse path should read it from
 same place - and the reason to write that down now is that the port has just copied all
 three, so it is the moment when the duplication is visible.
 
-### §PP846 A pad that is only an input
-
-Gamepads' own summary says it: eighteen SDL entry points, every one an event, joystick
-or gamecontroller call, and no output among them. PadFeed reads a pad and pushes a
-state. The stream carries haptics the other way and nothing consumes them.
-
-BOTH ANSWERS ARE ALREADY WRITTEN, which is what makes this a wire. PP97 ported the
-haptics-to-rumble fold for pads with no haptic motors; PP98 fixed the wrap that told the
-loudest frame to rumble at zero; PP127 built the 47-byte DualSense effects report field
-by field against the struct's own layout, with the intensity ladder beside it. All
-shipped, all correct, all called by nothing but their own tests.
-
-THE TWO PADS WANT DIFFERENT THINGS and that is the substance rather than a detail. A PS4
-pad has rumble motors, so the fold is the whole answer for it. A PS5 pad has haptic
-actuators and adaptive triggers, and folding the console's haptics to rumble on one
-throws away what the console sent - a worse result than the fold is FOR, and the reason
-PP127 exists at all.
-
-The hint pair is the evidence this was always the plan: Gamepads sets
-SDL_JOYSTICK_HIDAPI_PS4_RUMBLE and its PS5 twin before SDL_Init, because without them a
-pad on USB does not rumble. Two hints set for an output call nobody wrote. A run cannot
-report the gap either, which is the shape PP838 was: the pad works, the picture arrives,
-and the only thing missing is something nobody counted.
-
 ## Block C — Video and input path
 
 ## Block D — Screens

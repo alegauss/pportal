@@ -122,6 +122,20 @@ public sealed class ManagedStreamPhase : IDisposable
     public ManagedControllerStateSink Pad { get; } = new();
 
     /// <summary>
+    /// PP846: the other direction, and it had nowhere to go at all.
+    ///
+    /// audioreceiver.c is used twice in this port and PP797 gave the first one a decoder while
+    /// saying plainly why the second could not have one - a rumble envelope sent to the endpoint
+    /// the game's audio is on. What it needed instead is this: the fold to a rumble strength, the
+    /// window that averages three of them, and a pad to send the result to.
+    ///
+    /// BUILT HERE AND ARMED IN THE RUN, the same split <see cref="Pad"/> has and for the same
+    /// reason - frames arrive from the console before the pad has finished opening, so the player
+    /// exists from construction and queues what it folds until a target shows up.
+    /// </summary>
+    public HapticsPlayer Haptics { get; } = new();
+
+    /// <summary>
     /// PP816: where the sound goes - the engine, and nothing before it.
     ///
     /// PP797's AudioPlayback and the ring behind it stood here and PP820 removed them. Built in the
@@ -288,7 +302,15 @@ public sealed class ManagedStreamPhase : IDisposable
             },
             () => new ManagedVideoReceiver(video, outbound),
             () => sound,
-            () => new ManagedAudioReceiverPair(new NoFrames(), new NoFrames()));
+            // PP846: THE HAPTICS ARM IS NO LONGER A NO-OP, which is the second of PP797's two joins
+            // and the one it deliberately left. Its far side is a pad's motors rather than a
+            // speaker, so what belongs here is not a decoder - it is the fold PP97 wrote and the
+            // routing PP8 wrote, neither of which had a caller.
+            //
+            // The player is a FIELD and not made here, because two things need it: this arm hands
+            // it frames, and the run arms it with the pad once one is open. Same reason Pad's
+            // sender is held rather than passed straight in.
+            () => new ManagedAudioReceiverPair(Haptics, new NoFrames()));
 
         // PP773: AND THE KEYING, which this root passed null for in the commit that wired the
         // arrivals. A bang then reached the handler and was refused at the derive - one wait further

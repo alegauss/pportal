@@ -128,7 +128,7 @@ export const features: FeatureRecord[] = [
             "A device SDL has no mapping for is left out of the list rather than shown with empty rows, because a pad with no bindings gives the screen nothing to draw.",
           ],
           [
-            "Haptics fold to rumble on a pad with no haptic motors. The console sends a stereo haptic stream a DualSense plays as sound, and a controller that cannot play one gets a single strength scaled by your intensity setting instead, which is what a PS4 pad already feels during a PS5 session.",
+            "Haptics fold to rumble, on every pad. The console sends a stereo haptic stream that a DualSense can play through its own speakers; PPortal does not do that yet, and folds the stream to a single rumble strength scaled by your intensity setting instead — which is what a PS4 pad already feels during a PS5 session. A DualSense gets that rumble through its effects report and every other pad through SDL's, three frames averaged at a time so the motor is not told to change speed hundreds of times a second.",
           ],
           [
             "What is hardware stays hardware: adaptive triggers and the touchpad are not emulated on a pad that has neither, though the D-pad can be turned into a finger on the touchpad for the ones without.",
