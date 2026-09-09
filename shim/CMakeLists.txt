@@ -36,12 +36,27 @@ target_compile_definitions(chiaki-shim PUBLIC CHIAKI_SHIM_HAVE_FRAMEPATH)
 # AV parsers exist here so a managed replacement can be held against the C, so that deletion removes
 # what proves the port right.
 #
-# PP623's first step for it, and the frame path's line above is the model exactly. UNCONDITIONAL
-# today, because the three files are still in the build. The deletion turns this into an if() on its
-# option and wraps those wrappers in the define, in the header and the body, and edits no test file -
-# because every differential already asks chiaki_shim_has_takion before it runs, and every one of
-# them compares against tests/oracles/takion.json when the answer is no.
-target_compile_definitions(chiaki-shim PUBLIC CHIAKI_SHIM_HAVE_TAKION)
+# PP623's first step for it, and the frame path's line above is the model exactly.
+#
+# PP841: THE WRAPPERS ARE BEHIND IT NOW, in five regions of the body - the send buffer with the
+# congestion formatter and the MAC, the reorder queue, the v9 parse, version seven's pair, and
+# PP607's loopback harness whole. Twenty-three exports, and the note above said the header would
+# have to move too: it does not. takion.h stays in the tree when takion.c leaves the build, so the
+# declarations still compile and only the link fails - which is why the guard sits around the
+# bodies and the header is untouched.
+#
+# ON BY DEFAULT, because this is the step before the flip and not the flip. PP27's fourth criterion
+# turns it off and removes the nine files from lib/CMakeLists.txt in one commit; what this line
+# buys is that the switch now exists and works, which is provable by configuring with it off.
+#
+# THE EXPORTS GO RATHER THAN STUBBING, which is PP696's choice: chiaki_shim_has_takion is exported
+# either way and answers for the DLL, so a caller who forgot to ask gets a missing symbol instead
+# of a plausible error code. Every differential already asks it and compares against
+# tests/oracles/takion.json when the answer is no, so no test file changes here either.
+option(CHIAKI_SHIM_TAKION_ORACLE "Wrap takion's three so their differentials can run" ON)
+if(CHIAKI_SHIM_TAKION_ORACLE)
+	target_compile_definitions(chiaki-shim PUBLIC CHIAKI_SHIM_HAVE_TAKION)
+endif()
 
 # PP694: libopus, for the encoder oracle. chiaki-lib links Opus and propagates it, but the include
 # directory does not travel - lib/CMakeLists.txt adds it with include_directories(), which is scoped

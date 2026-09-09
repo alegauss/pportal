@@ -25,7 +25,6 @@
 
 - ⏳ **PP27** (deps: PP672 ✅, PP673 ✅, PP674 ✅, PP675 ✅, PP676 ✅, PP677 ✅, PP678 ✅, PP679 ✅, PP680 ✅, PP702 ✅, PP783 ✅, PP784 ✅, PP785 ✅, PP786 ✅) (requires: console) **takion.c is 2007 lines of C over raw sockets and timers, and the whole stream rides on it** — Ten tasks wrote it; four more take the C out. → §PP27
 - 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — chiaki_fec_decode has three callers - frameprocessor.c, the C suite and this port's shim - and gf-complete has a fourth site none of them reach: chiaki_lib_init. → §PP30
-- 📋 **PP841** (deps: PP786 ✅) **the shim's takion wrappers are not behind their define, so the flip that deletes the C cannot be one commit** — The readers are converted and the C suite is guarded, but the twenty-nine exports are scattered over 2500 lines of the shim and not one is wrapped. → §PP841
 
 ## Block G — Test discipline
 

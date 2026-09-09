@@ -148,4 +148,79 @@ public static class ShimTakionShape
 
         return [.. GoneWhenBare.Where(name => header.Contains(name, StringComparison.Ordinal))];
     }
+
+    /// <summary>The body, which is where PP841 put the wrappers behind the define.</summary>
+    public const string BodyRelativePath = @"shim\chiaki_shim.c";
+
+    /// <summary>The body's text, or null outside a checkout.</summary>
+    public static string? ReadBody()
+        => SanitizerSource.LocateRelative(BodyRelativePath) is { } path ? File.ReadAllText(path) : null;
+
+    /// <summary>
+    /// PP841: which of <see cref="GoneWhenBare"/> are DEFINED outside CHIAKI_SHIM_HAVE_TAKION.
+    ///
+    /// The list above was a prediction PP785 could not test, because this tree had never been bare:
+    /// nothing said the wrappers would actually leave, only that they should. This is the join. An
+    /// export named there and defined outside the guard is one the flip would leave behind as an
+    /// undefined symbol, and the failure is a link error in a commit that edits lib/ rather than
+    /// here - a long way from its cause.
+    ///
+    /// THE NESTING IS COUNTED AND NOT MATCHED BY TEXT. Other conditionals sit inside these regions,
+    /// so an #endif is only this guard's when it closes at the depth the guard opened - and reading
+    /// #endif as "the guard ends" would put every later export outside it.
+    /// </summary>
+    /// <param name="body">chiaki_shim.c.</param>
+    public static IReadOnlyList<string> DefinedOutsideTheGuardIn(string body)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+
+        var outside = new List<string>();
+        var depth = 0;
+        var guardDepth = 0;
+        var inside = false;
+
+        foreach (string line in body.Split('\n'))
+        {
+            string text = line.TrimEnd('\r');
+
+            if (text.StartsWith("#if", StringComparison.Ordinal))
+            {
+                depth++;
+
+                if (!inside && text.StartsWith("#ifdef CHIAKI_SHIM_HAVE_TAKION", StringComparison.Ordinal))
+                {
+                    inside = true;
+                    guardDepth = depth;
+                }
+
+                continue;
+            }
+
+            if (text.StartsWith("#endif", StringComparison.Ordinal))
+            {
+                if (inside && depth == guardDepth)
+                    inside = false;
+
+                depth--;
+                continue;
+            }
+
+            if (!text.StartsWith("CHIAKI_SHIM_API", StringComparison.Ordinal) || inside)
+                continue;
+
+            outside.AddRange(GoneWhenBare.Where(name => Defines(text, name)));
+        }
+
+        return outside;
+    }
+
+    /// <summary>
+    /// Whether this definition line is THIS export's and not one whose name contains it.
+    ///
+    /// chiaki_shim_takion_send_buffer_create and _count share a prefix with nothing here, but
+    /// chiaki_shim_reorder_queue_size and _set_drop_strategy would both match a substring test
+    /// against the wrong line the day a name is added. The open bracket is what ends a name.
+    /// </summary>
+    private static bool Defines(string line, string name)
+        => line.Contains(name + "(", StringComparison.Ordinal);
 }

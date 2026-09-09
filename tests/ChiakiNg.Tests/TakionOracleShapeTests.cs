@@ -181,4 +181,80 @@ public class TakionOracleShapeTests(ITestOutputHelper output)
 
         Assert.Throws<EntryPointNotFoundException>(() => Takion.CongestionPacketSize);
     }
+
+    /// <summary>
+    /// PP841: every export the deletion removes is DEFINED behind the define, and this is the join
+    /// that list never had.
+    ///
+    /// GoneWhenBare has been a prediction since PP785 wrote it: nothing said the wrappers would
+    /// actually leave, because the wrappers were unconditional and this tree had never been bare.
+    /// PP841 put them in five regions of the body - the send buffer with the congestion formatter
+    /// and the MAC, the reorder queue, the v9 parse, version seven's pair, and PP607's loopback
+    /// harness whole - and this is what holds the two together.
+    ///
+    /// WHAT IT CATCHES IS AN EXPORT LEFT OUTSIDE, and the reason it is worth a check rather than a
+    /// reading is where that failure surfaces: the flip is a commit that edits lib/CMakeLists.txt,
+    /// so a wrapper still compiled becomes an undefined symbol at link time in a commit whose diff
+    /// contains no C at all. Read here it names itself.
+    ///
+    /// It runs on the WRAPPING side because the definitions are what it reads, and they are in the
+    /// file either way - so this one does not go quiet when the flip lands.
+    /// </summary>
+    [Fact]
+    public void EveryWrapperTheDeletionRemovesIsBehindTheDefine()
+    {
+        if (ShimTakionShape.ReadBody() is not { } body)
+            return;
+
+        IReadOnlyList<string> outside = ShimTakionShape.DefinedOutsideTheGuardIn(body);
+
+        foreach (string one in outside)
+            output.WriteLine($"outside the guard: {one}");
+
+        Assert.True(
+            outside.Count == 0,
+            "these wrappers are defined outside CHIAKI_SHIM_HAVE_TAKION, so the flip that removes "
+                + "the nine library files would leave them as undefined symbols: "
+                + string.Join(", ", outside));
+    }
+
+    /// <summary>
+    /// And the reader is not vacuous: an export moved out of a region is found.
+    ///
+    /// A check over a whole file can pass because it matched nothing at all - the shape PP630
+    /// names - so the same reader is run over a body with one region opened and never closed,
+    /// where everything after it must read as outside.
+    /// </summary>
+    [Fact]
+    public void TheReaderFindsAnExportLeftOutside()
+    {
+        const string body = """
+            #ifdef CHIAKI_SHIM_HAVE_TAKION
+            CHIAKI_SHIM_API int32_t chiaki_shim_takion_packet_mac(void *a)
+            {
+            }
+            #endif
+
+            CHIAKI_SHIM_API void chiaki_shim_takion_close(void *takion)
+            {
+            }
+            """;
+
+        Assert.Equal(
+            ["chiaki_shim_takion_close"], ShimTakionShape.DefinedOutsideTheGuardIn(body));
+
+        // And the nesting is counted rather than matched: an inner conditional's #endif does not
+        // end the guard, which is what would put every later export outside it.
+        const string nested = """
+            #ifdef CHIAKI_SHIM_HAVE_TAKION
+            #ifdef SOMETHING_ELSE
+            #endif
+            CHIAKI_SHIM_API void chiaki_shim_takion_close(void *takion)
+            {
+            }
+            #endif
+            """;
+
+        Assert.Empty(ShimTakionShape.DefinedOutsideTheGuardIn(nested));
+    }
 }

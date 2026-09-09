@@ -2247,6 +2247,27 @@ CHIAKI_SHIM_API bool chiaki_shim_orientation_tracker_read(
 	return true;
 }
 
+/*
+ * PP841: THE TAKION ORACLE STARTS HERE, and this is the first of five regions behind the define.
+ *
+ * PP27's fourth criterion deletes nine library files, and what holds them is this oracle: eleven
+ * takion symbols and seven of reorderqueue's, reached through twenty-three exports. Every reader
+ * of them is already converted - PP785 recorded what the C answers, PP786 guarded the C suite and
+ * gave it a trial flip, and every managed caller asks chiaki_shim_has_takion first, which
+ * OracleGuardCensus holds. What was missing is that the wrappers themselves were unconditional,
+ * so the flip had nothing to switch.
+ *
+ * THE EXPORTS GO RATHER THAN BECOMING STUBS, which is PP696's choice and the right one. §PP841
+ * argued for keeping them answering an error; that is worse, because a caller who forgot the
+ * guard would get a plausible error code instead of a missing symbol. chiaki_shim_has_takion is
+ * exported either way and answers for the DLL, which is what a reader must ask - PP662 records
+ * what reading the header's text instead costs.
+ *
+ * FIVE REGIONS AND NOT TWENTY-THREE BODIES: the wrappers cluster. This one is the send buffer,
+ * the congestion formatter and the packet MAC; the reorder queue is the next.
+ */
+#ifdef CHIAKI_SHIM_HAVE_TAKION
+
 /**
  * PP125: the send buffer, which is what makes takion's retransmission work.
  *
@@ -2417,6 +2438,8 @@ CHIAKI_SHIM_API int32_t chiaki_shim_takion_packet_mac(
 			key_pos, mac_out, mac_old_out);
 }
 
+#endif /* CHIAKI_SHIM_HAVE_TAKION - the send buffer, the congestion formatter and the MAC */
+
 /**
  * chiaki_gkcrypt_decrypt, in place over the caller's buffer.
  *
@@ -2542,6 +2565,9 @@ CHIAKI_SHIM_API bool chiaki_shim_seq_num_32_gt(uint32_t a, uint32_t b)
 {
 	return chiaki_seq_num_32_gt(a, b);
 }
+
+/* PP841: region two - the reorder queue, including the drop callback its create installs. */
+#ifdef CHIAKI_SHIM_HAVE_TAKION
 
 /** As with the log and the session: the library's struct first, the callback beside it. */
 typedef struct chiaki_shim_reorder_queue_t
@@ -2685,6 +2711,8 @@ CHIAKI_SHIM_API void chiaki_shim_reorder_queue_drop(void *queue, uint64_t index)
 	if(self)
 		chiaki_reorder_queue_drop(&self->queue, index);
 }
+
+#endif /* CHIAKI_SHIM_HAVE_TAKION - the reorder queue */
 
 /** The parsed response plus the copy of the text its keys and values point into. */
 typedef struct chiaki_shim_http_t
@@ -2864,6 +2892,11 @@ CHIAKI_SHIM_API uint64_t chiaki_shim_key_state_request_pos(void *state, uint32_t
 	return state ? chiaki_key_state_request_pos((ChiakiKeyState *)state, low, commit) : 0;
 }
 
+/* PP841: region three - the v9 AV parse, alone between the key state's exports and opus's. The
+ * key state itself is NOT in here: chiaki_key_state_* is not one of the nine files' symbols, which
+ * the linker says and a reading of the neighbourhood would have guessed wrong. */
+#ifdef CHIAKI_SHIM_HAVE_TAKION
+
 CHIAKI_SHIM_API int32_t chiaki_shim_takion_v9_av_packet_parse(
 		void *key_state,
 		uint8_t *buf,
@@ -2921,6 +2954,8 @@ CHIAKI_SHIM_API int32_t chiaki_shim_takion_v9_av_packet_parse(
 
 	return (int32_t)CHIAKI_ERR_SUCCESS;
 }
+
+#endif /* CHIAKI_SHIM_HAVE_TAKION - the v9 AV parse */
 
 #ifdef CHIAKI_SHIM_HAVE_OPUS
 /* PP694: opusencoder.c's half of libopus, as the oracle a managed encoder is held to.
@@ -3758,6 +3793,10 @@ CHIAKI_SHIM_API void chiaki_shim_senkusha_run_install(void *session, void *hando
 	chiaki_session_set_senkusha_stop_cb(self, chiaki_shim_senkusha_stop_trampoline, handover);
 }
 
+/* PP841: region four - version seven's parse and its formatter, which go together because the
+ * round trip between them is what the differential asserts. */
+#ifdef CHIAKI_SHIM_HAVE_TAKION
+
 /* PP679: the v7 parse, whose key_state parameter the C declares and never reads.
  *
  * NULL is passed for it deliberately rather than forwarded. The v7 body takes its key position
@@ -3880,6 +3919,8 @@ CHIAKI_SHIM_API int32_t chiaki_shim_takion_v7_av_packet_format_header(
 
 	return (int32_t)err;
 }
+
+#endif /* CHIAKI_SHIM_HAVE_TAKION - version seven's parse and formatter */
 
 /* PP696: the other twelve, and the two statics only they call. The helper goes inside with them -
  * left outside it would be a static nobody calls, which is a warning on the bare build and a
@@ -4668,6 +4709,11 @@ CHIAKI_SHIM_API int32_t chiaki_shim_base64_encode(
 	return (int32_t)chiaki_base64_encode(in, (size_t)in_size, out, (size_t)out_size);
 }
 
+/* PP841: region five and the last - PP607's loopback harness, whole. The struct, the event
+ * callback and the two readers go in with the connect and the close: they exist only to drive it,
+ * and a reader left outside would answer about a handle nothing can create. */
+#ifdef CHIAKI_SHIM_HAVE_TAKION
+
 /* PP607: a takion over loopback, so the receive loop PP601 could not reach has a way in.
  *
  * The whole of it is a sockaddr and a callback. chiaki_takion_connect takes NULL for the socket
@@ -4776,6 +4822,8 @@ CHIAKI_SHIM_API void chiaki_shim_takion_close(void *takion)
 }
 
 
+
+#endif /* CHIAKI_SHIM_HAVE_TAKION - PP607's loopback harness */
 
 /* PP676: feedback.c's serialisers, reachable as an oracle. See the header for why. */
 

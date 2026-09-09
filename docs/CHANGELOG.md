@@ -761,6 +761,7 @@
 - ✅ **PP839** **the capture pump outlives the takion, so a session ending with the microphone open throws and kills the process** — The capture stops when the run returns and a closed takion refuses there: a 20-second run sent 1601 mic packets and ended clean, where the same one crashed before.
 - ✅ **PP837** **no live run has opened the microphone, so nothing says a console accepts the packets the port now formats** — A run with --microphone sent 1601 signed mic packets and the console kept streaming: 828 frames decoded and 807 shown beside them, with the canceller in the path.
 - ✅ **PP840** **opening the microphone makes Windows duck the stream's own audio, so the game the port is playing goes quiet** — The render session's opt-out is asked and reported; Windows 11 26200 accepts it and ducks anyway, so the run says which and the docs name the setting that works.
+- ✅ **PP841** **the shim's takion wrappers are not behind their define, so the flip that deletes the C cannot be one commit** — Five regions of the body carry them behind an option that is on by default: configured off the shim links, exports 25 fewer and still answers the guard.
 
 ## Block G — Test discipline
 

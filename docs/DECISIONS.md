@@ -127,6 +127,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP839** **the capture pump outlives the takion, so a session ending with the microphone open throws and kills the process** — A send reached from a device pump treats a disposed peer as a refusal and never an exception: on that thread a throw is a process exit with no report.
 - ✅ **PP837** **no live run has opened the microphone, so nothing says a console accepts the packets the port now formats** — The mic send is the feedback sequence at fourteen and ten, and a console accepts it signed at key_pos_local exactly as it accepts the data ack at four and eight.
 - ✅ **PP840** **opening the microphone makes Windows duck the stream's own audio, so the game the port is playing goes quiet** — The opt-out belongs on the RENDER session - the capture's answers AUDCLNT_E_WRONG_ENDPOINT_TYPE - and being accepted there is not the same as being obeyed.
+- ✅ **PP841** **the shim's takion wrappers are not behind their define, so the flip that deletes the C cannot be one commit** — The exports go rather than stubbing: a caller who forgot chiaki_shim_has_takion should meet a missing symbol, not a plausible error code it can act on.
 
 ## Block G — Test discipline
 
