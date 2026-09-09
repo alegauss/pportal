@@ -751,6 +751,7 @@
 - ✅ **PP784** **senkusha runs before the stream phase and calls four of takion's exports, so the transport cannot leave with it** — session.c had two arms and a console said they agree at 1454 both ways, so the callback is the only one now and senkusha.c has lost its last caller.
 - ✅ **PP835 (the open, taken off the drawing thread)** **the picture waits on SDL opening a pad, so connecting one after the stream starts freezes the window** — PadFeed.Start is bounded at fifteen seconds and the draw began only once it returned, so the picture stopped while the receiver decoded into a full codec.
 - ✅ **PP824** **the stream's arrivals never set the ack sink, so a live session answers no data message the console sends** — The root hands the arrivals the takion, and two live runs streamed through it: 81 signed acks at key_pos_local, 958 frames drawn, and no teardown where 1170 unsigned ones ended a session.
+- ✅ **PP828** **the copy off the decode surface is known to exist and untimed, so the FFmpeg decision still has no total** — The GPU clock says ~25us a copy - 25.3, 28.9, 25.1 over 64-copy batches - so Media Foundation totals ~775us and the copy is 89 times cheaper than d3d11va's readback.
 
 ## Block G — Test discipline
 

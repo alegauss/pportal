@@ -2,6 +2,7 @@ using ChiakiNg.Native;
 using ChiakiNg.Session;
 using Winwright.InApp;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace ChiakiNg.Tests;
 
@@ -13,7 +14,7 @@ namespace ChiakiNg.Tests;
 /// the port does not have. Reading is how that decision was made and it is not how it should
 /// stand - a backend that does not initialise here would make every screen after it wrong.
 /// </summary>
-public class RenderProbeTests
+public class RenderProbeTests(ITestOutputHelper output)
 {
     /// <summary>
     /// This machine's adapter, or WARP.
@@ -33,6 +34,42 @@ public class RenderProbeTests
     public void TheRenderDllLoadsAndMatchesItsAbi()
     {
         Assert.Equal(ChiakiRender.ExpectedAbi, ChiakiRender.AbiVersion());
+    }
+
+    /// <summary>
+    /// PP828: the copy off a decode surface is timed, and the number is one a clock could produce.
+    ///
+    /// PP826 read the bind flags and found the surface unsampleable, so a copy exists; PP818's
+    /// column has carried its cost as a question mark since. What this holds is not a threshold -
+    /// the number is the machine's - but that the measurement is a measurement: it ran, the GPU
+    /// clock was not disjoint across the batch, and the answer is above zero.
+    ///
+    /// ABOVE ZERO IS THE LOAD-BEARING HALF. CopySubresourceRegion is queued rather than performed,
+    /// so a probe timing the CALL reports tens of nanoseconds and reads as a free copy - which is
+    /// the shape of wrong answer this chain already published once. A zero here means the
+    /// timestamps are not bracketing the work, not that the copy is free.
+    /// </summary>
+    [Fact]
+    public void TheCopyOffADecodeSurfaceIsTimedOnTheGpusOwnClock()
+    {
+        using RenderDevice? device = AnyDevice();
+        Assert.NotNull(device);
+
+        DecodeCopyCost cost = device.ProbeDecodeCopy();
+
+        output.WriteLine($"decode copy: ran={cost.Ran} {cost.Microseconds:F1}us stage={cost.Stage}");
+
+        // A disjoint span is a real answer about this machine rather than a broken probe, so it is
+        // reported and not asserted against - what is asserted is that nothing else stopped it.
+        if (cost.Stage == DecodeCopyStage.Disjoint)
+            return;
+
+        Assert.True(cost.Ran, $"the decode-copy probe stopped at {cost.Stage}");
+        Assert.Equal(DecodeCopyStage.Ok, cost.Stage);
+        Assert.True(
+            cost.Microseconds > 0,
+            "the batch was timed at zero, which is a copy that was queued and never bracketed "
+                + "rather than a copy that is free");
     }
 
     /// <summary>

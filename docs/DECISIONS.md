@@ -117,6 +117,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP812** **the datagram capture taps the C's takion and the port opens its own, so a run without a relay records nothing** — A non-relay datagram capture is the port's own dispatch; the C's tap stays installed and now sees only the ctrl channel.
 - ✅ **PP829** **the relay never carries senkusha's handshake, so a capture through it dies before the session reaches the stream** — The relay carries all three ports a session dials, and each UDP leg keeps its own client so one leg's answers cannot go to another's socket.
 - ✅ **PP824** **the stream's arrivals never set the ack sink, so a live session answers no data message the console sends** — A data ack must be MAC'd at key_pos_local before the stream's root may join it; unsigned, about 1170 of them ended a live session.
+- ✅ **PP828** **the copy off the decode surface is known to exist and untimed, so the FFmpeg decision still has no total** — A queued D3D11 copy is timed with a timestamp pair against a disjoint query, never a Stopwatch: the call answers in nanoseconds and reads as free.
 
 ## Block G — Test discipline
 

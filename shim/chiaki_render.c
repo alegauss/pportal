@@ -835,6 +835,205 @@ static void chiaki_render_frame_fill(uint8_t *plane, uint8_t luma, uint8_t cb, u
 #endif
 
 /*
+ * PP828: what the copy off a decode surface costs, on the clock that can see it.
+ *
+ * PP826 read the bind flags off a Media Foundation decoded frame and found D3D11_BIND_DECODER with
+ * no D3D11_BIND_SHADER_RESOURCE, NV12 at 1920x1088 in an array of eight - so a renderer cannot
+ * sample it where it lies and a copy exists. PP818's column has been "a decode plus a question
+ * mark" since.
+ *
+ * IT IS TIMED HERE AND NOT IN THE C# SPIKE, and that is the decision worth stating. The spike
+ * declares its D3D11 interfaces by hand, counting vtable slots; CreateTexture2D, CreateQuery and
+ * CopySubresourceRegion are three more of those, and a slot counted wrong reports a copy costing
+ * nothing - the exact answer this chain has already been wrong about once. Here the headers count
+ * them.
+ *
+ * THE SOURCE IS BUILT TO THE DESCRIPTION PP826 RECORDED rather than decoded into. A copy's cost is
+ * decided by the two descriptions, the device and the size - not by which component last wrote the
+ * source - so a texture with the same format, extent, array size and bind flags measures the same
+ * copy. What it does NOT measure is a decoder still writing into the slice, which is a pipeline
+ * question rather than this one.
+ *
+ * A GPU CLOCK, BECAUSE CopySubresourceRegion IS QUEUED AND NOT PERFORMED. A Stopwatch around the
+ * call times the queueing and answers in tens of nanoseconds, which reads as a free copy. The pair
+ * of timestamp queries either side, against a disjoint query that says whether the clock ran
+ * steadily, is what actually answers - and a disjoint result is why this can report a refusal
+ * rather than a number it does not believe.
+ *
+ * The copies are timed as a BATCH between one pair of timestamps: a pair per copy would measure the
+ * query as much as the copy, and the mean is what the column wants.
+ */
+CHIAKI_RENDER_API bool chiaki_render_decode_copy_probe(
+		void *d3d11, int32_t width, int32_t height, int32_t copies,
+		double *out_microseconds, int32_t *out_stage)
+{
+#ifdef PL_HAVE_D3D11
+	chiaki_render_d3d11 *placebo = (chiaki_render_d3d11 *)d3d11;
+	ID3D11DeviceContext *context = NULL;
+	ID3D11Texture2D *decoded = NULL;
+	ID3D11Texture2D *sampleable = NULL;
+	ID3D11Query *disjoint = NULL;
+	ID3D11Query *opened = NULL;
+	ID3D11Query *closed = NULL;
+	D3D11_TEXTURE2D_DESC desc;
+	D3D11_QUERY_DESC query;
+	D3D11_QUERY_DATA_TIMESTAMP_DISJOINT spans;
+	UINT64 began = 0;
+	UINT64 ended = 0;
+	bool ok = false;
+	int32_t one;
+
+	if(out_microseconds)
+		*out_microseconds = 0.0;
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_COPY_NO_DEVICE;
+
+	if(!placebo || !placebo->d3d11 || !placebo->d3d11->device)
+		return false;
+
+	/* NV12's chroma plane is half-sized in both directions, so an odd extent has no meaning. */
+	if(width <= 0 || height <= 0 || (width & 1) || (height & 1) || copies <= 0)
+		return false;
+
+	ID3D11Device_GetImmediateContext(placebo->d3d11->device, &context);
+	if(!context)
+		return false;
+
+	/* PP826's own numbers: an array of eight, decoder-bound, and nothing a shader can read. */
+	memset(&desc, 0, sizeof(desc));
+	desc.Width = (UINT)width;
+	desc.Height = (UINT)height;
+	desc.MipLevels = 1;
+	desc.ArraySize = 8;
+	desc.Format = DXGI_FORMAT_NV12;
+	desc.SampleDesc.Count = 1;
+	desc.Usage = D3D11_USAGE_DEFAULT;
+	desc.BindFlags = D3D11_BIND_DECODER;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_COPY_DECODED;
+	if(FAILED(ID3D11Device_CreateTexture2D(placebo->d3d11->device, &desc, NULL, &decoded)))
+		goto done;
+
+	/* And the destination the present path would sample, which is the texture PP700 already
+	 * creates: one slice, shader-bound, DEFAULT usage because pl_d3d11_wrap requires it. */
+	desc.ArraySize = 1;
+	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_COPY_SAMPLEABLE;
+	if(FAILED(ID3D11Device_CreateTexture2D(placebo->d3d11->device, &desc, NULL, &sampleable)))
+		goto done;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_COPY_QUERY;
+
+	memset(&query, 0, sizeof(query));
+	query.Query = D3D11_QUERY_TIMESTAMP_DISJOINT;
+	if(FAILED(ID3D11Device_CreateQuery(placebo->d3d11->device, &query, &disjoint)))
+		goto done;
+
+	query.Query = D3D11_QUERY_TIMESTAMP;
+	if(FAILED(ID3D11Device_CreateQuery(placebo->d3d11->device, &query, &opened)))
+		goto done;
+	if(FAILED(ID3D11Device_CreateQuery(placebo->d3d11->device, &query, &closed)))
+		goto done;
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_COPY_TIMED;
+
+	ID3D11DeviceContext_Begin(context, (ID3D11Asynchronous *)disjoint);
+	ID3D11DeviceContext_End(context, (ID3D11Asynchronous *)opened);
+
+	for(one = 0; one < copies; one++)
+	{
+		/* Slice zero of the array every time. Which slice a decoder would have written is not
+		 * this measurement's question, and rotating them would measure a cache as well. */
+		ID3D11DeviceContext_CopySubresourceRegion(
+				context, (ID3D11Resource *)sampleable, 0, 0, 0, 0,
+				(ID3D11Resource *)decoded, 0, NULL);
+	}
+
+	ID3D11DeviceContext_End(context, (ID3D11Asynchronous *)closed);
+	ID3D11DeviceContext_End(context, (ID3D11Asynchronous *)disjoint);
+
+	/* Flushed, then spun on. The queries answer only once the GPU has reached them, and without
+	 * the flush the batch can sit unsubmitted while this loop asks about it forever. */
+	ID3D11DeviceContext_Flush(context);
+
+	while(ID3D11DeviceContext_GetData(
+			context, (ID3D11Asynchronous *)disjoint, &spans, sizeof(spans), 0) == S_FALSE)
+	{
+		Sleep(0);
+	}
+
+	/* Disjoint means the clock changed rate or stopped during the batch, so the difference below
+	 * is not a duration. Reported as a refusal rather than as a number nobody can act on. */
+	if(spans.Disjoint || spans.Frequency == 0)
+	{
+		if(out_stage)
+			*out_stage = CHIAKI_RENDER_COPY_DISJOINT;
+		goto done;
+	}
+
+	while(ID3D11DeviceContext_GetData(
+			context, (ID3D11Asynchronous *)opened, &began, sizeof(began), 0) == S_FALSE)
+	{
+		Sleep(0);
+	}
+
+	while(ID3D11DeviceContext_GetData(
+			context, (ID3D11Asynchronous *)closed, &ended, sizeof(ended), 0) == S_FALSE)
+	{
+		Sleep(0);
+	}
+
+	if(ended <= began)
+	{
+		if(out_stage)
+			*out_stage = CHIAKI_RENDER_COPY_DISJOINT;
+		goto done;
+	}
+
+	if(out_microseconds)
+	{
+		*out_microseconds =
+				(double)(ended - began) * 1000000.0 / (double)spans.Frequency / (double)copies;
+	}
+
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_COPY_OK;
+	ok = true;
+
+done:
+	if(closed)
+		ID3D11Query_Release(closed);
+	if(opened)
+		ID3D11Query_Release(opened);
+	if(disjoint)
+		ID3D11Query_Release(disjoint);
+	if(sampleable)
+		ID3D11Texture2D_Release(sampleable);
+	if(decoded)
+		ID3D11Texture2D_Release(decoded);
+	if(context)
+		ID3D11DeviceContext_Release(context);
+
+	return ok;
+#else
+	(void)d3d11;
+	(void)width;
+	(void)height;
+	(void)copies;
+	if(out_microseconds)
+		*out_microseconds = 0.0;
+	if(out_stage)
+		*out_stage = CHIAKI_RENDER_COPY_NO_DEVICE;
+	return false;
+#endif
+}
+
+/*
  * PP700: the presenter, which is chiaki_render_frame_nv12 turned into a thing that lives.
  *
  * That function proves one frame and destroys everything it made. A stream cannot: creating a

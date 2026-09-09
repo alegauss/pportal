@@ -98,7 +98,7 @@ on the same `stream.h264` and paced the same way, so the row drops straight into
 
 | paced total per frame | decode | readback | total |
 |---|---|---|---|
-| **Media Foundation** | **~750 µs** | **a GPU-side copy, not yet timed — see PP826** | **≥ ~750 µs** |
+| **Media Foundation** | **~750 µs** | **~25 µs** (PP828) | **~775 µs** |
 | vulkan | ~400 µs | none | ~400 µs |
 | d3d11va | ~300 µs | 2 253 µs | ~2 550 µs |
 | cuda | ~2 100 µs | 793 µs | ~2 900 µs |
@@ -126,7 +126,30 @@ sampleable: NO - a renderer must copy first
 So **a renderer cannot sample the decoder's output**, and there is a copy after all. It is a
 GPU→GPU `CopySubresourceRegion` rather than `d3d11va`'s GPU→system readback, so it should be far
 cheaper than 2 253 µs — but "far cheaper" is the same kind of argument this correction just
-overturned, and it is not timed here. PP826 carries what is left of it.
+overturned, so PP828 timed it.
+
+### PP828 — and the copy, priced
+
+**~25 µs**, three readings of a 64-copy batch: 25.3, 28.9, 25.1. About **89× cheaper** than
+`d3d11va`'s 2 253 µs, which is what a GPU→GPU copy against a GPU→system readback should be — the
+argument was right and is now a number.
+
+It is timed in `shim/chiaki_render.c` (`chiaki_render_decode_copy_probe`) rather than here, and
+that is deliberate: this spike declares its D3D11 interfaces by counting vtable slots, and
+`CreateTexture2D`, `CreateQuery` and `CopySubresourceRegion` are three more of those. A slot
+counted wrong reports a copy costing nothing — the exact answer this section already published
+once. In the shim the headers count them.
+
+Two things the number is not:
+
+- **Not a Stopwatch.** `CopySubresourceRegion` is queued, not performed, so timing the call
+  answers in tens of nanoseconds. This is a D3D11 timestamp pair around the batch, against a
+  `TIMESTAMP_DISJOINT` query that says whether the clock ran steadily; a disjoint span is
+  reported as a refusal rather than averaged into a number nobody can act on.
+- **Not a decode.** The source is built to the description above — NV12, 1920x1088, array of 8,
+  `D3D11_BIND_DECODER` — rather than decoded into. A copy's cost follows the two descriptions,
+  the extent and the device, not which component last wrote the source. What it does not measure
+  is a decoder still writing into the slice, which is a pipeline question and not this one.
 
 ### And the unpaced stall is not FFmpeg's
 
@@ -149,11 +172,11 @@ above is paced.
 - **HEVC's decoder is a Store extension.** `HEVCVideoExtension` is installed here and is not on
   every Windows machine. A port depending on it would depend on something a user can uninstall,
   which FFmpeg's own HEVC decoder does not.
-- **The copy is known to exist and is not timed.** PP826 read the bind flags and found the surface
-  unsampleable, so the argument that there is no copy is dead. What replaces it is a number nobody
-  has: a `CopySubresourceRegion` into a shader-readable NV12 texture, timed on the GPU rather than
-  the CPU clock, which needs a D3D11 query and a renderer to copy into. PP319's present path is
-  where that belongs.
+- **The copy is timed, and it is a copy and not a pipeline.** PP828 priced the
+  `CopySubresourceRegion` at ~25 µs on the GPU's own clock, which closes the readback column. What
+  it does not answer is what the copy costs while a decoder is writing the next frame into the same
+  array — that is contention rather than bandwidth, and it needs the real present path PP319 chose
+  rather than two textures on an idle device.
 - **One machine.** Windows 11 26200, one discrete NVIDIA card. An Intel or AMD machine would show
   the vendor MFT this one does not have, and the H.264 row could read differently there.
 

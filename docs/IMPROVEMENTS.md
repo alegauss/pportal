@@ -239,31 +239,6 @@ flag, its count loop is guarded by the return above it, peek writes both out-poi
 where pull guards its own, and takion still passes NULL and still drops on a bad MAC.
 Repair any upstream and the port's copy becomes the divergence, on the next run.
 
-### §PP828 The copy PP826 proved and did not price
-
-PP818 credited Media Foundation with no readback and PP826 read the bind flags: the
-decoded surface is `D3D11_BIND_DECODER` with no `BIND_SHADER_RESOURCE`, in an array of
-eight, NV12 at 1920x1088. A renderer cannot sample it, so a copy exists. What nobody has
-is its cost, and until somebody does the comparison PP650 opened has one column that is
-a decode plus a question mark.
-
-IT IS NOT `d3d11va`'S COPY AND MUST NOT BE PRICED AS ONE. That 2 253us is
-`av_hwframe_transfer_data` pulling a frame into SYSTEM memory; this is a
-`CopySubresourceRegion` from one GPU texture to another. It should be an order of
-magnitude cheaper - and "should be" is the kind of reasoning PP826 just overturned,
-which is why this is a line rather than a sentence in a README.
-
-THE MEASUREMENT NEEDS A GPU CLOCK. A copy is queued, not performed, when
-CopySubresourceRegion returns, so a Stopwatch around it times the queueing. What answers
-is a D3D11 timestamp query pair against a disjoint query, or a flush and an event query
-- and getting it wrong reports a copy costing nothing, which is the answer this chain
-has already been wrong about once.
-
-THE DESTINATION IS PART OF THE QUESTION. The copy is into a texture the renderer can
-sample, so its format and flags are the present path's choice: PP319 picked that path
-and spike/present-path is where a real one exists. A copy into a texture nobody would
-render from would measure the wrong thing.
-
 ### §PP831 The same inversion, twice
 
 THIS EXACT MISTAKE HAS NOW BEEN MADE TWICE. PP778 found every stream message going out

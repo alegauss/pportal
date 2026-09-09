@@ -516,6 +516,41 @@ CHIAKI_RENDER_API bool chiaki_render_frame_nv12(
 		void *d3d11, uint8_t luma, uint8_t cb, uint8_t cr, uint8_t *out_rgba, int32_t *out_stage);
 
 /**
+ * PP828: how far the copy off a decode surface got, and where it stopped.
+ *
+ * DISJOINT is not a failure of the probe: it says the GPU clock changed rate or stopped inside the
+ * batch, so the two timestamps do not bound a duration. Reported rather than averaged away,
+ * because a number taken across a disjoint span is wrong in a way nothing downstream can see.
+ */
+typedef enum chiaki_render_copy_stage
+{
+	CHIAKI_RENDER_COPY_OK = 0,
+	CHIAKI_RENDER_COPY_NO_DEVICE,
+	CHIAKI_RENDER_COPY_DECODED,     /**< CreateTexture2D of the BIND_DECODER array */
+	CHIAKI_RENDER_COPY_SAMPLEABLE,  /**< CreateTexture2D of the shader-bound destination */
+	CHIAKI_RENDER_COPY_QUERY,       /**< CreateQuery for the disjoint or either timestamp */
+	CHIAKI_RENDER_COPY_TIMED,       /**< the batch was issued and the clock did not answer */
+	CHIAKI_RENDER_COPY_DISJOINT,    /**< it answered and said the span is not a duration */
+} chiaki_render_copy_stage;
+
+/**
+ * PP828: times `copies` CopySubresourceRegion calls from a decode surface to a sampleable texture.
+ *
+ * The source is built to the description PP826 recorded off a Media Foundation decoded frame - NV12,
+ * an array of eight, D3D11_BIND_DECODER and nothing else - rather than decoded into: a copy's cost
+ * follows the two descriptions and the device, not which component last wrote the source.
+ *
+ * `out_microseconds` is the MEAN of the batch on the GPU's own clock. A Stopwatch here would time
+ * the queueing and report a copy that costs nothing, which is the shape of answer PP826 already
+ * overturned once in this chain.
+ *
+ * Returns true only where a duration was actually read; `out_stage` says which step stopped it.
+ */
+CHIAKI_RENDER_API bool chiaki_render_decode_copy_probe(
+		void *d3d11, int32_t width, int32_t height, int32_t copies,
+		double *out_microseconds, int32_t *out_stage);
+
+/**
  * PP700: the presenter, which is the call above turned into a thing that LIVES.
  *
  * chiaki_render_frame_nv12 proves one frame and destroys everything it made. A stream cannot afford

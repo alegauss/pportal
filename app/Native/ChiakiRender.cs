@@ -154,6 +154,47 @@ public enum TearingStage
 public readonly record struct TearingSupport(
     bool Ran, bool Adapter, bool Composition, bool Hwnd, bool Refused, TearingStage Stage);
 
+/// <summary>PP828: which step of the decode-copy probe stopped it, or Ok.</summary>
+public enum DecodeCopyStage
+{
+    Ok = 0,
+    NoDevice,
+
+    /// <summary>The BIND_DECODER array, built to the description PP826 recorded.</summary>
+    Decoded,
+
+    /// <summary>The shader-bound destination, which is the texture a present path samples.</summary>
+    Sampleable,
+
+    /// <summary>The disjoint query, or either timestamp.</summary>
+    Query,
+
+    /// <summary>The batch was issued and the clock never answered.</summary>
+    Timed,
+
+    /// <summary>
+    /// It answered and said the span is not a duration.
+    ///
+    /// The GPU changed clock rate or stopped inside the batch, so the two timestamps do not bound
+    /// anything. Reported rather than averaged: a number taken across a disjoint span is wrong in a
+    /// way nothing downstream can see, which is exactly how this chain got a readback column wrong
+    /// once already.
+    /// </summary>
+    Disjoint,
+}
+
+/// <summary>
+/// PP828: what a copy off a Media Foundation decode surface costs.
+///
+/// PP818 credited Media Foundation with no readback and PP826 read the bind flags: the decoded
+/// surface is D3D11_BIND_DECODER with no D3D11_BIND_SHADER_RESOURCE, so a renderer cannot sample it
+/// and a copy exists. This is its price, which that column has been carrying as a question mark.
+/// </summary>
+/// <param name="Ran">Whether a duration was actually read off the GPU clock.</param>
+/// <param name="Microseconds">The mean of the batch, meaningful only where it ran.</param>
+/// <param name="Stage">Where it stopped, when it did.</param>
+public readonly record struct DecodeCopyCost(bool Ran, double Microseconds, DecodeCopyStage Stage);
+
 /// <summary>
 /// PP646: what a present with the tearing flags does through a COMMITTED DirectComposition tree.
 ///
@@ -496,6 +537,35 @@ public sealed class RenderDevice : IDisposable
 
         return new TearingSupport(ran, adapter, composition, hwnd, refused, (TearingStage)stage);
     }
+
+    /// <summary>
+    /// PP828: what the copy off a decode surface costs, which PP818's column has been missing.
+    ///
+    /// PP826 read the bind flags off a Media Foundation decoded frame - D3D11_BIND_DECODER and no
+    /// D3D11_BIND_SHADER_RESOURCE - so a renderer cannot sample it and a copy exists. Its price has
+    /// been a question mark since, and "it should be cheap" is the kind of reasoning PP826 itself
+    /// overturned.
+    ///
+    /// TIMED ON THE GPU'S CLOCK, because CopySubresourceRegion is queued and not performed: a
+    /// Stopwatch around the call answers in tens of nanoseconds and reads as a free copy. The
+    /// timestamp pair either side of a batch, against a disjoint query, is what answers - and a
+    /// disjoint span is reported rather than averaged.
+    /// </summary>
+    /// <param name="width">The decoded extent. PP826 recorded 1920x1088, which is not 1080.</param>
+    /// <param name="height">The same.</param>
+    /// <param name="copies">How many to time as one batch, so the query is not most of the number.</param>
+    public DecodeCopyCost ProbeDecodeCopy(int width = 1920, int height = 1088, int copies = 64)
+    {
+        bool ran = DecodeCopyProbe(Handle, width, height, copies, out double microseconds, out int stage);
+
+        return new DecodeCopyCost(ran, microseconds, (DecodeCopyStage)stage);
+    }
+
+    [DllImport(ChiakiRender.Library, EntryPoint = "chiaki_render_decode_copy_probe",
+        CallingConvention = CallingConvention.Cdecl)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    private static extern bool DecodeCopyProbe(
+        IntPtr d3d11, int width, int height, int copies, out double microseconds, out int stage);
 
     [DllImport(ChiakiRender.Library, EntryPoint = "chiaki_render_tearing_probe",
         CallingConvention = CallingConvention.Cdecl)]
