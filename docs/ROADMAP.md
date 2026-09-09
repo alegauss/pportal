@@ -29,6 +29,7 @@
 ## Block G — Test discipline
 
 - 📋 **PP847** (deps: —) **the function-body reader keeps comments, so a note inside a body is a use and a check finds its own explanation** — PP30's note in chiaki_lib_init turned its own deletion check red, and every reader around CFunction.Body strips with CCall.Code - it is the one that hands prose back. → §PP847
+- 📋 **PP849** (deps: PP691 ✅, PP844 ✅) **the prose census states its four per-verdict counts in a docstring, and the method deriving them has no caller** — PP844 added a row and hand-corrected two of them; Count(ProseReading) answers all four and nothing calls it, so the census breaks the rule it enforces. → §PP849
 
 ## Block H — Performance and telemetry
 
