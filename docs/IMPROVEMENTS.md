@@ -214,6 +214,30 @@ flag, its count loop is guarded by the return above it, peek writes both out-poi
 where pull guards its own, and takion still passes NULL and still drops on a bad MAC.
 Repair any upstream and the port's copy becomes the divergence, on the next run.
 
+### §PP841 The wrappers the flip has to move first
+
+PP27's fourth criterion is a deletion whose cost is known now: nine library files, and
+nothing outside them reaches any of them. What holds them is the oracle - eleven takion
+symbols and seven of reorderqueue's, reached through twenty-nine exports of the shim.
+
+THE READER HALF IS ALREADY DONE, which is what makes this bounded rather than a chain.
+PP785 recorded what the C answers so the differentials outlive it, PP786 guarded the C
+suite's three behind CHIAKI_UNIT_HAVE_TAKION and gave the suite a trial flip, and every
+managed file that calls the oracle asks chiaki_shim_has_takion before it runs -
+OracleGuardCensus is what holds that. Nothing on either reading side would throw when
+the wrappers go.
+
+WHAT IS NOT DONE IS THE SHIM'S OWN HALF. The twenty-nine exports are not inside
+CHIAKI_SHIM_HAVE_TAKION: they run from line 1513 to 2163 of the header and 2262 to 4767
+of the body, interleaved with the frame path's regions and opus's. So this is not a
+define to flip but twenty-nine pairs to place, and a half-placed one leaves the header's
+text disagreeing with the built DLL - which is the failure PP662 records a reader
+making.
+
+PP696 IS THE SHAPE and its preparation was three tasks: PP658 converted the five
+drivers, PP661 the sixteen comparisons, PP670 the nine guards. The equivalent here has
+landed, so what is left is this one edit and then the flip's own commit.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry
