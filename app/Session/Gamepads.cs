@@ -446,6 +446,24 @@ public static class Gamepads
     }
 
     /// <summary>
+    /// PP845: what SDL believes this pad's touch surface is, which a live run could not say.
+    ///
+    /// Two minutes with a finger on a real DualSense produced ZERO touchpad events while its
+    /// sensors delivered 11940 readings, and one count of zero cannot tell a driver that offers no
+    /// touchpad from a port that drops what it is given. This is the half that answers the first.
+    /// </summary>
+    /// <returns>Touch surfaces, and the fingers the first of them reports - both zero for none.</returns>
+    public static (int Touchpads, int Fingers) TouchSurfaceOf(IntPtr controller)
+    {
+        if (controller == IntPtr.Zero)
+            return (0, 0);
+
+        int pads = SdlControllerGetNumTouchpads(controller);
+
+        return (pads, pads > 0 ? SdlControllerGetNumTouchpadFingers(controller, 0) : 0);
+    }
+
+    /// <summary>
     /// PP846: which pad this is, as the numbers that decide how a rumble reaches it.
     ///
     /// The Qt client keys on (vendor, product) and not on SDL_GameControllerGetType, which is worth
@@ -709,6 +727,18 @@ public static class Gamepads
     [DllImport(ChiakiNative.Sdl, EntryPoint = "SDL_GameControllerSendEffect",
         CallingConvention = CallingConvention.Cdecl)]
     private static extern int SdlControllerSendEffect(IntPtr controller, byte[] data, int size);
+
+    // PP845: how many touch surfaces SDL believes this pad has, which is the question a live run
+    // could not answer. Two minutes with a finger on a DualSense produced no touchpad event at all,
+    // and a count of zero here says the driver never offered one - a different thing from the port
+    // dropping them.
+    [DllImport(ChiakiNative.Sdl, EntryPoint = "SDL_GameControllerGetNumTouchpads",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern int SdlControllerGetNumTouchpads(IntPtr controller);
+
+    [DllImport(ChiakiNative.Sdl, EntryPoint = "SDL_GameControllerGetNumTouchpadFingers",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern int SdlControllerGetNumTouchpadFingers(IntPtr controller, int touchpad);
 
     [DllImport(ChiakiNative.Sdl, EntryPoint = "SDL_GameControllerGetVendor",
         CallingConvention = CallingConvention.Cdecl)]

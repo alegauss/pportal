@@ -55,7 +55,16 @@ public sealed class PadFeed : IDisposable, IRumbleTarget
     private long pushed;
     private long adopted;
     private long touched;
+    private long touchesSeen;
     private long moved;
+
+    // PP845 diagnosis: a live run had the pad working and then stopping mid-session, right after a
+    // Windows notification took focus. These three separate the candidates in one run: the pump
+    // dying, the device being re-enumerated, and the handle going stale while SDL still calls it
+    // attached. A count of pushes alone cannot tell any of them apart.
+    private long departures;
+    private long releases;
+    private long lastEventTicks;
 
     /// <param name="sink">Where the state goes. Not owned, and outlives this.</param>
     /// <param name="extents">
@@ -106,6 +115,44 @@ public sealed class PadFeed : IDisposable, IRumbleTarget
     /// zero moved is a pad with no sensors or sensors that failed to enable.
     /// </summary>
     public long Touched => Interlocked.Read(ref touched);
+
+    /// <summary>
+    /// PP845: touchpad events SDL delivered, before the tracker judged any of them.
+    ///
+    /// The pair is the reading and neither number alone is. Seen zero means SDL sent nothing - the
+    /// pad's touch surface is not reaching this process at all. Seen non-zero with
+    /// <see cref="Touched"/> at zero means the tracker refused every one, which is a different
+    /// defect with a different fix: a pool that filled and never drained, a motion for a finger
+    /// that never went down, or a console that had no room for the id.
+    ///
+    /// The first live run reported Touched as zero against a finger that really was on the pad, and
+    /// could not say which of those it was.
+    /// </summary>
+    public long TouchesSeen => Interlocked.Read(ref touchesSeen);
+
+    /// <summary>Departure events SDL delivered, whether or not the handle was released.</summary>
+    public long Departures => Interlocked.Read(ref departures);
+
+    /// <summary>
+    /// Handles actually closed, which is the half a departure count cannot give.
+    ///
+    /// Release refuses while SDL still reports the handle attached. Departures above releases is a
+    /// device that went away and whose handle this still holds - and a held handle stops Adopt from
+    /// taking the pad that comes back, which is a pad that worked and then did not.
+    /// </summary>
+    public long Releases => Interlocked.Read(ref releases);
+
+    /// <summary>
+    /// When the pump last delivered ANY event, or null before the first.
+    ///
+    /// Not the last push: an event the translation ignored still proves the pump is alive, and the
+    /// two questions - is SDL still feeding this, and is anything changing - are answered by
+    /// different numbers. A live run had the pad stop mid-session and neither was on the record.
+    /// </summary>
+    public DateTime? LastEventUtc
+        => Interlocked.Read(ref lastEventTicks) is var ticks and > 0
+            ? new DateTime(ticks, DateTimeKind.Utc)
+            : null;
 
     /// <summary>Sensor readings folded into the orientation, which is the other half.</summary>
     public long Moved => Interlocked.Read(ref moved);
@@ -240,6 +287,10 @@ public sealed class PadFeed : IDisposable, IRumbleTarget
     /// </summary>
     private void Offer(SdlEvent ev)
     {
+        // Every event the pump delivered, whatever it was. If this stops advancing while a session
+        // is still running, the pump itself has died and nothing below it matters.
+        Interlocked.Exchange(ref lastEventTicks, DateTime.UtcNow.Ticks);
+
         // PP838: A DEVICE ARRIVING IS NOT A BUTTON, and this used to fall through to a translation
         // that has no arm for it. Start enumerated once, so a pad plugged in after the picture
         // appeared was never opened - the run reported `armed True, 0 state(s) pushed`, which reads
@@ -257,6 +308,10 @@ public sealed class PadFeed : IDisposable, IRumbleTarget
 
         if (Gamepads.IsControllerDeparture(ev))
         {
+            // Counted BEFORE Release decides, because Release refuses when SDL still calls the
+            // handle attached - and a departure that was seen and not acted on is the shape that
+            // leaves a stale handle behind, which reads exactly like a pad that stopped working.
+            Interlocked.Increment(ref departures);
             Release();
             return;
         }
@@ -270,6 +325,13 @@ public sealed class PadFeed : IDisposable, IRumbleTarget
         // pool whose ids the console issued.
         if (Gamepads.IsTouchpadEvent(ev))
         {
+            // PP845: COUNTED BEFORE THE TRACKER SEES IT, which the first live run needed and did
+            // not have. It reported `0 touch event(s)` against a finger that really was on the pad,
+            // and one number cannot say whether SDL delivered nothing or the tracker refused
+            // everything - a full pool, a motion for a finger that never went down, a stray up.
+            // Those are opposite defects and the fix for one is not the fix for the other.
+            Interlocked.Increment(ref touchesSeen);
+
             if (!OfferTouch(ev))
                 return;
 
@@ -418,6 +480,7 @@ public sealed class PadFeed : IDisposable, IRumbleTarget
             return;
 
         Gamepads.CloseController(controller);
+        Interlocked.Increment(ref releases);
         controller = IntPtr.Zero;
         PadName = null;
         Sensors = [];

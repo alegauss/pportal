@@ -313,9 +313,15 @@ public class HapticsPlayerTests(ITestOutputHelper output)
         {
             string code = CCall.Code(File.ReadAllText(phase));
 
-            Assert.Contains("ManagedAudioReceiverPair(Haptics,", code, StringComparison.Ordinal);
-            Assert.DoesNotContain(
-                "ManagedAudioReceiverPair(new NoFrames(), new NoFrames())", code, StringComparison.Ordinal);
+            // PP846: THE PLAYER GOES IN THE AUDIO PAIR, and this test asserted the opposite until a
+            // live run said so. One ManagedAudioReceiverPair carries both arms and InstallAvArm is
+            // handed the AUDIO one and no other, so the second slot of THAT pair is the haptics arm.
+            // The player was in the pair the host's hapticsFactory builds, which nothing feeds: two
+            // minutes against a console reported `armed True, 0 folded, 0 silent`, and folded and
+            // silent both at zero is what separates "the console sent none" from "nothing arrives".
+            Assert.True(
+                CCall.CalledWith(code, "AudioPair", "Sound, out speaker, Haptics"),
+                "the haptics player is not in the pair InstallAvArm is handed");
         }
 
         if (SanitizerSource.LocateRelative(@"app\Session\StreamRun.cs") is { } run)

@@ -538,9 +538,32 @@ public static class StreamRun
             $"[stream] pad sink: armed {phase.Pad.Active}, {pad.Pushed} state(s) pushed, "
                 + $"holding {pad.PadName ?? "nothing"}, {pad.Adopted} adopted after the start");
 
+        // PP845: the touch count is a PAIR after the first live run, which reported one zero against
+        // a finger that really was on the pad. Delivered-but-refused and never-delivered are
+        // opposite defects, and one number could not tell them apart.
         Console.WriteLine(
-            $"[stream] pad halves: {pad.Touched} touch event(s), {pad.Moved} sensor reading(s), "
+            $"[stream] pad halves: {pad.Touched} of {pad.TouchesSeen} touch event(s) taken, "
+                + $"{pad.Moved} sensor reading(s), "
                 + $"sensors on: {(pad.Sensors.Count == 0 ? "none" : string.Join("+", pad.Sensors.Select(SensorName)))}");
+
+        // A live run had the pad working and then stopping mid-session, right after a Windows
+        // notification took focus. Three numbers separate what a push count cannot: how long ago the
+        // PUMP last delivered anything, and whether a departure was seen that Release refused to act
+        // on - which leaves a stale handle Adopt will not replace.
+        Console.WriteLine(
+            $"[stream] pad liveness: last event {(pad.LastEventUtc is { } seen ? $"{(DateTimeOffset.UtcNow - seen).TotalSeconds:0.0}s ago" : "never")}, "
+                + $"{pad.Departures} departure(s) seen, {pad.Releases} released, "
+                + $"holds a handle: {pad.HasPad}");
+
+        // And what left this process. The pad path being alive while the console stops responding
+        // has two shapes and only this tells them apart: packets still going out and being ignored,
+        // or packets that stopped going out and a Last that says why.
+        if (phase.FeedbackWire is { } feedback)
+        {
+            Console.WriteLine(
+                $"[stream] feedback wire: {feedback.Sent} sent, last {feedback.Last}, "
+                    + $"{feedback.HistoriesOffered} history packet(s) offered");
+        }
 
         // PP846: and the other direction, which had no reading at all. Three numbers again, and the
         // same rule: silence with nothing folded is a stream carrying no haptics, folded with

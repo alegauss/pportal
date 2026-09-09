@@ -612,11 +612,25 @@ public partial class App : Application
         // so the token crosses a queue rather than reaching stdout on the thread that owns SDL.
         var pending = new System.Collections.Concurrent.ConcurrentQueue<string>();
 
+        // PP845: the two event families the capture cannot bind, counted rather than mapped.
+        //
+        // A touchpad swipe is not a button and produces no token, so a capture that only prints
+        // bindings is silent about it either way - which is how a live run's zero went undiagnosed.
+        // These say whether SDL DELIVERED them, which is the question the count of taken ones
+        // cannot answer on its own.
+        var touchpadEvents = 0;
+        var sensorEvents = 0;
+
         using var sdl = new SdlThread(ev =>
         {
             string? token;
             lock (gate)
             {
+                if (Gamepads.IsTouchpadEvent(ev))
+                    touchpadEvents++;
+                else if (ev.Type == Gamepads.EventType.ControllerSensorUpdate)
+                    sensorEvents++;
+
                 token = arm.Offer(ev);
 
                 // Re-armed, so one run records a sequence. The screen does not do this.
@@ -666,6 +680,31 @@ public partial class App : Application
         // Before the listening, not after it: a window whose start nobody can see is one where a
         // silent result cannot be told from a mistimed press.
         Console.Write(CaptureReport.Opening(pad, handle != IntPtr.Zero));
+
+        // PP845: what SDL says this pad's touch surface IS, asked of the open handle.
+        //
+        // A live run reported zero touchpad events against a finger that really was on a DualSense,
+        // while its sensors delivered thousands - and one zero cannot tell a driver that offers no
+        // touch surface from a port that drops what it is given. This is the half that answers the
+        // first, and it belongs beside the events because that is the comparison a reader makes.
+        if (handle != IntPtr.Zero)
+        {
+            (int touchpads, int fingers) = Gamepads.TouchSurfaceOf(handle);
+
+            Console.WriteLine(
+                touchpads == 0
+                    ? "SDL reports NO touch surface on this pad - no touchpad event can arrive"
+                    : $"SDL reports {touchpads} touch surface(s), {fingers} finger(s) on the first");
+
+            // PP845: the sensors are turned on HERE too, which the live path does and this did not.
+            // That was the one difference between a run delivering 633 touchpad events and a run
+            // delivering none, so the capture is made to match rather than left as a second shape.
+            IReadOnlyList<int> sensors = [];
+            sdl.Invoke(() => sensors = Gamepads.EnableMotionSensors(handle), TimeSpan.FromSeconds(5));
+
+            Console.WriteLine($"sensors enabled: {sensors.Count}");
+        }
+
         Console.WriteLine($"listening for {window.TotalSeconds:0}s - press the pad");
         Console.Out.Flush();
 
@@ -686,6 +725,11 @@ public partial class App : Application
             taken.Add(last);
 
         Console.Write(CaptureReport.Summary(taken, window));
+
+        // PP845: and what SDL delivered of the two families no binding can carry.
+        Console.WriteLine();
+        Console.WriteLine(
+            $"touchpad event(s) delivered: {touchpadEvents}   sensor event(s): {sensorEvents}");
 
         // The axis ranges last, and whether or not the capture was allowed to bind one: a stick
         // that never became a token still says here where it was resting.

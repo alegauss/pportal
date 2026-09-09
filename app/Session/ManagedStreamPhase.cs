@@ -136,6 +136,15 @@ public sealed class ManagedStreamPhase : IDisposable
     public HapticsPlayer Haptics { get; } = new();
 
     /// <summary>
+    /// Where the pad's feedback actually goes on the wire, held so a run can read what it did.
+    ///
+    /// Null until Build runs. Its Sent count and its Last error are the fork a live stall needs: the
+    /// pad path is proven alive to the last instant, so either the packets are leaving this process
+    /// and the console is not acting on them, or they stopped leaving and this says when.
+    /// </summary>
+    public TakionFeedbackSink? FeedbackWire { get; private set; }
+
+    /// <summary>
     /// PP816: where the sound goes - the engine, and nothing before it.
     ///
     /// PP797's AudioPlayback and the ring behind it stood here and PP820 removed them. Built in the
@@ -256,7 +265,13 @@ public sealed class ManagedStreamPhase : IDisposable
         // The host runs it; the controller sink replays into it. streamconnection.c does the same in
         // one line after its own init, and PP756 wrote the managed half of that - what was missing is
         // the line that hands one to the other, which only a composition root can write.
-        var sender = new ManagedFeedbackSender(new TakionFeedbackSink(takion));
+        // AND THE SINK IS HELD, because a live run needs to read what it did. The pad path is proven
+        // alive - the pump delivers to the last instant and the states reach this sender - while the
+        // console stops responding after the window loses focus. Sent and Last are the two numbers
+        // that say whether the packets left this process at all, which is the next fork.
+        FeedbackWire = new TakionFeedbackSink(takion);
+
+        var sender = new ManagedFeedbackSender(FeedbackWire);
         Pad.Arm(sender);
 
         // PP797: AND THE SOUND HAS SOMEWHERE TO GO, which is the first of the two joins that were
@@ -279,7 +294,10 @@ public sealed class ManagedStreamPhase : IDisposable
         // run completed after eleven arrivals both times. This is PP754's rule as well - a start
         // that never comes should open no device, and Build runs only once the session hands over.
         Sound.Prepare();
-        ManagedAudioReceiverPair sound = AudioPair(Sound, out speaker);
+        // PP846: and the haptics player goes in THIS pair's second slot, which is the arm the
+        // console's haptic stream actually lands on. It was in the host's other pair until a live
+        // run reported it armed and fed nothing.
+        ManagedAudioReceiverPair sound = AudioPair(Sound, out speaker, Haptics);
 
         var host = new ManagedStreamRunHost(
             takion,
@@ -302,15 +320,16 @@ public sealed class ManagedStreamPhase : IDisposable
             },
             () => new ManagedVideoReceiver(video, outbound),
             () => sound,
-            // PP846: THE HAPTICS ARM IS NO LONGER A NO-OP, which is the second of PP797's two joins
-            // and the one it deliberately left. Its far side is a pad's motors rather than a
-            // speaker, so what belongs here is not a decoder - it is the fold PP97 wrote and the
-            // routing PP8 wrote, neither of which had a caller.
+            // PP846 PUT ITS PLAYER HERE AND IT WAS THE WRONG PAIR. Nothing passes this one to
+            // InstallAvArm - the AV arm is handed the AUDIO pair and no other, and that pair's
+            // second slot is the haptics arm. The player was armed, correct, and fed nothing; two
+            // minutes against a console reported `0 frame(s) folded, 0 silent`, which is the pair of
+            // zeroes that says the frames never arrive rather than that the console sent none.
             //
-            // The player is a FIELD and not made here, because two things need it: this arm hands
-            // it frames, and the run arms it with the pad once one is open. Same reason Pad's
-            // sender is held rather than passed straight in.
-            () => new ManagedAudioReceiverPair(Haptics, new NoFrames()));
+            // This factory stays as it was. Whatever the host's second pair is for, it is not the
+            // console's haptic stream, and a player put here to make the wiring look symmetrical is
+            // a player nothing calls.
+            () => new ManagedAudioReceiverPair(new NoFrames(), new NoFrames()));
 
         // PP773: AND THE KEYING, which this root passed null for in the commit that wired the
         // arrivals. A bang then reached the handler and was refused at the derive - one wait further
@@ -422,23 +441,37 @@ public sealed class ManagedStreamPhase : IDisposable
     /// this is exactly the join whose absence let a stream decode a picture and drop every audio
     /// frame it produced.
     ///
-    /// THE HAPTICS ARM STAYS A NO-OP, which is not an omission. audioreceiver.c is used twice and
-    /// the second one's far side is a pad's motors; a decoder there would send a rumble envelope to
-    /// the endpoint the game's audio is on.
+    /// THE HAPTICS ARM IS THE SECOND SLOT OF THIS PAIR, and PP846 shipped without knowing it.
+    ///
+    /// One ManagedAudioReceiverPair carries both arms - IAudioSink.Audio reaches AudioArm and
+    /// IAudioSink.Haptics reaches HapticsArm - and InstallAvArm is handed THIS pair and no other.
+    /// PP846 put its player in the pair the host's hapticsFactory builds, which nothing passes to
+    /// InstallAvArm; the player was armed, correct, and fed nothing.
+    ///
+    /// A LIVE RUN IS WHAT SAID SO. Two minutes against a console reported `haptics: armed True, 0
+    /// frame(s) folded, 0 silent` - and folded AND silent both at zero is the reading that separates
+    /// "the console sent none" from "nothing reaches this at all". The counters PP846 added for a
+    /// different reason are what made the defect legible in one line.
     /// </summary>
+    /// <param name="haptics">
+    /// PP846's player, or a sink that does nothing. Second because that is the arm the console's
+    /// haptic stream lands on - the same receiver used twice, whose far side is a pad's motors
+    /// rather than a speaker.
+    /// </param>
     /// <param name="sound">
     /// Where a decoded frame goes. PP820: the seam rather than a playback, because the ring this
     /// used to reach through is gone - <see cref="XAudio2Sink"/> hands the frame to the engine and
     /// there is nothing in between to name.
     /// </param>
     /// <param name="speaker">The decoder, which the caller owns and must dispose.</param>
-    public static ManagedAudioReceiverPair AudioPair(IPcmSink sound, out ManagedOpusDecoder speaker)
+    public static ManagedAudioReceiverPair AudioPair(
+        IPcmSink sound, out ManagedOpusDecoder speaker, IAudioFrameSink? haptics = null)
     {
         ArgumentNullException.ThrowIfNull(sound);
 
         speaker = new ManagedOpusDecoder(sound);
 
-        return new ManagedAudioReceiverPair(speaker, new NoFrames());
+        return new ManagedAudioReceiverPair(speaker, haptics ?? new NoFrames());
     }
 
     /// <summary>
