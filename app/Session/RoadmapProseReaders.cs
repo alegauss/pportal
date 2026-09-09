@@ -59,8 +59,8 @@ public readonly record struct ProseReader(string Text, string Where, ProseReadin
 /// THE ANSWER IS FOUR, not two. Four checks demand a spelling of prose that is free to improve, and
 /// they are not the two PP666 hit: those were repaired in the commit that found them.
 /// <see cref="ProseReading.Fragile"/> names them and the rest of the taxonomy says why the other
-/// twenty-eight are not the same thing - six address, four hold words on purpose, nine fail open,
-/// and nine are coincidences of two files using the same English.
+/// twenty-nine are not the same thing - six address, four hold words on purpose, nine fail open,
+/// and ten are coincidences of two files using the same English.
 ///
 /// WHAT THIS IS NOT is a rule forbidding the four. A deletion line's subject has to be recognised
 /// somehow, and "read the meaning" is not an option a string comparison has. The census is what
@@ -338,6 +338,16 @@ public static class RoadmapProseReaders
             @"app\Native\NativeWaits.cs",
             ProseReading.Incidental,
             "A phrase matched against this census's OWN note strings, which no document supplies."),
+
+        // PP844: PP527's direction again, and this time inside one commit. The phrase is in a
+        // FAILURE MESSAGE - nothing compares it against anything - and it reaches the backlog
+        // because that task's own ledger sentence describes the check in the words the check
+        // reports in. Whoever writes the next arranged deletion is free to reword either.
+        new(
+            "deletion claims",
+            @"app\Session\ControlFiles.cs",
+            ProseReading.Incidental,
+            "Message text in the reader PP844 added, matching the sentence that shipped it."),
     ];
 
     /// <summary>How many rows carry one verdict.</summary>

@@ -867,6 +867,7 @@
 - ✅ **PP796** **a stale suite binary is a warning and the floor then fails naming ffmpeg, so it reads as a shrunken suite** — A binary ninja says is out of date ends the run, so no count is read off the previous build; and where a suite did shrink, the stale case is ruled out before the build option is named.
 - ✅ **PP802** **PP785's sixty takion guards are named by no census row, and the closed-list check cannot see a guard it never heard of** — The takion wrappers are three declared guards with nineteen rows, so the sweep can see them at all: the floor the gate prints goes from 35 declined assertions to 88.
 - ✅ **PP803** **the two arranged flips are checked by reading text, and nothing ever builds the shape either one leaves** — flip.cmd builds chiaki-unit as either arranged deletion leaves it, in a build directory of its own - and both shapes link, which PP786's repair had only ever been read about.
+- ✅ **PP844** **a check's control names a file a prepared deletion aims at, so it goes red about its own fixture when that lands** — each control's file is declared with its polarity and held against what an arranged deletion claims and against the build graph, so one aimed at is answerable before the commit.
 
 ## Block H — Performance and telemetry
 

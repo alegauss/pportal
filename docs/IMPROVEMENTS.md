@@ -210,31 +210,6 @@ attributions should stop naming commits, has not been read.
 
 ## Block G — Test discipline
 
-### §PP844 A fixture the deletion was aiming at
-
-PP271's rule makes every sweep carry a control: a reader that found nothing would
-satisfy its own assertion, so a check names something it must find. What nothing checks
-is WHICH thing, and twice in PP27's commit the answer was a file the deletion was aiming
-at.
-
-SuiteFreshnessTests asked whether a file the suite compiles is in the build graph and
-used takion.c. StreamConnectionConsumers proved a list really was lib's by finding
-src/takion.c in it, picked because streamconnection.c sat beside it - a neighbour, not a
-survivor. Both went red the day takion.c left, and neither failure was about what its
-check is for: one said "the reader is not reading it" and the other said lib's own list
-is not lib's list.
-
-THE COST IS NOT THE EDIT, which was one line each. It is that a deletion commit already
-has a long red tail of models turning over, and two entries in it are noise pointing at
-their own fixtures. A reader working through that list has to decide, per failure,
-whether the tree broke or the test's furniture did.
-
-PP691 built the census for the same shape in PROSE - a check matching a roadmap sentence
-that later improves - and its reader holds string literals against what those documents
-say. A filename in a fixture is neither, so nothing sees these. What would: the arranged
-deletions already declare their files, and a control naming one of them is answerable
-before the deletion rather than by it.
-
 ### §PP847 A body reader that cannot tell a mention from a use
 
 CFunction.Body is PP343's: it finds a C function's body by counting braces rather than

@@ -28,7 +28,6 @@
 
 ## Block G — Test discipline
 
-- 📋 **PP844** (deps: PP691 ✅, PP27 ✅) **a check's control names a file a prepared deletion aims at, so it goes red about its own fixture when that lands** — PP27 landed and two controls broke this way; PP691's census sees prose and not the filenames a fixture picks. → §PP844
 - 📋 **PP847** (deps: —) **the function-body reader keeps comments, so a note inside a body is a use and a check finds its own explanation** — PP30's note in chiaki_lib_init turned its own deletion check red, and every reader around CFunction.Body strips with CCall.Code - it is the one that hands prose back. → §PP847
 
 ## Block H — Performance and telemetry

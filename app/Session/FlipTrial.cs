@@ -4,8 +4,18 @@ namespace ChiakiNg.Session;
 /// <param name="Name">What <c>flip.cmd</c> is given, and what cmake compares against.</param>
 /// <param name="Removes">The suite's own files that go with it, as the source list spells them.</param>
 /// <param name="Switch">The definition main.c reads, which follows the files rather than leading them.</param>
+/// <param name="RemovesFromLibrary">
+/// The files it takes out of <c>lib/CMakeLists.txt</c>, repository-relative.
+///
+/// PP844: DECLARED BECAUSE THE SUITE'S HALF COULD NOT ANSWER. The trial builds the suite's shape and
+/// nothing else, deliberately, so <see cref="Removes"/> is suite-relative - and both controls PP27
+/// broke named a LIBRARY file. A check over the suite's half alone would have been green on each of
+/// them. Nothing here builds this list's shape; it exists so a control naming one of these is
+/// answerable while the deletion is still arranged, which is the whole of PP844.
+/// </param>
 public readonly record struct ArrangedFlip(
-    string Name, IReadOnlyList<string> Removes, string Switch);
+    string Name, IReadOnlyList<string> Removes, string Switch,
+    IReadOnlyList<string> RemovesFromLibrary);
 
 /// <summary>
 /// PP803: the two arranged flips, and the trial that BUILDS the shape each one leaves.

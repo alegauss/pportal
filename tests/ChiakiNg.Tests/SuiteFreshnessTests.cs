@@ -69,6 +69,14 @@ public class SuiteFreshnessTests(ITestOutputHelper output)
     ///
     /// PP271's shape: a reader that found nothing would satisfy the assertion above by failing to
     /// find anything at all.
+    ///
+    /// PP844: THE CONTROL IS READ AND NO LONGER TYPED. It was session.c here, and takion.c before
+    /// PP27 took that file out of the build - which made this red on the day the deletion landed, a
+    /// failure about the fixture wearing the reader's name. <see cref="ControlFiles"/> is where the
+    /// choice lives now, so the rule the fix wrote as prose - a file a deletion is aiming at is the
+    /// one thing a control must never be - is a check over a declaration rather than a sentence in
+    /// a comment. Typed here it was also a second copy: two places to update and one that anybody
+    /// would notice.
     /// </summary>
     [Fact]
     public void AFileTheSuiteCompilesIsInTheGraph()
@@ -76,14 +84,20 @@ public class SuiteFreshnessTests(ITestOutputHelper output)
         if (Read(SuiteFreshness.BuildGraphRelativePath) is not { } graph)
             return;
 
-        // PP27: session.c, and it was takion.c until that file left the build. The control has to be
-        // a file lib actually compiles, and picking one that a prepared deletion was aiming at made
-        // this red on the day the deletion landed - a failure about the fixture wearing the reader's
-        // name. session.c is claimed by no arranged flip and is where the port's own phases hang.
-        Assert.True(
-            SuiteFreshness.IsInTheBuildGraph(graph, @"lib\src\session.c"),
-            "session.c is not in the build graph, so the reader is not reading it");
+        string[] positives =
+        [
+            .. ControlFiles.All
+                .Where(one => one.Where == nameof(SuiteFreshness) && one.MustBeCompiled)
+                .Select(one => one.RelativePath)
+        ];
 
-        Assert.True(SuiteFreshness.IsInTheBuildGraph(graph, @"test\main.c"));
+        Assert.NotEmpty(positives);
+
+        foreach (string control in positives)
+        {
+            Assert.True(
+                SuiteFreshness.IsInTheBuildGraph(graph, control),
+                $"{control} is not in the build graph, so the reader is not reading it");
+        }
     }
 }
