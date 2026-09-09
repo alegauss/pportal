@@ -122,6 +122,20 @@ public sealed class StreamArrivals
     public int Handled { get; private set; }
 
     /// <summary>
+    /// PP824: how many acks the queue actually put on the wire, which is not the arrival count.
+    ///
+    /// The rule <see cref="TakionDataAckSend"/> holds is that one flush sends one ack for whatever
+    /// it released, so a run acks fewer times than it received and a message held back for a gap
+    /// ahead of it is not acked at all. Counted because a sink that was never set and a queue that
+    /// released nothing are the same silence otherwise - and the first is the defect this task
+    /// exists for, which three live runs could only tell apart by whether the console hung up.
+    /// </summary>
+    public int Acked { get; private set; }
+
+    /// <summary>What the last ack came to, or null where the sink was never reached.</summary>
+    public TakionAckSendReading? LastAck { get; private set; }
+
+    /// <summary>
     /// PP779: how many readings are kept, which used to be all of them.
     ///
     /// A live twenty-second session held 20975 - most of them audio packets this layer ignores,
@@ -233,7 +247,19 @@ public sealed class StreamArrivals
         // that hand nothing on are acknowledged too, and a streaminfo's own three sends are already
         // on the wire when this one leaves. The number is the arrival's; what is done with it is the
         // takion's queue's decision and not this layer's.
-        Acks?.AckData(push.Entry.SeqNum);
+        //
+        // PP824: AND THE ANSWER IS KEPT, because the sink being absent is invisible from here. A
+        // null one acknowledges nothing without failing, which is the shape PP807 shipped and the
+        // shape a broken composition root would have again.
+        if (Acks is { } acks)
+        {
+            TakionAckSendReading ack = acks.AckData(push.Entry.SeqNum);
+
+            LastAck = ack;
+
+            if (ack.Verdict == TakionAckSendVerdict.Sent)
+                Acked++;
+        }
 
         return reading;
     }

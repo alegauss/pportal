@@ -315,6 +315,15 @@ public static class StreamRun
                 + $"{phase.Arrivals?.Seen ?? 0} arrival(s), {phase.Arrivals?.Handled ?? 0} handled"
                 + (readings.Count > 0 ? $", last {readings[^1]}" : string.Empty));
 
+        // PP824: and whether this session answered the console, which the counts above cannot say.
+        // A run that acks nothing is either a stream carrying no control data or a root that left
+        // the sink null - the defect this line exists to make visible - and both report the same
+        // arrivals. `last` is the verdict rather than a number, because HeldBack is the queue
+        // working and NoQueue is a handshake that never finished.
+        Console.WriteLine(
+            $"[stream] data acks: {phase.Arrivals?.Acked ?? 0} sent, "
+                + $"last {phase.Arrivals?.LastAck?.Verdict.ToString() ?? "none attempted"}");
+
         // PP835: joined before anything reads the pad or the `using` disposes it. Start bounds
         // itself at fifteen seconds and a session can end sooner than that, so a run quit early
         // would otherwise tear down a PadFeed that is still opening a controller.

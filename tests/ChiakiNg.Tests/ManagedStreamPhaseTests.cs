@@ -167,6 +167,33 @@ public class ManagedStreamPhaseTests(ITestOutputHelper output)
     }
 
     /// <summary>
+    /// PP824: and the root hands the arrivals the takion's ack sink, which PP807 left out.
+    ///
+    /// The seam is PP807's and the assertion it carries is about ROUTING - StreamArrivals acks
+    /// whatever it was given, and a null sink acknowledges nothing without failing. So the only
+    /// thing that says this port answers a console's data messages is the composition root
+    /// assigning one, and that is the line three live runs took out and two tasks put back.
+    ///
+    /// Read out of the source for PP808's reason: <c>Build</c> is private and takes a session, so
+    /// the join is reachable only from a start that wants a console. Anchored at the start of a
+    /// line, so the paragraphs above it - which name <c>Acks</c> while arguing about it - cannot be
+    /// what satisfies this.
+    /// </summary>
+    [Fact]
+    public void TheRootHandsTheArrivalsTheTakionsAckSink()
+    {
+        string text = File.ReadAllText(
+            SanitizerSource.LocateRelative(@"app\Session\ManagedStreamPhase.cs")
+            ?? throw new InvalidOperationException("the phase is not in this checkout."));
+
+        Assert.Matches(@"(?m)^\s*Acks\s*=\s*takion\s*,", text);
+
+        // And it is the takion itself and not a second sink: the queue the ack's rule reads is the
+        // one the receive loop pushes into, so anything else would acknowledge a different ledger.
+        Assert.True(typeof(IDataAckSink).IsAssignableFrom(typeof(ManagedTakion)));
+    }
+
+    /// <summary>
     /// PP771: THE PHASE AIMS AT THE STREAM PORT, which the caller no longer gets to choose.
     ///
     /// The first version took an endpoint and the first caller passed 9295 - the ctrl and discovery

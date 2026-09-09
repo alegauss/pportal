@@ -230,6 +230,14 @@ public class TakionDataAckSendTests(ITestOutputHelper output)
         // so there is no entry to release and nothing to acknowledge.
         Assert.Equal(TakionRoute.ToData, tooShort.Route);
         Assert.Equal(2, sink.Sent.Count);
+
+        // PP824: and the router counted them, which is what a live run reads back. The sink's own
+        // list is a fixture; `Acked` is the number the stream report prints, and it is the only
+        // thing that separates a session answering the console from one whose sink was never set.
+        Assert.Equal(2, arrivals.Acked);
+
+        Assert.True(arrivals.LastAck.HasValue);
+        Assert.Equal(TakionAckSendVerdict.Sent, arrivals.LastAck!.Value.Verdict);
     }
 
     /// <summary>A send that records what it was asked to acknowledge and always succeeds.</summary>

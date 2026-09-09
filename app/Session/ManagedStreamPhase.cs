@@ -256,35 +256,42 @@ public sealed class ManagedStreamPhase : IDisposable
             InstallArm = crypt => host.InstallAvArm(crypt),
         };
 
-        // PP807: AND THE ACKS ARE NOT JOINED HERE, WHICH IS A MEASUREMENT AND NOT AN OMISSION.
-        // ManagedTakion.AckData is the third thing the arrivals would take off the takion, and
-        // wiring it killed the session outright: three live runs on 2026-09-07, two with the join
-        // and one without, against a console in an active game.
+        // PP824: AND THE ACKS ARE JOINED HERE, which is the line PP807 built the seam for and left
+        // out on purpose. ManagedTakion.AckData is the third thing the arrivals take off the takion
+        // and the only one that is not a value, for the reason StreamArrivals' own note gives.
+        //
+        // WHAT THE JOIN COST WHILE THE ACK LEFT UNSIGNED is why it waited two tasks rather than a
+        // rerun. Three live runs on 2026-09-07 against a console in an active game:
         //
         //   with it     1171 and 1265 arrival(s), 0 decoded, 0 audio frame(s), RemoteDisconnected
         //   without it  14158 arrival(s), 984 decoded, 1863 audio unit(s), no disconnect
         //
-        // The ack leaves unsigned. chiaki_takion_send MACs every packet it sends under
-        // gkcrypt_local before handing it to send_raw, so about 1170 unsigned control packets
-        // reached a console that verifies them, and it dropped the session rather than the packets.
-        // A takion with no local cipher is not the state a data message flows in.
+        // chiaki_takion_send MACs every packet under gkcrypt_local before handing it to send_raw,
+        // so about 1170 unsigned control packets reached a console that verifies them, and it
+        // dropped the session rather than the packets.
         //
-        // PP811 SIGNED IT, AND THE JOIN IS STILL NOT MADE HERE. ManagedTakion.SendDataAck goes
-        // through TakionSendPath now, so the ack leaves MAC'd under gkcrypt_local the way the C's
-        // does - which removes the reason the numbers above have, and does not by itself say the
-        // join is safe. Nothing has measured a SIGNED ack against a console.
+        // PP811 SIGNED IT AND PP823 PUT THE SIGNATURE WHERE THE CONSOLE LOOKS FOR IT. The ack goes
+        // out through TakionSendPath, so it is MAC'd the way the C's is; and the position it is
+        // MAC'd AT is key_pos_local, the send counter the C keeps, rather than the receive ledger
+        // this port had been reading for all four sends. A signed ack at a position the console did
+        // not advance is a tag it cannot verify - grounds to reject, where an unsigned one was only
+        // a field to ignore - which is why PP823 had to land before this line could be written.
         //
-        // PP824 IS THAT LINE AND IT WAITS ON PP823 FIRST. The MAC is computed AT the key position,
-        // and PP823 is the finding that this port takes that position off the RECEIVE ledger rather
-        // than the send counter the C keeps - so a signed ack would carry a tag the console cannot
-        // verify, which is grounds to reject where an unsigned one was only a field to ignore.
-        // PP807 shipped senkusha's half, whose takion has no cipher and whose acks the C leaves
-        // plain too; this one is the half that needed a console and still does.
+        // AND THE SIGNED ACK IS MEASURED NOW, which is what PP811 and PP823 left owing. Two live
+        // runs on 2026-09-09 against a console in an active game, this line in:
+        //
+        //   5989 arrival(s), 977 decoded, 953 shown, 1848 audio unit(s), no teardown
+        //   11093 arrival(s), 958 decoded, 936 shown, 1772 audio unit(s), 81 ack(s) sent
+        //
+        // The second run is the one that can say the acks LEFT rather than that the session
+        // survived them: `[stream] data acks` reports what StreamArrivals counted, and 81 of them
+        // went out MAC'd at key_pos_local against the 1170-odd unsigned ones that ended a session.
         arrivals = new StreamArrivals(
             host, messages, keying, new ManagedStreamData(events))
         {
             TagLocal = takion.TagLocal,
             Ledger = takion.Ledger,
+            Acks = takion,
         };
 
         // PP808: AND THE DISCONNECT, the other half of the knot above. The dispatch closure carries

@@ -115,6 +115,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP826** **PP818's whole margin is a readback it did not measure, because no renderer has taken one of its textures** — Media Foundation's output needs a GPU-side copy before a renderer reads it; how much that costs is still unmeasured.
 - ✅ **PP812** **the datagram capture taps the C's takion and the port opens its own, so a run without a relay records nothing** — A non-relay datagram capture is the port's own dispatch; the C's tap stays installed and now sees only the ctrl channel.
 - ✅ **PP829** **the relay never carries senkusha's handshake, so a capture through it dies before the session reaches the stream** — The relay carries all three ports a session dials, and each UDP leg keeps its own client so one leg's answers cannot go to another's socket.
+- ✅ **PP824** **the stream's arrivals never set the ack sink, so a live session answers no data message the console sends** — A data ack must be MAC'd at key_pos_local before the stream's root may join it; unsigned, about 1170 of them ended a live session.
 
 ## Block G — Test discipline
 
