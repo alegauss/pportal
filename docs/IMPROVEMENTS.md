@@ -224,19 +224,19 @@ THE READER HALF IS ALREADY DONE, which is what makes this bounded rather than a 
 PP785 recorded what the C answers so the differentials outlive it, PP786 guarded the C
 suite's three behind CHIAKI_UNIT_HAVE_TAKION and gave the suite a trial flip, and every
 managed file that calls the oracle asks chiaki_shim_has_takion before it runs -
-OracleGuardCensus is what holds that. Nothing on either reading side would throw when
-the wrappers go.
+OracleGuardCensus holds that. Nothing on either reading side would throw when the
+wrappers go.
 
 WHAT IS NOT DONE IS THE SHIM'S OWN HALF. The twenty-nine exports are not inside
-CHIAKI_SHIM_HAVE_TAKION: they run from line 1513 to 2163 of the header and 2262 to 4767
-of the body, interleaved with the frame path's regions and opus's. So this is not a
-define to flip but twenty-nine pairs to place, and a half-placed one leaves the header's
-text disagreeing with the built DLL - which is the failure PP662 records a reader
-making.
+CHIAKI_SHIM_HAVE_TAKION, and they run from line 1513 to 2163 of the header and 2262 to
+4767 of the body, interleaved with the frame path's regions and opus's.
 
-PP696 IS THE SHAPE and its preparation was three tasks: PP658 converted the five
-drivers, PP661 the sixteen comparisons, PP670 the nine guards. The equivalent here has
-landed, so what is left is this one edit and then the flip's own commit.
+THE HEADER NEED NOT MOVE, though, and that is what sizes this. takion.h stays in the
+tree when takion.c leaves the build, so the shim still COMPILES and only fails to link -
+which means the guard belongs around each body's INTERIOR rather than around its
+declaration. The exports survive, answering an error, and the header's text cannot
+disagree with the built DLL the way PP662 records. PP696 removed its fourteen instead;
+keeping these is the cheaper half of the same choice and is worth taking deliberately.
 
 ## Block G — Test discipline
 
