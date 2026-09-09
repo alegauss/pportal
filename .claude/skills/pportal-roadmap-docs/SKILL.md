@@ -109,6 +109,24 @@ Each file has one job — never duplicate content between them:
 | [`docs/CHANGELOG.md`](../../../docs/CHANGELOG.md) | What has **shipped** — the ledger, indexed by block. Authoritative for the highest block letter. |
 | [`docs/IMPROVEMENTS.md`](../../../docs/IMPROVEMENTS.md) | **Design rationale** for *unshipped* work only. No status tables, no shipped implementation reports. |
 
+### ⚠ A MEASURED FACT DOES NOT GO IN `IMPROVEMENTS.md` — a ship DELETES that section
+
+This is the trap, and it looks like nothing at all until the ship: `§PP<n>` is rationale for
+*unshipped* work, so **anything written there dies with the task**. A number you measured, a device
+id you read off the hardware, a limit you found by trying it — put that where it outlives the line:
+
+| What you have | Where it goes |
+|---|---|
+| A fact about hardware — a vid:pid, an endpoint that exists or does not, what a bus or a driver refuses | [`docs/HARDWARE-CONTRACT.md`](../../../docs/HARDWARE-CONTRACT.md). Hand-editable, not roadkeep-owned, and its own rule is that **absence is quiet**. |
+| A constraint the design leaves behind — "deleting a dependency means nothing links it", "this path is USB-only" | `docs/DECISIONS.md`, and the door is **`ship --decides`**. A `section add --role decisions` is REFUSED until a line points there, so the decision is filed *by* the ship and not before it. |
+| A path proven unreachable-or-correct | [`docs/TRACED.md`](../../../docs/TRACED.md), so nobody re-traces it. |
+| Why a line was set aside, with its re-entry trigger | `docs/DEFERRED.md`. |
+
+**PP851 is the worked example.** Its section was given the DualSense's ids, its localised endpoint
+name and the Bluetooth limitation — all measured against a pad on the desk — and every one of them
+would have been deleted by the ship that used them. They are in the hardware contract instead. The
+rationale section keeps only the argument for doing the work, which is what a ship is right to take.
+
 - **Shipping is `ship <id>`** — one transaction (ledger entry, roadmap line deleted,
   `§PP<n>` dropped, dependents re-annotated) or none of it. Then commit (rule above).
 - **The read BEFORE an add is `delivered <block> --near "<the sentence you would file>"`.**

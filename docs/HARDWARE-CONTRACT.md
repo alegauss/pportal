@@ -1,4 +1,4 @@
-# What this client requires of a GPU
+# What this client requires of the hardware
 
 PP51. The direction of Block I is that NVIDIA is where the tuning goes — the decoder that gets
 measured, the upscaler that gets integrated, the path that gets a number. This file is the other
@@ -6,7 +6,12 @@ half of that sentence, written down so it is a commitment rather than an intenti
 only.** A Windows machine with Intel graphics is an ordinary laptop, and an application that fails
 on one has not shipped, it has narrowed.
 
-## The floor
+**The GPU was this file's whole subject and is now its first half.** PP851 measured a pad and the
+facts were the same shape — what the client requires of a device, and what its absence looks like —
+so they are a section below rather than a second file. The rule that binds both is the one this file
+opens with: absence is quiet, and a feature that is not there is simply not offered.
+
+## The GPU floor
 
 Four things must keep working on a machine with no NVIDIA card at all. They are not aspirations;
 a change that breaks one of them is a regression whether or not anything else improved.
@@ -70,3 +75,26 @@ no GPU of any vendor in CI — §PP22 and §PP36 are the lines that change that.
 When they do, this is the requirement they inherit: **a vendor path that is the only one with a test
 is a vendor requirement with extra steps.** Whatever the gate ends up running, the non-NVIDIA
 decode path is in it.
+
+## What this client requires of a pad
+
+Measured with a DualSense attached to this machine, so a later reader does not have to attach one
+to learn it. PP845 wired its touchpad and sensors and PP846 its rumble; PP851 is the haptics a
+DualSense can *hear*, and that one turns out to depend on the cable.
+
+| Over USB | Over Bluetooth |
+|---|---|
+| The pad is **054C:0CE6** — the vendor and product pair PP846 routes the 47-byte effects report by, confirmed against `USB\VID_054C&PID_0CE6&MI_00` rather than read out of the Qt client. | The same pad, the same ids, and it still enumerates: SDL maps it, the buttons arrive, the touchpad arrives, and the effects report still rumbles it. |
+| It presents **audio endpoints of its own**, which is the only route the console's haptic waveform has to the wide-band actuators. | **No audio endpoint at all.** The device is simply absent, and with it the whole of PP851's path. |
+
+**So the haptic-audio feature is conditional on the cable, and that is not a defect to work
+around.** A user on Bluetooth gets PP846's fold to a single rumble strength — the same answer a
+DualShock 4 gets, and the Qt client's own answer when it finds no haptic device. What must not
+happen is a port that treats the missing endpoint as an error: it is the ordinary state of a
+wireless pad, and this file's opening rule applies unchanged — absence is quiet.
+
+**The endpoint's name is localised.** It reads `Alto-falantes (2- …)` on a Portuguese Windows, so a
+device chosen by name is chosen by SUBSTRING. The substring the Qt client uses is the pad's model
+words, which is loose by construction: an Xbox pad on the same machine carries two of the same
+three words. Matching on it alone is a decision to accept a wrong device, not an oversight — and
+this machine has both pads attached, so it is the machine that would find out.
