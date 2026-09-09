@@ -239,30 +239,6 @@ flag, its count loop is guarded by the return above it, peek writes both out-poi
 where pull guards its own, and takion still passes NULL and still drops on a bad MAC.
 Repair any upstream and the port's copy becomes the divergence, on the next run.
 
-### §PP834 Half a wire is not a wire
-
-BOTH RELAY CALL SITES RECORD ARRIVALS ONLY, and each says why in the same words: the
-capture is a REPLAY CORPUS, so offering the sends as well would produce a file the
-replay reads as twice the traffic. That reason is sound and the consequence is that this
-tree cannot read its own sends.
-
-PP813 IS WHAT THAT COSTS. A senkusha command was leaving on the wrong takion channel for
-six tasks. The capture held every datagram the console sent and not one the port did, so
-the investigation compared the port's ping against bytes built through the C's formatter
-- a model of the send, not the send. The model agreed, because the builder was right;
-the wrong argument was a layer below it and nothing recorded that layer.
-
-THE TENSION IS REAL AND THE ANSWER IS NOT ONE FILE. A replay needs arrivals alone,
-because it is standing in for a console; a diagnosis needs both, because half a
-conversation explains nothing. Those are two artefacts, and PP830's per-leg report is
-the shape that already got this right: it counts what crossed each way without touching
-the corpus.
-
-SO THE LIKELY SHAPE IS A SECOND WRITER on the same relay callback - direction and leg
-per row, whole datagrams, its own path and its own flag - leaving the corpus exactly as
-it is. What it must not do is add a column to the capture format, which is what every
-reader of that file already agrees about.
-
 ### §PP837 The microphone nobody has spoken into
 
 PP825 shipped the four stages joined to a takion and its criterion came back unmet:

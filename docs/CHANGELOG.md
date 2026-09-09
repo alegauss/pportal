@@ -756,6 +756,7 @@
 - ✅ **PP832** **the stream report never says how many IDR requests went out, so a corrupted picture cannot be read back** — StreamOutbound counts the requests, the refusals and the reports beside them, and the run prints all four: a 20-second session read 0 requested against 28 frames lost to the network.
 - ✅ **PP838** **a pad connected after the stream starts is never opened, so it works only if it was plugged in first** — SDL's device-added event now reaches an open on the pump's own thread: a run that began with no pad ended holding an Xbox Series X Controller, 1 adopted and 156 states pushed.
 - ✅ **PP833** **the audio engine is fed one frame at a time as they decode, so a late frame empties the queue and the sound gaps** — A prefill holds the first n frames and releases them together: ten read 0 and 1 dry against 0 to 17 without one, five changed nothing, and it stays off unless a run asks.
+- ✅ **PP834** **the relay records only what the console sent, so no capture can answer what the port actually put on the wire** — A second writer takes both directions off the relay callback, leg per row: a relayed run wrote 4565 datagrams, 318 sent by this machine, and the replay corpus is untouched.
 
 ## Block G — Test discipline
 

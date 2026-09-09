@@ -70,10 +70,14 @@ public static class StreamRun
     /// it and what a caller who says nothing gets - the number is a latency trade and is measured
     /// against PP814's dry counter rather than chosen.
     /// </param>
+    /// <param name="wirePath">
+    /// PP834: where to write both directions of the relay, or null to write none. Needs `--via`,
+    /// because a run that is not relayed has no wire this side can see.
+    /// </param>
     public static int Run(
         string? nickname, string decoderName, TimeSpan? hold = null,
         string? via = null, string? capturePath = null, bool microphone = false,
-        int audioPrefill = 0)
+        int audioPrefill = 0, string? wirePath = null)
     {
         ArgumentNullException.ThrowIfNull(decoderName);
 
@@ -149,7 +153,7 @@ public static class StreamRun
             {
                 result = Pump(
                     nickname, decoderName, model, window, stopping.Token,
-                    new RunOptions(via, capturePath, microphone, audioPrefill));
+                    new RunOptions(via, capturePath, microphone, audioPrefill, wirePath));
 
                 // Closed from here rather than left open on a failure: a run with a bound is one
                 // nobody is watching, and a window that outlived its session would hold it forever.
@@ -188,8 +192,12 @@ public static class StreamRun
     /// <param name="CapturePath">Where to record the datagrams, or null to record none.</param>
     /// <param name="Microphone">Whether to open one, which is off unless asked.</param>
     /// <param name="AudioPrefill">How many decoded frames to hold before the first submit.</param>
+    /// <param name="WirePath">
+    /// PP834: where to write BOTH directions of the relay, or null to write none. Beside the
+    /// capture rather than into it: a replay corpus holds arrivals alone on purpose.
+    /// </param>
     private readonly record struct RunOptions(
-        string? Via, string? CapturePath, bool Microphone, int AudioPrefill);
+        string? Via, string? CapturePath, bool Microphone, int AudioPrefill, string? WirePath);
 
     /// <summary>
     /// The session, the decoder, the presenter and the pump, on a thread of their own.
@@ -235,16 +243,25 @@ public static class StreamRun
                 installTap: false)
             : null;
 
+        // PP834: the second artefact, which holds what this machine SENT. The corpus below still
+        // takes arrivals alone - a replay stands in for a console and reads two directions as twice
+        // the traffic - so the sends go to a file of their own or to none at all.
+        using WireLog? wire = relaying && options.WirePath is { } wirePath
+            ? new WireLog(wirePath, ExchangeCapture.Monotonic)
+            : null;
+
         using SessionRelay? relay = relaying
             ? new SessionRelay(
                 System.Net.IPAddress.Parse(found.Address),
 
-                // Arrivals only, as the capture's own relay path takes them: recording the sends as
-                // well would produce a file a replay reads as twice the traffic.
-                (bytes, fromConsole) =>
+                (bytes, fromConsole, leg) =>
                 {
+                    // Arrivals only into the corpus, as the capture's own relay path takes them.
                     if (fromConsole)
                         datagrams?.Capture.Offer(bytes, ExchangeCapture.Monotonic(), bytes.Length);
+
+                    // And both directions into the wire log, which is what PP813 had none of.
+                    wire?.Offer(bytes, fromConsole, leg);
                 })
             : null;
 
@@ -461,6 +478,16 @@ public static class StreamRun
         Console.WriteLine(
             $"[stream] pad sink: armed {phase.Pad.Active}, {pad.Pushed} state(s) pushed, "
                 + $"holding {pad.PadName ?? "nothing"}, {pad.Adopted} adopted after the start");
+
+        // PP834: and what the wire log holds, where one was asked for. `sent` is the half no
+        // capture in this tree ever had - the number that would have ended PP813 in a reading
+        // instead of a task.
+        if (wire is { } recorded)
+        {
+            Console.WriteLine(
+                $"[stream] wire: {recorded.Rows} datagram(s) recorded, {recorded.Sent} sent by this "
+                    + $"machine, at {options.WirePath}");
+        }
 
         // PP798: which units the decoder refused, which its own log line does not say.
         //

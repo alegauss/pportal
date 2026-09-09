@@ -46,7 +46,8 @@ public class SessionRelayTests
         using var relay = new SessionRelay(
             new IPEndPoint(IPAddress.Loopback, 1),
             consoleStream,
-            (bytes, fromConsole) => seen.Enqueue((bytes, fromConsole)),
+            // PP834: the leg is carried now and these two ask about the stream one alone.
+            (bytes, fromConsole, _) => seen.Enqueue((bytes, fromConsole)),
             0,
             0);
 
@@ -103,7 +104,8 @@ public class SessionRelayTests
         using var relay = new SessionRelay(
             new IPEndPoint(IPAddress.Loopback, 1),
             consoleStream,
-            (bytes, fromConsole) => seen.Enqueue((bytes, fromConsole)),
+            // PP834: the leg is carried now and these two ask about the stream one alone.
+            (bytes, fromConsole, _) => seen.Enqueue((bytes, fromConsole)),
             0,
             0);
 

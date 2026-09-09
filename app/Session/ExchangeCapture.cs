@@ -487,7 +487,12 @@ public static class ExchangeCapture
                 IPAddress.Parse(address),
                 // Arrivals only. The tap records what the C RECEIVES, so a relay that also offered
                 // the sends would produce a file the replay reads as twice the traffic.
-                (bytes, fromConsole) =>
+                //
+                // PP834: and the leg the callback now carries is ignored HERE on purpose. This
+                // capture's whole product is the corpus, and a row's channel is decided by which
+                // tap it arrived through; the sends and their leg are a second artefact, written by
+                // the run that streams rather than by the one that records for a replay.
+                (bytes, fromConsole, _) =>
                 {
                     if (fromConsole)
                         datagrams?.Capture.Offer(bytes, Monotonic(), bytes.Length);

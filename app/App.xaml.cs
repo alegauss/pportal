@@ -1208,7 +1208,15 @@ public partial class App : Application
                         HostCommandLine.ValueAfter(e.Args, "--audio-prefill"),
                         out int prefill) && prefill > 0
                         ? prefill
-                        : 0));
+                        : 0,
+                    // PP834: and the wire log, which is a second artefact beside the corpus rather
+                    // than a column in it. Defaulted like the captures do, so asking for one needs
+                    // no path - a reader who wants it named says so.
+                    HostCommandLine.Has(e.Args, "--capture-wire")
+                        ? HostCommandLine.ValueAfter(e.Args, "--capture-wire")
+                            ?? Path.Combine(
+                                QtPaths.LogDirectory, $"wire-{DateTimeOffset.Now:yyyyMMdd-HHmmss}.txt")
+                        : null));
         }
 
         // PP516: and the other half of that, which needs no console - a capture on disk read back

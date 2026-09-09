@@ -106,6 +106,11 @@ export const HOST_FLAGS: readonly HostFlag[] = [
     "summary": "with --show-stream: hold n decoded frames before the first, trading latency for a queue that does not run dry"
   },
   {
+    "name": "--capture-wire",
+    "argument": "[path]",
+    "summary": "with --show-stream --via relay: write BOTH directions of the relay, which the replay corpus never holds"
+  },
+  {
     "name": "--console",
     "argument": "[name]",
     "summary": "with either capture: which registered console, by nickname"

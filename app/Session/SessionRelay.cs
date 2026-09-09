@@ -4,6 +4,23 @@ using System.Net.Sockets;
 namespace ChiakiNg.Session;
 
 /// <summary>
+/// PP834: which of the relay's two UDP legs a datagram crossed.
+///
+/// The two are different conversations on different ports, and a recording that could not tell
+/// them apart was part of what PP813 cost: senkusha's commands were leaving on the wrong takion
+/// channel while the stream leg ran perfectly, and every capture held one direction of both mixed
+/// together.
+/// </summary>
+public enum RelayLeg
+{
+    /// <summary>STREAM_CONNECTION_PORT, 9296.</summary>
+    Stream,
+
+    /// <summary>Senkusha's own, 9297, which a real session dials first.</summary>
+    Senkusha,
+}
+
+/// <summary>
 /// PP613, under PP27: a relay between the C and the console, so whole datagrams can be recorded
 /// without editing libchiaki.
 ///
@@ -52,7 +69,7 @@ public sealed class SessionRelay : IDisposable
     public const int SenkushaPort = 9297;
 
     private readonly IPEndPoint consoleControl;
-    private readonly Action<byte[], bool>? onDatagram;
+    private readonly Action<byte[], bool, RelayLeg>? onDatagram;
     private readonly TcpListener control;
     private readonly UdpLeg stream;
     private readonly UdpLeg? senkusha;
@@ -65,7 +82,7 @@ public sealed class SessionRelay : IDisposable
     /// </summary>
     /// <param name="console">Where the console is, as discovery found it.</param>
     /// <param name="onDatagram">Every takion datagram, whole. See the other constructor.</param>
-    public SessionRelay(IPAddress console, Action<byte[], bool>? onDatagram = null)
+    public SessionRelay(IPAddress console, Action<byte[], bool, RelayLeg>? onDatagram = null)
         : this(
             new IPEndPoint(console ?? throw new ArgumentNullException(nameof(console)), ControlPort),
             new IPEndPoint(console, StreamPort),
@@ -99,7 +116,7 @@ public sealed class SessionRelay : IDisposable
     public SessionRelay(
         IPEndPoint consoleControl,
         IPEndPoint consoleStream,
-        Action<byte[], bool>? onDatagram,
+        Action<byte[], bool, RelayLeg>? onDatagram,
         int controlPort,
         int streamPort,
         IPEndPoint? consoleSenkusha = null,
@@ -113,14 +130,23 @@ public sealed class SessionRelay : IDisposable
 
         control = new TcpListener(IPAddress.Loopback, controlPort);
 
-        stream = new UdpLeg(streamPort, consoleStream, Offered, Forwarded);
+        stream = new UdpLeg(
+            streamPort, consoleStream, (bytes, from) => Offered(bytes, from, RelayLeg.Stream), Forwarded);
 
         senkusha = consoleSenkusha is null
             ? null
-            : new UdpLeg(senkushaPort, consoleSenkusha, Offered, Forwarded);
+            : new UdpLeg(
+                senkushaPort,
+                consoleSenkusha,
+                (bytes, from) => Offered(bytes, from, RelayLeg.Senkusha),
+                Forwarded);
     }
 
-    private void Offered(byte[] datagram, bool fromConsole) => onDatagram?.Invoke(datagram, fromConsole);
+    // PP834: WHICH LEG, which the callback could not say. Both legs funnelled through one handler
+    // that knew only the direction, so a recorder had no way to tell senkusha's port from the
+    // stream's - and PP813 was a senkusha send going out wrong while the stream ran perfectly.
+    private void Offered(byte[] datagram, bool fromConsole, RelayLeg leg)
+        => onDatagram?.Invoke(datagram, fromConsole, leg);
 
     private void Forwarded() => Interlocked.Increment(ref forwarded);
 
