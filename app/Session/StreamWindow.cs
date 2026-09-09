@@ -116,6 +116,25 @@ public sealed class StreamWindowState
     }
 
     /// <summary>
+    /// PP836: handleShortcut's F11 arm, which is the only thing in the client that toggles.
+    ///
+    /// <c>if (windowState() != Qt::WindowFullScreen) fullscreenTime(); else normalTime();</c> - and
+    /// it is here rather than in the caller because both halves guard on the same flag this object
+    /// owns. A caller reading <see cref="Fullscreen"/> and choosing would be a second answer to a
+    /// question the state machine already answers, which is how the two drift apart.
+    /// </summary>
+    /// <returns>Whether the window is fullscreen after the toggle.</returns>
+    public bool Toggle()
+    {
+        if (Fullscreen)
+            LeaveFullscreen();
+        else
+            EnterFullscreen();
+
+        return Fullscreen;
+    }
+
+    /// <summary>
     /// The delay elapsing. Separate from <see cref="LeaveFullscreen"/> because the second is what
     /// a port would inline, and inlining it makes the window adjustable while it is still settling.
     /// </summary>

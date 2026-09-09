@@ -75,30 +75,6 @@ WHAT THIS IS NOT is a decoder change. The choice stays where PP77 put it and vul
 keeps the download it needs. What changes is that the branch asks the frame's format
 rather than whether it is hardware at all.
 
-### §PP836 The fullscreen nobody can reach
-
-StreamWindowState is a faithful port that nothing constructs. PP11 read fullscreenTime
-and normalTime out of the Qt client and kept the three things a tidier port drops: the
-early-return guard protecting the remembered maximized flag, the pinned minimum size
-that would leave a window unable to shrink after a stream, and the adjustable flag that
-returns a second later and outside the guard. All asserted, none of it running.
-
-WHAT IS MISSING IS A CONSUMER AND A KEY. No view builds a StreamWindowState, so Apply
-and EnterFullscreen have tests as their only callers - the shape PP700 and PP807 both
-named, where every piece exists and nothing joins them. And no key is bound: the port
-handles PreviewKeyDown in the settings and dialog views alone, so alt+enter reaches no
-handler at all.
-
-THE SETTING ALREADY EXISTS ON THE OTHER SIDE. settings/window_type is declared,
-VideoSettings offers Fullscreen as its default, and FullscreenDoubleClick is a checkbox
-in VideoSettingsView. The port asks the user what to do about fullscreen and then does
-nothing with either answer, which is worse than not asking.
-
-WHAT DECIDES THE SHAPE is which window the picture is in. The stream is presented
-through the path PP700 joined rather than into a window this file knows about, so the
-consumer is the presenter's own window - and identifying it comes before binding a key
-onto the wrong one.
-
 ## Block D — Screens
 
 ## Block E — Windows-only build

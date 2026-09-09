@@ -7,6 +7,7 @@
 ## Block C — Video and input path
 
 - ✅ **PP641** **PP10's HUD is XAML, and the compositor tree PP319 chose covers a WPF window's own drawing entirely** — The overlay surface is sized by what the HUD measures, never by the video plane: a composition visual carries its own size, and rendering the tree across a 4K plane costs more than a whole frame.
+- ✅ **PP836** **the ported fullscreen state machine has no consumer, so nothing in the app can go fullscreen** — F11 carries no modifier because control is the client's prefix for five other shortcuts, one of which quits; alt+enter is an addition and is marked as one.
 
 ### §PP641 The overlay surface is the HUD's size
 

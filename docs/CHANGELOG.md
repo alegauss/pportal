@@ -89,6 +89,7 @@
   checked **The overlay surface is sized by the HUD and not by the video plane** A composition visual carries its own size, so the full-screen copy the section prices is not a property of the option. The rule is code with a test that measures a real visual tree, and the spike's recorded numbers are read from its committed file rather than typed into the model.
 - ✅ **PP700** **every piece of the video path exists and none is joined to a session, so a stream decodes and shows nothing** — A window shows a PS5's home screen: decoder on the session, a renderer held between frames, the shared surface WPF takes, and the D3DImage bound and empty since PP10.
 - ✅ **PP701** **the host shows a console's picture and sends it no input, so nothing can be played on it** — One SDL pad opened, translated from Controller::HandleButtonEvent and pushed on change; a real session sent 1210 states and a person played on it.
+- ✅ **PP836** **the ported fullscreen state machine has no consumer, so nothing in the app can go fullscreen** — F11 toggles as handleShortcut does and alt+enter as Windows does, driving PP11's state machine onto the run's window: the minimum pinned, and adjustable a second after.
 
 ## Block D — Screens
 

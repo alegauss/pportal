@@ -1,6 +1,8 @@
 using System.Net;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Threading;
 using ChiakiNg.Native;
 using ChiakiNg.Protocol;
 using ChiakiNg.Views;
@@ -75,6 +77,58 @@ public static class StreamRun
             Content = new StreamOverlayView { DataContext = model },
         };
 
+        // PP836: and the state machine PP11 ported, with a window to drive at last. Seeded with the
+        // size above because EnterFullscreen pins the minimum to whatever Size says at that moment,
+        // and a state that believes it is 1280x720 when the window is not would pin the wrong one.
+        var chrome = new StreamWindowState();
+        chrome.Resize((int)window.Width, (int)window.Height);
+
+        // The adjustable flag comes back a second after leaving fullscreen and NOT on the way out,
+        // which is the third of PP11's findings. A timer is what that second is; it is stopped and
+        // restarted per leave, so two toggles inside the second do not race two timers.
+        var settling = new DispatcherTimer { Interval = StreamWindowState.AdjustableDelay };
+
+        settling.Tick += (_, _) =>
+        {
+            settling.Stop();
+            chrome.AdjustableDelayElapsed();
+            StreamWindowChrome.Apply(window, chrome);
+        };
+
+        // Tracked rather than assumed: the way out of fullscreen restores whatever the window was
+        // before it, and a person maximizing it mid-stream is the case that gets that wrong.
+        window.StateChanged += (_, _) =>
+        {
+            if (!chrome.Fullscreen)
+                chrome.SetMaximized(window.WindowState == WindowState.Maximized);
+        };
+
+        window.SizeChanged += (_, e) =>
+        {
+            if (!chrome.Fullscreen)
+                chrome.Resize((int)e.NewSize.Width, (int)e.NewSize.Height);
+        };
+
+        // PreviewKeyDown, so the toggle is seen before the overlay's own focus chain can take it.
+        window.PreviewKeyDown += (_, e) =>
+        {
+            if (!StreamWindowShortcut.TogglesFullscreen(
+                    StreamWindowShortcut.Resolve(e.Key, e.SystemKey), Keyboard.Modifiers))
+            {
+                return;
+            }
+
+            chrome.Toggle();
+            StreamWindowChrome.Apply(window, chrome);
+
+            settling.Stop();
+
+            if (chrome.AdjustableAfter is not null)
+                settling.Start();
+
+            e.Handled = true;
+        };
+
         var stopping = new CancellationTokenSource();
         int result = 1;
 
@@ -99,7 +153,11 @@ public static class StreamRun
                 stopping.CancelAfter(bound);
         };
 
-        window.Closed += (_, _) => stopping.Cancel();
+        window.Closed += (_, _) =>
+        {
+            settling.Stop();
+            stopping.Cancel();
+        };
 
         window.ShowDialog();
         stopping.Cancel();
