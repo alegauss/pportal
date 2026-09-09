@@ -162,6 +162,12 @@ public class StreamPhaseFlipTests(ITestOutputHelper output)
     /// still pushing at the C session would show a picture and send no input. PP756 wrote the
     /// managed sink for this and nothing had ever built one - the seam PP800 is about, met a second
     /// time in the commit that made it matter.
+    ///
+    /// PP845: THE SPELLING WAS THE CHECK AND IT SHOULD NOT HAVE BEEN. This asked for the exact text
+    /// `new PadFeed(phase.Pad)`, so giving the feed a second argument - the console's touchpad -
+    /// broke a check about which SINK the pad pushes at. That is PP844's finding one file over: a
+    /// check keyed on furniture rather than on its subject. What it asks now is that the first
+    /// argument is the phase's sink, whatever follows it.
     /// </summary>
     [Fact]
     public void ThePadPushesAtThePortsSinkAndNotAtTheCSession()
@@ -171,8 +177,8 @@ public class StreamPhaseFlipTests(ITestOutputHelper output)
 
         string code = DeadAssertions.CodeOnly(File.ReadAllText(path));
 
-        Assert.Contains("new PadFeed(phase.Pad)", code, StringComparison.Ordinal);
-        Assert.DoesNotContain("new PadFeed(session)", code, StringComparison.Ordinal);
+        Assert.Contains("new PadFeed(phase.Pad", code, StringComparison.Ordinal);
+        Assert.DoesNotContain("new PadFeed(session", code, StringComparison.Ordinal);
     }
 
     /// <summary>

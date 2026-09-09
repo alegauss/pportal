@@ -27,29 +27,6 @@ Whatever the right pair is, the dpad path and the mouse path should read it from
 same place - and the reason to write that down now is that the port has just copied all
 three, so it is the moment when the duplication is visible.
 
-### §PP845 The pad's other two halves, ported and unplugged
-
-PadFeed folds an SDL event into a translation and pushes the result. WriteTo sets three
-fields - the button mask, both triggers and the four stick axes - and that is the whole
-of what a console is told. The touchpad's coordinates and the gyroscope's readings are
-fields on the same state and nothing ever writes them.
-
-WHAT IS MISSING IS THE WIRE AND NOT THE PORT, which is what makes this a line rather
-than an estimate. PP129 mapped SDL's touchpad-and-finger naming onto the console's pool
-of two ids. PP130 ported the sensor fusion, down to the stateful filter. PP93 fixed the
-dpad touch bounds to the console's own. Four tasks, all shipped, all reachable, none
-reached: TouchpadTracker and MotionTracker have no caller outside their tests.
-
-PP838 IS THE PRECEDENT AND THE WARNING. A pad plugged in after the picture appeared was
-never opened, because PadFeed's event arm had no case for arrival - and the run reported
-`armed True, 0 state(s) pushed`, which reads as a pad nobody touched. This is the same
-shape one field along, and it reports nothing at all: a live run says 635 states pushed
-whether or not any of them carried a finger.
-
-The trigger is the pads the port supports. A PS4 or PS5 pad has both a touchpad and
-sensors, the console expects input from each, and today a player using one has a gamepad
-with the two things that make it that pad switched off.
-
 ### §PP846 A pad that is only an input
 
 Gamepads' own summary says it: eighteen SDL entry points, every one an event, joystick

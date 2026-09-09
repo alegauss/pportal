@@ -40,8 +40,114 @@ public static class SdlPadSource
     /// </summary>
     public const int EventSize = 56;
 
+    /// <summary>Where SDL declares the two sensor kinds a pad reports.</summary>
+    public const string SensorHeaderRelativePath = @"mingw64\include\SDL2\SDL_sensor.h";
+
     /// <summary>SDL_events.h, or null where this toolchain is not installed.</summary>
     public static string? LocateEventsHeader() => Under(EventsHeaderRelativePath);
+
+    /// <summary>SDL_sensor.h, or null where this toolchain is not installed.</summary>
+    public static string? LocateSensorHeader() => Under(SensorHeaderRelativePath);
+
+    /// <summary>
+    /// PP845: whether the four event types this port added are still where their offsets say.
+    ///
+    /// EventType spells them as ControllerBase plus 6 through 9, which is only true while the
+    /// header's enum runs DEVICEREMAPPED, TOUCHPADDOWN, TOUCHPADMOTION, TOUCHPADUP, SENSORUPDATE
+    /// with nothing between. SDL_CONTROLLERSTEAMHANDLEUPDATED arrived after them and would have
+    /// shifted all four had it been inserted instead - which is what makes the ORDER the check
+    /// rather than five separate names.
+    /// </summary>
+    public static bool TheControllerEventOrderIsStill(string eventsHeader)
+    {
+        ArgumentNullException.ThrowIfNull(eventsHeader);
+
+        return InOrder(
+            eventsHeader,
+            "SDL_CONTROLLERDEVICEREMAPPED",
+            "SDL_CONTROLLERTOUCHPADDOWN",
+            "SDL_CONTROLLERTOUCHPADMOTION",
+            "SDL_CONTROLLERTOUCHPADUP",
+            "SDL_CONTROLLERSENSORUPDATE");
+    }
+
+    /// <summary>
+    /// Whether SDL_ControllerTouchpadEvent still declares its members in the order the overlay
+    /// reads them: touchpad at 12, finger at 16, x at 20, y at 24.
+    ///
+    /// The FIELD ORDER and not the offsets, because the header states the first and no C header
+    /// states the second. Four Uint32-wide members before x is what puts it at 20, and a member
+    /// inserted anywhere above it moves both floats without moving anything this side would notice.
+    /// </summary>
+    public static bool TheTouchpadEventFieldOrderIsStill(string eventsHeader)
+    {
+        ArgumentNullException.ThrowIfNull(eventsHeader);
+
+        return Struct(eventsHeader, "SDL_ControllerTouchpadEvent") is { } body
+            && InOrder(body, "type;", "timestamp;", "which;", "touchpad;", "finger;", "x;", "y;");
+    }
+
+    /// <summary>
+    /// And SDL_ControllerSensorEvent: sensor at 12, then data[3] at 16, 20 and 24.
+    ///
+    /// data being an ARRAY is the half worth asserting. Three separate floats would occupy the same
+    /// bytes and read identically, so what this holds is that the header still says three - a
+    /// data[2] would leave the overlay reading four bytes past the last reading.
+    /// </summary>
+    public static bool TheSensorEventFieldOrderIsStill(string eventsHeader)
+    {
+        ArgumentNullException.ThrowIfNull(eventsHeader);
+
+        return Struct(eventsHeader, "SDL_ControllerSensorEvent") is { } body
+            && InOrder(body, "type;", "timestamp;", "which;", "sensor;", "data[3];");
+    }
+
+    /// <summary>
+    /// Whether SDL still numbers the two sensor kinds the way <see cref="Gamepads.SensorKind"/> does.
+    ///
+    /// The enum is written without values - INVALID is -1 and the rest follow from UNKNOWN - so the
+    /// order is what makes ACCEL 1 and GYRO 2, and this reads that order.
+    /// </summary>
+    public static bool TheSensorKindOrderIsStill(string sensorHeader)
+    {
+        ArgumentNullException.ThrowIfNull(sensorHeader);
+
+        return sensorHeader.Contains("SDL_SENSOR_INVALID = -1", StringComparison.Ordinal)
+            && InOrder(
+                sensorHeader,
+                "SDL_SENSOR_INVALID",
+                "SDL_SENSOR_UNKNOWN",
+                "SDL_SENSOR_ACCEL,",
+                "SDL_SENSOR_GYRO,");
+    }
+
+    /// <summary>One struct's body, or null where the header does not declare it.</summary>
+    private static string? Struct(string header, string name)
+    {
+        int at = header.IndexOf($"typedef struct {name}", StringComparison.Ordinal);
+        if (at < 0)
+            return null;
+
+        int closes = header.IndexOf($"}} {name};", at, StringComparison.Ordinal);
+        return closes < 0 ? null : header[at..closes];
+    }
+
+    /// <summary>Whether every name occurs, each after the one before it.</summary>
+    private static bool InOrder(string text, params string[] names)
+    {
+        var from = 0;
+
+        foreach (string name in names)
+        {
+            int at = text.IndexOf(name, from, StringComparison.Ordinal);
+            if (at < 0)
+                return false;
+
+            from = at + name.Length;
+        }
+
+        return true;
+    }
 
     /// <summary>
     /// PP579: whether SDL still says an event is <see cref="EventSize"/> bytes on a 64-bit pointer.

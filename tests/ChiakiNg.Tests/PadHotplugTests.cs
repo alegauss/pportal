@@ -62,14 +62,22 @@ public class PadHotplugTests(ITestOutputHelper output)
     [Fact]
     public void AFeedNobodyStartedHoldsNothing()
     {
-        using var feed = new PadFeed(new ManagedControllerStateSink());
+        using var feed = new PadFeed(new ManagedControllerStateSink(), TouchpadExtents.Ps5);
 
-        output.WriteLine($"holding {feed.PadName ?? "nothing"}, adopted {feed.Adopted}");
+        output.WriteLine(
+            $"holding {feed.PadName ?? "nothing"}, adopted {feed.Adopted}, "
+                + $"touched {feed.Touched}, moved {feed.Moved}, sensors {feed.Sensors.Count}");
 
         Assert.False(feed.HasPad);
         Assert.Null(feed.PadName);
         Assert.Equal(0, feed.Adopted);
         Assert.Equal(0, feed.Pushed);
+
+        // PP845: and the two halves this task wired read zero for the same reason, which is what
+        // makes them worth reading at all - a run that played says something else.
+        Assert.Equal(0, feed.Touched);
+        Assert.Equal(0, feed.Moved);
+        Assert.Empty(feed.Sensors);
     }
 
     /// <summary>

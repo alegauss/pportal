@@ -108,6 +108,9 @@ export const features: FeatureRecord[] = [
             "The capture takes a press rather than waiting for movement, and a stick resting off centre reads as resting rather than as input.",
           ],
           [
+            "On a pad that has them, the touchpad and the motion sensors reach the console too. A finger is scaled by the connected console's own pad rather than by a size that is neither, and the orientation is fused by the library the console expects it from, so a game that reads tilt reads the same numbers a DualSense would give it natively.",
+          ],
+          [
             "Triggers are captured without turning on the axes, because the sticks flood the log and the trigger is what you were trying to bind.",
           ],
         ],

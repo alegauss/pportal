@@ -38,8 +38,50 @@ namespace ChiakiNg.Session;
 /// nothing at all about whether it is off centre. Noise and drift look identical until something
 /// prints the number.
 /// </param>
+/// <param name="Wide">
+/// PP845: the Sint32 at offset 12, which is the touchpad index on a touchpad event and the sensor
+/// kind on a sensor one. It shares those four bytes with <paramref name="Index"/> and
+/// <paramref name="Value"/>, so it is meaningful only for the four events PP845 added and reading
+/// it otherwise reads a byte of something else widened by three.
+/// </param>
+/// <param name="Finger">SDL_ControllerTouchpadEvent.finger, at 16. Touchpad events only.</param>
+/// <param name="Data0">
+/// The float at 16: a sensor's first reading, and the same bytes as <paramref name="Finger"/> and
+/// <paramref name="AxisValue"/>. Sensor events only.
+/// </param>
+/// <param name="Data1">The float at 20: a sensor's second reading, or a touch's x.</param>
+/// <param name="Data2">The float at 24: a sensor's third reading, or a touch's y.</param>
 public readonly record struct SdlEvent(
-    uint Type, uint Timestamp, int Which, byte Index, byte Value, short AxisValue = 0);
+    uint Type, uint Timestamp, int Which, byte Index, byte Value, short AxisValue = 0,
+    int Wide = 0, int Finger = 0, float Data0 = 0, float Data1 = 0, float Data2 = 0);
+
+/// <summary>
+/// PP845: one touch, with the members SDL_ControllerTouchpadEvent actually declares.
+///
+/// A record rather than five arguments off <see cref="SdlEvent"/>, because the point is that x and
+/// y come from the fields a SENSOR event calls its second and third readings - so a caller that
+/// took them off the event directly would be one type check away from scaling a gyroscope into a
+/// finger position.
+/// </summary>
+/// <param name="Touchpad">The pad on the device. A DualSense has one; the pair is what keys a touch.</param>
+/// <param name="Finger">The finger on that pad.</param>
+/// <param name="X">Normalised 0..1, left to right.</param>
+/// <param name="Y">Normalised 0..1, top to bottom.</param>
+public readonly record struct SdlTouch(int Touchpad, int Finger, float X, float Y);
+
+/// <summary>
+/// PP845: one sensor reading, with the members SDL_ControllerSensorEvent declares.
+/// </summary>
+/// <param name="Kind">One of <see cref="Gamepads.SensorKind"/>'s values.</param>
+/// <param name="X">data[0].</param>
+/// <param name="Y">data[1].</param>
+/// <param name="Z">data[2].</param>
+/// <param name="TimestampMs">
+/// SDL's own millisecond stamp, which the tracker wants in microseconds. Carried as SDL gives it
+/// and converted by <see cref="MotionTracker.ToMicroseconds"/>, which is where PP130 put the
+/// factor of a thousand rather than at the call site.
+/// </param>
+public readonly record struct SdlSensor(int Kind, float X, float Y, float Z, uint TimestampMs);
 
 /// <summary>
 /// PP218: one attached pad, as much of it as the mapping screen needs.
@@ -318,8 +360,57 @@ public static class Gamepads
             return false;
         }
 
-        ev = new SdlEvent(raw.Type, raw.Timestamp, raw.Which, raw.Index, raw.Value, raw.AxisValue);
+        ev = new SdlEvent(
+            raw.Type, raw.Timestamp, raw.Which, raw.Index, raw.Value, raw.AxisValue,
+            raw.Wide, raw.Finger, raw.Data0, raw.Data1, raw.Data2);
         return true;
+    }
+
+    /// <summary>Whether an event is one of the three a finger on the touchpad arrives as.</summary>
+    public static bool IsTouchpadEvent(SdlEvent ev)
+        => ev.Type is EventType.ControllerTouchpadDown
+            or EventType.ControllerTouchpadMotion
+            or EventType.ControllerTouchpadUp;
+
+    /// <summary>
+    /// The touch an event carries. Meaningful only where <see cref="IsTouchpadEvent"/> holds.
+    ///
+    /// x and y are the fields a sensor event calls data[1] and data[2], which is why this exists
+    /// rather than the caller reading them off the event.
+    /// </summary>
+    public static SdlTouch Touch(SdlEvent ev) => new(ev.Wide, ev.Finger, ev.Data1, ev.Data2);
+
+    /// <summary>The sensor reading an event carries, for SDL_CONTROLLERSENSORUPDATE.</summary>
+    public static SdlSensor Sensor(SdlEvent ev)
+        => new(ev.Wide, ev.Data0, ev.Data1, ev.Data2, ev.Timestamp);
+
+    /// <summary>
+    /// Turns on whichever of the two sensors a pad has, and reports which.
+    ///
+    /// ASKED BEFORE IT IS SET, which is the Qt client's order and not a politeness: enabling a
+    /// sensor a device does not have is an SDL error, and a port that ignored the answer would take
+    /// an error return on every pad without motion - which is most pads that are not a DualSense.
+    ///
+    /// Called on the SDL thread, like every other controller call in this file.
+    /// </summary>
+    /// <returns>The kinds now enabled, which is empty for a pad with neither.</returns>
+    public static IReadOnlyList<int> EnableMotionSensors(IntPtr controller)
+    {
+        if (controller == IntPtr.Zero)
+            return [];
+
+        var enabled = new List<int>();
+
+        foreach (int kind in (int[])[SensorKind.Accelerometer, SensorKind.Gyroscope])
+        {
+            if (!SdlControllerHasSensor(controller, kind))
+                continue;
+
+            if (SdlControllerSetSensorEnabled(controller, kind, true) == 0)
+                enabled.Add(kind);
+        }
+
+        return enabled;
     }
 
     /// <summary>
@@ -334,6 +425,37 @@ public static class Gamepads
         {
             Type = type, Timestamp = 0, Which = which, Index = index, Value = value,
         };
+        return SdlPushEvent(ref raw) == 1;
+    }
+
+    /// <summary>
+    /// PP845: the same, for an event whose members are past the head.
+    ///
+    /// The touchpad's and the sensor's fields are the whole reason this overload exists. The offsets
+    /// in <c>SdlEventRaw</c> are a promise about a C union, kept by nothing on this side - and a
+    /// wrong one does not fail, it reads a finger index out of a float or a gyroscope reading out of
+    /// a touch position. Pushing one through SDL and reading it back out is the only check available
+    /// on a machine with no pad, and it is a check against the BINARY rather than the header.
+    ///
+    /// <paramref name="wide"/> is the Sint32 at 12 - the touchpad index or the sensor kind - and
+    /// <paramref name="finger"/> the Sint32 at 16, which shares its bytes with
+    /// <paramref name="data0"/>. So a caller sets one or the other and never both, exactly as the
+    /// union means.
+    /// </summary>
+    public static bool PushEvent(
+        uint type, int which, int wide, int finger = 0,
+        float data0 = 0, float data1 = 0, float data2 = 0)
+    {
+        var raw = new SdlEventRaw { Type = type, Timestamp = 0, Which = which, Wide = wide };
+
+        if (finger != 0)
+            raw.Finger = finger;
+        else
+            raw.Data0 = data0;
+
+        raw.Data1 = data1;
+        raw.Data2 = data2;
+
         return SdlPushEvent(ref raw) == 1;
     }
 
@@ -371,6 +493,24 @@ public static class Gamepads
         public const uint ControllerDeviceAdded = ControllerBase + 3;
         public const uint ControllerDeviceRemoved = ControllerBase + 4;
         public const uint ControllerDeviceRemapped = ControllerBase + 5;
+
+        // PP845: the four a pad's other two halves arrive as. Derived from the same base for the
+        // same reason as the six above, and SDL_CONTROLLERSTEAMHANDLEUPDATED sits after these -
+        // so the run is contiguous and a value here is checkable against the header's own order.
+        public const uint ControllerTouchpadDown = ControllerBase + 6;
+        public const uint ControllerTouchpadMotion = ControllerBase + 7;
+        public const uint ControllerTouchpadUp = ControllerBase + 8;
+        public const uint ControllerSensorUpdate = ControllerBase + 9;
+    }
+
+    /// <summary>
+    /// SDL_SensorType, as far as a pad reports. INVALID is -1 and UNKNOWN is 0, so a kind this
+    /// port does not handle is any other value rather than a missing case.
+    /// </summary>
+    public static class SensorKind
+    {
+        public const int Accelerometer = 1;
+        public const int Gyroscope = 2;
     }
 
     /// <summary>
@@ -403,6 +543,27 @@ public static class Gamepads
         // -32768..32767 - so it is read signed. Unsigned here would turn every leftward or
         // downward reading into a number near 65535 and make a centred stick look pinned.
         [FieldOffset(16)] public short AxisValue;
+
+        // PP845: the touchpad's and the sensor's members, which ALIAS the three above and each
+        // other. That is what a union is, and the note at the top of this struct says a member
+        // needing more than the head gets its own overlay - these are that overlay, in this struct
+        // rather than beside it because SDL_PollEvent takes one by reference.
+        //
+        // WHICH FIELD MEANS WHAT DEPENDS ON THE TYPE, and nothing here can enforce that: 12 is the
+        // touchpad index or the sensor kind, and 16 is the finger, an axis value, or the first
+        // sensor reading. So the fields are read through Touch and Sensor below, each of which
+        // takes only the members its own event declares, and no caller reads this struct.
+        //
+        //   SDL_ControllerTouchpadEvent: touchpad 12, finger 16, x 20, y 24, pressure 28
+        //   SDL_ControllerSensorEvent:   sensor 12, data[3] 16, 20, 24
+        //
+        // Pressure is deliberately absent: the Qt client's HandleTouchpadEvent ignores it, and a
+        // field this port reads and never sends is a promise about a layout for no reason.
+        [FieldOffset(12)] public int Wide;
+        [FieldOffset(16)] public int Finger;
+        [FieldOffset(16)] public float Data0;
+        [FieldOffset(20)] public float Data1;
+        [FieldOffset(24)] public float Data2;
     }
 
     [DllImport(ChiakiNative.Sdl, EntryPoint = "SDL_PollEvent", CallingConvention = CallingConvention.Cdecl)]
@@ -461,6 +622,18 @@ public static class Gamepads
         CallingConvention = CallingConvention.Cdecl)]
     [return: MarshalAs(UnmanagedType.I1)]
     private static extern bool SdlControllerGetAttached(IntPtr controller);
+
+    // PP845: SDL_bool and SDL_SensorType, which are an int and an enum over int - so both cross as
+    // int rather than through a marshalled bool, and only the return is told it is one byte.
+    [DllImport(ChiakiNative.Sdl, EntryPoint = "SDL_GameControllerHasSensor",
+        CallingConvention = CallingConvention.Cdecl)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    private static extern bool SdlControllerHasSensor(IntPtr controller, int sensorType);
+
+    [DllImport(ChiakiNative.Sdl, EntryPoint = "SDL_GameControllerSetSensorEnabled",
+        CallingConvention = CallingConvention.Cdecl)]
+    private static extern int SdlControllerSetSensorEnabled(
+        IntPtr controller, int sensorType, [MarshalAs(UnmanagedType.I1)] bool enabled);
 
     [DllImport(ChiakiNative.Sdl, EntryPoint = "SDL_GameControllerGetAxis",
         CallingConvention = CallingConvention.Cdecl)]

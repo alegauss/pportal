@@ -408,7 +408,11 @@ public static class StreamRun
         // PP783: at the port's sender and no longer at the C session. The C's own body handed the
         // state to stream_connection.feedback_sender, and the flip leaves that call storing a value
         // nothing sends - so a pad wired to it would push 426 states into a struct nobody reads.
-        using var pad = new PadFeed(phase.Pad);
+        // PP845: and WHICH CONSOLE'S TOUCHPAD, which the feed now has to be told. found.Ps5 is the
+        // same bit the connect info was built from a hundred lines above, so the answer is the
+        // session's own rather than a pad that is neither console's - §PP93's finding about the Qt
+        // client's SDL path, which takes the larger of each axis because that layer cannot ask.
+        using var pad = new PadFeed(phase.Pad, TouchpadExtents.For(found.Ps5));
 
         // PP835: OPENED OFF THE THREAD THAT DRAWS, which a user reported as the picture freezing.
         //
@@ -502,9 +506,18 @@ public static class StreamRun
         // that began with no pad can end with one now, so `adopted` separates a controller plugged
         // in mid-session and untouched from one that never arrived - which used to be the same
         // reading of zero.
+        // PP845: and which HALVES of the pad reached it, which the state count cannot say either -
+        // §PP845's own sentence is that a live run says 635 states pushed whether or not any of them
+        // carried a finger. Three readings, and each separates a case from a defect that looks the
+        // same: no sensors is an ordinary pad, sensors with zero moved is a pad whose motion never
+        // arrived, and zero touched with states pushed is a touchpad nobody used.
         Console.WriteLine(
             $"[stream] pad sink: armed {phase.Pad.Active}, {pad.Pushed} state(s) pushed, "
                 + $"holding {pad.PadName ?? "nothing"}, {pad.Adopted} adopted after the start");
+
+        Console.WriteLine(
+            $"[stream] pad halves: {pad.Touched} touch event(s), {pad.Moved} sensor reading(s), "
+                + $"sensors on: {(pad.Sensors.Count == 0 ? "none" : string.Join("+", pad.Sensors.Select(SensorName)))}");
 
         // PP834: and what the wire log holds, where one was asked for. `sent` is the half no
         // capture in this tree ever had - the number that would have ended PP813 in a reading
@@ -744,6 +757,20 @@ public static class StreamRun
         => SessionBigMaterial.TransportOf(session) is { } transport
             ? $"mtu {transport.MtuIn}/{transport.MtuOut}, rtt {transport.RoundTripMicroseconds}us"
             : "nothing - the session has no transport numbers";
+
+    /// <summary>
+    /// PP845: an SDL_SensorType as the run prints it, which is two names and then the number.
+    ///
+    /// A pad may report kinds this port does not fuse - SDL names five more - so an unhandled one
+    /// prints as itself rather than as unknown: the report is what says why Moved read zero, and
+    /// "sensor 4" is an answer while "unknown" is the question again.
+    /// </summary>
+    private static string SensorName(int kind) => kind switch
+    {
+        Gamepads.SensorKind.Accelerometer => "accel",
+        Gamepads.SensorKind.Gyroscope => "gyro",
+        _ => $"sensor {kind}",
+    };
 
     /// <summary>
     /// PP699: one row per session, in the ledger both builds append to.

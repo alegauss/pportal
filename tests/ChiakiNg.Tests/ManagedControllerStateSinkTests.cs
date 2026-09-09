@@ -1,3 +1,4 @@
+using System.Reflection;
 using ChiakiNg.Native;
 using ChiakiNg.Protocol;
 using ChiakiNg.Session;
@@ -204,6 +205,12 @@ public class ManagedControllerStateSinkTests
     ///
     /// Asserted by assignment and not by a call: reaching chiaki_session_set_controller_state needs
     /// a session, and what this is about is that PadFeed no longer names one.
+    ///
+    /// PP845: THE ARITY WAS THE CHECK AND THE ARITY IS NOT THE CLAIM. This asked the constructor for
+    /// its single parameter, so giving the feed a second one - which console's touchpad - broke a
+    /// check about which SINK it takes. What it asks now is that the sink parameter is the seam and
+    /// that no parameter is a concrete session, which is the whole of PP756's point and holds
+    /// however many other things the feed is told.
     /// </summary>
     [Fact]
     public void TheCSessionIsTheOtherThingThatSatisfiesTheSeam()
@@ -211,9 +218,11 @@ public class ManagedControllerStateSinkTests
         Assert.True(typeof(IControllerStateSink).IsAssignableFrom(typeof(ChiakiSession)));
         Assert.True(typeof(IControllerStateSink).IsAssignableFrom(typeof(ManagedControllerStateSink)));
 
-        // And the feed takes the seam, not either of them.
-        Assert.Equal(
-            typeof(IControllerStateSink),
-            typeof(PadFeed).GetConstructors().Single().GetParameters().Single().ParameterType);
+        ParameterInfo[] taken = typeof(PadFeed).GetConstructors().Single().GetParameters();
+
+        Assert.Contains(taken, one => one.ParameterType == typeof(IControllerStateSink));
+
+        Assert.DoesNotContain(taken, one => one.ParameterType == typeof(ChiakiSession));
+        Assert.DoesNotContain(taken, one => one.ParameterType == typeof(ManagedControllerStateSink));
     }
 }
