@@ -1199,7 +1199,16 @@ public partial class App : Application
                     // PP825: and the microphone, which no flag could reach before. A flag rather
                     // than a default, because opening a capture device is the one thing in this run
                     // a person has to have asked for.
-                    HostCommandLine.Has(e.Args, "--microphone")));
+                    HostCommandLine.Has(e.Args, "--microphone"),
+                    // PP833: and the audio cushion, which is a latency trade and therefore a
+                    // number to measure rather than one to pick here. Zero is what shipped before
+                    // it, and an unreadable value is zero rather than a refusal - the run is still
+                    // worth having with the cushion off.
+                    int.TryParse(
+                        HostCommandLine.ValueAfter(e.Args, "--audio-prefill"),
+                        out int prefill) && prefill > 0
+                        ? prefill
+                        : 0));
         }
 
         // PP516: and the other half of that, which needs no console - a capture on disk read back

@@ -101,6 +101,11 @@ export const HOST_FLAGS: readonly HostFlag[] = [
     "summary": "with --show-stream: open a microphone and send it, which is off unless asked"
   },
   {
+    "name": "--audio-prefill",
+    "argument": "[n]",
+    "summary": "with --show-stream: hold n decoded frames before the first, trading latency for a queue that does not run dry"
+  },
+  {
     "name": "--console",
     "argument": "[name]",
     "summary": "with either capture: which registered console, by nickname"

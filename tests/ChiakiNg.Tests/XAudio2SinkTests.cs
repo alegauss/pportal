@@ -148,6 +148,75 @@ public class XAudio2SinkTests(ITestOutputHelper output)
         Assert.Equal(8 * 480, sink.Render?.FramesSubmitted);
     }
 
+    /// <summary>
+    /// PP833: the cushion holds until it is full, releases in order, and then gets out of the way.
+    ///
+    /// PP814 measured the engine running dry seven times in twenty-five seconds, touching a depth
+    /// of one, in a stream every other counter called healthy. Nothing held a reserve because each
+    /// frame went over the moment Opus produced it.
+    ///
+    /// THE "AND THEN GETS OUT OF THE WAY" HALF IS THE ONE THAT MATTERS. A cushion that kept holding
+    /// would be AudioRing again - a second queue in front of the engine's, which is the shape PP816
+    /// deleted and PP810 measured going wrong. Steady state after the release is frame-for-frame
+    /// what shipped before.
+    /// </summary>
+    [Fact]
+    public void ThePrefillHoldsUntilItIsFullAndThenReleasesInOrder()
+    {
+        using var sink = new XAudio2Sink { Prefill = 3 };
+        sink.Prepare();
+
+        // PP708's rule: whether this machine has speakers is a fact about the machine.
+        if (sink.Render is not { Running: true })
+            return;
+
+        var frame = new short[960];
+
+        sink.Pcm(frame, 480);
+        sink.Pcm(frame, 480);
+
+        // Held, not dropped: nothing has reached the engine and two frames are waiting.
+        Assert.Equal(0, sink.Submitted);
+        Assert.Equal(2, sink.Holding);
+
+        sink.Pcm(frame, 480);
+
+        // The third fills it, and all three go together - which is the depth the engine starts on.
+        Assert.Equal(3, sink.Submitted);
+        Assert.Equal(0, sink.Holding);
+
+        sink.Pcm(frame, 480);
+
+        Assert.Equal(4, sink.Submitted);
+        Assert.Equal(0, sink.Holding);
+
+        output.WriteLine($"{sink.Submitted} submitted, holding {sink.Holding}");
+    }
+
+    /// <summary>
+    /// And no prefill is what shipped before it, which is what a caller who says nothing gets.
+    ///
+    /// The cushion costs latency - one frame for each held - and this is a remote play client, so
+    /// the number is a trade somebody makes rather than a default this file picks. Zero has to stay
+    /// the behaviour of every run that did not ask.
+    /// </summary>
+    [Fact]
+    public void SayingNothingLeavesTheCushionOff()
+    {
+        using var sink = new XAudio2Sink();
+        sink.Prepare();
+
+        Assert.Equal(0, sink.Prefill);
+
+        if (sink.Render is not { Running: true })
+            return;
+
+        sink.Pcm(new short[960], 480);
+
+        Assert.Equal(1, sink.Submitted);
+        Assert.Equal(0, sink.Holding);
+    }
+
     private static ManagedOpusDecoder Pair(IPcmSink sink)
     {
         ManagedAudioReceiverPair pair = ManagedStreamPhase.AudioPair(sink, out ManagedOpusDecoder speaker);

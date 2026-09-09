@@ -65,9 +65,15 @@ public static class StreamRun
     /// states - a client that recorded a room because a session started would be worse than one
     /// with no microphone at all.
     /// </param>
+    /// <param name="audioPrefill">
+    /// PP833: how many decoded frames to hold before the first submit. Zero is what shipped before
+    /// it and what a caller who says nothing gets - the number is a latency trade and is measured
+    /// against PP814's dry counter rather than chosen.
+    /// </param>
     public static int Run(
         string? nickname, string decoderName, TimeSpan? hold = null,
-        string? via = null, string? capturePath = null, bool microphone = false)
+        string? via = null, string? capturePath = null, bool microphone = false,
+        int audioPrefill = 0)
     {
         ArgumentNullException.ThrowIfNull(decoderName);
 
@@ -142,7 +148,8 @@ public static class StreamRun
             var worker = new Thread(() =>
             {
                 result = Pump(
-                    nickname, decoderName, model, window, stopping.Token, via, capturePath, microphone);
+                    nickname, decoderName, model, window, stopping.Token,
+                    new RunOptions(via, capturePath, microphone, audioPrefill));
 
                 // Closed from here rather than left open on a failure: a run with a bound is one
                 // nobody is watching, and a window that outlived its session would hold it forever.
@@ -171,17 +178,36 @@ public static class StreamRun
     }
 
     /// <summary>
+    /// PP833: the four the run takes and the pump only forwards, kept together.
+    ///
+    /// Each of these arrived as a separate parameter and the list had outgrown what a reader can
+    /// hold: none of them is read by <see cref="Run"/> itself, so the shape that says so is one
+    /// argument carrying the four rather than four the signature has to spell twice.
+    /// </summary>
+    /// <param name="Via">An address forwarding for the console, or null to dial it directly.</param>
+    /// <param name="CapturePath">Where to record the datagrams, or null to record none.</param>
+    /// <param name="Microphone">Whether to open one, which is off unless asked.</param>
+    /// <param name="AudioPrefill">How many decoded frames to hold before the first submit.</param>
+    private readonly record struct RunOptions(
+        string? Via, string? CapturePath, bool Microphone, int AudioPrefill);
+
+    /// <summary>
     /// The session, the decoder, the presenter and the pump, on a thread of their own.
     /// </summary>
     /// <remarks>
     /// The window is used only to reach its dispatcher and to set the model's properties, both of
     /// which marshal. Nothing here touches a control.
     /// </remarks>
+
     private static int Pump(
         string? nickname, string decoderName,
         StreamOverlayViewModel model, Window window, CancellationToken stopping,
-        string? via = null, string? capturePath = null, bool microphone = false)
+        RunOptions options)
     {
+        string? via = options.Via;
+        string? capturePath = options.CapturePath;
+        bool microphone = options.Microphone;
+
         ChiakiSession.LibInit();
 
         using var log = new ChiakiLog(
@@ -287,6 +313,10 @@ public static class StreamRun
         {
             Microphone = microphone ? found.Ps5 : null,
         };
+
+        // PP833: set before the phase starts, because the sink is handed to the decoder inside
+        // Build and a prefill arriving after the first frame would hold nothing.
+        phase.Sound.Prefill = options.AudioPrefill;
 
         phase.InstallOn();
 
@@ -485,6 +515,10 @@ public static class StreamRun
                 + $", ran dry {phase.Sound.Render?.RanDry ?? 0} time(s)"
                 + $", shallowest {phase.Sound.Render?.Shallowest ?? 0}"
                 + $", {phase.Sound.Render?.SamplesPlayed ?? 0} sample(s) played"
+                // PP833: the cushion this run was given, printed BESIDE the dry count because the
+                // two are one reading: a dry count means nothing without the prefill it was
+                // measured at, and a run comparing them has to know which was which.
+                + $", prefill {phase.Sound.Prefill}"
                 + $", announced {phase.Speaker?.Announced.ToString() ?? "nothing"}");
 
         // AND THE DECODER'S OWN VIEW, which is where a lost packet shows and the render's cannot.

@@ -79,6 +79,7 @@ public static partial class HostCommandLine
         new("--measure-decoder", "[name]", "the same session WITH a decoder, reporting how many frames it decoded"),
         new("--show-stream", "[name]", "open a window and put a console's picture in it, with the named decoder"),
         new("--microphone", "", "with --show-stream: open a microphone and send it, which is off unless asked"),
+        new("--audio-prefill", "[n]", "with --show-stream: hold n decoded frames before the first, trading latency for a queue that does not run dry"),
         new("--console", "[name]", "with either capture: which registered console, by nickname"),
         new("--capture-seconds", "[n]", "with any run that takes a length: how long, which sets the hold too"),
         new("--via", "[address|relay]", "with --capture-datagrams: go through an address, or 'relay' to run one here and keep whole datagrams"),

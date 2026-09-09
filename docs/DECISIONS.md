@@ -121,6 +121,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP831** **no check joins a managed send's arguments to the C call it ports, so an inverted pair passes every builder test** — An inversion is a KIND mistake and not a value one: both builders carried the right number, so a check comparing numbers would have passed each time.
 - ✅ **PP832** **the stream report never says how many IDR requests went out, so a corrupted picture cannot be read back** — A refused IDR request counts as asked AND as refused: the receiver waits for a keyframe only where the send returned true, so one number cannot tell those runs apart.
 - ✅ **PP838** **a pad connected after the stream starts is never opened, so it works only if it was plugged in first** — A removal is answered by asking the handle whether it is still attached, never by comparing the event's instance id: one handle has no id to compare without two more calls.
+- ✅ **PP833** **the audio engine is fed one frame at a time as they decode, so a late frame empties the queue and the sound gaps** — The cushion is off by default because it costs one frame of latency each: ten removed the gaps and five removed none, so the number is a run's trade rather than a default.
 
 ## Block G — Test discipline
 

@@ -28,8 +28,36 @@ namespace ChiakiNg.Session;
 /// </summary>
 public sealed class XAudio2Sink : IPcmSink, IDisposable
 {
+    private readonly List<byte[]> held = [];
+
     private XAudio2Render? render;
+    private bool released;
     private bool disposed;
+
+    /// <summary>
+    /// PP833: how many frames to hold before the first submit, so the engine starts with depth.
+    ///
+    /// PP814 MEASURED THE GAP AND IT IS NOT ZERO. A twenty-five second run submitted 2361 frames,
+    /// decoded 2361, concealed none - and the engine ran dry seven times, touching a queue depth of
+    /// one. Roughly one gap every three seconds, in a stream every other counter calls healthy.
+    ///
+    /// THE CAUSE IS THAT NOTHING HOLDS A RESERVE. Each frame is handed over the moment Opus
+    /// produces it, on the decode thread, so a late datagram or a preempted thread empties the
+    /// queue and the voice plays silence until the next one lands.
+    ///
+    /// A CUSHION AND NOT ANOTHER BUFFER, which is the distinction PP816 paid for. AudioRing was a
+    /// second queue in front of the engine's with a pump doing room arithmetic, and PP810 is one
+    /// line of that arithmetic dropping a unit's tail. This holds nothing steady-state: once the
+    /// prefill is released every frame goes straight through, exactly as before.
+    ///
+    /// THE COST IS LATENCY, ONE FRAME EACH, and this is a remote play client - so the number is a
+    /// trade to be MEASURED rather than chosen, which is what <c>--audio-prefill</c> is for. Zero
+    /// is what shipped before this and is still what a caller who says nothing gets.
+    /// </summary>
+    public int Prefill { get; set; }
+
+    /// <summary>How many frames are being held right now, which is zero once the prefill went.</summary>
+    public int Holding => held.Count;
 
     /// <summary>The engine, or null before a STREAMINFO said what to open it for.</summary>
     public XAudio2Render? Render => render;
@@ -120,6 +148,28 @@ public sealed class XAudio2Sink : IPcmSink, IDisposable
         if (render is not { Running: true })
         {
             Unplayable++;
+            return;
+        }
+
+        // PP833: the cushion, and only until it is spent. Copied because the span is the decoder's
+        // buffer and does not outlive the call - a cost paid on a handful of frames at the start of
+        // a session and never again, which is the whole difference between this and a ring.
+        if (!released && Prefill > 0)
+        {
+            held.Add(MemoryMarshal.AsBytes(pcm).ToArray());
+
+            if (held.Count < Prefill)
+                return;
+
+            // In arrival order, which is the only order they can be played in.
+            foreach (byte[] one in held)
+            {
+                render.Write(one);
+                Submitted++;
+            }
+
+            held.Clear();
+            released = true;
             return;
         }
 
