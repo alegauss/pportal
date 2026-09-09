@@ -131,6 +131,23 @@ public sealed class ManagedStreamPhase : IDisposable
     /// </summary>
     public XAudio2Sink Sound { get; } = new();
 
+    /// <summary>
+    /// PP825: whether to open a microphone, and which generation's head to format for.
+    ///
+    /// NULL IS OFF AND IS THE DEFAULT, which is a product rule rather than a porting one: a client
+    /// that opened the microphone because a session started would be recording a room nobody said
+    /// it could. So this is the one join in this root a caller has to ask for.
+    ///
+    /// THE GENERATION IS IN THE SAME FIELD BECAUSE THERE IS NO SAFE DEFAULT FOR IT. The head is
+    /// nineteen bytes on a PS4 and twenty on a PS5, and a bool with a default would be silently
+    /// wrong on one of them; a caller that knows enough to want a microphone knows which console it
+    /// is talking to, because it chose the target when it built the connect info.
+    /// </summary>
+    public bool? Microphone { get; set; }
+
+    /// <summary>The microphone this run opened, or null where none was asked for.</summary>
+    public ManagedMicrophone? Capture { get; private set; }
+
     /// <summary>What decoded the sound, or null where no run built one.</summary>
     public ManagedOpusDecoder? Speaker => speaker;
 
@@ -309,6 +326,25 @@ public sealed class ManagedStreamPhase : IDisposable
         host.ReplayHandler = arrivals.Replay;
         Arrivals = arrivals;
 
+        // PP825: THE MICROPHONE, and only where a caller asked for one. Every stage existed - the
+        // capture, the canceller, the encoder, the formatter and the send - and the path had never
+        // run with a device on one end and a socket on the other.
+        //
+        // OPENED HERE FOR THE REASON THE SOUND IS: PP754's rule says a start that never comes should
+        // open no device, and this runs only once the session has handed the phase over. It is the
+        // same argument twice, and a microphone is the one it matters most for.
+        if (Microphone is { } micPs5)
+        {
+            var microphone = new ManagedMicrophone(
+                micPs5,
+                (packet, length) => takion.SendMicrophone(packet.AsSpan(0, length), micPs5));
+
+            // Reported rather than thrown: a machine with no capture endpoint still has a session,
+            // and Opened says which of the three it was.
+            microphone.Start();
+            Capture = microphone;
+        }
+
         return host;
     }
 
@@ -482,6 +518,11 @@ public sealed class ManagedStreamPhase : IDisposable
         // be handed a buffer it no longer owns. PP797's order was the same argument about a ring.
         speaker?.Dispose();
         Sound.Dispose();
+
+        // PP825: and the microphone, which goes down for the same reason and in the same direction -
+        // the capture's pump thread runs the whole path, so it is stopped before the takion it sends
+        // into is torn down.
+        Capture?.Dispose();
 
         handover.Dispose();
         GC.SuppressFinalize(this);

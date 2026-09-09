@@ -70,9 +70,20 @@ public static class MicrophoneSurface
     /// Named rather than counted, so a run that starts finding one says which - and so the list is
     /// something a later commit adds to on purpose rather than a pattern that quietly stops
     /// matching.
+    ///
+    /// PP825: "WasapiCapture" LEFT THIS LIST, and it is a name collision going away rather than a
+    /// check being loosened. It was NAudio's type when nothing in the port had that name; PP652
+    /// then wrote this port's own capture class and called it the same thing, so the entry stopped
+    /// meaning "a foreign capture API" and started meaning "our class". The day a session owned a
+    /// microphone, the file holding one read as a second way into the device.
+    ///
+    /// NOTHING IS LOST BY DROPPING IT. Raw WASAPI capture goes through IAudioCaptureClient, which
+    /// is still here and is what catches this port's own opener; NAudio's own name catches NAudio,
+    /// wrapper class and all. What no longer trips is a file that OWNS a WasapiCapture, which is a
+    /// consumer of the one opener and is exactly what the census means to permit.
     /// </summary>
     public static IReadOnlyList<string> CaptureApis { get; } =
-        ["NAudio", "WasapiCapture", "WaveInEvent", "IAudioCaptureClient", "MediaCapture"];
+        ["NAudio", "WaveInEvent", "IAudioCaptureClient", "MediaCapture"];
 
     /// <summary>The managed half, where the capture would be.</summary>
     public const string ManagedRelativePath = "app";
@@ -143,11 +154,13 @@ public static class MicrophoneSurface
     /// definition, for the same reason: a header says a thing exists and says nothing about who
     /// uses it.
     ///
-    /// AND A MEMBER ACCESS ON THIS PORT'S OWN CAPTURE CLASS IS NOT A SECOND CAPTURE.
-    /// <c>WasapiCapture.</c> followed by a name is a reference to the one place - the render side
-    /// reads its buffer duration and its flags from it - while NAudio's type of the same name is
-    /// CONSTRUCTED. So the qualified form does not count and the bare one does, which is the
-    /// difference between using the census's subject and being a second one.
+    /// AND A MEMBER ACCESS IS NOT A USE. A name followed by a dot is a reference to something the
+    /// census's subject exposes rather than a construction of it, which is the difference between
+    /// reading a constant off a capture class and being a second capture.
+    ///
+    /// PP825: that rule was written for <c>WasapiCapture.</c> and outlived it - the entry it
+    /// guarded has left <see cref="CaptureApis"/> as a name collision. It is kept because it is
+    /// true of every name in the list and not because of the one it was written for.
     /// </summary>
     public static bool OpensACaptureDevice(string source)
     {

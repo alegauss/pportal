@@ -27,13 +27,13 @@
 
 - ⏳ **PP27** (deps: PP672 ✅, PP673 ✅, PP674 ✅, PP675 ✅, PP676 ✅, PP677 ✅, PP678 ✅, PP679 ✅, PP680 ✅, PP702 ✅, PP783 ✅, PP784 ✅, PP785 ✅, PP786 ✅) (requires: console) **takion.c is 2007 lines of C over raw sockets and timers, and the whole stream rides on it** — Ten tasks wrote it; four more take the C out. → §PP27
 - 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — chiaki_fec_decode has three callers - frameprocessor.c, the C suite and this port's shim - and gf-complete has a fourth site none of them reach: chiaki_lib_init. → §PP30
-- ⏳ **PP825** (deps: —) **the microphone's packet is built and no takion sends one, so PP676's mic layout has only tests as callers** — Nothing in the session owns a capture and calls it, so the send has no caller either; a live run is what would show a console accepting one. → §PP825
 - 📋 **PP828** (deps: PP826 ✅) **the copy off the decode surface is known to exist and untimed, so the FFmpeg decision still has no total** — PP826 killed the no-readback claim and left the number it was standing in for; without it Media Foundation's column is a decode plus an unknown. → §PP828
 - 📋 **PP831** (deps: —) **no check joins a managed send's arguments to the C call it ports, so an inverted pair passes every builder test** — PP813 spent senkusha's channel as the chunk flags for six tasks and every test agreed: a builder carrying the right number is right either way. → §PP831
 - 📋 **PP832** (deps: —) **the stream report never says how many IDR requests went out, so a corrupted picture cannot be read back** — A user reported artefacts at the bottom of the screen and the number that would say whether the port asked for a keyframe is in no line of the run. → §PP832
 - 📋 **PP833** (deps: —) **the audio engine is fed one frame at a time as they decode, so a late frame empties the queue and the sound gaps** — PP814's counter reads seven dry moments and a shallowest of one over twenty-four seconds, which is the click still there and now measurable. → §PP833
 - 📋 **PP834** (deps: —) **the relay records only what the console sent, so no capture can answer what the port actually put on the wire** — PP813 was a wrong send and took a whole task, because the bytes leaving this machine were reasoned about from the C's formatter rather than read back. → §PP834
 - ⏳ **PP835** (deps: —) **the picture waits on SDL opening a pad, so connecting one after the stream starts freezes the window** — Whether the session's death at 741 arrivals went with the freeze or is a fault of its own is not yet known. → §PP835
+- 📋 **PP837** (deps: PP825 ✅) (requires: console) **no live run has opened the microphone, so nothing says a console accepts the packets the port now formats** — PP825 shipped the path and left its criterion unmet; only a console can say a signed mic packet is accepted, as one did for PP824's ack. → §PP837
 
 ## Block G — Test discipline
 
@@ -108,14 +108,6 @@
   chiaki_render_tearing_probe does. Integration means the video plane's own swapchain
   carries it and presents at sync interval zero, which is the half that waits on there
   being a video plane at all.
-
-## Done when — PP825
-
-- **A session that owns a capture sends microphone packets through the takion** The send
-  exists and nothing calls it. PP706's four stages produce a formatted packet and the
-  composition root that would hand one to SendMicrophone does not exist, so
-  MicrophoneSent is zero on every live run. Checked by a session raising that counter,
-  and by a console that does not drop the stream over it.
 
 ## Done when — PP835
 

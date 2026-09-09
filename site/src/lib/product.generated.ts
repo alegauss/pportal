@@ -96,6 +96,11 @@ export const HOST_FLAGS: readonly HostFlag[] = [
     "summary": "open a window and put a console's picture in it, with the named decoder"
   },
   {
+    "name": "--microphone",
+    "argument": "",
+    "summary": "with --show-stream: open a microphone and send it, which is off unless asked"
+  },
+  {
     "name": "--console",
     "argument": "[name]",
     "summary": "with either capture: which registered console, by nickname"

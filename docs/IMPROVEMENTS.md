@@ -239,33 +239,6 @@ flag, its count loop is guarded by the return above it, peek writes both out-poi
 where pull guards its own, and takion still passes NULL and still drops on a bad MAC.
 Repair any upstream and the port's copy becomes the divergence, on the next run.
 
-### §PP825 The microphone packet nothing puts on a wire
-
-PP823 found this by counting rather than by reading. `TakionKeyPosition.CallSites`
-records SIX sites in the C that ask the ledger for a position, and ManagedTakion has
-FOUR sends that take one. The two missing are `chiaki_takion_send_message_data_cont` and
-`chiaki_takion_send_mic_packet`.
-
-THE MICROPHONE IS THE REAL ONE. Every piece exists: PP652 opens the capture, PP694
-encodes, PP706 runs all four stages to a formatted packet, PP676 ported the send
-sequence itself, and `TakionFeedbackSends.MicrophoneFor` gives it the layout - nineteen
-bytes of head, twenty on a PS5. Nothing calls that overload outside the test project,
-and ManagedTakion has no mic send at all. So a port that can capture, clean, encode and
-format cannot transmit.
-
-THE CONTINUATION IS NOT CLAIMED HERE. `TakionDataDatagrams.WriteContinuation` has the
-bytes, and whether the port reaches a message long enough to need one is a separate
-question - `BigFragments` splits the BIG above this layer.
-
-THE SHAPE IS THE ONE THIS SEAM KEEPS PRODUCING. PP748 was a data message with no join,
-PP811 a send path with no caller, PP823 a ledger with no caller - each ported correctly,
-tested, and reached by nothing. `SeamReach` catches the interface version of this, and a
-static class with no implementations to count is invisible to it: worth knowing about
-the check as much as about the microphone.
-
-WHAT IT NEEDS FIRST is the send, then somewhere in the session owning a capture to call
-it.
-
 ### §PP828 The copy PP826 proved and did not price
 
 PP818 credited Media Foundation with no readback and PP826 read the bind flags: the
@@ -408,6 +381,30 @@ presenting, or whether the arriving pad's first state is malformed.
 WHAT WOULD ANSWER IT is a run opening the pad off the drawing thread. If the picture
 keeps going and the session dies anyway, the pad's sends are the subject; if both
 recover, the order was all of it.
+
+### §PP837 The microphone nobody has spoken into
+
+PP825 shipped the four stages joined to a takion and its criterion came back unmet:
+nothing has opened a microphone against a console. The path is asserted end to end over
+synthetic units, and the owner is asserted to exist and to be off unless asked - none of
+which says a PS5 accepts what leaves.
+
+WHY A RUN IS THE ONLY ANSWER. The mic packet is MAC'd under gkcrypt_local at
+key_pos_local, the arrangement PP823 corrected and PP824 measured for the data ack:
+about 1170 unsigned acks ended a session, and a signed one at the right position
+streamed through. The mic send is that sequence with a different layout - fourteen and
+ten against four and eight - the same question asked of a second offset, and a console
+is the only thing that answers it.
+
+WHAT THE RUN LOOKS LIKE. `--show-stream d3d11va --console <name> --microphone
+--capture-seconds 20`, and the report PP825 added says the rest: how the device opened,
+how many packets were formatted, how many the takion accepted, whether the canceller was
+in the path, and what the last send answered. A run with zero sent against a Running
+device is the send refusing; one ending in RemoteDisconnected is the console refusing.
+
+IT RECORDS A ROOM, which is why this is a line rather than a step somebody runs in
+passing. The flag exists so that opening a capture device is something a person asked
+for, and that applies to whoever runs this too.
 
 ## Block G — Test discipline
 

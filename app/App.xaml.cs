@@ -1195,7 +1195,11 @@ public partial class App : Application
                     decoder,
                     hold,
                     HostCommandLine.ValueAfter(e.Args, "--via"),
-                    HostCommandLine.ValueAfter(e.Args, "--capture-datagrams")));
+                    HostCommandLine.ValueAfter(e.Args, "--capture-datagrams"),
+                    // PP825: and the microphone, which no flag could reach before. A flag rather
+                    // than a default, because opening a capture device is the one thing in this run
+                    // a person has to have asked for.
+                    HostCommandLine.Has(e.Args, "--microphone")));
         }
 
         // PP516: and the other half of that, which needs no console - a capture on disk read back

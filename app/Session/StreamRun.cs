@@ -60,9 +60,14 @@ public static class StreamRun
     /// A bound exists so a run can be STARTED and READ by something that is not a person - which is
     /// what a check needs and what a person watching does not.
     /// </param>
+    /// <param name="microphone">
+    /// PP825: whether to open one. Off unless asked for, which is the rule the phase's own property
+    /// states - a client that recorded a room because a session started would be worse than one
+    /// with no microphone at all.
+    /// </param>
     public static int Run(
         string? nickname, string decoderName, TimeSpan? hold = null,
-        string? via = null, string? capturePath = null)
+        string? via = null, string? capturePath = null, bool microphone = false)
     {
         ArgumentNullException.ThrowIfNull(decoderName);
 
@@ -136,7 +141,8 @@ public static class StreamRun
         {
             var worker = new Thread(() =>
             {
-                result = Pump(nickname, decoderName, model, window, stopping.Token, via, capturePath);
+                result = Pump(
+                    nickname, decoderName, model, window, stopping.Token, via, capturePath, microphone);
 
                 // Closed from here rather than left open on a failure: a run with a bound is one
                 // nobody is watching, and a window that outlived its session would hold it forever.
@@ -174,7 +180,7 @@ public static class StreamRun
     private static int Pump(
         string? nickname, string decoderName,
         StreamOverlayViewModel model, Window window, CancellationToken stopping,
-        string? via = null, string? capturePath = null)
+        string? via = null, string? capturePath = null, bool microphone = false)
     {
         ChiakiSession.LibInit();
 
@@ -272,8 +278,15 @@ public static class StreamRun
         // here said the relay forwards ctrl and 9296 only; PP829 gave it senkusha's port too, so
         // the reason it named is gone and the phases can follow the session.
         using var baseline = new SessionBaseline();
+        // PP825: and the microphone, where --microphone asked for one. The generation comes off the
+        // console discovery answered with, which is the same fact the connect info above took: a
+        // caller that knows which console it is talking to is the only one that can say whether the
+        // mic head carries its twentieth byte.
         using var phase = new ManagedStreamPhase(
-            session, IPAddress.Parse(target), decoder.Sample, baseline);
+            session, IPAddress.Parse(target), decoder.Sample, baseline)
+        {
+            Microphone = microphone ? found.Ps5 : null,
+        };
 
         phase.InstallOn();
 
@@ -381,6 +394,17 @@ public static class StreamRun
         Console.WriteLine(
             $"[stream] data acks: {phase.Arrivals?.Acked ?? 0} sent, "
                 + $"last {phase.Arrivals?.LastAck?.Verdict.ToString() ?? "none attempted"}");
+
+        // PP825: and the microphone, where one was asked for. Silent otherwise, because a line
+        // reporting zero on every run nobody asked would read as a broken feature rather than an
+        // unused one.
+        if (phase.Capture is { } capture)
+        {
+            Console.WriteLine(
+                $"[stream] microphone: {capture.Opened}, {capture.Formatted} packet(s) formatted, "
+                    + $"{capture.Sent} sent, canceller {(capture.Cleaning ? "on" : "off")}, "
+                    + $"last {capture.LastSend}");
+        }
 
         // PP835: joined before anything reads the pad or the `using` disposes it. Start bounds
         // itself at fifteen seconds and a session can end sooner than that, so a run quit early

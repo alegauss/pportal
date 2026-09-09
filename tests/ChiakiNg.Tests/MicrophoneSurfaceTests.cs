@@ -67,6 +67,41 @@ public class MicrophoneSurfaceTests(ITestOutputHelper output)
     }
 
     /// <summary>
+    /// PP825: a file that OWNS a capture is not a second one, which is what the collision hid.
+    ///
+    /// "WasapiCapture" was in the API list as NAudio's type, from before this port had a class of
+    /// that name. Once a session owned a microphone, the file holding one read as a second way into
+    /// the device and the check above went red on a consumer - so the entry left the list.
+    ///
+    /// Asserted from both ends, because dropping a name from a census is exactly the edit that
+    /// quietly stops catching things: owning one is permitted, and reaching WASAPI directly is
+    /// still refused.
+    /// </summary>
+    [Fact]
+    public void OwningACaptureIsNotOpeningOneAndRawWasapiStillIs()
+    {
+        // The owner's shape: it constructs the port's one capture class and touches no API.
+        Assert.False(
+            MicrophoneSurface.OpensACaptureDevice(
+                "private readonly WasapiCapture capture = new WasapiCapture(Unit);"));
+
+        // And the opener's: asking an endpoint for the WASAPI capture interface still counts.
+        Assert.True(
+            MicrophoneSurface.OpensACaptureDevice(
+                "private Wasapi.IAudioCaptureClient? capture;"));
+
+        // As does the library the dropped entry stood in for - by its own name, and by the capture
+        // type a caller would actually construct.
+        Assert.True(MicrophoneSurface.OpensACaptureDevice("using NAudio;"));
+        Assert.True(MicrophoneSurface.OpensACaptureDevice("var input = new WaveInEvent();"));
+
+        // The port's real owner is the live case, and it is not counted.
+        Assert.DoesNotContain(
+            MicrophoneSurface.FilesThatCapture(),
+            one => one.EndsWith("ManagedMicrophone.cs", StringComparison.Ordinal));
+    }
+
+    /// <summary>
     /// The census names more than one place, which is what makes it a commitment rather than a
     /// leftover.
     ///
