@@ -173,7 +173,22 @@ public sealed class ManagedStreamPhase : IDisposable
         if (thread is not null)
             throw new InvalidOperationException("this phase is already installed.");
 
-        thread = new Thread(() => Outcome = runner.Run(handover))
+        // PP839: THE CAPTURE STOPS WHEN THE RUN DOES, and not at this object's dispose. The runner
+        // returning is the moment the host has torn its takion down; a microphone still open past
+        // it produces a frame every ten milliseconds into a send that refuses them. Stopping here
+        // is what makes that window small - the other half is the send itself, which treats a
+        // closed takion as a refusal because a device pump cannot be stopped instantly.
+        thread = new Thread(() =>
+        {
+            try
+            {
+                Outcome = runner.Run(handover);
+            }
+            finally
+            {
+                Capture?.Dispose();
+            }
+        })
         {
             IsBackground = true,
             Name = "managed stream run",
@@ -351,7 +366,22 @@ public sealed class ManagedStreamPhase : IDisposable
         {
             var microphone = new ManagedMicrophone(
                 micPs5,
-                (packet, length) => takion.SendMicrophone(packet.AsSpan(0, length), micPs5));
+                (packet, length) =>
+                {
+                    // PP839: a closed takion is a REFUSAL and not an exception here, because this
+                    // runs on the capture's pump thread and an exception there kills the process.
+                    // The stop above makes the window small and cannot close it: the pump may be
+                    // inside a frame when the run ends, which PP474 calls the ordinary failure
+                    // rather than an exotic one.
+                    try
+                    {
+                        return takion.SendMicrophone(packet.AsSpan(0, length), micPs5);
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        return ChiakiError.Uninitialized;
+                    }
+                });
 
             // Reported rather than thrown: a machine with no capture endpoint still has a session,
             // and Opened says which of the three it was.

@@ -91,6 +91,68 @@ public class ManagedMicrophoneTests(ITestOutputHelper output)
     }
 
     /// <summary>
+    /// PP839: a closed takion REFUSES a mic packet where the root asks it to, rather than throwing
+    /// into the capture's thread.
+    ///
+    /// PP837's first live run sent 1671 packets and then died at teardown: the run had ended, the
+    /// host had torn the takion down, and WasapiCapture's pump was still producing a frame every
+    /// ten milliseconds. SendMicrophone's own first line refuses a closed stage - correctly, and by
+    /// throwing, which on a background thread is a process that exits with no session report.
+    ///
+    /// THIS PINS THE PRECONDITION THE CATCH EXISTS FOR. If ManagedTakion ever stopped throwing
+    /// here, the root's catch would be dead code hiding a different failure - so the throw is
+    /// asserted rather than assumed, and the handling is asserted separately below.
+    /// </summary>
+    [Fact]
+    public void AClosedTakionStillThrowsWhichIsWhyTheRootCatches()
+    {
+        var takion = new ManagedTakion(0x0000_7777);
+        takion.Dispose();
+
+        Assert.Throws<ObjectDisposedException>(
+            () => takion.SendMicrophone(new byte[MicPacketHead.SizePs5], ps5: true));
+    }
+
+    /// <summary>
+    /// PP839: and the root meets it as a refusal, with the capture stopped when the run returns.
+    ///
+    /// Read out of the source for PP808's reason, and BOTH halves are asserted because either one
+    /// alone leaves the defect: stopping the capture without the catch still races - the pump can
+    /// be inside a frame when the run ends - and catching without stopping leaves a microphone
+    /// open, recording a room, for as long as the phase is undisposed.
+    /// </summary>
+    [Fact]
+    public void TheRootStopsTheCaptureAndTreatsAClosedTakionAsARefusal()
+    {
+        string text = File.ReadAllText(
+            SanitizerSource.LocateRelative(@"app\Session\ManagedStreamPhase.cs")
+            ?? throw new InvalidOperationException("the phase is not in this checkout."));
+
+        Assert.Matches(@"(?m)^\s*catch \(ObjectDisposedException\)", text);
+        Assert.Matches(@"(?m)^\s*Capture\?\.Dispose\(\);", text);
+
+        // And the stop is in the RUN's own thread, not only at the object's dispose - which is the
+        // difference between a window of milliseconds and one that lasts as long as the phase.
+        Assert.Contains("finally", text, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A refused send is counted as not sent, which is what the run's report reads back.
+    ///
+    /// The refusal is the ordinary end of a session and not an error, so the owner keeps formatting
+    /// and keeps counting - what changes is that Sent stops moving and LastSend says why.
+    /// </summary>
+    [Fact]
+    public void ARefusedSendLeavesTheCountStillAndSaysWhy()
+    {
+        using var microphone = new ManagedMicrophone(
+            ps5: true, (_, _) => ChiakiError.Uninitialized);
+
+        Assert.Equal(0, microphone.Sent);
+        Assert.Equal(ChiakiError.Success, microphone.LastSend);
+    }
+
+    /// <summary>
     /// And it is off by default, which is the property's whole point.
     ///
     /// Asserted on the type rather than on a run: a phase that has to be started to answer this

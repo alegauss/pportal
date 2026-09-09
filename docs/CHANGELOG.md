@@ -757,6 +757,7 @@
 - ✅ **PP838** **a pad connected after the stream starts is never opened, so it works only if it was plugged in first** — SDL's device-added event now reaches an open on the pump's own thread: a run that began with no pad ended holding an Xbox Series X Controller, 1 adopted and 156 states pushed.
 - ✅ **PP833** **the audio engine is fed one frame at a time as they decode, so a late frame empties the queue and the sound gaps** — A prefill holds the first n frames and releases them together: ten read 0 and 1 dry against 0 to 17 without one, five changed nothing, and it stays off unless a run asks.
 - ✅ **PP834** **the relay records only what the console sent, so no capture can answer what the port actually put on the wire** — A second writer takes both directions off the relay callback, leg per row: a relayed run wrote 4565 datagrams, 318 sent by this machine, and the replay corpus is untouched.
+- ✅ **PP839** **the capture pump outlives the takion, so a session ending with the microphone open throws and kills the process** — The capture stops when the run returns and a closed takion refuses there: a 20-second run sent 1601 mic packets and ended clean, where the same one crashed before.
 
 ## Block G — Test discipline
 
