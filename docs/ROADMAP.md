@@ -14,6 +14,7 @@
 ## Block C — Video and input path
 
 - 📋 **PP821** (deps: PP700 ✅) **the shim downloads every hardware frame to system memory and uploads it back, including d3d11va's own texture** — The download was written for vulkan images a D3D11 presenter cannot take, and its branch is on hw_frames_ctx alone, so a d3d11va texture makes the trip too. → §PP821
+- 📋 **PP836** (deps: PP11 ✅) **the ported fullscreen state machine has no consumer, so nothing in the app can go fullscreen** — PP11 wrote its three quirks faithfully and no view constructs one; no key is bound either, so alt+enter finds nothing. → §PP836
 
 ## Block D — Screens
 
