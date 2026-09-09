@@ -24,6 +24,8 @@
 
 ## Block F — Managed core
 
+- 📋 **PP848** (deps: PP843 ✅, PP763 ✅) **51 files credit PP696 and PP763 reverted it whole, so no check can tell a live attribution from a dead one** — PP843 corrected one by hand; the ledger marks nothing undone, so the 92 mentions cannot be sorted into what PP27, PP783 and PP784 restored and what is gone. → §PP848
+
 ## Block G — Test discipline
 
 - 📋 **PP844** (deps: PP691 ✅, PP27 ✅) **a check's control names a file a prepared deletion aims at, so it goes red about its own fixture when that lands** — PP27 landed and two controls broke this way; PP691's census sees prose and not the filenames a fixture picks. → §PP844
