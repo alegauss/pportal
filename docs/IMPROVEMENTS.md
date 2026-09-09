@@ -27,6 +27,29 @@ Whatever the right pair is, the dpad path and the mouse path should read it from
 same place - and the reason to write that down now is that the port has just copied all
 three, so it is the moment when the duplication is visible.
 
+### §PP851 The half of the haptics a DualSense can hear
+
+PushHapticsFrame has two arms and PP846 ported one. The fold to a single rumble strength
+is what the Qt client does when haptics_output is 0 - a pad with no haptic actuators, or
+a user who turned the output off. Below that early return is the other arm, and it is
+the one a DualSense is for.
+
+WHAT IT DOES. The stereo frame is resampled through an SDL_AudioCVT, remixed from two
+channels to four, and written to an audio device that IS the pad: a DualSense enumerates
+as an output endpoint. The actuators are wide-band, so what arrives is a waveform rather
+than a strength - which is exactly the information the fold throws away.
+
+SO THE PORT'S PS5 PATH IS THE PS4 PATH. PP846's routing sends a DualSense the 47-byte
+effects report, which drives its rumble motors - real, and the same two motors a
+DualShock 4 has. Its own design called that outcome a worse result than the fold is for,
+and its ledger sentence does not claim otherwise.
+
+WHAT THIS NEEDS THAT PP846 DID NOT. An output device rather than a controller handle,
+chosen by name among the endpoints Windows reports; a resampler; and the channel remix,
+which has a scaling override in the client nothing has read yet. The port has an audio
+engine already - PP820's - and whether the pad is a second one of those is the first
+question rather than a detail.
+
 ## Block C — Video and input path
 
 ## Block D — Screens

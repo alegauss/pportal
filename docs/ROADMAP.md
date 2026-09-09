@@ -9,6 +9,8 @@
 
 ## Block B — Native interop
 
+- 📋 **PP851** (deps: PP846 ✅) **a DualSense feels what a PS4 pad feels: the console's haptic stream is folded to rumble rather than played** — PP846 wired the fold, which is the client's answer only when haptics_output is off; the pad's own speakers take a resampled four-channel stream nothing here opens. → §PP851
+
 ## Block C — Video and input path
 
 ## Block D — Screens
