@@ -29,7 +29,6 @@
 - 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — chiaki_fec_decode has three callers - frameprocessor.c, the C suite and this port's shim - and gf-complete has a fourth site none of them reach: chiaki_lib_init. → §PP30
 - 📋 **PP833** (deps: —) **the audio engine is fed one frame at a time as they decode, so a late frame empties the queue and the sound gaps** — PP814's counter reads seven dry moments and a shallowest of one over twenty-four seconds, which is the click still there and now measurable. → §PP833
 - 📋 **PP834** (deps: —) **the relay records only what the console sent, so no capture can answer what the port actually put on the wire** — PP813 was a wrong send and took a whole task, because the bytes leaving this machine were reasoned about from the C's formatter rather than read back. → §PP834
-- ⏳ **PP835** (deps: —) **the picture waits on SDL opening a pad, so connecting one after the stream starts freezes the window** — Whether the session's death at 741 arrivals went with the freeze or is a fault of its own is not yet known. → §PP835
 - 📋 **PP837** (deps: PP825 ✅) (requires: console) **no live run has opened the microphone, so nothing says a console accepts the packets the port now formats** — PP825 shipped the path and left its criterion unmet; only a console can say a signed mic packet is accepted, as one did for PP824's ack. → §PP837
 
 ## Block G — Test discipline
@@ -105,14 +104,6 @@
   chiaki_render_tearing_probe does. Integration means the video plane's own swapchain
   carries it and presents at sync interval zero, which is the half that waits on there
   being a video plane at all.
-
-## Done when — PP835
-
-- **A pad connected after the picture appears neither freezes it nor ends the run** The
-  order is fixed and asserted, and a run with the pad already plugged in shows 1282
-  frames decoded and 1263 drawn. The case that was reported needs a person to plug one
-  in mid-session: what it answers is whether the death at 741 arrivals went with the
-  freeze or is its own fault.
 
 ## Non-goals
 
