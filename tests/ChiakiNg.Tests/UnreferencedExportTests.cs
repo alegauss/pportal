@@ -153,6 +153,22 @@ public partial class UnreferencedExportTests(ITestOutputHelper output)
         "chiaki_holepunch_session_fini",
         "chiaki_log_hexdump_raw",
         "chiaki_rudp_init",
+
+        // PP784: senkusha's three, whose only caller was session.c's own arm. PP792 kept that arm
+        // until a live link said the port measured the same thing; on 2026-09-08 one did, and these
+        // lost their last caller in the commit that deleted it.
+        //
+        // HERE AND NOT IN DeadAfterTheFlip, because that list is for a commit that has not happened
+        // and this is the commit. The stream connection's four are still waiting on PP696's; these
+        // are dead in the tree the gate is reading.
+        //
+        // WHAT THEY UNBLOCK is the reason the line exists at all. PP780 asked the linker what
+        // takion's deletion costs and got four lib files; senkusha was the one that did not go with
+        // the stream connection, because session.c ran it first to measure what the launch spec
+        // spends. It goes now, and takion's last caller outside its own subtree goes with it.
+        "chiaki_senkusha_fini",
+        "chiaki_senkusha_init",
+        "chiaki_senkusha_run",
     ];
 
     /// <summary>

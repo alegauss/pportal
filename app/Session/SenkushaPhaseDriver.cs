@@ -82,6 +82,43 @@ public static class SenkushaPhaseDriver
         return found;
     }
 
+    /// <summary>
+    /// PP784: the session paths that must install a phase and do not.
+    ///
+    /// THIS QUESTION ONLY BECOMES ANSWERABLE WHEN THE C'S ARM GOES. While session.c ran its own
+    /// senkusha for anything with nothing installed, a path that forgot one measured correctly and
+    /// there was nothing to name. Now it measures nothing.
+    ///
+    /// AND THE FAILURE IS QUIET, which is why this exists rather than a log line. The stream phase's
+    /// absence quits the session with UNINITIALIZED and PP801 found it in one run. Senkusha's error
+    /// is not fatal: session.c takes 1454/1454/1000 and streams anyway, so the run looks fine and the
+    /// launch spec carries numbers no console answered. PP764's shape - two facts in two files,
+    /// each legitimate alone - with the symptom removed.
+    ///
+    /// The exclusion list is <see cref="StreamPhaseDriver.SessionPathsThatDoNotStream"/>'s, and
+    /// deliberately the same one: a path that opens a session and does not mean to stream does not
+    /// measure a link either, and two lists would be one rename away from disagreeing.
+    /// </summary>
+    public static IReadOnlyList<string> PathsThatMustMeasure(IEnumerable<(string Name, string Text)> files)
+    {
+        ArgumentNullException.ThrowIfNull(files);
+
+        IReadOnlyList<(string Name, string Text)> all = [.. files];
+        var measuring = new HashSet<string>(DrivingSessionPathsIn(all), StringComparer.OrdinalIgnoreCase);
+
+        return
+        [
+            .. all
+                .Where(one => !measuring.Contains(one.Name))
+                .Where(one => !StreamPhaseDriver.SessionPathsThatDoNotStream.Contains(
+                    Path.GetFileName(one.Name), StringComparer.OrdinalIgnoreCase))
+                .Where(one => DeadAssertions.CodeOnly(one.Text)
+                    .Contains(BuildsASession, StringComparison.Ordinal))
+                .Select(one => one.Name)
+                .Order(StringComparer.Ordinal),
+        ];
+    }
+
     /// <summary>Which of the four states a tree is in.</summary>
     public static SenkushaDriver DriverOf(string sessionSource, IEnumerable<(string Name, string Text)> appFiles)
     {

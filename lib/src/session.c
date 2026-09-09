@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: LicenseRef-AGPL-3.0-only-OpenSSL
 
+// PP784: no senkusha.h, for the reason streamconnection.h is not here either - this file names
+// neither subsystem now, and an include for one it does not call reads as a caller it is not.
 #include <chiaki/audioreceiver.h>
-#include <chiaki/senkusha.h>
 #include <chiaki/session.h>
 #include <chiaki/http.h>
 #include <chiaki/base64.h>
@@ -641,39 +642,37 @@ ctrl_failed:
 	// unreachable from a session however complete it was. This is the seam: the same three
 	// out-parameters and the same error, through a callback that whoever owns the port installs.
 	//
-	// AND THE C'S RUN STAYS, which is the difference from the stream phase's flip. PP783 removed the
-	// fallback deliberately - streamconnection.c had left the build, so keeping one would hide which
-	// code was running. Senkusha is still here and still correct, and PP763's lesson is that a
-	// measurement the gate agrees with and a console does not ships green and streams nothing. So the
-	// branch below is what a tree with nothing installed runs, unchanged, until a live link says the
-	// managed one measures the same thing.
+	// PP784: AND THE C'S RUN IS GONE, which is the condition PP792 wrote it to wait for. That note
+	// said the branch stays "until a live link says the managed one measures the same thing", because
+	// PP763's lesson is that a measurement the gate agrees with and a console does not ships green
+	// and streams nothing. On 2026-09-08 a live link said it: against PS5-385 the C read inbound and
+	// outbound MTU 1454 and an average RTT of 3.849ms, and the port's phase read 1454 both ways with
+	// its round trip in the same range across three runs. So the fallback has done its job.
 	//
-	// The order the two arms share is PP28's and is asserted as a sequence: init, run, fini, and only
-	// then the outcome - so the fini is unconditional and happens before anything reads err.
+	// KEEPING IT NOW WOULD COST MORE THAN IT SAVES. Senkusha's failure is not fatal here - the block
+	// below takes 1454/1454/1000 and streams anyway - so a session path that forgot to install a
+	// phase would quietly measure with the C and nothing on the wire would say which had run.
+	// SenkushaPhaseDriver is the check that names that state, and it can only answer once one of the
+	// two arms is the only one.
+	//
+	// THIS IS ALSO WHAT SENKUSHA.C WAS FOR. PP780 asked the linker what takion's deletion costs and
+	// got four files; three go with the stream connection and this was the fourth, still reaching
+	// chiaki_takion_connect, send_message_data, send_raw and close. Nothing calls its run now.
+	chiaki_mutex_unlock(&session->state_mutex);
 	if(session->senkusha_run_cb)
 	{
-		CHIAKI_LOGI(session->log, "Handing Senkusha to the installed run");
-
 		// Unlocked across the call, as the stream phase's is: the callee is another thread's work and
 		// holding the session's state mutex through ten pings and two searches would block every
 		// reader of it, chiaki_session_stop included - which is the one caller that must get in.
-		chiaki_mutex_unlock(&session->state_mutex);
 		err = session->senkusha_run_cb(data_sock, &session->mtu_in, &session->mtu_out, &session->rtt_us,
 				session->senkusha_run_cb_user);
-		chiaki_mutex_lock(&session->state_mutex);
 	}
 	else
 	{
-		CHIAKI_LOGI(session->log, "Starting Senkusha");
-
-		ChiakiSenkusha senkusha;
-		err = chiaki_senkusha_init(&senkusha, session);
-		if(err != CHIAKI_ERR_SUCCESS)
-			QUIT(quit_ctrl);
-
-		err = chiaki_senkusha_run(&senkusha, &session->mtu_in, &session->mtu_out, &session->rtt_us, data_sock);
-		chiaki_senkusha_fini(&senkusha);
+		CHIAKI_LOGE(session->log, "No senkusha phase is installed on this session");
+		err = CHIAKI_ERR_UNINITIALIZED;
 	}
+	chiaki_mutex_lock(&session->state_mutex);
 	CHECK_STOP(quit_ctrl);
 	if(session->ctrl_failed)
 	{

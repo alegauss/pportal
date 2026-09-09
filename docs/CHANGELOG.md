@@ -747,6 +747,7 @@
 - ✅ **PP813** **the port's senkusha gets the bang then loses every pong, so the RTT test answers Unknown and the link is unmeasured** — senkusha's data_type is takion's CHANNEL and the port spent it as the chunk flags, so every command left on channel one - acked by a console that then echoed nothing.
 - ✅ **PP814** **nothing reports whether audio dropped, so a crackling stream and a clean one read identically** — The engine's own queue depth is the only thing that knows, and it says a live run ran dry seven times in twenty-four seconds while every decode counter read clean.
 - ✅ **PP830** **the stream dies within 85ms through the relay, so a capture holds the handshake and none of the traffic** — The stream phase dialled the console while the session went through the relay, so it rode past the forwarder; pointed at the target it carries 10521 datagrams over twenty seconds.
+- ✅ **PP784** **senkusha runs before the stream phase and calls four of takion's exports, so the transport cannot leave with it** — session.c had two arms and a console said they agree at 1454 both ways, so the callback is the only one now and senkusha.c has lost its last caller.
 
 ## Block G — Test discipline
 

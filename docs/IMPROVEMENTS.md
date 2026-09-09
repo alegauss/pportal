@@ -235,31 +235,6 @@ flag, its count loop is guarded by the return above it, peek writes both out-poi
 where pull guards its own, and takion still passes NULL and still drops on a bad MAC.
 Repair any upstream and the port's copy becomes the divergence, on the next run.
 
-### §PP784 The caller that does not go with the stream
-
-PP780 asked the linker what takion's deletion costs and got four lib files. Three of
-them go when the stream connection does - streamconnection.c is its own subject, and
-feedbacksender.c and congestioncontrol.c stop being linked at all once nothing pulls
-them. Senkusha is the fourth and it goes with nothing: session.c runs it BEFORE the
-stream phase, to measure the MTU and the round trip the launch spec spends.
-
-FOUR CALLS, AND PP702 NAMED A COUNTERPART FOR EACH. connect and close are
-ManagedTakion's own lifecycle, send_message_data is what TakionDataDatagrams writes, and
-send_raw is TakionSendPath's. The fifth symbol - the v7 header formatter - lives in
-takion.c and its only callers are senkusha's, which is why PP679 had to decide who owned
-it first.
-
-TWO SHAPES, AND PP702 NAMED BOTH RATHER THAN CHOOSING. Porting senkusha means taking on
-a file whose subject is a measurement, and the port would then own the numbers the BIG
-carries. Answering the four where they stand is a seam: senkusha keeps its logic in C
-and its transport calls reach a managed takion through the shim, which is smaller and
-leaves a file the port does not own calling into code it does.
-
-PORTING IS THE CALL, and it is the author's. The seam was cheaper and leaves a file this
-port does not own calling code it does - a boundary needing explaining at every later
-reading. Five lines carry the port, and the file stops calling takion when the last
-lands.
-
 ### §PP824 The stream's half of the ack
 
 PP807 shipped one of the two routers. `StreamArrivals` has held the seam since that line

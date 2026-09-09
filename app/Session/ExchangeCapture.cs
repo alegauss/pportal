@@ -580,6 +580,20 @@ public static class ExchangeCapture
 
         phase.InstallOn();
 
+        // PP784: AND THE MEASUREMENT, which this path did not install and did not need to.
+        //
+        // session.c ran the C's senkusha for anything with no phase on it, so every capture measured
+        // correctly by taking the other arm. PP784 deleted that arm - the port and the C agree on a
+        // live link, and keeping both left nothing able to say which had run - so a path without one
+        // now measures nothing at all. That failure is QUIET: senkusha's error is not fatal and the
+        // block after it takes 1454/1454/1000 and streams anyway, which is a capture whose launch
+        // spec was built from numbers no console answered.
+        //
+        // Pointed at the target for PP830's reason, which is the same reason as the stream phase's.
+        using var senkusha = new ManagedSenkushaPhase(session, IPAddress.Parse(target));
+
+        senkusha.InstallOn();
+
         using var connected = new ManualResetEventSlim(false);
         using var quit = new ManualResetEventSlim(false);
         string? quitReason = null;

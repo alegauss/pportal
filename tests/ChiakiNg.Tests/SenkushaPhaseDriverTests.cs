@@ -86,12 +86,21 @@ public class SenkushaPhaseDriverTests(ITestOutputHelper output)
     /// <summary>
     /// AND THE TREE ITSELF, which is the assertion that fails without this task.
     ///
-    /// Before PP809 the answer here was TheC: session.c had a callback nothing filled. It is
-    /// Fallback now, and PP784 is what makes it ThePort - so this one line tracks the whole port
-    /// through its two remaining states.
+    /// Before PP809 the answer here was TheC: session.c had a callback nothing filled. PP809 made it
+    /// Fallback, and PP784 is what makes it ThePort - so this one line has tracked the whole port
+    /// through its three states, and this is the last of them.
+    ///
+    /// THE C'S ARM WENT BECAUSE A LIVE LINK SAID THE TWO AGREE, which is the condition PP792 wrote
+    /// into session.c when it kept the fallback: on 2026-09-08 against PS5-385 the C read 1454 both
+    /// ways at an average 3.849ms, and the port's phase read 1454 both ways with its round trip in
+    /// the same range.
+    ///
+    /// AND EVERY SESSION PATH HAS TO MEASURE NOW. While the C's arm was there a path that forgot a
+    /// phase still got real numbers; now it gets 1454/1454/1000 and streams anyway, which is a
+    /// launch spec built from numbers no console answered and a run that looks entirely healthy.
     /// </summary>
     [Fact]
-    public void ThisTreeMeasuresWithThePortAndKeepsTheCBehindIt()
+    public void ThisTreeMeasuresWithThePortAndTheCsArmHasGone()
     {
         if (SenkushaPhaseDriver.LocateSession() is not { } path)
             return;
@@ -107,6 +116,41 @@ public class SenkushaPhaseDriverTests(ITestOutputHelper output)
         output.WriteLine($"driving session paths: {string.Join(", ", driving)}");
 
         Assert.NotEmpty(driving);
-        Assert.Equal(SenkushaDriver.Fallback, SenkushaPhaseDriver.DriverOf(source, files));
+        Assert.Equal(SenkushaDriver.ThePort, SenkushaPhaseDriver.DriverOf(source, files));
+
+        // And nothing that opens a session is left measuring with a run that is no longer there.
+        IReadOnlyList<string> owing = SenkushaPhaseDriver.PathsThatMustMeasure(files);
+
+        output.WriteLine($"session paths owing a phase: {string.Join(", ", owing)}");
+
+        Assert.Empty(owing);
+    }
+
+    /// <summary>
+    /// PP784: a session path with no phase is named, and the one that does not stream is not.
+    ///
+    /// Driven over text this test writes, because a tree that has the phase everywhere cannot show
+    /// what happens to one that does not - the same reason PathsThatMustDrive is asked this way.
+    /// </summary>
+    [Fact]
+    public void ASessionPathWithNoPhaseIsNamedUnlessItNeverStreams()
+    {
+        (string, string) forgot = (
+            @"app\Session\ExchangeCapture.cs", "var s = ChiakiSession.TryCreate(info, log, out _);");
+
+        (string, string) measures = (
+            @"app\Session\StreamRun.cs",
+            "var s = ChiakiSession.TryCreate(info, log, out _); new ManagedSenkushaPhase(s, p);");
+
+        // The one that does not stream opens a session to assert what a REFUSAL looks like, and a
+        // measurement on it would be a link nobody asked to measure.
+        (string, string) refusing = (
+            @"app\Session\SelfTest.cs", "var s = ChiakiSession.TryCreate(bad, log, out _);");
+
+        Assert.Equal(
+            [@"app\Session\ExchangeCapture.cs"],
+            SenkushaPhaseDriver.PathsThatMustMeasure([forgot, measures, refusing]));
+
+        Assert.Empty(SenkushaPhaseDriver.PathsThatMustMeasure([measures, refusing]));
     }
 }

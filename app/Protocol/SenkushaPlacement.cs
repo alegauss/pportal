@@ -140,21 +140,25 @@ public static class SenkushaPlacementSource
     }
 
     /// <summary>
-    /// Whether fini still runs before the result is read.
+    /// Whether the measurement still finishes before the result is read.
     ///
-    /// The order that matters and the one a tidy-up would invert: run, fini, and only then the
+    /// The order that matters and the one a tidy-up would invert: ask, call, and only then the
     /// branch on err. Asserted as a sequence rather than as three presences, because all three are
     /// present in any arrangement of them.
+    ///
+    /// PP784: ASKED OF THE INSTALLED RUN, because the C's arm has gone. This used to read init, run,
+    /// fini, outcome - the three calls of a ChiakiSenkusha on session.c's own stack. There is no
+    /// such object now: the callback is the whole of the step, and what has to stay in order is that
+    /// it RETURNS before anything reads what it returned.
     /// </summary>
-    public static bool FiniRunsBeforeTheOutcomeIsRead(string source)
+    public static bool TheRunHappensBeforeTheOutcomeIsRead(string source)
     {
         ArgumentNullException.ThrowIfNull(source);
 
         return CCall.InOrder(
             CCall.Compact(source),
-            "chiaki_senkusha_init(",
-            "chiaki_senkusha_run(",
-            "chiaki_senkusha_fini(",
+            TheInstalledRunIsAskedFor,
+            TheInstalledRunIsCalled,
             "if(err == CHIAKI_ERR_SUCCESS)");
     }
 
@@ -171,15 +175,18 @@ public static class SenkushaPlacementSource
 
         string compact = CCall.Compact(source);
 
-        int fini = CCall.At(compact, "chiaki_senkusha_fini(");
-        if (fini < 0)
+        // PP784: anchored on the RUN and not on a fini, which the C's arm took with it. The claim is
+        // unchanged - ctrl is re-read across the longest step - and only what marks the end of that
+        // step has moved.
+        int measured = CCall.Mark(compact, TheInstalledRunIsCalled);
+        if (measured < 0)
             return false;
 
-        int outcome = CCall.Mark(compact, "if(err == CHIAKI_ERR_SUCCESS)", fini);
+        int outcome = CCall.Mark(compact, "if(err == CHIAKI_ERR_SUCCESS)", measured);
         if (outcome < 0)
             return false;
 
-        return CCall.Mark(compact[fini..outcome], "if(session->ctrl_failed)") >= 0;
+        return CCall.Mark(compact[measured..outcome], "if(session->ctrl_failed)") >= 0;
     }
 
     /// <summary>
@@ -235,15 +242,22 @@ public static class SenkushaPlacementSource
     public const string TheInstalledStopIsCalled = "session->senkusha_stop_cb(";
 
     /// <summary>
-    /// PP792: whether an installed run is preferred, with the C's own left as the other arm.
+    /// PP784: whether the installed run is now the ONLY arm, the C's having gone.
     ///
-    /// BOTH HALVES, and the second is the one worth asserting. A seam that replaced
-    /// chiaki_senkusha_run would pass a check asking only that the callback is reached, and it would
-    /// be the state PP763 reverted: the C removed on the strength of a gate, with a link nothing has
-    /// measured against a console. So the order is the claim - the question first, the C's init
-    /// after it - and <see cref="FiniRunsBeforeTheOutcomeIsRead"/> still holds the arm itself.
+    /// PP792 asserted the inverse of this, and deliberately: the callback asked for first and the
+    /// C's init still after it, so a seam that replaced chiaki_senkusha_run would fail. That guard
+    /// was PP763's lesson kept - the C removed on the strength of a gate, with a link nothing had
+    /// measured against a console.
+    ///
+    /// THE LINK HAS NOW BEEN MEASURED. On 2026-09-08 against PS5-385 the C read 1454 both ways at an
+    /// average 3.849ms and the port's phase read 1454 both ways with its round trip in the same
+    /// range, so the condition PP792 wrote the fallback for is met and the arm is gone.
+    ///
+    /// BOTH HALVES STILL, with the second inverted. The callback has to be reached AND the three C
+    /// entry points have to be absent - a file that kept an unreachable init would leave senkusha.c
+    /// linked, which is the whole of what PP784 is for.
     /// </summary>
-    public static bool TheInstalledRunIsPreferredAndTheCsRunRemains(string source)
+    public static bool TheInstalledRunIsTheOnlyArm(string source)
     {
         ArgumentNullException.ThrowIfNull(source);
 
@@ -253,12 +267,15 @@ public static class SenkushaPlacementSource
         if (asked < 0)
             return false;
 
-        int called = CCall.Mark(compact, TheInstalledRunIsCalled, asked);
-        if (called < 0)
+        if (CCall.Mark(compact, TheInstalledRunIsCalled, asked) < 0)
             return false;
 
-        return CCall.Mark(compact, "chiaki_senkusha_init(", called) >= 0;
+        return TheCsOwnRun.All(one => CCall.Mark(compact, one) < 0);
     }
+
+    /// <summary>The three calls a session running the C's own senkusha makes.</summary>
+    public static IReadOnlyList<string> TheCsOwnRun { get; } =
+        ["chiaki_senkusha_init(", "chiaki_senkusha_run(", "chiaki_senkusha_fini("];
 
     /// <summary>
     /// PP792: whether a stop still reaches a measurement that is not on the session thread.

@@ -77,20 +77,23 @@ public class SenkushaPlacementTests
     }
 
     /// <summary>
-    /// Fini still runs before the outcome is read, which is what makes the cleanup unconditional.
+    /// The measurement still finishes before the outcome is read.
     ///
-    /// The reordering this catches is the tidy one: read the error, then clean up on each branch.
-    /// It leaks on two of the three outcomes and looks more careful than what is there.
+    /// PP784: asked of the installed run. This used to be init, run, fini, outcome - the three calls
+    /// of a ChiakiSenkusha on session.c's own stack, and the reordering it caught was the tidy one
+    /// that reads the error first and cleans up on each branch, leaking on two of three. There is no
+    /// object to clean up now, and the surviving claim is the sequence: the run RETURNS before
+    /// anything reads what it returned.
     /// </summary>
     [Fact]
-    public void TheCleanupHappensBeforeTheResultIsClassified()
+    public void TheMeasurementFinishesBeforeTheResultIsClassified()
     {
         if (Source() is not { } source)
             return;
 
         Assert.True(
-            SenkushaPlacementSource.FiniRunsBeforeTheOutcomeIsRead(source),
-            "init, run, fini and the branch on err are no longer in that order in session.c");
+            SenkushaPlacementSource.TheRunHappensBeforeTheOutcomeIsRead(source),
+            "the installed senkusha run and the branch on err are no longer in that order in session.c");
     }
 
     /// <summary>
@@ -143,24 +146,28 @@ public class SenkushaPlacementTests
     }
 
     /// <summary>
-    /// PP792, under PP784: the seam is there AND the C's run is still behind it.
+    /// PP784: the seam is there AND the C's run has gone from behind it.
     ///
-    /// Both halves fail differently and both matter. Without the first, PP788 to PP791's run is a
-    /// run no session can reach - which is the symptom that opened the line. Without the second,
-    /// this tree is where PP763 had to revert from: the C taken out on the strength of a gate, with
-    /// a link no console has measured.
+    /// PP792 asserted the inverse and this test carried it: the callback asked for, the C's init
+    /// still after it. That was PP763's lesson kept - the C removed on the strength of a gate, with
+    /// a link no console had measured. On 2026-09-08 a console measured it, and the two agreed on
+    /// 1454 both ways with the round trip in one range, so the arm goes.
+    ///
+    /// BOTH HALVES STILL FAIL DIFFERENTLY. Without the first, PP788 to PP791's run is a run no
+    /// session can reach; without the second, senkusha.c stays linked over an entry point nothing
+    /// calls, which is the whole of what this line is for.
     /// </summary>
     [Fact]
-    public void AnInstalledRunIsPreferredAndTheCsIsStillTheOtherArm()
+    public void TheInstalledRunIsNowTheOnlyArm()
     {
         if (Source() is not { } source)
             return;
 
         Assert.True(
-            SenkushaPlacementSource.TheInstalledRunIsPreferredAndTheCsRunRemains(source),
-            "session.c no longer asks for an installed senkusha run before starting its own, or the "
-                + "C's init has left the file - and a measurement nothing has checked against a "
-                + "console is the shape PP763 reverted");
+            SenkushaPlacementSource.TheInstalledRunIsTheOnlyArm(source),
+            "session.c no longer asks for an installed senkusha run, or one of chiaki_senkusha_init, "
+                + "_run and _fini has come back into the file - which leaves the C measuring for any "
+                + "path that forgot a phase, with nothing able to say which of the two ran");
     }
 
     /// <summary>

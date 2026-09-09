@@ -175,22 +175,33 @@ public sealed class NativeConsoleSessionStarter : IConsoleSessionStarter
         var baseline = new SessionBaseline();
         var phase = new ManagedStreamPhase(session, console, TakenAndDropped, baseline);
 
+        // PP784: AND THE MEASUREMENT, for the same reason one line later than PP801's.
+        //
+        // session.c measured with the C's own senkusha for anything with no phase installed, so this
+        // door got real numbers without asking. That arm is gone - a live link said the two agree and
+        // keeping both left nothing able to say which had run - and what a door without a phase gets
+        // now is 1454/1454/1000. It STREAMS on those, which is why this is worth a line: the failure
+        // is a launch spec built from numbers no console answered, on a session that looks healthy.
+        var senkusha = new ManagedSenkushaPhase(session, console);
+
         // Armed BEFORE the start, for the capture's reason: a console that refuses immediately
         // answers on the session thread while this one is still returning.
         session.SetEventHandler(e => report(Translate(e)));
 
         phase.InstallOn();
+        senkusha.InstallOn();
 
         ChiakiError started = session.Start();
         if (started != ChiakiError.Success)
         {
+            senkusha.Dispose();
             phase.Dispose();
             baseline.Dispose();
             session.Dispose();
             return new(started, null);
         }
 
-        return new(ChiakiError.Success, new Handle(session, phase, baseline));
+        return new(ChiakiError.Success, new Handle(session, phase, senkusha, baseline));
     }
 
     /// <summary>
@@ -224,8 +235,16 @@ public sealed class NativeConsoleSessionStarter : IConsoleSessionStarter
     /// PP801: it holds the PHASE as well, and the order is the session's stop first. Stopping pokes
     /// the phase through the C's callback, so a phase disposed before the session would be cancelled
     /// twice - and the session's own stop would then reach a handover that had gone.
+    ///
+    /// PP784: and the SENKUSHA phase, on the same rule. Its run is over long before a session ends,
+    /// but the session's stop still pokes it through a second callback, so it outlives the stop for
+    /// the reason the stream's does rather than because it is still measuring.
     /// </summary>
-    private sealed class Handle(ChiakiSession session, ManagedStreamPhase phase, SessionBaseline baseline)
+    private sealed class Handle(
+        ChiakiSession session,
+        ManagedStreamPhase phase,
+        ManagedSenkushaPhase senkusha,
+        SessionBaseline baseline)
         : IHeldSession
     {
         private ChiakiSession? held = session;
@@ -244,6 +263,7 @@ public sealed class NativeConsoleSessionStarter : IConsoleSessionStarter
             going.Join();
             going.Dispose();
 
+            senkusha.Dispose();
             phase.Dispose();
             baseline.Dispose();
         }
