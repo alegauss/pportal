@@ -413,6 +413,30 @@ The cost is latency, exactly as many frames as are held, and this is a remote pl
 client - so the number is a trade to be measured rather than chosen. PP814's counter is
 what measures it, on the same run and the same console.
 
+### §PP834 Half a wire is not a wire
+
+BOTH RELAY CALL SITES RECORD ARRIVALS ONLY, and each says why in the same words: the
+capture is a REPLAY CORPUS, so offering the sends as well would produce a file the
+replay reads as twice the traffic. That reason is sound and the consequence is that this
+tree cannot read its own sends.
+
+PP813 IS WHAT THAT COSTS. A senkusha command was leaving on the wrong takion channel for
+six tasks. The capture held every datagram the console sent and not one the port did, so
+the investigation compared the port's ping against bytes built through the C's formatter
+- a model of the send, not the send. The model agreed, because the builder was right;
+the wrong argument was a layer below it and nothing recorded that layer.
+
+THE TENSION IS REAL AND THE ANSWER IS NOT ONE FILE. A replay needs arrivals alone,
+because it is standing in for a console; a diagnosis needs both, because half a
+conversation explains nothing. Those are two artefacts, and PP830's per-leg report is
+the shape that already got this right: it counts what crossed each way without touching
+the corpus.
+
+SO THE LIKELY SHAPE IS A SECOND WRITER on the same relay callback - direction and leg
+per row, whole datagrams, its own path and its own flag - leaving the corpus exactly as
+it is. What it must not do is add a column to the capture format, which is what every
+reader of that file already agrees about.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry
