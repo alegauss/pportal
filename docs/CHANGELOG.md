@@ -765,6 +765,7 @@
 - ✅ **PP841** **the shim's takion wrappers are not behind their define, so the flip that deletes the C cannot be one commit** — Five regions of the body carry them behind an option that is on by default: configured off the shim links, exports 25 fewer and still answers the guard.
 - ✅ **PP842** **the frame path's oracle has no recording, so the flip that must turn it off to delete takion spends it** — tests/oracles/framepath.json holds what jerasure, the frame processor and the video receiver answered, and six comparisons now run on every build instead of declining with the C.
 - ✅ **PP30** **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — gf-complete and jerasure are out of the build: sixteen vendored C files gone, the link line, the option, the find module, and the field init in chiaki_lib_init that outlived every FEC caller.
+- ✅ **PP843** **ShimFramePathShape says the flip has happened and the option is off, and PP763 put the four files back** — the flip state is read from the build files and the loaded shim and held against the class's own claim, so a revert that leaves the prose is red.
 
 ## Block G — Test discipline
 

@@ -24,8 +24,6 @@
 
 ## Block F — Managed core
 
-- 📋 **PP843** (deps: PP697 ✅, PP763 ✅) **ShimFramePathShape says the flip has happened and the option is off, and PP763 put the four files back** — PP697 turned the class's tense when PP696 landed; PP763 reverted the flip and left the prose, so the file tells a reader the opposite of the tree. → §PP843
-
 ## Block G — Test discipline
 
 - 📋 **PP844** (deps: PP691 ✅, PP27 ✅) **a check's control names a file a prepared deletion aims at, so it goes red about its own fixture when that lands** — PP27 landed and two controls broke this way; PP691's census sees prose and not the filenames a fixture picks. → §PP844

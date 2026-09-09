@@ -184,29 +184,6 @@ flag, its count loop is guarded by the return above it, peek writes both out-poi
 where pull guards its own, and takion still passes NULL and still drops on a bad MAC.
 Repair any upstream and the port's copy becomes the divergence, on the next run.
 
-### §PP843 A class that describes a deletion the tree undid
-
-PP696 took fec.c, frameprocessor.c and videoreceiver.c out of the build, PP697 turned
-every model's tense to match, and PP763 put the three back because the client could no
-longer stream. The tense never came back with them.
-
-SO THE CLASS STATES THE OPPOSITE OF THE TREE. ShimFramePathShape's own summary says "THE
-FLIP HAS HAPPENED", that PP696 "took the four files out and the option is off", and that
-the wrapping side "is now the one nobody builds by default". Every clause is false:
-lib/CMakeLists.txt lists all three, shim/CMakeLists.txt defines
-CHIAKI_SHIM_HAVE_FRAMEPATH unconditionally with no option to turn, and the wrapping side
-is the only side anybody builds.
-
-THIS IS NOT A TIDINESS POINT, and PP842 is the evidence. Reading that summary is a
-reasonable way to answer "is the frame path already flipped", and the answer it gives
-sends a reader looking for an option that does not exist - which is most of a session,
-because the thing the tree actually needs is the one the prose says is done.
-
-The fix is PP697's edit run backwards over the same models, and the check is the one
-PP697 already has: a reader that holds the prose against the build rather than against
-the last task to touch it. What made this survivable for a whole block is that nothing
-failed - the guards work, the shape is right, and only the sentences are wrong.
-
 ## Block G — Test discipline
 
 ### §PP844 A fixture the deletion was aiming at

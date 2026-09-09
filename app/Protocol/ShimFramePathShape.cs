@@ -13,9 +13,16 @@ namespace ChiakiNg.Protocol;
 /// fourteen inside an #ifdef, and PP662 had measured what that does to an unguarded caller - 128
 /// assertions red, every one of them a test with no way to ask which build it got.
 ///
-/// PP697: THE FLIP HAS HAPPENED, so this file's tense has turned. PP696 took the four files out and
-/// the option is off, which means the wrapping side is now the one nobody builds by default - and
-/// everything below is written to work either way, because that is what it was for.
+/// PP697: THE FLIP HAS HAPPENED, so this file's tense has turned. The four files are out of the
+/// build and the option is off, which means the wrapping side is the one nobody builds by default -
+/// and everything below is written to work either way, because that is what it was for.
+///
+/// PP843: AND THE TENSE TURNED TWICE, WHICH IS WHY IT NO LONGER CREDITS A COMMIT. This paragraph
+/// said "PP696 took the four files out". PP696 did, and PP763 put them back the same block because
+/// the client could no longer stream - so for that whole block this sentence described a deletion
+/// the tree had undone, and nothing failed. PP27 removed them again, which made it true by accident.
+/// What holds today is PP27's flip and not PP696's; the sentence is written against the BUILD now,
+/// and <see cref="FramePathFlipState"/> is what holds it there rather than the next reader's memory.
 ///
 /// THE QUESTION IS ASKED OF THE DLL, NOT THE FILE, and that is the whole of PP661's lesson. The
 /// flip leaves the declarations in the header text - inside the #ifdef - so a reader keyed on the
@@ -32,9 +39,9 @@ namespace ChiakiNg.Protocol;
 ///
 /// THE FLIP WAS NOT THIS FILE'S. PP623's order is two-state first, flip second, prose third, and
 /// this was the first: the define was unconditional and the export said so, so every differential
-/// could ask before the answer changed. PP696 was the second - the CMake line that put the define
-/// behind an option, and the #ifdefs around the fourteen in the header and the body - and it edited
-/// nothing here, which is what the first step is for.
+/// could ask before the answer changed. The second step is the CMake line that puts the define
+/// behind an option and the #ifdefs around the fourteen - PP696 wrote it, PP763 unwrote it, PP27
+/// wrote it back - and none of the three edited anything here, which is what the first step is for.
 /// </summary>
 public static class ShimFramePathShape
 {
