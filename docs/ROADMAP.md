@@ -28,6 +28,8 @@
 
 ## Block G — Test discipline
 
+- 📋 **PP844** (deps: PP691 ✅, PP27 ✅) **a check's control names a file a prepared deletion aims at, so it goes red about its own fixture when that lands** — PP27 landed and two controls broke this way; PP691's census sees prose and not the filenames a fixture picks. → §PP844
+
 ## Block H — Performance and telemetry
 
 - ⏳ **PP46** (deps: PP42 ✅, PP63) **the claim that dropping the bundled browser makes startup and the installer smaller is untested** — A Chromium leaving the build should be visible in cold start and in megabytes, and stating it without measuring is how a port collects folklore. → §PP46
