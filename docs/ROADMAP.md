@@ -9,7 +9,8 @@
 
 ## Block B — Native interop
 
-- 📋 **PP819** (deps: PP8 ✅) **the pad path is SDL2 and nothing else in the port calls it, so one library ships for one job** — Eighteen entry points are the whole use and much of the managed pad code models SDL's own quirks; HID carries the touchpad, the gyroscope and the triggers. → §PP819
+- 📋 **PP845** (deps: PP129 ✅, PP130 ✅, PP93 ✅, PP838 ✅) **PadTranslation writes buttons, triggers and sticks only, so a PS4 or PS5 pad's touchpad and sensors reach no console** — PP129, PP130 and PP93 ported the touch ids, the fusion and the bounds; nothing calls TouchpadTracker or MotionTracker from PadFeed. → §PP845
+- 📋 **PP846** (deps: PP97 ✅, PP98 ✅, PP127 ✅, PP838 ✅) **the console's haptics reach no motor: HapticsRumble and DualSenseEffects are modelled and neither has a caller** — PP97 and PP98 built the fold and PP127 the 47-byte report; PadFeed only reads a pad, so nothing plays what the stream carries. → §PP846
 
 ## Block C — Video and input path
 

@@ -27,29 +27,52 @@ Whatever the right pair is, the dpad path and the mouse path should read it from
 same place - and the reason to write that down now is that the port has just copied all
 three, so it is the moment when the duplication is visible.
 
-### §PP819 SDL is the port's own dependency now, not the C's
+### §PP845 The pad's other two halves, ported and unplugged
 
-SDL is not in lib at all. It is in gui, which is being replaced, and in app itself:
-eighteen entry points in Gamepads.cs, every one of them an event, joystick or
-gamecontroller call. No audio, no video, no window and no rumble - PP97's fold has no
-output call behind it yet. So once PP816 takes the render path off it, SDL2.dll stays in
-the package for one job.
+PadFeed folds an SDL event into a translation and pushes the result. WriteTo sets three
+fields - the button mask, both triggers and the four stick axes - and that is the whole
+of what a console is told. The touchpad's coordinates and the gyroscope's readings are
+fields on the same state and nothing ever writes them.
 
-STRATEGY names this case in its first paragraph, and what the port pays is not the DLL.
-It is the modelling around it: the index-versus-instance-id asymmetry a roster has to
-carry, the SDL_Event layout PP579 holds against a header, the field SDL rewrites on any
-pushed event, the four-millisecond pump PP118 gave a thread of its own, the load PP117
-had to make report rather than hang.
+WHAT IS MISSING IS THE WIRE AND NOT THE PORT, which is what makes this a line rather
+than an estimate. PP129 mapped SDL's touchpad-and-finger naming onto the console's pool
+of two ids. PP130 ported the sensor fusion, down to the stateful filter. PP93 fixed the
+dpad touch bounds to the console's own. Four tasks, all shipped, all reachable, none
+reached: TouchpadTracker and MotionTracker have no caller outside their tests.
 
-Windows ships both halves. RawInput and the HID API carry a DualSense's touchpad,
-gyroscope and trigger reports, which is the same data SDL parses out of them;
-Windows.Gaming.Input covers XInput pads and their arrival without a pump.
+PP838 IS THE PRECEDENT AND THE WARNING. A pad plugged in after the picture appeared was
+never opened, because PadFeed's event arm had no case for arrival - and the run reported
+`armed True, 0 state(s) pushed`, which reads as a pad nobody touched. This is the same
+shape one field along, and it reports nothing at all: a live run says 635 states pushed
+whether or not any of them carried a finger.
 
-One cost should decide the shape rather than be discovered late. SDL's controller
-database covers thousands of third-party pads and native HID supports what this port
-writes support for, so the first question is which devices the port owes support to -
-and the mapping screen PP18 built against SDL's mapping strings changes with that
-answer.
+The trigger is the pads the port supports. A PS4 or PS5 pad has both a touchpad and
+sensors, the console expects input from each, and today a player using one has a gamepad
+with the two things that make it that pad switched off.
+
+### §PP846 A pad that is only an input
+
+Gamepads' own summary says it: eighteen SDL entry points, every one an event, joystick
+or gamecontroller call, and no output among them. PadFeed reads a pad and pushes a
+state. The stream carries haptics the other way and nothing consumes them.
+
+BOTH ANSWERS ARE ALREADY WRITTEN, which is what makes this a wire. PP97 ported the
+haptics-to-rumble fold for pads with no haptic motors; PP98 fixed the wrap that told the
+loudest frame to rumble at zero; PP127 built the 47-byte DualSense effects report field
+by field against the struct's own layout, with the intensity ladder beside it. All
+shipped, all correct, all called by nothing but their own tests.
+
+THE TWO PADS WANT DIFFERENT THINGS and that is the substance rather than a detail. A PS4
+pad has rumble motors, so the fold is the whole answer for it. A PS5 pad has haptic
+actuators and adaptive triggers, and folding the console's haptics to rumble on one
+throws away what the console sent - a worse result than the fold is FOR, and the reason
+PP127 exists at all.
+
+The hint pair is the evidence this was always the plan: Gamepads sets
+SDL_JOYSTICK_HIDAPI_PS4_RUMBLE and its PS5 twin before SDL_Init, because without them a
+pad on USB does not rumble. Two hints set for an output call nobody wrote. A run cannot
+report the gap either, which is the shape PP838 was: the pad works, the picture arrives,
+and the only thing missing is something nobody counted.
 
 ## Block C — Video and input path
 
