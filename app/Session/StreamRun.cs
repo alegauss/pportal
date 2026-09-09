@@ -340,11 +340,19 @@ public static class StreamRun
         // is no ring to clear, no silence written to keep a pump fed and no break to count, because
         // nothing here decides how much of a frame to play. What is left is what was submitted, what
         // the engine has not finished, and whether it could be opened at all.
+        //
+        // PP814: AND WHETHER THE ENGINE EVER RAN OUT, which none of those say. A queue that empties
+        // plays silence and then resumes, and that is the click a listener reports - while submitted,
+        // decoded and concealed all read healthy, because nothing on this side was late. The depth at
+        // the END of a run is what "still queued" is; these two are the depth THROUGHOUT it, which is
+        // the difference between a stream that is fine and one that only finished fine.
         Console.WriteLine(
             $"[audio] {phase.Sound.Submitted} frame(s) submitted, {phase.Sound.Unplayable} unplayable"
                 + $", device {phase.Sound.Opened?.ToString() ?? "never opened"}"
                 + $" hr {phase.Sound.Render?.LastError.ToString("X8") ?? "none"}"
                 + $", {phase.Sound.Render?.Queued ?? 0} still queued"
+                + $", ran dry {phase.Sound.Render?.RanDry ?? 0} time(s)"
+                + $", shallowest {phase.Sound.Render?.Shallowest ?? 0}"
                 + $", {phase.Sound.Render?.SamplesPlayed ?? 0} sample(s) played"
                 + $", announced {phase.Speaker?.Announced.ToString() ?? "nothing"}");
 

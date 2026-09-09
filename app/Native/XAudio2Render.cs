@@ -37,6 +37,9 @@ public sealed class XAudio2Render : IDisposable
     private IntPtr mastering;
     private IntPtr source;
     private long framesSubmitted;
+    private long submits;
+    private long ranDry;
+    private int shallowest = int.MaxValue;
     private bool disposed;
 
     /// <param name="announced">
@@ -79,6 +82,39 @@ public sealed class XAudio2Render : IDisposable
 
     /// <summary>Samples the engine has played since the voice started, which never resets.</summary>
     public ulong SamplesPlayed => Running ? State().SamplesPlayed : 0;
+
+    /// <summary>
+    /// PP814: how many times the engine had nothing left to play when the next frame arrived.
+    ///
+    /// THIS IS THE GAP A LISTENER HEARS. A source voice with an empty queue plays silence and then
+    /// resumes, which is a click; every counter on the decode path reads healthy while it happens,
+    /// because nothing on that path is late. The engine is the only thing that knows, and it is
+    /// already being asked - <see cref="ReleasePlayed"/> reads the queue depth after every submit to
+    /// free pins, so the observation costs nothing at all.
+    ///
+    /// READ AS ONE OUTSTANDING AND NOT ZERO. The depth is taken AFTER the submit has landed, so the
+    /// buffer just handed over is in the count: one means the engine held nothing before it. The
+    /// first submit is never counted, because an engine that has played nothing yet is not late.
+    /// </summary>
+    public long RanDry => Interlocked.Read(ref ranDry);
+
+    /// <summary>
+    /// The smallest queue depth seen after a submit, which is how much margin a clean run had.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="RanDry"/> says whether the sound broke and this says how close it came. A run
+    /// holding four buffers throughout and one that touched two are both silent in every other
+    /// number this path prints, and only one of them is about to crackle. Zero before anything has
+    /// been submitted.
+    /// </remarks>
+    public int Shallowest
+    {
+        get
+        {
+            int seen = Volatile.Read(ref shallowest);
+            return seen == int.MaxValue ? 0 : seen;
+        }
+    }
 
     /// <summary>
     /// Open the engine, a mastering voice on the default endpoint, and a source voice for the
@@ -177,6 +213,7 @@ public sealed class XAudio2Render : IDisposable
 
             submitted.Enqueue(held);
             Interlocked.Add(ref framesSubmitted, unit.Length / FrameBytes);
+            submits++;
 
             ReleasePlayed();
         }
@@ -243,6 +280,11 @@ public sealed class XAudio2Render : IDisposable
     /// BuffersQueued is how many are still outstanding, and the queue here is in submit order, so
     /// everything beyond that count at the FRONT has been played. This is the callback interface
     /// not being needed: the engine already answers the only question a pin has.
+    ///
+    /// PP814: AND THE SAME ANSWER IS THE ONE A LISTENER NEEDS. The depth this reads to free pins is
+    /// also how much sound the engine still holds, so <see cref="RanDry"/> and
+    /// <see cref="Shallowest"/> are taken here rather than paying for a second GetState. Called
+    /// under <c>gate</c> by the one caller, which is what makes the two fields safe to touch plainly.
     /// </remarks>
     private void ReleasePlayed()
     {
@@ -250,6 +292,17 @@ public sealed class XAudio2Render : IDisposable
 
         while (submitted.Count > outstanding)
             submitted.Dequeue().Free();
+
+        // The first submit is not late: an engine that has played nothing has nothing to be behind
+        // on. Every one after it that finds only itself outstanding is a queue that emptied.
+        if (submits < 2)
+            return;
+
+        if (outstanding < shallowest)
+            Volatile.Write(ref shallowest, outstanding);
+
+        if (outstanding <= 1)
+            Interlocked.Increment(ref ranDry);
     }
 
     private RenderResult Refuse()

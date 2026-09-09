@@ -150,6 +150,52 @@ public class XAudio2RenderTests(ITestOutputHelper output)
     }
 
     /// <summary>
+    /// PP814: a queue that emptied is COUNTED, which is the number a crackling run was missing.
+    ///
+    /// Every counter on the decode path reads healthy while a listener hears a click every second or
+    /// two - decoded, concealed, submitted and refused are all about frames that arrived on time,
+    /// and none of them is late. The gap is downstream of all of them: the engine runs out, plays
+    /// silence, and resumes. So a clean run and a crackling one read identically, which is PP814.
+    ///
+    /// DRIVEN BY WITHHOLDING AUDIO, because that is the whole fault. Eight units back to back keep
+    /// the engine ahead and nothing is counted; a third of a second of nothing empties it, and the
+    /// next submit finds itself alone in the queue. The depth is read after the submit lands, so
+    /// ONE is the reading for empty and zero would mean the engine lost the frame as well.
+    /// </summary>
+    [Fact]
+    public async Task AnEngineLeftWithNothingToPlayIsCounted()
+    {
+        using XAudio2Render render = Render();
+
+        if (render.Open() != RenderResult.Running)
+            return;
+
+        byte[] unit = Unit();
+
+        for (var i = 0; i < 8; i++)
+            render.Write(unit);
+
+        output.WriteLine($"fed: ran dry {render.RanDry}, shallowest {render.Shallowest}");
+
+        // Eighty milliseconds handed over in a few microseconds: the engine is never behind, so
+        // nothing here is a gap and the margin never falls to one.
+        Assert.Equal(0, render.RanDry);
+        Assert.True(render.Shallowest > 1, $"shallowest was {render.Shallowest} on a fed engine");
+
+        // Four times what was queued, so the engine is certainly empty rather than probably.
+        await Task.Delay(TimeSpan.FromMilliseconds(320));
+
+        Assert.Equal(0, render.Queued);
+
+        render.Write(unit);
+
+        output.WriteLine($"starved: ran dry {render.RanDry}, shallowest {render.Shallowest}");
+
+        Assert.Equal(1, render.RanDry);
+        Assert.Equal(1, render.Shallowest);
+    }
+
+    /// <summary>
     /// Volume is the engine's, which is what makes a managed pass over every sample unnecessary.
     ///
     /// AudioVolume.Apply multiplies and clamps each sample in C#; this hands the same job to the

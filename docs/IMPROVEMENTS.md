@@ -282,30 +282,6 @@ numbers it hands back are what the launch spec spends: a measurement the suite a
 with and a console does not is the shape that ships green and streams nothing. So the
 C's run stays the other arm until a live session says otherwise.
 
-### §PP814 The audio nobody counts
-
-THREE MECHANISMS PROPOSED AND ALL THREE MEASURED DEAD. The ring dumped for getting
-ahead: Cleared is 0. The ring running dry: 1 to 2 silent breaks against about five
-clicks heard. Opus concealing a lost frame: Concealed is 0. Every counter on the
-decode-to-render path reads healthy while a listener hears a click every one to two
-seconds.
-
-AND ONE OF THOSE READINGS WAS A LIE UNTIL IT WAS FIXED. AudioRingSink counted Written on
-a true from AudioRing.Write, and that answers whether it had to EVICT older audio, not
-whether the write succeeded - the ring never refuses a frame. So the pair was inverted:
-the first live print of a healthy stream read took 0 and dropped 853, and meant 853
-clean writes and no overflow at all. Nothing had read the pair before this line printed
-it, which is why an inversion sat there unnoticed. Written now counts every frame taken
-and Overflowed the subset that evicted, with a test that fills a ring past capacity so
-it cannot invert again.
-
-SO THE CRACKLING IS NOT IN THIS PATH. Decode, ring and render are each instrumented now
-and each reports nothing wrong. That relocates the question rather than answering it:
-either upstream of the decoder, where the receiver's jitter buffer is, or downstream in
-the device format, or it is not a discontinuity at all - a listener reported the
-interval constant across runs carrying different audio, which no content-dependent
-artifact explains.
-
 ### §PP824 The stream's half of the ack
 
 PP807 shipped one of the two routers. `StreamArrivals` has held the seam since that line

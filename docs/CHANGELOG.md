@@ -745,6 +745,7 @@
 - ✅ **PP812** **the datagram capture taps the C's takion and the port opens its own, so a run without a relay records nothing** — The managed dispatch fills the capture now, so a run without a relay records the port's whole stream where it recorded nothing.
 - ✅ **PP829** **the relay never carries senkusha's handshake, so a capture through it dies before the session reaches the stream** — Senkusha's port is forwarded now, so a session through the relay completes its first handshake and measures the link instead of timing out on loopback.
 - ✅ **PP813** **the port's senkusha gets the bang then loses every pong, so the RTT test answers Unknown and the link is unmeasured** — senkusha's data_type is takion's CHANNEL and the port spent it as the chunk flags, so every command left on channel one - acked by a console that then echoed nothing.
+- ✅ **PP814** **nothing reports whether audio dropped, so a crackling stream and a clean one read identically** — The engine's own queue depth is the only thing that knows, and it says a live run ran dry seven times in twenty-four seconds while every decode counter read clean.
 
 ## Block G — Test discipline
 
