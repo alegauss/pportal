@@ -239,29 +239,6 @@ flag, its count loop is guarded by the return above it, peek writes both out-poi
 where pull guards its own, and takion still passes NULL and still drops on a bad MAC.
 Repair any upstream and the port's copy becomes the divergence, on the next run.
 
-### §PP832 The keyframe nobody counts
-
-A USER REPORTED ARTEFACTS AT THE BOTTOM OF THE SCREEN and this tree could not answer the
-first question about them. Corruption that persists across frames means a reference
-frame was lost and never replaced; the remedy is an IDR request, and whether one went
-out is the difference between a decoder fault and a request the port never made.
-
-THE REPORT ALREADY CARRIES ITS NEIGHBOURS. A stream run prints what was decoded, what
-was shown, what the network lost, what the drain superseded and what the decoder is
-answerable for - five numbers, all about frames arriving. Nothing counts what the
-session ASKED FOR. So an investigation reaches for the one figure that is missing and
-falls back on reading the picture, which is what a report exists to avoid.
-
-CORRUPTION IS THE CASE THE COUNTS ALREADY DISAGREE ABOUT. The run that prompted this
-showed 4539 decoded against 4314 shown with 126 lost, which is a healthy stream by every
-line printed and a damaged one on the screen. A count of requests sent would have said
-in one number whether the port noticed.
-
-THE SEND MAY NOT EXIST YET, which is the half to read before filing a fix. Whether the
-port ever emits a corrupt-frame report or an IDR request is a separate question from
-whether the report counts one, and the answer decides whether this line is a counter or
-a send. Reading it is the work; the counter is what the reading is for.
-
 ### §PP833 The queue with no floor
 
 PP814 MEASURED IT AND THE NUMBER IS NOT ZERO. A twenty-five second run against PS5-385

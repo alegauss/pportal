@@ -148,6 +148,16 @@ public sealed class ManagedStreamPhase : IDisposable
     /// <summary>The microphone this run opened, or null where none was asked for.</summary>
     public ManagedMicrophone? Capture { get; private set; }
 
+    /// <summary>
+    /// PP832: what the video receiver asked the console for, or null before a run built one.
+    ///
+    /// Held for the same reason <see cref="Arrivals"/> is: the seam is built inside <c>Build</c>,
+    /// which runs only once a session hands over, so a caller reading how a run went has no other
+    /// way to reach it. The keyframe requests are the numbers a corrupted picture is read back
+    /// from, and they were reachable from nothing.
+    /// </summary>
+    public StreamOutbound? Outbound { get; private set; }
+
     /// <summary>What decoded the sound, or null where no run built one.</summary>
     public ManagedOpusDecoder? Speaker => speaker;
 
@@ -202,6 +212,10 @@ public sealed class ManagedStreamPhase : IDisposable
         var messages = new TakionMessageSink(takion);
         var outbound = new StreamOutbound(messages);
         var events = new ManagedSessionEvents();
+
+        // PP832: held, because the keyframe requests are read after the run and this local is the
+        // only thing that has them.
+        Outbound = outbound;
 
         // PP799: AND SOMEBODY LISTENING TO IT, which no file had ever been. PP719 built the seam and
         // PP747 built the sink, and the root that would have joined them made the seam and stopped -

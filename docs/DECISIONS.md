@@ -119,6 +119,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP824** **the stream's arrivals never set the ack sink, so a live session answers no data message the console sends** — A data ack must be MAC'd at key_pos_local before the stream's root may join it; unsigned, about 1170 of them ended a live session.
 - ✅ **PP828** **the copy off the decode surface is known to exist and untimed, so the FFmpeg decision still has no total** — A queued D3D11 copy is timed with a timestamp pair against a disjoint query, never a Stopwatch: the call answers in nanoseconds and reads as free.
 - ✅ **PP831** **no check joins a managed send's arguments to the C call it ports, so an inverted pair passes every builder test** — An inversion is a KIND mistake and not a value one: both builders carried the right number, so a check comparing numbers would have passed each time.
+- ✅ **PP832** **the stream report never says how many IDR requests went out, so a corrupted picture cannot be read back** — A refused IDR request counts as asked AND as refused: the receiver waits for a keyframe only where the send returned true, so one number cannot tell those runs apart.
 
 ## Block G — Test discipline
 

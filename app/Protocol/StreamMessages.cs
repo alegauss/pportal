@@ -224,10 +224,38 @@ public sealed class StreamOutbound(IStreamMessageSink sink, ManagedSessionEvents
     /// <summary>The frame index of the last FEC failure, or null where there has been none.</summary>
     public int? LastFecFailure { get; private set; }
 
+    /// <summary>
+    /// PP832: how many keyframes this session asked for, which no line of a run used to say.
+    ///
+    /// A user reported artefacts at the bottom of the screen and the tree could not answer the
+    /// first question about them. Corruption that persists across frames is a reference frame lost
+    /// and never replaced, and the remedy is this request - so whether one went out is the whole
+    /// difference between a decoder fault and a request the port never made.
+    ///
+    /// THE COUNTS ALREADY DISAGREED AND NOBODY COULD SEE IT. The run that prompted this showed
+    /// 4539 decoded against 4314 shown with 126 lost, which is a healthy stream by every number
+    /// printed and a damaged one on the screen.
+    /// </summary>
+    public int IdrRequests { get; private set; }
+
+    /// <summary>
+    /// And how many the sink refused, which is not the same failure at all.
+    ///
+    /// A request that was never sent leaves the receiver NOT waiting for a keyframe - the return
+    /// is load-bearing for exactly that reason - so a run with refusals is a takion that could not
+    /// send rather than a console that would not answer. One number cannot say both.
+    /// </summary>
+    public int IdrRequestsRefused { get; private set; }
+
+    /// <summary>How many corrupt-frame reports went out, which is the request's neighbour.</summary>
+    public int CorruptFrameReports { get; private set; }
+
     /// <inheritdoc />
     public void SendCorruptFrame(ushort from, ushort to)
     {
         StreamMessage message = StreamMessages.CorruptFrame(from, to);
+
+        CorruptFrameReports++;
         sink.Send(in message);
     }
 
@@ -235,7 +263,16 @@ public sealed class StreamOutbound(IStreamMessageSink sink, ManagedSessionEvents
     public bool SendIdrRequest()
     {
         StreamMessage message = StreamMessages.IdrRequest();
-        return sink.Send(in message);
+        bool sent = sink.Send(in message);
+
+        // Counted as asked and as refused, not as one or the other: the receiver's own behaviour
+        // forks on this return, so a reader needs both halves to tell the two runs apart.
+        IdrRequests++;
+
+        if (!sent)
+            IdrRequestsRefused++;
+
+        return sent;
     }
 
     /// <inheritdoc />

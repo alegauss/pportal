@@ -395,6 +395,16 @@ public static class StreamRun
             $"[stream] data acks: {phase.Arrivals?.Acked ?? 0} sent, "
                 + $"last {phase.Arrivals?.LastAck?.Verdict.ToString() ?? "none attempted"}");
 
+        // PP832: what the session ASKED the console for, which no line of a run used to say. The
+        // five frame numbers below are all about frames arriving; a picture that is corrupted is
+        // read back from this one, and a healthy-looking run with zero requests against a damaged
+        // screen is the case that has no other reading.
+        Console.WriteLine(
+            $"[stream] keyframes: {phase.Outbound?.IdrRequests ?? 0} requested, "
+                + $"{phase.Outbound?.IdrRequestsRefused ?? 0} refused, "
+                + $"{phase.Outbound?.CorruptFrameReports ?? 0} corrupt-frame report(s), "
+                + $"{phase.Outbound?.FecFailures ?? 0} FEC failure(s)");
+
         // PP825: and the microphone, where one was asked for. Silent otherwise, because a line
         // reporting zero on every run nobody asked would read as a broken feature rather than an
         // unused one.
