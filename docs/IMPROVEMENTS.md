@@ -438,6 +438,29 @@ port ever emits a corrupt-frame report or an IDR request is a separate question 
 whether the report counts one, and the answer decides whether this line is a counter or
 a send. Reading it is the work; the counter is what the reading is for.
 
+### §PP833 The queue with no floor
+
+PP814 MEASURED IT AND THE NUMBER IS NOT ZERO. A twenty-five second run against PS5-385
+submitted 2361 frames, decoded 2361, concealed none, refused none - and the engine ran
+dry seven times, touching a queue depth of one. Roughly one gap every three seconds, in
+a stream every other counter calls healthy.
+
+WHAT FEEDS THE ENGINE IS THE DECODER'S OWN THREAD. XAudio2Sink hands each frame over the
+moment Opus produces it. There is no floor: if a datagram arrives late, or the decode
+thread is preempted, the queue empties and the voice plays silence until the next frame
+lands. Nothing holds a reserve, because PP816 deliberately deleted the ring.
+
+THAT DELETION WAS RIGHT AND IS NOT WHAT THIS UNDOES. AudioRing was a second queue in
+front of the engine's, drained by a pump doing room arithmetic - PP810 is one line of
+that arithmetic dropping the tail of a unit. The engine already has a queue and already
+reports its depth. What is missing is a cushion, not another buffer.
+
+THE OBVIOUS SHAPE IS A PREFILL: hold the first few frames and submit them together, so
+the engine begins with depth to spend and a late frame costs margin rather than silence.
+The cost is latency, exactly as many frames as are held, and this is a remote play
+client - so the number is a trade to be measured rather than chosen. PP814's counter is
+what measures it, on the same run and the same console.
+
 ## Block G — Test discipline
 
 ## Block H — Performance and telemetry

@@ -35,6 +35,7 @@
 - 🛠 **PP830** (deps: PP829 ✅) (requires: console) **the stream dies within 85ms through the relay, so a capture holds the handshake and none of the traffic** — PP829 got senkusha across and the stream is the next to fail; nothing reached it before, so this leg has not carried a real session in a long time. → §PP830
 - 📋 **PP831** (deps: —) **no check joins a managed send's arguments to the C call it ports, so an inverted pair passes every builder test** — PP813 spent senkusha's channel as the chunk flags for six tasks and every test agreed: a builder carrying the right number is right either way. → §PP831
 - 📋 **PP832** (deps: —) **the stream report never says how many IDR requests went out, so a corrupted picture cannot be read back** — A user reported artefacts at the bottom of the screen and the number that would say whether the port asked for a keyframe is in no line of the run. → §PP832
+- 📋 **PP833** (deps: —) **the audio engine is fed one frame at a time as they decode, so a late frame empties the queue and the sound gaps** — PP814's counter reads seven dry moments and a shallowest of one over twenty-four seconds, which is the click still there and now measurable. → §PP833
 
 ## Block G — Test discipline
 
