@@ -269,10 +269,30 @@ public static class StreamRun
         // state to stream_connection.feedback_sender, and the flip leaves that call storing a value
         // nothing sends - so a pad wired to it would push 426 states into a struct nobody reads.
         using var pad = new PadFeed(phase.Pad);
-        Console.WriteLine(
-            pad.Start()
-                ? $"[stream] pad: {pad.PadName}"
-                : "[stream] no pad - the picture will arrive and nothing will be sent back");
+
+        // PP835: OPENED OFF THE THREAD THAT DRAWS, which a user reported as the picture freezing.
+        //
+        // PadFeed.Start is allowed ten seconds for the SDL thread and five more to open a controller
+        // on it, and the draw loop below used to begin only after it returned. A pad already plugged
+        // in makes that instant and hides the order; one connected while the session is coming up
+        // does not, and across that window nothing is presented while the receiver keeps decoding on
+        // its own thread - the log fills with the codec's buffer being full and frames dropped to
+        // make room, which is a picture that has stopped over a stream that has not.
+        //
+        // THE PICTURE IS WHAT THIS RUN IS FOR, so it does not wait on an input device. The name is
+        // printed from the opening thread rather than here, so a pad that arrives late still says
+        // when it arrived - which is the reading that told these two runs apart.
+        Task<bool> opening = Task.Run(() =>
+        {
+            bool open = pad.Start();
+
+            Console.WriteLine(
+                open
+                    ? $"[stream] pad: {pad.PadName}"
+                    : "[stream] no pad - the picture will arrive and nothing will be sent back");
+
+            return open;
+        });
 
         var started = DateTimeOffset.UtcNow;
         var clock = System.Diagnostics.Stopwatch.StartNew();
@@ -294,6 +314,11 @@ public static class StreamRun
                 + $"connected {phase.Events?.Connected ?? 0}, "
                 + $"{phase.Arrivals?.Seen ?? 0} arrival(s), {phase.Arrivals?.Handled ?? 0} handled"
                 + (readings.Count > 0 ? $", last {readings[^1]}" : string.Empty));
+
+        // PP835: joined before anything reads the pad or the `using` disposes it. Start bounds
+        // itself at fifteen seconds and a session can end sooner than that, so a run quit early
+        // would otherwise tear down a PadFeed that is still opening a controller.
+        opening.Wait(TimeSpan.FromSeconds(20));
 
         // PP783: whether the pad's sink found a sender, which the state count alone cannot say. A
         // run nobody touched pushes zero states, and so does a run whose sink was never armed - the

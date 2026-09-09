@@ -34,7 +34,7 @@
 - 📋 **PP832** (deps: —) **the stream report never says how many IDR requests went out, so a corrupted picture cannot be read back** — A user reported artefacts at the bottom of the screen and the number that would say whether the port asked for a keyframe is in no line of the run. → §PP832
 - 📋 **PP833** (deps: —) **the audio engine is fed one frame at a time as they decode, so a late frame empties the queue and the sound gaps** — PP814's counter reads seven dry moments and a shallowest of one over twenty-four seconds, which is the click still there and now measurable. → §PP833
 - 📋 **PP834** (deps: —) **the relay records only what the console sent, so no capture can answer what the port actually put on the wire** — PP813 was a wrong send and took a whole task, because the bytes leaving this machine were reasoned about from the C's formatter rather than read back. → §PP834
-- 📋 **PP835** (deps: —) **the picture waits on SDL opening a pad, so connecting one after the stream starts freezes the window** — A user reported it and two live runs hold it: the pad from the start pushed 298 states over 950 frames, the one that arrived late pushed 43 and the session died. → §PP835
+- ⏳ **PP835** (deps: —) **the picture waits on SDL opening a pad, so connecting one after the stream starts freezes the window** — Whether the session's death at 741 arrivals went with the freeze or is a fault of its own is not yet known. → §PP835
 
 ## Block G — Test discipline
 
@@ -117,6 +117,14 @@
   composition root that would hand one to SendMicrophone does not exist, so
   MicrophoneSent is zero on every live run. Checked by a session raising that counter,
   and by a console that does not drop the stream over it.
+
+## Done when — PP835
+
+- **A pad connected after the picture appears neither freezes it nor ends the run** The
+  order is fixed and asserted, and a run with the pad already plugged in shows 1282
+  frames decoded and 1263 drawn. The case that was reported needs a person to plug one
+  in mid-session: what it answers is whether the death at 741 arrivals went with the
+  freeze or is its own fault.
 
 ## Non-goals
 
