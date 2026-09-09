@@ -165,4 +165,130 @@ public class CFunctionTests
     {
         Assert.Null(CFunction.BodyIn(Path.Combine(Path.GetTempPath(), "no-such-file.c"), "anything"));
     }
+
+    /// <summary>
+    /// PP847: A NOTE INSIDE A BODY IS NOT PART OF IT, which is what PP30 paid to find out.
+    ///
+    /// Its deletion left a note where the removed call had been, naming the function it had just
+    /// removed. The assertion that the call was gone read this body, found the note, and went red in
+    /// the commit that did the work.
+    ///
+    /// Both comment forms, and a string literal that survives: PP400's own rule is that
+    /// <c>"// not a comment"</c> is a message somebody logs, so a check on a log line still works.
+    /// </summary>
+    [Fact]
+    public void ANoteInsideABodyIsNotPartOfIt()
+    {
+        const string source = """
+            static void handler(void)
+            {
+            	// galois_init_default_field is gone, and this note is where it was.
+            	/* so is chiaki_fec_decode */
+            	CHIAKI_LOGI(log, "// still not a comment");
+            	real_call();
+            }
+            """;
+
+        string? body = CFunction.Body(source, "handler");
+
+        Assert.NotNull(body);
+        Assert.Contains("real_call()", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("galois_init_default_field", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("chiaki_fec_decode", body, StringComparison.Ordinal);
+        Assert.Contains("// still not a comment", body, StringComparison.Ordinal);
+
+        // And the raw form still hands them over, for a caller that is about a comment.
+        string? raw = CFunction.RawBody(source, "handler");
+
+        Assert.NotNull(raw);
+        Assert.Contains("galois_init_default_field", raw, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A COMMENTED-OUT FUNCTION IS NOT A FUNCTION, and which comment form it uses decides whether
+    /// that was ever in doubt.
+    ///
+    /// The line-comment case never bit and the reason is the markers themselves: between the
+    /// <c>)</c> and the <c>{</c> sits the next line's <c>//</c>, so the definition test fails and
+    /// the search moves on. holepunch.c carries forty lines of exactly that at file scope and the
+    /// raw reader has always walked past it. This was drafted the other way round and the gate said
+    /// so, which is why it is asserted rather than described.
+    ///
+    /// A block comment has no such gap. This tree has none - measured, not assumed - so the case
+    /// below is the hazard stated rather than a defect reproduced.
+    /// </summary>
+    [Fact]
+    public void ACommentedOutFunctionIsNotAFunction()
+    {
+        const string Lines = """
+            // static bool get_mac_addr(ChiakiLog *log, uint8_t *mac_addr)
+            // {
+            //     struct ifreq req;
+            // }
+
+            static bool get_mac_addr(ChiakiLog *log, uint8_t *mac_addr)
+            {
+            	the_real_one();
+            }
+            """;
+
+        // Both readers find the real one: the // between ) and { is what saves the raw one.
+        foreach (string? found in (string?[])[CFunction.Body(Lines, "get_mac_addr"), CFunction.RawBody(Lines, "get_mac_addr")])
+        {
+            Assert.NotNull(found);
+            Assert.Contains("the_real_one()", found, StringComparison.Ordinal);
+        }
+
+        const string Block = """
+            /* static bool get_mac_addr(ChiakiLog *log) { struct ifreq req; } */
+
+            static bool get_mac_addr(ChiakiLog *log)
+            {
+            	the_real_one();
+            }
+            """;
+
+        string? stripped = CFunction.Body(Block, "get_mac_addr");
+
+        Assert.NotNull(stripped);
+        Assert.Contains("the_real_one()", stripped, StringComparison.Ordinal);
+        Assert.DoesNotContain("struct ifreq", stripped, StringComparison.Ordinal);
+
+        // And the raw reader takes the commented one, which is the hazard stripping removes.
+        string? raw = CFunction.RawBody(Block, "get_mac_addr");
+
+        Assert.NotNull(raw);
+        Assert.Contains("struct ifreq", raw, StringComparison.Ordinal);
+        Assert.DoesNotContain("the_real_one()", raw, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A brace inside a comment cannot end a body, which it could before.
+    ///
+    /// Sixteen comments in this tree's C hold unbalanced braces and two of them sit inside a
+    /// function body - a <c>// {</c> and a <c>// }</c> in holepunch.c that cancel each other, so
+    /// nothing is truncated today. One of them alone would be, and that is what this holds.
+    /// </summary>
+    [Fact]
+    public void ABraceInsideACommentCannotEndABody()
+    {
+        const string source = """
+            static void handler(void)
+            {
+            	// the loop used to close here: }
+            	real_call();
+            }
+            """;
+
+        string? body = CFunction.Body(source, "handler");
+
+        Assert.NotNull(body);
+        Assert.Contains("real_call()", body, StringComparison.Ordinal);
+
+        // The raw reader ends at the comment's brace, which is the truncation stripping removes.
+        string? raw = CFunction.RawBody(source, "handler");
+
+        Assert.NotNull(raw);
+        Assert.DoesNotContain("real_call()", raw, StringComparison.Ordinal);
+    }
 }

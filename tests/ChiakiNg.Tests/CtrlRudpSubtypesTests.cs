@@ -304,8 +304,13 @@ public class CtrlRudpSubtypesTests
         Assert.True(
             CtrlRudpSubtypesSource.TheThreeStillFallThrough(thread),
             "the three subtypes no longer fall into 0x02, so three of them stopped acking and reading");
+
+        // PP847: read WITH comments, because the claim is about one - the switch's own admission
+        // that its shape is wrong is prose, and a stripping reader cannot see prose. The two
+        // predicates either side of this are about code and take the stripped body.
         Assert.True(
-            CtrlRudpSubtypesSource.TheSwitchStillSaysItIsWrong(thread),
+            CFunction.RawBodyIn(path, "static void *ctrl_thread_func") is { } commented
+                && CtrlRudpSubtypesSource.TheSwitchStillSaysItIsWrong(commented),
             "the switch no longer admits its shape is wrong - which is either a fix or a lost warning");
         Assert.True(
             CtrlRudpSubtypesSource.TheUnknownArmStillAssumesFour(thread),

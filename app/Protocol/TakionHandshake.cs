@@ -244,6 +244,18 @@ public static class TakionHandshake
     public static string? HandshakeBody(string source)
         => CFunction.Body(source, "static ChiakiErrorCode takion_handshake");
 
+    /// <summary>
+    /// PP847: the same body with its comments, for the one claim here that is ABOUT a comment.
+    ///
+    /// <see cref="TheRemoteSeqNumIsStillTheTag"/> asks whether the wire field the tag was chosen
+    /// over is still commented out beside it - a claim that the C's author left the alternative
+    /// visible, which is exactly the kind of thing a stripping reader cannot see. PP847's design
+    /// said no caller in the tree was about a comment; the gate found this one the moment
+    /// <see cref="CFunction.Body"/> stopped handing them over.
+    /// </summary>
+    public static string? HandshakeBodyWithComments(string source)
+        => CFunction.RawBody(source, "static ChiakiErrorCode takion_handshake");
+
     /// <summary>The cookie ack receive's body, which holds both defects.</summary>
     public static string? CookieAckBody(string source)
         => CFunction.Body(source, "static ChiakiErrorCode takion_recv_message_cookie_ack");

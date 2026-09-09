@@ -870,6 +870,7 @@
 - ✅ **PP802** **PP785's sixty takion guards are named by no census row, and the closed-list check cannot see a guard it never heard of** — The takion wrappers are three declared guards with nineteen rows, so the sweep can see them at all: the floor the gate prints goes from 35 declined assertions to 88.
 - ✅ **PP803** **the two arranged flips are checked by reading text, and nothing ever builds the shape either one leaves** — flip.cmd builds chiaki-unit as either arranged deletion leaves it, in a build directory of its own - and both shapes link, which PP786's repair had only ever been read about.
 - ✅ **PP844** **a check's control names a file a prepared deletion aims at, so it goes red about its own fixture when that lands** — each control's file is declared with its polarity and held against what an arranged deletion claims and against the build graph, so one aimed at is answerable before the commit.
+- ✅ **PP847** **the function-body reader keeps comments, so a note inside a body is a use and a check finds its own explanation** — Body strips before it counts braces and RawBody is the named door; 160 call sites get the safe answer and the two that are about a comment ask for one.
 
 ## Block H — Performance and telemetry
 

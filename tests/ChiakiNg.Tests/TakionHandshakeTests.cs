@@ -321,8 +321,13 @@ public class TakionHandshakeTests
 
         Assert.True(TakionHandshake.TheZeroTagGateIsStillFirst(body));
         Assert.True(TakionHandshake.TheStreamCheckIsStillCrossed(body));
+
+        // PP847: this one reads the body WITH its comments, because the claim is about one. The
+        // wire field the tag was chosen over is commented out beside it, and a body whose comments
+        // have been stripped cannot say whether the author left that alternative visible.
         Assert.True(
-            TakionHandshake.TheRemoteSeqNumIsStillTheTag(body),
+            TakionHandshake.HandshakeBodyWithComments(source) is { } commented
+                && TakionHandshake.TheRemoteSeqNumIsStillTheTag(commented),
             "the remote initial sequence number is no longer the tag, or the wire field it was chosen "
                 + "over is no longer commented out beside it");
     }

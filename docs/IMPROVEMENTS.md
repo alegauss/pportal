@@ -186,32 +186,6 @@ attributions should stop naming commits, has not been read.
 
 ## Block G — Test discipline
 
-### §PP847 A body reader that cannot tell a mention from a use
-
-CFunction.Body is PP343's: it finds a C function's body by counting braces rather than
-trusting a closing one in column zero, and it returns that span verbatim - comments
-included.
-
-Every reader beside it strips. CCall.Code blanks comments and string contents, and it is
-what PP437's entry-point census, PP540's sweep and PP793's export sweep read instead of
-the raw text, each for the same reason: a symbol named in prose is not a reference to
-it.
-
-WHAT IT COST, MEASURED. PP30 deleted galois_init_default_field from chiaki_lib_init and
-left a note where the call had been, naming the function it had just removed. The
-assertion that the field init is gone read the body, found the note, and went red - in
-the commit that did the work, on the file that proved it done. The remedy was three
-characters at the call site and a gate run to find.
-
-A caller CAN pass the stripped source, and PP30 now does. That is the argument for
-moving it rather than fixing it again: the mistake is available at every call site, and
-this is the third time a check here has found its own explanation.
-
-Two shapes. Strip inside the reader, or rename the raw form so a caller has to ask for
-it. The first is smaller and leaves nobody silently on the old behaviour; the brace
-count survives it, because the stripper replaces a comment with the newlines it spanned
-and touches no brace outside a comment or string.
-
 ### §PP849 A census that states its own counts in prose
 
 RoadmapProseReaders judges every string literal in app/ that also occurs in a governed

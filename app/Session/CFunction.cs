@@ -19,19 +19,67 @@ namespace ChiakiNg.Session;
 /// written before either was found - twice caught by a failing test rather than by review. A reader
 /// that looks general gets reused; one named after a subsystem gets copied, and the copy is the
 /// version that walks into the trap.
+///
+/// PP847: AND IT HANDED BACK COMMENTS, WHICH IT NO LONGER DOES. Every reader beside this one strips
+/// with <see cref="CCall.Code"/> - PP400 wrote that for exactly this, and PP437's census, PP540's
+/// sweep and PP793's export sweep all read through it, because a symbol named in prose is not a
+/// reference to it. This was the one that did not, and 160 call sites had the choice available.
+///
+/// PP30 PAID FOR IT. Its note where a deleted call had been named the function it had just removed,
+/// the assertion that the call was gone read this body, found the note, and went red in the commit
+/// that did the work.
+///
+/// AND IT REMOVES A SECOND CLASS OF HAZARD THIS TREE HAS NOT TRIPPED, which is worth stating as
+/// exactly that. A commented-out function looks like a real one to a raw reader - signature,
+/// parenthesis, brace - and holepunch.c carries forty lines of one at file scope. It never bit, and
+/// the reason is the comment markers themselves: between the <c>)</c> and the <c>{</c> of a
+/// <c>//</c> block sits the next line's <c>//</c>, so the definition test fails and the search moves
+/// on. A <c>/* */</c> one would have no such gap and would be taken; this tree has none, measured.
+///
+/// The same for braces. Sixteen comments in this C hold unbalanced ones and two of those sit inside
+/// a function body - at lines 4891 and 4906 of holepunch.c, which are a <c>// {</c> and a <c>// }</c>
+/// that cancel. So no body is truncated today, and none can be now.
 /// </summary>
 public static class CFunction
 {
     /// <summary>
     /// The body of <paramref name="name"/>, without its signature, or null where the file declares
     /// no definition for it.
+    ///
+    /// PP847: COMMENTS ARE GONE BEFORE THE SEARCH STARTS. A caller that wants the text as written
+    /// asks <see cref="RawBody"/> for it, which is the whole of the difference and is deliberate:
+    /// this name is what 160 call sites already use, so the safe answer is the one they get by
+    /// default and the other is the one somebody has to name.
     /// </summary>
     /// <param name="source">The whole translation unit.</param>
     /// <param name="name">
     /// The function's name, or any prefix of its definition ending before the parameter list - a
     /// full signature works and is what a caller passes to tell two overloads apart.
+    ///
+    /// A signature spanning a comment does not match, which is a consequence rather than a rule: the
+    /// stripper leaves a newline where a line comment was and a space where a block one was, so the
+    /// text a caller names has to be the code.
     /// </param>
     public static string? Body(string source, string name)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        return RawBody(CCall.Code(source), name);
+    }
+
+    /// <summary>
+    /// The same, over the text exactly as written - comments included.
+    ///
+    /// FOR A CALLER THAT IS ABOUT A COMMENT, and there are two. PP847's design said there were none
+    /// and the gate found them the moment <see cref="Body"/> started stripping: TakionHandshake asks
+    /// whether the wire field the tag was chosen over is still commented out beside it, and
+    /// CtrlRudpSubtypes whether the switch still admits its own shape is wrong. Both are claims
+    /// about prose in the C, and both are the reason this door is named rather than absent.
+    ///
+    /// What it cannot do is tell a commented-out function from a real one where no comment marker
+    /// sits between the parenthesis and the brace - see the note above.
+    /// </summary>
+    public static string? RawBody(string source, string name)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentException.ThrowIfNullOrEmpty(name);
@@ -79,5 +127,19 @@ public static class CFunction
         ArgumentNullException.ThrowIfNull(filePath);
 
         return File.Exists(filePath) ? Body(File.ReadAllText(filePath), name) : null;
+    }
+
+    /// <summary>
+    /// PP847: and the raw form read out of a file, which is <see cref="RawBody"/>'s door.
+    ///
+    /// Here because <see cref="BodyIn"/> is what a drift check calls, so a check about a comment
+    /// would otherwise have to open the file itself - and a caller opening a file to get around a
+    /// reader is how a second copy of that reader gets written, which is PP343's own finding.
+    /// </summary>
+    public static string? RawBodyIn(string filePath, string name)
+    {
+        ArgumentNullException.ThrowIfNull(filePath);
+
+        return File.Exists(filePath) ? RawBody(File.ReadAllText(filePath), name) : null;
     }
 }
