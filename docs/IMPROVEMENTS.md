@@ -260,28 +260,6 @@ port does not own calling code it does - a boundary needing explaining at every 
 reading. Five lines carry the port, and the file stops calling takion when the last
 lands.
 
-### §PP809 The senkusha phase nobody builds
-
-PP792 gave session.c a callback to hand senkusha to and PP805 wired a takion's arrivals
-to the arms that read them. Between them the port can measure a link. Nothing does: no
-file constructs a handover, installs it, or drives the run behind it, so every session
-in this tree still takes the other arm and runs the C's senkusha.
-
-PP762 IS THIS SHAPE ONE PHASE LATER, and it shipped green. PP696 made the stream phase a
-callback, nothing installed one, and a live session reached the phase and stopped -
-every piece written and no file putting them together. What was recorded then is that a
-census counting types cannot see a missing CALL.
-
-WHAT IT COMPOSES IS SMALLER THAN THE STREAM'S. Senkusha has no decoder, no pad, no
-receivers and no launch spec: a takion on its own port, the arrivals, a router and the
-run. The port is 9297 and not the stream's 9296, which is the mistake PP771 paid for on
-the other seam - a console answers nothing at all on the wrong one.
-
-AND THE CONSOLE IS THE GATE, for PP763's reason. Senkusha measures a real link, and the
-numbers it hands back are what the launch spec spends: a measurement the suite agrees
-with and a console does not is the shape that ships green and streams nothing. So the
-C's run stays the other arm until a live session says otherwise.
-
 ### §PP824 The stream's half of the ack
 
 PP807 shipped one of the two routers. `StreamArrivals` has held the seam since that line

@@ -27,8 +27,7 @@
 
 - ⏳ **PP27** (deps: PP672 ✅, PP673 ✅, PP674 ✅, PP675 ✅, PP676 ✅, PP677 ✅, PP678 ✅, PP679 ✅, PP680 ✅, PP702 ✅, PP783 ✅, PP784, PP785 ✅, PP786 ✅) (requires: console) **takion.c is 2007 lines of C over raw sockets and timers, and the whole stream rides on it** — Ten tasks wrote it; four more take the C out. → §PP27
 - 📋 **PP30** (deps: PP23 ✅, PP27 ⏳) **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — chiaki_fec_decode has three callers - frameprocessor.c, the C suite and this port's shim - and gf-complete has a fourth site none of them reach: chiaki_lib_init. → §PP30
-- 📋 **PP784** (deps: PP788 ✅, PP789 ✅, PP790 ✅, PP791 ✅, PP792 ✅, PP805 ✅, PP809 ⏳) (requires: console) **senkusha runs before the stream phase and calls four of takion's exports, so the transport cannot leave with it** — Porting was the call; its lines shipped and takion loses its last caller when this does. → §PP784
-- ⏳ **PP809** (deps: PP792 ✅, PP805 ✅, PP813 ✅) (requires: console) **no path installs a senkusha phase, so every session still measures the link with the C's run** — A live run measured through it and the phase stalled at the bang, so the numbers read back are the C's fallback; PP813 carries the census. → §PP809
+- 📋 **PP784** (deps: PP788 ✅, PP789 ✅, PP790 ✅, PP791 ✅, PP792 ✅, PP805 ✅, PP809 ✅) (requires: console) **senkusha runs before the stream phase and calls four of takion's exports, so the transport cannot leave with it** — Porting was the call; its lines shipped and takion loses its last caller when this does. → §PP784
 - 📋 **PP824** (deps: PP823 ✅) (requires: console) **the stream's arrivals never set the ack sink, so a live session answers no data message the console sends** — PP807 wired senkusha's half; this one tore a session down unsigned, and PP823 says the position it would sign at comes off the wrong ledger. → §PP824
 - ⏳ **PP825** (deps: —) **the microphone's packet is built and no takion sends one, so PP676's mic layout has only tests as callers** — Nothing in the session owns a capture and calls it, so the send has no caller either; a live run is what would show a console accepting one. → §PP825
 - 📋 **PP828** (deps: PP826 ✅) **the copy off the decode surface is known to exist and untimed, so the FFmpeg decision still has no total** — PP826 killed the no-readback claim and left the number it was standing in for; without it Media Foundation's column is a decode plus an unknown. → §PP828
@@ -110,14 +109,6 @@
   chiaki_render_tearing_probe does. Integration means the video plane's own swapchain
   carries it and presents at sync interval zero, which is the half that waits on there
   being a video plane at all.
-
-## Done when — PP809
-
-- **A live session measures through the port and the numbers are read back**
-  --show-stream against PS5-385 prints a [senkusha] line: the rung the run reached, how
-  many arrivals an arm acted on, and what the session then carries. A rung short of
-  MtuOutMeasured, or 1454/1454/1000, is PP28's fallback and says the port measured
-  nothing. The console has to reach ready first, which it does not today.
 
 ## Done when — PP825
 
