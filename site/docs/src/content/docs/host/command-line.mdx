@@ -42,3 +42,16 @@ source that moved. There is more than one `ChiakiNg.exe` on a machine that has b
 `compile.cmd` builds one and prints where, and a publish leaves another behind — and a stale copy
 reads the current backlog with rules the tree has moved past, which is a wrong answer that looks
 exactly like a right one. Run the host `compile.cmd` names.
+
+## If `--microphone` makes the sound quiet
+
+Windows attenuates every other audio stream while a microphone on the *communications* endpoint is
+open — by 80% on the default setting. The console's audio is one of those streams, so turning the
+microphone on quiets the game it is meant to accompany. Nothing in the run reports it as a fault:
+the attenuation happens in the system mixer, below anything the application counts, so the audio
+line still says every sample was played.
+
+The host asks Windows not to do this, and prints what it got — `ducking off` where the request was
+accepted, `ducking ON` where it was not. **On Windows 11 26200 the request is accepted and the
+attenuation happens anyway**, measured against a console with a listener present. Where the sound
+matters, the setting is the remedy: Control Panel → Sound → Communications → *Do nothing*.

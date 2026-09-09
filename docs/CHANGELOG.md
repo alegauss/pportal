@@ -759,6 +759,7 @@
 - ✅ **PP834** **the relay records only what the console sent, so no capture can answer what the port actually put on the wire** — A second writer takes both directions off the relay callback, leg per row: a relayed run wrote 4565 datagrams, 318 sent by this machine, and the replay corpus is untouched.
 - ✅ **PP839** **the capture pump outlives the takion, so a session ending with the microphone open throws and kills the process** — The capture stops when the run returns and a closed takion refuses there: a 20-second run sent 1601 mic packets and ended clean, where the same one crashed before.
 - ✅ **PP837** **no live run has opened the microphone, so nothing says a console accepts the packets the port now formats** — A run with --microphone sent 1601 signed mic packets and the console kept streaming: 828 frames decoded and 807 shown beside them, with the canceller in the path.
+- ✅ **PP840** **opening the microphone makes Windows duck the stream's own audio, so the game the port is playing goes quiet** — The render session's opt-out is asked and reported; Windows 11 26200 accepts it and ducks anyway, so the run says which and the docs name the setting that works.
 
 ## Block G — Test discipline
 

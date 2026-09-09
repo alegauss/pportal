@@ -41,6 +41,23 @@ internal static class Wasapi
     /// <summary>IAudioRenderClient, which is the one interface the playing side adds.</summary>
     public static readonly Guid RenderClientIid = new("F294ACFC-3146-4483-A7BF-ADDCA7C260E2");
 
+    /// <summary>
+    /// PP840: IAudioSessionControl, which GetService hands back and a QI turns into the 2.
+    ///
+    /// Asked for by the BASE iid because that is the one the client's service table knows; the RCW
+    /// answers the derived interface by QueryInterface, which is what a cast does here.
+    /// </summary>
+    public static readonly Guid AudioSessionControlIid = new("F4B1A599-7266-4319-A8CA-E70ACB11E8CD");
+
+    /// <summary>
+    /// PP840: IAudioSessionManager2, which is how the RENDER session is reached.
+    ///
+    /// The capture's own session refuses the ducking preference with AUDCLNT_E_WRONG_ENDPOINT_TYPE
+    /// - the experience it governs is a render one, so the call belongs on a render session. This
+    /// manager hands over the process's session on an endpoint without owning a stream on it.
+    /// </summary>
+    public static readonly Guid AudioSessionManagerIid = new("77AA99A0-1BD6-484F-8BC7-2C654C9A9B6F");
+
     private static PropertyKey friendlyName = new(new Guid("a45c254e-df1c-4efd-8020-67d146a850e0"), 14);
 
     /// <summary>The device enumerator, or null where COM will not make one.</summary>
@@ -266,6 +283,93 @@ internal static class Wasapi
         [PreserveSig]
         int GetService([MarshalAs(UnmanagedType.LPStruct)] Guid iid,
             [MarshalAs(UnmanagedType.IUnknown)] out object? service);
+    }
+
+    /// <summary>
+    /// PP840: the session manager of an endpoint, for the one method that names a process's session.
+    ///
+    /// Two slots inherited from IAudioSessionManager and five of its own; only the first is called,
+    /// and the rest are declared because a COM interface is its vtable order.
+    /// </summary>
+    [ComImport]
+    [Guid("77AA99A0-1BD6-484F-8BC7-2C654C9A9B6F")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public interface IAudioSessionManager2
+    {
+        /// <summary>
+        /// The session for this process on this endpoint, created if it does not exist yet.
+        /// </summary>
+        /// <param name="sessionGuid">Null for the process's default session.</param>
+        /// <param name="streamFlags">Zero.</param>
+        /// <param name="control">An IAudioSessionControl, which a cast turns into the 2.</param>
+        [PreserveSig]
+        int GetAudioSessionControl(
+            IntPtr sessionGuid, int streamFlags, [MarshalAs(UnmanagedType.IUnknown)] out object? control);
+
+        [PreserveSig] int GetSimpleAudioVolume(IntPtr sessionGuid, int streamFlags, out IntPtr volume);
+
+        [PreserveSig] int GetSessionEnumerator(out IntPtr sessions);
+
+        [PreserveSig] int RegisterSessionNotification(IntPtr notification);
+
+        [PreserveSig] int UnregisterSessionNotification(IntPtr notification);
+
+        [PreserveSig] int RegisterDuckNotification(IntPtr sessionId, IntPtr notification);
+
+        [PreserveSig] int UnregisterDuckNotification(IntPtr notification);
+    }
+
+    /// <summary>
+    /// PP840: the session behind a capture, for the one method that turns its ducking off.
+    ///
+    /// EVERY SLOT IS DECLARED AND ALL BUT ONE ARE UNUSED, which is not clutter. A COM interface is
+    /// its vtable order: skipping a method this port never calls would put SetDuckingPreference on
+    /// whichever function came after it, and the failure would be a wrong call that returns a
+    /// plausible HRESULT rather than a compiler error. The nine inherited from
+    /// IAudioSessionControl come first, in its own order, then this interface's five.
+    ///
+    /// The unused ones take IntPtr where the real signature takes an interface or a string: the
+    /// marshalling of a method nothing calls never runs, and a pointer keeps each declaration to
+    /// one slot without pulling in three more interfaces to describe.
+    /// </summary>
+    [ComImport]
+    [Guid("BFB7FF88-7239-4FC9-8FA2-07C950BE9C6D")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public interface IAudioSessionControl2
+    {
+        [PreserveSig] int GetState(out int state);
+
+        [PreserveSig] int GetDisplayName(out IntPtr name);
+
+        [PreserveSig] int SetDisplayName(IntPtr name, IntPtr eventContext);
+
+        [PreserveSig] int GetIconPath(out IntPtr path);
+
+        [PreserveSig] int SetIconPath(IntPtr path, IntPtr eventContext);
+
+        [PreserveSig] int GetGroupingParam(out Guid grouping);
+
+        [PreserveSig] int SetGroupingParam(IntPtr grouping, IntPtr eventContext);
+
+        [PreserveSig] int RegisterAudioSessionNotification(IntPtr notifications);
+
+        [PreserveSig] int UnregisterAudioSessionNotification(IntPtr notifications);
+
+        [PreserveSig] int GetSessionIdentifier(out IntPtr id);
+
+        [PreserveSig] int GetSessionInstanceIdentifier(out IntPtr id);
+
+        [PreserveSig] int GetProcessId(out uint processId);
+
+        [PreserveSig] int IsSystemSoundsSession();
+
+        /// <summary>
+        /// TRUE says this application does not want the system to duck other streams for it.
+        ///
+        /// Which is exactly the port's case: the only other stream that matters is the console's
+        /// own audio, playing in the same window the microphone is for.
+        /// </summary>
+        [PreserveSig] int SetDuckingPreference([MarshalAs(UnmanagedType.Bool)] bool optOut);
     }
 
     [ComImport]

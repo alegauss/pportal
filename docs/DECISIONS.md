@@ -125,6 +125,7 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP834** **the relay records only what the console sent, so no capture can answer what the port actually put on the wire** — The sends are a second artefact and never a column: a replay corpus holds arrivals alone because it stands in for a console, and every reader of that format agrees about it.
 - ✅ **PP839** **the capture pump outlives the takion, so a session ending with the microphone open throws and kills the process** — A send reached from a device pump treats a disposed peer as a refusal and never an exception: on that thread a throw is a process exit with no report.
 - ✅ **PP837** **no live run has opened the microphone, so nothing says a console accepts the packets the port now formats** — The mic send is the feedback sequence at fourteen and ten, and a console accepts it signed at key_pos_local exactly as it accepts the data ack at four and eight.
+- ✅ **PP840** **opening the microphone makes Windows duck the stream's own audio, so the game the port is playing goes quiet** — The opt-out belongs on the RENDER session - the capture's answers AUDCLNT_E_WRONG_ENDPOINT_TYPE - and being accepted there is not the same as being obeyed.
 
 ## Block G — Test discipline
 

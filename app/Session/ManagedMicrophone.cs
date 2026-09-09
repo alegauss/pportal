@@ -87,6 +87,20 @@ public sealed class ManagedMicrophone : IDisposable
     public CaptureResult Opened { get; private set; } = CaptureResult.NoDevice;
 
     /// <summary>
+    /// PP840: whether the system agreed not to quiet the console's audio for this capture.
+    ///
+    /// False here means a run whose sound is attenuated by 80 percent while every audio counter
+    /// reads healthy, which is a complaint no other number in the report explains.
+    /// </summary>
+    public bool DuckingOptOut { get; private set; }
+
+    /// <summary>Which step of that opt-out stopped it, or Ok.</summary>
+    public DuckingStep DuckingStopped => AudioDucking.Stopped;
+
+    /// <summary>The HRESULT behind it, or zero.</summary>
+    public int DuckingError => AudioDucking.Error;
+
+    /// <summary>
     /// Open the microphone and start the path.
     /// </summary>
     /// <param name="deviceId">An endpoint id, or null for the communications default.</param>
@@ -94,6 +108,15 @@ public sealed class ManagedMicrophone : IDisposable
     public bool Start(string? deviceId = null)
     {
         ObjectDisposedException.ThrowIf(disposed, this);
+
+        // PP840: AND THE SYSTEM IS ASKED NOT TO QUIET THE GAME for this. A capture on the
+        // communications endpoint turns on Windows' ducking experience, which attenuates every
+        // other render stream while it is open - and the only one that matters here is the
+        // console's own audio, in the window this microphone is for.
+        //
+        // On the RENDER session, which is where the call belongs: the capture's own answers
+        // AUDCLNT_E_WRONG_ENDPOINT_TYPE, read off a live run rather than reasoned about.
+        DuckingOptOut = AudioDucking.OptOut();
 
         // Reported, not required: a machine with no transform still transmits.
         stage.Start();

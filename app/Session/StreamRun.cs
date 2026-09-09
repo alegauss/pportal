@@ -460,6 +460,11 @@ public static class StreamRun
             Console.WriteLine(
                 $"[stream] microphone: {capture.Opened}, {capture.Formatted} packet(s) formatted, "
                     + $"{capture.Sent} sent, canceller {(capture.Cleaning ? "on" : "off")}, "
+                    // PP840: and whether the console's own audio is being quieted for it, which no
+                    // other number in this report explains - the ducking is in the mixer, below
+                    // everything XAudio2 counts.
+                    + $"ducking {(capture.DuckingOptOut ? "off" : "ON")} "
+                    + $"({capture.DuckingStopped} hr {capture.DuckingError:X8}), "
                     + $"last {capture.LastSend}");
         }
 
