@@ -177,13 +177,14 @@ first argument" without naming everything after it.
 TWO WENT RED IN PP845, both about something else. StreamPhaseFlipTests asked for the
 literal `new PadFeed(phase.Pad)` and is about which SINK the pad pushes at;
 ManagedControllerStateSinkTests called Single on the constructor's parameters and is
-about which SEAM it takes. The console's touchpad broke both, and neither failure named
-the thing its check exists for - the sentence PP844's two controls earned, one shape
-over.
+about which SEAM it takes. Neither failure named the thing its check exists for.
 
-The fixes were one line each, by hand, as PP386's four were before it built the reader.
-Two tests written under PP845 join the population, which is the honest half of filing
-this: both are call-shaped literals and one names an argument list on purpose.
+AND IT MADE A FILING WRONG, not just a check. PP849's line asserted a method had no
+caller; a grep for the callee and its parameter type found the declaration and missed
+three calls passing a variable.
+
+The fixes were one line each, as PP386's four were before it built the reader. Two tests
+written under PP845 join the population, which is the honest half of filing this.
 
 What a reader needs is a predicate over a callee and a PREFIX of its arguments. Whether
 that belongs in CCall, which reads C, is the question this does not answer.
