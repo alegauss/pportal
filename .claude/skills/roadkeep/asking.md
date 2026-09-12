@@ -1,3 +1,8 @@
+---
+saves: budget
+because: prices a field before the sentence exists, so a limit is met before a retry is
+---
+
 # roadkeep — the query surface
 
 The reference half of the `roadkeep` skill, read when a turn needs an answer rather than a
@@ -19,7 +24,8 @@ is a **UTF-16 code unit**, which every payload declares and every refusal names 
 differs from what an editor shows — the stricter of the two counts, so a line this accepts
 is one a gate written in Java, C# or JavaScript accepts too, and a status marker costs two
 of them where `✅` costs one. `budget --block
-<x> --dep <id> [--requires <word>] [--symptom "…"]` is the line an `add` is about to write,
+<x> --dep <id> [--requires <word>] [--symptom "…"] [--status 💭]` is the line an `add` is
+about to write — the same flags you will pass `add --block <x> --dep <id> --status 💭` —
 and `budget <id>`
 the one an `amend` is about to rewrite; the field's own `maxLength` is the ceiling, and
 what comes back is the lower number that actually binds. **Pass every flag the write will
@@ -33,7 +39,10 @@ line alone**: `add --section` writes a body too, so every `budget` carries a `se
 the limit, because composing to exactly the declared number is what refuses. `budget
 --anchor <a>` asks the same thing on its own, which is the read a `section amend` wants —
 **refused where two prose files declare that anchor**, as every other reader of one
-refuses, `--role` naming which of them you mean; on a line's own budget that half comes
+refuses, `budget --anchor <a> --role improvements` naming which of them you mean — the same
+flag `section find "<text>" --role decisions`, `section amend <a> --role decisions`,
+`section move <a> --to <b> --role decisions` and `section drop <a> --role decisions` each
+take, for the one reason; on a line's own budget that half comes
 back empty and states the same reason; `section show <a>` is the other half of that read —
 the prose whole, with the count the budget is measured in, so an `amend` is composed
 against what is there rather than against a remembered version of it — and it prints the
@@ -63,7 +72,8 @@ after a refusal is a guess, and this is the same arithmetic answered before the 
 limits are the list's own and not the task line's. **And `budget <id> --ship` prices the
 sentence a *ship* writes**, which is a different number from the line's — the ledger drops
 the deps and the pointer, so there is more room and a draft written to the line's figure
-throws characters away; `--retire` is the same question for the other departure, where a
+throws characters away; `budget <id> --retire --superseded-by <id>` is the same question for
+the other departure, where a
 derived `abandoned:` or `superseded by <id>:` prefix is inside the field and counted; and
 `--defer` is the third, where the reason is *wrapped* around the design the store carries
 forward — so the row that matters is `carried`, naming what the line leaves your sentence,
@@ -103,24 +113,33 @@ only — over this transport you are handed the denial itself.
 A bare `cost` is refused naming the five: they are five cadences, and privileging one would
 make the others read as narrowings of it. **And `config` is the read about `roadkeep.toml` itself**:
 every table, key, TOML type and default this build accepts, with the sentence its source
-already carries and whether *this* project declared it — `--table <name>` for one,
-`--table ""` for the top level. **And the boundary of that same question**: what this
+already carries and whether *this* project declared it — `config --table limits` for one,
+`config --table ""` for the top level. **And the boundary of that same question**: what this
 build *fixes* from its own corpus and no project may declare, with the reading it
 follows — so *is this mine to set?* is answered rather than guessed. Reach for it before
 writing a key rather than after the refusal, and read the build it names: a key nothing
 declares is a typo, a key this copy predates is an upgrade, and the file cannot tell
-them apart. **`govern <address> [<n>]` is the write beside it**, and the only one on that
-file besides `declare`: the four tables whose
-value is a judgement about a number — `[limits]`, `[budgets]`, `[tools]`, `[claims]` — each
+them apart. A key this build knows **one table away** names the third: `declare --move
+files.priority` moves the line to the table that declares it, and `declare --move limits.why
+--to criteria` says which where several do. It is the one write that runs while the config
+does not parse, which is the state a misplaced key leaves every other verb in.
+**`govern <address> [<n>]` is the write beside it**, and the only one on that file besides
+`declare`: the tables whose
+value is a judgement about a number — `[limits]`, `[budgets]`, `[tools]`, `[claims]`,
+`[reads]`, and the two opt-in lists' `[non_goals]` and `[criteria]` — each
 already had the read that decides it somewhere else, so this takes the reading and writes the
-number in one call. With no number it prints the reading alone; `--role` and `--file` name the
+number in one call. With no number it prints the reading alone;
+`govern limits.why <n> --role improvements` and `govern budgets.lines <n> --file <path>`
+name the
 table a project declares per role or per path. A limit this corpus already breaks is
 **refused**, not written, because one whose first act is a finding is one somebody lowers,
-reads the report and raises again. **`--because "…"` is where why this number and not the
+reads the report and raises again. **`govern <address> <n> --because "…"` is where why this
+number and not the
 next goes**: your sentence, wrapped into comments above the key and stacked on whatever
 argued it before, the same one twice being written once. The verb places the argument and
 never writes it (L4); the read hands back what stands above the key, so why a number is
-what it is costs a command and not a file to open. **`--instead "…"` is that same sentence
+what it is costs a command and not a file to open. **`govern <address> <n> --instead "…"` is
+that same sentence
 placed the other way**: stacking is right while each paragraph argues about the same
 question, and this one **replaces** the run where the reading it argued from has moved —
 reach for it when the argument above a key is for a premise something else falsified, which
@@ -152,7 +171,8 @@ derived from the commits that shipped them, so whether the line being written is
 or two is a question with an answer. An entry whose commit wrote several is named under
 `batched` and left out of the percentiles, so a squashed adoption import skews nothing.
 What comes back is the distribution and what was elided from it, the sample those
-percentiles summarise being `--records` and 95% of the payload. It ranks nothing and lands
+percentiles summarise being `weight --block <x> --records` and 95% of the payload. It ranks
+nothing and lands
 on no line — the size field is a non-goal. **`remaining <id>` is that read's mirror**: what
 a task has *left*, run from a query its own design declares — a fenced `roadkeep-remaining`
 block in the rationale section, one `<pathspec> :: <regex>` per line. **`evidence <id>` is
@@ -175,7 +195,9 @@ the non-goals, bounded to a tool result; with no id, `pick`'s own choice. Narrow
 in prose — a "filed as <id>" a ledger entry promised before the task existed — both it and
 `add` say so, because from the write on nothing records which of the two was a line;
 `list|stats|audit [--block <x>]` counts and lists, naming
-every marker line neither could read — but **`--block <x>` is not where a label comes
+every marker line neither could read — `list --role changelog --marker ✅` being the same
+listing pointed at another governed file and one status — but **`--block <x>` is not where a
+label comes
 from**: `block list` is, with each block's title, what it holds open and what the ledger
 records under it, and it is the first call of a session that has to place something.
 Reach for it before an unscoped `list` over a ledger, which prints the file — measured at
@@ -191,14 +213,24 @@ both answers ride `list --json` instead — `startable` is the split, computed o
 the lines the filter selected, and `uncounted` is every marker line the grammar refused,
 each with its reason. So a served caller asks `list` and reads the payload, and a caller
 passing no `--have` is counted as having nothing, which is the population that axis was
-written for;
+written for. **Every roadmap row of that payload carries its own `readiness`** — `ready`,
+`blocked`, `blocked-outside` or `blocked-paused`, and `null` on a line the question is not
+about, a ✅ the file still holds being done rather than either — so a column that cost one
+`deps` per row is one read, and a ledger or store listing carries no such key, having no
+open line to be ready. `list --startable` is the narrowing the same classification allows:
+the lines whose deps are all satisfied *and* which nothing they require is holding up,
+which is `pick`'s offer as a filter rather than as a choice, refused on any role but the
+roadmap. Terminal-only for `--have`'s reason — a caller over the tool surface already holds
+the rows and narrows them without a second call;
 `claims` is the registry read against the files —
 held, expired or stale, oldest first, where each id went and where the registry lives, and
 `--prune` drops the rows that are not claims; `writes` is the same read for the other
 sidecar — which governed files a verb wrote and which nothing did, moving no baseline
 where the `Stop` hook states it once and consumes it; `show <id>` joins one line, its
 section and its paths, and on a ledger entry whose bullet **wraps** it prints every line
-that entry owns — which is the count `record amend --lines` asks you to have read; `deps
+that entry owns — which is the count `record amend --lines` asks you to have read;
+`show <id> --no-body` is the same join with the prose left out, keeping the line and where
+the prose is, which is what a caller placing a call wants and not the paragraph; `deps
 <id>` walks the graph both ways; `gaps` resolves an id in neither file against the commit
 that removed it, and `unclosed` is that question pointed the other way — an **open**
 line whose work a commit already names, which is what a session that shipped the code
@@ -213,8 +245,11 @@ is what a typo looks like. `anchors [--family <x>]` is that question about the
 them stayed, and the next child nothing ever used — the read to make before reopening a
 shipped family, since an outline anchor is spent once a heading used it and `section add`
 refuses the reuse by name. The retired half is **counted and withheld** — one per shipped
-task and nothing prunes them — and `anchors --retired` is what prints it. **You know the
-block, not the numeral**: a prose file under an
+task and nothing prunes them — and `anchors --retired` is what prints it. **And the audit
+over every family at once is `anchors --claims`**: only the addresses whose ownership is not
+the ordinary one — a heading binding nobody, and one binding a task no open line claims —
+which is the question to ask of a file somebody hand-edited, rather than family by family.
+**You know the block, not the numeral**: a prose file under an
 outline declares no block heading, so `anchors --block <x>` is the way in — it names the
 family that block's pointers already use and narrows to it, or names both where the block
 spans two and leaves the choice with you. And **never restate a count in prose**: `export

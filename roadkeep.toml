@@ -202,4 +202,9 @@ declared = [
 [criteria]
 
 [install]
-wired = "0.2.148"
+wired = "0.2.473"
+
+[project]
+name = "pportal"
+description = "PlayStation remote play, built on chiaki-ng."
+icon = "🎮"
