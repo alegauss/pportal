@@ -30,33 +30,17 @@
     }
   ],
 
+  // One of the script's three claims is NOT here, and it is dropped rather than weakened. PP224
+  // asserted that the window shows EXACTLY ONE of two things — a mapping screen, or the reason there
+  // is none — which is a disjunction, and a case claims one thing about one reading. Which of the two
+  // a window has is a fact about this desk's hardware, so the two cases below claim the screen under
+  // the pad's precondition, and a desk without one is the run naming that absence.
+  //
+  // Measured before it was dropped, with a pad plugged in: written as "the topmost reading in the
+  // window answers", it went red — the topmost Text on the mapping screen is an unnamed one, so the
+  // claim was about tree order rather than about either surface. A claim that has to be true of two
+  // different screens is one this format is right not to have.
   "cases": [
-    {
-      // PP224's own claim, and the one of the three that runs with or without a pad — which is what
-      // makes it the first case. The window opens onto the mapping screen or onto the reason there is
-      // none, and a window showing neither is one that opened onto nothing.
-      //
-      // A case cannot claim a disjunction, and it does not need one: whichever of the two the window
-      // has, it is the topmost reading in it. So the claim is that something up there is readable,
-      // which is false in exactly the way this is about and true either way otherwise. The old file
-      // asked for both ids and accepted either; this asks the window what it drew.
-      "name": "the window opens and says which of the two it has",
-      "catches": "a window that opens onto nothing, showing neither a mapping screen nor a reason for having none",
-      "filed": "WW88",
-      "tags": ["mapping"],
-      "fixture": "the mapping screen",
-
-      "steps": [
-        {
-          "locator": "Text[order=top]",
-          "act": "read",
-          "reads": "name",
-          "answers": true,
-          "named": "the window drew a screen or the reason it has none"
-        }
-      ]
-    },
-
     {
       "name": "the mapping screen names the pad and offers no update until something is bound",
       "catches": "a screen that opens onto nothing, and an Update button that offers to write a mapping nobody has altered",
