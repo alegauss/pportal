@@ -27,8 +27,15 @@
        granularity, one xUnit case per recorded case rather than one assertion over all of them.
        (The switch that runs that selftest is spelled with two leading dashes, which an XML
        comment cannot contain - this file refuses to parse with it written out.) -->
+  <!-- WW88. The cases project is its own, and the reason is in its csproj: the suite above is
+       UseWPF because it references the app assembly, and WPF fixes this process's DPI awareness as
+       it initialises - so a harness in it reads every window's rectangle in a space the window does
+       not live in, and the engine leaves every case alone saying so. It is in the solution because
+       `test.cmd interaction` filters the whole solution by category, which is how the cases it
+       replaced were run. -->
   <Folder Name="/tests/">
     <Project Path="tests/ChiakiNg.Tests/ChiakiNg.Tests.csproj" />
+    <Project Path="tests/ChiakiNg.Cases/ChiakiNg.Cases.csproj" />
   </Folder>
   <!-- PP436. The site's front page and llms.txt name this executable and say what it prints, and
        nothing in this repo built it: seven first-party csproj files, and the solution held two. A

@@ -1,0 +1,23 @@
+{
+  // WW88. What is true of this project rather than of any one case, found by walking up from where a
+  // run starts. Every relative path resolves against this file's own directory, so no case carries
+  // one and a case runs on any checkout.
+  //
+  // The Debug build, which is what `compile.cmd` leaves and what the interaction tests have always
+  // driven. The RID is in the path because the app sets RuntimeIdentifier unconditionally.
+  "executable": "app/bin/Debug/net10.0-windows/win-x64/ChiakiNg.exe",
+
+  "sourceRoot": "app",
+
+  // The deadlines the mapping screen needs, and they are the ones `Interaction.cs` had written into
+  // its own helpers: twenty seconds for a window that starts SDL before it draws, and the shorter
+  // ones for a control that is already in the tree. A case names none of these — they are properties
+  // of this machine and this application, not of any claim.
+  "timeouts": {
+    "launch": 20000,
+    "resolve": 8000,
+    "act": 6000,
+    "poll": 200,
+    "stop": 5000
+  }
+}

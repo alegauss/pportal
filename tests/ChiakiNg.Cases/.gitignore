@@ -1,0 +1,4 @@
+# Build output, the same way tests/ChiakiNg.Tests/.gitignore and app/.gitignore do it - project-local
+# rather than a rule at the root, so a project that moves takes its own ignores with it.
+bin/
+obj/

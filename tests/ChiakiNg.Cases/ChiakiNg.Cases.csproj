@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- WW88. The runner for the cases in ..\..\cases, and deliberately almost nothing: the cases are
+       data files and this project is what hands them to the engine.
+
+       It is a project of its own, and the reason is measured rather than tidy. ChiakiNg.Tests is
+       UseWPF, because it references the app assembly - and WPF fixes this process's DPI awareness to
+       SYSTEM as it initialises, which cannot be changed afterwards. The engine then reads the desk as
+       unobservable, naming `coordinates in the space the window lives in`, and every case is left
+       alone for a reason about the test host rather than about the machine. A driving project that
+       references neither WPF nor the application starts unaware, and the in-app half's module
+       initialiser asks for per-monitor before anything else has an opinion.
+
+       That is the same rule the engine's other adopters keep for another reason: the application
+       under test must not be on the driving project's reference graph. Here the two arguments agree.
+
+       One package reference and no path into the engine's source, which is Block J's criterion. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>ChiakiNg.Cases</RootNamespace>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+
+    <!-- A restore that cannot find the version named below does not fail: it resolves a different
+         one and carries on with a warning, and a run that drives an engine nobody asked for is the
+         unearned green these cases exist to refuse. So the warning is an error here. -->
+    <WarningsAsErrors>$(WarningsAsErrors);NU1603</WarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Winwright" Version="0.1.0-alpha.16" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.0.2" />
+  </ItemGroup>
+
+</Project>

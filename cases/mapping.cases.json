@@ -1,0 +1,156 @@
+{
+  // WW88. The mapping screen, driven, migrated out of tests\ChiakiNg.Tests\Interaction.cs.
+  //
+  // PP227 wrote that file because PP223's tests call the plain method underneath a handler and never
+  // raise a press, so whether a real press reaches it at all went unobserved — and a picture cannot
+  // see that either. What it cost was 285 lines in which every case decided for itself how long to
+  // wait for a control, how many attempts an act gets, what a missing read-back does to the exit
+  // code, and how to say "this could not be checked". None of those is a property of a case.
+  //
+  // The engine owns all of them now, and the one that mattered most is the last. `Interaction.cs`
+  // had to FAIL when no pad was plugged in — xUnit 2 has no word for "should have been checked,
+  // wasn't", and a green that checked nothing is the defect the file existed to stop. So a desk with
+  // no controller read as a red about the code. Here it is a `needs`: the run names the absence and
+  // reports neither a pass nor a failure, which is the third verdict this engine is built on.
+  //
+  // Nothing below is invoked with a pointer, for the reason the file it replaces gives in its own
+  // header: a synthesised click needs the foreground, and Windows refuses the foreground to a
+  // process that does not already own it — so a run started from an editor or an agent would drive
+  // somebody else's window. `invoke` asks the control through its own pattern, and a control that
+  // offers none is a real answer about the control rather than a reason to reach for the mouse.
+  "fixtures": [
+    {
+      // The mapping screen against a real pad, which is the one flag this screen has.
+      "name": "the mapping screen",
+      "arguments": ["--map-controller"],
+
+      // Both cases act — one opens the capture overlay and closes it again — so neither lends its
+      // window to the other: a case after one of them would inherit whatever it left showing.
+      "shareable": false
+    }
+  ],
+
+  "cases": [
+    {
+      // PP224's own claim, and the one of the three that runs with or without a pad — which is what
+      // makes it the first case. The window opens onto the mapping screen or onto the reason there is
+      // none, and a window showing neither is one that opened onto nothing.
+      //
+      // A case cannot claim a disjunction, and it does not need one: whichever of the two the window
+      // has, it is the topmost reading in it. So the claim is that something up there is readable,
+      // which is false in exactly the way this is about and true either way otherwise. The old file
+      // asked for both ids and accepted either; this asks the window what it drew.
+      "name": "the window opens and says which of the two it has",
+      "catches": "a window that opens onto nothing, showing neither a mapping screen nor a reason for having none",
+      "filed": "WW88",
+      "tags": ["mapping"],
+      "fixture": "the mapping screen",
+
+      "steps": [
+        {
+          "locator": "Text[order=top]",
+          "act": "read",
+          "reads": "name",
+          "answers": true,
+          "named": "the window drew a screen or the reason it has none"
+        }
+      ]
+    },
+
+    {
+      "name": "the mapping screen names the pad and offers no update until something is bound",
+      "catches": "a screen that opens onto nothing, and an Update button that offers to write a mapping nobody has altered",
+      "filed": "WW88",
+      "tags": ["mapping"],
+      "fixture": "the mapping screen",
+
+      // The window shows the screen or the reason there is none, and which of the two is a fact
+      // about this desk. So the screen is claimed under the precondition and the other arm is what
+      // the run says when it is absent — a case cannot claim a disjunction, and the old file's
+      // "exactly one of the two" is the shape that made a missing pad a red.
+      "needs": ["a controller SDL can map"],
+
+      "steps": [
+        {
+          // The one string on this screen that changes with the device, so the claim is that it says
+          // something rather than what: naming a pad here would be a case that holds on one desk.
+          "locator": "Text#Title",
+          "act": "read",
+          "reads": "name",
+          "answers": true,
+          "named": "the screen names the pad it is mapping"
+        },
+        {
+          // PP224's own claim, read off the real control rather than off the view model that decides
+          // it. `enabled` is a reading and not a locator predicate: a locator that matched only
+          // enabled controls would make this case pass by finding nothing.
+          "locator": "Button#UpdateButton",
+          "act": "read",
+          "reads": "enabled",
+          "expect": "not enabled",
+          "named": "Update is off until something is bound"
+        }
+      ]
+    },
+
+    {
+      "name": "a row opens the capture, which names the pad, and Close puts it away",
+      "catches": "a row that draws like a button and reaches no handler, which every test calling the method underneath it passes",
+      "filed": "WW88",
+      "tags": ["mapping"],
+      "fixture": "the mapping screen",
+      "needs": ["a controller SDL can map"],
+
+      "steps": [
+        {
+          // Read before the press, which is what makes the appearance below mean anything: an
+          // overlay already up would answer every claim that it opened.
+          "locator": "Text#CapturePrompt",
+          "act": "read",
+          "absent": true,
+          "named": "the capture is not up before anything is pressed"
+        },
+        {
+          "locator": "Text#Title",
+          "act": "read",
+          "reads": "name",
+          "answers": true,
+          "named": "the pad the screen is mapping"
+        },
+        {
+          // The first row's slot, by where it is drawn rather than by an id. PP619 gave the slots ids
+          // built from the row's own button value — `slot.<value>.<index>` — so the first row's id is
+          // a fact about which chiaki button sorts first, and a case naming one would be asserting
+          // that order. Topmost under the rows list is what a person presses.
+          "locator": "#RowsList > Button[order=top]",
+          "act": "invoke",
+          "named": "the first row's slot is pressed"
+        },
+        {
+          // The capture is up, and it quotes the pad: `contains` holds this reading against what an
+          // earlier step read, which is the only way to claim it — neither string can be typed, one
+          // being whatever device is plugged into this desk.
+          "locator": "Text#CapturePrompt",
+          "act": "read",
+          "reads": "name",
+          "contains": "the pad the screen is mapping",
+          "named": "the capture names the pad it is binding for"
+        },
+        {
+          "locator": "Button#CaptureCloseButton",
+          "act": "invoke",
+          "named": "the capture's Close is pressed"
+        },
+        {
+          // And the window is as it was found, which the old file asserted with one more look and no
+          // waiting. `absent` waits the other way round: it polls until nothing matches, so an
+          // overlay on its way out is waited for and one that stays fails naming what it found.
+          "locator": "Text#CapturePrompt",
+          "act": "read",
+          "absent": true,
+          "named": "closing it puts the capture away"
+        }
+      ]
+    }
+  ]
+}
