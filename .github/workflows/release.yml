@@ -1,0 +1,169 @@
+# PP856: the installer, built on a runner and attached to a GitHub release.
+#
+# package.cmd is what produces chiaki-ng-windows-installer.exe, and until this file it ran on one
+# desk: MSYS2 at C:\msys64, libplacebo and SDL2 built there by hand, Inno Setup installed once.
+# build.yml proves the MSVC side builds and packages nothing, so a release was whatever that one
+# machine last compiled.
+#
+# THE SAME TWO SCRIPTS A MAINTAINER RUNS, and not a second spelling of them. compile.cmd builds the
+# native side through MSYS2 MinGW64 and deploys the libraries the host loads; package.cmd publishes
+# the host, walks the imports, proves the payload under %TEMP% with --selftest and compiles the
+# installer. A release built by a path nobody runs by hand is the copy that drifts.
+#
+# A DRAFT, as freewilly's release.yml does it: everything is built and attached, and a person
+# presses Publish after looking. Nothing here signs the installer (PP302), and the draft is where
+# it gets run on a machine with a console before anybody can download it.
+#
+# It fires on a v* tag, and by hand against a tag:
+#
+#   gh workflow run release.yml --ref v1.10.0
+#
+# The tag must match <Version> in app/ChiakiNg.csproj - the job refuses otherwise rather than
+# publishing an installer whose Add/Remove Programs entry disagrees with its own file name.
+#
+# It gates no branch, which is why GateAndCiAgree.CiRelativePaths does not list it.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+# gh release create writes to this repository, and nothing here needs anything else.
+permissions:
+  contents: write
+
+jobs:
+  installer:
+    name: build, package and draft the release
+    # Pinned for build.yml's reason: a label that moves eventually names a toolset that is not there.
+    runs-on: windows-2022
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # nanopb and the rest are submodules the configure asks for by default.
+          submodules: recursive
+          # --generate-notes reads the commits since the previous tag, and a shallow clone has none.
+          fetch-depth: 0
+
+      # Dispatched from a branch, GITHUB_REF_NAME is the branch, and every step below would build an
+      # installer only to fail at the version check. Refused here, in a second.
+      - name: the ref is a tag
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF_TYPE -ne 'tag') {
+            throw "release.yml builds a tag - run it with --ref v<x.y.z>, not from $env:GITHUB_REF_NAME"
+          }
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      # The MinGW64 environment compile.cmd builds in. libplacebo, SDL2 and FFmpeg come from pacman
+      # here, where the developer desk built them from source; CMakeLists asks for
+      # libplacebo>=7.349.0, which the package meets. FFmpeg is listed because the decoder option is
+      # AUTO: left out, the configure would quietly build a libchiaki with no decoder at all.
+      # timeout and ldd, which package-windows.sh walks the imports with, are in the base system.
+      - name: MSYS2
+        id: msys2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-ninja
+            mingw-w64-x86_64-pkgconf
+            mingw-w64-x86_64-python
+            mingw-w64-x86_64-python-protobuf
+            mingw-w64-x86_64-protobuf
+            mingw-w64-x86_64-openssl
+            mingw-w64-x86_64-opus
+            mingw-w64-x86_64-libevent
+            mingw-w64-x86_64-miniupnpc
+            mingw-w64-x86_64-libplacebo
+            mingw-w64-x86_64-SDL2
+            mingw-w64-x86_64-ffmpeg
+
+      # The runner image usually ships Inno Setup; chocolatey only when it does not. package.cmd runs
+      # its own probe over the same directories, so what this buys is only the install.
+      - name: Inno Setup
+        shell: pwsh
+        run: |
+          function Find-Iscc {
+            @(
+              "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+              "$env:ProgramFiles\Inno Setup 6\ISCC.exe",
+              "$env:LocalAppData\Programs\Inno Setup 6\ISCC.exe"
+            ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+          }
+          $found = Find-Iscc
+          if (-not $found) {
+            choco install innosetup --no-progress -y
+            $found = Find-Iscc
+            if (-not $found) { throw "innosetup installed and ISCC.exe is in none of the three known locations" }
+          }
+          Write-Output "ISCC: $found"
+
+      - name: compile.cmd
+        shell: cmd
+        env:
+          MSYS2_ROOT: ${{ steps.msys2.outputs.msys2-location }}
+        run: call compile.cmd
+
+      # Bounded, because the proof inside it runs the host and PP117 found that an SDL2 load failure
+      # presents as a hang rather than an error. A red step after twenty minutes says which it is.
+      - name: package.cmd
+        shell: cmd
+        timeout-minutes: 20
+        env:
+          MSYS2_ROOT: ${{ steps.msys2.outputs.msys2-location }}
+        run: call package.cmd
+
+      - name: the tag is the version the exe carries
+        shell: pwsh
+        run: |
+          $built = (Get-Item build\chiaki-ng-package\ChiakiNg.exe).VersionInfo.ProductVersion.Trim()
+          $tagged = "$env:GITHUB_REF_NAME" -replace '^v', ''
+          Write-Output "tag $env:GITHUB_REF_NAME, built $built"
+          if ($built -ne $tagged) {
+            throw "the tag says $tagged and the build says $built - change <Version> in app/ChiakiNg.csproj, or move the tag"
+          }
+          "VERSION=$built" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      # The installer named after its version, and its digest in the shape sha256sum -c reads. ASCII,
+      # because a UTF-8 BOM makes that first line fail to parse.
+      - name: name and sum the installer
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          $installer = "dist\PPortal-Setup-$env:VERSION.exe"
+          Copy-Item build\chiaki-ng-windows-installer.exe $installer
+          '{0}  {1}' -f (Get-FileHash $installer -Algorithm SHA256).Hash.ToLower(), (Split-Path $installer -Leaf) |
+            Out-File -FilePath dist\SHA256SUMS.txt -Encoding ascii
+          Get-Content dist\SHA256SUMS.txt
+
+      # Kept on the run as well, so a release gh refuses - one already exists for this tag - still
+      # leaves the installer downloadable from the run's page.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer
+          path: dist/*
+          if-no-files-found: error
+
+      - name: draft the release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$env:GITHUB_REF_NAME" `
+            "dist\PPortal-Setup-$env:VERSION.exe" `
+            dist\SHA256SUMS.txt `
+            --title "PPortal $env:VERSION" `
+            --generate-notes `
+            --verify-tag `
+            --draft
+          if ($LASTEXITCODE -ne 0) { throw "gh release create failed for $env:GITHUB_REF_NAME (exit $LASTEXITCODE)" }
+          Write-Output "drafted. Nothing is public until it is published by hand."
