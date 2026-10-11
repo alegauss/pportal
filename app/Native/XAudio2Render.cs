@@ -30,6 +30,7 @@ namespace ChiakiNg.Native;
 public sealed class XAudio2Render : IDisposable
 {
     private readonly MicrophoneAnnouncement format;
+    private readonly string? endpoint;
     private readonly Lock gate = new();
     private readonly Queue<GCHandle> submitted = new();
 
@@ -47,11 +48,24 @@ public sealed class XAudio2Render : IDisposable
     /// voice takes the endpoint's own channels and rate - so the engine's own resampler sits
     /// between them, which is what AUTOCONVERTPCM did on the WASAPI side.
     /// </param>
-    public XAudio2Render(MicrophoneAnnouncement? announced = null)
-        => format = announced ?? new MicrophoneAnnouncement(2, 16, 48000, 480);
+    /// <param name="endpoint">
+    /// PP851: the endpoint id to master on, or null for the default. The haptics path names the
+    /// pad's own endpoint, which is never the default and must not become it by accident.
+    /// </param>
+    public XAudio2Render(MicrophoneAnnouncement? announced = null, string? endpoint = null)
+    {
+        format = announced ?? new MicrophoneAnnouncement(2, 16, 48000, 480);
+        this.endpoint = endpoint;
+    }
 
     /// <summary>The format this render asked the engine for.</summary>
     public MicrophoneAnnouncement Format => format;
+
+    /// <summary>
+    /// PP851: how many channels the mastering voice took, which is the endpoint's own count - or
+    /// zero while nothing is open.
+    /// </summary>
+    public int OutputChannels { get; private set; }
 
     /// <summary>
     /// The sentinel <see cref="LastError"/> carries where the library itself would not load, which
@@ -140,14 +154,17 @@ public sealed class XAudio2Render : IDisposable
         if (LastError != 0 || engine == IntPtr.Zero)
             return Refuse();
 
-        LastError = XAudio2.CreateMasteringVoice(engine, out mastering);
+        LastError = XAudio2.CreateMasteringVoice(engine, out mastering, endpoint);
         if (LastError != 0 || mastering == IntPtr.Zero)
         {
             // No endpoint is a machine with no speakers rather than a refusal, which is the one
-            // failure here that is about the MACHINE and not about this code.
+            // failure here that is about the MACHINE and not about this code. A named endpoint that
+            // went away between the search and the open is the same fact about the machine.
             Teardown();
             return RenderResult.NoDevice;
         }
+
+        OutputChannels = (int)XAudio2.GetVoiceDetails(mastering).InputChannels;
 
         IntPtr wanted = Wasapi.Format(format);
         try
@@ -257,6 +274,32 @@ public sealed class XAudio2Render : IDisposable
             LastError = XAudio2.SetVolume(source, volume);
     }
 
+    /// <summary>
+    /// PP851: route the source's channels to the endpoint's by a level matrix, in the engine.
+    /// </summary>
+    /// <remarks>
+    /// The remix the Qt client does by copying bytes into a wider buffer, done as the engine's own
+    /// mix instead - so there is no wider buffer, and a level other than one is a gain applied in
+    /// floating point and clamped at the endpoint rather than a saturating multiply written here.
+    /// </remarks>
+    /// <param name="levels">
+    /// Destination-major, <see cref="Format"/>'s channels times <see cref="OutputChannels"/> long.
+    /// </param>
+    /// <returns>Whether the engine took it.</returns>
+    public bool Route(float[] levels)
+    {
+        ObjectDisposedException.ThrowIf(disposed, this);
+        ArgumentNullException.ThrowIfNull(levels);
+
+        if (!Running || levels.Length != format.Channels * OutputChannels)
+            return false;
+
+        lock (gate)
+            LastError = XAudio2.SetOutputMatrix(source, (uint)format.Channels, (uint)OutputChannels, levels);
+
+        return LastError == 0;
+    }
+
     /// <summary>Stop the voice, release every pin, and let the engine go.</summary>
     public void Dispose()
     {
@@ -332,6 +375,7 @@ public sealed class XAudio2Render : IDisposable
             {
                 XAudio2.DestroyVoice(mastering);
                 mastering = IntPtr.Zero;
+                OutputChannels = 0;
             }
 
             if (engine != IntPtr.Zero)

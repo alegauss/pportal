@@ -78,6 +78,47 @@ WHAT WOULD SETTLE IT is a count with a clock on it: state packets per second acr
 focus change. The wire's total says 5608 for two minutes and cannot say whether they
 stopped halfway.
 
+### §PP857 The console's Off, which nothing reads
+
+The console tells the client how strongly the pad should respond, and Off is one of the
+answers. The Qt client keeps it as ps5_rumble_intensity = -1 and checks it in two
+places: CHIAKI_EVENT_RUMBLE returns before any motor is told anything, and the haptics
+push returns before the waveform is queued to the pad's endpoint.
+
+THE PORT RECEIVES IT AND NOTHING READS IT. SessionEventRouter.HapticIntensity holds the
+latest value the console raised, and neither HapticsPlayer nor the rumble event path
+asks it. So a user who turned haptics off in the console's own menu still feels them -
+on the actuators since PP851, and through the fold before that.
+
+WHAT TO BUILD. HapticsPlayer takes the console's intensity as a second gate beside the
+rumble setting: Off drops a frame before both the waveform and the fold, and a pad that
+was rumbling gets its one stop. The router is where the value arrives, so the root joins
+the two the way it joins the other arms. The Strong/Medium/Weak values are a byte for
+the effects report, which DualSenseIntensity already packs; only Off decides whether
+anything is played at all.
+
+The test is the player fed frames with the console at Off: nothing played, nothing
+folded.
+
+### §PP858 Two haptics settings with no reader
+
+The Controllers tab stores two haptics settings - the rumble intensity a pad that can
+only rumble is folded at, and the haptic override PP851's matrix takes as its level -
+and the stream run passes neither. StreamRun arms the player with
+RumbleHapticsIntensity.Normal and opens the actuators with
+HapticOverrideSetting.Default, both typed at the call.
+
+SO THE TAB IS A FORM WITH NO READER for these two rows. Moving the slider changes the
+registry value under settings/haptic_override and nothing a session does.
+
+WHAT TO BUILD. Read both where the run reads its other settings, and pass them to Arm
+and to DualSenseHaptics.Open. The intensity's stored value is an index into the client's
+own list, which RumbleHapticsChoice already maps; the override is a float the client
+reads with 1.0 as its default. Neither needs a new type.
+
+The test is the run's settings source handed a stored override of 0.5 and an intensity
+of Off, and the player and the matrix built from it reading both back.
+
 ## Block C — Video and input path
 
 ### §PP855 A smear no counter admits to

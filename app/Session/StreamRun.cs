@@ -426,6 +426,8 @@ public static class StreamRun
         // THE PICTURE IS WHAT THIS RUN IS FOR, so it does not wait on an input device. The name is
         // printed from the opening thread rather than here, so a pad that arrives late still says
         // when it arrived - which is the reading that told these two runs apart.
+        DualSenseHaptics? actuators = null;
+
         Task<bool> opening = Task.Run(() =>
         {
             bool open = pad.Start();
@@ -446,6 +448,21 @@ public static class StreamRun
                 Console.WriteLine(
                     $"[stream] haptics: armed on {pad.PadName}, "
                         + $"{(pad.Identity.TakesEffectsReport ? "effects report" : "SDL rumble")}");
+
+                // PP851: AND A DUALSENSE GETS THE WAVEFORM, where its cable gives it an endpoint.
+                // Asked only of the pads the effects report is for, because no other pad has
+                // actuators to play on; and a pad on Bluetooth answers null, which keeps the fold
+                // above as its answer - absence is quiet, per docs/HARDWARE-CONTRACT.md.
+                if (pad.Identity.TakesEffectsReport)
+                {
+                    actuators = DualSenseHaptics.Open(ChiakiNg.Settings.HapticOverrideSetting.Default, out string why);
+
+                    if (actuators is not null)
+                        phase.Haptics.ArmAudio(actuators);
+
+                    Console.WriteLine(
+                        $"[stream] haptics audio: {(actuators is null ? "not used" : "playing on")} - {why}");
+                }
             }
 
             return open;
@@ -581,9 +598,13 @@ public static class StreamRun
         // the effects report has no duration at all.
         phase.Haptics.Disarm();
 
+        // PP851: after the disarm, so no frame is handed to a voice being destroyed.
+        actuators?.Dispose();
+
         Console.WriteLine(
             $"[stream] haptics: armed {wasArmed}, {phase.Haptics.Folded} frame(s) folded, "
-                + $"{phase.Haptics.Silent} silent, {phase.Haptics.Sent} rumble(s) sent");
+                + $"{phase.Haptics.Silent} silent, {phase.Haptics.Sent} rumble(s) sent, "
+                + $"{phase.Haptics.Played} played on the actuators");
 
         // PP834: and what the wire log holds, where one was asked for. `sent` is the half no
         // capture in this tree ever had - the number that would have ended PP813 in a reading

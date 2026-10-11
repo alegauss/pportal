@@ -9,8 +9,10 @@
 
 ## Block B — Native interop
 
-- 🛠 **PP851** (deps: PP846 ✅) **a DualSense feels what a PS4 pad feels: the console's haptic stream is folded to rumble rather than played** — PP846 wired the fold, which is the client's answer only when haptics_output is off; the pad's own speakers take a resampled four-channel stream nothing here opens. → §PP851
+- ⏳ **PP851** (deps: PP846 ✅) (requires: console, a-person-looking) **a DualSense feels what a PS4 pad feels: the console's haptic stream is folded to rumble rather than played** — A live session with the pad on a cable has not printed "haptics audio: playing on" yet, and nobody has felt the actuators move. → §PP851
 - 📋 **PP854** (deps: PP845 ✅) **the pad stops driving the console after the window loses focus, and every layer this port can see stays healthy** — Reproduced twice by clicking away and back; the pump delivered to the last instant, no departure was seen, the handle stayed open and the wire kept accepting. → §PP854
+- 📋 **PP857** (deps: PP846 ✅) **a console set to haptics Off still drives the pad, because the intensity it raises is held and never read** — The Qt client drops both the rumble event and the waveform at Off; SessionEventRouter keeps the value and no haptics path asks it. → §PP857
+- 📋 **PP858** (deps: PP846 ✅) **the rumble intensity and haptic override sliders change nothing in a session** — StreamRun arms the haptics with Normal and the default override typed at the call, so the Controllers tab stores two values no session reads. → §PP858
 
 ## Block C — Video and input path
 
@@ -83,6 +85,13 @@
   chiaki_render_tearing_probe does. Integration means the video plane's own swapchain
   carries it and presents at sync interval zero, which is the half that waits on there
   being a video plane at all.
+
+## Done when — PP851
+
+- **a cabled DualSense plays the console's haptics on its actuators** A live --stream
+  run with the pad on USB prints "[stream] haptics audio: playing on", ends with a
+  non-zero "played on the actuators" count, and the person holding the pad feels the
+  waveform rather than the two rumble motors.
 
 ## Non-goals
 

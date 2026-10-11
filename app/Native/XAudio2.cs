@@ -60,6 +60,31 @@ internal struct XAudio2VoiceState
 }
 
 /// <summary>
+/// XAUDIO2_VOICE_DETAILS: what a voice was created as, which for a mastering voice is the
+/// endpoint's own channel count.
+/// </summary>
+/// <remarks>
+/// PP851 reads it because an output matrix has to be sized to the voice it feeds, and a mastering
+/// voice opened with the default channels takes whatever the endpoint has - which is only known
+/// after the open.
+/// </remarks>
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
+internal struct XAudio2VoiceDetails
+{
+    /// <summary>The flags the voice was created with.</summary>
+    public uint CreationFlags;
+
+    /// <summary>The flags currently in force.</summary>
+    public uint ActiveFlags;
+
+    /// <summary>How many channels the voice takes in.</summary>
+    public uint InputChannels;
+
+    /// <summary>And at what rate.</summary>
+    public uint InputSampleRate;
+}
+
+/// <summary>
 /// PP816: XAudio2, reached by its vtable - the queue Windows already ships.
 ///
 /// WASAPI hands out a buffer and asks how much of it to fill, so <see cref="WasapiRender"/> carries
@@ -127,7 +152,9 @@ internal static class XAudio2
     // SetEffectParameters, GetEffectParameters, SetFilterParameters, GetFilterParameters,
     // SetOutputFilterParameters, GetOutputFilterParameters, SetVolume, GetVolume,
     // SetChannelVolumes, GetChannelVolumes, SetOutputMatrix, GetOutputMatrix, DestroyVoice.
+    private const int VoiceGetVoiceDetails = 0;
     private const int VoiceSetVolume = 12;
+    private const int VoiceSetOutputMatrix = 16;
     private const int VoiceDestroyVoice = 18;
 
     // IXAudio2SourceVoice continues that table: Start, Stop, SubmitSourceBuffer,
@@ -179,13 +206,55 @@ internal static class XAudio2
     }
 
     /// <summary>IXAudio2::CreateMasteringVoice, taking the endpoint's own channels and rate.</summary>
-    public static unsafe int CreateMasteringVoice(IntPtr engine, out IntPtr voice)
+    /// <param name="endpoint">
+    /// PP851: an endpoint id as IMMDevice::GetId spells it, or null for the default. The haptics
+    /// path is the caller that names one, because its endpoint IS the pad and never the default.
+    /// </param>
+    public static unsafe int CreateMasteringVoice(IntPtr engine, out IntPtr voice, string? endpoint = null)
     {
-        fixed (IntPtr* into = &voice)
+        IntPtr id = endpoint is null ? IntPtr.Zero : Marshal.StringToHGlobalUni(endpoint);
+
+        try
         {
-            return ((delegate* unmanaged[Stdcall]<IntPtr, IntPtr*, uint, uint, uint, IntPtr, IntPtr, int, int>)
-                Method(engine, EngineCreateMasteringVoice))(
-                    engine, into, DefaultChannels, DefaultSampleRate, 0, IntPtr.Zero, IntPtr.Zero, 0);
+            fixed (IntPtr* into = &voice)
+            {
+                return ((delegate* unmanaged[Stdcall]<IntPtr, IntPtr*, uint, uint, uint, IntPtr, IntPtr, int, int>)
+                    Method(engine, EngineCreateMasteringVoice))(
+                        engine, into, DefaultChannels, DefaultSampleRate, 0, id, IntPtr.Zero, 0);
+            }
+        }
+        finally
+        {
+            if (id != IntPtr.Zero)
+                Marshal.FreeHGlobal(id);
+        }
+    }
+
+    /// <summary>IXAudio2Voice::GetVoiceDetails, which returns nothing and fills the struct.</summary>
+    public static unsafe XAudio2VoiceDetails GetVoiceDetails(IntPtr voice)
+    {
+        XAudio2VoiceDetails details = default;
+
+        ((delegate* unmanaged[Stdcall]<IntPtr, XAudio2VoiceDetails*, void>)
+            Method(voice, VoiceGetVoiceDetails))(voice, &details);
+
+        return details;
+    }
+
+    /// <summary>
+    /// IXAudio2Voice::SetOutputMatrix toward the voice's only destination.
+    /// </summary>
+    /// <param name="levels">
+    /// Destination-major: the level of source channel S in destination channel D is at
+    /// <c>levels[sourceChannels * D + S]</c>. Its length must be the product of the two counts.
+    /// </param>
+    public static unsafe int SetOutputMatrix(IntPtr voice, uint sourceChannels, uint destinationChannels, float[] levels)
+    {
+        fixed (float* matrix = levels)
+        {
+            return ((delegate* unmanaged[Stdcall]<IntPtr, IntPtr, uint, uint, float*, uint, int>)
+                Method(voice, VoiceSetOutputMatrix))(
+                    voice, IntPtr.Zero, sourceChannels, destinationChannels, matrix, CommitNow);
         }
     }
 

@@ -23,6 +23,17 @@ public interface IRumbleTarget
 }
 
 /// <summary>
+/// PP851: where a haptics frame goes WHOLE, on a pad that can play the waveform rather than a
+/// strength folded out of it.
+/// </summary>
+public interface IHapticsAudio
+{
+    /// <summary>One frame, stereo int16 at the console's haptics rate, exactly as it arrived.</summary>
+    /// <returns>Whether it was taken.</returns>
+    bool Play(ReadOnlySpan<byte> frame);
+}
+
+/// <summary>
 /// PP846: the console's haptics reaching a motor, which nothing had ever done.
 ///
 /// PP97 ported the fold, PP98 fixed the wrap inside it, PP127 built the 47-byte effects report and
@@ -52,11 +63,13 @@ public sealed class HapticsPlayer : IAudioFrameSink
     private readonly object gate = new();
 
     private IRumbleTarget? target;
+    private IHapticsAudio? audio;
     private RumbleHapticsIntensity intensity = RumbleHapticsIntensity.Normal;
     private bool rumbling;
     private long folded;
     private long silent;
     private long sent;
+    private long played;
 
     /// <summary>How many frames folded to a strength worth queueing.</summary>
     public long Folded => Interlocked.Read(ref folded);
@@ -73,8 +86,41 @@ public sealed class HapticsPlayer : IAudioFrameSink
     /// <summary>Rumbles actually handed to a pad, windows and stops alike.</summary>
     public long Sent => Interlocked.Read(ref sent);
 
+    /// <summary>
+    /// PP851: frames handed whole to the pad's own actuators, which a fold never reaches.
+    /// </summary>
+    public long Played => Interlocked.Read(ref played);
+
     /// <summary>Whether a pad is armed to receive them.</summary>
     public bool Active => target is not null;
+
+    /// <summary>PP851: whether the waveform is going to the actuators rather than being folded.</summary>
+    public bool Playing => Volatile.Read(ref audio) is not null;
+
+    /// <summary>
+    /// PP851: play every frame whole on the pad's actuators, and stop folding.
+    ///
+    /// The fold is the client's answer only while haptics_output is zero: once a haptics device is
+    /// open it returns before the fold and plays instead. So the two are exclusive here too - a pad
+    /// told both would buzz its rumble motors under the waveform it is already playing.
+    ///
+    /// WHAT WAS QUEUED IS DROPPED, and a pad that was rumbling is stopped first, because nothing will
+    /// fold a frame again to send the stop that would otherwise end it.
+    /// </summary>
+    public void ArmAudio(IHapticsAudio pad)
+    {
+        ArgumentNullException.ThrowIfNull(pad);
+
+        lock (gate)
+        {
+            if (rumbling && target is { } motor)
+                motor.Rumble(0);
+
+            rumbling = false;
+            queued.Clear();
+            Volatile.Write(ref audio, pad);
+        }
+    }
 
     /// <summary>
     /// The pad, once one is open.
@@ -110,6 +156,7 @@ public sealed class HapticsPlayer : IAudioFrameSink
 
             rumbling = false;
             target = null;
+            Volatile.Write(ref audio, null);
             queued.Clear();
         }
     }
@@ -133,6 +180,16 @@ public sealed class HapticsPlayer : IAudioFrameSink
     /// </summary>
     public void Frame(ReadOnlySpan<byte> frame)
     {
+        // PP851: the waveform, ahead of the rumble setting - which is the client's order. Off governs
+        // the fold for pads that can only rumble; it is not consulted once a haptics device is open.
+        if (Volatile.Read(ref audio) is { } pad)
+        {
+            if (pad.Play(frame))
+                Interlocked.Increment(ref played);
+
+            return;
+        }
+
         if (intensity == RumbleHapticsIntensity.Off)
             return;
 

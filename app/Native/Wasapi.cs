@@ -60,6 +60,13 @@ internal static class Wasapi
 
     private static PropertyKey friendlyName = new(new Guid("a45c254e-df1c-4efd-8020-67d146a850e0"), 14);
 
+    /// <summary>
+    /// PP851: the instance path of the device an endpoint belongs to, prefixed with "{1}." - read
+    /// off this machine's MMDevices store as <c>{1}.USB\VID_054C&amp;PID_0CE6&amp;MI_00\…</c> for a
+    /// DualSense. It is the one property that names the hardware rather than a localised label.
+    /// </summary>
+    private static PropertyKey parentDevice = new(new Guid("b3f8fa53-0004-438e-9003-51a46e139bfc"), 2);
+
     /// <summary>The device enumerator, or null where COM will not make one.</summary>
     public static IMMDeviceEnumerator? Enumerator(out int hresult)
     {
@@ -78,7 +85,15 @@ internal static class Wasapi
     }
 
     /// <summary>An endpoint's friendly name, or empty where the store will not answer.</summary>
-    public static string NameOf(IMMDevice device)
+    public static string NameOf(IMMDevice device) => StringOf(device, ref friendlyName);
+
+    /// <summary>
+    /// PP851: the instance path of the hardware behind an endpoint, or empty where the store will
+    /// not answer. Unlike <see cref="NameOf"/> it is not translated.
+    /// </summary>
+    public static string ParentOf(IMMDevice device) => StringOf(device, ref parentDevice);
+
+    private static string StringOf(IMMDevice device, ref PropertyKey key)
     {
         ArgumentNullException.ThrowIfNull(device);
 
@@ -87,7 +102,7 @@ internal static class Wasapi
 
         try
         {
-            if (store.GetValue(ref friendlyName, out PropVariant value) != 0)
+            if (store.GetValue(ref key, out PropVariant value) != 0)
                 return string.Empty;
 
             string name = value.AsString() ?? string.Empty;
