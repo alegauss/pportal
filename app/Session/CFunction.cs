@@ -34,14 +34,126 @@ namespace ChiakiNg.Session;
 /// parenthesis, brace - and holepunch.c carries forty lines of one at file scope. It never bit, and
 /// the reason is the comment markers themselves: between the <c>)</c> and the <c>{</c> of a
 /// <c>//</c> block sits the next line's <c>//</c>, so the definition test fails and the search moves
-/// on. A <c>/* */</c> one would have no such gap and would be taken; this tree has none, measured.
+/// on. A <c>/* */</c> one would have no such gap and would be taken.
 ///
-/// The same for braces. Sixteen comments in this C hold unbalanced ones and two of those sit inside
-/// a function body - at lines 4891 and 4906 of holepunch.c, which are a <c>// {</c> and a <c>// }</c>
-/// that cancel. So no body is truncated today, and none can be now.
+/// The same for braces: a comment inside a body holding an unbalanced one would end
+/// <see cref="RawBody"/>'s count early or late.
+///
+/// PP852: BOTH PREMISES ARE SWEPT NOW, not measured once. <see cref="CommentedDefinitions"/> and
+/// <see cref="UnbalancedCommentBraces"/> answer them for one file, and CFunctionTests runs them over
+/// every file the drift checks read - so the C arriving with either is a red gate rather than a raw
+/// reader quietly answering about a function nobody compiles.
 /// </summary>
 public static class CFunction
 {
+    /// <summary>PP852: one comment in a C file, as written.</summary>
+    /// <param name="Line">One-based line the comment starts on.</param>
+    /// <param name="Text">The comment with its markers.</param>
+    /// <param name="Block">A <c>/* */</c> comment rather than a <c>//</c> one.</param>
+    public readonly record struct Comment(int Line, string Text, bool Block);
+
+    /// <summary>PP852: a body whose comments do not balance their braces.</summary>
+    /// <param name="Line">The line its opening brace is on.</param>
+    /// <param name="Net">Opening minus closing braces across the comments inside it.</param>
+    public readonly record struct Unbalanced(int Line, int Net);
+
+    private static readonly System.Text.RegularExpressions.Regex Definition =
+        new(@"[A-Za-z_]\w*\s*\([^;{}()]*\)\s*\{", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// PP852: every comment in <paramref name="source"/>, in order.
+    ///
+    /// String and character literals are stepped over, so <c>"/*"</c> and <c>'"'</c> start nothing
+    /// - the second is a case <see cref="CCall.Code"/> does not handle, and a sweep that misreads
+    /// a quote character would report the rest of the file as a string.
+    /// </summary>
+    public static IReadOnlyList<Comment> Comments(string source) => Walk(source, null);
+
+    /// <summary>
+    /// PP852: the block comments that hold a definition's shape - a name, a parameter list and a
+    /// brace - which <see cref="RawBody"/> would take for the function itself.
+    /// </summary>
+    public static IReadOnlyList<Comment> CommentedDefinitions(string source)
+        => [.. Comments(source).Where(comment => comment.Block && Definition.IsMatch(comment.Text))];
+
+    /// <summary>
+    /// PP852: the top-level bodies whose comments add up to an unbalanced brace, which would move
+    /// where <see cref="RawBody"/> stops counting. A comment holding <c>{</c> and another holding
+    /// <c>}</c> in the same body cancel, which is the state the C was found in and is no hazard.
+    /// </summary>
+    public static IReadOnlyList<Unbalanced> UnbalancedCommentBraces(string source)
+    {
+        var found = new List<Unbalanced>();
+        Walk(source, found);
+        return found;
+    }
+
+    /// <summary>
+    /// One pass: comments collected, code braces counted, and each top-level body's comment braces
+    /// summed. Where <paramref name="bodies"/> is null only the comments are wanted.
+    /// </summary>
+    private static List<Comment> Walk(string source, List<Unbalanced>? bodies)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        var comments = new List<Comment>();
+        var line = 1;
+        var depth = 0;
+        var bodyLine = 0;
+        var bodyNet = 0;
+
+        for (var at = 0; at < source.Length; at++)
+        {
+            char c = source[at];
+
+            if (c == '\n')
+            {
+                line++;
+                continue;
+            }
+
+            if (c is '"' or '\'')
+            {
+                int close = at + 1;
+                while (close < source.Length && source[close] != c && source[close] != '\n')
+                    close += source[close] == '\\' ? 2 : 1;
+
+                at = Math.Min(close, source.Length - 1);
+                if (source[at] == '\n')
+                    line++;
+                continue;
+            }
+
+            if (c == '/' && at + 1 < source.Length && source[at + 1] is '/' or '*')
+            {
+                bool block = source[at + 1] == '*';
+                int end = block ? source.IndexOf("*/", at + 2, StringComparison.Ordinal) : source.IndexOf('\n', at);
+                end = end < 0 ? source.Length : end + (block ? 2 : 0);
+
+                string text = source[at..end];
+                comments.Add(new Comment(line, text, block));
+
+                if (depth > 0)
+                    bodyNet += text.Count(ch => ch == '{') - text.Count(ch => ch == '}');
+
+                line += text.Count(ch => ch == '\n');
+                at = end - 1;
+                continue;
+            }
+
+            if (c == '{' && depth++ == 0)
+            {
+                bodyLine = line;
+                bodyNet = 0;
+            }
+            else if (c == '}' && depth > 0 && --depth == 0 && bodyNet != 0)
+            {
+                bodies?.Add(new Unbalanced(bodyLine, bodyNet));
+            }
+        }
+
+        return comments;
+    }
     /// <summary>
     /// The body of <paramref name="name"/>, without its signature, or null where the file declares
     /// no definition for it.

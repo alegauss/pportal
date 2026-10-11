@@ -265,9 +265,9 @@ public class CFunctionTests
     /// <summary>
     /// A brace inside a comment cannot end a body, which it could before.
     ///
-    /// Sixteen comments in this tree's C hold unbalanced braces and two of them sit inside a
-    /// function body - a <c>// {</c> and a <c>// }</c> in holepunch.c that cancel each other, so
-    /// nothing is truncated today. One of them alone would be, and that is what this holds.
+    /// Comments in this tree's C do hold unbalanced braces, and where two sit inside one body they
+    /// cancel - so nothing is truncated today. One alone would be, and that is what this holds;
+    /// PP852's sweep below is what says the C still has no such body.
     /// </summary>
     [Fact]
     public void ABraceInsideACommentCannotEndABody()
@@ -290,5 +290,101 @@ public class CFunctionTests
 
         Assert.NotNull(raw);
         Assert.DoesNotContain("real_call()", raw, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// PP852: a block comment holding a definition's shape is found; a line-comment one, a
+    /// prototype and a call in prose are not, because none of those can be taken for a body.
+    /// </summary>
+    [Fact]
+    public void ABlockCommentedDefinitionIsFound()
+    {
+        const string source = """
+            /* static bool get_mac_addr(ChiakiLog *log) { struct ifreq req; } */
+            // static bool other(ChiakiLog *log)
+            // {
+            // }
+            /* see get_mac_addr(log) for the reason */
+            /* static bool third(void); */
+            static const char *quote = "/* not(a) { comment */";
+            static const char q = '"';
+            static bool real(void) { return true; }
+            """;
+
+        IReadOnlyList<CFunction.Comment> found = CFunction.CommentedDefinitions(source);
+
+        CFunction.Comment only = Assert.Single(found);
+        Assert.Equal(1, only.Line);
+        Assert.Contains("get_mac_addr", only.Text, StringComparison.Ordinal);
+
+        // And the walk read past both literals: six comments, the string's text not among them.
+        Assert.Equal(6, CFunction.Comments(source).Count);
+    }
+
+    /// <summary>
+    /// PP852: a body whose comments hold one brace more than they close is reported with its line;
+    /// two that cancel are not, and a brace in a comment between functions is no body's.
+    /// </summary>
+    [Fact]
+    public void ABodyWithAnUnbalancedCommentBraceIsFound()
+    {
+        const string source = """
+            // a stray } between functions
+            static void cancels(void)
+            {
+            	// {
+            	call();
+            	// }
+            }
+
+            static void handler(void)
+            {
+            	// the loop used to close here: }
+            	real_call();
+            }
+            """;
+
+        CFunction.Unbalanced only = Assert.Single(CFunction.UnbalancedCommentBraces(source));
+
+        Assert.Equal(10, only.Line);
+        Assert.Equal(-1, only.Net);
+    }
+
+    /// <summary>
+    /// PP852: THE PREMISE RawBody RESTS ON, swept over the C rather than measured once.
+    ///
+    /// Every C file the drift checks read - lib/src with its remote/ subtree, and the shim - holds
+    /// no block-commented definition and no body whose comments unbalance its braces. PP847 counted
+    /// both by hand with a script it threw away; this is the same question asked on every run.
+    /// </summary>
+    [Fact]
+    public void TheSweptCHoldsNeitherHazard()
+    {
+        string? lib = SanitizerSource.LocateDirectory(Path.Combine("lib", "src"));
+        string? shim = SanitizerSource.LocateDirectory("shim");
+        if (lib is null || shim is null)
+            return;
+
+        var hazards = new List<string>();
+        var files = 0;
+        var comments = 0;
+
+        foreach (string path in Directory.EnumerateFiles(lib, "*.*", SearchOption.AllDirectories)
+                     .Concat(Directory.EnumerateFiles(shim, "*.*", SearchOption.AllDirectories))
+                     .Where(path => path.EndsWith(".c", StringComparison.Ordinal) || path.EndsWith(".h", StringComparison.Ordinal)))
+        {
+            files++;
+            string source = File.ReadAllText(path);
+            comments += CFunction.Comments(source).Count;
+
+            hazards.AddRange(CFunction.CommentedDefinitions(source).Select(c => $"{path}:{c.Line} commented definition"));
+            hazards.AddRange(CFunction.UnbalancedCommentBraces(source).Select(b => $"{path}:{b.Line} body comments net {b.Net}"));
+        }
+
+        // Not vacuous: a walk that lost its place in a literal reads the rest of a file as one string
+        // and finds no comment in it, which is also no hazard. The C holds well over a thousand.
+        Assert.True(files > 40, $"{files} file(s) swept");
+        Assert.True(comments > 1000, $"{comments} comment(s) read");
+        Assert.Empty(hazards);
     }
 }
