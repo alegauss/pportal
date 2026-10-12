@@ -16,8 +16,6 @@
 
 ## Block C — Video and input path
 
-- 📋 **PP855** (deps: PP700 ✅) **the picture smears for the rest of a scene and nothing asks for a keyframe, because no loss the port counts occurred** — A live run showed vertical streaking over most of the frame while reporting 0 keyframes requested, 0 corrupt-frame reports and 0 FEC failures, 25 dropped. → §PP855
-
 ## Block D — Screens
 
 ## Block E — Windows-only build

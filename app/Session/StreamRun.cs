@@ -287,7 +287,10 @@ public static class StreamRun
         // is what turns a lasting smear into a blink.
         //
         // The Qt client defaults it off, and that default is for a client whose loss is rarer.
-        connect.SetFlags(autoDowngrade: true, keyboard: false, dualSense: false, idrOnFecFailure: true);
+        // PP855: one value for both receivers - the C's, told on the connect info, and the port's,
+        // which drives the stream and was built with false while the C was told true.
+        const bool idrOnFecFailure = true;
+        connect.SetFlags(autoDowngrade: true, keyboard: false, dualSense: false, idrOnFecFailure: idrOnFecFailure);
 
         using ChiakiSession? session = ChiakiSession.TryCreate(connect, log, out ChiakiError created);
         if (session is null)
@@ -313,8 +316,11 @@ public static class StreamRun
             return 1;
         }
 
+        // PP855: the codec named once, because the slice parser has to read the stream the decoder does.
+        const ChiakiCodec codec = ChiakiCodec.H264;
+
         using var decoder = new SessionDecoder(
-            log.Handle, codec: 0, maxFps: 60, decoderName, renderer.NativeDevice);
+            log.Handle, codec: (int)codec, maxFps: 60, decoderName, renderer.NativeDevice);
 
         Console.WriteLine(
             $"[stream] decoder: {decoder.Requested.Length switch { 0 => "software", _ => decoder.Requested }}, "
@@ -351,6 +357,8 @@ public static class StreamRun
             session, IPAddress.Parse(target), decoder.Sample, baseline)
         {
             Microphone = microphone ? found.Ps5 : null,
+            IdrOnFecFailure = idrOnFecFailure,
+            Codec = codec,
         };
 
         // PP833: set before the phase starts, because the sink is handed to the decoder inside

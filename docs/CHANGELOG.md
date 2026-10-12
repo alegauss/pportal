@@ -96,6 +96,7 @@
 - ✅ **PP701** **the host shows a console's picture and sends it no input, so nothing can be played on it** — One SDL pad opened, translated from Controller::HandleButtonEvent and pushed on change; a real session sent 1210 states and a person played on it.
 - ✅ **PP836** **the ported fullscreen state machine has no consumer, so nothing in the app can go fullscreen** — F11 toggles as handleShortcut does and alt+enter as Windows does, driving PP11's state machine onto the run's window: the minimum pinned, and adjustable a second after.
 - ✅ **PP821** **the shim downloads every hardware frame to system memory and uploads it back, including d3d11va's own texture** — The decoder is put on the presenter's device and the frame goes over as a texture: 931 decoded, 911 shown, the round trip gone and the picture unchanged.
+- ✅ **PP855** **the picture smears for the rest of a scene and nothing asks for a keyframe, because no loss the port counts occurred** — The live video receiver now gets the slice parser and the run's IDR flag, so a P-frame without its reference is dropped, its gap reported and a FEC failure asks for a keyframe.
 
 ## Block D — Screens
 

@@ -157,6 +157,20 @@ public sealed class ManagedStreamPhase : IDisposable
     public PadTimeline Timeline { get; } = new();
 
     /// <summary>
+    /// PP855: connect_info.enable_idr_on_fec_failure, for the receiver this phase drives.
+    ///
+    /// The C session is told it on its connect info, and since PP783 the C does not run the stream -
+    /// so the flag reached a receiver that never saw a packet while the one that did was built with
+    /// its default of false. Set by the caller from the same value it gives the C.
+    /// </summary>
+    public bool IdrOnFecFailure { get; init; }
+
+    /// <summary>PP855: the codec the stream was asked for, which is what the slice parser reads.</summary>
+    public ChiakiCodec Codec { get; init; } = ChiakiCodec.H264;
+
+    private Bitstream? slices;
+
+    /// <summary>
     /// PP816: where the sound goes - the engine, and nothing before it.
     ///
     /// PP797's AudioPlayback and the ring behind it stood here and PP820 removed them. Built in the
@@ -331,7 +345,7 @@ public sealed class ManagedStreamPhase : IDisposable
 
                 return Big(session);
             },
-            () => new ManagedVideoReceiver(video, outbound),
+            () => VideoArm(video, outbound, IdrOnFecFailure, slices ??= new Bitstream(Codec)),
             () => sound,
             // PP846 PUT ITS PLAYER HERE AND IT WAS THE WRONG PAIR. Nothing passes this one to
             // InstallAvArm - the AV arm is handed the AUDIO pair and no other, and that pair's
@@ -488,6 +502,28 @@ public sealed class ManagedStreamPhase : IDisposable
     }
 
     /// <summary>
+    /// PP855: the video arm, built where a machine with no console can ask for one.
+    ///
+    /// Public and static for <see cref="AudioPair"/>'s reason: <see cref="Build"/> runs only once a
+    /// session hands over, so what it passes the receiver is unreachable through the object - and
+    /// what it passed was nothing. No slice parser, so a P-frame against a frame that never arrived
+    /// was delivered as though it were whole; and no IDR flag, so a frame FEC could not rebuild was
+    /// reported and never followed by a request. A live run smeared for the rest of a scene with
+    /// every recovery counter at zero.
+    /// </summary>
+    /// <param name="video">Where a frame goes, which is the caller's decoder.</param>
+    /// <param name="outbound">Where the corrupt-frame report and the IDR request go.</param>
+    /// <param name="idrOnFecFailure">connect_info.enable_idr_on_fec_failure.</param>
+    /// <param name="slices">The parser for the stream's codec, which the caller owns.</param>
+    public static ManagedVideoReceiver VideoArm(
+        VideoSampleHandler video, IVideoReceiverOutbound outbound, bool idrOnFecFailure, Bitstream slices)
+    {
+        ArgumentNullException.ThrowIfNull(slices);
+
+        return new ManagedVideoReceiver(video, outbound, idrOnFecFailure, slices);
+    }
+
+    /// <summary>
     /// PP799: attach the run's events to the application, and answer with what holds them.
     ///
     /// Public and static for <see cref="Big"/>'s reason: <see cref="Build"/> runs only once a start
@@ -630,6 +666,9 @@ public sealed class ManagedStreamPhase : IDisposable
         // be handed a buffer it no longer owns. PP797's order was the same argument about a ring.
         speaker?.Dispose();
         Sound.Dispose();
+
+        // PP855: the video arm's parser, after the run that read slices through it has joined.
+        slices?.Dispose();
 
         // PP825: and the microphone, which goes down for the same reason and in the same direction -
         // the capture's pump thread runs the whole path, so it is stopped before the takion it sends

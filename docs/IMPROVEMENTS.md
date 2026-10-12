@@ -121,31 +121,6 @@ of Off, and the player and the matrix built from it reading both back.
 
 ## Block C — Video and input path
 
-### §PP855 A smear no counter admits to
-
-A two-minute session came back with the top of the picture correct and the lower two
-thirds in vertical streaks - the shape a P-frame chain takes once it references
-something that never arrived. It stayed that way rather than blinking, which is what
-recovery looks like when nothing asks for it.
-
-EVERY RECOVERY COUNTER READ ZERO. The same run reported `keyframes: 0 requested, 0
-refused, 0 corrupt-frame report(s), 0 FEC failure(s)`, and PP700's idrOnFecFailure is
-TRUE on this path precisely so a rebuild failure asks for an IDR immediately. No FEC
-failure was counted, so that door never opened.
-
-WHAT DID GET COUNTED is loss of a kind the port does not treat as corrupting: `1421
-decoded, 1402 shown, 6 lost by the network, 19 superseded by the pull's drain, 25
-dropped, 19 attributable to the decoder`. Nineteen frames the decoder itself dropped is
-the number worth reading twice - a dropped frame is a reference the next one wanted.
-
-SO THE QUESTION IS WHICH LOSSES SHOULD ASK. Upstream sends a corrupt-frame report and an
-IDR request from the video receiver, and this port drove neither in this run. Whether
-the receiver never decides to, or decides and the request reaches nothing, is the fork -
-and PP295's own dispatch names both calls as the two symbols the frame path stranded.
-
-A screenshot of the smear is what opened this; the counters make it a defect rather than
-a bad network.
-
 ## Block D — Screens
 
 ## Block E — Windows-only build

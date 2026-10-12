@@ -113,6 +113,12 @@ public sealed class ManagedVideoReceiver
             // The header reaches the callback as a frame-shaped thing that is not a frame, which is
             // what a decoder needs before any picture arrives.
             handler(profiles[profileCur], 0, false);
+
+            // PP855: AND THE PARSER READS IT, which is chiaki_bitstream_header on the C's next line.
+            // A slice cannot be read without the SPS that says how wide its fields are, so a parser
+            // never handed one declines every slice - and a declined slice is delivered unexamined,
+            // which is the safe direction and also no loss detection at all.
+            bitstream?.ReadHeader(profiles[profileCur]);
         }
 
         if (arrival.StartsFrame)

@@ -188,4 +188,155 @@ public class ManagedVideoReceiverTests(ITestOutputHelper output)
         // Nothing was accepted, so nothing became the last complete frame either.
         Assert.Equal(0, managed.FramesLostTotal);
     }
+
+    // PP855: test/bitstream.c's recorded H.265 header and P-slice, as BitstreamParserOracleTests holds
+    // them. H.265 and not H.264 because its slice cannot be read without the parameter sets - the
+    // H.264 one parses with no header at all, so it could not tell whether the header was read.
+    private static readonly byte[] H265Header =
+    [
+        0x00, 0x00, 0x00, 0x01, 0x40, 0x01, 0x0c, 0x01, 0xff, 0xff, 0x01, 0x60, 0x00, 0x00, 0x03, 0x00,
+        0xb0, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03, 0x00, 0x96, 0x0a, 0xc0, 0x90, 0x00, 0x00, 0x00, 0x01,
+        0x42, 0x01, 0x01, 0x01, 0x60, 0x00, 0x00, 0x03, 0x00, 0xb0, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03,
+        0x00, 0x96, 0xa0, 0x03, 0xc0, 0x80, 0x11, 0x07, 0xcb, 0xc2, 0xb9, 0x24, 0x29, 0x52, 0x70, 0x16,
+        0xa0, 0x20, 0x20, 0x20, 0x80, 0x00, 0x07, 0xd2, 0x00, 0x01, 0xd4, 0xc0, 0x20, 0xe5, 0xa1, 0xe3,
+        0xd0, 0x00, 0x00, 0x00, 0x01, 0x44, 0x01, 0xc0, 0xf3, 0xc0, 0x4c, 0x90,
+    ];
+
+    private static readonly byte[] H265SliceP =
+    [
+        0x00, 0x00, 0x00, 0x01, 0x02, 0x01, 0xd0, 0x97, 0x61, 0x28, 0x23, 0x2d, 0x8b, 0x80, 0x6f, 0xfd,
+        0x2f, 0x2b, 0x11, 0xd4, 0x55, 0x04, 0x90, 0x18, 0x49, 0xe5, 0xbc, 0xc4, 0x97, 0xbc, 0x3d, 0xeb,
+    ];
+
+    private static readonly byte[] H265SliceI =
+    [
+        0x00, 0x00, 0x00, 0x01, 0x28, 0x01, 0xac, 0x25, 0xcf, 0x83, 0xff, 0x23, 0x54, 0xab, 0x5c, 0xf5,
+        0x7a, 0x06, 0x7c, 0x3f, 0x31, 0x9b, 0xe6, 0x10, 0x57, 0xe8, 0x0e, 0xcf, 0xdd, 0xda, 0xdb, 0x3f,
+    ];
+
+    private static readonly byte[] H265SlicePRef5 =
+    [
+        0x00, 0x00, 0x00, 0x01, 0x02, 0x01, 0xd7, 0x85, 0x6a, 0xae, 0xa6, 0x11, 0x80, 0x95, 0x80, 0x0a,
+        0xec, 0x5e, 0xdf, 0x39, 0x86, 0xe6, 0xd9, 0x07, 0x49, 0x17, 0xe2, 0x62, 0x57, 0x14, 0xd7, 0x08,
+    ];
+
+    /// <summary>
+    /// PP855: A P-SLICE IS DECODED ONLY AGAINST A REFERENCE THAT ARRIVED. Frame 7 names reference 5,
+    /// which is frame 1: with frames 1 to 6 in hand it goes to the decoder, and with frame 1 never
+    /// received - and nothing older to substitute - it is lost instead of decoded against a picture
+    /// the decoder never had, which is what a smear is.
+    /// </summary>
+    [Fact]
+    public void APSliceIsDecodedOnlyAgainstAReferenceThatArrived()
+    {
+        foreach (bool firstArrives in new[] { true, false })
+        {
+            var seen = new List<int>();
+            using var bitstream = new Bitstream(ChiakiNg.Session.ChiakiCodec.H265);
+
+            var managed = new ManagedVideoReceiver(
+                (frame, lost, recovered) => { seen.Add(frame.Length); return true; },
+                new Outbound(), idrOnFecFailure: true, bitstream);
+            managed.StreamInfo(H265Header);
+
+            for (ushort index = firstArrives ? (ushort)1 : (ushort)2; index <= 6; index++)
+                managed.AvPacket(index, 0, 1, 0, Wrapped(H265SliceI));
+
+            int before = seen.Count;
+            managed.AvPacket(7, 0, 1, 0, Wrapped(H265SlicePRef5));
+
+            output.WriteLine($"frame 1 {(firstArrives ? "arrived" : "lost")}: {seen.Count - before} delivered, {managed.FramesLostTotal} lost");
+
+            Assert.Equal(firstArrives ? before + 1 : before, seen.Count);
+            Assert.Equal(firstArrives ? 0 : 1, managed.FramesLostTotal);
+        }
+    }
+
+    /// <summary>A slice as one whole video unit: the two-byte unit header, then the NAL.</summary>
+    private static byte[] Wrapped(byte[] slice) => [0x00, 0x00, .. slice];
+
+    /// <summary>
+    /// PP855: WITH A PARSER, A P-FRAME WITH NO REFERENCE IS LOST AND ITS GAP REPORTED. The live root
+    /// gave the receiver none, so such a frame went to the decoder as if whole and nothing asked the
+    /// console to recover - the smear that opened this line.
+    /// </summary>
+    [Fact]
+    public void APFrameWithNoReferenceIsLostAndItsGapReported()
+    {
+        var seen = new List<int>();
+        var outbound = new Outbound();
+        using var bitstream = new Bitstream(ChiakiNg.Session.ChiakiCodec.H265);
+
+        var managed = new ManagedVideoReceiver(
+            (frame, lost, recovered) => { seen.Add(frame.Length); return true; },
+            outbound, idrOnFecFailure: true, bitstream);
+        managed.StreamInfo(H265Header);
+
+        // Frame 1 is a P-slice and nothing came before it: no reference, so it is lost - not shown.
+        managed.AvPacket(1, 0, 1, 0, Wrapped(H265SliceP));
+
+        Assert.Equal([H265Header.Length], seen);
+        Assert.Equal(1, managed.FramesLostTotal);
+
+        // And the next frame reports the gap it left, which is what asks the console to recover.
+        managed.AvPacket(2, 0, 1, 0, Wrapped(H265SliceP));
+
+        Assert.Contains(((ushort)0, (ushort)1), outbound.Corrupt);
+    }
+
+    /// <summary>
+    /// PP855: THE VIDEO ARM IS HANDED BOTH, which the live root passed neither of: the parser, so
+    /// the P-frame above is caught, and the IDR flag, so a FEC failure is followed by a request.
+    /// </summary>
+    [Fact]
+    public void TheVideoArmCarriesTheParserAndTheIdrFlag()
+    {
+        var seen = new List<int>();
+        using var bitstream = new Bitstream(ChiakiNg.Session.ChiakiCodec.H265);
+
+        ManagedVideoReceiver arm = ChiakiNg.Session.ManagedStreamPhase.VideoArm(
+            (frame, lost, recovered) => { seen.Add(frame.Length); return true; },
+            new Outbound(), idrOnFecFailure: true, bitstream);
+
+        arm.StreamInfo(H265Header);
+        arm.AvPacket(1, 0, 1, 0, Wrapped(H265SliceP));
+
+        Assert.Equal(1, arm.FramesLostTotal);
+
+        bool flag = (bool)typeof(ManagedVideoReceiver)
+            .GetField("idrOnFecFailure", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+            .GetValue(arm)!;
+        Assert.True(flag);
+    }
+
+    /// <summary>
+    /// PP855: and the live root goes through that arm with the run's own flag and codec - the same
+    /// values the C's connect info is given, named once in StreamRun.
+    /// </summary>
+    [Fact]
+    public void TheLiveRootBuildsTheReceiverThroughTheArm()
+    {
+        string? phase = ChiakiNg.Session.SanitizerSource.LocateRelative(Path.Combine("app", "Session", "ManagedStreamPhase.cs"));
+        string? run = ChiakiNg.Session.SanitizerSource.LocateRelative(Path.Combine("app", "Session", "StreamRun.cs"));
+        if (phase is null || run is null)
+            return;
+
+        string phaseCode = ChiakiNg.Session.CCall.Code(File.ReadAllText(phase));
+        string runCode = ChiakiNg.Session.CCall.Code(File.ReadAllText(run));
+
+        Assert.True(ChiakiNg.Session.CCall.CalledWith(phaseCode, "VideoArm", "video, outbound, IdrOnFecFailure"));
+
+        // And the receiver hands the profile's header to the parser at the switch, as the C's next
+        // line after the callback does. Held by its text because no recorded fixture parses
+        // differently without it: their SPS widths happen to equal the zeroed defaults.
+        string? receiver = ChiakiNg.Session.SanitizerSource.LocateRelative(Path.Combine("app", "Protocol", "ManagedVideoReceiver.cs"));
+        Assert.NotNull(receiver);
+        Assert.True(ChiakiNg.Session.CCall.Happens(
+            ChiakiNg.Session.CCall.Code(File.ReadAllText(receiver)), "bitstream?.ReadHeader(profiles[profileCur])"));
+        Assert.DoesNotContain("new ManagedVideoReceiver(video, outbound)", phaseCode, StringComparison.Ordinal);
+
+        Assert.True(ChiakiNg.Session.CCall.CalledWith(runCode, "connect.SetFlags", "autoDowngrade: true, keyboard: false, dualSense: false, idrOnFecFailure: idrOnFecFailure"));
+        Assert.Contains("IdrOnFecFailure = idrOnFecFailure", runCode, StringComparison.Ordinal);
+        Assert.Contains("Codec = codec", runCode, StringComparison.Ordinal);
+    }
 }
