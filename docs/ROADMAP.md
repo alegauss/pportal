@@ -28,7 +28,7 @@
 
 ## Block F — Managed core
 
-- 📋 **PP853** (deps: PP723 ✅, PP717 ✅) **no history packet reaches the wire in a live session, so a button press is the one input the console never hears** — 5608 state packets went out with the last a Success while HistoriesOffered stayed at zero across two minutes of play; sticks arrive and buttons do not. → §PP853
+- ⏳ **PP853** (deps: PP723 ✅, PP717 ✅) (requires: console, a-person-looking) **no history packet reaches the wire in a live session, so a button press is the one input the console never hears** — Offline the press reaches the wire; one console run with buttons pressed says which live stage drops it. → §PP853
 
 ## Block G — Test discipline
 
@@ -90,6 +90,13 @@
   run with the pad on USB prints "[stream] haptics audio: playing on", ends with a
   non-zero "played on the actuators" count, and the person holding the pad feels the
   waveform rather than the two rumble motors.
+
+## Done when — PP853
+
+- **a pressed button reaches the console as a history packet** A live --stream run where
+  a person presses buttons ends with a non-zero "history packet(s) offered", and a
+  button acts in the game; until then the run's "buttons seen, taken, queued" line names
+  the stage that lost it.
 
 ## Non-goals
 

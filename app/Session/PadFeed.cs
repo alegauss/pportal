@@ -57,6 +57,8 @@ public sealed class PadFeed : IDisposable, IRumbleTarget
     private long touched;
     private long touchesSeen;
     private long moved;
+    private long buttonsSeen;
+    private long buttonsTaken;
 
     // PP845 diagnosis: a live run had the pad working and then stopping mid-session, right after a
     // Windows notification took focus. These three separate the candidates in one run: the pump
@@ -156,6 +158,20 @@ public sealed class PadFeed : IDisposable, IRumbleTarget
 
     /// <summary>Sensor readings folded into the orientation, which is the other half.</summary>
     public long Moved => Interlocked.Read(ref moved);
+
+    /// <summary>
+    /// PP853: button events SDL delivered, whether or not the translation took them.
+    ///
+    /// A live session sent thousands of states and no history packet, and every stage between the
+    /// pad and the wire reads correctly and passes offline. This and <see cref="ButtonsTaken"/> are
+    /// the first two of the three numbers that say which stage loses a press: none seen is SDL never
+    /// reporting one, seen and not taken is the translation refusing it, and taken with no history
+    /// queued is the sender.
+    /// </summary>
+    public long ButtonsSeen => Interlocked.Read(ref buttonsSeen);
+
+    /// <summary>PP853: button events that changed the mask the console is sent.</summary>
+    public long ButtonsTaken => Interlocked.Read(ref buttonsTaken);
 
     /// <summary>
     /// Which sensor kinds the open pad has turned on, empty for a pad with neither.
@@ -350,6 +366,10 @@ public sealed class PadFeed : IDisposable, IRumbleTarget
             return;
         }
 
+        bool button = ev.Type is Gamepads.EventType.ControllerButtonDown or Gamepads.EventType.ControllerButtonUp;
+        if (button)
+            Interlocked.Increment(ref buttonsSeen);
+
         lock (gate)
         {
             if (!translation.Offer(ev))
@@ -358,6 +378,9 @@ public sealed class PadFeed : IDisposable, IRumbleTarget
             translation.WriteTo(state);
             sink.SetControllerState(state);
         }
+
+        if (button)
+            Interlocked.Increment(ref buttonsTaken);
 
         Interlocked.Increment(ref pushed);
     }

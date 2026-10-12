@@ -145,6 +145,12 @@ public sealed class ManagedStreamPhase : IDisposable
     public TakionFeedbackSink? FeedbackWire { get; private set; }
 
     /// <summary>
+    /// PP853: the sender feeding <see cref="FeedbackWire"/>, held for the same reason - its count of
+    /// queued history packets is the stage between a press the pad took and one the wire offered.
+    /// </summary>
+    public ManagedFeedbackSender? FeedbackSender { get; private set; }
+
+    /// <summary>
     /// PP816: where the sound goes - the engine, and nothing before it.
     ///
     /// PP797's AudioPlayback and the ring behind it stood here and PP820 removed them. Built in the
@@ -272,6 +278,7 @@ public sealed class ManagedStreamPhase : IDisposable
         FeedbackWire = new TakionFeedbackSink(takion);
 
         var sender = new ManagedFeedbackSender(FeedbackWire);
+        FeedbackSender = sender;
         Pad.Arm(sender);
 
         // PP797: AND THE SOUND HAS SOMEWHERE TO GO, which is the first of the two joins that were

@@ -577,9 +577,15 @@ public static class StreamRun
         // or packets that stopped going out and a Last that says why.
         if (phase.FeedbackWire is { } feedback)
         {
+            // PP853: and the three stages a press crosses before the count above, which a live run
+            // that sent thousands of states and no history could not tell apart. SDL saw none, the
+            // translation took none, or the sender queued none - each is a different defect.
             Console.WriteLine(
                 $"[stream] feedback wire: {feedback.Sent} sent, last {feedback.Last}, "
-                    + $"{feedback.HistoriesOffered} history packet(s) offered");
+                    + $"{feedback.HistoriesOffered} history packet(s) offered; "
+                    + $"buttons {pad.ButtonsSeen} seen, {pad.ButtonsTaken} taken, "
+                    + $"{phase.FeedbackSender?.HistoriesQueued ?? 0} history packet(s) queued, "
+                    + $"{phase.FeedbackSender?.FormatFailures ?? 0} format failure(s)");
         }
 
         // PP846: and the other direction, which had no reading at all. Three numbers again, and the

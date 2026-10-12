@@ -191,6 +191,13 @@ public sealed class ManagedFeedbackSender : IDisposable
     /// <summary>How many flushes could not format, which leaves the buffer dirty.</summary>
     public int FormatFailures { get; private set; }
 
+    /// <summary>
+    /// PP853: how many history packets a flush queued, which is the third number between a press and
+    /// the wire. A run that took button events and queued none has lost them here; one that queued
+    /// some and offered none to the takion lost them in the tick.
+    /// </summary>
+    public int HistoriesQueued { get; private set; }
+
     /// <summary>Every input-to-wire sample taken, oldest first.</summary>
     public IReadOnlyList<ulong> InputToWireUs => inputToWire;
 
@@ -439,6 +446,7 @@ public sealed class ManagedFeedbackSender : IDisposable
         }
 
         packets[index] = buf;
+        HistoriesQueued++;
 
         if (packetLen < PacketQueueSize)
         {

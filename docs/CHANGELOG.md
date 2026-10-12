@@ -771,6 +771,7 @@
 - ✅ **PP30** **forward error correction is two vendored C libraries doing Galois field arithmetic per lost packet** — gf-complete and jerasure are out of the build: sixteen vendored C files gone, the link line, the option, the find module, and the field init in chiaki_lib_init that outlived every FEC caller.
 - ✅ **PP843** **ShimFramePathShape says the flip has happened and the option is off, and PP763 put the four files back** — the flip state is read from the build files and the loaded shim and held against the class's own claim, so a revert that leaves the prose is red.
 - ✅ **PP848** **51 files credit PP696 and PP763 reverted it whole, so no check can tell a live attribution from a dead one** — PP696's ledger entry names the revert and the three that put each half back, so one write answers all 92 mentions and a check holds that write.
+- ✅ **PP853 (offline chain and instrument)** **no history packet reaches the wire in a live session, so a button press is the one input the console never hears** — A press from an SDL event to the wire is proven offline under a motion flood, and a live run now prints buttons seen, taken and history packets queued.
 
 ## Block G — Test discipline
 

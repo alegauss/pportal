@@ -275,7 +275,9 @@ accepts everything it is given.
 WHERE IT COULD BE. HistoriesOffered counts in TakionFeedbackSink.Put, so zero means no
 history packet was ever handed to it: either FeedbackHistoryRecorder.Record produces no
 events for a real button change, or the sender's flush never offers what it recorded.
-Both are readable without hardware, and the live number says which question to ask.
+Both were read and both are right: an SDL press driven through translation, sink and a
+running sender queues and offers history offline. The live run's new counters name the
+stage.
 
 The instrument that found it is in the run now, so a fix has a number to move.
 

@@ -225,4 +225,65 @@ public class ManagedControllerStateSinkTests
         Assert.DoesNotContain(taken, one => one.ParameterType == typeof(ChiakiSession));
         Assert.DoesNotContain(taken, one => one.ParameterType == typeof(ManagedControllerStateSink));
     }
+
+    /// <summary>Counts what reached the wire, from whichever thread sent it.</summary>
+    private sealed class Counting : IFeedbackSink
+    {
+        private int states;
+        private int histories;
+
+        public int States => Volatile.Read(ref states);
+
+        public int Histories => Volatile.Read(ref histories);
+
+        public void SendState(ushort seqNum, FeedbackMotion state) => Interlocked.Increment(ref states);
+
+        public void SendHistory(ushort seqNum, ReadOnlySpan<byte> payload) => Interlocked.Increment(ref histories);
+    }
+
+    /// <summary>
+    /// PP853: A BUTTON PRESS REACHES THE WIRE AS HISTORY, along the path a live pad takes.
+    ///
+    /// An SDL button event folded by PadTranslation, written into the native state, pushed through
+    /// this sink to a sender running on its own thread - under a stream of motion the way a
+    /// DualSense's sensors push one. A live session sent thousands of states and no history at all.
+    /// </summary>
+    [Fact]
+    public void AButtonPressAmidMotionReachesTheWireAsHistory()
+    {
+        var wire = new Counting();
+        var sink = new ManagedControllerStateSink();
+        var translation = new PadTranslation();
+        using var sender = new ManagedFeedbackSender(wire);
+        using var state = new ChiakiControllerState();
+
+        sink.Arm(sender);
+        sender.Start();
+
+        for (var i = 0; i < 200; i++)
+        {
+            state.SetMotion(0.01f * i, 0, 0, 0, 1, 0, 0, 0, 0, 1);
+
+            if (i == 50 || i == 120)
+            {
+                translation.Offer(new SdlEvent(
+                    i == 50 ? Gamepads.EventType.ControllerButtonDown : Gamepads.EventType.ControllerButtonUp,
+                    0, 0, (byte)PadTranslation.PadButton.A, 0));
+            }
+
+            translation.WriteTo(state);
+            sink.SetControllerState(state);
+            Thread.Sleep(1);
+        }
+
+        SpinWait.SpinUntil(() => wire.Histories >= 2, TimeSpan.FromSeconds(2));
+        sender.Stop();
+
+        Assert.True(wire.States > 0, "states");
+        Assert.True(wire.Histories >= 2, $"{wire.Histories} history packet(s), {wire.States} state(s)");
+
+        // And the run's third stage counts what this path queued: one packet per press and release.
+        Assert.Equal(2, sender.HistoriesQueued);
+        Assert.Equal(0, sender.FormatFailures);
+    }
 }
