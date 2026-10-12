@@ -10,6 +10,8 @@
 
 ## Block D — Screens
 
+- ⏸ **PP859** (deps: —) **the settings dialog is composed and never opened, so no tab reads or writes the store a session reads** — set aside (resumes when the owner says where settings open and if the port writes it; review 2026-11-11): Unported rather than deferred, and two of the owner's calls gate it. → §PP859
+
 ## Block E — Windows-only build
 
 ## Block F — Managed core

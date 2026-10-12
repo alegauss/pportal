@@ -94,13 +94,12 @@ SO EVERY SETTING THIS PORT READS IS ONE THE QT CLIENT WROTE. PP858 made a sessio
 the two haptics rows from the store; the only way to change them is a registry edit or
 the retired client. The same is true of every row on all nine tabs.
 
-WHAT IS NOT KNOWN, AND IS THE QUESTION. Whether opening the dialog was deliberately left
-for a later block - a host shell that does not exist yet - or was lost between PP167 and
-the retirement of the Qt client. The CHANGELOG entries for PP167 and PP632 are where to
-read first. If deliberate, this becomes a deferral with that shell as its trigger; if
-lost, the work is three joins: something opens the dialog, each tab is constructed from
-the store, and a save writes the rows back in the words and widths the store already
-declares.
+READ, AND NOT DELIBERATE. No entry for PP16, PP140, PP167 or PP632 defers it; the front
+door (ConsoleListView) has no way in. Three joins: the front door opens the dialog, each
+tab is built from the store, and a save writes rows back in the store's declared words
+and widths through QSettingsWriter. Two are the owner's calls: where it opens, and
+whether the port writes the store the Qt client wrote - PP626 handled that store as real
+registrations.
 
 The census a later answer needs: nine tabs, each with an IPreferences constructor, none
 of them called from app/ outside tests.

@@ -16,8 +16,6 @@
 
 ## Block D — Screens
 
-- 💭 **PP859** (deps: —) **the settings dialog is composed and never opened, so no tab reads or writes the store a session reads** — PP858 found the Controllers tab loads neither haptics row and nothing in app/ constructs SettingsView; whether that was left on purpose is unread. → §PP859
-
 ## Block E — Windows-only build
 
 - 📋 **PP63** (deps: PP62 ✅) (requires: msvc-qt-webengine) **nothing in the tree can configure a Qt build carrying WebEngine, so PP46's before cannot be produced at all** — MSYS2 has no qt6-webengine and no Windows release carries Chromium, so the reference is built once with MSVC. → §PP63
