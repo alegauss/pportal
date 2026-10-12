@@ -412,7 +412,7 @@ public static class StreamRun
         // same bit the connect info was built from a hundred lines above, so the answer is the
         // session's own rather than a pad that is neither console's - §PP93's finding about the Qt
         // client's SDL path, which takes the larger of each axis because that layer cannot ask.
-        using var pad = new PadFeed(phase.Pad, TouchpadExtents.For(found.Ps5));
+        using var pad = new PadFeed(phase.Pad, TouchpadExtents.For(found.Ps5)) { Timeline = phase.Timeline };
 
         // PP835: OPENED OFF THE THREAD THAT DRAWS, which a user reported as the picture freezing.
         //
@@ -586,6 +586,14 @@ public static class StreamRun
                     + $"buttons {pad.ButtonsSeen} seen, {pad.ButtonsTaken} taken, "
                     + $"{phase.FeedbackSender?.HistoriesQueued ?? 0} history packet(s) queued, "
                     + $"{phase.FeedbackSender?.FormatFailures ?? 0} format failure(s)");
+
+            // PP854: and the same path by the second, because a total cannot say a stop happened
+            // halfway. The verdict line first, so a reader does not have to scan the rows for it.
+            Console.WriteLine(
+                phase.Timeline.InputsWentQuiet() is { } quiet
+                    ? $"[stream] pad timeline: inputs stopped at {quiet}s while states kept going"
+                    : "[stream] pad timeline: inputs never went quiet under a live wire");
+            Console.Write(phase.Timeline.Render());
         }
 
         // PP846: and the other direction, which had no reading at all. Three numbers again, and the

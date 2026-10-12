@@ -151,6 +151,12 @@ public sealed class ManagedStreamPhase : IDisposable
     public ManagedFeedbackSender? FeedbackSender { get; private set; }
 
     /// <summary>
+    /// PP854: the pad path second by second - the pad's inputs and sensors, and the wire's states.
+    /// Owned here because the wire is built later than the pad, and both have to count into one.
+    /// </summary>
+    public PadTimeline Timeline { get; } = new();
+
+    /// <summary>
     /// PP816: where the sound goes - the engine, and nothing before it.
     ///
     /// PP797's AudioPlayback and the ring behind it stood here and PP820 removed them. Built in the
@@ -275,7 +281,7 @@ public sealed class ManagedStreamPhase : IDisposable
         // alive - the pump delivers to the last instant and the states reach this sender - while the
         // console stops responding after the window loses focus. Sent and Last are the two numbers
         // that say whether the packets left this process at all, which is the next fork.
-        FeedbackWire = new TakionFeedbackSink(takion);
+        FeedbackWire = new TakionFeedbackSink(takion) { Timeline = Timeline };
 
         var sender = new ManagedFeedbackSender(FeedbackWire);
         FeedbackSender = sender;

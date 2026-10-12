@@ -10,7 +10,7 @@
 ## Block B — Native interop
 
 - ⏳ **PP851** (deps: PP846 ✅) (requires: console, a-person-looking) **a DualSense feels what a PS4 pad feels: the console's haptic stream is folded to rumble rather than played** — A live session with the pad on a cable has not printed "haptics audio: playing on" yet, and nobody has felt the actuators move. → §PP851
-- 📋 **PP854** (deps: PP845 ✅) **the pad stops driving the console after the window loses focus, and every layer this port can see stays healthy** — Reproduced twice by clicking away and back; the pump delivered to the last instant, no departure was seen, the handle stayed open and the wire kept accepting. → §PP854
+- ⏳ **PP854** (deps: PP845 ✅) (requires: console, a-person-looking) **the pad stops driving the console after the window loses focus, and every layer this port can see stays healthy** — One console run with a click away and back, read off the per-second timeline, names the layer that stops. → §PP854
 - 📋 **PP857** (deps: PP846 ✅) **a console set to haptics Off still drives the pad, because the intensity it raises is held and never read** — The Qt client drops both the rumble event and the waveform at Off; SessionEventRouter keeps the value and no haptics path asks it. → §PP857
 - 📋 **PP858** (deps: PP846 ✅) **the rumble intensity and haptic override sliders change nothing in a session** — StreamRun arms the haptics with Normal and the default override typed at the call, so the Controllers tab stores two values no session reads. → §PP858
 
@@ -97,6 +97,12 @@
   a person presses buttons ends with a non-zero "history packet(s) offered", and a
   button acts in the game; until then the run's "buttons seen, taken, queued" line names
   the stage that lost it.
+
+## Done when — PP854
+
+- **the pad still drives the console after the window loses focus and regains it** A
+  live --stream run with a click into another window and back keeps the pad working, and
+  its pad timeline reports that inputs never went quiet under a live wire.
 
 ## Non-goals
 

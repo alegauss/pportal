@@ -174,6 +174,12 @@ public sealed class PadFeed : IDisposable, IRumbleTarget
     public long ButtonsTaken => Interlocked.Read(ref buttonsTaken);
 
     /// <summary>
+    /// PP854: where inputs and sensor readings are counted by the second, so a pad that goes quiet
+    /// under a pump that does not has a moment. Null counts nothing.
+    /// </summary>
+    public PadTimeline? Timeline { get; set; }
+
+    /// <summary>
     /// Which sensor kinds the open pad has turned on, empty for a pad with neither.
     ///
     /// Reported rather than assumed: a pad without motion is ordinary, and it is the one case where
@@ -361,6 +367,7 @@ public sealed class PadFeed : IDisposable, IRumbleTarget
             if (!OfferSensor(Gamepads.Sensor(ev)))
                 return;
 
+            Timeline?.Mark(PadTimeline.Series.Sensors);
             Interlocked.Increment(ref moved);
             Interlocked.Increment(ref pushed);
             return;
@@ -382,6 +389,7 @@ public sealed class PadFeed : IDisposable, IRumbleTarget
         if (button)
             Interlocked.Increment(ref buttonsTaken);
 
+        Timeline?.Mark(PadTimeline.Series.Inputs);
         Interlocked.Increment(ref pushed);
     }
 
