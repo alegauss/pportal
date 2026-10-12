@@ -11,11 +11,12 @@
 
 - ⏳ **PP851** (deps: PP846 ✅) (requires: console, a-person-looking) **a DualSense feels what a PS4 pad feels: the console's haptic stream is folded to rumble rather than played** — A live session with the pad on a cable has not printed "haptics audio: playing on" yet, and nobody has felt the actuators move. → §PP851
 - ⏳ **PP854** (deps: PP845 ✅) (requires: console, a-person-looking) **the pad stops driving the console after the window loses focus, and every layer this port can see stays healthy** — One console run with a click away and back, read off the per-second timeline, names the layer that stops. → §PP854
-- 📋 **PP858** (deps: PP846 ✅) **the rumble intensity and haptic override sliders change nothing in a session** — StreamRun arms the haptics with Normal and the default override typed at the call, so the Controllers tab stores two values no session reads. → §PP858
 
 ## Block C — Video and input path
 
 ## Block D — Screens
+
+- 💭 **PP859** (deps: —) **the settings dialog is composed and never opened, so no tab reads or writes the store a session reads** — PP858 found the Controllers tab loads neither haptics row and nothing in app/ constructs SettingsView; whether that was left on purpose is unread. → §PP859
 
 ## Block E — Windows-only build
 

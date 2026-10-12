@@ -140,6 +140,32 @@ public static class HapticOverrideSetting
 }
 
 /// <summary>
+/// PP858: the two haptics settings as a session reads them, which nothing did.
+///
+/// The Controllers tab stores both and the stream run typed Normal and the default override at
+/// its own call sites, so the two rows were a form with no reader. The rumble word is read back
+/// through the combo's own <see cref="StoredChoice"/>, whose index order IS the enum's - Off to Very
+/// Strong - and whose fallback is QMap::key's Normal; the override defaults to 1.0 in the
+/// declaration, so an install that never moved the slider reads the console's own intensity.
+/// </summary>
+/// <param name="Rumble">How a pad that can only rumble has the haptics folded.</param>
+/// <param name="Override">The level the waveform plays at on a pad that has actuators.</param>
+public readonly record struct HapticsSettings(RumbleHapticsIntensity Rumble, double Override)
+{
+    /// <summary>Both, out of a preference store.</summary>
+    public static HapticsSettings From(IPreferences preferences)
+    {
+        ArgumentNullException.ThrowIfNull(preferences);
+
+        int rumble = RumbleHapticsChoice.Intensity.IndexOf(
+            preferences.GetString(RumbleHapticsChoice.Intensity.Key));
+
+        return new HapticsSettings(
+            (RumbleHapticsIntensity)rumble, preferences.GetDouble(HapticOverrideSetting.Key));
+    }
+}
+
+/// <summary>
 /// PP16: the settings screen's Controllers tab, the seventh of the nine.
 ///
 /// Two checkboxes here are written in DIFFERENT idioms, and the difference is upstream's:

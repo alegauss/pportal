@@ -436,6 +436,11 @@ public static class StreamRun
         // when it arrived - which is the reading that told these two runs apart.
         DualSenseHaptics? actuators = null;
 
+        // PP858: the Controllers tab's two haptics rows, which this run used to type as Normal and
+        // the default override. Read once, here, from the store the tab writes.
+        ChiakiNg.Settings.HapticsSettings hapticsSettings = ChiakiNg.Settings.HapticsSettings.From(
+            new ChiakiNg.Settings.QSettingsPreferences(new ChiakiNg.Settings.QSettingsStore()));
+
         Task<bool> opening = Task.Run(() =>
         {
             bool open = pad.Start();
@@ -452,10 +457,11 @@ public static class StreamRun
             // SDL thread to find out.
             if (open)
             {
-                phase.Haptics.Arm(pad, RumbleHapticsIntensity.Normal);
+                phase.Haptics.Arm(pad, hapticsSettings.Rumble);
                 Console.WriteLine(
                     $"[stream] haptics: armed on {pad.PadName}, "
-                        + $"{(pad.Identity.TakesEffectsReport ? "effects report" : "SDL rumble")}");
+                        + $"{(pad.Identity.TakesEffectsReport ? "effects report" : "SDL rumble")}, "
+                        + $"rumble {hapticsSettings.Rumble}, override {hapticsSettings.Override}");
 
                 // PP851: AND A DUALSENSE GETS THE WAVEFORM, where its cable gives it an endpoint.
                 // Asked only of the pads the effects report is for, because no other pad has
@@ -463,7 +469,7 @@ public static class StreamRun
                 // above as its answer - absence is quiet, per docs/HARDWARE-CONTRACT.md.
                 if (pad.Identity.TakesEffectsReport)
                 {
-                    actuators = DualSenseHaptics.Open(ChiakiNg.Settings.HapticOverrideSetting.Default, out string why);
+                    actuators = DualSenseHaptics.Open(hapticsSettings.Override, out string why);
 
                     if (actuators is not null)
                         phase.Haptics.ArmAudio(actuators);

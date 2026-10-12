@@ -61,6 +61,7 @@
 - ✅ **PP851 (code path)** **a DualSense feels what a PS4 pad feels: the console's haptic stream is folded to rumble rather than played** — A USB DualSense's endpoint is found by its vid:pid and XAudio2 plays each haptics frame on it at 3000 Hz, routed to channels two and three, with the fold switched off.
 - ✅ **PP854 (instrument)** **the pad stops driving the console after the window loses focus, and every layer this port can see stays healthy** — A live run now prints the pad's inputs, sensor readings and wire states per second, and names the second inputs stopped while states kept going.
 - ✅ **PP857** **a console set to haptics Off still drives the pad, because the intensity it raises is held and never read** — The console's haptic intensity reaches the haptics player as it arrives, and Off now silences both the rumble fold and the actuator waveform, stopping a rumbling pad once.
+- ✅ **PP858** **the rumble intensity and haptic override sliders change nothing in a session** — A stream run reads the Controllers tab's rumble intensity and haptic override from the store and hands them to the haptics player and the actuator matrix.
 
 ## Block C — Video and input path
 

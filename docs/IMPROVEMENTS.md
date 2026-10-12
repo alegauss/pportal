@@ -78,28 +78,32 @@ WHAT WOULD SETTLE IT is a count with a clock on it: state packets per second acr
 focus change. The wire's total says 5608 for two minutes and cannot say whether they
 stopped halfway.
 
-### §PP858 Two haptics settings with no reader
-
-The Controllers tab stores two haptics settings - the rumble intensity a pad that can
-only rumble is folded at, and the haptic override PP851's matrix takes as its level -
-and the stream run passes neither. StreamRun arms the player with
-RumbleHapticsIntensity.Normal and opens the actuators with
-HapticOverrideSetting.Default, both typed at the call.
-
-SO THE TAB IS A FORM WITH NO READER for these two rows. Moving the slider changes the
-registry value under settings/haptic_override and nothing a session does.
-
-WHAT TO BUILD. Read both where the run reads its other settings, and pass them to Arm
-and to DualSenseHaptics.Open. The intensity's stored value is an index into the client's
-own list, which RumbleHapticsChoice already maps; the override is a float the client
-reads with 1.0 as its default. Neither needs a new type.
-
-The test is the run's settings source handed a stored override of 0.5 and an intensity
-of Off, and the player and the matrix built from it reading both back.
-
 ## Block C — Video and input path
 
 ## Block D — Screens
+
+### §PP859 The settings dialog nothing opens
+
+PP167 composed the nine tabs into SettingsView, and nothing in app/ constructs one: no
+window shows it, no menu or shortcut opens it, and no DataContext is set on it. Each
+tab's view model has a constructor that reads an IPreferences, and no caller passes one
+- the Controllers tab's, for instance, reads four of its rows and not the rumble
+intensity or the haptic override beside them. Nothing writes a value back either.
+
+SO EVERY SETTING THIS PORT READS IS ONE THE QT CLIENT WROTE. PP858 made a session read
+the two haptics rows from the store; the only way to change them is a registry edit or
+the retired client. The same is true of every row on all nine tabs.
+
+WHAT IS NOT KNOWN, AND IS THE QUESTION. Whether opening the dialog was deliberately left
+for a later block - a host shell that does not exist yet - or was lost between PP167 and
+the retirement of the Qt client. The CHANGELOG entries for PP167 and PP632 are where to
+read first. If deliberate, this becomes a deferral with that shell as its trigger; if
+lost, the work is three joins: something opens the dialog, each tab is constructed from
+the store, and a save writes the rows back in the words and widths the store already
+declares.
+
+The census a later answer needs: nine tabs, each with an IPreferences constructor, none
+of them called from app/ outside tests.
 
 ## Block E — Windows-only build
 
