@@ -226,6 +226,72 @@ public class DualSenseHapticsTests(ITestOutputHelper output)
     }
 
     /// <summary>
+    /// PP857: THE CONSOLE'S OFF SILENCES BOTH ARMS, and a pad that was rumbling gets one stop.
+    ///
+    /// The client returns before the fold and before the waveform alike when the console's own menu
+    /// says haptics are off. Strong, Medium and Weak gate nothing, and a later value turns it back on.
+    /// </summary>
+    [Fact]
+    public void TheConsolesOffSilencesBothArms()
+    {
+        var motor = new Motor();
+        var player = new HapticsPlayer();
+        player.Arm(motor, RumbleHapticsIntensity.Normal);
+
+        player.Frame(Frame(1000));
+        Assert.NotNull(player.Tick());
+
+        player.ConsoleIntensity(DualSenseEffectIntensity.Off);
+
+        Assert.True(player.ConsoleOff);
+        Assert.Equal((ushort)0, motor.Told[^1]);
+
+        int told = motor.Told.Count;
+        long folded = player.Folded;
+
+        player.Frame(Frame(1000));
+        Assert.Null(player.Tick());
+        Assert.Equal(told, motor.Told.Count);
+        Assert.Equal(folded, player.Folded);
+
+        // The waveform arm is gated the same way.
+        var actuators = new Actuators();
+        player.ArmAudio(actuators);
+        player.Frame(Frame(1000));
+        Assert.Empty(actuators.Played);
+
+        // And a value that is not Off lets it through again.
+        player.ConsoleIntensity(DualSenseEffectIntensity.Weak);
+        player.Frame(Frame(1000));
+
+        Assert.False(player.ConsoleOff);
+        Assert.Single(actuators.Played);
+    }
+
+    /// <summary>
+    /// PP857: the router passes the intensity on as it arrives, and the live root hands it the player.
+    /// </summary>
+    [Fact]
+    public void TheRouterTellsThePlayerAndTheRootJoinsThem()
+    {
+        var heard = new List<DualSenseEffectIntensity>();
+        var router = new ChiakiNg.Protocol.SessionEventRouter { HapticIntensityChanged = heard.Add };
+
+        router.Send(new ChiakiNg.Protocol.SessionEvent(
+            ChiakiNg.Native.ChiakiEventType.HapticIntensity, Intensity: DualSenseEffectIntensity.Off));
+
+        Assert.Equal([DualSenseEffectIntensity.Off], heard);
+
+        string? phase = SanitizerSource.LocateRelative(Path.Combine("app", "Session", "ManagedStreamPhase.cs"));
+        if (phase is null)
+            return;
+
+        string code = CCall.Code(File.ReadAllText(phase));
+        Assert.True(CCall.CalledWith(code, "ListenerFor", "session, events, Haptics"));
+        Assert.True(CCall.Happens(code, "router.HapticIntensityChanged = haptics.ConsoleIntensity"));
+    }
+
+    /// <summary>
     /// The search runs on a real machine and answers either way: an endpoint when a pad is on a
     /// cable, null otherwise. Logged, because which one this machine gives is the hardware's call.
     /// </summary>

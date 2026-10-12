@@ -285,7 +285,7 @@ public sealed class ManagedStreamPhase : IDisposable
         // PP747 built the sink, and the root that would have joined them made the seam and stopped -
         // so a live run took sixteen thousand datagrams, decoded 2675 frames, and raised a CONNECTED
         // that was counted Unheard four states before the window gave up waiting for it.
-        Events = ListenerFor(session, events);
+        Events = ListenerFor(session, events, Haptics);
 
         // PP783: THE PAD'S SENDER, held rather than passed straight in, because two things need it.
         // The host runs it; the controller sink replays into it. streamconnection.c does the same in
@@ -538,12 +538,21 @@ public sealed class ManagedStreamPhase : IDisposable
     /// </summary>
     /// <param name="session">The session whose handler the connected event is forwarded to.</param>
     /// <param name="events">The run's seam, which drops what it raises until this is called.</param>
-    public static SessionEventRouter ListenerFor(ChiakiSession session, ManagedSessionEvents events)
+    /// <param name="haptics">
+    /// PP857: the haptics player, which hears the console's haptic intensity as it arrives - Off is
+    /// the one event value that has to change what plays rather than wait to be read.
+    /// </param>
+    public static SessionEventRouter ListenerFor(
+        ChiakiSession session, ManagedSessionEvents events, HapticsPlayer? haptics = null)
     {
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(events);
 
         var router = new SessionEventRouter(() => session.Raise(ChiakiEventType.Connected));
+
+        if (haptics is not null)
+            router.HapticIntensityChanged = haptics.ConsoleIntensity;
+
         events.Listen(router);
 
         return router;

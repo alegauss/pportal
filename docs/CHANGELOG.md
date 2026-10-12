@@ -60,6 +60,7 @@
 - ✅ **PP846** **the console's haptics reach no motor: HapticsRumble and DualSenseEffects are modelled and neither has a caller** — the fold reaches a motor at last: three strengths averaged every thirty milliseconds, routed by the pad's own vendor and product, and one zero to stop it.
 - ✅ **PP851 (code path)** **a DualSense feels what a PS4 pad feels: the console's haptic stream is folded to rumble rather than played** — A USB DualSense's endpoint is found by its vid:pid and XAudio2 plays each haptics frame on it at 3000 Hz, routed to channels two and three, with the fold switched off.
 - ✅ **PP854 (instrument)** **the pad stops driving the console after the window loses focus, and every layer this port can see stays healthy** — A live run now prints the pad's inputs, sensor readings and wire states per second, and names the second inputs stopped while states kept going.
+- ✅ **PP857** **a console set to haptics Off still drives the pad, because the intensity it raises is held and never read** — The console's haptic intensity reaches the haptics player as it arrives, and Off now silences both the rumble fold and the actuator waveform, stopping a rumbling pad once.
 
 ## Block C — Video and input path
 

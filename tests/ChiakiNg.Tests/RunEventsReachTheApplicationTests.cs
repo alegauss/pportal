@@ -148,7 +148,9 @@ public class RunEventsReachTheApplicationTests(ITestOutputHelper output)
 
         string code = DeadAssertions.CodeOnly(File.ReadAllText(path));
 
-        Assert.Contains($"{nameof(ManagedStreamPhase.ListenerFor)}(session, events)", code, StringComparison.Ordinal);
+        // PP857: by its leading arguments, which is PP850's CalledWith - the haptics player became a
+        // third and the claim here is which session and seam are attached, not the call's arity.
+        Assert.True(CCall.CalledWith(code, nameof(ManagedStreamPhase.ListenerFor), "session, events"));
     }
 
     /// <summary>

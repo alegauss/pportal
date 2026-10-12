@@ -78,28 +78,6 @@ WHAT WOULD SETTLE IT is a count with a clock on it: state packets per second acr
 focus change. The wire's total says 5608 for two minutes and cannot say whether they
 stopped halfway.
 
-### §PP857 The console's Off, which nothing reads
-
-The console tells the client how strongly the pad should respond, and Off is one of the
-answers. The Qt client keeps it as ps5_rumble_intensity = -1 and checks it in two
-places: CHIAKI_EVENT_RUMBLE returns before any motor is told anything, and the haptics
-push returns before the waveform is queued to the pad's endpoint.
-
-THE PORT RECEIVES IT AND NOTHING READS IT. SessionEventRouter.HapticIntensity holds the
-latest value the console raised, and neither HapticsPlayer nor the rumble event path
-asks it. So a user who turned haptics off in the console's own menu still feels them -
-on the actuators since PP851, and through the fold before that.
-
-WHAT TO BUILD. HapticsPlayer takes the console's intensity as a second gate beside the
-rumble setting: Off drops a frame before both the waveform and the fold, and a pad that
-was rumbling gets its one stop. The router is where the value arrives, so the root joins
-the two the way it joins the other arms. The Strong/Medium/Weak values are a byte for
-the effects report, which DualSenseIntensity already packs; only Off decides whether
-anything is played at all.
-
-The test is the player fed frames with the console at Off: nothing played, nothing
-folded.
-
 ### §PP858 Two haptics settings with no reader
 
 The Controllers tab stores two haptics settings - the rumble intensity a pad that can

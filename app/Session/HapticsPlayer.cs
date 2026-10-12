@@ -66,6 +66,7 @@ public sealed class HapticsPlayer : IAudioFrameSink
     private IHapticsAudio? audio;
     private RumbleHapticsIntensity intensity = RumbleHapticsIntensity.Normal;
     private bool rumbling;
+    private bool consoleOff;
     private long folded;
     private long silent;
     private long sent;
@@ -96,6 +97,39 @@ public sealed class HapticsPlayer : IAudioFrameSink
 
     /// <summary>PP851: whether the waveform is going to the actuators rather than being folded.</summary>
     public bool Playing => Volatile.Read(ref audio) is not null;
+
+    /// <summary>PP857: whether the console last said its haptics are off.</summary>
+    public bool ConsoleOff => Volatile.Read(ref consoleOff);
+
+    /// <summary>
+    /// PP857: the console's haptic intensity, as CHIAKI_EVENT_HAPTIC_INTENSITY raises it.
+    ///
+    /// ONLY OFF DECIDES ANYTHING HERE. The client keeps it as ps5_rumble_intensity = -1 and returns
+    /// before both the fold and the waveform; Strong, Medium and Weak are a byte the effects report
+    /// carries, which <see cref="DualSenseIntensity"/> packs, and not a gate. So the console's own
+    /// menu beats this client's rumble setting, which is the client's order of checks.
+    ///
+    /// A PAD THAT WAS RUMBLING IS STOPPED ONCE when Off arrives, for the reason the window keeps:
+    /// nothing will fold a frame again to send the stop that would otherwise end it.
+    /// </summary>
+    public void ConsoleIntensity(DualSenseEffectIntensity intensity)
+    {
+        bool off = intensity == DualSenseEffectIntensity.Off;
+
+        lock (gate)
+        {
+            Volatile.Write(ref consoleOff, off);
+
+            if (!off)
+                return;
+
+            if (rumbling && target is { } pad)
+                pad.Rumble(0);
+
+            rumbling = false;
+            queued.Clear();
+        }
+    }
 
     /// <summary>
     /// PP851: play every frame whole on the pad's actuators, and stop folding.
@@ -180,6 +214,11 @@ public sealed class HapticsPlayer : IAudioFrameSink
     /// </summary>
     public void Frame(ReadOnlySpan<byte> frame)
     {
+        // PP857: the console's Off first, ahead of both arms - the client returns on it before the
+        // fold and before the waveform alike.
+        if (Volatile.Read(ref consoleOff))
+            return;
+
         // PP851: the waveform, ahead of the rumble setting - which is the client's order. Off governs
         // the fold for pads that can only rumble; it is not consulted once a haptics device is open.
         if (Volatile.Read(ref audio) is { } pad)

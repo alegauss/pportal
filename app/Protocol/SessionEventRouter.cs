@@ -57,6 +57,15 @@ public sealed class SessionEventRouter : ISessionEventSink
     public DualSenseEffectIntensity? TriggerIntensity { get; private set; }
 
     /// <summary>
+    /// PP857: who hears a haptic intensity as it arrives, because one of its values is an order.
+    ///
+    /// The rest of what this router holds is read when somebody wants it. Off is not: the Qt client
+    /// stops playing haptics the moment the console says so, and a value held for a reader nobody
+    /// writes is the state PP857 found - a console menu set to Off and a pad that went on buzzing.
+    /// </summary>
+    public Action<DualSenseEffectIntensity>? HapticIntensityChanged { get; set; }
+
+    /// <summary>
     /// Whether motion control has been asked to take its origin as it is now.
     ///
     /// A flag rather than a value, because that is what the event is: MOTION_RESET carries nothing
@@ -111,6 +120,7 @@ public sealed class SessionEventRouter : ISessionEventSink
 
             case ChiakiEventType.HapticIntensity:
                 HapticIntensity = raised.Intensity;
+                HapticIntensityChanged?.Invoke(raised.Intensity);
                 break;
 
             case ChiakiEventType.TriggerIntensity:
