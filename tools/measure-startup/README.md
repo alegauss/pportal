@@ -35,9 +35,10 @@ two reports that both declined to say are not thereby in the same state.
 
 ## The state of this task
 
-**The "before" has not been taken.** `mingw-w64-x86_64-qt6-webengine` is not installed on the
-machine this was written on, so `CHIAKI_HAVE_WEBENGINE` is off, no Chromium is in the tree, and
-`QtWebEngineQuick::initialize()` ([`gui/src/main.cpp`](../../gui/src/main.cpp), guarded) never runs.
+**A build carrying WebEngine exists now (PP63); the "before" row PP46 quotes has not been taken
+yet.** MSYS2 has no `qt6-webengine`, so a MinGW build has `CHIAKI_HAVE_WEBENGINE` off, no
+Chromium in the tree, and `QtWebEngineQuick::initialize()` ([`gui/src/main.cpp`](../../gui/src/main.cpp),
+guarded) never runs.
 Measuring here and calling it the before would be publishing a number for a build that had already
 dropped the thing being measured — exactly the folklore §PP46 exists to prevent.
 
@@ -61,6 +62,19 @@ Row in [`qt-build-webengine-absent.json`](qt-build-webengine-absent.json).
 Useful as a floor and as proof the harness works, and nothing more. When the before is taken, the
 delta against these figures is the cost of everything *except* WebEngine, which is not a number
 anybody asked for.
+
+### The reference build (PP63, WebEngine PRESENT)
+
+[`scripts/reference-build-msvc.ps1`](../../scripts/reference-build-msvc.ps1) builds the Qt client
+with MSVC/clang-cl against an msvc2022_64 Qt carrying WebEngineQuick, from a worktree of
+`e4e482e7`, the commit the row above was measured on. The current `gui\` no longer compiles
+(PP632). It runs this tool at the end, and its exit status is this tool's. Everything lands in
+`build\reference\`; nothing in `compile.cmd`, `test.cmd` or CI calls it.
+
+Its first row is [`qt-build-webengine-present.json`](qt-build-webengine-present.json): 208.6 MB
+of Chromium in a 489.3 MB tree, exit `0`. It was taken with `--cache-state warm` on the build
+machine, so **its cold figure is not the before**. That needs a `cold-boot` or `dropped` run,
+and it is PP46's to take. The script's `-CacheState` passes the state through.
 
 ## Three things the numbers are not
 

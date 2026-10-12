@@ -43,6 +43,8 @@ are read from the spike's committed file rather than typed.
 
 ## Block E — Windows-only build
 
+- ✅ **PP63** **nothing in the tree can configure a Qt build carrying WebEngine, so PP46's before cannot be produced at all** — The WebEngine reference build stays out of compile.cmd, test.cmd and CI and gates no commit; gating on it was rejected, since a second toolchain in ordinary use splits the build in two.
+
 ## Block F — Managed core
 
 - ✅ **PP33** **HTTP and JSON in the core are curl and json-c, two vendored dependencies for what the runtime already does** — holepunch.c stays as unbuilt source, gui/'s answer after PP598: ~20 managed models are held against it, and deleting it turned 28 assertions red and would have silenced more quietly.

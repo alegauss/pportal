@@ -149,10 +149,12 @@ declared = [
     # needed hardware and declared nothing, so `pick` offered it as the next ready thing to do.
     "console",
     #
-    # Visual Studio Build Tools with the C++ workload AND Qt for msvc2022_64 carrying
-    # QtWebEngine, from an installer wanting an account. Two multi-gigabyte installs, and
-    # PP63 itself argues the second toolchain has to be kept away from ordinary work.
-    "msvc-qt-webengine",
+    # "msvc-qt-webengine" stood here for PP63 and left with it on 2026-10-12. Half of it was
+    # already present: Visual Studio 2022 and 18 Community, with MSVC and clang-cl, whose instance
+    # state is dated 2026-09-09 - and the 2026-08-16 reading that found none was never redone. The
+    # other half needed no account - Qt's public repository serves msvc2022_64 and the
+    # qtwebengine extension directly. A requirement is a reading of the machine, and a reading
+    # goes stale like any other.
     # A CI run: a push and a wait, not a step. Nothing in a checkout answers whether the
     # workflow goes green, which is the honest boundary PP22's assertions stop at.
     "runner",

@@ -179,6 +179,7 @@
 - ✅ **PP586** **compile.cmd's deploy ending names the Qt client whenever one exists on disk, not when this run built it** — The deploy ending asks CHIAKI_ENABLE_GUI now, so a default run names the .NET host and marks a leftover Qt client as an earlier run's, and a one-line if exist guards its own claim.
 - ✅ **PP572** **nothing parses build.yml, so a syntax error in it is invisible until a push spends a run** — every .github/workflows/*.yml is parsed as a YAML document by WorkflowParseTests, so a syntax error is red in the local gate rather than on the first push that spends a run.
 - ✅ **PP856** **no workflow builds the installer or attaches it to a GitHub release, so every installer comes off one desk** — release.yml builds through compile.cmd and package.cmd on a runner, refuses a tag the exe disagrees with, and drafts the release with the installer and SHA256SUMS.txt.
+- ✅ **PP63** **nothing in the tree can configure a Qt build carrying WebEngine, so PP46's before cannot be produced at all** — reference-build-msvc.ps1 builds the WebEngine Qt client from e4e482e7; measure-startup exits 0 on it, 208.6 MB of Chromium present (design recorded in `tools/measure-startup/README.md`).
 
 ## Block F — Managed core
 
