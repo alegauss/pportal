@@ -23,6 +23,27 @@ const BASE = "/pportal/docs";
 // which is one directory nobody would notice missing.
 const OUT_DIR = "../dist/docs";
 
+// The Google tag, the same one site/index.html carries, so the docs pages are measured with
+// the landing pages. Starlight's head config takes tags rather than raw HTML; it sorts these
+// right after the charset, viewport and title.
+const GA_ID = "G-6HG45Q9BHP";
+const GOOGLE_TAG = [
+  {
+    tag: "script",
+    attrs: { async: true, src: `https://www.googletagmanager.com/gtag/js?id=${GA_ID}` },
+  },
+  {
+    tag: "script",
+    content: `
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', '${GA_ID}');
+`,
+  },
+];
+
 export default defineConfig({
   site: "https://alegauss.github.io",
   base: BASE,
@@ -46,6 +67,7 @@ export default defineConfig({
         { icon: "github", label: "GitHub", href: "https://github.com/alegauss/pportal" },
       ],
       customCss: ["./src/styles/docs.css"],
+      head: GOOGLE_TAG,
       sidebar: [
         {
           label: "The host",
