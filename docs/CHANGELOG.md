@@ -928,3 +928,6 @@
 ## Block J — Public documentation
 
 - ✅ **PP446** **the site has no documentation area, so a page explaining how a frame reaches the screen has nowhere to be published** — A documentation area at /pportal/docs, built by Starlight into the site's dist, with three joins between the two builds asserted on both sides (design recorded in `site/README.md`).
+
+## Block K — The site on the design system
+

@@ -40,6 +40,10 @@
 
 ## Block J — Public documentation
 
+## Block K — The site on the design system
+
+- 📋 **PP860** (deps: viglet-design-system: VDS213–VDS215, claude-tray: T389) **The site keeps its own copy of the template that eight product sites share** — The shared Nav, Hero, Footer and sponsor slot drift apart in each copy, and the design system now carries them once. → §PP860
+
 ## Done when — PP46
 
 - **The three numbers are recorded on the Qt build** Cold start to the console list,

@@ -162,3 +162,6 @@ are read from the spike's committed file rather than typed.
 - ✅ **PP711** **WasapiCapture can only be asked for the announced format, so the cleaning stage resamples both inputs itself** — The stage keeps two doors: one taking bytes, so its assertions run on a machine with no microphone, and one taking frames an endpoint already converted.
 
 ## Block J — Public documentation
+
+## Block K — The site on the design system
+

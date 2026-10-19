@@ -372,3 +372,36 @@ Below the display's minimum, low framerate compensation changes the behaviour ag
 that too is read rather than assumed.
 
 ## Block J — Public documentation
+
+## Block K — The site on the design system
+
+### §PP860 The site and its docs on the design system's shared template
+
+site/ carries its own copy of the template the eight React product sites share:
+components/Nav.tsx and Footer.tsx, sections/Hero.tsx, FeatureIndex.tsx and NonGoals.tsx,
+pages/Feature.tsx, and ui/Ad.tsx, RawSvg.tsx, Rich.tsx and ThemeToggle.tsx, with
+lib/ads.ts and lib/theme.ts behind them. scripts/prerender.mjs and scripts/og-image.mjs
+are the build's copies of the same two steps. The tokens live in src/index.css, with
+--violet, --violet-bright and --violet-deep as the brand constants.
+
+The move follows claude-tray's pilot, T389. The page takes `data-tone="cool"` because
+its ground is already cool: #f6f7fd in light and #080b16 in dark, both blue-violet. The
+accent comes from projects.json, `91,108,249` with `#8f9dff` as the bright step, the
+--violet pair. Shared components come from `./site`; FrameTrip.tsx, ui/FeatureCards.tsx,
+ui/Signal.tsx, the product sections and the Features and Hardware pages stay local. The
+build calls the `./vite` prerender and OG-card helpers in place of the two scripts. The
+Google tag in index.html loads only after consent, as the hub's AG1.
+
+The build also runs `build:docs`, the Starlight area at /pportal/docs, and those pages
+are in scope. site/docs/src/styles/docs.css re-derives Starlight's accent scale from
+--violet by hand; it takes the accent from the package's tokens instead. The tag in
+site/docs/astro.config.mjs waits on the same consent.
+
+Done when:
+
+- site/src holds none of the files `./site` provides.
+- The prerendered HTML of every route, docs pages included, holds the same text as
+  before.
+- Light and dark screenshots of each route and docs page are compared before and after,
+  and the commit lists every difference.
+- The site appears in the design system's consumers.json.
