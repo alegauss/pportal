@@ -93,14 +93,14 @@ export const sponsor = {
   products: [
     {
       name: "Viglet Turing",
-      url: "https://turing.viglet.org",
+      url: "https://openviglet.github.io/turing/",
       logo: "/pportal/viglet/turing-logo.png",
       inline:
         "so visitors find what they came for, with AI answers drawn only from your own content",
     },
     {
       name: "Viglet Shio",
-      url: "https://shio.viglet.org",
+      url: "https://openviglet.github.io/shio/",
       logo: "/pportal/viglet/shio-logo.png",
       inline:
         "so a new page goes live the same day, reviewed and approved by your own team",
